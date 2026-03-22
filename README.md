@@ -158,6 +158,7 @@ docker compose up --build
 - phased roadmap: `docs/architecture/phased-roadmap.md`
 - decisions and rationale: `docs/architecture/decision-log.md`
 - domain integration guide: `docs/guides/integration-guide.md`
+- task execution contract: `docs/guides/task-execution-contract.md`
 - evaluation strategy: `docs/evals/evaluation-strategy.md`
 - security and governance: `docs/security/security-and-governance.md`
 - service-local RFCs: `docs/rfcs/`

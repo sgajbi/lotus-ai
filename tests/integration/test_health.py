@@ -25,3 +25,31 @@ def test_platform_capabilities_contract() -> None:
     assert body["service"] == "lotus-ai"
     assert body["phase"] == "foundation"
     assert any(task["task_id"] == "explain.v1" for task in body["tasks"])
+
+
+def test_task_execute_contract() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-456",
+            },
+            "context": {
+                "summary": "Explain rebalance outcome",
+                "payload": {"status": "BLOCKED", "violations": 2},
+                "source_refs": ["lotus-manage:run:reb_002"],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["task_id"] == "explain.v1"
+    assert body["status"] == "COMPLETED"
+    assert body["audit"]["stubbed"] is True
+    assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"

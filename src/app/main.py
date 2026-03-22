@@ -4,6 +4,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.config import settings
 from app.middleware.correlation import CorrelationIdMiddleware
 from app.routers.capabilities import router as capabilities_router
+from app.routers.tasks import router as tasks_router
 
 SERVICE_NAME = settings.service_name
 SERVICE_VERSION = settings.service_version
@@ -21,6 +22,7 @@ app = FastAPI(
 app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
 Instrumentator().instrument(app).expose(app)
 app.include_router(capabilities_router)
+app.include_router(tasks_router)
 
 
 @app.get("/health")

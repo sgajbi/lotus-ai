@@ -66,3 +66,11 @@ def build_capability_catalog() -> CapabilityCatalogResponse:
             ),
         ],
     )
+
+
+def get_capability_by_task_id(task_id: str) -> CapabilityDescriptor | None:
+    catalog = build_capability_catalog()
+    for task in catalog.tasks:
+        if task.task_id == task_id:
+            return task
+    return None
