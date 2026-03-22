@@ -86,9 +86,10 @@ Before any future live-provider activation slice:
 4. inspect `GET /platform/providers/evidence-readiness` when evaluation, audit, or failover evidence blockers need detail
 5. confirm the embedded `provider_governance` block in `GET /platform/runtime-status` matches the detailed provider governance view
 6. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
-7. confirm vendor escalation, rate-limit response, and provider observability procedures are documented and approved
-8. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
-9. only then proceed with any live-provider activation rollout review
+7. confirm staged provider policy, runtime, and failure-mode fixtures plus the recorded provider regression baseline still match the intended rollout posture
+8. confirm vendor escalation, rate-limit response, and provider observability procedures are documented and approved
+9. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
+10. only then proceed with any live-provider activation rollout review
 
 ## Prompt Activation Governance
 

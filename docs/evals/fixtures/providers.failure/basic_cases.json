@@ -1,0 +1,34 @@
+{
+  "task_id": "provider.failure.v1",
+  "fixture_family": "provider_failure_mode_examples",
+  "cases": [
+    {
+      "case_id": "provider_timeout_budget_is_auditable",
+      "summary": "Provider timeout posture should be explicit and reviewable in execution evidence.",
+      "input": {
+        "task_id": "summarize.v1",
+        "provider_mode": "stub",
+        "timeout_ms": 4000
+      },
+      "expected": {
+        "must_emit_timeout_budget": true,
+        "must_preserve_failure_category": false,
+        "expected_outcome": "TIMEOUT_GUARDRAIL"
+      }
+    },
+    {
+      "case_id": "blocked_live_path_requires_explicit_fallback_or_rejection",
+      "summary": "Provider fallback behavior should never be silent when live execution remains blocked.",
+      "input": {
+        "task_id": "summarize.v1",
+        "configured_mode": "live_documented",
+        "fallback_allowed": false
+      },
+      "expected": {
+        "must_emit_structured_rejection": true,
+        "must_not_silently_drift_to_live": true,
+        "expected_outcome": "FALLBACK_OR_REJECTION"
+      }
+    }
+  ]
+}

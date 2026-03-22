@@ -70,10 +70,15 @@ def test_provider_evidence_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["evidence_ready"] is False
-    assert body["required_item_count"] == 4
-    assert body["completed_required_item_count"] == 0
+    assert body["required_item_count"] == 6
+    assert body["completed_required_item_count"] == 4
     assert body["items"][0]["evidence_id"] == "provider_policy_fixture_pack"
-    assert body["items"][1]["status"] == "NOT_READY"
+    assert body["items"][0]["status"] == "READY"
+    assert body["items"][1]["evidence_id"] == "provider_runtime_fixture_pack"
+    assert body["items"][1]["status"] == "READY"
+    assert body["items"][3]["evidence_id"] == "provider_regression_run_baseline"
+    assert body["items"][3]["status"] == "READY"
+    assert body["items"][4]["status"] == "FOUNDATION_STAGED"
 
 
 def test_provider_governance_status_route(client: TestClient) -> None:

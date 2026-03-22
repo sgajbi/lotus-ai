@@ -350,6 +350,10 @@ provider rollout state from the same top-level runtime surface that already carr
 governance posture. Provider governance now summarizes technical activation, runbook, and
 evidence readiness together.
 
+Provider evidence readiness is now grounded in real evaluation assets rather than only a static
+checklist: staged provider policy, runtime, and failure-mode fixtures plus a recorded provider
+regression baseline are visible directly through the governed evidence-readiness surface.
+
 ## Prompt Posture
 
 `lotus-ai` exposes governed prompt posture so downstream teams can inspect both runtime selection

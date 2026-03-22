@@ -320,8 +320,9 @@ Why:
 Current posture:
 
 1. `/platform/providers/evidence-readiness` exposes required provider evidence items,
-2. required evidence items remain not ready in foundation phase,
-3. provider governance review now includes evidence posture as a first-class blocking area alongside technical and operational readiness.
+2. provider policy, runtime, and failure-mode fixture packs are now staged as governed evidence assets,
+3. provider evidence readiness now reflects a recorded provider regression baseline in addition to staged fixture coverage,
+4. provider governance review still remains blocked until live audit traceability and failover evidence are explicitly assembled.
 
 ## Decision 12: Safety Posture Must Be Inspectable
 

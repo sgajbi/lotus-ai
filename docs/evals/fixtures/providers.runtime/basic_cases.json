@@ -1,0 +1,37 @@
+{
+  "task_id": "provider.runtime.v1",
+  "fixture_family": "provider_runtime_examples",
+  "cases": [
+    {
+      "case_id": "stub_execution_preserves_bounded_provider_controls",
+      "summary": "Stub execution should preserve timeout, retry, and output-token controls in provider evidence.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "stub",
+        "timeout_ms": 4000,
+        "retry_limit": 0,
+        "max_output_tokens": 512
+      },
+      "expected": {
+        "provider_mode": "stub",
+        "stubbed": true,
+        "must_preserve_execution_controls": true,
+        "expected_outcome": "SUCCESS"
+      }
+    },
+    {
+      "case_id": "documented_live_provider_rejects_until_rollout_enabled",
+      "summary": "Documented live-provider paths should reject cleanly until rollout posture explicitly allows activation.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "live_documented",
+        "rollout_state": "ALLOWLISTED_DISABLED"
+      },
+      "expected": {
+        "failure_category": "LIVE_EXECUTION_NOT_ENABLED",
+        "must_emit_structured_rejection": true,
+        "expected_outcome": "REJECTION"
+      }
+    }
+  ]
+}
