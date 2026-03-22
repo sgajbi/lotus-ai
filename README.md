@@ -4,6 +4,19 @@ Shared AI platform service for Lotus applications.
 
 `lotus-ai` provides the reusable AI infrastructure layer for the Lotus estate. It exists to help the other Lotus apps build governed AI features without moving domain ownership out of the services that already own portfolio data, analytics, workflow state, and deterministic decision logic.
 
+## Current Phase
+
+The repository is in foundation phase.
+
+Current goals:
+
+- define the service architecture clearly,
+- document the delivery roadmap,
+- establish enterprise-grade governance expectations,
+- introduce stable task and capability contracts before integrating any model provider.
+
+This is deliberate. The early focus is to make `lotus-ai` understandable, testable, and governable before it becomes feature-rich.
+
 ## What lotus-ai Does
 
 - LLM gateway and model routing
@@ -50,6 +63,34 @@ Examples:
 - `src/app/routers/`: API surfaces
 - `docs/rfcs/`: service-local architecture decisions
 
+## Build Strategy
+
+We are building `lotus-ai` incrementally.
+
+1. Foundation:
+   contracts, settings, architecture docs, governance, and evaluation standards.
+2. Safe task APIs:
+   explanation, summarization, classification, extraction, and knowledge retrieval.
+3. Platform controls:
+   prompt registry, audit logging, redaction, model routing, and eval harnesses.
+4. Cross-app adoption:
+   start with one Lotus app integration, then expand based on evidence.
+5. Advanced orchestration:
+   async runs and tool-using flows only after the core safety and observability layers are solid.
+
+## Enterprise Posture
+
+`lotus-ai` is being built for an enterprise private-banking target environment, while acknowledging startup execution constraints.
+
+That means:
+
+- strong contracts,
+- explicit ownership boundaries,
+- traceability and auditability,
+- pragmatic slice-by-slice delivery,
+- no speculative overbuilding,
+- no hidden AI behavior in critical workflows.
+
 ## Quick Start
 
 ```powershell
@@ -74,6 +115,12 @@ docker compose up --build
 
 ## Documentation
 
+- architecture overview: `docs/architecture/system-overview.md`
+- phased roadmap: `docs/architecture/phased-roadmap.md`
+- decisions and rationale: `docs/architecture/decision-log.md`
+- domain integration guide: `docs/guides/integration-guide.md`
+- evaluation strategy: `docs/evals/evaluation-strategy.md`
+- security and governance: `docs/security/security-and-governance.md`
 - service-local RFCs: `docs/rfcs/`
 - service standards: `docs/standards/`
 - platform governance source: `../lotus-platform/rfcs/RFC-0069-lotus-ai-shared-ai-platform-service.md`

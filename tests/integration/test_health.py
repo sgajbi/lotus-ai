@@ -14,3 +14,14 @@ def test_correlation_header_propagation() -> None:
     response = client.get("/health", headers={"X-Correlation-Id": "corr-123"})
     assert response.status_code == 200
     assert response.headers["X-Correlation-Id"] == "corr-123"
+
+
+def test_platform_capabilities_contract() -> None:
+    client = TestClient(app)
+    response = client.get("/platform/capabilities")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["phase"] == "foundation"
+    assert any(task["task_id"] == "explain.v1" for task in body["tasks"])

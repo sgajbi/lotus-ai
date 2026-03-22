@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Response, status
 from prometheus_fastapi_instrumentator import Instrumentator
-from app.middleware.correlation import CorrelationIdMiddleware
 
-SERVICE_NAME = "lotus-ai"
-SERVICE_VERSION = "0.1.0"
+from app.config import settings
+from app.middleware.correlation import CorrelationIdMiddleware
+from app.routers.capabilities import router as capabilities_router
+
+SERVICE_NAME = settings.service_name
+SERVICE_VERSION = settings.service_version
 ROUNDING_POLICY_VERSION = "v1"
 
 app = FastAPI(
@@ -17,6 +20,7 @@ app = FastAPI(
 )
 app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
 Instrumentator().instrument(app).expose(app)
+app.include_router(capabilities_router)
 
 
 @app.get("/health")
@@ -51,6 +55,10 @@ async def root() -> dict[str, object]:
     return {
         "service": SERVICE_NAME,
         "version": SERVICE_VERSION,
+        "phase": settings.delivery_phase,
+        "providerMode": settings.provider_mode,
+        "retrievalMode": settings.retrieval_mode,
+        "safetyMode": settings.safety_mode,
         "capabilityAreas": [
             "llm_gateway",
             "prompt_registry",
