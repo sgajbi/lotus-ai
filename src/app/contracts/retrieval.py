@@ -333,6 +333,9 @@ class RetrievalGovernanceStatusResponse(BaseModel):
     runbook_readiness: RetrievalRunbookReadinessResponse = Field(
         description="Operational runbook-readiness summary for retrieval execution."
     )
+    evidence_readiness: RetrievalEvidenceReadinessResponse = Field(
+        description="Evaluation and citation evidence-readiness summary for retrieval execution."
+    )
     blocking_area_count: int = Field(
         description="Number of top-level retrieval governance areas currently blocking activation."
     )

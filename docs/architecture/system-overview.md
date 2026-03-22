@@ -120,6 +120,9 @@ Current retrieval rollout posture includes:
 3. retrieval evidence readiness through `/platform/retrieval/evidence-readiness`,
 4. combined retrieval governance review through `/platform/retrieval/governance-status`.
 
+Retrieval governance now summarizes technical activation, runbook, and evidence readiness
+together.
+
 ### Routers
 
 - `src/app/routers/`

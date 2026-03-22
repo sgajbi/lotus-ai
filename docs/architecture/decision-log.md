@@ -424,7 +424,7 @@ Current posture:
 
 1. `/platform/retrieval/evidence-readiness` exposes required retrieval evidence items,
 2. required evidence items remain not ready in foundation phase,
-3. retrieval governance review can now inspect evidence posture separately while the combined governance summary remains unchanged in this slice.
+3. retrieval governance review now includes evidence posture as a first-class blocking area alongside technical and operational readiness.
 
 ## Decision 16: Prompt Runtime Selection Should Be Inspectable
 
