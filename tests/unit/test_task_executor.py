@@ -44,6 +44,9 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
         "response_labeling",
         "correlation_and_audit",
     ]
+    assert len(response.evidence.descriptors) == 5
+    assert response.evidence.descriptors[0].evidence_type == "task_contract"
+    assert response.evidence.descriptors[1].evidence_type == "prompt_selection"
 
 
 def test_execute_task_rejects_unknown_task() -> None:

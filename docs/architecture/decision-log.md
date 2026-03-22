@@ -281,3 +281,21 @@ Current posture:
 1. platform runtime status includes prompt runtime selection summary,
 2. dedicated prompt runtime status remains available for focused inspection,
 3. the embedded view remains read-only and aligned with the prompt governance model.
+
+## Decision 18: Task Runs Should Emit Structured Execution Evidence
+
+Decision:
+
+Task execution responses now include a typed execution evidence bundle describing the main decision inputs used for the run.
+
+Why:
+
+1. enterprise review needs more than a raw message and audit id,
+2. a stable evidence schema gives later evaluation work a clean foundation,
+3. this improves explainability without changing the deterministic execution posture.
+
+Current posture:
+
+1. task responses emit evidence for task contract, prompt selection, provider resolution, safety outcome, and retrieval posture,
+2. evidence is deterministic and read-only in foundation phase,
+3. live provider behavior is still disabled; the evidence model exists ahead of it.

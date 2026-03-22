@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.safety import SafetyExecutionOutcome
 
 
@@ -113,3 +114,6 @@ class TaskExecutionResponse(BaseModel):
     output_label: OutputLabel = Field(description="Output label emitted by the task.")
     result: TaskExecutionResult = Field(description="Task result payload.")
     audit: TaskAuditMetadata = Field(description="Audit metadata for the execution.")
+    evidence: ExecutionEvidenceBundle = Field(
+        description="Structured execution evidence explaining how the result was produced."
+    )

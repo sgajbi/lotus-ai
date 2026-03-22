@@ -54,3 +54,18 @@ Check:
 2. explanation task fixture set,
 3. summarization fixture set,
 4. retrieval citation fixture set.
+
+## Current Execution Evidence
+
+`lotus-ai` task responses now carry a typed execution evidence bundle.
+
+Current evidence categories:
+
+1. task contract selection,
+2. prompt selection,
+3. provider resolution,
+4. safety outcome,
+5. retrieval posture.
+
+This evidence is intentionally deterministic in foundation phase so later evaluation and regression
+work has a stable evidence schema to build on.

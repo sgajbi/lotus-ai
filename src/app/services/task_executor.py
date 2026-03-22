@@ -16,6 +16,7 @@ from app.contracts.tasks import (
 )
 from app.services.audit_store import get_audit_store
 from app.services.capability_catalog import get_capability_by_task_id
+from app.services.execution_evidence import build_execution_evidence
 from app.services.provider_gateway import execute_text_generation
 from app.services.prompt_registry import get_prompt_or_raise
 from app.services.safety_runtime import build_safety_execution_outcome
@@ -54,6 +55,13 @@ def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
             source_refs=request.context.source_refs,
         )
     )
+    evidence = build_execution_evidence(
+        request=request,
+        capability=capability,
+        prompt=prompt,
+        provider_execution=provider_execution,
+        safety_outcome=safety_outcome,
+    )
     response = TaskExecutionResponse(
         status=TaskExecutionStatus.COMPLETED,
         task_id=capability.task_id,
@@ -67,6 +75,7 @@ def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
                 "caller_app": request.caller.caller_app,
             },
         ),
+        evidence=evidence,
         audit=TaskAuditMetadata(
             request_id=request_id,
             task_id=capability.task_id,

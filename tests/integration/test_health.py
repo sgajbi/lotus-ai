@@ -136,6 +136,8 @@ def test_task_execute_contract() -> None:
     assert body["audit"]["prompt_version"] == "foundation.explain.v1"
     assert body["audit"]["safety"]["safety_mode"] == "documented_only"
     assert body["audit"]["safety"]["redaction_posture"] == "MINIMIZATION_REQUIRED"
+    assert len(body["evidence"]["descriptors"]) == 5
+    assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
     assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"
 
 
