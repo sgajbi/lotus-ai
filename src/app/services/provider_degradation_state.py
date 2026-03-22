@@ -121,8 +121,12 @@ def _resolve_provider_degradation_state() -> ProviderDegradationState:
             circuit_open_remaining_seconds=None,
             last_failure_category=_LAST_FAILURE_CATEGORY,
             timeout_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_TIMEOUT],
-            rate_limited_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_RATE_LIMITED],
-            upstream_error_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR],
+            rate_limited_failure_count=_FAILURE_COUNTS[
+                ProviderFailureCategory.PROVIDER_RATE_LIMITED
+            ],
+            upstream_error_failure_count=_FAILURE_COUNTS[
+                ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
+            ],
             findings=[
                 "Provider degradation and circuit-breaker posture remain documented-only until degradation controls are explicitly enabled."
             ],
@@ -164,8 +168,12 @@ def _resolve_provider_degradation_state() -> ProviderDegradationState:
             circuit_open_remaining_seconds=None,
             last_failure_category=_LAST_FAILURE_CATEGORY,
             timeout_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_TIMEOUT],
-            rate_limited_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_RATE_LIMITED],
-            upstream_error_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR],
+            rate_limited_failure_count=_FAILURE_COUNTS[
+                ProviderFailureCategory.PROVIDER_RATE_LIMITED
+            ],
+            upstream_error_failure_count=_FAILURE_COUNTS[
+                ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
+            ],
             findings=findings,
         )
 
@@ -181,8 +189,12 @@ def _resolve_provider_degradation_state() -> ProviderDegradationState:
             circuit_open_remaining_seconds=circuit_remaining_seconds,
             last_failure_category=_LAST_FAILURE_CATEGORY,
             timeout_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_TIMEOUT],
-            rate_limited_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_RATE_LIMITED],
-            upstream_error_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR],
+            rate_limited_failure_count=_FAILURE_COUNTS[
+                ProviderFailureCategory.PROVIDER_RATE_LIMITED
+            ],
+            upstream_error_failure_count=_FAILURE_COUNTS[
+                ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
+            ],
             findings=[
                 "Provider circuit breaker is currently open because repeated upstream failures crossed the configured circuit threshold."
             ],
@@ -203,8 +215,12 @@ def _resolve_provider_degradation_state() -> ProviderDegradationState:
             circuit_open_remaining_seconds=None,
             last_failure_category=_LAST_FAILURE_CATEGORY,
             timeout_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_TIMEOUT],
-            rate_limited_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_RATE_LIMITED],
-            upstream_error_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR],
+            rate_limited_failure_count=_FAILURE_COUNTS[
+                ProviderFailureCategory.PROVIDER_RATE_LIMITED
+            ],
+            upstream_error_failure_count=_FAILURE_COUNTS[
+                ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
+            ],
             findings=[
                 "Provider upstream is currently degraded because consecutive failures crossed the configured degraded threshold."
             ],
@@ -221,8 +237,12 @@ def _resolve_provider_degradation_state() -> ProviderDegradationState:
         last_failure_category=_LAST_FAILURE_CATEGORY,
         timeout_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_TIMEOUT],
         rate_limited_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_RATE_LIMITED],
-        upstream_error_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR],
-        findings=["Provider degradation controls are enabled and the live provider path is currently healthy."],
+        upstream_error_failure_count=_FAILURE_COUNTS[
+            ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
+        ],
+        findings=[
+            "Provider degradation controls are enabled and the live provider path is currently healthy."
+        ],
     )
 
 

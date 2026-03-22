@@ -155,9 +155,7 @@ def _parse_quota_mapping(
             continue
         scope_key, raw_limit = [segment.strip() for segment in item.split("=", maxsplit=1)]
         if not scope_key:
-            findings.append(
-                "Provider quota entries must include a non-empty scope key before '='."
-            )
+            findings.append("Provider quota entries must include a non-empty scope key before '='.")
             continue
         limit = _parse_positive_limit(raw_limit, scope_key=scope_key, findings=findings)
         if limit is None:
@@ -206,9 +204,7 @@ def _parse_positive_limit(
         )
         return None
     if parsed_limit <= 0:
-        findings.append(
-            f"Provider quota limit for scope '{scope_key}' must be a positive integer."
-        )
+        findings.append(f"Provider quota limit for scope '{scope_key}' must be a positive integer.")
         return None
     return parsed_limit
 
@@ -249,33 +245,41 @@ def _matching_quota_descriptors(
     matched: list[ProviderQuotaDescriptor] = []
     for quota in quotas:
         if quota.scope == ProviderQuotaScope.DEFAULT:
-            matched.append(_build_quota_descriptor(
-                scope=quota.scope,
-                scope_key=quota.scope_key,
-                request_limit=quota.request_limit,
-            ))
+            matched.append(
+                _build_quota_descriptor(
+                    scope=quota.scope,
+                    scope_key=quota.scope_key,
+                    request_limit=quota.request_limit,
+                )
+            )
         elif quota.scope == ProviderQuotaScope.TASK and quota.scope_key == request.task_id:
-            matched.append(_build_quota_descriptor(
-                scope=quota.scope,
-                scope_key=quota.scope_key,
-                request_limit=quota.request_limit,
-            ))
+            matched.append(
+                _build_quota_descriptor(
+                    scope=quota.scope,
+                    scope_key=quota.scope_key,
+                    request_limit=quota.request_limit,
+                )
+            )
         elif quota.scope == ProviderQuotaScope.CALLER_APP and quota.scope_key == request.caller_app:
-            matched.append(_build_quota_descriptor(
-                scope=quota.scope,
-                scope_key=quota.scope_key,
-                request_limit=quota.request_limit,
-            ))
+            matched.append(
+                _build_quota_descriptor(
+                    scope=quota.scope,
+                    scope_key=quota.scope_key,
+                    request_limit=quota.request_limit,
+                )
+            )
         elif (
             quota.scope == ProviderQuotaScope.TENANT
             and request.tenant_id is not None
             and quota.scope_key == request.tenant_id
         ):
-            matched.append(_build_quota_descriptor(
-                scope=quota.scope,
-                scope_key=quota.scope_key,
-                request_limit=quota.request_limit,
-            ))
+            matched.append(
+                _build_quota_descriptor(
+                    scope=quota.scope,
+                    scope_key=quota.scope_key,
+                    request_limit=quota.request_limit,
+                )
+            )
     return sorted(matched, key=lambda item: _MATCHING_ORDER.index(item.scope))
 
 

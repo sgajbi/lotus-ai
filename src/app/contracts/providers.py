@@ -65,9 +65,7 @@ class ProviderQuotaScope(str, Enum):
 
 
 class ProviderQuotaDescriptor(BaseModel):
-    scope: ProviderQuotaScope = Field(
-        description="Quota scope this policy entry applies to."
-    )
+    scope: ProviderQuotaScope = Field(description="Quota scope this policy entry applies to.")
     scope_key: str = Field(
         description="Stable identifier for the quota scope, or `global` for the default scope."
     )
