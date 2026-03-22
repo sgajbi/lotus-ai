@@ -13,7 +13,6 @@ This RFC moves provider execution from a pure stub-only foundation posture to a 
 The goal is to make `knowledge_answer.v1` and the broader task runtime capable of enterprise-grade live generation without weakening retrieval grounding, auditability, safety posture, or operational control.
 
 The implementation so far has established the controlled live-provider seam, rollout-state contracts, execution hardening, task-runtime integration, evaluation evidence, and operational activation-readiness posture. It has not yet completed the core live-provider execution goal, which remains the most important closure gap for this RFC.
-
 ## Why This Is Next
 
 The platform now has the right foundation for this phase:
