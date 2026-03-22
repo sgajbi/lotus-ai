@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.contracts.async_runtime import (
     AsyncActivationReadinessResponse,
+    AsyncGovernanceStatusResponse,
     AsyncJobCatalogResponse,
     AsyncJobDetailResponse,
     AsyncJobSubmissionRequest,
@@ -14,6 +15,7 @@ from app.contracts.async_runtime import (
     AsyncWorkerExecutionCatalogResponse,
 )
 from app.services.async_activation_readiness_service import build_async_activation_readiness
+from app.services.async_governance_status_service import build_async_governance_status
 from app.services.async_job_service import build_async_job_catalog, build_async_job_detail
 from app.services.async_queue_backend_service import build_async_queue_backend_catalog
 from app.services.async_runbook_readiness_service import build_async_runbook_readiness
@@ -112,6 +114,24 @@ async def get_async_activation_readiness_route() -> AsyncActivationReadinessResp
 )
 async def get_async_runbook_readiness_route() -> AsyncRunbookReadinessResponse:
     return build_async_runbook_readiness()
+
+
+@router.get(
+    "/governance-status",
+    response_model=AsyncGovernanceStatusResponse,
+    operation_id="getAsyncGovernanceStatus",
+    summary="Get lotus-ai async governance status",
+    description=(
+        "Returns the combined technical and operational governance posture for lotus-ai async "
+        "execution so rollout reviewers can assess activation readiness in one view."
+    ),
+    responses={
+        200: {"description": "Async governance status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_async_governance_status_route() -> AsyncGovernanceStatusResponse:
+    return build_async_governance_status()
 
 
 @router.get(

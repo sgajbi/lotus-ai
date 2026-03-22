@@ -17,6 +17,7 @@
 - Platform runtime status: /platform/runtime-status
 - Async activation readiness: /platform/async/activation-readiness
 - Async runbook readiness: /platform/async/runbook-readiness
+- Async governance status: /platform/async/governance-status
 - Evaluation runtime status: /platform/evals/runtime-status
 - Safety runtime status: /platform/safety/runtime-status
 - Retrieval runtime status: /platform/retrieval/runtime-status
@@ -53,11 +54,12 @@ CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup
 
 Before any future async activation slice:
 
-1. verify `GET /platform/async/activation-readiness`
-2. verify `GET /platform/async/runbook-readiness`
-3. confirm queue backend and worker execution posture are still governed and explicitly selected
-4. confirm observability, replay, escalation, and incident procedures are documented and approved
-5. only then proceed with any activation rollout review
+1. verify `GET /platform/async/governance-status`
+2. inspect `GET /platform/async/activation-readiness` when technical blockers need detail
+3. inspect `GET /platform/async/runbook-readiness` when operational blockers need detail
+4. confirm queue backend and worker execution posture are still governed and explicitly selected
+5. confirm observability, replay, escalation, and incident procedures are documented and approved
+6. only then proceed with any activation rollout review
 
 ## Incident First Checks
 

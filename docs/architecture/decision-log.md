@@ -732,3 +732,21 @@ Current posture:
 1. `/platform/async/runbook-readiness` exposes required operational readiness items,
 2. required runbook items remain not ready in foundation phase,
 3. async activation should not be considered complete in future rollout slices without both technical and runbook readiness.
+
+## Decision 43: Async Governance Review Should Have A Single Summary Surface
+
+Decision:
+
+`lotus-ai` exposes a combined async governance-status view for rollout review.
+
+Why:
+
+1. governance review should not require operators to manually merge multiple endpoints in order to answer whether async rollout is currently supportable,
+2. a bank-grade activation review needs both technical and operational posture in one governed response,
+3. the summary endpoint reduces interpretation drift while preserving the more detailed readiness endpoints underneath.
+
+Current posture:
+
+1. `/platform/async/governance-status` embeds both activation readiness and runbook readiness,
+2. the response explicitly reports blocked governance posture in foundation phase,
+3. detailed readiness endpoints remain available for deeper inspection and future rollout work.

@@ -248,3 +248,24 @@ class AsyncRunbookReadinessResponse(BaseModel):
     items: list[AsyncRunbookReadinessItem] = Field(
         description="Governed async operational runbook readiness items."
     )
+
+
+class AsyncGovernanceStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the async governance status view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    governance_ready: bool = Field(
+        description="Whether async governance posture is currently sufficient for live activation."
+    )
+    activation_readiness: AsyncActivationReadinessResponse = Field(
+        description="Technical activation-readiness summary for async execution."
+    )
+    runbook_readiness: AsyncRunbookReadinessResponse = Field(
+        description="Operational runbook-readiness summary for async execution."
+    )
+    blocking_area_count: int = Field(
+        description="Number of top-level governance areas currently blocking activation."
+    )
+    governance_summary: list[str] = Field(
+        description="Human-readable summary of the current async governance posture."
+    )
