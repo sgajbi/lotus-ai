@@ -389,3 +389,21 @@ Current posture:
 1. `summarization_task_examples` is now staged with a backing fixture file,
 2. evaluation runtime status counts staged cases across both explanation and summarization,
 3. retrieval and citation fixture families remain documented until retrieval execution is activated.
+
+## Decision 24: Evaluation Fixture Inventory Must Be Enforced By A Gate
+
+Decision:
+
+The evaluation fixture manifest is now a validated repository contract, not just a convention consumed by runtime code.
+
+Why:
+
+1. file-backed evaluation assets are becoming part of the platform's governed surface area,
+2. malformed fixture files or broken manifest references should fail fast in CI before they affect runtime inspection surfaces,
+3. one shared validator keeps loader behavior, local checks, and CI enforcement aligned.
+
+Current posture:
+
+1. `make eval-manifest-gate` validates the manifest and referenced fixture files,
+2. CI now runs the evaluation manifest gate alongside OpenAPI and migration checks,
+3. runtime manifest loading uses the same validation rules as the CLI gate.

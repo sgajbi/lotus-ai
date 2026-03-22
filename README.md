@@ -34,6 +34,7 @@ The current execution posture is:
 - evaluation fixture inventory is now backed by a versioned in-repo manifest,
 - the first real file-backed fixture family now exists for `explain.v1`,
 - a second file-backed fixture family now exists for `summarize.v1`,
+- evaluation fixture manifest validity is now enforced by a dedicated CI gate,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:
@@ -200,6 +201,7 @@ make install
 make lint
 make typecheck
 make openapi-gate
+make eval-manifest-gate
 make migration-smoke
 make runtime-mode-smoke
 make ci

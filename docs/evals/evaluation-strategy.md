@@ -88,6 +88,17 @@ The source of truth for fixture inventory is now:
 This manifest is versioned so evaluation catalog and runtime status surfaces can point to a governed
 artifact instead of only hardcoded service metadata.
 
+The manifest is also now enforced by a dedicated validation gate:
+
+1. `make eval-manifest-gate`
+
+That gate validates:
+
+1. unique evidence-category and fixture-family identifiers,
+2. staged-versus-documented manifest consistency,
+3. existence of referenced fixture files,
+4. basic fixture-file shape, including unique `case_id` values and object-shaped `input` and `expected` sections.
+
 The first concrete staged fixture asset now exists at:
 
 1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/explain.v1/basic_cases.json)

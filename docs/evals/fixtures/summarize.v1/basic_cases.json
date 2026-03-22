@@ -4,7 +4,7 @@
   "cases": [
     {
       "case_id": "summarize_proposal_pending_review",
-      "description": "Summarizes a proposal workflow that is awaiting reviewer action.",
+      "summary": "Pending-review summarization remains explanation-only and workflow-bounded.",
       "input": {
         "summary": "Summarize proposal workflow state",
         "payload": {
@@ -29,7 +29,7 @@
     },
     {
       "case_id": "summarize_portfolio_review_ready",
-      "description": "Summarizes a portfolio review workflow that is ready for reviewer sign-off.",
+      "summary": "Ready-for-review summarization remains concise and workflow-bounded.",
       "input": {
         "summary": "Summarize portfolio review workflow state",
         "payload": {
