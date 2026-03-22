@@ -18,6 +18,7 @@ from app.contracts.retrieval import (
     RetrievalSearchRequest,
     RetrievalSearchResponse,
     RetrievalSourceCatalogResponse,
+    RetrievalSourceGovernanceResponse,
 )
 from app.retrieval.source_registry import list_retrieval_sources
 from app.services.retrieval_catalog_service import (
@@ -28,6 +29,7 @@ from app.services.retrieval_catalog_service import (
     get_retrieval_job_catalog,
     get_documents_for_source,
     get_retrieval_index_status,
+    get_retrieval_source_governance,
 )
 from app.services.retrieval_activation_readiness import build_retrieval_activation_readiness
 from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
@@ -55,6 +57,24 @@ router = APIRouter(prefix="/platform/retrieval", tags=["retrieval"])
 )
 async def list_retrieval_sources_route() -> RetrievalSourceCatalogResponse:
     return list_retrieval_sources()
+
+
+@router.get(
+    "/source-governance",
+    response_model=RetrievalSourceGovernanceResponse,
+    operation_id="getRetrievalSourceGovernance",
+    summary="Get retrieval source governance",
+    description=(
+        "Returns the derived governance posture for each registered retrieval source, "
+        "including whether the source is currently enabled for catalog-only retrieval or only staged."
+    ),
+    responses={
+        200: {"description": "Retrieval source governance returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_source_governance_route() -> RetrievalSourceGovernanceResponse:
+    return get_retrieval_source_governance()
 
 
 @router.get(

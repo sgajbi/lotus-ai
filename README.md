@@ -47,6 +47,7 @@ The current execution posture is:
 - audit inspection now includes a bounded catalog endpoint with caller, requester, tenant, task, category, and output-label filters plus explicit limits, so downstream support and review flows can inspect recent executions without scanning by request id only,
 - retrieval search can now return deterministic catalog-only hits from enabled staged sources in foundation phase, which gives downstream apps bounded search utility before live vector retrieval is activated,
 - the initial enabled catalog-only retrieval subset is intentionally small: Lotus platform RFCs and lotus-ai architecture documents are searchable, while the rest of the staged corpus remains disabled,
+- retrieval source governance is now exposed directly, so enabled versus staged-only corpus slices can be reviewed without reading repository fixtures or migrations,
 - `knowledge_search.v1` is now enabled as a bounded task and routes through that governed catalog-only retrieval path rather than the generic text stub,
 - `knowledge_answer.v1` is now enabled as a bounded, citation-carrying answer task built on the same governed catalog-only retrieval path,
 - retrieval-backed tasks now emit explicit structured citations and `knowledge_answer.v1` refuses low-support answers instead of overstating weak retrieval matches,

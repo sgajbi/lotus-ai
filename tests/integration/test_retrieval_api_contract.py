@@ -11,6 +11,26 @@ def test_retrieval_source_catalog_route(client: TestClient) -> None:
     assert any(source["source_id"] == "lotus-platform-rfcs" for source in body["sources"])
 
 
+def test_retrieval_source_governance_route(client: TestClient) -> None:
+    response = client.get("/platform/retrieval/source-governance")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["enabled_source_count"] >= 2
+    assert body["staged_only_source_count"] >= 1
+    assert any(
+        source["source_id"] == "lotus-platform-rfcs"
+        and source["governance_status"] == "SEARCH_ENABLED"
+        for source in body["sources"]
+    )
+    assert any(
+        source["source_id"] == "lotus-platform-standards"
+        and source["governance_status"] == "STAGED_ONLY"
+        for source in body["sources"]
+    )
+
+
 def test_retrieval_index_status_route(client: TestClient) -> None:
     response = client.get("/platform/retrieval/index-status")
 

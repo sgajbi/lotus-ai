@@ -54,6 +54,39 @@ class RetrievalSourceCatalogResponse(BaseModel):
     )
 
 
+class RetrievalSourceGovernanceDescriptor(BaseModel):
+    source_id: str = Field(description="Stable retrieval source identifier.")
+    kind: RetrievalSourceKind = Field(description="High-level source category.")
+    governance_status: str = Field(
+        description="Derived governance posture for the source within the current catalog-only rollout."
+    )
+    search_enabled: bool = Field(
+        description="Whether the source is currently allowed to participate in catalog-only retrieval."
+    )
+    document_count: int = Field(description="Number of staged documents currently registered.")
+    chunk_count: int = Field(description="Number of staged chunks currently registered.")
+    index_status: RetrievalIndexStatus = Field(description="Current staged indexing status.")
+    notes: str = Field(description="Human-readable explanation of the source governance posture.")
+
+
+class RetrievalSourceGovernanceResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval source governance view.")
+    retrieval_mode: str = Field(description="Current retrieval mode configured for lotus-ai.")
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    enabled_source_count: int = Field(
+        description="Number of sources currently enabled for catalog-only retrieval."
+    )
+    staged_only_source_count: int = Field(
+        description="Number of sources staged but not currently enabled for retrieval."
+    )
+    empty_source_count: int = Field(
+        description="Number of sources with no staged documents yet."
+    )
+    sources: list[RetrievalSourceGovernanceDescriptor] = Field(
+        description="Per-source governance posture for the currently registered retrieval corpus."
+    )
+
+
 class RetrievalDocumentDescriptor(BaseModel):
     document_id: str = Field(description="Stable retrieval document identifier.")
     source_id: str = Field(description="Retrieval source identifier for the document.")
