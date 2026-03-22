@@ -11,6 +11,8 @@ from app.services.retrieval_store import reset_retrieval_repository
 @pytest.fixture(autouse=True)
 def reset_runtime_settings() -> None:
     original_values = {
+        "provider_mode": settings.provider_mode,
+        "embedding_provider_mode": settings.embedding_provider_mode,
         "audit_store_mode": settings.audit_store_mode,
         "prompt_store_mode": settings.prompt_store_mode,
         "retrieval_store_mode": settings.retrieval_store_mode,

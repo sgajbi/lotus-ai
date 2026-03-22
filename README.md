@@ -21,6 +21,7 @@ The current execution posture is:
 
 - task execution flows through an explicit internal provider gateway,
 - the provider gateway currently routes only to documented stub providers,
+- provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

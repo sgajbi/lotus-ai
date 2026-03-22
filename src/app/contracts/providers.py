@@ -16,6 +16,11 @@ class ProviderLifecycleStatus(str, Enum):
     ENABLED = "ENABLED"
 
 
+class ProviderExecutionMode(str, Enum):
+    DISABLED = "disabled"
+    STUB = "stub"
+
+
 class ProviderDescriptor(BaseModel):
     provider_id: str = Field(description="Stable provider identifier within lotus-ai.")
     display_name: str = Field(description="Human-readable provider name.")
@@ -45,6 +50,33 @@ class ProviderCatalogResponse(BaseModel):
     )
     providers: list[ProviderDescriptor] = Field(
         description="Governed provider catalog exposed by lotus-ai."
+    )
+
+
+class ProviderPolicyDescriptor(BaseModel):
+    capability: ProviderCapability = Field(
+        description="Provider capability governed by the policy."
+    )
+    configured_mode: str = Field(description="Configured runtime mode for the capability.")
+    allowed_modes: list[ProviderExecutionMode] = Field(
+        description="Modes currently supported by lotus-ai for this capability."
+    )
+    selected_provider_id: str = Field(
+        description="Provider identifier currently selected for this capability."
+    )
+    live_execution_enabled: bool = Field(
+        description="Whether live execution is currently allowed for this capability."
+    )
+    rejection_behavior: str = Field(
+        description="How lotus-ai should behave when the configured mode is unsupported."
+    )
+
+
+class ProviderPolicyResponse(BaseModel):
+    service: str = Field(description="Service name emitting the provider policy response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    policies: list[ProviderPolicyDescriptor] = Field(
+        description="Capability-specific provider execution policies."
     )
 
 

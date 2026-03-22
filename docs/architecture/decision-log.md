@@ -154,3 +154,22 @@ Current posture:
 1. the gateway currently routes only to deterministic stub providers,
 2. provider inventory is visible through the provider catalog,
 3. live model execution remains disabled until safety, approval, and rollout controls mature.
+
+## Decision 11: Provider Modes Must Fail Explicitly
+
+Decision:
+
+Unsupported provider modes must fail explicitly through a governed provider policy instead of falling
+through silently.
+
+Why:
+
+1. enterprise operators need deterministic behavior when runtime configuration drifts,
+2. silent fallback hides rollout mistakes and weakens auditability,
+3. a policy layer lets us expand from `disabled` and `stub` toward future allowlisted live modes without reshaping task contracts.
+
+Current posture:
+
+1. provider policy is inspectable through `/platform/providers/policy`,
+2. only `disabled` and `stub` modes are currently supported for text and embedding capabilities,
+3. unsupported modes are rejected with a service-unavailable response.

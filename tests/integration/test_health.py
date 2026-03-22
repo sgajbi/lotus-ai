@@ -41,6 +41,17 @@ def test_provider_catalog_route() -> None:
     assert any(provider["provider_id"] == "text.stub" for provider in body["providers"])
 
 
+def test_provider_policy_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/providers/policy")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert any(policy["capability"] == "TEXT_GENERATION" for policy in body["policies"])
+
+
 def test_platform_runtime_status_route() -> None:
     client = TestClient(app)
 
