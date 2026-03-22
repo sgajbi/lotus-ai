@@ -54,6 +54,26 @@ class AsyncQueueBackendDescriptor(BaseModel):
     notes: str = Field(description="Human-readable notes about the queue backend posture.")
 
 
+class AsyncWorkerExecutionDescriptor(BaseModel):
+    worker_id: str = Field(description="Stable worker execution strategy identifier.")
+    enabled: bool = Field(
+        description="Whether the worker execution strategy is currently enabled for live execution."
+    )
+    execution_class: str = Field(
+        description="Operational category describing the worker execution architecture."
+    )
+    selection_state: str = Field(
+        description="Governed runtime selection posture for the worker execution strategy."
+    )
+    supports_horizontal_scaling: bool = Field(
+        description="Whether the worker execution strategy is designed for horizontal scale-out."
+    )
+    supports_job_isolation: bool = Field(
+        description="Whether the strategy is designed to isolate job execution from API-serving nodes."
+    )
+    notes: str = Field(description="Human-readable notes about the worker execution posture.")
+
+
 class AsyncJobArtifactDescriptor(BaseModel):
     job_id: str = Field(description="Stable async job artifact identifier.")
     job_type: str = Field(description="Stable async job type identifier.")
@@ -134,6 +154,12 @@ class AsyncRuntimeStatusResponse(BaseModel):
     supported_queue_backends: list[AsyncQueueBackendDescriptor] = Field(
         description="Known queue backend strategies and their current selection posture."
     )
+    active_worker_execution: str = Field(
+        description="Current active worker execution posture label."
+    )
+    supported_worker_executions: list[AsyncWorkerExecutionDescriptor] = Field(
+        description="Known worker execution strategies and their current selection posture."
+    )
     active_worker_count: int = Field(
         description="Number of active worker replicas currently exposed."
     )
@@ -157,4 +183,19 @@ class AsyncQueueBackendCatalogResponse(BaseModel):
     backend_count: int = Field(description="Number of queue backend strategies currently exposed.")
     backends: list[AsyncQueueBackendDescriptor] = Field(
         description="Known queue backend strategies and their current posture."
+    )
+
+
+class AsyncWorkerExecutionCatalogResponse(BaseModel):
+    service: str = Field(description="Service name emitting the worker execution catalog.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    active_worker_execution: str = Field(
+        description="Current active worker execution posture label."
+    )
+    worker_count: int = Field(
+        description="Number of worker execution strategies currently exposed."
+    )
+    workers: list[AsyncWorkerExecutionDescriptor] = Field(
+        description="Known worker execution strategies and their current posture."
     )

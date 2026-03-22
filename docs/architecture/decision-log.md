@@ -678,3 +678,21 @@ Current posture:
 1. `/platform/async/queue-backends` exposes the current foundation default and documented future backend options,
 2. async runtime status now includes the supported queue backend descriptors,
 3. the active backend remains `none` until a separate governed activation slice enables live queue execution.
+
+## Decision 40: Worker Execution Strategy Should Be Inspectable Before Activation
+
+Decision:
+
+`lotus-ai` exposes a governed worker-execution catalog before any live worker runtime is turned on.
+
+Why:
+
+1. worker posture should be explicit independently from queue posture because queue selection and worker rollout are separate operational concerns,
+2. bank-grade async architecture needs a clear line between API-serving nodes and future isolated worker execution paths,
+3. this keeps worker rollout options reviewable without implying that any live background processing is already active.
+
+Current posture:
+
+1. `/platform/async/worker-executions` exposes the current foundation default and documented future worker options,
+2. async runtime status now includes the supported worker execution descriptors,
+3. the active worker execution remains `none` until a separate governed activation slice enables live workers.

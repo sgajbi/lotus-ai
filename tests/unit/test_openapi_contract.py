@@ -13,6 +13,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/async/queue-backends"]["get"]["operationId"] == (
         "getAsyncQueueBackendCatalog"
     )
+    assert spec["paths"]["/platform/async/worker-executions"]["get"]["operationId"] == (
+        "getAsyncWorkerExecutionCatalog"
+    )
     assert spec["paths"]["/platform/async/jobs"]["get"]["operationId"] == "getAsyncJobCatalog"
     assert spec["paths"]["/platform/async/jobs/{job_id}"]["get"]["operationId"] == (
         "getAsyncJobDetail"

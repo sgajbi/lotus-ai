@@ -9,11 +9,13 @@ from app.contracts.async_runtime import (
     AsyncJobSubmissionResponse,
     AsyncQueueBackendCatalogResponse,
     AsyncRuntimeStatusResponse,
+    AsyncWorkerExecutionCatalogResponse,
 )
 from app.services.async_job_service import build_async_job_catalog, build_async_job_detail
 from app.services.async_queue_backend_service import build_async_queue_backend_catalog
 from app.services.async_submission_service import submit_async_job
 from app.services.async_runtime_status import build_async_runtime_status
+from app.services.async_worker_execution_service import build_async_worker_execution_catalog
 
 router = APIRouter(prefix="/platform/async", tags=["platform"])
 
@@ -52,6 +54,24 @@ async def get_async_runtime_status_route() -> AsyncRuntimeStatusResponse:
 )
 async def get_async_queue_backend_catalog_route() -> AsyncQueueBackendCatalogResponse:
     return build_async_queue_backend_catalog()
+
+
+@router.get(
+    "/worker-executions",
+    response_model=AsyncWorkerExecutionCatalogResponse,
+    operation_id="getAsyncWorkerExecutionCatalog",
+    summary="Get lotus-ai async worker execution catalog",
+    description=(
+        "Returns the governed worker execution strategies recognized by lotus-ai, including the "
+        "current foundation default and documented future worker rollout options."
+    ),
+    responses={
+        200: {"description": "Async worker execution catalog returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_async_worker_execution_catalog_route() -> AsyncWorkerExecutionCatalogResponse:
+    return build_async_worker_execution_catalog()
 
 
 @router.get(
