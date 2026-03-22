@@ -8,6 +8,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         "getPlatformRuntimeStatus"
     )
     assert spec["paths"]["/platform/capabilities"]["get"]["operationId"] == "getCapabilityCatalog"
+    assert spec["paths"]["/platform/providers"]["get"]["operationId"] == "getProviderCatalog"
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/governance"]["get"]["operationId"] == (
         "getPromptGovernanceStatus"

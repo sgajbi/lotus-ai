@@ -124,6 +124,17 @@ It is not appropriate right now as the base architecture for all of `lotus-ai`.
 
 The current capability endpoint is intentionally simple. It gives other Lotus apps a stable discovery surface while the rest of the platform is still under construction.
 
+## Provider Posture
+
+`lotus-ai` exposes a governed provider catalog so downstream teams can inspect execution posture
+without relying on implementation guesses.
+
+Current rules:
+
+1. provider inventory is visible through `/platform/providers`,
+2. foundation-phase providers are documented and inspectable,
+3. runtime execution remains disabled until a stronger provider gateway and safety posture is in place.
+
 ## Deployment Policy
 
 `lotus-ai` now has an explicit deployment policy for:

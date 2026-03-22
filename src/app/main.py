@@ -9,6 +9,7 @@ from app.routers.audit import router as audit_router
 from app.routers.capabilities import router as capabilities_router
 from app.routers.platform import router as platform_router
 from app.routers.prompts import router as prompts_router
+from app.routers.providers import router as providers_router
 from app.routers.retrieval import router as retrieval_router
 from app.routers.tasks import router as tasks_router
 from app.services.startup_policy import apply_startup_readiness_policy
@@ -40,6 +41,7 @@ app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
 Instrumentator().instrument(app).expose(app)
 app.include_router(platform_router)
 app.include_router(capabilities_router)
+app.include_router(providers_router)
 app.include_router(prompts_router)
 app.include_router(retrieval_router)
 app.include_router(tasks_router)
@@ -125,6 +127,7 @@ async def root() -> dict[str, object]:
         "readinessProbePolicy": settings.readiness_probe_policy,
         "capabilityAreas": [
             "llm_gateway",
+            "provider_catalog",
             "prompt_registry",
             "retrieval",
             "safety",

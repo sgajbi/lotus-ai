@@ -27,6 +27,20 @@ def test_platform_capabilities_contract() -> None:
     assert any(task["task_id"] == "explain.v1" for task in body["tasks"])
 
 
+def test_provider_catalog_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/providers")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["provider_mode"] == "disabled"
+    assert body["embedding_provider_mode"] == "disabled"
+    assert body["runtime_execution_enabled"] is False
+    assert any(provider["provider_id"] == "text.stub" for provider in body["providers"])
+
+
 def test_platform_runtime_status_route() -> None:
     client = TestClient(app)
 
