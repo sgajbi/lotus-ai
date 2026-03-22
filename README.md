@@ -57,6 +57,7 @@ The current execution posture is:
 - provider policy now exposes selected adapter kind and structured rejection category in addition to supported runtime modes,
 - provider surfaces now also expose explicit text-generation rollout state and live-provider configuration posture, so supported runtime mode and future activation posture are no longer conflated,
 - provider execution requests now carry bounded timeout, retry, and output-token controls even in foundation phase, so later live rollout inherits an explicit execution-hardening seam instead of implicit SDK defaults,
+- task runtime posture now resolves through a shared task-execution-path helper, so retrieval-backed and provider-backed task paths are described in one place instead of being split across runtime-summary branches,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - provider runbook readiness is now exposed through a dedicated operational-readiness endpoint,
 - provider evidence readiness is now exposed through a dedicated evidence-readiness endpoint,

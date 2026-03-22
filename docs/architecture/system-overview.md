@@ -186,6 +186,10 @@ Low-support retrieval matches now produce an explicit conservative refusal mode 
 `knowledge_answer.v1` instead of a weak answer, which keeps the retrieval-backed task path
 more defensible under the current catalog-only execution model.
 
+Task runtime posture now also resolves through a dedicated execution-path helper so provider-backed
+and retrieval-backed task routing semantics are defined in one place instead of being encoded only
+inside runtime-status assembly.
+
 Task runtime posture is now also exposed through a dedicated `/platform/tasks/runtime-status`
 surface and embedded into `/platform/runtime-status`, so operators can distinguish stub-backed
 task paths from retrieval-backed task paths without inferring that from task behavior alone.

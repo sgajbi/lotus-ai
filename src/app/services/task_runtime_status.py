@@ -6,8 +6,9 @@ from app.contracts.task_runtime import (
     TaskRuntimeDescriptor,
     TaskRuntimeStatusResponse,
 )
-from app.contracts.tasks import CapabilityDescriptor, OutputLabel, TaskCategory
+from app.contracts.tasks import CapabilityDescriptor, TaskCategory
 from app.services.capability_catalog import build_capability_catalog
+from app.services.task_execution_path import build_task_execution_path
 
 
 def build_task_runtime_status() -> TaskRuntimeStatusResponse:
@@ -34,37 +35,16 @@ def build_task_runtime_status() -> TaskRuntimeStatusResponse:
 
 
 def _build_task_descriptor(*, task: CapabilityDescriptor) -> TaskRuntimeDescriptor:
-    if task.task_id == "knowledge_search.v1":
-        return TaskRuntimeDescriptor(
-            task_id=task.task_id,
-            category=TaskCategory.KNOWLEDGE_SEARCH,
-            enabled=True,
-            output_label=OutputLabel.RETRIEVAL_ANSWER,
-            execution_path="retrieval.catalog_search",
-            provider_mode="catalog_only",
-            stubbed=False,
-            notes="Bounded retrieval hits from enabled staged approved sources.",
-        )
-    if task.task_id == "knowledge_answer.v1":
-        return TaskRuntimeDescriptor(
-            task_id=task.task_id,
-            category=TaskCategory.KNOWLEDGE_ANSWER,
-            enabled=True,
-            output_label=OutputLabel.RETRIEVAL_ANSWER,
-            execution_path="retrieval.catalog_answer",
-            provider_mode="catalog_answer",
-            stubbed=False,
-            notes="Conservative citation-backed answer with explicit refusal on low-support retrieval.",
-        )
+    execution_path = build_task_execution_path(task)
     return TaskRuntimeDescriptor(
         task_id=task.task_id,
         category=task.category,
         enabled=task.enabled,
         output_label=task.output_label,
-        execution_path="provider.stub_text",
-        provider_mode=settings.provider_mode,
-        stubbed=True,
-        notes="Foundation-phase deterministic stub path through the provider gateway.",
+        execution_path=execution_path.execution_path,
+        provider_mode=execution_path.provider_mode,
+        stubbed=execution_path.stubbed,
+        notes=execution_path.notes,
     )
 
 

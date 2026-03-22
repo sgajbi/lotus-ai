@@ -195,6 +195,25 @@ Current posture:
 2. provider execution evidence preserves those controls when provider-style execution is used,
 3. foundation stub execution now reflects those bounded controls even before live rollout exists.
 
+## Decision 12: Task Runtime Path Semantics Should Be Centralized
+
+Decision:
+
+`lotus-ai` resolves task runtime execution-path semantics through a dedicated task-execution-path
+helper instead of encoding retrieval-versus-provider path logic only inside runtime-summary builders.
+
+Why:
+
+1. runtime posture should remain reviewable in one place,
+2. later live-provider rollout should not require scattered task-runtime conditionals,
+3. provider-backed and retrieval-backed task paths are different enough that the distinction should be explicit and reusable.
+
+Current posture:
+
+1. retrieval-backed task paths resolve to dedicated retrieval execution semantics,
+2. provider-backed tasks resolve to stubbed or blocked provider posture depending on current provider mode,
+3. runtime-status builders now consume that shared task-path abstraction instead of re-encoding the routing split themselves.
+
 ## Decision 11D: Provider Rollout State Must Be Separate From Supported Runtime Mode
 
 Decision:
