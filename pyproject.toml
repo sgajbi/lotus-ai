@@ -9,11 +9,13 @@ description = "Shared AI platform service for Lotus applications"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+  "alembic>=1.16.0",
   "fastapi>=0.133.0",
   "uvicorn>=0.41.0",
   "pydantic>=2.12.0",
   "pydantic-settings>=2.13.0",
-  "prometheus-fastapi-instrumentator>=7.1.0"
+  "prometheus-fastapi-instrumentator>=7.1.0",
+  "sqlalchemy>=2.0.44"
 ]
 
 [project.optional-dependencies]

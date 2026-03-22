@@ -1,0 +1,128 @@
+from __future__ import annotations
+
+from fastapi import APIRouter
+
+from app.contracts.providers import (
+    ProviderActivationReadinessResponse,
+    ProviderCatalogResponse,
+    ProviderEvidenceReadinessResponse,
+    ProviderGovernanceStatusResponse,
+    ProviderPolicyResponse,
+    ProviderRunbookReadinessResponse,
+)
+from app.services.provider_activation_readiness import build_provider_activation_readiness
+from app.services.provider_catalog import build_provider_catalog
+from app.services.provider_evidence_readiness import build_provider_evidence_readiness
+from app.services.provider_governance_status import build_provider_governance_status
+from app.services.provider_policy import build_provider_policy
+from app.services.provider_runbook_readiness import build_provider_runbook_readiness
+
+router = APIRouter(prefix="/platform/providers", tags=["platform"])
+
+
+@router.get(
+    "",
+    response_model=ProviderCatalogResponse,
+    operation_id="getProviderCatalog",
+    summary="Get lotus-ai provider catalog",
+    description=(
+        "Returns the governed provider catalog for lotus-ai, including which provider paths are "
+        "documented, disabled, or enabled for execution in the current phase."
+    ),
+    responses={
+        200: {"description": "Provider catalog returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_catalog_route() -> ProviderCatalogResponse:
+    return build_provider_catalog()
+
+
+@router.get(
+    "/policy",
+    response_model=ProviderPolicyResponse,
+    operation_id="getProviderPolicy",
+    summary="Get lotus-ai provider execution policy",
+    description=(
+        "Returns the governed provider execution policy for lotus-ai, including supported modes "
+        "and rejection behavior for the current phase."
+    ),
+    responses={
+        200: {"description": "Provider execution policy returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_policy_route() -> ProviderPolicyResponse:
+    return build_provider_policy()
+
+
+@router.get(
+    "/activation-readiness",
+    response_model=ProviderActivationReadinessResponse,
+    operation_id="getProviderActivationReadiness",
+    summary="Get lotus-ai provider activation readiness",
+    description=(
+        "Returns whether lotus-ai provider execution is currently ready for live activation, "
+        "along with the blocking findings and governed activation path for future rollout."
+    ),
+    responses={
+        200: {"description": "Provider activation readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_activation_readiness_route() -> ProviderActivationReadinessResponse:
+    return build_provider_activation_readiness()
+
+
+@router.get(
+    "/runbook-readiness",
+    response_model=ProviderRunbookReadinessResponse,
+    operation_id="getProviderRunbookReadiness",
+    summary="Get lotus-ai provider runbook readiness",
+    description=(
+        "Returns the operational runbook readiness required before lotus-ai live provider "
+        "execution can be activated in a governed environment."
+    ),
+    responses={
+        200: {"description": "Provider runbook readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_runbook_readiness_route() -> ProviderRunbookReadinessResponse:
+    return build_provider_runbook_readiness()
+
+
+@router.get(
+    "/evidence-readiness",
+    response_model=ProviderEvidenceReadinessResponse,
+    operation_id="getProviderEvidenceReadiness",
+    summary="Get lotus-ai provider evidence readiness",
+    description=(
+        "Returns whether lotus-ai provider rollout is currently supported by the required "
+        "evaluation, audit, failover, and rollback evidence for future live activation."
+    ),
+    responses={
+        200: {"description": "Provider evidence readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_evidence_readiness_route() -> ProviderEvidenceReadinessResponse:
+    return build_provider_evidence_readiness()
+
+
+@router.get(
+    "/governance-status",
+    response_model=ProviderGovernanceStatusResponse,
+    operation_id="getProviderGovernanceStatus",
+    summary="Get lotus-ai provider governance status",
+    description=(
+        "Returns the combined technical and operational governance posture for lotus-ai live "
+        "provider execution so rollout reviewers can assess activation readiness in one view."
+    ),
+    responses={
+        200: {"description": "Provider governance status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_governance_status_route() -> ProviderGovernanceStatusResponse:
+    return build_provider_governance_status()

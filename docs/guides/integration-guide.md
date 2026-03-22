@@ -1,5 +1,52 @@
 # Integration Guide
 
+## Platform Discovery
+
+Before integrating a Lotus app with `lotus-ai`, upstream teams should inspect:
+
+1. `GET /platform/runtime-status` for the current operating posture,
+2. `GET /platform/capabilities` for currently exposed task contracts,
+3. `GET /platform/providers` for the current provider execution posture,
+4. `GET /platform/providers/policy` for supported provider modes and rejection semantics,
+5. `GET /platform/safety/policy` for task-level output-label and redaction posture,
+6. `GET /platform/safety/runtime-status` for current enforced-versus-documented safety controls,
+7. `GET /platform/retrieval/runtime-status` for retrieval-specific persistence and corpus posture when retrieval features are relevant.
+
+This keeps downstream integration decisions grounded in actual runtime capability rather than assumptions.
+
+## Runtime Readiness Semantics
+
+Runtime status endpoints use explicit readiness states for persistence-backed components:
+
+1. `READY`: the configured backend is operational for the current phase.
+2. `CONFIGURATION_REQUIRED`: the selected mode requires configuration that is not present.
+3. `MIGRATION_REQUIRED`: the backend is reachable but the expected schema is not available yet.
+4. `UNAVAILABLE`: the backend could not be reached or the configured mode is unsupported.
+
+Teams should treat `READY` as the only state suitable for relying on durable platform behavior. The other states are informative and should block assumptions about operational persistence.
+
+## Startup Policy
+
+`lotus-ai` supports two startup readiness policies:
+
+1. `warn`
+   startup completes and readiness findings are surfaced through runtime-status endpoints
+2. `enforce`
+   startup is blocked when configured persistence backends are not operational
+
+For shared or enterprise environments, downstream teams should assume `enforce` is the target posture once SQL-backed stores become part of the deployment contract.
+
+## Readiness Probe Policy
+
+`lotus-ai` also separates startup policy from readiness-probe policy:
+
+1. `observe`
+   `/health/ready` remains green while runtime-status endpoints expose findings
+2. `degrade`
+   `/health/ready` reflects startup readiness findings as degraded readiness
+
+This allows teams to adopt stricter operational signaling without forcing an all-or-nothing startup failure policy in every environment.
+
 This guide explains how other Lotus apps should integrate with `lotus-ai`.
 
 ## Core Rule

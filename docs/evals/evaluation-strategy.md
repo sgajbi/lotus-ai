@@ -54,3 +54,109 @@ Check:
 2. explanation task fixture set,
 3. summarization fixture set,
 4. retrieval citation fixture set.
+
+## Current Execution Evidence
+
+`lotus-ai` task responses now carry a typed execution evidence bundle.
+
+Current evidence categories:
+
+1. task contract selection,
+2. prompt selection,
+3. provider resolution,
+4. safety outcome,
+5. retrieval posture.
+
+This evidence is intentionally deterministic in foundation phase so later evaluation and regression
+work has a stable evidence schema to build on.
+
+The current platform inspection surface for evaluation readiness is:
+
+1. `GET /platform/evals/catalog`
+2. `GET /platform/evals/runtime-status`
+3. `GET /platform/evals/fixtures/{fixture_id}`
+4. `GET /platform/evals/runs`
+5. `GET /platform/evals/runs/{run_id}`
+
+This catalog exposes:
+
+1. current execution evidence categories,
+2. staged fixture families,
+3. the current delivery-phase posture for evaluation assets.
+
+Fixture-family detail exposes:
+
+1. the governed descriptor for a specific fixture family,
+2. associated `task_id` when available,
+3. case-level metadata such as `case_id` and `summary` without surfacing mutable payload internals through the API.
+
+Runtime status now also exposes seam-oriented coverage so operators can see staged evaluation posture by:
+
+1. task execution,
+2. retrieval,
+3. provider policy,
+4. safety policy.
+
+Recorded evaluation run artifacts expose:
+
+1. a governed snapshot of manifest version and staged counts at recording time,
+2. seam-oriented coverage captured with the run artifact,
+3. a read-only artifact trail even while a live evaluation runner is still inactive,
+4. lifecycle states such as `RECORDED` and `SUPERSEDED` for history-aware inspection.
+
+The run-artifact registry is also validated by a dedicated gate:
+
+1. `make eval-run-gate`
+
+That gate validates:
+
+1. unique run identifiers,
+2. current manifest-version alignment,
+3. seam-coverage totals and fixture references,
+4. basic recorded artifact completeness before artifacts are exposed through the API.
+
+The source of truth for fixture inventory is now:
+
+1. [fixture-manifest.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixture-manifest.json)
+
+This manifest is versioned so evaluation catalog and runtime status surfaces can point to a governed
+artifact instead of only hardcoded service metadata.
+
+The manifest is also now enforced by a dedicated validation gate:
+
+1. `make eval-manifest-gate`
+
+That gate validates:
+
+1. unique evidence-category and fixture-family identifiers,
+2. staged-versus-documented manifest consistency,
+3. existence of referenced fixture files,
+4. basic fixture-file shape, including unique `case_id` values and object-shaped `input` and `expected` sections.
+
+The first concrete staged fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/explain.v1/basic_cases.json)
+
+The second concrete staged fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/summarize.v1/basic_cases.json)
+
+The first retrieval-oriented staged fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/retrieval.search/basic_cases.json)
+
+The first provider-policy staged fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/providers.policy/basic_cases.json)
+
+The first safety-policy staged fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/safety.policy/basic_cases.json)
+
+The task-capability contract fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/tasks.contracts/basic_cases.json)
+
+This gives the platform real file-backed fixture families for task capability contracts, `explain.v1`,
+`summarize.v1`, governed retrieval citation/refusal behavior, provider-policy behavior, and
+safety-policy behavior.

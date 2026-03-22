@@ -34,9 +34,19 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
     assert response.status == "COMPLETED"
     assert response.task_id == "explain.v1"
     assert response.result.structured_output["phase"] == "foundation"
+    assert response.result.structured_output["provider_id"] == "text.stub"
     assert response.result.structured_output["context_keys"] == ["rule_count", "status"]
     assert response.audit.stubbed is True
     assert response.audit.prompt_version == "foundation.explain.v1"
+    assert response.audit.safety.safety_mode == "documented_only"
+    assert response.audit.safety.redaction_posture == "MINIMIZATION_REQUIRED"
+    assert response.audit.safety.enforced_controls == [
+        "response_labeling",
+        "correlation_and_audit",
+    ]
+    assert len(response.evidence.descriptors) == 5
+    assert response.evidence.descriptors[0].evidence_type == "task_contract"
+    assert response.evidence.descriptors[1].evidence_type == "prompt_selection"
 
 
 def test_execute_task_rejects_unknown_task() -> None:

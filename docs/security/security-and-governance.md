@@ -39,6 +39,24 @@ AI output should be labeled by intended use:
 
 No output label should imply authoritative domain execution.
 
+The current platform inspection surface for this policy is:
+
+1. `GET /platform/safety/policy`
+
+Current foundation enforcement posture:
+
+1. response labeling is enforced,
+2. audit and correlation evidence are enforced,
+3. redaction posture is declared per task but not yet runtime-enforced,
+4. callers remain responsible for context minimization.
+
+Current audit evidence retained for executions now includes:
+
+1. applied `safety_mode`,
+2. resolved task `redaction_posture`,
+3. enforced safety-control identifiers,
+4. output label and prompt/provider context already attached to the execution.
+
 ## Deferred Security Work
 
 1. secret scanning for prompt assets,

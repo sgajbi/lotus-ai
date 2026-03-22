@@ -1,0 +1,63 @@
+{
+  "manifest_version": "foundation.v1",
+  "evidence_categories": [
+    {
+      "category_id": "task_contract",
+      "description": "Bounded task contract and caller selection evidence."
+    },
+    {
+      "category_id": "prompt_selection",
+      "description": "Resolved prompt version and management provenance evidence."
+    },
+    {
+      "category_id": "provider_resolution",
+      "description": "Provider gateway and execution-path resolution evidence."
+    },
+    {
+      "category_id": "safety_outcome",
+      "description": "Applied safety posture and enforced-control evidence."
+    },
+    {
+      "category_id": "retrieval_posture",
+      "description": "Current retrieval execution posture captured at task runtime."
+    }
+  ],
+  "fixture_families": [
+    {
+      "fixture_id": "task_capability_contracts",
+      "status": "STAGED",
+      "description": "Contract fixtures covering supported task surfaces and policy behavior.",
+      "manifest_path": "docs/evals/fixtures/tasks.contracts/basic_cases.json"
+    },
+    {
+      "fixture_id": "explanation_task_examples",
+      "status": "STAGED",
+      "description": "Golden examples for explanation-oriented tasks.",
+      "manifest_path": "docs/evals/fixtures/explain.v1/basic_cases.json"
+    },
+    {
+      "fixture_id": "summarization_task_examples",
+      "status": "STAGED",
+      "description": "Golden examples for summarization-oriented tasks.",
+      "manifest_path": "docs/evals/fixtures/summarize.v1/basic_cases.json"
+    },
+    {
+      "fixture_id": "retrieval_citation_examples",
+      "status": "STAGED",
+      "description": "Retrieval citation and refusal evaluation examples for later activation.",
+      "manifest_path": "docs/evals/fixtures/retrieval.search/basic_cases.json"
+    },
+    {
+      "fixture_id": "provider_policy_examples",
+      "status": "STAGED",
+      "description": "Provider policy and disabled-execution evaluation examples.",
+      "manifest_path": "docs/evals/fixtures/providers.policy/basic_cases.json"
+    },
+    {
+      "fixture_id": "safety_policy_examples",
+      "status": "STAGED",
+      "description": "Safety policy and runtime-posture evaluation examples.",
+      "manifest_path": "docs/evals/fixtures/safety.policy/basic_cases.json"
+    }
+  ]
+}

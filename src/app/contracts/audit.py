@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.contracts.safety import RedactionPosture
+
 
 class AuditRecordResponse(BaseModel):
     request_id: str = Field(description="Generated task execution request identifier.")
@@ -12,6 +14,13 @@ class AuditRecordResponse(BaseModel):
     correlation_id: str = Field(description="Correlation identifier propagated by the caller.")
     prompt_version: str = Field(description="Prompt version associated with the execution.")
     provider_mode: str = Field(description="Provider mode active for the execution.")
+    safety_mode: str = Field(description="Safety mode applied to the execution.")
+    redaction_posture: RedactionPosture = Field(
+        description="Redaction posture associated with the executed task."
+    )
+    enforced_safety_controls: list[str] = Field(
+        description="Stable identifiers for safety controls enforced for the execution."
+    )
     generated_at: str = Field(description="UTC timestamp when the record was created.")
     stubbed: bool = Field(description="Whether the execution result was stubbed.")
     context_summary: str = Field(description="Short summary of the caller-provided context.")

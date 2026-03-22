@@ -1,0 +1,40 @@
+{
+  "task_id": "retrieval.search.v1",
+  "fixture_family": "retrieval_citation_examples",
+  "cases": [
+    {
+      "case_id": "search_rfc_answer_requires_citation",
+      "summary": "Retrieval answers should preserve source provenance for RFC-backed questions.",
+      "input": {
+        "query": "What does RFC-0069 say about lotus-ai ownership?",
+        "caller_app": "lotus-workbench",
+        "correlation_id": "corr-ret-001",
+        "source_filters": [
+          "lotus-platform-rfcs"
+        ]
+      },
+      "expected": {
+        "execution_stage": "SEARCH_DISABLED",
+        "must_preserve_citations": true,
+        "expected_outcome": "CONFLICT_UNTIL_ENABLED"
+      }
+    },
+    {
+      "case_id": "search_insufficient_sources_refuses_cleanly",
+      "summary": "Retrieval should refuse cleanly when governed search is disabled or sources are insufficient.",
+      "input": {
+        "query": "Summarize an unpublished policy memo",
+        "caller_app": "lotus-manage",
+        "correlation_id": "corr-ret-002",
+        "source_filters": [
+          "lotus-platform-rfcs"
+        ]
+      },
+      "expected": {
+        "execution_stage": "SEARCH_DISABLED",
+        "must_preserve_citations": false,
+        "expected_outcome": "REFUSAL_OR_CONFLICT"
+      }
+    }
+  ]
+}

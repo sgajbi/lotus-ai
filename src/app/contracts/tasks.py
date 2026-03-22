@@ -5,6 +5,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.contracts.evidence import ExecutionEvidenceBundle
+from app.contracts.safety import SafetyExecutionOutcome
+
 
 class TaskCategory(str, Enum):
     EXPLAIN = "explain"
@@ -91,6 +94,7 @@ class TaskAuditMetadata(BaseModel):
     output_label: OutputLabel = Field(description="Output label attached to the execution.")
     prompt_version: str = Field(description="Prompt version associated with the execution.")
     provider_mode: str = Field(description="Provider mode active for the execution.")
+    safety: SafetyExecutionOutcome = Field(description="Safety posture resolved for the execution.")
     generated_at: str = Field(description="UTC timestamp when the result was generated.")
     stubbed: bool = Field(description="Whether the result came from deterministic stub execution.")
 
@@ -110,3 +114,6 @@ class TaskExecutionResponse(BaseModel):
     output_label: OutputLabel = Field(description="Output label emitted by the task.")
     result: TaskExecutionResult = Field(description="Task result payload.")
     audit: TaskAuditMetadata = Field(description="Audit metadata for the execution.")
+    evidence: ExecutionEvidenceBundle = Field(
+        description="Structured execution evidence explaining how the result was produced."
+    )

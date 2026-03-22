@@ -2,7 +2,6 @@ name: Backend Service Pipeline
 
 on:
   push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
@@ -46,6 +45,16 @@ jobs:
         run: make typecheck
       - name: OpenAPI Gate
         run: make openapi-gate
+      - name: Evaluation Manifest Gate
+        run: make eval-manifest-gate
+      - name: Evaluation Run Gate
+        run: make eval-run-gate
+      - name: Async Job Gate
+        run: make async-job-gate
+      - name: Migration Smoke
+        env:
+          LOTUS_AI_DATABASE_URL: sqlite:///:memory:
+        run: make migration-smoke
       - name: Security Audit
         run: make security-audit
 
@@ -83,9 +92,24 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+  runtime-mode-smoke:
+    name: Runtime Mode Smoke
+    needs: [lint-typecheck-security]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+      - name: Install
+        run: make install
+      - name: Verify SQL-backed runtime modes
+        run: make runtime-mode-smoke
+
   coverage-gate:
     name: Coverage Gate (Combined)
-    needs: [test-suites]
+    needs: [test-suites, runtime-mode-smoke]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

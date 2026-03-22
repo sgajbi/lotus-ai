@@ -1,0 +1,51 @@
+{
+  "fixture_family": "explanation_task_examples",
+  "task_id": "explain.v1",
+  "cases": [
+    {
+      "case_id": "explain_blocked_rebalance",
+      "summary": "Blocked rebalance explanation remains bounded and explanation-only.",
+      "input": {
+        "caller_app": "lotus-manage",
+        "context_summary": "Explain blocked rebalance outcome",
+        "payload": {
+          "status": "BLOCKED",
+          "violations": 2,
+          "policy_name": "household_turnover_guard"
+        }
+      },
+      "expected": {
+        "output_label": "EXPLANATION_ONLY",
+        "must_include_evidence_types": [
+          "task_contract",
+          "prompt_selection",
+          "provider_resolution",
+          "safety_outcome",
+          "retrieval_posture"
+        ]
+      }
+    },
+    {
+      "case_id": "explain_pending_review",
+      "summary": "Pending-review explanation keeps draft-free explanatory posture.",
+      "input": {
+        "caller_app": "lotus-advise",
+        "context_summary": "Explain pending review workflow state",
+        "payload": {
+          "status": "PENDING_REVIEW",
+          "approval_stage": "supervisor_review"
+        }
+      },
+      "expected": {
+        "output_label": "EXPLANATION_ONLY",
+        "must_include_evidence_types": [
+          "task_contract",
+          "prompt_selection",
+          "provider_resolution",
+          "safety_outcome",
+          "retrieval_posture"
+        ]
+      }
+    }
+  ]
+}

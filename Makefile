@@ -1,21 +1,39 @@
-.PHONY: install lint monetary-float-guard typecheck openapi-gate test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
+.PHONY: install lint monetary-float-guard typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke migration-apply runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
 
 install:
 	python -m pip install --upgrade pip
 	python -m pip install -e ".[dev]"
 
 lint:
-	ruff check .
-	ruff format --check .
+	python -m ruff check .
+	python -m ruff format --check .
 
 monetary-float-guard:
 	python scripts/check_monetary_float_usage.py
 
 typecheck:
-	mypy --config-file mypy.ini
+	python -m mypy --config-file mypy.ini
 
 openapi-gate:
 	python scripts/openapi_quality_gate.py
+
+eval-manifest-gate:
+	python scripts/validate_eval_fixture_manifest.py
+
+eval-run-gate:
+	python scripts/validate_eval_run_artifacts.py
+
+async-job-gate:
+	python scripts/validate_async_job_artifacts.py
+
+migration-smoke:
+	python scripts/migration_contract_check.py --mode alembic-sql
+
+migration-apply:
+	python -m alembic upgrade head
+
+runtime-mode-smoke:
+	python -m pytest tests/integration/test_runtime_modes.py -q
 
 test:
 	$(MAKE) test-unit
@@ -37,11 +55,11 @@ test-coverage:
 	python -m coverage report --fail-under=99
 
 security-audit:
-	python -m pip_audit
+	python scripts/run_security_audit.py
 
-check: lint typecheck openapi-gate test
+check: lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke runtime-mode-smoke test
 
-ci: lint typecheck openapi-gate test-integration test-e2e test-coverage security-audit
+ci: lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke runtime-mode-smoke test-integration test-e2e test-coverage security-audit
 
 docker-build:
 	docker build -t backend-service:ci-test .

@@ -1,0 +1,92 @@
+{
+  "runs": [
+    {
+      "run_id": "foundation_eval_2026_03_22_001",
+      "recorded_at": "2026-03-22T09:00:00Z",
+      "status": "RECORDED",
+      "manifest_version": "foundation.v1",
+      "staged_fixture_count": 6,
+      "staged_case_count": 12,
+      "seam_coverage": [
+        {
+          "seam_id": "task_execution",
+          "fixture_ids": [
+            "task_capability_contracts",
+            "explanation_task_examples",
+            "summarization_task_examples"
+          ],
+          "staged_fixture_count": 3,
+          "staged_case_count": 6
+        },
+        {
+          "seam_id": "retrieval",
+          "fixture_ids": [
+            "retrieval_citation_examples"
+          ],
+          "staged_fixture_count": 1,
+          "staged_case_count": 2
+        },
+        {
+          "seam_id": "provider_policy",
+          "fixture_ids": [
+            "provider_policy_examples"
+          ],
+          "staged_fixture_count": 1,
+          "staged_case_count": 2
+        },
+        {
+          "seam_id": "safety_policy",
+          "fixture_ids": [
+            "safety_policy_examples"
+          ],
+          "staged_fixture_count": 1,
+          "staged_case_count": 2
+        }
+      ],
+      "notes": "Baseline foundation-phase evaluation inventory snapshot recorded after the initial file-backed fixture estate reached full staged coverage."
+    },
+    {
+      "run_id": "foundation_eval_2026_03_21_001",
+      "recorded_at": "2026-03-21T17:30:00Z",
+      "status": "SUPERSEDED",
+      "manifest_version": "foundation.v1",
+      "staged_fixture_count": 5,
+      "staged_case_count": 10,
+      "seam_coverage": [
+        {
+          "seam_id": "task_execution",
+          "fixture_ids": [
+            "task_capability_contracts",
+            "explanation_task_examples",
+            "summarization_task_examples"
+          ],
+          "staged_fixture_count": 3,
+          "staged_case_count": 6
+        },
+        {
+          "seam_id": "retrieval",
+          "fixture_ids": [
+            "retrieval_citation_examples"
+          ],
+          "staged_fixture_count": 1,
+          "staged_case_count": 2
+        },
+        {
+          "seam_id": "provider_policy",
+          "fixture_ids": [
+            "provider_policy_examples"
+          ],
+          "staged_fixture_count": 1,
+          "staged_case_count": 2
+        },
+        {
+          "seam_id": "safety_policy",
+          "fixture_ids": [],
+          "staged_fixture_count": 0,
+          "staged_case_count": 0
+        }
+      ],
+      "notes": "Earlier foundation snapshot retained for lifecycle tracking before safety-policy evaluation fixtures were staged."
+    }
+  ]
+}

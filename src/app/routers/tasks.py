@@ -11,6 +11,7 @@ router = APIRouter(prefix="/ai/tasks", tags=["tasks"])
 @router.post(
     "/execute",
     response_model=TaskExecutionResponse,
+    operation_id="executeTask",
     summary="Execute a bounded lotus-ai task",
     description=(
         "Validates and executes a bounded lotus-ai task using the current delivery-phase "
@@ -18,6 +19,12 @@ router = APIRouter(prefix="/ai/tasks", tags=["tasks"])
         "stub responses so downstream Lotus apps can integrate against stable contracts "
         "before live provider execution is enabled."
     ),
+    responses={
+        200: {"description": "Task executed successfully."},
+        404: {"description": "Unknown task id."},
+        409: {"description": "Task disabled or request conflicts with task policy."},
+        500: {"description": "Unexpected server error."},
+    },
 )
 async def execute_task_route(request: TaskExecutionRequest) -> TaskExecutionResponse:
     return execute_task(request)

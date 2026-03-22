@@ -1,0 +1,66 @@
+from app.contracts.prompts import PromptDescriptor, PromptLifecycleStatus, PromptManagementMode
+from app.contracts.providers import ProviderExecutionResponse
+from app.contracts.tasks import (
+    CallerMetadata,
+    CapabilityDescriptor,
+    OutputLabel,
+    TaskCategory,
+    TaskContextEnvelope,
+    TaskExecutionRequest,
+    TaskInputMode,
+)
+from app.services.execution_evidence import build_execution_evidence
+from app.services.safety_runtime import build_safety_execution_outcome
+
+
+def test_build_execution_evidence_returns_expected_descriptors() -> None:
+    request = TaskExecutionRequest(
+        task_id="explain.v1",
+        input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+        caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ev-1"),
+        context=TaskContextEnvelope(
+            summary="Explain rebalance outcome",
+            payload={"status": "BLOCKED"},
+            source_refs=["lotus-manage:run:reb_001"],
+        ),
+    )
+    capability = CapabilityDescriptor(
+        task_id="explain.v1",
+        category=TaskCategory.EXPLAIN,
+        enabled=True,
+        output_label=OutputLabel.EXPLANATION_ONLY,
+        description="Explain structured Lotus domain outputs in plain English.",
+    )
+    prompt = PromptDescriptor(
+        task_id="explain.v1",
+        prompt_version="foundation.explain.v1",
+        prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.ACTIVE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
+        system_instructions="Explain structured outputs conservatively.",
+        output_contract_notes="Explanation only.",
+    )
+    provider_execution = ProviderExecutionResponse(
+        provider_id="text.stub",
+        provider_mode="disabled",
+        stubbed=True,
+        message="Stub execution completed.",
+        structured_output={},
+    )
+    safety_outcome = build_safety_execution_outcome(OutputLabel.EXPLANATION_ONLY)
+
+    evidence = build_execution_evidence(
+        request=request,
+        capability=capability,
+        prompt=prompt,
+        provider_execution=provider_execution,
+        safety_outcome=safety_outcome,
+    )
+
+    assert len(evidence.descriptors) == 5
+    assert evidence.descriptors[0].evidence_type == "task_contract"
+    assert evidence.descriptors[1].evidence_type == "prompt_selection"
+    assert evidence.descriptors[2].evidence_type == "provider_resolution"
+    assert evidence.descriptors[3].evidence_type == "safety_outcome"
+    assert evidence.descriptors[4].evidence_type == "retrieval_posture"

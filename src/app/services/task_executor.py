@@ -5,10 +5,9 @@ from uuid import uuid4
 
 from fastapi import HTTPException, status
 
-from app.config import settings
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.providers import ProviderExecutionRequest
 from app.contracts.tasks import (
-    CapabilityDescriptor,
     TaskExecutionRequest,
     TaskExecutionResponse,
     TaskExecutionResult,
@@ -17,7 +16,10 @@ from app.contracts.tasks import (
 )
 from app.services.audit_store import get_audit_store
 from app.services.capability_catalog import get_capability_by_task_id
+from app.services.execution_evidence import build_execution_evidence
+from app.services.provider_gateway import execute_text_generation
 from app.services.prompt_registry import get_prompt_or_raise
+from app.services.safety_runtime import build_safety_execution_outcome
 
 
 def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
@@ -42,21 +44,47 @@ def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
         )
     prompt = get_prompt_or_raise(request.task_id)
     request_id = f"air_{uuid4().hex}"
-    result = _build_stub_result(request=request, capability=capability)
+    safety_outcome = build_safety_execution_outcome(capability.output_label)
+    provider_execution = execute_text_generation(
+        ProviderExecutionRequest(
+            task_id=capability.task_id,
+            caller_app=request.caller.caller_app,
+            prompt_version=prompt.prompt_version,
+            context_summary=request.context.summary,
+            context_payload=request.context.payload,
+            source_refs=request.context.source_refs,
+        )
+    )
+    evidence = build_execution_evidence(
+        request=request,
+        capability=capability,
+        prompt=prompt,
+        provider_execution=provider_execution,
+        safety_outcome=safety_outcome,
+    )
     response = TaskExecutionResponse(
         status=TaskExecutionStatus.COMPLETED,
         task_id=capability.task_id,
         category=capability.category,
         output_label=capability.output_label,
-        result=result,
+        result=TaskExecutionResult(
+            message=provider_execution.message,
+            structured_output={
+                **provider_execution.structured_output,
+                "input_mode": request.input_mode,
+                "caller_app": request.caller.caller_app,
+            },
+        ),
+        evidence=evidence,
         audit=TaskAuditMetadata(
             request_id=request_id,
             task_id=capability.task_id,
             output_label=capability.output_label,
             prompt_version=prompt.prompt_version,
-            provider_mode=settings.provider_mode,
+            provider_mode=provider_execution.provider_mode,
+            safety=safety_outcome,
             generated_at=datetime.now(UTC).isoformat(),
-            stubbed=True,
+            stubbed=provider_execution.stubbed,
         ),
     )
     get_audit_store().save(
@@ -67,6 +95,9 @@ def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
             correlation_id=request.caller.correlation_id,
             prompt_version=response.audit.prompt_version,
             provider_mode=response.audit.provider_mode,
+            safety_mode=response.audit.safety.safety_mode,
+            redaction_posture=response.audit.safety.redaction_posture,
+            enforced_safety_controls=response.audit.safety.enforced_controls,
             generated_at=response.audit.generated_at,
             stubbed=response.audit.stubbed,
             context_summary=request.context.summary,
@@ -77,28 +108,3 @@ def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
         )
     )
     return response
-
-
-def _build_stub_result(
-    *,
-    request: TaskExecutionRequest,
-    capability: CapabilityDescriptor,
-) -> TaskExecutionResult:
-    return TaskExecutionResult(
-        message=(
-            "Stub execution completed for foundation-phase task "
-            f"{capability.task_id} requested by {request.caller.caller_app}."
-        ),
-        structured_output={
-            "phase": settings.delivery_phase,
-            "input_mode": request.input_mode,
-            "caller_app": request.caller.caller_app,
-            "context_summary": request.context.summary,
-            "context_keys": sorted(request.context.payload.keys()),
-            "source_refs": request.context.source_refs,
-            "stub_reason": (
-                "lotus-ai foundation phase exposes governed integration contracts "
-                "before live provider execution is enabled."
-            ),
-        },
-    )

@@ -1,0 +1,56 @@
+{
+  "task_id": "summarize.v1",
+  "fixture_family": "summarization_task_examples",
+  "cases": [
+    {
+      "case_id": "summarize_proposal_pending_review",
+      "summary": "Pending-review summarization remains explanation-only and workflow-bounded.",
+      "input": {
+        "summary": "Summarize proposal workflow state",
+        "payload": {
+          "status": "PENDING_REVIEW",
+          "approval_count": 1,
+          "open_issues": 0
+        },
+        "source_refs": [
+          "lotus-advise:proposal:prop_001"
+        ]
+      },
+      "expected": {
+        "output_label": "EXPLANATION_ONLY",
+        "required_fields": [
+          "task_id",
+          "caller_app",
+          "summary",
+          "source_refs",
+          "output_label"
+        ]
+      }
+    },
+    {
+      "case_id": "summarize_portfolio_review_ready",
+      "summary": "Ready-for-review summarization remains concise and workflow-bounded.",
+      "input": {
+        "summary": "Summarize portfolio review workflow state",
+        "payload": {
+          "status": "READY_FOR_REVIEW",
+          "approval_count": 2,
+          "open_issues": 1
+        },
+        "source_refs": [
+          "lotus-manage:review:rev_014"
+        ]
+      },
+      "expected": {
+        "output_label": "EXPLANATION_ONLY",
+        "required_fields": [
+          "task_id",
+          "caller_app",
+          "summary",
+          "source_refs",
+          "output_label"
+        ]
+      }
+    }
+  ]
+}

@@ -17,6 +17,87 @@ Current goals:
 
 This is deliberate. The early focus is to make `lotus-ai` understandable, testable, and governable before it becomes feature-rich.
 
+The current execution posture is:
+
+- task execution flows through an explicit internal provider gateway,
+- the provider gateway currently routes only to documented stub providers,
+- provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
+- provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
+- provider runbook readiness is now exposed through a dedicated operational-readiness endpoint,
+- provider evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
+- provider governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
+- platform runtime status now embeds provider governance posture directly,
+- safety policy exposes task-level output-label and redaction posture,
+- task audit records now persist the applied safety posture for every execution,
+- runtime safety status exposes which controls are enforced versus documented-only,
+- retrieval now has an explicit execution seam and runtime execution-status surface,
+- retrieval activation readiness is now exposed through a dedicated rollout-readiness endpoint,
+- retrieval runbook readiness is now exposed through a dedicated operational-readiness endpoint,
+- retrieval evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
+- retrieval governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
+- platform runtime status now embeds retrieval governance posture directly,
+- prompts now expose runtime selection status in addition to governance posture,
+- prompt activation readiness is now exposed through a dedicated rollout-readiness endpoint,
+- prompt runbook readiness is now exposed through a dedicated operational-readiness endpoint,
+- prompt evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
+- prompt governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
+- platform runtime status now embeds prompt governance posture directly,
+- platform runtime status now summarizes prompt runtime posture directly,
+- task execution responses now include structured evidence about prompt, provider, safety, and retrieval posture,
+- evaluation catalog now exposes staged evidence categories and fixture families,
+- evaluation fixture family detail is now inspectable through a dedicated read-only endpoint,
+- platform runtime status now summarizes evaluation runtime posture too,
+- evaluation fixture inventory is now backed by a versioned in-repo manifest,
+- the first real file-backed fixture family now exists for `explain.v1`,
+- a second file-backed fixture family now exists for `summarize.v1`,
+- retrieval citation and refusal examples are now staged as file-backed evaluation fixtures,
+- provider policy behavior is now staged as file-backed evaluation fixtures,
+- safety policy behavior is now staged as file-backed evaluation fixtures,
+- task capability and enablement behavior is now staged as file-backed evaluation fixtures,
+- evaluation fixture manifest validity is now enforced by a dedicated CI gate,
+- evaluation runtime status now summarizes staged coverage by platform seam,
+- recorded evaluation run artifacts are now exposed through read-only inspection endpoints,
+- recorded evaluation run artifacts are now validated by a dedicated gate,
+- evaluation run artifacts now model both current and superseded lifecycle states,
+- async queue and worker posture is now exposed through a dedicated runtime-status endpoint,
+- governed queue backend strategies are now exposed through a dedicated async catalog endpoint,
+- governed worker execution strategies are now exposed through a dedicated async catalog endpoint,
+- async activation readiness is now exposed through a dedicated rollout-readiness endpoint,
+- async runbook readiness is now exposed through a dedicated operational-readiness endpoint,
+- async governance status is now exposed through a dedicated review-summary endpoint,
+- platform runtime status now embeds async governance posture directly,
+- seeded async job artifacts are now exposed and validated through dedicated contracts,
+- async job submission now has a governed request/response contract with explicit foundation-phase rejection behavior,
+- async job artifacts can now reference related evaluation run artifacts for cross-seam traceability,
+- live model execution remains disabled until a governed provider rollout exists.
+
+The current persistence posture is:
+
+- in-memory audit storage by default for simple local development,
+- in-memory prompt registry by default, with a SQLAlchemy-backed prompt adapter available behind the same repository seam,
+- prompt definitions now expose lifecycle and provenance metadata in both memory and SQL-backed modes,
+- a SQLAlchemy-backed audit adapter available behind the same repository interface for durable storage,
+- in-memory retrieval metadata by default, with a SQLAlchemy-backed retrieval adapter available behind the same repository seam,
+- explicit configuration to move between the two without changing API contracts,
+- Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
+- prompt promotion remains read-only at runtime and is governed through reviewed repository changes plus Alembic-managed persistence updates.
+- startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.
+- readiness probe policy defaults to `observe` and can be raised to `degrade` when orchestration should react to readiness findings.
+
+The current retrieval-storage decision is:
+
+- no vector store is wired yet,
+- the planned first vector store is PostgreSQL with `pgvector`,
+- we are intentionally avoiding a separate vector database until scale or workload evidence justifies it.
+
+The current retrieval posture is:
+
+- approved retrieval sources are registered explicitly,
+- retrieval source discovery is exposed through the platform API,
+- provider posture discovery is exposed through the platform API,
+- runtime posture for retrieval and platform services is exposed through the platform API,
+- live retrieval search remains disabled until embeddings and vector indexing are wired.
+
 ## What lotus-ai Does
 
 - LLM gateway and model routing
@@ -26,6 +107,23 @@ This is deliberate. The early focus is to make `lotus-ai` understandable, testab
 - AI audit logging, cost tracking, and evaluations
 - reusable AI task APIs for explanation, summarization, extraction, classification, and structured generation
 - async AI run orchestration for longer jobs
+
+## Vector Store Direction
+
+`lotus-ai` will use PostgreSQL with `pgvector` as the first vector-store architecture.
+
+Why this is the current default:
+
+1. it fits the Lotus backend posture,
+2. it keeps operations simpler,
+3. it is sufficient for the first retrieval phases,
+4. it supports metadata filtering and provenance without introducing a separate retrieval runtime too early.
+
+What this means in practice:
+
+1. canonical durable database remains PostgreSQL,
+2. vector search lives beside the rest of the governed retrieval metadata,
+3. retrieval remains a Lotus-owned layer rather than a framework-owned abstraction.
 
 ## What lotus-ai Does Not Do
 
@@ -91,6 +189,19 @@ That means:
 - no speculative overbuilding,
 - no hidden AI behavior in critical workflows.
 
+The service also follows a strict scalability model:
+
+1. API-serving components stay stateless,
+2. durable state moves to governed stores,
+3. long-running work scales through worker processes,
+4. internal seams stay clean enough to split into separate deployables later without changing external contracts.
+
+The local security audit posture is also intentionally isolated:
+
+1. `make ci` runs dependency audit inside a temporary project-only virtual environment,
+2. this avoids false positives from unrelated machine-wide Python packages,
+3. the audit still fails on vulnerabilities in the actual `lotus-ai` dependency set.
+
 ## Framework Stance
 
 `lotus-ai` is not being built around a large AI orchestration framework as its core architecture.
@@ -137,6 +248,11 @@ make install
 make lint
 make typecheck
 make openapi-gate
+make eval-manifest-gate
+make eval-run-gate
+make async-job-gate
+make migration-smoke
+make runtime-mode-smoke
 make ci
 ```
 
@@ -155,13 +271,18 @@ docker compose up --build
 ## Documentation
 
 - architecture overview: `docs/architecture/system-overview.md`
+- startup readiness deployment policy: `docs/architecture/startup-readiness-deployment-policy.md`
+- scalability and deployment model: `docs/architecture/scalability-and-deployment-model.md`
 - phased roadmap: `docs/architecture/phased-roadmap.md`
 - decisions and rationale: `docs/architecture/decision-log.md`
 - domain integration guide: `docs/guides/integration-guide.md`
 - task execution contract: `docs/guides/task-execution-contract.md`
 - prompt registry and audit: `docs/guides/prompt-registry-and-audit.md`
+- retrieval and vector store: `docs/guides/retrieval-and-vector-store.md`
 - evaluation strategy: `docs/evals/evaluation-strategy.md`
 - security and governance: `docs/security/security-and-governance.md`
 - service-local RFCs: `docs/rfcs/`
 - service standards: `docs/standards/`
+- API documentation standard: `docs/standards/api-documentation.md`
+- migration contract standard: `docs/standards/migration-contract.md`
 - platform governance source: `../lotus-platform/rfcs/RFC-0069-lotus-ai-shared-ai-platform-service.md`
