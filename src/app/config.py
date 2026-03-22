@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     retrieval_mode: str = "disabled"
     safety_mode: str = "documented_only"
     audit_store_mode: str = "memory"
+    database_url: str | None = None
 
     model_config = SettingsConfigDict(env_prefix="LOTUS_AI_", extra="ignore")
 

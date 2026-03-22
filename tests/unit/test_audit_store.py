@@ -1,9 +1,9 @@
 from app.contracts.audit import AuditRecordResponse
-from app.services.audit_store import InMemoryAuditStore
+from app.repositories.memory_audit_repository import InMemoryAuditRepository
 
 
 def test_in_memory_audit_store_save_and_get() -> None:
-    store = InMemoryAuditStore()
+    store = InMemoryAuditRepository()
     record = AuditRecordResponse(
         request_id="air_test",
         task_id="explain.v1",

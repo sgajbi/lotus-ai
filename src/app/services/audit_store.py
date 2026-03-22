@@ -1,26 +1,16 @@
 from __future__ import annotations
 
-from threading import Lock
+from app.config import settings
+from app.repositories.audit_repository import AuditRepository
+from app.repositories.memory_audit_repository import InMemoryAuditRepository
 
-from app.contracts.audit import AuditRecordResponse
-
-
-class InMemoryAuditStore:
-    def __init__(self) -> None:
-        self._records: dict[str, AuditRecordResponse] = {}
-        self._lock = Lock()
-
-    def save(self, record: AuditRecordResponse) -> None:
-        with self._lock:
-            self._records[record.request_id] = record
-
-    def get(self, request_id: str) -> AuditRecordResponse | None:
-        with self._lock:
-            return self._records.get(request_id)
+_memory_repository = InMemoryAuditRepository()
 
 
-_audit_store = InMemoryAuditStore()
-
-
-def get_audit_store() -> InMemoryAuditStore:
-    return _audit_store
+def get_audit_store() -> AuditRepository:
+    if settings.audit_store_mode == "memory":
+        return _memory_repository
+    raise RuntimeError(
+        "Unsupported LOTUS_AI_AUDIT_STORE_MODE. "
+        "Only 'memory' is currently wired in this phase."
+    )
