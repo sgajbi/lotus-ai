@@ -262,7 +262,7 @@ Current posture:
 
 1. `/platform/providers/evidence-readiness` exposes required provider evidence items,
 2. required evidence items remain not ready in foundation phase,
-3. provider governance review can now inspect evidence posture separately while the combined governance summary remains unchanged in this slice.
+3. provider governance review now includes evidence posture as a first-class blocking area alongside technical and operational readiness.
 
 ## Decision 12: Safety Posture Must Be Inspectable
 

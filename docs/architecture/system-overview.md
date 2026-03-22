@@ -194,7 +194,8 @@ Current rules:
 
 `/platform/runtime-status` now embeds provider governance posture directly so operators can review
 provider rollout state from the same top-level runtime surface that already carries async
-governance posture.
+governance posture. Provider governance now summarizes technical activation, runbook, and
+evidence readiness together.
 
 ## Prompt Posture
 

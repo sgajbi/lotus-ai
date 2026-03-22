@@ -84,7 +84,8 @@ Before any future live-provider activation slice:
 5. confirm the embedded `provider_governance` block in `GET /platform/runtime-status` matches the detailed provider governance view
 6. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
 7. confirm vendor escalation, rate-limit response, and provider observability procedures are documented and approved
-8. only then proceed with any live-provider activation rollout review
+8. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
+9. only then proceed with any live-provider activation rollout review
 
 ## Prompt Activation Governance
 

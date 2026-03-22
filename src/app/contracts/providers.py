@@ -188,6 +188,9 @@ class ProviderGovernanceStatusResponse(BaseModel):
     runbook_readiness: ProviderRunbookReadinessResponse = Field(
         description="Operational runbook-readiness summary for provider execution."
     )
+    evidence_readiness: ProviderEvidenceReadinessResponse = Field(
+        description="Evaluation and audit evidence-readiness summary for provider execution."
+    )
     blocking_area_count: int = Field(
         description="Number of top-level provider governance areas currently blocking activation."
     )

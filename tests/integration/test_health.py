@@ -429,10 +429,11 @@ def test_provider_governance_status_route() -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["governance_ready"] is False
-    assert body["blocking_area_count"] == 2
+    assert body["blocking_area_count"] == 3
     assert body["activation_readiness"]["activation_ready"] is False
     assert body["runbook_readiness"]["runbook_ready"] is False
-    assert len(body["governance_summary"]) == 2
+    assert body["evidence_readiness"]["evidence_ready"] is False
+    assert len(body["governance_summary"]) == 3
 
 
 def test_safety_policy_route() -> None:
@@ -492,9 +493,10 @@ def test_platform_runtime_status_route() -> None:
     assert body["async_governance"]["activation_readiness"]["activation_ready"] is False
     assert body["async_governance"]["runbook_readiness"]["runbook_ready"] is False
     assert body["provider_governance"]["governance_ready"] is False
-    assert body["provider_governance"]["blocking_area_count"] == 2
+    assert body["provider_governance"]["blocking_area_count"] == 3
     assert body["provider_governance"]["activation_readiness"]["activation_ready"] is False
     assert body["provider_governance"]["runbook_readiness"]["runbook_ready"] is False
+    assert body["provider_governance"]["evidence_readiness"]["evidence_ready"] is False
     assert body["retrieval_governance"]["governance_ready"] is False
     assert body["retrieval_governance"]["blocking_area_count"] == 2
     assert body["retrieval_governance"]["activation_readiness"]["activation_ready"] is False

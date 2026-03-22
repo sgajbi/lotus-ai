@@ -25,7 +25,7 @@ The current execution posture is:
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - provider runbook readiness is now exposed through a dedicated operational-readiness endpoint,
 - provider evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
-- provider governance status is now exposed through a dedicated review-summary endpoint,
+- provider governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
 - platform runtime status now embeds provider governance posture directly,
 - safety policy exposes task-level output-label and redaction posture,
 - task audit records now persist the applied safety posture for every execution,
