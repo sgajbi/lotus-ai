@@ -10,7 +10,11 @@ SEAM_FIXTURE_MAP: dict[str, list[str]] = {
         "summarization_task_examples",
     ],
     "retrieval": ["retrieval_citation_examples"],
-    "provider_policy": ["provider_policy_examples"],
+    "provider_execution": [
+        "provider_policy_examples",
+        "provider_runtime_examples",
+        "provider_failure_mode_examples",
+    ],
     "safety_policy": ["safety_policy_examples"],
 }
 

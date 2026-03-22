@@ -19,6 +19,65 @@ class ProviderLifecycleStatus(str, Enum):
 class ProviderExecutionMode(str, Enum):
     DISABLED = "disabled"
     STUB = "stub"
+    OPENAI = "openai"
+
+
+class ProviderAdapterKind(str, Enum):
+    STUB = "STUB"
+    OPENAI_LIVE = "OPENAI_LIVE"
+
+
+class ProviderFailureCategory(str, Enum):
+    UNSUPPORTED_MODE = "UNSUPPORTED_MODE"
+    LIVE_EXECUTION_NOT_ENABLED = "LIVE_EXECUTION_NOT_ENABLED"
+    PROVIDER_NOT_REGISTERED = "PROVIDER_NOT_REGISTERED"
+    INVALID_LIVE_CONFIGURATION = "INVALID_LIVE_CONFIGURATION"
+    TASK_NOT_ALLOWLISTED = "TASK_NOT_ALLOWLISTED"
+    PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
+    PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"
+    PROVIDER_UPSTREAM_ERROR = "PROVIDER_UPSTREAM_ERROR"
+
+
+class ProviderRolloutState(str, Enum):
+    DOCUMENTED_ONLY = "DOCUMENTED_ONLY"
+    STUB_DEFAULT = "STUB_DEFAULT"
+    ALLOWLISTED_DISABLED = "ALLOWLISTED_DISABLED"
+    CANARY_ENABLED = "CANARY_ENABLED"
+    ROLLED_OUT = "ROLLED_OUT"
+
+
+class ProviderCredentialStatus(str, Enum):
+    NOT_CONFIGURED = "NOT_CONFIGURED"
+    CONFIGURED = "CONFIGURED"
+    INVALID = "INVALID"
+
+
+class ProviderConfigurationStatusDescriptor(BaseModel):
+    rollout_state: ProviderRolloutState = Field(
+        description="Current governed rollout posture for live text-generation provider activation."
+    )
+    configured_live_provider_id: str | None = Field(
+        default=None,
+        description="Allowlisted live provider identifier configured for future activation, when present.",
+    )
+    configured_live_model_id: str | None = Field(
+        default=None,
+        description="Allowlisted live model identifier configured for future activation, when present.",
+    )
+    allowlisted_task_ids: list[str] = Field(
+        default_factory=list,
+        description="Bounded task identifiers currently allowlisted for future live text-generation execution.",
+    )
+    credential_status: ProviderCredentialStatus = Field(
+        description="Current credential posture for the configured live provider path."
+    )
+    configuration_valid: bool = Field(
+        description="Whether the configured rollout and live provider settings are internally consistent."
+    )
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable findings describing configuration and rollout posture.",
+    )
 
 
 class ProviderDescriptor(BaseModel):
@@ -27,12 +86,19 @@ class ProviderDescriptor(BaseModel):
     capability: ProviderCapability = Field(
         description="Primary capability area exposed by the provider."
     )
+    adapter_kind: ProviderAdapterKind = Field(
+        description="Kind of provider adapter currently registered for this provider path."
+    )
     lifecycle_status: ProviderLifecycleStatus = Field(
         description="Current lifecycle state of the provider integration."
     )
     runtime_mode: str = Field(description="Configured runtime mode associated with the provider.")
     enabled_for_execution: bool = Field(
         description="Whether the provider is currently eligible for live execution."
+    )
+    failure_category_on_use: ProviderFailureCategory | None = Field(
+        default=None,
+        description="Failure category expected if this provider path is selected before it is enabled.",
     )
     source_reference: str = Field(
         description="Repository reference documenting the provider configuration."
@@ -45,6 +111,9 @@ class ProviderCatalogResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     provider_mode: str = Field(description="Configured text-generation provider mode.")
     embedding_provider_mode: str = Field(description="Configured embedding provider mode.")
+    text_generation_configuration: ProviderConfigurationStatusDescriptor = Field(
+        description="Current rollout and configuration posture for future live text-generation activation."
+    )
     runtime_execution_enabled: bool = Field(
         description="Whether any provider is currently enabled for live execution."
     )
@@ -64,8 +133,14 @@ class ProviderPolicyDescriptor(BaseModel):
     selected_provider_id: str = Field(
         description="Provider identifier currently selected for this capability."
     )
+    selected_adapter_kind: ProviderAdapterKind = Field(
+        description="Registered adapter kind currently selected for this capability."
+    )
     live_execution_enabled: bool = Field(
         description="Whether live execution is currently allowed for this capability."
+    )
+    rejection_category: ProviderFailureCategory = Field(
+        description="Structured failure category used when the configured mode is rejected."
     )
     rejection_behavior: str = Field(
         description="How lotus-ai should behave when the configured mode is unsupported."
@@ -75,6 +150,9 @@ class ProviderPolicyDescriptor(BaseModel):
 class ProviderPolicyResponse(BaseModel):
     service: str = Field(description="Service name emitting the provider policy response.")
     version: str = Field(description="Current lotus-ai service version.")
+    text_generation_configuration: ProviderConfigurationStatusDescriptor = Field(
+        description="Current rollout and configuration posture for future live text-generation activation."
+    )
     policies: list[ProviderPolicyDescriptor] = Field(
         description="Capability-specific provider execution policies."
     )
@@ -84,6 +162,12 @@ class ProviderExecutionRequest(BaseModel):
     task_id: str = Field(description="Bounded lotus-ai task identifier being executed.")
     caller_app: str = Field(description="Calling Lotus application or platform component.")
     prompt_version: str = Field(description="Resolved prompt version for this execution.")
+    system_instructions: str = Field(
+        description="Resolved system instructions for the executing task prompt."
+    )
+    output_contract_notes: str = Field(
+        description="Resolved output-contract notes constraining live provider behavior."
+    )
     output_label: str = Field(description="Resolved output label for the executing task.")
     safety_mode: str = Field(description="Resolved safety mode for the executing task.")
     redaction_posture: str = Field(description="Resolved redaction posture for the executing task.")
@@ -96,11 +180,64 @@ class ProviderExecutionRequest(BaseModel):
         default_factory=list,
         description="Caller-provided source references attached to the execution request.",
     )
+    timeout_ms: int = Field(
+        description="Bounded provider timeout budget for this execution request."
+    )
+    retry_limit: int = Field(
+        description="Maximum bounded retry count allowed for this execution request."
+    )
+    max_output_tokens: int = Field(
+        description="Maximum bounded output-token budget allowed for this execution request."
+    )
 
 
 class ProviderExecutionResponse(BaseModel):
     provider_id: str = Field(description="Provider identifier selected for execution.")
     provider_mode: str = Field(description="Provider mode active during execution.")
+    adapter_kind: ProviderAdapterKind | None = Field(
+        default=None,
+        description="Registered provider adapter kind that handled the execution, when applicable.",
+    )
+    failure_category: ProviderFailureCategory | None = Field(
+        default=None,
+        description="Structured provider failure category when execution is rejected or degraded.",
+    )
+    timeout_ms: int | None = Field(
+        default=None,
+        description="Provider timeout budget applied to this execution, when applicable.",
+    )
+    retry_count: int | None = Field(
+        default=None,
+        description="Actual retry count used while executing this provider path, when applicable.",
+    )
+    max_output_tokens: int | None = Field(
+        default=None,
+        description="Output-token budget applied to this execution, when applicable.",
+    )
+    model_id: str | None = Field(
+        default=None,
+        description="Model identifier used for provider execution when one is available.",
+    )
+    provider_request_id: str | None = Field(
+        default=None,
+        description="Upstream provider request identifier when one is available.",
+    )
+    input_tokens: int | None = Field(
+        default=None,
+        description="Input-token count reported by the provider when available.",
+    )
+    output_tokens: int | None = Field(
+        default=None,
+        description="Output-token count reported by the provider when available.",
+    )
+    total_tokens: int | None = Field(
+        default=None,
+        description="Total token count reported by the provider when available.",
+    )
+    estimated_cost_usd: float | None = Field(
+        default=None,
+        description="Estimated USD cost for the provider execution when rate-card data is configured.",
+    )
     stubbed: bool = Field(description="Whether execution was handled by a stub provider path.")
     message: str = Field(description="Human-readable execution message returned by the provider.")
     structured_output: dict[str, object] = Field(
@@ -116,6 +253,9 @@ class ProviderActivationReadinessResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     provider_mode: str = Field(description="Configured text-generation provider mode.")
     embedding_provider_mode: str = Field(description="Configured embedding provider mode.")
+    text_generation_configuration: ProviderConfigurationStatusDescriptor = Field(
+        description="Current rollout and configuration posture for future live text-generation activation."
+    )
     activation_ready: bool = Field(
         description="Whether provider execution is currently ready for live activation."
     )

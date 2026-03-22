@@ -138,8 +138,25 @@ runtime-level document and chunk counts are derived in one place instead of bein
 independently by retrieval status and job builders.
 
 The provider gateway also stays intentionally explicit in foundation phase: supported provider
-modes are validated first, and then execution routes through the stub provider until a live
-provider path is actually introduced.
+modes are validated first, provider selection resolves through a small registered adapter seam,
+and live OpenAI execution is only available when rollout state, credentials, and task-level
+allowlisting all permit it. Otherwise provider-backed tasks continue through the deterministic
+stub path or fail with an explicit blocked-live posture.
+
+Provider runtime mode and provider rollout posture are now also separated explicitly. The
+provider APIs expose current supported execution mode, future rollout state, and live-provider
+configuration posture as distinct concepts so bank-grade activation review does not depend on
+interpreting a single overloaded setting.
+
+Provider execution posture is also now bounded explicitly at request time through timeout,
+retry, and output-token controls. Even though current foundation execution remains stubbed,
+those controls now exist as part of the provider contract so live rollout can inherit a real
+execution-hardening seam rather than implicit provider-SDK defaults.
+
+Provider rollout posture is now also centralized in one small helper so activation readiness,
+runbook readiness, and task-runtime notes all describe the same live-provider path honestly.
+That keeps operator-facing status aligned when rollout is still stub-default versus when a live
+provider has been allowlisted but remains intentionally disabled.
 
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
@@ -174,6 +191,10 @@ bounded retrieval path, with explicit citations preserved in the task result pay
 Low-support retrieval matches now produce an explicit conservative refusal mode for
 `knowledge_answer.v1` instead of a weak answer, which keeps the retrieval-backed task path
 more defensible under the current catalog-only execution model.
+
+Task runtime posture now also resolves through a dedicated execution-path helper so provider-backed
+and retrieval-backed task routing semantics are defined in one place instead of being encoded only
+inside runtime-status assembly.
 
 Task runtime posture is now also exposed through a dedicated `/platform/tasks/runtime-status`
 surface and embedded into `/platform/runtime-status`, so operators can distinguish stub-backed
@@ -218,7 +239,8 @@ Owns:
 
 1. provider-specific execution adapters,
 2. deterministic stub providers for foundation phase,
-3. the future boundary where live model SDK integrations will sit.
+3. governed live-provider adapters that remain disabled by default until rollout permits activation,
+4. the future boundary where live model SDK integrations will sit.
 
 ### Retrieval
 
@@ -333,6 +355,14 @@ Current rules:
 provider rollout state from the same top-level runtime surface that already carries async
 governance posture. Provider governance now summarizes technical activation, runbook, and
 evidence readiness together.
+
+Provider evidence readiness is now grounded in real evaluation assets rather than only a static
+checklist: staged provider policy, runtime, and failure-mode fixtures plus a recorded provider
+regression baseline are visible directly through the governed evidence-readiness surface.
+
+Provider runbook readiness also now treats incident response and rollback as first-class required
+activation items, so live-provider rollout cannot be considered operationally ready with only
+generic escalation and dashboard guidance.
 
 ## Prompt Posture
 

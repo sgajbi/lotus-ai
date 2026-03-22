@@ -1,5 +1,8 @@
 from app.contracts.prompts import PromptDescriptor, PromptLifecycleStatus, PromptManagementMode
-from app.contracts.providers import ProviderExecutionResponse
+from app.contracts.providers import (
+    ProviderAdapterKind,
+    ProviderExecutionResponse,
+)
 from app.contracts.tasks import (
     CallerMetadata,
     CapabilityDescriptor,
@@ -44,6 +47,10 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
     provider_execution = ProviderExecutionResponse(
         provider_id="text.stub",
         provider_mode="disabled",
+        adapter_kind=ProviderAdapterKind.STUB,
+        timeout_ms=4000,
+        retry_count=0,
+        max_output_tokens=512,
         stubbed=True,
         message="Stub execution completed.",
         structured_output={},
@@ -62,5 +69,9 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
     assert evidence.descriptors[0].evidence_type == "task_contract"
     assert evidence.descriptors[1].evidence_type == "prompt_selection"
     assert evidence.descriptors[2].evidence_type == "provider_resolution"
+    assert evidence.descriptors[2].attributes["adapter_kind"] == "STUB"
+    assert evidence.descriptors[2].attributes["timeout_ms"] == 4000
+    assert evidence.descriptors[2].attributes["retry_count"] == 0
+    assert evidence.descriptors[2].attributes["max_output_tokens"] == 512
     assert evidence.descriptors[3].evidence_type == "safety_outcome"
     assert evidence.descriptors[4].evidence_type == "retrieval_posture"

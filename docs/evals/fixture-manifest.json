@@ -54,6 +54,18 @@
       "manifest_path": "docs/evals/fixtures/providers.policy/basic_cases.json"
     },
     {
+      "fixture_id": "provider_runtime_examples",
+      "status": "STAGED",
+      "description": "Provider execution-path and bounded-control evaluation examples.",
+      "manifest_path": "docs/evals/fixtures/providers.runtime/basic_cases.json"
+    },
+    {
+      "fixture_id": "provider_failure_mode_examples",
+      "status": "STAGED",
+      "description": "Provider timeout, rejection, and fallback evaluation examples.",
+      "manifest_path": "docs/evals/fixtures/providers.failure/basic_cases.json"
+    },
+    {
       "fixture_id": "safety_policy_examples",
       "status": "STAGED",
       "description": "Safety policy and runtime-posture evaluation examples.",

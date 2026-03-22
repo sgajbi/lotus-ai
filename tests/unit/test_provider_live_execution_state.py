@@ -1,0 +1,73 @@
+from app.config import settings
+from app.contracts.providers import ProviderRolloutState
+from app.services.provider_live_execution_state import build_provider_live_execution_state
+
+
+def test_provider_live_execution_state_reports_disabled_default_mode() -> None:
+    state = build_provider_live_execution_state(task_id="explain.v1")
+
+    assert state.provider_mode == "disabled"
+    assert state.rollout_state == ProviderRolloutState.STUB_DEFAULT
+    assert state.live_mode_requested is False
+    assert state.live_execution_enabled is False
+    assert (
+        state.blocking_reason
+        == "Live provider execution is not currently requested by runtime mode."
+    )
+
+
+def test_provider_live_execution_state_allows_configured_canary_task() -> None:
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+
+    state = build_provider_live_execution_state(task_id="explain.v1")
+
+    assert state.live_mode_requested is True
+    assert state.credentials_configured is True
+    assert state.task_allowlisted is True
+    assert state.live_execution_enabled is True
+    assert state.blocking_reason is None
+
+
+def test_provider_live_execution_state_blocks_non_allowlisted_task() -> None:
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "summarize.v1"
+
+    state = build_provider_live_execution_state(task_id="explain.v1")
+
+    assert state.live_execution_enabled is False
+    assert state.task_allowlisted is False
+    assert "not allowlisted" in (state.blocking_reason or "")
+
+
+def test_provider_live_execution_state_rejects_unsupported_mode() -> None:
+    settings.provider_mode = "unsupported"
+
+    state = build_provider_live_execution_state(task_id="explain.v1")
+
+    assert state.mode_supported is False
+    assert state.live_execution_enabled is False
+    assert "not supported" in (state.blocking_reason or "")
+
+
+def test_provider_live_execution_state_rejects_invalid_configuration() -> None:
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "knowledge_answer.v1"
+
+    state = build_provider_live_execution_state(task_id="explain.v1")
+
+    assert state.configuration_valid is False
+    assert state.live_execution_enabled is False
+    assert "invalid" in (state.blocking_reason or "")

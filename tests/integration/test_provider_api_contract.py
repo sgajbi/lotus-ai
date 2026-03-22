@@ -9,8 +9,16 @@ def test_provider_catalog_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["provider_mode"] == "disabled"
     assert body["embedding_provider_mode"] == "disabled"
+    assert body["text_generation_configuration"]["rollout_state"] == "STUB_DEFAULT"
+    assert body["text_generation_configuration"]["credential_status"] == "NOT_CONFIGURED"
     assert body["runtime_execution_enabled"] is False
     assert any(provider["provider_id"] == "text.stub" for provider in body["providers"])
+    assert any(
+        provider["provider_id"] == "text.openai"
+        and provider["adapter_kind"] == "OPENAI_LIVE"
+        and provider["failure_category_on_use"] == "LIVE_EXECUTION_NOT_ENABLED"
+        for provider in body["providers"]
+    )
 
 
 def test_provider_policy_route(client: TestClient) -> None:
@@ -19,7 +27,13 @@ def test_provider_policy_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert any(policy["capability"] == "TEXT_GENERATION" for policy in body["policies"])
+    assert body["text_generation_configuration"]["rollout_state"] == "STUB_DEFAULT"
+    text_policy = next(
+        policy for policy in body["policies"] if policy["capability"] == "TEXT_GENERATION"
+    )
+    assert text_policy["selected_adapter_kind"] == "STUB"
+    assert text_policy["rejection_category"] == "UNSUPPORTED_MODE"
+    assert text_policy["allowed_modes"] == ["disabled", "stub", "openai"]
 
 
 def test_provider_activation_readiness_route(client: TestClient) -> None:
@@ -30,9 +44,12 @@ def test_provider_activation_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["provider_mode"] == "disabled"
     assert body["embedding_provider_mode"] == "disabled"
+    assert body["text_generation_configuration"]["rollout_state"] == "STUB_DEFAULT"
+    assert body["text_generation_configuration"]["credential_status"] == "NOT_CONFIGURED"
     assert body["activation_ready"] is False
     assert len(body["blocking_findings"]) == 4
-    assert len(body["activation_path"]) == 4
+    assert len(body["activation_path"]) == 5
+    assert "/platform/providers/governance-status" in body["activation_path"][-1]
 
 
 def test_provider_runbook_readiness_route(client: TestClient) -> None:
@@ -42,10 +59,11 @@ def test_provider_runbook_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
-    assert body["required_item_count"] == 4
+    assert body["required_item_count"] == 5
     assert body["completed_required_item_count"] == 0
     assert body["items"][0]["runbook_id"] == "provider_operational_runbook"
     assert body["items"][1]["status"] == "NOT_READY"
+    assert body["items"][3]["runbook_id"] == "provider_incident_response_and_rollback"
 
 
 def test_provider_evidence_readiness_route(client: TestClient) -> None:
@@ -55,10 +73,15 @@ def test_provider_evidence_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["evidence_ready"] is False
-    assert body["required_item_count"] == 4
-    assert body["completed_required_item_count"] == 0
+    assert body["required_item_count"] == 6
+    assert body["completed_required_item_count"] == 4
     assert body["items"][0]["evidence_id"] == "provider_policy_fixture_pack"
-    assert body["items"][1]["status"] == "NOT_READY"
+    assert body["items"][0]["status"] == "READY"
+    assert body["items"][1]["evidence_id"] == "provider_runtime_fixture_pack"
+    assert body["items"][1]["status"] == "READY"
+    assert body["items"][3]["evidence_id"] == "provider_regression_run_baseline"
+    assert body["items"][3]["status"] == "READY"
+    assert body["items"][4]["status"] == "FOUNDATION_STAGED"
 
 
 def test_provider_governance_status_route(client: TestClient) -> None:

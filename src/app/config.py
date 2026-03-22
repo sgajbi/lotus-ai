@@ -8,6 +8,17 @@ class Settings(BaseSettings):
     service_version: str = "0.1.0"
     delivery_phase: str = "foundation"
     provider_mode: str = "disabled"
+    provider_rollout_state: str = "STUB_DEFAULT"
+    live_text_provider_id: str | None = None
+    live_text_model_id: str | None = None
+    live_text_provider_api_key: str | None = None
+    live_text_allowed_task_ids: str = ""
+    live_text_api_base: str = "https://api.openai.com/v1"
+    live_text_input_cost_per_1k_tokens: float | None = None
+    live_text_output_cost_per_1k_tokens: float | None = None
+    provider_timeout_ms: int = 4000
+    provider_retry_limit: int = 0
+    provider_max_output_tokens: int = 512
     retrieval_mode: str = "disabled"
     embedding_provider_mode: str = "disabled"
     safety_mode: str = "documented_only"

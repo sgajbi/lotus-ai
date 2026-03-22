@@ -7,7 +7,7 @@ def test_evaluation_seam_coverage_reports_staged_fixtures_by_platform_boundary()
     assert [item.seam_id for item in seam_coverage] == [
         "task_execution",
         "retrieval",
-        "provider_policy",
+        "provider_execution",
         "safety_policy",
     ]
 
@@ -24,3 +24,12 @@ def test_evaluation_seam_coverage_reports_staged_fixtures_by_platform_boundary()
     assert retrieval.staged_fixture_count == 1
     assert retrieval.staged_case_count == 2
     assert retrieval.fixture_ids == ["retrieval_citation_examples"]
+
+    provider_execution = seam_coverage[2]
+    assert provider_execution.staged_fixture_count == 3
+    assert provider_execution.staged_case_count == 6
+    assert provider_execution.fixture_ids == [
+        "provider_policy_examples",
+        "provider_runtime_examples",
+        "provider_failure_mode_examples",
+    ]

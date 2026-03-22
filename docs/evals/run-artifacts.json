@@ -5,8 +5,8 @@
       "recorded_at": "2026-03-22T09:00:00Z",
       "status": "RECORDED",
       "manifest_version": "foundation.v1",
-      "staged_fixture_count": 6,
-      "staged_case_count": 12,
+      "staged_fixture_count": 8,
+      "staged_case_count": 16,
       "seam_coverage": [
         {
           "seam_id": "task_execution",
@@ -27,12 +27,14 @@
           "staged_case_count": 2
         },
         {
-          "seam_id": "provider_policy",
+          "seam_id": "provider_execution",
           "fixture_ids": [
-            "provider_policy_examples"
+            "provider_policy_examples",
+            "provider_runtime_examples",
+            "provider_failure_mode_examples"
           ],
-          "staged_fixture_count": 1,
-          "staged_case_count": 2
+          "staged_fixture_count": 3,
+          "staged_case_count": 6
         },
         {
           "seam_id": "safety_policy",
@@ -43,7 +45,7 @@
           "staged_case_count": 2
         }
       ],
-      "notes": "Baseline foundation-phase evaluation inventory snapshot recorded after the initial file-backed fixture estate reached full staged coverage."
+      "notes": "Baseline foundation-phase evaluation inventory snapshot recorded after provider runtime and failure-mode evidence fixtures were staged."
     },
     {
       "run_id": "foundation_eval_2026_03_21_001",
@@ -72,7 +74,7 @@
           "staged_case_count": 2
         },
         {
-          "seam_id": "provider_policy",
+          "seam_id": "provider_execution",
           "fixture_ids": [
             "provider_policy_examples"
           ],

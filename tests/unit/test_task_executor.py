@@ -1,6 +1,7 @@
 from typing import cast
 
 from fastapi import HTTPException
+from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
 from app.contracts.audit import AuditRecordResponse
@@ -214,3 +215,51 @@ def test_execute_task_refuses_low_support_knowledge_answer() -> None:
     assert response.result.structured_output["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT"
     assert response.result.structured_output["support_score"] < 0.75
     assert "Insufficient support" in response.result.message
+
+
+def test_execute_task_routes_allowlisted_task_through_live_provider(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_input_cost_per_1k_tokens = 0.01
+    settings.live_text_output_cost_per_1k_tokens = 0.03
+
+    monkeypatch.setattr(
+        "app.providers.openai_live_text_provider._post_openai_response",
+        lambda **_: {
+            "id": "resp_live_001",
+            "model": "gpt-5.4",
+            "output_text": "Live explanation response.",
+            "usage": {"input_tokens": 120, "output_tokens": 30, "total_tokens": 150},
+        },
+    )
+
+    response = execute_task(
+        _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
+    )
+
+    assert response.status == "COMPLETED"
+    assert response.audit.stubbed is False
+    assert response.audit.provider_mode == "openai"
+    assert response.result.message == "Live explanation response."
+    assert response.result.structured_output["provider_id"] == "text.openai"
+    assert response.result.structured_output["model_id"] == "gpt-5.4"
+    assert response.result.structured_output["provider_request_id"] == "resp_live_001"
+    assert response.result.structured_output["input_tokens"] == 120
+    assert response.result.structured_output["output_tokens"] == 30
+    assert response.result.structured_output["total_tokens"] == 150
+    assert response.result.structured_output["estimated_cost_usd"] == 0.0021
+    provider_evidence = next(
+        descriptor
+        for descriptor in response.evidence.descriptors
+        if descriptor.evidence_type == "provider_resolution"
+    )
+    assert provider_evidence.attributes["provider_id"] == "text.openai"
+    assert provider_evidence.attributes["model_id"] == "gpt-5.4"

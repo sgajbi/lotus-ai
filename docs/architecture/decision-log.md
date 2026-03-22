@@ -151,9 +151,10 @@ Why:
 
 Current posture:
 
-1. the gateway currently routes only to deterministic stub providers,
-2. provider inventory is visible through the provider catalog,
-3. live model execution remains disabled until safety, approval, and rollout controls mature.
+1. the gateway currently resolves execution through a small registered adapter seam,
+2. `disabled` and `stub` modes still route to the deterministic stub provider,
+3. an allowlisted OpenAI live-provider path now exists behind the same gateway,
+4. live model execution remains disabled by default unless rollout posture, credentials, and task-level allowlisting all permit it.
 
 ## Decision 11: Provider Modes Must Fail Explicitly
 
@@ -171,8 +172,66 @@ Why:
 Current posture:
 
 1. provider policy is inspectable through `/platform/providers/policy`,
-2. only `disabled` and `stub` modes are currently supported for text and embedding capabilities,
-3. unsupported modes are rejected with a service-unavailable response.
+2. `disabled`, `stub`, and `openai` are supported for text generation while embeddings remain `disabled` and `stub` only,
+3. provider policy now exposes selected adapter kind and structured rejection category,
+4. unsupported modes are rejected with a service-unavailable response.
+
+## Decision 11E: Provider Execution Controls Must Be Explicit Before Live Rollout
+
+Decision:
+
+`lotus-ai` models provider timeout, retry, and output-token controls explicitly in the provider
+execution contract before any live provider path is activated.
+
+Why:
+
+1. bank-grade rollout should not inherit opaque SDK defaults for execution bounds,
+2. provider evidence and audit posture need to preserve execution-control context,
+3. explicit controls make later live-provider hardening cleaner and easier to review.
+
+Current posture:
+
+1. provider execution requests carry timeout, retry, and output-token bounds,
+2. provider execution evidence preserves those controls when provider-style execution is used,
+3. foundation stub execution now reflects those bounded controls even before live rollout exists.
+
+## Decision 12: Task Runtime Path Semantics Should Be Centralized
+
+Decision:
+
+`lotus-ai` resolves task runtime execution-path semantics through a dedicated task-execution-path
+helper instead of encoding retrieval-versus-provider path logic only inside runtime-summary builders.
+
+Why:
+
+1. runtime posture should remain reviewable in one place,
+2. later live-provider rollout should not require scattered task-runtime conditionals,
+3. provider-backed and retrieval-backed task paths are different enough that the distinction should be explicit and reusable.
+
+Current posture:
+
+1. retrieval-backed task paths resolve to dedicated retrieval execution semantics,
+2. provider-backed tasks now resolve to stubbed, allowlisted-but-disabled, or blocked provider posture depending on current provider mode and rollout state,
+3. runtime-status builders now consume that shared task-path abstraction instead of re-encoding the routing split themselves.
+
+## Decision 11D: Provider Rollout State Must Be Separate From Supported Runtime Mode
+
+Decision:
+
+`lotus-ai` exposes live-provider rollout posture and live-provider configuration posture separately
+from supported provider runtime mode.
+
+Why:
+
+1. bank-grade rollout review must distinguish what the platform can execute today from what it is preparing to activate later,
+2. provider credentials and allowlist configuration must be inspectable without implying that live execution is already enabled,
+3. separating rollout posture from runtime mode reduces ambiguous configuration and hidden enablement risk.
+
+Current posture:
+
+1. provider catalog and provider policy expose text-generation rollout posture separately from runtime mode,
+2. activation readiness includes live-provider configuration validity and credential posture,
+3. invalid or partial live-provider configuration is surfaced explicitly before any live execution exists.
 
 ## Decision 11A: Provider Activation Readiness Should Be Exposed Before Live Rollout
 
@@ -189,7 +248,7 @@ Why:
 Current posture:
 
 1. `/platform/providers/activation-readiness` exposes whether provider execution is activatable today,
-2. the endpoint returns explicit blocking findings and a governed activation path,
+2. the endpoint returns explicit blocking findings plus an end-to-end activation path that references the provider catalog, policy, evidence, runbook, governance, and embedded runtime-status views,
 3. foundation phase remains not activatable until a separate provider rollout slice changes execution posture.
 
 ## Decision 11B: Provider Runbook Readiness Should Be Exposed As A Separate Operational Contract
@@ -207,7 +266,7 @@ Why:
 Current posture:
 
 1. `/platform/providers/runbook-readiness` exposes required provider operational readiness items,
-2. required runbook items remain not ready in foundation phase,
+2. required runbook items now explicitly include incident response and rollback readiness in addition to escalation, quota, and observability posture,
 3. live-provider activation should not be considered complete in future rollout slices without both technical and runbook readiness.
 
 ## Decision 11C: Provider Governance Review Should Have A Single Summary Surface
@@ -261,8 +320,9 @@ Why:
 Current posture:
 
 1. `/platform/providers/evidence-readiness` exposes required provider evidence items,
-2. required evidence items remain not ready in foundation phase,
-3. provider governance review now includes evidence posture as a first-class blocking area alongside technical and operational readiness.
+2. provider policy, runtime, and failure-mode fixture packs are now staged as governed evidence assets,
+3. provider evidence readiness now reflects a recorded provider regression baseline in addition to staged fixture coverage,
+4. provider governance review still remains blocked until live audit traceability and failover evidence are explicitly assembled.
 
 ## Decision 12: Safety Posture Must Be Inspectable
 
