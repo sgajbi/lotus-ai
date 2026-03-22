@@ -13,6 +13,7 @@ class RetrievalSourceInventorySummary:
     searchable_document_count: int
     staged_document_count: int
     chunk_count: int
+    embedding_record_count: int
     index_status: RetrievalIndexStatus
 
 
@@ -23,6 +24,7 @@ class RetrievalRuntimeInventorySummary:
     searchable_document_count: int
     staged_document_count: int
     chunk_count: int
+    embedding_record_count: int
     index_job_count: int
 
 
@@ -49,6 +51,7 @@ def summarize_retrieval_source_inventory(source_id: str) -> RetrievalSourceInven
         searchable_document_count=searchable_document_count,
         staged_document_count=len(documents) - searchable_document_count,
         chunk_count=chunk_count,
+        embedding_record_count=repository.count_embedding_records_for_source(source_id),
         index_status=index_status,
     )
 
@@ -79,5 +82,6 @@ def summarize_retrieval_runtime_inventory() -> RetrievalRuntimeInventorySummary:
             if document.promotion_status == RetrievalDocumentPromotionStatus.STAGED
         ),
         chunk_count=chunk_count,
+        embedding_record_count=repository.count_embedding_records(),
         index_job_count=len(jobs),
     )

@@ -41,6 +41,7 @@ The current execution posture is:
 - prompt lifecycle counting now lives alongside prompt runtime selection, so prompt status and prompt governance builders no longer recalculate active-prompt inventory independently,
 - evaluation fixture inventory counting now lives in a dedicated summary helper, so evaluation runtime status focuses on response assembly instead of recounting manifest data inline,
 - retrieval source/runtime inventory counting now lives in a dedicated helper, so retrieval status and job builders share the same derived counts instead of recomputing document and chunk totals independently,
+- retrieval chunk durability is now more explicit: staged chunks carry stable content checksums and retrieval runtime/job surfaces now report persisted embedding-record counts before live vector execution is enabled,
 - the provider gateway now makes the foundation-stage execution path explicit: supported modes are validated first, then all execution routes through the stub provider until a governed live path exists,
 - audit records now preserve task category, output label, and execution evidence, so post-execution inspection remains useful without replaying the original task request,
 - audit records now also preserve optional caller identity fields such as `requested_by` and `tenant_id`, so operator review and downstream support flows retain full caller traceability instead of only app-level correlation metadata,

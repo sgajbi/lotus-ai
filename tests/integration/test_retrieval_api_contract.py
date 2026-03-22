@@ -71,6 +71,7 @@ def test_retrieval_runtime_status_route(client: TestClient) -> None:
     assert body["retrieval_store_mode"] == "memory"
     assert body["retrieval_store_status"] == "READY"
     assert body["source_count"] >= 4
+    assert body["embedding_record_count"] >= 4
 
 
 def test_retrieval_execution_status_route(client: TestClient) -> None:
@@ -143,7 +144,10 @@ def test_retrieval_index_jobs_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert any(job["source_id"] == "lotus-platform-rfcs" for job in body["jobs"])
+    assert any(
+        job["source_id"] == "lotus-platform-rfcs" and job["embedding_record_count"] >= 2
+        for job in body["jobs"]
+    )
 
 
 def test_retrieval_indexing_policy_route(client: TestClient) -> None:
@@ -184,7 +188,11 @@ def test_retrieval_chunks_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["document_id"] == "lotus-platform-rfc-0069"
-    assert any(chunk["chunk_id"] == "chunk_rfc_0069_0001" for chunk in body["chunks"])
+    assert any(
+        chunk["chunk_id"] == "chunk_rfc_0069_0001"
+        and chunk["content_checksum"] == "sha256:chunk-rfc-0069-0001"
+        for chunk in body["chunks"]
+    )
 
 
 def test_retrieval_search_route_returns_catalog_only_hits_for_enabled_sources(

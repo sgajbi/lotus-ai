@@ -20,9 +20,15 @@ def test_sqlalchemy_retrieval_repository_returns_seeded_catalog(tmp_path: Path) 
         and document.promotion_status == "SEARCHABLE"
         for document in documents
     )
-    assert any(chunk.chunk_id == "chunk_rfc_0069_0001" for chunk in chunks)
+    assert any(
+        chunk.chunk_id == "chunk_rfc_0069_0001"
+        and chunk.content_checksum == "sha256:chunk-rfc-0069-0001"
+        for chunk in chunks
+    )
     assert job is not None
     assert job.source_id == "lotus-platform-rfcs"
+    assert job.embedding_record_count >= 2
+    assert repository.count_embedding_records() >= 4
 
 
 def test_sqlalchemy_retrieval_repository_returns_none_for_unknown_records(

@@ -46,6 +46,7 @@ def _build_job_descriptor(source_id: str) -> RetrievalIndexJobDescriptor:
         ),
         document_count=inventory.document_count,
         chunk_count=inventory.chunk_count,
+        embedding_record_count=inventory.embedding_record_count,
         message=(
             "No staged documents yet for this retrieval source."
             if inventory.document_count == 0
@@ -95,9 +96,9 @@ def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
                     RetrievalIndexJobStepDescriptor(
                         step_id=f"{job_id}.embedding_generation",
                         name="Embedding generation",
-                        stage=RetrievalPipelineStage.DOCUMENTED,
+                        stage=RetrievalPipelineStage.STAGED,
                         description=(
-                            "Embedding generation is designed but not yet enabled in runtime execution."
+                            "Durable embedding records are now staged in persistence, but live generation is not enabled in runtime execution."
                         ),
                     ),
                     RetrievalIndexJobStepDescriptor(
@@ -131,6 +132,7 @@ def build_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
         notes=[
             "Indexing remains staged until retrieval execution and embedding generation are enabled.",
             "Approved source curation is required before any document enters the retrieval corpus.",
+            "Chunk durability fields and embedding-record schema are persisted before live vector execution is introduced.",
             "PostgreSQL with pgvector remains the first vector-store architecture for lotus-ai.",
         ],
     )
@@ -144,7 +146,10 @@ def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
         inventory = RetrievalRuntimeInventorySummary(
             source_count=0,
             document_count=0,
+            searchable_document_count=0,
+            staged_document_count=0,
             chunk_count=0,
+            embedding_record_count=0,
             index_job_count=0,
         )
     return RetrievalRuntimeStatusResponse(
@@ -159,5 +164,6 @@ def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
         source_count=inventory.source_count,
         document_count=inventory.document_count,
         chunk_count=inventory.chunk_count,
+        embedding_record_count=inventory.embedding_record_count,
         index_job_count=inventory.index_job_count,
     )

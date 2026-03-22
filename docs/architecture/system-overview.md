@@ -134,7 +134,7 @@ Evaluation runtime services also use a dedicated inventory-summary helper now, s
 case-count derivation is isolated from the final runtime-status response assembly.
 
 Retrieval services also use a dedicated inventory-summary helper now, so source-level and
-runtime-level document and chunk counts are derived in one place instead of being recomputed
+runtime-level document, chunk, and embedding-record counts are derived in one place instead of being recomputed
 independently by retrieval status and job builders.
 
 The provider gateway also stays intentionally explicit in foundation phase: supported provider
@@ -167,6 +167,10 @@ governance surface rather than inferred from raw source rows.
 Per-document rollout posture is also exposed through `/platform/retrieval/document-governance`,
 so searchable versus staged retrieval scope is visible directly instead of being inferred only
 from source-level enablement.
+
+Durable retrieval chunk posture is also now more explicit: staged chunks carry persisted content
+checksums, and embedding-record counts surface through retrieval runtime and job status even
+before live embedding generation is enabled.
 
 `knowledge_search.v1` now uses that same bounded retrieval path directly, so the task
 execution surface has a real governed knowledge-search capability instead of a generic

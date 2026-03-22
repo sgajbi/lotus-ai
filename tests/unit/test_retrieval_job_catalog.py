@@ -10,7 +10,10 @@ def test_get_retrieval_job_catalog_returns_known_jobs() -> None:
     response = get_retrieval_job_catalog()
 
     assert response.service == "lotus-ai"
-    assert any(job.source_id == "lotus-platform-rfcs" for job in response.jobs)
+    assert any(
+        job.source_id == "lotus-platform-rfcs" and job.embedding_record_count >= 2
+        for job in response.jobs
+    )
 
 
 def test_get_chunks_for_document_returns_staged_chunks() -> None:
@@ -18,7 +21,11 @@ def test_get_chunks_for_document_returns_staged_chunks() -> None:
 
     assert response.document_id == "lotus-platform-rfc-0069"
     assert response.source_id == "lotus-platform-rfcs"
-    assert any(chunk.chunk_id == "chunk_rfc_0069_0001" for chunk in response.chunks)
+    assert any(
+        chunk.chunk_id == "chunk_rfc_0069_0001"
+        and chunk.content_checksum == "sha256:chunk-rfc-0069-0001"
+        for chunk in response.chunks
+    )
 
 
 def test_get_retrieval_job_detail_returns_staged_steps() -> None:

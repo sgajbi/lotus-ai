@@ -37,6 +37,11 @@ class RetrievalJobStatus(str, Enum):
     COMPLETED = "COMPLETED"
 
 
+class RetrievalEmbeddingStatus(str, Enum):
+    STAGED = "STAGED"
+    PERSISTED = "PERSISTED"
+
+
 class RetrievalPipelineStage(str, Enum):
     DOCUMENTED = "DOCUMENTED"
     STAGED = "STAGED"
@@ -145,6 +150,9 @@ class RetrievalChunkDescriptor(BaseModel):
     source_id: str = Field(description="Parent retrieval source identifier.")
     chunk_order: int = Field(description="Stable chunk order within the document.")
     token_estimate: int = Field(description="Estimated token count for the chunk.")
+    content_checksum: str = Field(
+        description="Stable checksum for the persisted chunk contents."
+    )
     preview: str = Field(description="Short preview of the chunk contents.")
     index_status: RetrievalIndexStatus = Field(description="Indexing status for the chunk.")
 
@@ -188,6 +196,9 @@ class RetrievalIndexJobDescriptor(BaseModel):
     status: RetrievalJobStatus = Field(description="Current status for the indexing job.")
     document_count: int = Field(description="Number of staged documents covered by the job.")
     chunk_count: int = Field(description="Number of staged chunks covered by the job.")
+    embedding_record_count: int = Field(
+        description="Number of persisted embedding records currently associated with the job scope."
+    )
     message: str = Field(description="Human-readable job status message.")
 
 
@@ -256,6 +267,9 @@ class RetrievalRuntimeStatusResponse(BaseModel):
     )
     chunk_count: int = Field(
         description="Number of retrieval chunks visible through the active store."
+    )
+    embedding_record_count: int = Field(
+        description="Number of retrieval embedding records visible through the active store."
     )
     index_job_count: int = Field(
         description="Number of retrieval indexing jobs visible through the active store."

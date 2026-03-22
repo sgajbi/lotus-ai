@@ -59,11 +59,12 @@ What exists today:
 
 1. approved sources are registered explicitly,
 2. documents are inventoried per source with explicit promotion posture,
-3. staged chunks are visible per document,
-4. indexing jobs and indexing policy are exposed through API contracts,
-5. retrieval metadata is served through a repository seam rather than hard-coded module state,
-6. retrieval search now flows through an explicit execution gateway before any live backend is introduced,
-7. retrieval execution status is exposed separately from retrieval catalog status.
+3. staged chunks are visible per document with stable content checksums,
+4. durable embedding-record schema now exists beside staged chunks,
+5. indexing jobs and indexing policy are exposed through API contracts,
+6. retrieval metadata is served through a repository seam rather than hard-coded module state,
+7. retrieval search now flows through an explicit execution gateway before any live backend is introduced,
+8. retrieval execution status is exposed separately from retrieval catalog status.
 
 What does not exist yet:
 
@@ -107,6 +108,9 @@ The current retrieval API exposes:
 11. indexing job catalog and job detail,
 12. document inventory,
 13. chunk inventory.
+
+Retrieval runtime status and job catalog now also expose embedding-record counts so operators can
+see whether the durable schema is populated before live indexing is introduced.
 
 The search endpoint remains governed. In foundation phase it can now return bounded
 catalog-only hits from a small enabled staged-source subset, while live vector retrieval

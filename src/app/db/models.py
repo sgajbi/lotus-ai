@@ -72,10 +72,33 @@ class RetrievalChunkModel(Base):
     )
     chunk_order: Mapped[int] = mapped_column(Integer, nullable=False)
     token_estimate: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_checksum: Mapped[str] = mapped_column(String(128), nullable=False)
     preview: Mapped[str] = mapped_column(Text, nullable=False)
     index_status: Mapped[str] = mapped_column(String(64), nullable=False)
 
     document: Mapped["RetrievalDocumentModel"] = relationship(back_populates="chunks")
+    embeddings: Mapped[list["RetrievalChunkEmbeddingModel"]] = relationship(back_populates="chunk")
+
+
+class RetrievalChunkEmbeddingModel(Base):
+    __tablename__ = "retrieval_chunk_embeddings"
+
+    embedding_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    chunk_id: Mapped[str] = mapped_column(
+        ForeignKey("retrieval_chunks.chunk_id"), nullable=False, index=True
+    )
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey("retrieval_documents.document_id"), nullable=False, index=True
+    )
+    source_id: Mapped[str] = mapped_column(
+        ForeignKey("retrieval_sources.source_id"), nullable=False, index=True
+    )
+    embedding_model: Mapped[str] = mapped_column(String(128), nullable=False)
+    embedding_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    vector_dimensions: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_checksum: Mapped[str] = mapped_column(String(128), nullable=False)
+
+    chunk: Mapped["RetrievalChunkModel"] = relationship(back_populates="embeddings")
 
 
 class RetrievalIndexJobModel(Base):

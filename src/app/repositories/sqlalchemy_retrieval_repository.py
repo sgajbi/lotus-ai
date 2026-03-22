@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import Select, create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.contracts.retrieval import (
@@ -17,6 +17,7 @@ from app.contracts.retrieval import (
 )
 from app.db.models import (
     RetrievalChunkModel,
+    RetrievalChunkEmbeddingModel,
     RetrievalDocumentModel,
     RetrievalIndexJobModel,
     RetrievalSourceModel,
@@ -72,6 +73,21 @@ class SqlAlchemyRetrievalRepository:
             ).all()
             return [self._to_chunk_descriptor(chunk) for chunk in chunks]
 
+    def count_embedding_records(self) -> int:
+        with self._session_factory() as session:
+            return self._count_rows(
+                session, select(func.count()).select_from(RetrievalChunkEmbeddingModel)
+            )
+
+    def count_embedding_records_for_source(self, source_id: str) -> int:
+        with self._session_factory() as session:
+            return self._count_rows(
+                session,
+                select(func.count())
+                .select_from(RetrievalChunkEmbeddingModel)
+                .where(RetrievalChunkEmbeddingModel.source_id == source_id),
+            )
+
     def list_index_jobs(self) -> list[RetrievalIndexJobDescriptor]:
         with self._session_factory() as session:
             jobs = session.scalars(
@@ -97,12 +113,11 @@ class SqlAlchemyRetrievalRepository:
     def _to_document_descriptor(
         self, session: Session, model: RetrievalDocumentModel
     ) -> RetrievalDocumentDescriptor:
-        chunk_count = len(
-            session.scalars(
-                select(RetrievalChunkModel.chunk_id).where(
-                    RetrievalChunkModel.document_id == model.document_id
-                )
-            ).all()
+        chunk_count = self._count_rows(
+            session,
+            select(func.count())
+            .select_from(RetrievalChunkModel)
+            .where(RetrievalChunkModel.document_id == model.document_id),
         )
         return RetrievalDocumentDescriptor(
             document_id=model.document_id,
@@ -121,6 +136,7 @@ class SqlAlchemyRetrievalRepository:
             source_id=model.source_id,
             chunk_order=model.chunk_order,
             token_estimate=model.token_estimate,
+            content_checksum=model.content_checksum,
             preview=model.preview,
             index_status=RetrievalIndexStatus(model.index_status),
         )
@@ -128,19 +144,17 @@ class SqlAlchemyRetrievalRepository:
     def _to_job_descriptor(
         self, session: Session, model: RetrievalIndexJobModel
     ) -> RetrievalIndexJobDescriptor:
-        document_count = len(
-            session.scalars(
-                select(RetrievalDocumentModel.document_id).where(
-                    RetrievalDocumentModel.source_id == model.source_id
-                )
-            ).all()
+        document_count = self._count_rows(
+            session,
+            select(func.count())
+            .select_from(RetrievalDocumentModel)
+            .where(RetrievalDocumentModel.source_id == model.source_id),
         )
-        chunk_count = len(
-            session.scalars(
-                select(RetrievalChunkModel.chunk_id).where(
-                    RetrievalChunkModel.source_id == model.source_id
-                )
-            ).all()
+        chunk_count = self._count_rows(
+            session,
+            select(func.count())
+            .select_from(RetrievalChunkModel)
+            .where(RetrievalChunkModel.source_id == model.source_id),
         )
         return RetrievalIndexJobDescriptor(
             job_id=model.job_id,
@@ -148,8 +162,17 @@ class SqlAlchemyRetrievalRepository:
             status=RetrievalJobStatus(model.status),
             document_count=document_count,
             chunk_count=chunk_count,
+            embedding_record_count=self._count_rows(
+                session,
+                select(func.count())
+                .select_from(RetrievalChunkEmbeddingModel)
+                .where(RetrievalChunkEmbeddingModel.source_id == model.source_id),
+            ),
             message=model.message,
         )
+
+    def _count_rows(self, session: Session, statement: Select[tuple[int]]) -> int:
+        return int(session.scalar(statement) or 0)
 
     def _ensure_sqlite_parent_directory(self) -> None:
         prefix = "sqlite:///"

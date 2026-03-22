@@ -13,6 +13,7 @@ def test_summarize_retrieval_source_inventory_reports_source_counts() -> None:
     assert summary.searchable_document_count >= 1
     assert summary.staged_document_count == 0
     assert summary.chunk_count >= 1
+    assert summary.embedding_record_count >= 2
     assert summary.index_status in {
         RetrievalIndexStatus.STAGED,
         RetrievalIndexStatus.INDEXED,
@@ -27,4 +28,5 @@ def test_summarize_retrieval_runtime_inventory_reports_seeded_counts() -> None:
     assert summary.searchable_document_count >= 4
     assert summary.staged_document_count >= 1
     assert summary.chunk_count >= 4
+    assert summary.embedding_record_count >= 4
     assert summary.index_job_count >= 4

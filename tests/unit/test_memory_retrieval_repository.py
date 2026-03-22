@@ -17,7 +17,13 @@ def test_memory_retrieval_repository_returns_seeded_document_and_chunks() -> Non
 
     assert document is not None
     assert document.source_id == "lotus-platform-rfcs"
-    assert any(chunk.chunk_id == "chunk_rfc_0069_0001" for chunk in chunks)
+    assert any(
+        chunk.chunk_id == "chunk_rfc_0069_0001"
+        and chunk.content_checksum == "sha256:chunk-rfc-0069-0001"
+        for chunk in chunks
+    )
+    assert repository.count_embedding_records() >= 4
+    assert repository.count_embedding_records_for_source("lotus-platform-rfcs") >= 2
 
 
 def test_memory_retrieval_repository_returns_none_or_empty_for_unknown_records() -> None:
@@ -39,3 +45,4 @@ def test_memory_retrieval_repository_marks_empty_sources_as_pending_index_jobs()
     assert job.source_id == "lotus-openapi-derived"
     assert job.status == "PENDING"
     assert job.document_count == 0
+    assert job.embedding_record_count == 0

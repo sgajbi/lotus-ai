@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
+    RetrievalEmbeddingStatus,
     RetrievalDocumentDescriptor,
     RetrievalDocumentPromotionStatus,
     RetrievalIndexJobDescriptor,
@@ -105,6 +106,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     source_id="lotus-platform-rfcs",
                     chunk_order=1,
                     token_estimate=180,
+                    content_checksum="sha256:chunk-rfc-0068-0001",
                     preview="Move ownership of shared platform infrastructure to lotus-platform.",
                     index_status=RetrievalIndexStatus.STAGED,
                 )
@@ -116,6 +118,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     source_id="lotus-platform-rfcs",
                     chunk_order=1,
                     token_estimate=210,
+                    content_checksum="sha256:chunk-rfc-0069-0001",
                     preview="Introduce lotus-ai as a dedicated shared AI platform service for Lotus applications.",
                     index_status=RetrievalIndexStatus.STAGED,
                 )
@@ -127,6 +130,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     source_id="lotus-platform-standards",
                     chunk_order=1,
                     token_estimate=165,
+                    content_checksum="sha256:chunk-obs-0001",
                     preview="Cross-cutting governance for this stack is defined in Platform Observability Standards.",
                     index_status=RetrievalIndexStatus.STAGED,
                 )
@@ -138,6 +142,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     source_id="lotus-ai-architecture",
                     chunk_order=1,
                     token_estimate=170,
+                    content_checksum="sha256:chunk-system-overview-0001",
                     preview="lotus-ai is the shared AI platform service for Lotus.",
                     index_status=RetrievalIndexStatus.STAGED,
                 )
@@ -149,10 +154,33 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     source_id="lotus-ai-architecture",
                     chunk_order=1,
                     token_estimate=190,
+                    content_checksum="sha256:chunk-retrieval-guide-0001",
                     preview="The first vector-store architecture for lotus-ai is PostgreSQL plus pgvector.",
                     index_status=RetrievalIndexStatus.STAGED,
                 )
             ],
+        }
+        self._embedding_records: dict[str, dict[str, object]] = {
+            "emb_chunk_rfc_0068_0001": {
+                "chunk_id": "chunk_rfc_0068_0001",
+                "source_id": "lotus-platform-rfcs",
+                "status": RetrievalEmbeddingStatus.STAGED,
+            },
+            "emb_chunk_rfc_0069_0001": {
+                "chunk_id": "chunk_rfc_0069_0001",
+                "source_id": "lotus-platform-rfcs",
+                "status": RetrievalEmbeddingStatus.STAGED,
+            },
+            "emb_chunk_system_overview_0001": {
+                "chunk_id": "chunk_system_overview_0001",
+                "source_id": "lotus-ai-architecture",
+                "status": RetrievalEmbeddingStatus.STAGED,
+            },
+            "emb_chunk_retrieval_guide_0001": {
+                "chunk_id": "chunk_retrieval_guide_0001",
+                "source_id": "lotus-ai-architecture",
+                "status": RetrievalEmbeddingStatus.STAGED,
+            },
         }
 
     def list_sources(self) -> list[RetrievalSourceDescriptor]:
@@ -180,6 +208,16 @@ class InMemoryRetrievalRepository(RetrievalRepository):
     def list_chunks_for_document(self, document_id: str) -> list[RetrievalChunkDescriptor]:
         return deepcopy(self._chunks.get(document_id, []))
 
+    def count_embedding_records(self) -> int:
+        return len(self._embedding_records)
+
+    def count_embedding_records_for_source(self, source_id: str) -> int:
+        return sum(
+            1
+            for record in self._embedding_records.values()
+            if record["source_id"] == source_id
+        )
+
     def list_index_jobs(self) -> list[RetrievalIndexJobDescriptor]:
         jobs: list[RetrievalIndexJobDescriptor] = []
         for source in self._sources:
@@ -202,6 +240,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     status=status,
                     document_count=len(documents),
                     chunk_count=chunk_count,
+                    embedding_record_count=self.count_embedding_records_for_source(source.source_id),
                     message=message,
                 )
             )
