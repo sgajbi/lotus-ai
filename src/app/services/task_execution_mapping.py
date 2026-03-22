@@ -10,9 +10,10 @@ from app.contracts.tasks import (
     TaskExecutionStatus,
 )
 from app.services.execution_evidence import build_execution_evidence
+from app.services.task_execution_models import ResolvedTaskExecution, TaskExecutionContext
 
 if TYPE_CHECKING:
-    from app.services.task_execution_pipeline import ResolvedTaskExecution, TaskExecutionContext
+    pass
 
 
 def map_task_execution_response(

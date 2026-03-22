@@ -1,50 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime
-from uuid import uuid4
-
-from app.contracts.prompts import PromptDescriptor
-from app.contracts.providers import ProviderExecutionResponse
-from app.contracts.safety import SafetyExecutionOutcome
-from app.contracts.tasks import CapabilityDescriptor, TaskExecutionRequest, TaskExecutionResponse
+from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
 from app.services.audit_store import get_audit_store
-from app.services.task_capability_validator import validate_task_capability
 from app.services.provider_request_builder import build_provider_execution_request
+from app.services.task_execution_context_builder import build_task_execution_context
 from app.services.task_execution_mapping import map_audit_record, map_task_execution_response
-from app.services.prompt_runtime import resolve_runtime_prompt_or_raise
 from app.services.provider_gateway import execute_text_generation
-from app.services.safety_runtime import build_safety_execution_outcome
-
-
-@dataclass(frozen=True)
-class TaskExecutionContext:
-    request: TaskExecutionRequest
-    capability: CapabilityDescriptor
-    prompt: PromptDescriptor
-    safety_outcome: SafetyExecutionOutcome
-    request_id: str
-    generated_at: str
-
-
-@dataclass(frozen=True)
-class ResolvedTaskExecution:
-    context: TaskExecutionContext
-    provider_execution: ProviderExecutionResponse
+from app.services.task_execution_models import ResolvedTaskExecution, TaskExecutionContext
 
 
 def validate_task_request(request: TaskExecutionRequest) -> TaskExecutionContext:
-    capability = validate_task_capability(request)
-    resolved_prompt = resolve_runtime_prompt_or_raise(request.task_id)
-    safety_outcome = build_safety_execution_outcome(capability.output_label)
-    return TaskExecutionContext(
-        request=request,
-        capability=capability,
-        prompt=resolved_prompt.prompt,
-        safety_outcome=safety_outcome,
-        request_id=f"air_{uuid4().hex}",
-        generated_at=datetime.now(UTC).isoformat(),
-    )
+    return build_task_execution_context(request)
 
 
 def resolve_task_execution(

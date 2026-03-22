@@ -27,6 +27,7 @@ The current execution posture is:
 - response and audit-record assembly for task execution now live in a dedicated mapper layer instead of being embedded in pipeline orchestration,
 - provider execution requests are now assembled through a dedicated builder instead of inline payload construction,
 - capability and expected-output validation now live in a dedicated validator instead of being embedded in task context construction,
+- runtime-context construction and shared execution models now live in dedicated modules rather than inside the pipeline service,
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,

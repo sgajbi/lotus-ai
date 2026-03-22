@@ -89,6 +89,10 @@ assembles provider payloads inline.
 Capability and output-label validation are also isolated in a dedicated validator so the runtime
 pipeline no longer mixes policy enforcement with context construction.
 
+Runtime-context construction now also lives in a dedicated builder, and the shared execution
+context models are isolated in their own module so pipeline, mapping, and provider-request
+services can depend on the same runtime types without import coupling.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

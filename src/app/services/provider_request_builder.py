@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from app.contracts.providers import ProviderExecutionRequest
-
-if TYPE_CHECKING:
-    from app.services.task_execution_pipeline import TaskExecutionContext
+from app.services.task_execution_models import TaskExecutionContext
 
 
 def build_provider_execution_request(
