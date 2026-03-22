@@ -7,11 +7,13 @@ from app.services.provider_configuration_status import (
     build_text_generation_configuration_status,
 )
 from app.services.provider_live_execution_state import build_provider_live_execution_state
+from app.services.provider_quota_policy import build_provider_quota_policy
 from app.services.provider_rollout_posture import build_provider_rollout_posture
 
 
 def build_provider_activation_readiness() -> ProviderActivationReadinessResponse:
     configuration = build_text_generation_configuration_status()
+    quota_policy = build_provider_quota_policy()
     rollout_posture = build_provider_rollout_posture()
     live_execution_state = build_provider_live_execution_state()
     blocking_findings = [
@@ -23,11 +25,15 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
         )
     if not configuration.configuration_valid:
         blocking_findings.extend(configuration.findings)
+    if quota_policy.quota_enforced and not quota_policy.configuration_valid:
+        blocking_findings.extend(quota_policy.findings)
     elif configuration.credential_status == ProviderCredentialStatus.NOT_CONFIGURED:
         blocking_findings.append(
             "No live-provider credentials are configured for any future allowlisted text-generation path."
         )
-    if live_execution_state.live_execution_enabled:
+    if live_execution_state.live_execution_enabled and (
+        not quota_policy.quota_enforced or quota_policy.configuration_valid
+    ):
         activation_ready = True
     else:
         activation_ready = False
@@ -36,6 +42,7 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
         blocking_findings.append(rollout_posture.notes)
     activation_path = [
         "Review `/platform/providers` and `/platform/providers/policy` to confirm the provider catalog, adapter kind, runtime mode, and selected execution path match the intended rollout posture.",
+        "Review `/platform/providers/quota-policy` to confirm live-provider quota enforcement scope, matching order, and blocking posture before activation expands.",
         "Verify allowlisted rollout configuration and credential posture through `/platform/providers/activation-readiness` before any live mode is considered.",
         "Confirm provider evaluation and failure-mode evidence through `/platform/providers/evidence-readiness`.",
         "Confirm on-call, quota-handling, rollback, and observability readiness through `/platform/providers/runbook-readiness`.",

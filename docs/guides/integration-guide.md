@@ -8,9 +8,10 @@ Before integrating a Lotus app with `lotus-ai`, upstream teams should inspect:
 2. `GET /platform/capabilities` for currently exposed task contracts,
 3. `GET /platform/providers` for the current provider execution posture,
 4. `GET /platform/providers/policy` for supported provider modes and rejection semantics,
-5. `GET /platform/safety/policy` for task-level output-label and redaction posture,
-6. `GET /platform/safety/runtime-status` for current enforced-versus-documented safety controls,
-7. `GET /platform/retrieval/runtime-status` for retrieval-specific persistence and corpus posture when retrieval features are relevant.
+5. `GET /platform/providers/quota-policy` for configured live-provider quota scopes and typed configuration findings,
+6. `GET /platform/safety/policy` for task-level output-label and redaction posture,
+7. `GET /platform/safety/runtime-status` for current enforced-versus-documented safety controls,
+8. `GET /platform/retrieval/runtime-status` for retrieval-specific persistence and corpus posture when retrieval features are relevant.
 
 This keeps downstream integration decisions grounded in actual runtime capability rather than assumptions.
 

@@ -8,6 +8,7 @@ from app.contracts.providers import (
     ProviderEvidenceReadinessResponse,
     ProviderGovernanceStatusResponse,
     ProviderPolicyResponse,
+    ProviderQuotaPolicyResponse,
     ProviderRunbookReadinessResponse,
 )
 from app.services.provider_activation_readiness import build_provider_activation_readiness
@@ -15,6 +16,7 @@ from app.services.provider_catalog import build_provider_catalog
 from app.services.provider_evidence_readiness import build_provider_evidence_readiness
 from app.services.provider_governance_status import build_provider_governance_status
 from app.services.provider_policy import build_provider_policy
+from app.services.provider_quota_policy import build_provider_quota_policy
 from app.services.provider_runbook_readiness import build_provider_runbook_readiness
 
 router = APIRouter(prefix="/platform/providers", tags=["platform"])
@@ -54,6 +56,24 @@ async def get_provider_catalog_route() -> ProviderCatalogResponse:
 )
 async def get_provider_policy_route() -> ProviderPolicyResponse:
     return build_provider_policy()
+
+
+@router.get(
+    "/quota-policy",
+    response_model=ProviderQuotaPolicyResponse,
+    operation_id="getProviderQuotaPolicy",
+    summary="Get lotus-ai provider quota policy",
+    description=(
+        "Returns the governed quota posture for lotus-ai live text-generation execution, "
+        "including configured task, caller, tenant, and default quota scopes."
+    ),
+    responses={
+        200: {"description": "Provider quota policy returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_quota_policy_route() -> ProviderQuotaPolicyResponse:
+    return build_provider_quota_policy()
 
 
 @router.get(

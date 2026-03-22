@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     live_text_api_base: str = "https://api.openai.com/v1"
     live_text_input_cost_per_1k_tokens: float | None = None
     live_text_output_cost_per_1k_tokens: float | None = None
+    live_text_quota_enforced: bool = False
+    live_text_default_quota_limit: int | None = None
+    live_text_task_quota_limits: str = ""
+    live_text_caller_quota_limits: str = ""
+    live_text_tenant_quota_limits: str = ""
     provider_timeout_ms: int = 4000
     provider_retry_limit: int = 0
     provider_max_output_tokens: int = 512

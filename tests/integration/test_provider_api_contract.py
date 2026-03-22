@@ -36,6 +36,19 @@ def test_provider_policy_route(client: TestClient) -> None:
     assert text_policy["allowed_modes"] == ["disabled", "stub", "openai"]
 
 
+def test_provider_quota_policy_route(client: TestClient) -> None:
+    response = client.get("/platform/providers/quota-policy")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["provider_mode"] == "disabled"
+    assert body["quota_enforced"] is False
+    assert body["configuration_valid"] is True
+    assert body["matching_order"] == ["TENANT", "CALLER_APP", "TASK", "DEFAULT"]
+    assert body["quotas"] == []
+
+
 def test_provider_activation_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/providers/activation-readiness")
 
@@ -48,7 +61,8 @@ def test_provider_activation_readiness_route(client: TestClient) -> None:
     assert body["text_generation_configuration"]["credential_status"] == "NOT_CONFIGURED"
     assert body["activation_ready"] is False
     assert len(body["blocking_findings"]) == 4
-    assert len(body["activation_path"]) == 5
+    assert len(body["activation_path"]) == 6
+    assert "/platform/providers/quota-policy" in body["activation_path"][1]
     assert "/platform/providers/governance-status" in body["activation_path"][-1]
 
 

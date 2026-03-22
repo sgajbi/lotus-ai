@@ -32,7 +32,9 @@ class ProviderFailureCategory(str, Enum):
     LIVE_EXECUTION_NOT_ENABLED = "LIVE_EXECUTION_NOT_ENABLED"
     PROVIDER_NOT_REGISTERED = "PROVIDER_NOT_REGISTERED"
     INVALID_LIVE_CONFIGURATION = "INVALID_LIVE_CONFIGURATION"
+    INVALID_QUOTA_CONFIGURATION = "INVALID_QUOTA_CONFIGURATION"
     TASK_NOT_ALLOWLISTED = "TASK_NOT_ALLOWLISTED"
+    QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
     PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
     PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"
     PROVIDER_UPSTREAM_ERROR = "PROVIDER_UPSTREAM_ERROR"
@@ -50,6 +52,54 @@ class ProviderCredentialStatus(str, Enum):
     NOT_CONFIGURED = "NOT_CONFIGURED"
     CONFIGURED = "CONFIGURED"
     INVALID = "INVALID"
+
+
+class ProviderQuotaScope(str, Enum):
+    DEFAULT = "DEFAULT"
+    TASK = "TASK"
+    CALLER_APP = "CALLER_APP"
+    TENANT = "TENANT"
+
+
+class ProviderQuotaDescriptor(BaseModel):
+    scope: ProviderQuotaScope = Field(
+        description="Quota scope this policy entry applies to."
+    )
+    scope_key: str = Field(
+        description="Stable identifier for the quota scope, or `global` for the default scope."
+    )
+    request_limit: int = Field(
+        description="Maximum accepted live-provider execution requests allowed for this scope."
+    )
+    current_request_count: int = Field(
+        description="Current in-process accepted request count observed for this scope."
+    )
+    remaining_request_count: int = Field(
+        description="Remaining accepted request count before this scope is blocked."
+    )
+    notes: str = Field(description="Human-readable explanation of the quota scope semantics.")
+
+
+class ProviderQuotaPolicyResponse(BaseModel):
+    service: str = Field(description="Service name emitting the provider quota policy view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    provider_mode: str = Field(description="Configured text-generation provider mode.")
+    quota_enforced: bool = Field(
+        description="Whether live text-generation quota enforcement is currently enabled."
+    )
+    configuration_valid: bool = Field(
+        description="Whether the configured provider quota posture is internally consistent."
+    )
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable findings describing the current provider quota posture.",
+    )
+    matching_order: list[ProviderQuotaScope] = Field(
+        description="Ordered list of quota scopes evaluated for a live-provider execution request."
+    )
+    quotas: list[ProviderQuotaDescriptor] = Field(
+        description="Configured live-provider quota entries and their current in-process usage."
+    )
 
 
 class ProviderConfigurationStatusDescriptor(BaseModel):
@@ -161,6 +211,14 @@ class ProviderPolicyResponse(BaseModel):
 class ProviderExecutionRequest(BaseModel):
     task_id: str = Field(description="Bounded lotus-ai task identifier being executed.")
     caller_app: str = Field(description="Calling Lotus application or platform component.")
+    requested_by: str | None = Field(
+        default=None,
+        description="Optional human or system identity associated with the provider request.",
+    )
+    tenant_id: str | None = Field(
+        default=None,
+        description="Optional tenant or environment ownership marker for the provider request.",
+    )
     prompt_version: str = Field(description="Resolved prompt version for this execution.")
     system_instructions: str = Field(
         description="Resolved system instructions for the executing task prompt."

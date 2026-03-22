@@ -233,6 +233,25 @@ Current posture:
 2. activation readiness includes live-provider configuration validity and credential posture,
 3. invalid or partial live-provider configuration is surfaced explicitly before any live execution exists.
 
+## Decision 11F: Provider Quota Posture Must Be Explicit Before Broader Live Rollout
+
+Decision:
+
+`lotus-ai` exposes provider quota posture as a first-class contract and enforces quota overflow
+explicitly in the live provider gateway.
+
+Why:
+
+1. bank-grade provider activation should not rely on undocumented in-process counters or hidden request caps,
+2. task, caller-app, and tenant-aware quota posture needs its own inspection surface separate from rollout configuration,
+3. malformed quota configuration must fail clearly rather than degrading silently into unrestricted live execution.
+
+Current posture:
+
+1. `/platform/providers/quota-policy` exposes configured task, caller-app, tenant, and default quota scopes,
+2. live-provider execution now carries requester and tenant identity into the provider seam so quota evaluation matches real caller context,
+3. live-provider execution returns explicit quota-configuration and quota-exceeded failure categories instead of silently falling back.
+
 ## Decision 11A: Provider Activation Readiness Should Be Exposed Before Live Rollout
 
 Decision:

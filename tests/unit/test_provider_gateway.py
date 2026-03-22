@@ -15,6 +15,8 @@ def _request(**overrides: object) -> ProviderExecutionRequest:
     payload: dict[str, object] = {
         "task_id": "explain.v1",
         "caller_app": "lotus-manage",
+        "requested_by": "ops.user@lotus",
+        "tenant_id": "tenant-sg-001",
         "prompt_version": "foundation.explain.v1",
         "system_instructions": "Explain structured outputs conservatively.",
         "output_contract_notes": "Return explanation only. Avoid unsupported recommendations.",
@@ -63,6 +65,57 @@ def test_execute_text_generation_rejects_blocked_live_provider_mode() -> None:
     assert "LIVE_EXECUTION_NOT_ENABLED" in str(exc_info.value.detail)
 
     settings.provider_mode = "disabled"
+
+
+def test_execute_text_generation_rejects_live_provider_when_quota_is_exceeded() -> None:
+    class _LiveAdapter:
+        def execute(self, request: ProviderExecutionRequest) -> object:
+            return type(
+                "Response",
+                (),
+                {
+                    "provider_id": "text.openai",
+                    "provider_mode": "openai",
+                    "adapter_kind": ProviderAdapterKind.OPENAI_LIVE,
+                    "failure_category": None,
+                    "timeout_ms": request.timeout_ms,
+                    "retry_count": 0,
+                    "max_output_tokens": request.max_output_tokens,
+                    "model_id": "gpt-5.4",
+                    "provider_request_id": "req_quota_1",
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                    "estimated_cost_usd": 0.01,
+                    "stubbed": False,
+                    "message": "live response",
+                    "structured_output": {},
+                },
+            )()
+
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_quota_enforced = True
+    settings.live_text_task_quota_limits = "explain.v1=1"
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        "app.services.provider_gateway.resolve_text_generation_adapter",
+        lambda mode: _LiveAdapter(),
+    )
+
+    first_response = execute_text_generation(_request())
+    assert first_response.provider_id == "text.openai"
+
+    with pytest.raises(HTTPException) as exc_info:
+        execute_text_generation(_request())
+
+    assert exc_info.value.status_code == 503
+    assert "QUOTA_EXCEEDED" in str(exc_info.value.detail)
+    monkeypatch.undo()
 
 
 def test_execute_text_generation_routes_stub_mode_through_stub_provider() -> None:
