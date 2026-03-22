@@ -27,6 +27,10 @@ router = APIRouter(prefix="/platform/retrieval", tags=["retrieval"])
         "Returns the approved retrieval sources known to lotus-ai, together with the current "
         "retrieval mode and planned vector-store strategy."
     ),
+    responses={
+        200: {"description": "Retrieval source catalog returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
 )
 async def list_retrieval_sources_route() -> RetrievalSourceCatalogResponse:
     return list_retrieval_sources()
@@ -40,6 +44,10 @@ async def list_retrieval_sources_route() -> RetrievalSourceCatalogResponse:
         "Returns source-level indexing status for the approved retrieval corpus currently known "
         "to lotus-ai."
     ),
+    responses={
+        200: {"description": "Retrieval indexing status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
 )
 async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
     return get_retrieval_index_status()
@@ -52,6 +60,11 @@ async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
     description=(
         "Returns the currently staged retrieval documents associated with a source identifier."
     ),
+    responses={
+        200: {"description": "Retrieval document catalog returned successfully."},
+        404: {"description": "Retrieval source not found."},
+        500: {"description": "Unexpected server error."},
+    },
 )
 async def list_retrieval_documents_route(source_id: str) -> RetrievalDocumentCatalogResponse:
     return get_documents_for_source(source_id)
@@ -65,6 +78,11 @@ async def list_retrieval_documents_route(source_id: str) -> RetrievalDocumentCat
         "Searches approved lotus-ai retrieval sources. In the current phase, this endpoint "
         "returns a governed conflict response until live retrieval is enabled."
     ),
+    responses={
+        200: {"description": "Retrieval search completed successfully."},
+        409: {"description": "Retrieval is not enabled or requested sources are not enabled."},
+        500: {"description": "Unexpected server error."},
+    },
 )
 async def search_retrieval_sources_route(
     request: RetrievalSearchRequest,

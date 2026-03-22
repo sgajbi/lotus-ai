@@ -16,6 +16,10 @@ router = APIRouter(prefix="/platform/prompts", tags=["platform"])
         "Returns the currently registered prompt definitions known to lotus-ai. "
         "This endpoint is intended for platform transparency and engineering inspection."
     ),
+    responses={
+        200: {"description": "Prompt registry returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
 )
 async def list_prompts_route() -> list[PromptDescriptor]:
     return list_registered_prompts()
@@ -26,6 +30,11 @@ async def list_prompts_route() -> list[PromptDescriptor]:
     response_model=PromptDescriptor,
     summary="Get lotus-ai prompt definition",
     description="Returns the registered prompt definition associated with a task identifier.",
+    responses={
+        200: {"description": "Prompt definition returned successfully."},
+        404: {"description": "Prompt definition not found for the given task id."},
+        500: {"description": "Unexpected server error."},
+    },
 )
 async def get_prompt_route(task_id: str) -> PromptDescriptor:
     return get_prompt_or_raise(task_id)

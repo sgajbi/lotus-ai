@@ -49,7 +49,19 @@ async def health_ready(response: Response) -> dict[str, str]:
     return {"status": "ready"}
 
 
-@app.get("/metadata")
+@app.get(
+    "/metadata",
+    tags=["platform"],
+    summary="Get lotus-ai service metadata",
+    description=(
+        "Returns core service metadata for lotus-ai, including service version and the "
+        "current rounding policy version marker."
+    ),
+    responses={
+        200: {"description": "Metadata returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
 async def metadata() -> dict[str, str]:
     return {
         "service": SERVICE_NAME,
@@ -58,7 +70,19 @@ async def metadata() -> dict[str, str]:
     }
 
 
-@app.get("/")
+@app.get(
+    "/",
+    tags=["platform"],
+    summary="Get lotus-ai service overview",
+    description=(
+        "Returns the current high-level lotus-ai service state, including delivery phase and "
+        "major capability areas exposed by the platform."
+    ),
+    responses={
+        200: {"description": "Overview returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
 async def root() -> dict[str, object]:
     return {
         "service": SERVICE_NAME,

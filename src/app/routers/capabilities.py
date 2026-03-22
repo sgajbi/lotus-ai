@@ -17,6 +17,10 @@ router = APIRouter(tags=["platform"])
         "This endpoint is intended for upstream Lotus services and platforms to discover "
         "which task classes are available during the current delivery phase."
     ),
+    responses={
+        200: {"description": "Capability catalog returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
 )
 async def get_platform_capabilities() -> CapabilityCatalogResponse:
     return build_capability_catalog()

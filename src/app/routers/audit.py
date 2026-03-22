@@ -16,6 +16,11 @@ router = APIRouter(prefix="/ai/audit", tags=["audit"])
         "Returns the stored audit record for a prior lotus-ai task execution request. "
         "During foundation phase, records are stored in an in-memory audit store."
     ),
+    responses={
+        200: {"description": "Audit record returned successfully."},
+        404: {"description": "Audit record not found for the given request id."},
+        500: {"description": "Unexpected server error."},
+    },
 )
 async def get_audit_record(request_id: str) -> AuditRecordResponse:
     record = get_audit_store().get(request_id)
