@@ -100,6 +100,9 @@ Prompt API behavior is also verified through its own dedicated integration modul
 governance and runtime contract coverage can evolve independently of the broader platform
 health suite.
 
+Provider API behavior is also verified through its own dedicated integration module so
+provider contract coverage can evolve independently of the broader platform health suite.
+
 Retrieval API behavior is also verified through its own dedicated integration module so
 retrieval contract coverage can evolve independently of the broader platform health suite.
 
