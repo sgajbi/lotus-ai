@@ -231,6 +231,10 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["provider_governance"]["activation_readiness"]["activation_ready"] is False
     assert body["provider_governance"]["runbook_readiness"]["runbook_ready"] is False
     assert body["provider_governance"]["evidence_readiness"]["evidence_ready"] is False
+    assert body["provider_operations"]["operations_state"] == "ROLLOUT_BLOCKED"
+    assert body["provider_operations"]["runtime_execution_enabled"] is False
+    assert body["provider_operations"]["quota_policy"]["quota_enforced"] is False
+    assert body["provider_operations"]["budget_policy"]["budget_enforced"] is False
     assert body["retrieval_governance"]["governance_ready"] is False
     assert body["retrieval_governance"]["blocking_area_count"] == 3
     assert body["retrieval_governance"]["activation_readiness"]["activation_ready"] is False

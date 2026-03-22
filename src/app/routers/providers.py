@@ -8,6 +8,7 @@ from app.contracts.providers import (
     ProviderCatalogResponse,
     ProviderEvidenceReadinessResponse,
     ProviderGovernanceStatusResponse,
+    ProviderOperationsStatusResponse,
     ProviderPolicyResponse,
     ProviderQuotaPolicyResponse,
     ProviderRunbookReadinessResponse,
@@ -17,6 +18,7 @@ from app.services.provider_budget_policy import build_provider_budget_policy
 from app.services.provider_catalog import build_provider_catalog
 from app.services.provider_evidence_readiness import build_provider_evidence_readiness
 from app.services.provider_governance_status import build_provider_governance_status
+from app.services.provider_operations_status import build_provider_operations_status
 from app.services.provider_policy import build_provider_policy
 from app.services.provider_quota_policy import build_provider_quota_policy
 from app.services.provider_runbook_readiness import build_provider_runbook_readiness
@@ -94,6 +96,24 @@ async def get_provider_quota_policy_route() -> ProviderQuotaPolicyResponse:
 )
 async def get_provider_budget_policy_route() -> ProviderBudgetPolicyResponse:
     return build_provider_budget_policy()
+
+
+@router.get(
+    "/operations-status",
+    response_model=ProviderOperationsStatusResponse,
+    operation_id="getProviderOperationsStatus",
+    summary="Get lotus-ai provider operations status",
+    description=(
+        "Returns the combined live-provider operations posture for lotus-ai, including rollout, "
+        "quota, budget, and degradation truth in one operator-facing summary."
+    ),
+    responses={
+        200: {"description": "Provider operations status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_operations_status_route() -> ProviderOperationsStatusResponse:
+    return build_provider_operations_status()
 
 
 @router.get(

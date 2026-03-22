@@ -163,6 +163,11 @@ exposes current tracked spend plus configured soft and hard budget thresholds se
 posture, and the live provider gateway now fails explicitly when hard-budget posture blocks further
 execution or when budget enforcement is configured inconsistently.
 
+Provider operations hardening now also includes a dedicated operations summary. `/platform/providers/operations-status`
+combines rollout posture, quota posture, budget posture, and the current degradation placeholder into
+one operator-facing truth surface, and `/platform/runtime-status` embeds that same summary instead of
+recomputing a parallel provider-operations view.
+
 Provider rollout posture is now also centralized in one small helper so activation readiness,
 runbook readiness, and task-runtime notes all describe the same live-provider path honestly.
 That keeps operator-facing status aligned when rollout is still stub-default versus when a live
@@ -355,18 +360,23 @@ Current rules:
 2. provider execution policy is visible through `/platform/providers/policy`,
 3. provider quota posture is visible through `/platform/providers/quota-policy`,
 4. provider budget posture is visible through `/platform/providers/budget-policy`,
-5. provider activation readiness is visible through `/platform/providers/activation-readiness`,
-6. provider runbook readiness is visible through `/platform/providers/runbook-readiness`,
-7. provider evidence readiness is visible through `/platform/providers/evidence-readiness`,
-8. provider governance status is visible through `/platform/providers/governance-status`,
-9. foundation-phase providers are documented and inspectable,
-10. task execution already flows through an internal provider gateway,
-11. runtime execution remains disabled until a stronger provider gateway and safety posture is in place.
+5. provider operations posture is visible through `/platform/providers/operations-status`,
+6. provider activation readiness is visible through `/platform/providers/activation-readiness`,
+7. provider runbook readiness is visible through `/platform/providers/runbook-readiness`,
+8. provider evidence readiness is visible through `/platform/providers/evidence-readiness`,
+9. provider governance status is visible through `/platform/providers/governance-status`,
+10. foundation-phase providers are documented and inspectable,
+11. task execution already flows through an internal provider gateway,
+12. runtime execution remains disabled until a stronger provider gateway and safety posture is in place.
 
 `/platform/runtime-status` now embeds provider governance posture directly so operators can review
 provider rollout state from the same top-level runtime surface that already carries async
 governance posture. Provider governance now summarizes technical activation, runbook, and
 evidence readiness together.
+
+`/platform/runtime-status` now also embeds provider operations posture directly so operators can
+review rollout-blocked versus operations-blocked state from the same top-level runtime surface
+without stitching together quota, budget, and degradation-related endpoints manually.
 
 Provider evidence readiness is now grounded in real evaluation assets rather than only a static
 checklist: staged provider policy, runtime, and failure-mode fixtures plus a recorded provider

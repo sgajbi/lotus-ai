@@ -8,7 +8,10 @@ from app.contracts.prompts import (
     PromptGovernanceStatusSummaryResponse,
     PromptRuntimeStatusResponse,
 )
-from app.contracts.providers import ProviderGovernanceStatusResponse
+from app.contracts.providers import (
+    ProviderGovernanceStatusResponse,
+    ProviderOperationsStatusResponse,
+)
 from app.contracts.retrieval import RetrievalGovernanceStatusResponse
 from app.contracts.runtime_readiness import (
     StoreRuntimeStatusDescriptor,
@@ -36,6 +39,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     provider_governance: ProviderGovernanceStatusResponse = Field(
         description="Current provider governance posture for lotus-ai."
+    )
+    provider_operations: ProviderOperationsStatusResponse = Field(
+        description="Current provider operations posture for lotus-ai."
     )
     retrieval_governance: RetrievalGovernanceStatusResponse = Field(
         description="Current retrieval governance posture for lotus-ai."

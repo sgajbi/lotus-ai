@@ -112,6 +112,60 @@ class ProviderBudgetState(str, Enum):
     INVALID = "INVALID"
 
 
+class ProviderOperationsState(str, Enum):
+    NORMAL = "NORMAL"
+    QUOTA_BLOCKED = "QUOTA_BLOCKED"
+    BUDGET_SOFT_LIMIT = "BUDGET_SOFT_LIMIT"
+    BUDGET_BLOCKED = "BUDGET_BLOCKED"
+    DEGRADED_UPSTREAM = "DEGRADED_UPSTREAM"
+    CIRCUIT_OPEN = "CIRCUIT_OPEN"
+    ROLLOUT_BLOCKED = "ROLLOUT_BLOCKED"
+
+
+class ProviderDegradationStatusDescriptor(BaseModel):
+    status: str = Field(
+        description="Current upstream degradation posture for the live provider path."
+    )
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable findings describing upstream degradation posture.",
+    )
+
+
+class ProviderOperationsStatusResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the provider operations runtime status view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    provider_mode: str = Field(description="Configured text-generation provider mode.")
+    operations_state: ProviderOperationsState = Field(
+        description="Current top-level provider operations state derived from rollout, quota, budget, and degradation posture."
+    )
+    runtime_execution_enabled: bool = Field(
+        description="Whether live-provider execution is currently enabled for any provider path."
+    )
+    rollout_blocked: bool = Field(
+        description="Whether provider operations remain blocked by rollout or configuration posture."
+    )
+    quota_policy: ProviderQuotaPolicyResponse = Field(
+        description="Current live-provider quota posture."
+    )
+    budget_policy: ProviderBudgetPolicyResponse = Field(
+        description="Current live-provider budget posture."
+    )
+    degradation_status: ProviderDegradationStatusDescriptor = Field(
+        description="Current live-provider degradation posture."
+    )
+    blocking_reasons: list[str] = Field(
+        default_factory=list,
+        description="Human-readable reasons why provider operations are currently blocked or degraded.",
+    )
+    summary: list[str] = Field(
+        default_factory=list,
+        description="Human-readable summary of the current provider operations posture.",
+    )
+
+
 class ProviderBudgetPolicyResponse(BaseModel):
     service: str = Field(description="Service name emitting the provider budget policy view.")
     version: str = Field(description="Current lotus-ai service version.")

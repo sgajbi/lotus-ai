@@ -18,7 +18,7 @@ def test_provider_activation_readiness_reports_foundation_blockers() -> None:
         == ProviderCredentialStatus.NOT_CONFIGURED
     )
     assert len(readiness.blocking_findings) == 4
-    assert len(readiness.activation_path) == 7
+    assert len(readiness.activation_path) == 8
 
 
 def test_provider_activation_readiness_reports_ready_when_live_execution_is_enabled() -> None:

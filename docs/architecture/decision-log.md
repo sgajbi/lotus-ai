@@ -271,6 +271,24 @@ Current posture:
 2. hard-budget overflow now blocks live-provider execution explicitly with a typed failure category,
 3. activation readiness now treats invalid budget enforcement posture as a real activation blocker rather than overstating live readiness.
 
+## Decision 11H: Provider Operations Status Should Have A Single Summary Surface
+
+Decision:
+
+`lotus-ai` exposes a dedicated provider-operations summary and reuses that same summary in platform runtime status.
+
+Why:
+
+1. provider rollout posture, quota posture, and budget posture are operationally related and should not require endpoint-by-endpoint reconstruction,
+2. rollout-blocked and operations-blocked must be distinguishable in one truthful operator surface,
+3. embedding the same summary in `/platform/runtime-status` avoids duplicate provider-operations assembly logic across services.
+
+Current posture:
+
+1. `/platform/providers/operations-status` exposes the top-level provider operations state,
+2. the summary embeds quota, budget, and degradation posture together,
+3. `/platform/runtime-status` now embeds the same provider operations summary directly.
+
 ## Decision 11A: Provider Activation Readiness Should Be Exposed Before Live Rollout
 
 Decision:
