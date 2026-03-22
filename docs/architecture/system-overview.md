@@ -93,6 +93,9 @@ Runtime-context construction now also lives in a dedicated builder, and the shar
 context models are isolated in their own module so pipeline, mapping, and provider-request
 services can depend on the same runtime types without import coupling.
 
+Public task and audit API behavior is now also verified through a dedicated integration module
+instead of being buried only inside the broader health suite.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

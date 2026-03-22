@@ -530,39 +530,6 @@ def test_platform_runtime_status_route() -> None:
     assert body["prompt_count"] >= 3
 
 
-def test_task_execute_contract() -> None:
-    client = TestClient(app)
-    response = client.post(
-        "/ai/tasks/execute",
-        json={
-            "task_id": "explain.v1",
-            "input_mode": "STRUCTURED_CONTEXT",
-            "caller": {
-                "caller_app": "lotus-manage",
-                "correlation_id": "corr-456",
-            },
-            "context": {
-                "summary": "Explain rebalance outcome",
-                "payload": {"status": "BLOCKED", "violations": 2},
-                "source_refs": ["lotus-manage:run:reb_002"],
-            },
-            "expected_output_label": "EXPLANATION_ONLY",
-        },
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["task_id"] == "explain.v1"
-    assert body["status"] == "COMPLETED"
-    assert body["audit"]["stubbed"] is True
-    assert body["audit"]["prompt_version"] == "foundation.explain.v1"
-    assert body["audit"]["safety"]["safety_mode"] == "documented_only"
-    assert body["audit"]["safety"]["redaction_posture"] == "MINIMIZATION_REQUIRED"
-    assert len(body["evidence"]["descriptors"]) == 5
-    assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
-    assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"
-
-
 def test_prompt_registry_routes() -> None:
     client = TestClient(app)
 
@@ -677,49 +644,6 @@ def test_service_metadata_exposes_store_modes() -> None:
     assert body["retrievalStoreMode"] == "memory"
     assert body["startupReadinessPolicy"] == "warn"
     assert body["readinessProbePolicy"] == "observe"
-
-
-def test_audit_record_route_returns_saved_execution() -> None:
-    client = TestClient(app)
-    execute_response = client.post(
-        "/ai/tasks/execute",
-        json={
-            "task_id": "summarize.v1",
-            "input_mode": "STRUCTURED_CONTEXT",
-            "caller": {
-                "caller_app": "lotus-advise",
-                "correlation_id": "corr-789",
-            },
-            "context": {
-                "summary": "Summarize proposal workflow",
-                "payload": {"status": "PENDING_REVIEW", "approvals": 1},
-                "source_refs": ["lotus-advise:proposal:prop_001"],
-            },
-        },
-    )
-    request_id = execute_response.json()["audit"]["request_id"]
-
-    audit_response = client.get(f"/ai/audit/{request_id}")
-    assert audit_response.status_code == 200
-    assert audit_response.json()["caller_app"] == "lotus-advise"
-    assert audit_response.json()["prompt_version"] == "foundation.summarize.v1"
-    assert audit_response.json()["safety_mode"] == "documented_only"
-    assert audit_response.json()["enforced_safety_controls"] == [
-        "response_labeling",
-        "correlation_and_audit",
-    ]
-
-
-def test_audit_record_route_returns_not_found_for_unknown_request() -> None:
-    client = TestClient(app)
-
-    response = client.get("/ai/audit/missing_request_id")
-
-    assert response.status_code == 404
-    assert (
-        response.json()["detail"]
-        == "No lotus-ai audit record found for request_id: missing_request_id"
-    )
 
 
 def test_retrieval_source_catalog_route() -> None:
