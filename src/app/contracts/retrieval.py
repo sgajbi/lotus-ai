@@ -295,6 +295,32 @@ class RetrievalRunbookReadinessResponse(BaseModel):
     )
 
 
+class RetrievalEvidenceReadinessItem(BaseModel):
+    evidence_id: str = Field(description="Stable retrieval evidence-readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the evidence requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this evidence item must be complete before live retrieval activation."
+    )
+    notes: str = Field(description="Human-readable explanation of the evidence requirement.")
+
+
+class RetrievalEvidenceReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval evidence readiness view.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    evidence_ready: bool = Field(
+        description="Whether retrieval evidence posture is currently sufficient for activation."
+    )
+    required_item_count: int = Field(
+        description="Number of retrieval evidence items currently required for activation."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required retrieval evidence items currently marked complete."
+    )
+    items: list[RetrievalEvidenceReadinessItem] = Field(
+        description="Governed retrieval evidence-readiness items."
+    )
+
+
 class RetrievalGovernanceStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the retrieval governance status view.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")

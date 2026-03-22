@@ -100,6 +100,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/retrieval/runbook-readiness"]["get"]["operationId"] == (
         "getRetrievalRunbookReadiness"
     )
+    assert spec["paths"]["/platform/retrieval/evidence-readiness"]["get"]["operationId"] == (
+        "getRetrievalEvidenceReadiness"
+    )
     assert spec["paths"]["/platform/retrieval/governance-status"]["get"]["operationId"] == (
         "getRetrievalGovernanceStatus"
     )

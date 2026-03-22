@@ -28,6 +28,7 @@
 - Prompt governance status: /platform/prompts/governance-status
 - Retrieval activation readiness: /platform/retrieval/activation-readiness
 - Retrieval runbook readiness: /platform/retrieval/runbook-readiness
+- Retrieval evidence readiness: /platform/retrieval/evidence-readiness
 - Retrieval governance status: /platform/retrieval/governance-status
 - Evaluation runtime status: /platform/evals/runtime-status
 - Safety runtime status: /platform/safety/runtime-status
@@ -108,10 +109,11 @@ Before any future live-retrieval activation slice:
 1. verify `GET /platform/retrieval/governance-status`
 2. inspect `GET /platform/retrieval/activation-readiness` when technical blockers need detail
 3. inspect `GET /platform/retrieval/runbook-readiness` when operational blockers need detail
-4. confirm the embedded `retrieval_governance` block in `GET /platform/runtime-status` matches the detailed retrieval governance view
-5. confirm retrieval indexing policy and execution status still reflect governed staged posture unless explicitly approved otherwise
-6. confirm reindex, replay, and retrieval observability procedures are documented and approved
-7. only then proceed with any live-retrieval activation rollout review
+4. inspect `GET /platform/retrieval/evidence-readiness` when evaluation, citation, or rollback evidence blockers need detail
+5. confirm the embedded `retrieval_governance` block in `GET /platform/runtime-status` matches the detailed retrieval governance view
+6. confirm retrieval indexing policy and execution status still reflect governed staged posture unless explicitly approved otherwise
+7. confirm reindex, replay, and retrieval observability procedures are documented and approved
+8. only then proceed with any live-retrieval activation rollout review
 
 ## Incident First Checks
 

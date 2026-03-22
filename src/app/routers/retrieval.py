@@ -6,6 +6,7 @@ from app.contracts.retrieval import (
     RetrievalActivationReadinessResponse,
     RetrievalChunkCatalogResponse,
     RetrievalDocumentCatalogResponse,
+    RetrievalEvidenceReadinessResponse,
     RetrievalIndexJobCatalogResponse,
     RetrievalIndexJobDetailResponse,
     RetrievalIndexStatusResponse,
@@ -29,6 +30,7 @@ from app.services.retrieval_catalog_service import (
     get_retrieval_index_status,
 )
 from app.services.retrieval_activation_readiness import build_retrieval_activation_readiness
+from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
 from app.services.retrieval_execution_status import build_retrieval_execution_status
 from app.services.retrieval_governance_status import build_retrieval_governance_status
 from app.services.retrieval_runbook_readiness import build_retrieval_runbook_readiness
@@ -143,6 +145,24 @@ async def get_retrieval_activation_readiness_route() -> RetrievalActivationReadi
 )
 async def get_retrieval_runbook_readiness_route() -> RetrievalRunbookReadinessResponse:
     return build_retrieval_runbook_readiness()
+
+
+@router.get(
+    "/evidence-readiness",
+    response_model=RetrievalEvidenceReadinessResponse,
+    operation_id="getRetrievalEvidenceReadiness",
+    summary="Get retrieval evidence readiness",
+    description=(
+        "Returns whether lotus-ai retrieval rollout is currently supported by the required "
+        "evaluation, citation, reindex, and rollback evidence for future live activation."
+    ),
+    responses={
+        200: {"description": "Retrieval evidence readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_evidence_readiness_route() -> RetrievalEvidenceReadinessResponse:
+    return build_retrieval_evidence_readiness()
 
 
 @router.get(

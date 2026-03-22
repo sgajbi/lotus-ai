@@ -408,6 +408,24 @@ Current posture:
 2. retrieval governance remains separately inspectable through `/platform/retrieval/governance-status`,
 3. foundation phase continues to report blocked retrieval governance in both views.
 
+## Decision 15E: Retrieval Evidence Readiness Should Be Exposed Before Live Retrieval Rollout
+
+Decision:
+
+`lotus-ai` exposes retrieval evidence readiness separately from retrieval technical and operational readiness.
+
+Why:
+
+1. bank-grade retrieval activation review should require explicit evaluation, citation, and reindex evidence rather than assuming those concerns are covered by technical or runbook posture alone,
+2. retrieval rollout needs a stable evidence contract before any live search or indexing path is introduced,
+3. separating evidence readiness keeps future retrieval activation criteria inspectable and auditable.
+
+Current posture:
+
+1. `/platform/retrieval/evidence-readiness` exposes required retrieval evidence items,
+2. required evidence items remain not ready in foundation phase,
+3. retrieval governance review can now inspect evidence posture separately while the combined governance summary remains unchanged in this slice.
+
 ## Decision 16: Prompt Runtime Selection Should Be Inspectable
 
 Decision:

@@ -113,6 +113,13 @@ Initial storage direction:
 Retrieval and evaluation workloads are also expected to move through worker-style execution paths
 when they become heavy enough to threaten API responsiveness.
 
+Current retrieval rollout posture includes:
+
+1. retrieval activation readiness through `/platform/retrieval/activation-readiness`,
+2. retrieval runbook readiness through `/platform/retrieval/runbook-readiness`,
+3. retrieval evidence readiness through `/platform/retrieval/evidence-readiness`,
+4. combined retrieval governance review through `/platform/retrieval/governance-status`.
+
 ### Routers
 
 - `src/app/routers/`
