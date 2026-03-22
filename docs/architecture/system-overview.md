@@ -126,6 +126,10 @@ The top-level platform runtime summary also isolates startup-readiness state ext
 direct unit coverage, so changes to operator-facing status aggregation do not rely only on
 route-level integration tests.
 
+Prompt runtime services also own lifecycle counting now, so prompt governance and prompt
+runtime status share the same lifecycle summary source instead of duplicating active-prompt
+filtering in separate builders.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

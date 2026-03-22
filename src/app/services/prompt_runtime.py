@@ -23,8 +23,26 @@ class ResolvedRuntimePrompt:
     selection: PromptRuntimeSelectionDescriptor
 
 
+@dataclass(frozen=True)
+class PromptLifecycleCounts:
+    active_prompt_count: int
+    retired_prompt_count: int
+
+
 def list_registered_prompts() -> list[PromptDescriptor]:
     return get_prompt_repository().list_prompts()
+
+
+def summarize_prompt_lifecycle_counts() -> PromptLifecycleCounts:
+    prompts = list_registered_prompts()
+    return PromptLifecycleCounts(
+        active_prompt_count=sum(
+            1 for prompt in prompts if prompt.lifecycle_status == PromptLifecycleStatus.ACTIVE
+        ),
+        retired_prompt_count=sum(
+            1 for prompt in prompts if prompt.lifecycle_status == PromptLifecycleStatus.RETIRED
+        ),
+    )
 
 
 def list_active_runtime_prompts() -> list[ResolvedRuntimePrompt]:

@@ -5,6 +5,7 @@ from app.services.prompt_runtime import (
     list_active_runtime_prompts,
     list_registered_prompts,
     resolve_runtime_prompt_or_raise,
+    summarize_prompt_lifecycle_counts,
 )
 
 
@@ -38,3 +39,19 @@ def test_resolve_runtime_prompt_or_raise_rejects_unknown_prompt() -> None:
         assert "No registered prompt definition" in str(exc.detail)
     else:
         raise AssertionError("Expected HTTPException for unknown prompt")
+
+
+def test_summarize_prompt_lifecycle_counts_matches_registered_inventory() -> None:
+    registered_prompts = list_registered_prompts()
+    counts = summarize_prompt_lifecycle_counts()
+
+    assert counts.active_prompt_count == sum(
+        1
+        for prompt in registered_prompts
+        if prompt.lifecycle_status == PromptLifecycleStatus.ACTIVE
+    )
+    assert counts.retired_prompt_count == sum(
+        1
+        for prompt in registered_prompts
+        if prompt.lifecycle_status == PromptLifecycleStatus.RETIRED
+    )
