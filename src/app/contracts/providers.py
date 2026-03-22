@@ -33,8 +33,10 @@ class ProviderFailureCategory(str, Enum):
     PROVIDER_NOT_REGISTERED = "PROVIDER_NOT_REGISTERED"
     INVALID_LIVE_CONFIGURATION = "INVALID_LIVE_CONFIGURATION"
     INVALID_QUOTA_CONFIGURATION = "INVALID_QUOTA_CONFIGURATION"
+    INVALID_BUDGET_CONFIGURATION = "INVALID_BUDGET_CONFIGURATION"
     TASK_NOT_ALLOWLISTED = "TASK_NOT_ALLOWLISTED"
     QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
+    BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
     PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
     PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"
     PROVIDER_UPSTREAM_ERROR = "PROVIDER_UPSTREAM_ERROR"
@@ -99,6 +101,52 @@ class ProviderQuotaPolicyResponse(BaseModel):
     )
     quotas: list[ProviderQuotaDescriptor] = Field(
         description="Configured live-provider quota entries and their current in-process usage."
+    )
+
+
+class ProviderBudgetState(str, Enum):
+    NOT_ENFORCED = "NOT_ENFORCED"
+    BELOW_SOFT_LIMIT = "BELOW_SOFT_LIMIT"
+    SOFT_LIMIT_REACHED = "SOFT_LIMIT_REACHED"
+    HARD_LIMIT_BLOCKED = "HARD_LIMIT_BLOCKED"
+    INVALID = "INVALID"
+
+
+class ProviderBudgetPolicyResponse(BaseModel):
+    service: str = Field(description="Service name emitting the provider budget policy view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    provider_mode: str = Field(description="Configured text-generation provider mode.")
+    budget_enforced: bool = Field(
+        description="Whether live text-generation budget enforcement is currently enabled."
+    )
+    configuration_valid: bool = Field(
+        description="Whether the configured provider budget posture is internally consistent."
+    )
+    budget_state: ProviderBudgetState = Field(
+        description="Current provider budget state derived from configured limits and tracked spend."
+    )
+    current_spend_usd: float = Field(
+        description="Current in-process tracked live-provider spend in USD."
+    )
+    soft_budget_usd: float | None = Field(
+        default=None,
+        description="Configured soft budget threshold in USD, when present.",
+    )
+    hard_budget_usd: float | None = Field(
+        default=None,
+        description="Configured hard budget threshold in USD, when present.",
+    )
+    remaining_budget_usd: float | None = Field(
+        default=None,
+        description="Remaining hard-budget capacity in USD, when a hard limit is configured.",
+    )
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable findings describing the current provider budget posture.",
+    )
+    usage_to_budget_notes: list[str] = Field(
+        default_factory=list,
+        description="Human-readable notes describing how tracked spend is compared against configured budget thresholds.",
     )
 
 

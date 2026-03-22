@@ -252,6 +252,25 @@ Current posture:
 2. live-provider execution now carries requester and tenant identity into the provider seam so quota evaluation matches real caller context,
 3. live-provider execution returns explicit quota-configuration and quota-exceeded failure categories instead of silently falling back.
 
+## Decision 11G: Provider Budget Posture Must Be Explicit Before Broader Live Rollout
+
+Decision:
+
+`lotus-ai` exposes provider budget posture as a first-class contract and enforces hard-budget
+overflow explicitly in the live provider gateway.
+
+Why:
+
+1. bank-grade live-provider activation needs inspectable spend posture, not just per-request cost evidence,
+2. soft-budget and hard-budget semantics must be visible separately so operators can distinguish advisory posture from blocking posture,
+3. malformed budget configuration must fail clearly instead of drifting into unrestricted live spend.
+
+Current posture:
+
+1. `/platform/providers/budget-policy` exposes configured soft and hard thresholds plus current tracked spend,
+2. hard-budget overflow now blocks live-provider execution explicitly with a typed failure category,
+3. activation readiness now treats invalid budget enforcement posture as a real activation blocker rather than overstating live readiness.
+
 ## Decision 11A: Provider Activation Readiness Should Be Exposed Before Live Rollout
 
 Decision:

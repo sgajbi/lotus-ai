@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     live_text_task_quota_limits: str = ""
     live_text_caller_quota_limits: str = ""
     live_text_tenant_quota_limits: str = ""
+    live_text_budget_enforced: bool = False
+    live_text_soft_budget_usd: float | None = None
+    live_text_hard_budget_usd: float | None = None
     provider_timeout_ms: int = 4000
     provider_retry_limit: int = 0
     provider_max_output_tokens: int = 512

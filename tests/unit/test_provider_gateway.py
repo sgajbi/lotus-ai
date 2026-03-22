@@ -118,6 +118,59 @@ def test_execute_text_generation_rejects_live_provider_when_quota_is_exceeded() 
     monkeypatch.undo()
 
 
+def test_execute_text_generation_rejects_live_provider_when_budget_is_exceeded() -> None:
+    class _LiveAdapter:
+        def execute(self, request: ProviderExecutionRequest) -> object:
+            return type(
+                "Response",
+                (),
+                {
+                    "provider_id": "text.openai",
+                    "provider_mode": "openai",
+                    "adapter_kind": ProviderAdapterKind.OPENAI_LIVE,
+                    "failure_category": None,
+                    "timeout_ms": request.timeout_ms,
+                    "retry_count": 0,
+                    "max_output_tokens": request.max_output_tokens,
+                    "model_id": "gpt-5.4",
+                    "provider_request_id": "req_budget_1",
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                    "estimated_cost_usd": 1.0,
+                    "stubbed": False,
+                    "message": "live response",
+                    "structured_output": {},
+                },
+            )()
+
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_budget_enforced = True
+    settings.live_text_input_cost_per_1k_tokens = 0.01
+    settings.live_text_output_cost_per_1k_tokens = 0.03
+    settings.live_text_hard_budget_usd = 1.0
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        "app.services.provider_gateway.resolve_text_generation_adapter",
+        lambda mode: _LiveAdapter(),
+    )
+
+    first_response = execute_text_generation(_request())
+    assert first_response.provider_id == "text.openai"
+
+    with pytest.raises(HTTPException) as exc_info:
+        execute_text_generation(_request())
+
+    assert exc_info.value.status_code == 503
+    assert "BUDGET_EXCEEDED" in str(exc_info.value.detail)
+    monkeypatch.undo()
+
+
 def test_execute_text_generation_routes_stub_mode_through_stub_provider() -> None:
     settings.provider_mode = "stub"
 

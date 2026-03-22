@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.contracts.providers import (
     ProviderActivationReadinessResponse,
+    ProviderBudgetPolicyResponse,
     ProviderCatalogResponse,
     ProviderEvidenceReadinessResponse,
     ProviderGovernanceStatusResponse,
@@ -12,6 +13,7 @@ from app.contracts.providers import (
     ProviderRunbookReadinessResponse,
 )
 from app.services.provider_activation_readiness import build_provider_activation_readiness
+from app.services.provider_budget_policy import build_provider_budget_policy
 from app.services.provider_catalog import build_provider_catalog
 from app.services.provider_evidence_readiness import build_provider_evidence_readiness
 from app.services.provider_governance_status import build_provider_governance_status
@@ -74,6 +76,24 @@ async def get_provider_policy_route() -> ProviderPolicyResponse:
 )
 async def get_provider_quota_policy_route() -> ProviderQuotaPolicyResponse:
     return build_provider_quota_policy()
+
+
+@router.get(
+    "/budget-policy",
+    response_model=ProviderBudgetPolicyResponse,
+    operation_id="getProviderBudgetPolicy",
+    summary="Get lotus-ai provider budget policy",
+    description=(
+        "Returns the governed budget posture for lotus-ai live text-generation execution, "
+        "including current tracked spend, configured soft and hard budgets, and current budget state."
+    ),
+    responses={
+        200: {"description": "Provider budget policy returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_budget_policy_route() -> ProviderBudgetPolicyResponse:
+    return build_provider_budget_policy()
 
 
 @router.get(

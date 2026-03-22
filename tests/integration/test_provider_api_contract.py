@@ -49,6 +49,20 @@ def test_provider_quota_policy_route(client: TestClient) -> None:
     assert body["quotas"] == []
 
 
+def test_provider_budget_policy_route(client: TestClient) -> None:
+    response = client.get("/platform/providers/budget-policy")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["provider_mode"] == "disabled"
+    assert body["budget_enforced"] is False
+    assert body["configuration_valid"] is True
+    assert body["budget_state"] == "NOT_ENFORCED"
+    assert body["current_spend_usd"] == 0.0
+    assert body["remaining_budget_usd"] is None
+
+
 def test_provider_activation_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/providers/activation-readiness")
 
@@ -61,8 +75,9 @@ def test_provider_activation_readiness_route(client: TestClient) -> None:
     assert body["text_generation_configuration"]["credential_status"] == "NOT_CONFIGURED"
     assert body["activation_ready"] is False
     assert len(body["blocking_findings"]) == 4
-    assert len(body["activation_path"]) == 6
+    assert len(body["activation_path"]) == 7
     assert "/platform/providers/quota-policy" in body["activation_path"][1]
+    assert "/platform/providers/budget-policy" in body["activation_path"][2]
     assert "/platform/providers/governance-status" in body["activation_path"][-1]
 
 
