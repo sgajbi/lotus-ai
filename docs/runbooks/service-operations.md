@@ -74,7 +74,8 @@ Before any future async activation slice:
 4. confirm the embedded `async_governance` block in `GET /platform/runtime-status` matches the detailed async governance view
 5. confirm queue backend and worker execution posture are still governed and explicitly selected
 6. confirm observability, replay, escalation, and incident procedures are documented and approved
-7. only then proceed with any activation rollout review
+7. treat the in-process stub runtime as validation-only and not as evidence that queue-backed activation is complete
+8. only then proceed with any activation rollout review
 
 ## Provider Activation Governance
 

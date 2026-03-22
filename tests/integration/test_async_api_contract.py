@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from app.config import settings
 
 
 def test_async_runtime_status_route(client: TestClient) -> None:
@@ -136,6 +137,47 @@ def test_async_job_submit_route_returns_rejected_contract_response(client: TestC
     assert body["accepted"] is False
     assert body["job_id"] is None
     assert body["queue_mode"] == "DISABLED"
+
+
+def test_async_runtime_status_route_reports_stubbed_runtime_when_enabled(
+    client: TestClient,
+) -> None:
+    settings.async_queue_mode = "stubbed"
+    settings.async_worker_mode = "stubbed"
+
+    response = client.get("/platform/async/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["queue_mode"] == "STUBBED"
+    assert body["worker_mode"] == "STUBBED"
+    assert body["active_worker_execution"] == "in_process_stub"
+    assert body["active_worker_count"] == 1
+    assert any(job["job_type"] == "retrieval_indexing" and job["enabled"] is True for job in body["supported_job_types"])
+
+
+def test_async_job_submit_route_accepts_stubbed_retrieval_indexing(client: TestClient) -> None:
+    settings.async_queue_mode = "stubbed"
+    settings.async_worker_mode = "stubbed"
+
+    response = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "retrieval_indexing",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-async-submit-003",
+            "target_id": "retjob_lotus_platform_rfcs",
+            "payload_summary": "Replay approved RFC retrieval indexing.",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["submission_status"] == "ACCEPTED"
+    assert body["accepted"] is True
+    assert body["job_id"] is not None
+    assert body["queue_mode"] == "STUBBED"
+    assert body["worker_mode"] == "STUBBED"
 
 
 def test_async_job_submit_route_returns_not_found_for_unknown_job_type(

@@ -8,6 +8,7 @@ from app.contracts.retrieval import (
     RetrievalEmbeddingStatus,
     RetrievalDocumentDescriptor,
     RetrievalDocumentPromotionStatus,
+    RetrievalExecutionRequest,
     RetrievalIndexedChunkDescriptor,
     RetrievalIndexJobEventDescriptor,
     RetrievalIndexJobEventStatus,
@@ -17,11 +18,13 @@ from app.contracts.retrieval import (
     RetrievalIndexStatus,
     RetrievalJobStatus,
     RetrievalPipelineStage,
+    RetrievalSearchHit,
     RetrievalSourceDescriptor,
     RetrievalSourceKind,
 )
 from app.repositories.retrieval_repository import RetrievalRepository
 from app.retrieval.foundation_embedding import build_preview_embedding
+from app.retrieval.indexed_search_backend import build_indexed_hits
 from app.retrieval.indexing_refresh import (
     build_indexed_chunk_refresh_record,
     build_refresh_descriptor,
@@ -383,6 +386,17 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                 )
             )
         return indexed_chunks
+
+    def has_searchable_indexed_chunks(self, source_ids: list[str]) -> bool:
+        return bool(self.list_searchable_indexed_chunks(source_ids))
+
+    def search_indexed_hits(
+        self, request: RetrievalExecutionRequest
+    ) -> list[RetrievalSearchHit]:
+        return build_indexed_hits(
+            indexed_chunks=self.list_searchable_indexed_chunks(request.source_ids),
+            request=request,
+        )
 
     def count_embedding_records(self) -> int:
         return len(self._embedding_records)

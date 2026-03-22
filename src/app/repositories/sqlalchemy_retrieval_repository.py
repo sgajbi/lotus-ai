@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import Any
 
-from sqlalchemy import Select, create_engine, func, select
+from sqlalchemy import Select, create_engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.contracts.retrieval import (
@@ -10,6 +12,7 @@ from app.contracts.retrieval import (
     RetrievalDocumentDescriptor,
     RetrievalDocumentPromotionStatus,
     RetrievalEmbeddingStatus,
+    RetrievalExecutionRequest,
     RetrievalIndexedChunkDescriptor,
     RetrievalIndexJobEventDescriptor,
     RetrievalIndexJobEventStatus,
@@ -19,14 +22,18 @@ from app.contracts.retrieval import (
     RetrievalIndexStatus,
     RetrievalJobStatus,
     RetrievalPipelineStage,
+    RetrievalSearchHit,
     RetrievalSourceDescriptor,
     RetrievalSourceKind,
 )
+from app.retrieval.foundation_embedding import build_preview_embedding, cosine_similarity
+from app.retrieval.indexed_search_backend import build_indexed_hits
 from app.retrieval.indexing_refresh import (
     build_indexed_chunk_refresh_record,
     build_refresh_descriptor,
     build_refresh_event,
 )
+from app.services.retrieval_text_scoring import lexical_overlap_ratio, tokenize_retrieval_text
 from app.db.models import (
     RetrievalChunkModel,
     RetrievalChunkEmbeddingModel,
@@ -42,6 +49,7 @@ class SqlAlchemyRetrievalRepository:
         self._database_url = database_url
         self._ensure_sqlite_parent_directory()
         self._engine = create_engine(database_url, future=True)
+        self._register_sqlite_functions()
         self._session_factory = sessionmaker(bind=self._engine, autoflush=False, future=True)
 
     def list_sources(self) -> list[RetrievalSourceDescriptor]:
@@ -90,31 +98,10 @@ class SqlAlchemyRetrievalRepository:
         self, source_ids: list[str]
     ) -> list[RetrievalIndexedChunkDescriptor]:
         with self._session_factory() as session:
-            statement = (
-                select(
-                    RetrievalChunkEmbeddingModel,
-                    RetrievalChunkModel,
-                    RetrievalDocumentModel,
-                )
-                .join(RetrievalChunkModel, RetrievalChunkModel.chunk_id == RetrievalChunkEmbeddingModel.chunk_id)
-                .join(
-                    RetrievalDocumentModel,
-                    RetrievalDocumentModel.document_id == RetrievalChunkEmbeddingModel.document_id,
-                )
-                .where(
-                    RetrievalDocumentModel.promotion_status
-                    == RetrievalDocumentPromotionStatus.SEARCHABLE.value,
-                    RetrievalDocumentModel.index_status == RetrievalIndexStatus.INDEXED.value,
-                    RetrievalChunkModel.index_status == RetrievalIndexStatus.INDEXED.value,
-                    RetrievalChunkEmbeddingModel.embedding_status
-                    == RetrievalEmbeddingStatus.PERSISTED.value,
-                    RetrievalChunkEmbeddingModel.content_checksum == RetrievalChunkModel.content_checksum,
-                )
-                .order_by(
-                    RetrievalChunkEmbeddingModel.source_id,
-                    RetrievalChunkEmbeddingModel.document_id,
-                    RetrievalChunkModel.chunk_order,
-                )
+            statement = self._indexed_chunk_query().order_by(
+                RetrievalChunkEmbeddingModel.source_id,
+                RetrievalChunkEmbeddingModel.document_id,
+                RetrievalChunkModel.chunk_order,
             )
             if source_ids:
                 statement = statement.where(RetrievalChunkEmbeddingModel.source_id.in_(source_ids))
@@ -135,6 +122,23 @@ class SqlAlchemyRetrievalRepository:
                 )
                 for embedding, chunk, document in rows
             ]
+
+    def has_searchable_indexed_chunks(self, source_ids: list[str]) -> bool:
+        with self._session_factory() as session:
+            statement = self._indexed_chunk_query()
+            if source_ids:
+                statement = statement.where(RetrievalChunkEmbeddingModel.source_id.in_(source_ids))
+            return bool(session.execute(statement.limit(1)).first())
+
+    def search_indexed_hits(
+        self, request: RetrievalExecutionRequest
+    ) -> list[RetrievalSearchHit]:
+        if self._database_url.startswith("sqlite:///"):
+            return self._search_indexed_hits_sqlite(request)
+        return build_indexed_hits(
+            indexed_chunks=self.list_searchable_indexed_chunks(request.source_ids),
+            request=request,
+        )
 
     def count_embedding_records(self) -> int:
         with self._session_factory() as session:
@@ -366,6 +370,97 @@ class SqlAlchemyRetrievalRepository:
     def _count_rows(self, session: Session, statement: Select[tuple[int]]) -> int:
         return int(session.scalar(statement) or 0)
 
+    def _indexed_chunk_query(self) -> Select[tuple[RetrievalChunkEmbeddingModel, RetrievalChunkModel, RetrievalDocumentModel]]:
+        return (
+            select(
+                RetrievalChunkEmbeddingModel,
+                RetrievalChunkModel,
+                RetrievalDocumentModel,
+            )
+            .join(RetrievalChunkModel, RetrievalChunkModel.chunk_id == RetrievalChunkEmbeddingModel.chunk_id)
+            .join(
+                RetrievalDocumentModel,
+                RetrievalDocumentModel.document_id == RetrievalChunkEmbeddingModel.document_id,
+            )
+            .where(
+                RetrievalDocumentModel.promotion_status
+                == RetrievalDocumentPromotionStatus.SEARCHABLE.value,
+                RetrievalDocumentModel.index_status == RetrievalIndexStatus.INDEXED.value,
+                RetrievalChunkModel.index_status == RetrievalIndexStatus.INDEXED.value,
+                RetrievalChunkEmbeddingModel.embedding_status
+                == RetrievalEmbeddingStatus.PERSISTED.value,
+                RetrievalChunkEmbeddingModel.content_checksum == RetrievalChunkModel.content_checksum,
+            )
+        )
+
+    def _search_indexed_hits_sqlite(
+        self, request: RetrievalExecutionRequest
+    ) -> list[RetrievalSearchHit]:
+        query_embedding_json = json.dumps(build_preview_embedding(request.query))
+        query_terms_json = json.dumps(sorted(tokenize_retrieval_text(request.query)))
+        with self._session_factory() as session:
+            lexical_score = func.lotus_ai_lexical_score(
+                query_terms_json,
+                RetrievalDocumentModel.title,
+                RetrievalChunkModel.preview,
+            )
+            vector_score = func.lotus_ai_vector_score(
+                query_embedding_json,
+                RetrievalChunkEmbeddingModel.embedding_vector,
+            )
+            combined_score = (vector_score * 0.75) + (lexical_score * 0.25)
+            statement = (
+                select(
+                    RetrievalChunkEmbeddingModel.source_id,
+                    RetrievalChunkEmbeddingModel.document_id,
+                    RetrievalChunkEmbeddingModel.chunk_id,
+                    RetrievalChunkModel.preview,
+                    combined_score.label("score"),
+                )
+                .select_from(RetrievalChunkEmbeddingModel)
+                .join(
+                    RetrievalChunkModel,
+                    RetrievalChunkModel.chunk_id == RetrievalChunkEmbeddingModel.chunk_id,
+                )
+                .join(
+                    RetrievalDocumentModel,
+                    RetrievalDocumentModel.document_id == RetrievalChunkEmbeddingModel.document_id,
+                )
+                .where(
+                    RetrievalDocumentModel.promotion_status
+                    == RetrievalDocumentPromotionStatus.SEARCHABLE.value,
+                    RetrievalDocumentModel.index_status == RetrievalIndexStatus.INDEXED.value,
+                    RetrievalChunkModel.index_status == RetrievalIndexStatus.INDEXED.value,
+                    RetrievalChunkEmbeddingModel.embedding_status
+                    == RetrievalEmbeddingStatus.PERSISTED.value,
+                    RetrievalChunkEmbeddingModel.content_checksum
+                    == RetrievalChunkModel.content_checksum,
+                    lexical_score > 0.0,
+                )
+                .order_by(
+                    combined_score.desc(),
+                    RetrievalChunkEmbeddingModel.source_id,
+                    RetrievalChunkEmbeddingModel.document_id,
+                    RetrievalChunkEmbeddingModel.chunk_id,
+                )
+                .limit(request.limit)
+            )
+            if request.source_ids:
+                statement = statement.where(
+                    RetrievalChunkEmbeddingModel.source_id.in_(request.source_ids)
+                )
+            rows = session.execute(statement).all()
+            return [
+                RetrievalSearchHit(
+                    source_id=source_id,
+                    document_id=document_id,
+                    chunk_id=chunk_id,
+                    score=round(float(score), 6),
+                    snippet=snippet,
+                )
+                for source_id, document_id, chunk_id, snippet, score in rows
+            ]
+
     def _persist_refresh_event(
         self,
         *,
@@ -412,3 +507,45 @@ class SqlAlchemyRetrievalRepository:
         if not path.is_absolute():
             path = Path.cwd() / path
         path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _register_sqlite_functions(self) -> None:
+        if not self._database_url.startswith("sqlite:///"):
+            return
+
+        @event.listens_for(self._engine, "connect")
+        def _register_functions(dbapi_connection: Any, _connection_record: Any) -> None:
+            dbapi_connection.create_function(
+                "lotus_ai_vector_score",
+                2,
+                self._sqlite_vector_score,
+            )
+            dbapi_connection.create_function(
+                "lotus_ai_lexical_score",
+                3,
+                self._sqlite_lexical_score,
+            )
+
+    def _sqlite_vector_score(self, query_embedding_json: str, embedding_vector_json: str) -> float:
+        try:
+            query_embedding = json.loads(query_embedding_json)
+            embedding_vector = json.loads(embedding_vector_json)
+        except (TypeError, json.JSONDecodeError):
+            return 0.0
+        if not isinstance(query_embedding, list) or not isinstance(embedding_vector, list):
+            return 0.0
+        return cosine_similarity(
+            [float(value) for value in query_embedding],
+            [float(value) for value in embedding_vector],
+        )
+
+    def _sqlite_lexical_score(self, query_terms_json: str, title: str, preview: str) -> float:
+        try:
+            query_terms = json.loads(query_terms_json)
+        except (TypeError, json.JSONDecodeError):
+            return 0.0
+        if not isinstance(query_terms, list):
+            return 0.0
+        return lexical_overlap_ratio(
+            query_terms={str(term) for term in query_terms},
+            searchable_text=f"{title} {preview}",
+        )

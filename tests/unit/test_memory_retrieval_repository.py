@@ -1,4 +1,5 @@
 from app.repositories.memory_retrieval_repository import InMemoryRetrievalRepository
+from app.contracts.retrieval import RetrievalExecutionRequest
 
 
 def test_memory_retrieval_repository_returns_seeded_sources() -> None:
@@ -36,6 +37,24 @@ def test_memory_retrieval_repository_returns_searchable_indexed_chunks() -> None
     assert indexed_chunks[0].embedding_status == "PERSISTED"
     assert indexed_chunks[0].vector_dimensions == 16
     assert len(indexed_chunks[0].embedding_vector) == 16
+
+
+def test_memory_retrieval_repository_searches_indexed_hits() -> None:
+    repository = InMemoryRetrievalRepository()
+
+    hits = repository.search_indexed_hits(
+        RetrievalExecutionRequest(
+            query="shared ai platform service",
+            caller_app="lotus-workbench",
+            correlation_id="corr-mem-search-1",
+            source_ids=["lotus-platform-rfcs"],
+            limit=3,
+        )
+    )
+
+    assert hits
+    assert hits[0].document_id == "lotus-platform-rfc-0069"
+    assert hits[0].score > 0.0
 
 
 def test_memory_retrieval_repository_returns_none_or_empty_for_unknown_records() -> None:

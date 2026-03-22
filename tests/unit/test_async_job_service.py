@@ -1,6 +1,9 @@
 from fastapi import HTTPException
 
+from app.config import settings
+from app.contracts.async_runtime import AsyncJobSubmissionRequest
 from app.services.async_job_service import build_async_job_catalog, build_async_job_detail
+from app.services.async_submission_service import submit_async_job
 
 
 def test_async_job_catalog_reports_seeded_jobs() -> None:
@@ -31,3 +34,23 @@ def test_async_job_detail_raises_not_found_for_unknown_job() -> None:
         assert exc.detail == "Async job artifact 'missing_async_job' was not found."
     else:
         raise AssertionError("Expected async job lookup to raise HTTPException.")
+
+
+def test_async_job_catalog_includes_runtime_jobs() -> None:
+    settings.async_queue_mode = "stubbed"
+    settings.async_worker_mode = "stubbed"
+    submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-005",
+            target_id="retjob_lotus_platform_rfcs",
+            payload_summary="Replay approved RFC retrieval indexing.",
+        )
+    )
+
+    catalog = build_async_job_catalog()
+
+    assert catalog.job_count == 3
+    assert catalog.jobs[0].job_id.startswith("asyncjob_runtime_retrieval_indexing_")
+    assert catalog.jobs[0].status == "COMPLETED"

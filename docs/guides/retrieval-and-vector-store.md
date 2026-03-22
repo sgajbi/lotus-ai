@@ -139,10 +139,22 @@ embedding generation for currently searchable documents, records a lifecycle eve
 explicit `COMPLETED` or `BLOCKED` result without pretending that live provider-backed embedding
 generation already exists.
 
+The same indexing replay can now also be exercised through the async-work contract when
+`LOTUS_AI_ASYNC_QUEUE_MODE=stubbed` and `LOTUS_AI_ASYNC_WORKER_MODE=stubbed`. That path records a
+runtime async job artifact and keeps retrieval indexing aligned with the platform async model
+without claiming that durable queue-backed workers are already active.
+
 The search endpoint remains governed. In foundation phase it now supports:
 
 1. bounded indexed hits from promoted persisted preview embeddings when retrieval is enabled,
 2. bounded catalog-only hits from the same promoted corpus when retrieval is disabled.
+
+Indexed ranking is now owned by the retrieval backend seam rather than assembled in the gateway
+service layer. Today that means:
+
+1. the memory repository owns deterministic preview-vector scoring for local seeded execution,
+2. the SQLAlchemy-backed repository owns the SQL-backed preview search path used in current tests,
+3. the gateway remains responsible only for execution-stage selection and fallback behavior.
 
 Current searchable documents are a promoted subset of the staged corpus. Today they
 sit under these enabled sources:

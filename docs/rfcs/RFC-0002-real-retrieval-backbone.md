@@ -1,6 +1,6 @@
 # RFC-0002: Real Retrieval Backbone
 
-- Status: Proposed
+- Status: Implemented
 - Date: 2026-03-22
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -12,6 +12,23 @@
 This RFC moves retrieval from catalog-only staged metadata lookup to durable indexed retrieval over promoted content, backed by PostgreSQL and `pgvector`, with explicit governance for source promotion, indexing, searchability, and citation behavior.
 
 The goal is to make `knowledge_search.v1` and `knowledge_answer.v1` trustworthy platform capabilities rather than bounded demos over seeded catalog metadata.
+
+## Implementation Status
+
+Implemented so far:
+
+1. Slice 1: Document-Level Promotion Model
+2. Slice 2: Durable Chunk and Embedding Schema
+3. Slice 3: Real Indexing Pipeline
+4. Slice 4: Vector-Backed Retrieval Execution
+5. Slice 5: Retrieval-Backed Answer Hardening
+6. Slice 6: Evaluation and Operations Hardening
+7. Slice 7: Backend-Owned Indexed Search Seam
+8. Slice 8: Async Retrieval Indexing Orchestration
+
+Remaining:
+
+1. None
 
 ## Why This Is Next
 
@@ -28,16 +45,13 @@ Adding live model execution before real retrieval would create generated output 
 
 ## Problem Statement
 
-Current retrieval behavior is intentionally conservative but limited:
+Current retrieval behavior is materially stronger than when this RFC was opened, but it still has two closure gaps:
 
-1. retrieval is driven by staged catalog metadata rather than real indexed content,
-2. search quality depends on token matching over titles and previews,
-3. source-level enablement exists, but searchable document-level promotion does not,
-4. there is no real embedding pipeline,
-5. there is no vector-backed ranking path,
-6. retrieval-backed task quality is bounded by these constraints.
+1. indexed retrieval now exists, but ranking is still assembled above the backend seam instead of being owned by the backend implementation,
+2. deterministic indexing replay now exists, but it is still invoked directly rather than through the governed async-work model,
+3. retrieval-backed task quality is now useful, but final enterprise posture depends on closing those two seams cleanly.
 
-This is acceptable for foundation-phase validation, but it is not sufficient for enterprise-grade retrieval or for downstream Lotus applications that need dependable grounded answers.
+This is a strong foundation, but it is not yet the full retrieval backbone described by the RFC.
 
 ## Goals
 
@@ -66,7 +80,12 @@ Today `lotus-ai` already has:
 3. retrieval runtime and governance endpoints,
 4. catalog-only retrieval execution,
 5. `knowledge_search.v1` and `knowledge_answer.v1`,
-6. task/audit/evidence inspection surfaces.
+6. task/audit/evidence inspection surfaces,
+7. document-level promotion posture,
+8. persisted preview embeddings,
+9. indexed retrieval execution behind the retrieval gateway,
+10. deterministic retrieval index refresh,
+11. retrieval-specific evaluation and operations hardening.
 
 Those pieces should be retained and extended, not replaced.
 
@@ -232,6 +251,34 @@ Acceptance gate:
 2. operational posture is documented and testable,
 3. rollout remains governed.
 
+### Slice 7: Backend-Owned Indexed Search Seam
+
+Outcome:
+
+1. indexed retrieval ranking is owned by the retrieval backend seam rather than assembled in the gateway service layer,
+2. SQL-backed retrieval can execute bounded ranking through backend-specific query logic,
+3. the current preview-vector path remains deterministic while becoming easier to replace with `pgvector`.
+
+Acceptance gate:
+
+1. retrieval gateway no longer assembles indexed ranking itself,
+2. repository-backed indexed search is directly tested,
+3. the execution path is clearer and more modular than the current service-scored implementation.
+
+### Slice 8: Async Retrieval Indexing Orchestration
+
+Outcome:
+
+1. retrieval indexing refresh can be driven through the governed async-work model,
+2. retrieval indexing no longer depends only on direct synchronous execution,
+3. runtime and operational surfaces reflect the async indexing path honestly.
+
+Acceptance gate:
+
+1. retrieval indexing has an async submission or execution seam,
+2. indexing replay remains deterministic and inspectable,
+3. retrieval and async runtime surfaces stay aligned.
+
 ## Risks
 
 1. retrieval quality may still appear better in tests than in real product use if the promoted corpus is too small or too clean,
@@ -276,7 +323,9 @@ This RFC is complete when:
 2. document-level promotion posture is explicit and inspectable,
 3. `knowledge_search.v1` can execute through a real vector-backed path,
 4. `knowledge_answer.v1` can produce citation-backed responses over that path while preserving conservative refusals,
-5. evaluation and operational readiness are documented and tested.
+5. evaluation and operational readiness are documented and tested,
+6. indexed retrieval ranking is owned by the backend seam rather than the gateway service layer,
+7. deterministic indexing replay is available through the governed async-work model.
 
 ## Approval Requested
 

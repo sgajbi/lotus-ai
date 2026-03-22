@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     audit_store_mode: str = "memory"
     prompt_store_mode: str = "memory"
     retrieval_store_mode: str = "memory"
+    async_queue_mode: str = "disabled"
+    async_worker_mode: str = "documented_only"
     startup_readiness_policy: str = "warn"
     readiness_probe_policy: str = "observe"
     database_url: str | None = None

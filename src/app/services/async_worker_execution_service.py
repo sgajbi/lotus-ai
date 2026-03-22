@@ -8,12 +8,15 @@ from app.contracts.async_runtime import (
 
 
 def list_async_worker_executions() -> list[AsyncWorkerExecutionDescriptor]:
+    stubbed_runtime = settings.async_worker_mode == "stubbed"
     return [
         AsyncWorkerExecutionDescriptor(
             worker_id="none",
-            enabled=False,
+            enabled=not stubbed_runtime,
             execution_class="NO_WORKER_RUNTIME",
-            selection_state="ACTIVE_FOUNDATION_DEFAULT",
+            selection_state=(
+                "ACTIVE_FOUNDATION_DEFAULT" if not stubbed_runtime else "INACTIVE_FOUNDATION_DEFAULT"
+            ),
             supports_horizontal_scaling=False,
             supports_job_isolation=False,
             notes=(
@@ -23,9 +26,11 @@ def list_async_worker_executions() -> list[AsyncWorkerExecutionDescriptor]:
         ),
         AsyncWorkerExecutionDescriptor(
             worker_id="in_process_stub",
-            enabled=False,
+            enabled=stubbed_runtime,
             execution_class="STUBBED_WORKER_RUNTIME",
-            selection_state="DOCUMENTED_FUTURE_OPTION",
+            selection_state=(
+                "ACTIVE_STUB_RUNTIME" if stubbed_runtime else "DOCUMENTED_FUTURE_OPTION"
+            ),
             supports_horizontal_scaling=False,
             supports_job_isolation=True,
             notes=(
@@ -50,11 +55,12 @@ def list_async_worker_executions() -> list[AsyncWorkerExecutionDescriptor]:
 
 def build_async_worker_execution_catalog() -> AsyncWorkerExecutionCatalogResponse:
     workers = list_async_worker_executions()
+    active_worker_execution = "in_process_stub" if settings.async_worker_mode == "stubbed" else "none"
     return AsyncWorkerExecutionCatalogResponse(
         service=settings.service_name,
         version=settings.service_version,
         delivery_phase=settings.delivery_phase,
-        active_worker_execution="none",
+        active_worker_execution=active_worker_execution,
         worker_count=len(workers),
         workers=workers,
     )

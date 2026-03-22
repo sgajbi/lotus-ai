@@ -336,6 +336,28 @@ Current posture:
 2. the gateway rejects live retrieval execution while the platform remains in staged retrieval mode,
 3. catalog, indexing, and execution status are now separate but coordinated surfaces.
 
+## Decision 15F: Indexed Retrieval Ranking Should Be Owned By The Backend Seam
+
+Decision:
+
+Indexed retrieval ranking should be owned by the retrieval backend seam rather than assembled in
+the gateway service layer.
+
+Why:
+
+1. the gateway should stay focused on execution-stage selection and fallback behavior,
+2. backend-owned ranking makes the SQL-backed path the natural place to introduce future
+   `pgvector` execution,
+3. moving ranking responsibility down a layer reduces service-layer coupling and leaves the
+   retrieval path easier to reason about.
+
+Current posture:
+
+1. the repository seam now exposes indexed search directly,
+2. the memory repository owns deterministic preview-vector ranking for seeded execution,
+3. the SQLAlchemy-backed repository owns the current SQL-backed preview search implementation,
+4. the gateway delegates indexed search through that backend seam.
+
 ## Decision 15A: Retrieval Activation Readiness Should Be Exposed Before Live Search Rollout
 
 Decision:
@@ -1038,3 +1060,25 @@ Current posture:
 1. platform runtime status includes both `async_runtime` and `async_governance`,
 2. async governance remains separately inspectable through `/platform/async/governance-status`,
 3. foundation phase continues to report blocked async governance in both views.
+
+## Decision 45: Retrieval Indexing Should Integrate With The Async Contract Before Queue Rollout
+
+Decision:
+
+Retrieval indexing replay should integrate with the governed async-work contract before durable
+queue-backed workers are introduced.
+
+Why:
+
+1. retrieval indexing is the first background candidate that materially exercises the async model,
+2. connecting it to the async contract now reduces the chance that retrieval and async evolve as
+   separate architectures,
+3. a stubbed in-process path is enough to validate the contract boundary without pretending that
+   production worker rollout is complete.
+
+Current posture:
+
+1. retrieval indexing can be submitted through the async contract when stubbed async runtime is enabled,
+2. submission records a runtime async job artifact,
+3. the actual indexing replay remains deterministic and governed,
+4. durable queue-backed execution remains a later rollout step rather than an implied capability today.

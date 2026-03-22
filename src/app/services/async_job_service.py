@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.async_runtime.runtime_job_store import list_runtime_async_jobs
 from app.contracts.async_runtime import (
     AsyncJobCatalogResponse,
     AsyncJobDetailResponse,
@@ -12,7 +13,7 @@ from app.async_runtime.job_registry import load_async_job_artifacts
 
 
 def build_async_job_catalog() -> AsyncJobCatalogResponse:
-    jobs = load_async_job_artifacts()
+    jobs = list_runtime_async_jobs() + load_async_job_artifacts()
     queued_job_count = sum(1 for job in jobs if job.status == AsyncJobStatus.QUEUED)
     return AsyncJobCatalogResponse(
         service=settings.service_name,
@@ -25,7 +26,7 @@ def build_async_job_catalog() -> AsyncJobCatalogResponse:
 
 
 def build_async_job_detail(*, job_id: str) -> AsyncJobDetailResponse:
-    jobs = load_async_job_artifacts()
+    jobs = list_runtime_async_jobs() + load_async_job_artifacts()
     job = next((item for item in jobs if item.job_id == job_id), None)
     if job is None:
         raise HTTPException(

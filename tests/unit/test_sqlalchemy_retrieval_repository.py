@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from app.contracts.retrieval import RetrievalExecutionRequest
 from app.repositories.sqlalchemy_retrieval_repository import SqlAlchemyRetrievalRepository
 from tests.support.migration_runner import upgrade_database_to_head
 
@@ -63,6 +64,26 @@ def test_sqlalchemy_retrieval_repository_returns_seeded_job_events(tmp_path: Pat
 
     assert any(event.status == "FAILED" for event in events)
     assert any(event.stage == "STAGED" for event in events)
+
+
+def test_sqlalchemy_retrieval_repository_searches_indexed_hits(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-retrieval.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyRetrievalRepository(database_url)
+
+    hits = repository.search_indexed_hits(
+        RetrievalExecutionRequest(
+            query="shared ai platform service",
+            caller_app="lotus-workbench",
+            correlation_id="corr-sql-search-1",
+            source_ids=["lotus-platform-rfcs"],
+            limit=3,
+        )
+    )
+
+    assert hits
+    assert hits[0].document_id == "lotus-platform-rfc-0069"
+    assert hits[0].score > 0.0
 
 
 def test_sqlalchemy_retrieval_repository_refreshes_searchable_job(tmp_path: Path) -> None:

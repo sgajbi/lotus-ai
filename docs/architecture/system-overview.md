@@ -181,6 +181,14 @@ Retrieval indexing also now has a deterministic refresh action, so promoted sear
 can replay chunk indexing and persisted preview embedding generation in place through the existing
 job seam instead of relying only on seeded lifecycle metadata.
 
+Indexed retrieval ranking is now also owned by the retrieval backend seam instead of being
+assembled in the gateway service layer. That keeps the execution path smaller and makes the
+SQL-backed repository the clear place where future `pgvector` search logic will live.
+
+Retrieval indexing can now also be triggered through the async-work contract when the in-process
+stub runtime is explicitly enabled. That keeps retrieval replay aligned with the broader async
+architecture without pretending that queue-backed workers are already live.
+
 `knowledge_search.v1` now uses that governed retrieval path directly, so the task
 execution surface has a real governed knowledge-search capability instead of a generic
 placeholder for retrieval-class work.

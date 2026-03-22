@@ -10,8 +10,16 @@ def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
     blocking_findings = [
         "Queue-backed execution remains disabled in the current foundation phase.",
         "The active queue backend is 'none'; no live durable queue has been selected.",
-        "The active worker execution is 'none'; no dedicated worker runtime is active.",
-        "Supported async job types remain documented-only and are not enabled for live execution.",
+        (
+            "The active worker execution is 'none'; no dedicated worker runtime is active."
+            if runtime.active_worker_execution == "none"
+            else "Only the in-process stub worker runtime is active; queue-backed worker isolation is not enabled."
+        ),
+        (
+            "Supported async job types remain documented-only and are not enabled for live execution."
+            if not any(job.enabled for job in runtime.supported_job_types)
+            else "Only stubbed async job execution is enabled; live queue-backed execution remains blocked."
+        ),
     ]
     activation_path = [
         "Select and approve a governed durable queue backend for lotus-ai async execution.",

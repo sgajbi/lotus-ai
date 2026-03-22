@@ -17,6 +17,8 @@ class AsyncWorkerMode(str, Enum):
 
 class AsyncJobStatus(str, Enum):
     QUEUED = "QUEUED"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
     SUPERSEDED = "SUPERSEDED"
 
 
@@ -117,6 +119,10 @@ class AsyncJobSubmissionRequest(BaseModel):
     )
     correlation_id: str = Field(
         description="Caller-provided correlation identifier for the request."
+    )
+    target_id: str | None = Field(
+        default=None,
+        description="Optional target identifier for job types that act on a specific governed resource.",
     )
     payload_summary: str = Field(
         description="Short description of the intended async work payload."
