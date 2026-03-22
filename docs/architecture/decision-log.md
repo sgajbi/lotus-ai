@@ -371,3 +371,21 @@ Current posture:
 1. `explanation_task_examples` is now staged with a backing fixture file,
 2. evaluation catalog reports manifest path and case count per family,
 3. evaluation runtime status reports total staged case count.
+
+## Decision 23: Core Task Families Should Gain File-Backed Fixtures Early
+
+Decision:
+
+Summarization joins explanation as an early file-backed evaluation family in foundation phase.
+
+Why:
+
+1. explanation alone is not enough to validate that multiple task families can share the same governed fixture shape,
+2. summarization is one of the first public task contracts and should have real staged artifacts before provider rollout begins,
+3. this keeps evaluation posture aligned with the actual task surface rather than trailing behind it.
+
+Current posture:
+
+1. `summarization_task_examples` is now staged with a backing fixture file,
+2. evaluation runtime status counts staged cases across both explanation and summarization,
+3. retrieval and citation fixture families remain documented until retrieval execution is activated.

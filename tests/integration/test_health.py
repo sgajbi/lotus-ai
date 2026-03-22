@@ -45,6 +45,12 @@ def test_evaluation_catalog_route() -> None:
         and fixture["case_count"] == 2
         for fixture in body["fixture_families"]
     )
+    assert any(
+        fixture["fixture_id"] == "summarization_task_examples"
+        and fixture["manifest_path"] == "docs/evals/fixtures/summarize.v1/basic_cases.json"
+        and fixture["case_count"] == 2
+        for fixture in body["fixture_families"]
+    )
 
 
 def test_evaluation_runtime_status_route() -> None:
@@ -57,7 +63,7 @@ def test_evaluation_runtime_status_route() -> None:
     assert body["service"] == "lotus-ai"
     assert body["manifest_version"] == "foundation.v1"
     assert body["evidence_category_count"] == 5
-    assert body["staged_case_count"] == 2
+    assert body["staged_case_count"] == 4
     assert body["evaluation_runner_active"] is False
 
 
@@ -129,7 +135,7 @@ def test_platform_runtime_status_route() -> None:
     assert body["retrieval_store"]["status"] == "READY"
     assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
     assert body["evaluation_runtime"]["evidence_category_count"] == 5
-    assert body["evaluation_runtime"]["staged_case_count"] == 2
+    assert body["evaluation_runtime"]["staged_case_count"] == 4
     assert body["evaluation_runtime"]["evaluation_runner_active"] is False
     assert body["prompt_runtime"]["selection_mode"] == "STATIC_ACTIVE"
     assert body["prompt_runtime"]["active_prompt_count"] >= 7

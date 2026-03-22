@@ -16,3 +16,11 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
     assert explain_fixture.status == "STAGED"
     assert explain_fixture.manifest_path == "docs/evals/fixtures/explain.v1/basic_cases.json"
     assert explain_fixture.case_count == 2
+    summarize_fixture = next(
+        fixture
+        for fixture in catalog.fixture_families
+        if fixture.fixture_id == "summarization_task_examples"
+    )
+    assert summarize_fixture.status == "STAGED"
+    assert summarize_fixture.manifest_path == "docs/evals/fixtures/summarize.v1/basic_cases.json"
+    assert summarize_fixture.case_count == 2

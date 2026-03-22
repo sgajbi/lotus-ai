@@ -92,5 +92,9 @@ The first concrete staged fixture asset now exists at:
 
 1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/explain.v1/basic_cases.json)
 
-This gives the platform one real file-backed fixture family for `explain.v1` while the rest of the
-evaluation inventory remains staged or documented.
+The second concrete staged fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/summarize.v1/basic_cases.json)
+
+This gives the platform real file-backed fixture families for both `explain.v1` and `summarize.v1`
+while the rest of the evaluation inventory remains staged or documented.

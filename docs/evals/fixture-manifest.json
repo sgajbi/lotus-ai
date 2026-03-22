@@ -36,8 +36,9 @@
     },
     {
       "fixture_id": "summarization_task_examples",
-      "status": "DOCUMENTED",
-      "description": "Golden examples for summarization-oriented tasks."
+      "status": "STAGED",
+      "description": "Golden examples for summarization-oriented tasks.",
+      "manifest_path": "docs/evals/fixtures/summarize.v1/basic_cases.json"
     },
     {
       "fixture_id": "retrieval_citation_examples",

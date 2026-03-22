@@ -33,6 +33,7 @@ The current execution posture is:
 - platform runtime status now summarizes evaluation runtime posture too,
 - evaluation fixture inventory is now backed by a versioned in-repo manifest,
 - the first real file-backed fixture family now exists for `explain.v1`,
+- a second file-backed fixture family now exists for `summarize.v1`,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:
