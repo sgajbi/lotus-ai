@@ -150,6 +150,32 @@ class ProviderRunbookReadinessResponse(BaseModel):
     )
 
 
+class ProviderEvidenceReadinessItem(BaseModel):
+    evidence_id: str = Field(description="Stable provider evidence-readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the evidence requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this evidence item must be complete before live provider activation."
+    )
+    notes: str = Field(description="Human-readable explanation of the evidence requirement.")
+
+
+class ProviderEvidenceReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the provider evidence readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    evidence_ready: bool = Field(
+        description="Whether provider evidence posture is currently sufficient for activation."
+    )
+    required_item_count: int = Field(
+        description="Number of provider evidence items currently required for activation."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required provider evidence items currently marked complete."
+    )
+    items: list[ProviderEvidenceReadinessItem] = Field(
+        description="Governed provider evidence-readiness items."
+    )
+
+
 class ProviderGovernanceStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the provider governance status view.")
     version: str = Field(description="Current lotus-ai service version.")

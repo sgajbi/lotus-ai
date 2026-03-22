@@ -24,6 +24,7 @@ The current execution posture is:
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - provider runbook readiness is now exposed through a dedicated operational-readiness endpoint,
+- provider evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
 - provider governance status is now exposed through a dedicated review-summary endpoint,
 - platform runtime status now embeds provider governance posture directly,
 - safety policy exposes task-level output-label and redaction posture,

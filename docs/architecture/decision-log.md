@@ -246,6 +246,24 @@ Current posture:
 2. provider governance remains separately inspectable through `/platform/providers/governance-status`,
 3. foundation phase continues to report blocked provider governance in both views.
 
+## Decision 11E: Provider Evidence Readiness Should Be Exposed Before Live Provider Rollout
+
+Decision:
+
+`lotus-ai` exposes provider evidence readiness separately from provider technical and operational readiness.
+
+Why:
+
+1. bank-grade provider activation review should require explicit evaluation, audit, and failover evidence rather than assuming those concerns are covered by technical or runbook posture alone,
+2. provider rollout needs a stable evidence contract before any live-provider path is introduced,
+3. separating evidence readiness keeps future provider activation criteria inspectable and auditable.
+
+Current posture:
+
+1. `/platform/providers/evidence-readiness` exposes required provider evidence items,
+2. required evidence items remain not ready in foundation phase,
+3. provider governance review can now inspect evidence posture separately while the combined governance summary remains unchanged in this slice.
+
 ## Decision 12: Safety Posture Must Be Inspectable
 
 Decision:

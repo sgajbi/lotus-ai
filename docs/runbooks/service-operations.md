@@ -20,6 +20,7 @@
 - Async governance status: /platform/async/governance-status
 - Provider activation readiness: /platform/providers/activation-readiness
 - Provider runbook readiness: /platform/providers/runbook-readiness
+- Provider evidence readiness: /platform/providers/evidence-readiness
 - Provider governance status: /platform/providers/governance-status
 - Prompt activation readiness: /platform/prompts/activation-readiness
 - Prompt runbook readiness: /platform/prompts/runbook-readiness
@@ -79,10 +80,11 @@ Before any future live-provider activation slice:
 1. verify `GET /platform/providers/governance-status`
 2. inspect `GET /platform/providers/activation-readiness` when technical blockers need detail
 3. inspect `GET /platform/providers/runbook-readiness` when operational blockers need detail
-4. confirm the embedded `provider_governance` block in `GET /platform/runtime-status` matches the detailed provider governance view
-5. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
-6. confirm vendor escalation, rate-limit response, and provider observability procedures are documented and approved
-7. only then proceed with any live-provider activation rollout review
+4. inspect `GET /platform/providers/evidence-readiness` when evaluation, audit, or failover evidence blockers need detail
+5. confirm the embedded `provider_governance` block in `GET /platform/runtime-status` matches the detailed provider governance view
+6. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
+7. confirm vendor escalation, rate-limit response, and provider observability procedures are documented and approved
+8. only then proceed with any live-provider activation rollout review
 
 ## Prompt Activation Governance
 

@@ -5,12 +5,14 @@ from fastapi import APIRouter
 from app.contracts.providers import (
     ProviderActivationReadinessResponse,
     ProviderCatalogResponse,
+    ProviderEvidenceReadinessResponse,
     ProviderGovernanceStatusResponse,
     ProviderPolicyResponse,
     ProviderRunbookReadinessResponse,
 )
 from app.services.provider_activation_readiness import build_provider_activation_readiness
 from app.services.provider_catalog import build_provider_catalog
+from app.services.provider_evidence_readiness import build_provider_evidence_readiness
 from app.services.provider_governance_status import build_provider_governance_status
 from app.services.provider_policy import build_provider_policy
 from app.services.provider_runbook_readiness import build_provider_runbook_readiness
@@ -88,6 +90,24 @@ async def get_provider_activation_readiness_route() -> ProviderActivationReadine
 )
 async def get_provider_runbook_readiness_route() -> ProviderRunbookReadinessResponse:
     return build_provider_runbook_readiness()
+
+
+@router.get(
+    "/evidence-readiness",
+    response_model=ProviderEvidenceReadinessResponse,
+    operation_id="getProviderEvidenceReadiness",
+    summary="Get lotus-ai provider evidence readiness",
+    description=(
+        "Returns whether lotus-ai provider rollout is currently supported by the required "
+        "evaluation, audit, failover, and rollback evidence for future live activation."
+    ),
+    responses={
+        200: {"description": "Provider evidence readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_evidence_readiness_route() -> ProviderEvidenceReadinessResponse:
+    return build_provider_evidence_readiness()
 
 
 @router.get(
