@@ -55,6 +55,7 @@ The current execution posture is:
 - platform task APIs now also expose bounded execution-summary, evidence-summary, and retrieval-summary views built from persisted audit records, so real task usage, retrieval-answer quality, and source/refusal patterns can be measured instead of inferred,
 - the provider catalog now distinguishes stub adapters from documented-live adapter seams even though no live provider is enabled yet,
 - provider policy now exposes selected adapter kind and structured rejection category in addition to supported runtime modes,
+- provider surfaces now also expose explicit text-generation rollout state and live-provider configuration posture, so supported runtime mode and future activation posture are no longer conflated,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - provider runbook readiness is now exposed through a dedicated operational-readiness endpoint,
 - provider evidence readiness is now exposed through a dedicated evidence-readiness endpoint,

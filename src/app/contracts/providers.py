@@ -32,6 +32,44 @@ class ProviderFailureCategory(str, Enum):
     PROVIDER_NOT_REGISTERED = "PROVIDER_NOT_REGISTERED"
 
 
+class ProviderRolloutState(str, Enum):
+    DOCUMENTED_ONLY = "DOCUMENTED_ONLY"
+    STUB_DEFAULT = "STUB_DEFAULT"
+    ALLOWLISTED_DISABLED = "ALLOWLISTED_DISABLED"
+    CANARY_ENABLED = "CANARY_ENABLED"
+    ROLLED_OUT = "ROLLED_OUT"
+
+
+class ProviderCredentialStatus(str, Enum):
+    NOT_CONFIGURED = "NOT_CONFIGURED"
+    CONFIGURED = "CONFIGURED"
+    INVALID = "INVALID"
+
+
+class ProviderConfigurationStatusDescriptor(BaseModel):
+    rollout_state: ProviderRolloutState = Field(
+        description="Current governed rollout posture for live text-generation provider activation."
+    )
+    configured_live_provider_id: str | None = Field(
+        default=None,
+        description="Allowlisted live provider identifier configured for future activation, when present.",
+    )
+    configured_live_model_id: str | None = Field(
+        default=None,
+        description="Allowlisted live model identifier configured for future activation, when present.",
+    )
+    credential_status: ProviderCredentialStatus = Field(
+        description="Current credential posture for the configured live provider path."
+    )
+    configuration_valid: bool = Field(
+        description="Whether the configured rollout and live provider settings are internally consistent."
+    )
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable findings describing configuration and rollout posture.",
+    )
+
+
 class ProviderDescriptor(BaseModel):
     provider_id: str = Field(description="Stable provider identifier within lotus-ai.")
     display_name: str = Field(description="Human-readable provider name.")
@@ -63,6 +101,9 @@ class ProviderCatalogResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     provider_mode: str = Field(description="Configured text-generation provider mode.")
     embedding_provider_mode: str = Field(description="Configured embedding provider mode.")
+    text_generation_configuration: ProviderConfigurationStatusDescriptor = Field(
+        description="Current rollout and configuration posture for future live text-generation activation."
+    )
     runtime_execution_enabled: bool = Field(
         description="Whether any provider is currently enabled for live execution."
     )
@@ -99,6 +140,9 @@ class ProviderPolicyDescriptor(BaseModel):
 class ProviderPolicyResponse(BaseModel):
     service: str = Field(description="Service name emitting the provider policy response.")
     version: str = Field(description="Current lotus-ai service version.")
+    text_generation_configuration: ProviderConfigurationStatusDescriptor = Field(
+        description="Current rollout and configuration posture for future live text-generation activation."
+    )
     policies: list[ProviderPolicyDescriptor] = Field(
         description="Capability-specific provider execution policies."
     )
@@ -144,6 +188,9 @@ class ProviderActivationReadinessResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     provider_mode: str = Field(description="Configured text-generation provider mode.")
     embedding_provider_mode: str = Field(description="Configured embedding provider mode.")
+    text_generation_configuration: ProviderConfigurationStatusDescriptor = Field(
+        description="Current rollout and configuration posture for future live text-generation activation."
+    )
     activation_ready: bool = Field(
         description="Whether provider execution is currently ready for live activation."
     )

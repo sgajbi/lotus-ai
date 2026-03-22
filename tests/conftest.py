@@ -14,6 +14,10 @@ from app.services.retrieval_store import reset_retrieval_repository
 def reset_runtime_settings() -> Generator[None, None, None]:
     original_values = {
         "provider_mode": settings.provider_mode,
+        "provider_rollout_state": settings.provider_rollout_state,
+        "live_text_provider_id": settings.live_text_provider_id,
+        "live_text_model_id": settings.live_text_model_id,
+        "live_text_provider_api_key": settings.live_text_provider_api_key,
         "embedding_provider_mode": settings.embedding_provider_mode,
         "audit_store_mode": settings.audit_store_mode,
         "prompt_store_mode": settings.prompt_store_mode,

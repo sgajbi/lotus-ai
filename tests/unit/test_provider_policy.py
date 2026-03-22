@@ -1,7 +1,9 @@
 from app.contracts.providers import (
     ProviderAdapterKind,
     ProviderCapability,
+    ProviderCredentialStatus,
     ProviderFailureCategory,
+    ProviderRolloutState,
 )
 from app.services.provider_policy import build_provider_policy
 
@@ -10,6 +12,11 @@ def test_provider_policy_reports_supported_modes_and_rejection_behavior() -> Non
     response = build_provider_policy()
 
     assert response.service == "lotus-ai"
+    assert response.text_generation_configuration.rollout_state == ProviderRolloutState.STUB_DEFAULT
+    assert (
+        response.text_generation_configuration.credential_status
+        == ProviderCredentialStatus.NOT_CONFIGURED
+    )
     assert len(response.policies) == 2
     text_policy = next(
         policy

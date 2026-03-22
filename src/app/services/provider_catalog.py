@@ -10,6 +10,9 @@ from app.contracts.providers import (
     ProviderLifecycleStatus,
 )
 from app.providers.registry import list_registered_provider_descriptors
+from app.services.provider_configuration_status import (
+    build_text_generation_configuration_status,
+)
 
 
 def build_provider_catalog() -> ProviderCatalogResponse:
@@ -50,6 +53,7 @@ def build_provider_catalog() -> ProviderCatalogResponse:
         version=settings.service_version,
         provider_mode=settings.provider_mode,
         embedding_provider_mode=settings.embedding_provider_mode,
+        text_generation_configuration=build_text_generation_configuration_status(),
         runtime_execution_enabled=any(provider.enabled_for_execution for provider in providers),
         providers=providers,
     )

@@ -142,6 +142,11 @@ modes are validated first, provider selection resolves through a small registere
 and current executable modes still route through the stub provider until a live provider path is
 actually introduced.
 
+Provider runtime mode and provider rollout posture are now also separated explicitly. The
+provider APIs expose current supported execution mode, future rollout state, and live-provider
+configuration posture as distinct concepts so bank-grade activation review does not depend on
+interpreting a single overloaded setting.
+
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
 

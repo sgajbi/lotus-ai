@@ -176,6 +176,25 @@ Current posture:
 3. provider policy now exposes selected adapter kind and structured rejection category,
 4. unsupported modes are rejected with a service-unavailable response.
 
+## Decision 11D: Provider Rollout State Must Be Separate From Supported Runtime Mode
+
+Decision:
+
+`lotus-ai` exposes live-provider rollout posture and live-provider configuration posture separately
+from supported provider runtime mode.
+
+Why:
+
+1. bank-grade rollout review must distinguish what the platform can execute today from what it is preparing to activate later,
+2. provider credentials and allowlist configuration must be inspectable without implying that live execution is already enabled,
+3. separating rollout posture from runtime mode reduces ambiguous configuration and hidden enablement risk.
+
+Current posture:
+
+1. provider catalog and provider policy expose text-generation rollout posture separately from runtime mode,
+2. activation readiness includes live-provider configuration validity and credential posture,
+3. invalid or partial live-provider configuration is surfaced explicitly before any live execution exists.
+
 ## Decision 11A: Provider Activation Readiness Should Be Exposed Before Live Rollout
 
 Decision:

@@ -9,6 +9,8 @@ def test_provider_catalog_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["provider_mode"] == "disabled"
     assert body["embedding_provider_mode"] == "disabled"
+    assert body["text_generation_configuration"]["rollout_state"] == "STUB_DEFAULT"
+    assert body["text_generation_configuration"]["credential_status"] == "NOT_CONFIGURED"
     assert body["runtime_execution_enabled"] is False
     assert any(provider["provider_id"] == "text.stub" for provider in body["providers"])
     assert any(
@@ -25,6 +27,7 @@ def test_provider_policy_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
+    assert body["text_generation_configuration"]["rollout_state"] == "STUB_DEFAULT"
     text_policy = next(
         policy for policy in body["policies"] if policy["capability"] == "TEXT_GENERATION"
     )
@@ -40,9 +43,11 @@ def test_provider_activation_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["provider_mode"] == "disabled"
     assert body["embedding_provider_mode"] == "disabled"
+    assert body["text_generation_configuration"]["rollout_state"] == "STUB_DEFAULT"
+    assert body["text_generation_configuration"]["credential_status"] == "NOT_CONFIGURED"
     assert body["activation_ready"] is False
-    assert len(body["blocking_findings"]) == 4
-    assert len(body["activation_path"]) == 4
+    assert len(body["blocking_findings"]) == 5
+    assert len(body["activation_path"]) == 5
 
 
 def test_provider_runbook_readiness_route(client: TestClient) -> None:

@@ -12,6 +12,9 @@ from app.contracts.providers import (
     ProviderPolicyResponse,
 )
 from app.providers.registry import resolve_text_generation_adapter
+from app.services.provider_configuration_status import (
+    build_text_generation_configuration_status,
+)
 
 
 def build_provider_policy() -> ProviderPolicyResponse:
@@ -19,6 +22,7 @@ def build_provider_policy() -> ProviderPolicyResponse:
     return ProviderPolicyResponse(
         service=settings.service_name,
         version=settings.service_version,
+        text_generation_configuration=build_text_generation_configuration_status(),
         policies=[
             ProviderPolicyDescriptor(
                 capability=ProviderCapability.TEXT_GENERATION,
