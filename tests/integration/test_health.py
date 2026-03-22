@@ -162,6 +162,19 @@ def test_prompt_governance_route() -> None:
     assert body["active_prompt_count"] >= 7
 
 
+def test_prompt_runtime_status_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/prompts/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["prompt_store_mode"] == "memory"
+    assert body["selection_mode"] == "STATIC_ACTIVE"
+    assert any(selection["task_id"] == "explain.v1" for selection in body["selections"])
+
+
 def test_service_metadata_exposes_store_modes() -> None:
     client = TestClient(app)
 

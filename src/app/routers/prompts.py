@@ -2,9 +2,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.contracts.prompts import PromptDescriptor, PromptGovernanceStatusResponse
+from app.contracts.prompts import (
+    PromptDescriptor,
+    PromptGovernanceStatusResponse,
+    PromptRuntimeStatusResponse,
+)
 from app.services.prompt_governance import build_prompt_governance_status
 from app.services.prompt_registry import get_prompt_or_raise, list_registered_prompts
+from app.services.prompt_status import build_prompt_runtime_status
 
 router = APIRouter(prefix="/platform/prompts", tags=["platform"])
 
@@ -43,6 +48,24 @@ async def list_prompts_route() -> list[PromptDescriptor]:
 )
 async def get_prompt_governance_route() -> PromptGovernanceStatusResponse:
     return build_prompt_governance_status()
+
+
+@router.get(
+    "/runtime-status",
+    response_model=PromptRuntimeStatusResponse,
+    operation_id="getPromptRuntimeStatus",
+    summary="Get lotus-ai prompt runtime status",
+    description=(
+        "Returns the current prompt runtime selection posture, including which prompt versions "
+        "are actively selected for each task in the current phase."
+    ),
+    responses={
+        200: {"description": "Prompt runtime status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_prompt_runtime_status_route() -> PromptRuntimeStatusResponse:
+    return build_prompt_runtime_status()
 
 
 @router.get(

@@ -15,6 +15,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         "getSafetyRuntimeStatus"
     )
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
+    assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
+        "getPromptRuntimeStatus"
+    )
     assert spec["paths"]["/platform/prompts/governance"]["get"]["operationId"] == (
         "getPromptGovernanceStatus"
     )

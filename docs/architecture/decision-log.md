@@ -245,3 +245,21 @@ Current posture:
 1. retrieval execution is inspectable through `/platform/retrieval/execution-status`,
 2. the gateway rejects live retrieval execution while the platform remains in staged retrieval mode,
 3. catalog, indexing, and execution status are now separate but coordinated surfaces.
+
+## Decision 16: Prompt Runtime Selection Should Be Inspectable
+
+Decision:
+
+`lotus-ai` exposes prompt runtime selection status separately from prompt definition and governance views.
+
+Why:
+
+1. operators and downstream teams need to know which prompt version is actually active per task,
+2. rollout state should be inspectable even before a write-based promotion workflow exists,
+3. this gives us a stable runtime-selection surface before future prompt promotion or rollback mechanics are introduced.
+
+Current posture:
+
+1. prompt runtime selection is inspectable through `/platform/prompts/runtime-status`,
+2. the current selection mode is static active-prompt selection,
+3. runtime promotion remains read-only and repository-governed.

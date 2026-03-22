@@ -49,3 +49,41 @@ class PromptGovernanceStatusResponse(BaseModel):
         description="Approved path for promoting prompt definitions in the current phase."
     )
     active_prompt_count: int = Field(description="Number of currently active prompt definitions.")
+
+
+class PromptSelectionMode(str, Enum):
+    STATIC_ACTIVE = "STATIC_ACTIVE"
+
+
+class PromptRuntimeSelectionDescriptor(BaseModel):
+    task_id: str = Field(description="Stable task identifier associated with the prompt.")
+    prompt_version: str = Field(description="Prompt version currently selected at runtime.")
+    lifecycle_status: PromptLifecycleStatus = Field(
+        description="Lifecycle status of the selected prompt definition."
+    )
+    management_mode: PromptManagementMode = Field(
+        description="Management mode for the selected prompt definition."
+    )
+    source_reference: str = Field(
+        description="Repository or migration reference for the selected prompt definition."
+    )
+    selected_for_runtime: bool = Field(
+        description="Whether the prompt definition is currently selected for runtime use."
+    )
+    selection_reason: str = Field(
+        description="Human-readable explanation of why this prompt is selected."
+    )
+
+
+class PromptRuntimeStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the prompt runtime status.")
+    version: str = Field(description="Current lotus-ai service version.")
+    prompt_store_mode: str = Field(description="Configured prompt store mode for the runtime.")
+    selection_mode: PromptSelectionMode = Field(
+        description="How prompt definitions are selected for runtime use."
+    )
+    active_prompt_count: int = Field(description="Number of active prompt definitions.")
+    retired_prompt_count: int = Field(description="Number of retired prompt definitions.")
+    selections: list[PromptRuntimeSelectionDescriptor] = Field(
+        description="Prompt definitions currently selected for runtime use."
+    )

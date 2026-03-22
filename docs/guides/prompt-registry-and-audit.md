@@ -57,7 +57,8 @@ Current governance posture:
 2. prompt promotion write APIs are disabled,
 3. prompt promotion happens through reviewed repository changes,
 4. SQL-backed prompt promotion is completed through Alembic-managed persistence updates,
-5. the current governance posture is visible through `GET /platform/prompts/governance`.
+5. the current governance posture is visible through `GET /platform/prompts/governance`,
+6. the active runtime prompt selection set is visible through `GET /platform/prompts/runtime-status`.
 
 ## Audit Store
 
@@ -103,7 +104,8 @@ The current enterprise posture is:
 1. `GET /platform/prompts`
 2. `GET /platform/prompts/{task_id}`
 3. `GET /platform/prompts/governance`
-4. `GET /ai/audit/{request_id}`
+4. `GET /platform/prompts/runtime-status`
+5. `GET /ai/audit/{request_id}`
 
 ## Future Direction
 
