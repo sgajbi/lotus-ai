@@ -12,8 +12,7 @@ from app.contracts.prompts import (
 from app.services.prompt_store import get_prompt_repository
 
 _FOUNDATION_SELECTION_REASON = (
-    "Foundation-phase runtime selects the single active prompt definition "
-    "registered for each task."
+    "Foundation-phase runtime selects the single active prompt definition registered for each task."
 )
 
 
