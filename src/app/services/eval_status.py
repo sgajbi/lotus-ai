@@ -5,6 +5,7 @@ from app.contracts.evals import (
     EvaluationRuntimeStatusResponse,
 )
 from app.services.eval_catalog import build_evaluation_catalog
+from app.services.eval_seam_summary import build_evaluation_seam_coverage
 
 
 def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
@@ -18,6 +19,7 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
         if fixture.status == EvaluationAssetStatus.DOCUMENTED
     )
     staged_case_count = sum(fixture.case_count for fixture in catalog.fixture_families)
+    seam_coverage = build_evaluation_seam_coverage()
     return EvaluationRuntimeStatusResponse(
         service=catalog.service,
         version=catalog.version,
@@ -27,6 +29,7 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
         staged_fixture_count=staged_fixture_count,
         documented_fixture_count=documented_fixture_count,
         staged_case_count=staged_case_count,
+        seam_coverage=seam_coverage,
         evaluation_runner_active=False,
         message=(
             "Evaluation assets are cataloged and partially staged, but no live evaluation runner "

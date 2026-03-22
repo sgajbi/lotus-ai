@@ -11,4 +11,12 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.staged_fixture_count >= 6
     assert status.documented_fixture_count == 0
     assert status.staged_case_count == 12
+    assert [item.seam_id for item in status.seam_coverage] == [
+        "task_execution",
+        "retrieval",
+        "provider_policy",
+        "safety_policy",
+    ]
+    assert status.seam_coverage[0].staged_fixture_count == 3
+    assert status.seam_coverage[0].staged_case_count == 6
     assert status.evaluation_runner_active is False

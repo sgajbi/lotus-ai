@@ -1,0 +1,37 @@
+from __future__ import annotations
+
+from app.contracts.evals import EvaluationAssetStatus, EvaluationSeamCoverageDescriptor
+from app.services.eval_catalog import build_evaluation_catalog
+
+SEAM_FIXTURE_MAP: dict[str, list[str]] = {
+    "task_execution": [
+        "task_capability_contracts",
+        "explanation_task_examples",
+        "summarization_task_examples",
+    ],
+    "retrieval": ["retrieval_citation_examples"],
+    "provider_policy": ["provider_policy_examples"],
+    "safety_policy": ["safety_policy_examples"],
+}
+
+
+def build_evaluation_seam_coverage() -> list[EvaluationSeamCoverageDescriptor]:
+    catalog = build_evaluation_catalog()
+    fixture_lookup = {fixture.fixture_id: fixture for fixture in catalog.fixture_families}
+    seam_coverage: list[EvaluationSeamCoverageDescriptor] = []
+    for seam_id, fixture_ids in SEAM_FIXTURE_MAP.items():
+        staged_fixtures = [
+            fixture_lookup[fixture_id]
+            for fixture_id in fixture_ids
+            if fixture_id in fixture_lookup
+            and fixture_lookup[fixture_id].status == EvaluationAssetStatus.STAGED
+        ]
+        seam_coverage.append(
+            EvaluationSeamCoverageDescriptor(
+                seam_id=seam_id,
+                fixture_ids=[fixture.fixture_id for fixture in staged_fixtures],
+                staged_fixture_count=len(staged_fixtures),
+                staged_case_count=sum(fixture.case_count for fixture in staged_fixtures),
+            )
+        )
+    return seam_coverage

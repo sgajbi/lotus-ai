@@ -497,3 +497,21 @@ Current posture:
 1. `task_capability_contracts` is now backed by a fixture file,
 2. the initial evaluation manifest no longer has documented-only families,
 3. every current fixture family is discoverable, validated, and file-backed.
+
+## Decision 30: Evaluation Runtime Should Summarize Coverage By Platform Seam
+
+Decision:
+
+Evaluation runtime status now reports staged coverage by major lotus-ai platform seam rather than only aggregate totals.
+
+Why:
+
+1. operators and reviewers need a faster way to see which governed boundaries are actually covered,
+2. seam-oriented summaries are more actionable than raw fixture counts once the inventory grows,
+3. this improves runtime inspectability without introducing mutable evaluation behavior.
+
+Current posture:
+
+1. evaluation runtime status summarizes staged coverage for task execution, retrieval, provider policy, and safety policy,
+2. platform runtime status inherits the same seam summary through the embedded evaluation runtime contract,
+3. fixture-family detail remains available for deeper inspection.

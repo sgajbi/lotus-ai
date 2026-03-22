@@ -40,6 +40,7 @@ The current execution posture is:
 - safety policy behavior is now staged as file-backed evaluation fixtures,
 - task capability and enablement behavior is now staged as file-backed evaluation fixtures,
 - evaluation fixture manifest validity is now enforced by a dedicated CI gate,
+- evaluation runtime status now summarizes staged coverage by platform seam,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

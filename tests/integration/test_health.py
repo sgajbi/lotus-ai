@@ -88,6 +88,14 @@ def test_evaluation_runtime_status_route() -> None:
     assert body["manifest_version"] == "foundation.v1"
     assert body["evidence_category_count"] == 5
     assert body["staged_case_count"] == 12
+    assert [item["seam_id"] for item in body["seam_coverage"]] == [
+        "task_execution",
+        "retrieval",
+        "provider_policy",
+        "safety_policy",
+    ]
+    assert body["seam_coverage"][0]["staged_fixture_count"] == 3
+    assert body["seam_coverage"][0]["staged_case_count"] == 6
     assert body["evaluation_runner_active"] is False
 
 
@@ -184,6 +192,8 @@ def test_platform_runtime_status_route() -> None:
     assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
     assert body["evaluation_runtime"]["evidence_category_count"] == 5
     assert body["evaluation_runtime"]["staged_case_count"] == 12
+    assert body["evaluation_runtime"]["seam_coverage"][0]["seam_id"] == "task_execution"
+    assert body["evaluation_runtime"]["seam_coverage"][0]["staged_fixture_count"] == 3
     assert body["evaluation_runtime"]["evaluation_runner_active"] is False
     assert body["prompt_runtime"]["selection_mode"] == "STATIC_ACTIVE"
     assert body["prompt_runtime"]["active_prompt_count"] >= 7

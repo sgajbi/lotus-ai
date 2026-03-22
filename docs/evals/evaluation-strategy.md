@@ -88,6 +88,13 @@ Fixture-family detail exposes:
 2. associated `task_id` when available,
 3. case-level metadata such as `case_id` and `summary` without surfacing mutable payload internals through the API.
 
+Runtime status now also exposes seam-oriented coverage so operators can see staged evaluation posture by:
+
+1. task execution,
+2. retrieval,
+3. provider policy,
+4. safety policy.
+
 The source of truth for fixture inventory is now:
 
 1. [fixture-manifest.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixture-manifest.json)

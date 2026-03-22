@@ -70,6 +70,17 @@ class EvaluationCatalogResponse(BaseModel):
     )
 
 
+class EvaluationSeamCoverageDescriptor(BaseModel):
+    seam_id: str = Field(
+        description="Stable platform seam identifier represented in evaluation assets."
+    )
+    fixture_ids: list[str] = Field(description="Fixture families that currently cover the seam.")
+    staged_fixture_count: int = Field(
+        description="Number of staged fixture families currently mapped to the seam."
+    )
+    staged_case_count: int = Field(description="Total staged cases currently mapped to the seam.")
+
+
 class EvaluationRuntimeStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the evaluation runtime status.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -88,6 +99,9 @@ class EvaluationRuntimeStatusResponse(BaseModel):
     )
     staged_case_count: int = Field(
         description="Total number of concrete staged evaluation cases across all fixture families."
+    )
+    seam_coverage: list[EvaluationSeamCoverageDescriptor] = Field(
+        description="Staged evaluation coverage summarized by major lotus-ai platform seam."
     )
     evaluation_runner_active: bool = Field(
         description="Whether a live evaluation runner is active in the current phase."
