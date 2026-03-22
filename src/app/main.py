@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Response, status
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -9,10 +11,20 @@ from app.routers.platform import router as platform_router
 from app.routers.prompts import router as prompts_router
 from app.routers.retrieval import router as retrieval_router
 from app.routers.tasks import router as tasks_router
+from app.services.startup_policy import apply_startup_readiness_policy
 
 SERVICE_NAME = settings.service_name
 SERVICE_VERSION = settings.service_version
 ROUNDING_POLICY_VERSION = "v1"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    evaluation = apply_startup_readiness_policy()
+    app.state.startup_readiness_blocking = evaluation.blocking
+    app.state.startup_readiness_findings = evaluation.findings
+    yield
+
 
 app = FastAPI(
     title=SERVICE_NAME,
@@ -22,6 +34,7 @@ app = FastAPI(
         "This service owns reusable AI infrastructure and governed task execution, "
         "not domain business truth."
     ),
+    lifespan=lifespan,
 )
 app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
 Instrumentator().instrument(app).expose(app)
@@ -72,6 +85,7 @@ async def metadata() -> dict[str, str]:
         "roundingPolicyVersion": ROUNDING_POLICY_VERSION,
         "auditStoreMode": settings.audit_store_mode,
         "retrievalStoreMode": settings.retrieval_store_mode,
+        "startupReadinessPolicy": settings.startup_readiness_policy,
     }
 
 
@@ -100,6 +114,7 @@ async def root() -> dict[str, object]:
         "safetyMode": settings.safety_mode,
         "auditStoreMode": settings.audit_store_mode,
         "retrievalStoreMode": settings.retrieval_store_mode,
+        "startupReadinessPolicy": settings.startup_readiness_policy,
         "capabilityAreas": [
             "llm_gateway",
             "prompt_registry",

@@ -25,6 +25,7 @@ class PlatformRuntimeStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the platform runtime status.")
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    startup_readiness_policy: str = Field(description="Configured startup readiness policy mode.")
     provider_mode: str = Field(description="Current model provider execution mode.")
     retrieval_mode: str = Field(description="Current retrieval execution mode.")
     embedding_provider_mode: str = Field(description="Current embedding provider mode.")
@@ -43,4 +44,10 @@ class PlatformRuntimeStatusResponse(BaseModel):
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     migration_contract_enforced: bool = Field(
         description="Whether lotus-ai requires migration-managed relational schema changes."
+    )
+    startup_readiness_blocking: bool = Field(
+        description="Whether the latest startup readiness evaluation identified blocking issues."
+    )
+    startup_readiness_warnings: list[str] = Field(
+        description="Human-readable startup readiness findings captured during startup evaluation."
     )

@@ -24,6 +24,7 @@ The current persistence posture is:
 - in-memory retrieval metadata by default, with a SQLAlchemy-backed retrieval adapter available behind the same repository seam,
 - explicit configuration to move between the two without changing API contracts,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
+- startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.
 
 The current retrieval-storage decision is:
 

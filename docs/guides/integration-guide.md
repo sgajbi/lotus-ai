@@ -21,6 +21,17 @@ Runtime status endpoints use explicit readiness states for persistence-backed co
 
 Teams should treat `READY` as the only state suitable for relying on durable platform behavior. The other states are informative and should block assumptions about operational persistence.
 
+## Startup Policy
+
+`lotus-ai` supports two startup readiness policies:
+
+1. `warn`
+   startup completes and readiness findings are surfaced through runtime-status endpoints
+2. `enforce`
+   startup is blocked when configured persistence backends are not operational
+
+For shared or enterprise environments, downstream teams should assume `enforce` is the target posture once SQL-backed stores become part of the deployment contract.
+
 This guide explains how other Lotus apps should integrate with `lotus-ai`.
 
 ## Core Rule

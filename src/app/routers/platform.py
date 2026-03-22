@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from app.contracts.platform import PlatformRuntimeStatusResponse
 from app.services.platform_status import build_platform_runtime_status
@@ -22,5 +22,5 @@ router = APIRouter(prefix="/platform", tags=["platform"])
         500: {"description": "Unexpected server error."},
     },
 )
-async def get_platform_runtime_status_route() -> PlatformRuntimeStatusResponse:
-    return build_platform_runtime_status()
+async def get_platform_runtime_status_route(request: Request) -> PlatformRuntimeStatusResponse:
+    return build_platform_runtime_status(request.app.state)

@@ -36,11 +36,13 @@ def test_platform_runtime_status_route() -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["delivery_phase"] == "foundation"
+    assert body["startup_readiness_policy"] == "warn"
     assert body["audit_store"]["mode"] == "memory"
     assert body["audit_store"]["status"] == "READY"
     assert body["retrieval_store"]["mode"] == "memory"
     assert body["retrieval_store"]["status"] == "READY"
     assert body["migration_contract_enforced"] is True
+    assert body["startup_readiness_blocking"] is False
     assert body["prompt_count"] >= 3
 
 
@@ -94,6 +96,7 @@ def test_service_metadata_exposes_store_modes() -> None:
     body = response.json()
     assert body["auditStoreMode"] == "memory"
     assert body["retrievalStoreMode"] == "memory"
+    assert body["startupReadinessPolicy"] == "warn"
 
 
 def test_audit_record_route_returns_saved_execution() -> None:
