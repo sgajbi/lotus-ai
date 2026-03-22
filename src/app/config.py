@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     prompt_store_mode: str = "memory"
     retrieval_store_mode: str = "memory"
     provider_operations_store_mode: str = "memory"
+    async_runtime_store_mode: str = "memory"
     startup_readiness_policy: str = "warn"
     readiness_probe_policy: str = "observe"
     database_url: str | None = None

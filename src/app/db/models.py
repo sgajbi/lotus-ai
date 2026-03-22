@@ -145,3 +145,54 @@ class ProviderOperationsEventModel(Base):
     approved_by: Mapped[str] = mapped_column(String(256), nullable=False)
     affected_record_count: Mapped[int] = mapped_column(Integer, nullable=False)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class AsyncJobModel(Base):
+    __tablename__ = "async_jobs"
+
+    job_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    job_type: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    lifecycle_status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    submitted_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    caller_app: Mapped[str] = mapped_column(String(128), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    execution_path: Mapped[str] = mapped_column(String(128), nullable=False)
+    related_evaluation_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    latest_message: Mapped[str] = mapped_column(Text, nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    attempts: Mapped[list["AsyncJobAttemptModel"]] = relationship(back_populates="job")
+    leases: Mapped[list["AsyncWorkerLeaseModel"]] = relationship(back_populates="job")
+
+
+class AsyncJobAttemptModel(Base):
+    __tablename__ = "async_job_attempts"
+
+    attempt_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    job_id: Mapped[str] = mapped_column(ForeignKey("async_jobs.job_id"), nullable=False, index=True)
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    lifecycle_status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    worker_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    claimed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    heartbeat_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    started_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    completed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recorded_message: Mapped[str] = mapped_column(Text, nullable=False)
+
+    job: Mapped["AsyncJobModel"] = relationship(back_populates="attempts")
+
+
+class AsyncWorkerLeaseModel(Base):
+    __tablename__ = "async_worker_leases"
+
+    lease_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    job_id: Mapped[str] = mapped_column(ForeignKey("async_jobs.job_id"), nullable=False, index=True)
+    attempt_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    worker_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    claimed_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    heartbeat_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    lease_expires_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    job: Mapped["AsyncJobModel"] = relationship(back_populates="leases")

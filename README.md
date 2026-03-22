@@ -119,6 +119,7 @@ The current execution posture is:
 - seeded async job artifacts are now exposed and validated through dedicated contracts,
 - async job submission now has a governed request/response contract with explicit foundation-phase rejection behavior,
 - async job artifacts can now reference related evaluation run artifacts for cross-seam traceability,
+- async runtime now also has an explicit repository and store seam plus migration-managed durable schema for jobs, attempts, and worker leases, even though public async execution behavior remains foundation-phase only for now,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:
@@ -130,6 +131,7 @@ The current persistence posture is:
 - in-memory retrieval metadata by default, with a SQLAlchemy-backed retrieval adapter available behind the same repository seam,
 - explicit configuration to move between the two without changing API contracts,
 - explicit provider-operations repository seams and migration-managed SQL tables now back durable quota, budget, and degradation state when the SQL-backed provider-operations path is enabled,
+- explicit async-runtime repository seams and migration-managed SQL tables now exist for jobs, attempts, and worker leases when the SQL-backed async-runtime path is enabled in later rollout slices,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 - prompt promotion remains read-only at runtime and is governed through reviewed repository changes plus Alembic-managed persistence updates.
 - startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.

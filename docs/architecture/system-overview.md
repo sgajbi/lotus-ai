@@ -266,7 +266,13 @@ Owns:
 8. seeded async job artifact inspection,
 9. governed async job submission contracts,
 10. relationships between async job artifacts and evaluation history when applicable,
-11. the contract boundary for future worker-backed execution.
+11. the contract boundary for future worker-backed execution,
+12. the durable async-runtime repository and store seam that later worker-backed slices will cut over onto.
+
+The first RFC-0006 delivery slice also adds explicit migration-managed async-runtime persistence
+for jobs, attempts, and worker leases. Public async endpoints still remain documentation-backed at
+this stage, but the durable storage seam now exists so later slices can cut over without inventing
+runtime table creation or ad hoc persistence logic.
 
 ### Providers
 
