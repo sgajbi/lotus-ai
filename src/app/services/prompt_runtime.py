@@ -35,13 +35,15 @@ def list_registered_prompts() -> list[PromptDescriptor]:
 
 def summarize_prompt_lifecycle_counts() -> PromptLifecycleCounts:
     prompts = list_registered_prompts()
+    active_prompt_count = sum(
+        1 for prompt in prompts if prompt.lifecycle_status == PromptLifecycleStatus.ACTIVE
+    )
+    retired_prompt_count = sum(
+        1 for prompt in prompts if prompt.lifecycle_status == PromptLifecycleStatus.RETIRED
+    )
     return PromptLifecycleCounts(
-        active_prompt_count=sum(
-            1 for prompt in prompts if prompt.lifecycle_status == PromptLifecycleStatus.ACTIVE
-        ),
-        retired_prompt_count=sum(
-            1 for prompt in prompts if prompt.lifecycle_status == PromptLifecycleStatus.RETIRED
-        ),
+        active_prompt_count=active_prompt_count,
+        retired_prompt_count=retired_prompt_count,
     )
 
 
