@@ -289,6 +289,24 @@ Current posture:
 2. the summary embeds quota, budget, and degradation posture together,
 3. `/platform/runtime-status` now embeds the same provider operations summary directly.
 
+## Decision 11I: Provider Degradation And Circuit-Breaker Posture Must Be Explicit
+
+Decision:
+
+`lotus-ai` models provider degradation and circuit-breaker posture explicitly in the live provider gateway and operations summaries.
+
+Why:
+
+1. repeated upstream failures should become operator-visible state, not just a stream of unrelated HTTP 503s,
+2. timeout, rate-limit, and upstream-error paths need separate tracking for incident review,
+3. reset semantics should be deliberate and testable instead of relying on process restarts or hidden heuristics.
+
+Current posture:
+
+1. live-provider timeout, rate-limit, and upstream-error failures are tracked separately,
+2. the provider operations summary distinguishes `DEGRADED_UPSTREAM` from `CIRCUIT_OPEN`,
+3. circuit-open posture now resets through a configured cooldown window or a successful live execution.
+
 ## Decision 11A: Provider Activation Readiness Should Be Exposed Before Live Rollout
 
 Decision:

@@ -11,6 +11,7 @@ from app.services.provider_configuration_status import (
     build_text_generation_configuration_status,
 )
 from app.services.provider_budget_policy import build_provider_budget_policy
+from app.services.provider_degradation_state import build_provider_degradation_status
 from app.services.provider_live_execution_state import build_provider_live_execution_state
 from app.services.provider_quota_policy import build_provider_quota_policy
 from app.services.provider_rollout_posture import build_provider_rollout_posture
@@ -19,6 +20,7 @@ from app.services.provider_rollout_posture import build_provider_rollout_posture
 def build_provider_activation_readiness() -> ProviderActivationReadinessResponse:
     configuration = build_text_generation_configuration_status()
     budget_policy = build_provider_budget_policy()
+    degradation_status = build_provider_degradation_status()
     quota_policy = build_provider_quota_policy()
     rollout_posture = build_provider_rollout_posture()
     live_execution_state = build_provider_live_execution_state()
@@ -35,6 +37,8 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
         blocking_findings.extend(quota_policy.findings)
     if budget_policy.budget_enforced and not budget_policy.configuration_valid:
         blocking_findings.extend(budget_policy.findings)
+    if degradation_status.enforcement_enabled and not degradation_status.configuration_valid:
+        blocking_findings.extend(degradation_status.findings)
     elif configuration.credential_status == ProviderCredentialStatus.NOT_CONFIGURED:
         blocking_findings.append(
             "No live-provider credentials are configured for any future allowlisted text-generation path."
@@ -43,6 +47,13 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
         live_execution_state.live_execution_enabled
         and (not quota_policy.quota_enforced or quota_policy.configuration_valid)
         and (not budget_policy.budget_enforced or budget_policy.configuration_valid)
+        and (
+            not degradation_status.enforcement_enabled
+            or (
+                degradation_status.configuration_valid
+                and degradation_status.status not in {"DEGRADED_UPSTREAM", "CIRCUIT_OPEN", "INVALID"}
+            )
+        )
     ):
         activation_ready = True
     else:
@@ -53,6 +64,8 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
             blocking_findings.append(
                 "Live-provider hard budget posture is currently blocking further execution."
             )
+        if degradation_status.status in {"DEGRADED_UPSTREAM", "CIRCUIT_OPEN", "INVALID"}:
+            blocking_findings.extend(degradation_status.findings)
         blocking_findings.append(rollout_posture.notes)
     activation_path = [
         "Review `/platform/providers` and `/platform/providers/policy` to confirm the provider catalog, adapter kind, runtime mode, and selected execution path match the intended rollout posture.",

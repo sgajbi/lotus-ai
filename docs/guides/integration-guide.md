@@ -17,6 +17,18 @@ Before integrating a Lotus app with `lotus-ai`, upstream teams should inspect:
 
 This keeps downstream integration decisions grounded in actual runtime capability rather than assumptions.
 
+For live-provider integrations, teams should read `/platform/providers/operations-status` as the
+operator truth for:
+
+1. `ROLLOUT_BLOCKED`
+2. `QUOTA_BLOCKED`
+3. `BUDGET_SOFT_LIMIT`
+4. `BUDGET_BLOCKED`
+5. `DEGRADED_UPSTREAM`
+6. `CIRCUIT_OPEN`
+
+That surface is more authoritative than inferring provider health from individual task failures.
+
 ## Runtime Readiness Semantics
 
 Runtime status endpoints use explicit readiness states for persistence-backed components:

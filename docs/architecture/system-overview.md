@@ -168,6 +168,11 @@ combines rollout posture, quota posture, budget posture, and the current degrada
 one operator-facing truth surface, and `/platform/runtime-status` embeds that same summary instead of
 recomputing a parallel provider-operations view.
 
+Provider degradation controls are now explicit runtime behavior rather than a placeholder. The live
+provider gateway tracks timeout, rate-limit, and upstream-error failures separately, reports degraded-upstream
+versus circuit-open posture explicitly, and resets the circuit-open state through a configured cooldown
+window instead of silent indefinite blocking.
+
 Provider rollout posture is now also centralized in one small helper so activation readiness,
 runbook readiness, and task-runtime notes all describe the same live-provider path honestly.
 That keeps operator-facing status aligned when rollout is still stub-default versus when a live

@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     live_text_budget_enforced: bool = False
     live_text_soft_budget_usd: float | None = None
     live_text_hard_budget_usd: float | None = None
+    live_text_degradation_enforced: bool = False
+    live_text_degraded_failure_count_threshold: int | None = None
+    live_text_circuit_open_failure_count_threshold: int | None = None
+    live_text_circuit_open_seconds: int | None = None
     provider_timeout_ms: int = 4000
     provider_retry_limit: int = 0
     provider_max_output_tokens: int = 512

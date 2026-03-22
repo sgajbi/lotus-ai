@@ -1,5 +1,6 @@
 from app.config import settings
-from app.contracts.providers import ProviderOperationsState
+from app.contracts.providers import ProviderFailureCategory, ProviderOperationsState
+from app.services.provider_degradation_state import record_provider_failure
 from app.services.provider_operations_status import build_provider_operations_status
 
 
@@ -60,3 +61,26 @@ def test_provider_operations_status_reports_soft_budget_state_when_live_path_is_
     assert status.runtime_execution_enabled is True
     assert status.rollout_blocked is False
     assert any("soft budget threshold" in reason for reason in status.blocking_reasons)
+
+
+def test_provider_operations_status_reports_circuit_open_state() -> None:
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 2
+    settings.live_text_circuit_open_seconds = 60
+
+    record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
+    record_provider_failure(ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR)
+
+    status = build_provider_operations_status()
+
+    assert status.operations_state == ProviderOperationsState.CIRCUIT_OPEN
+    assert status.degradation_status.status == "CIRCUIT_OPEN"
+    assert status.degradation_status.timeout_failure_count == 1
+    assert status.degradation_status.upstream_error_failure_count == 1

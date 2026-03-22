@@ -6,6 +6,7 @@ from app.contracts.providers import ProviderExecutionResponse
 from app.contracts.retrieval import RetrievalExecutionStatusResponse
 from app.contracts.safety import SafetyExecutionOutcome
 from app.contracts.tasks import CapabilityDescriptor, TaskExecutionRequest
+from app.services.provider_degradation_state import build_provider_degradation_status
 from app.services.retrieval_execution_status import build_retrieval_execution_status
 
 
@@ -64,6 +65,7 @@ def _provider_descriptor(
     *,
     provider_execution: ProviderExecutionResponse,
 ) -> ExecutionEvidenceDescriptor:
+    degradation_status = build_provider_degradation_status()
     return ExecutionEvidenceDescriptor(
         evidence_type="provider_resolution",
         summary="Execution flowed through the provider gateway and resolved to the current provider path.",
@@ -71,6 +73,7 @@ def _provider_descriptor(
             "provider_id": provider_execution.provider_id,
             "provider_mode": provider_execution.provider_mode,
             "stubbed": provider_execution.stubbed,
+            "degradation_status": degradation_status.status,
             **(
                 {"failure_category": provider_execution.failure_category.value}
                 if provider_execution.failure_category is not None

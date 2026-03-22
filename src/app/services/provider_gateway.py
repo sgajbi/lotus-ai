@@ -12,6 +12,11 @@ from app.providers.base import ProviderExecutionError
 from app.providers.registry import resolve_text_generation_adapter
 from app.services.provider_policy import require_supported_text_generation_mode
 from app.services.provider_budget_policy import enforce_provider_budget, record_provider_spend
+from app.services.provider_degradation_state import (
+    enforce_provider_degradation_preflight,
+    record_provider_failure,
+    record_successful_provider_execution,
+)
 from app.services.provider_live_execution_state import build_provider_live_execution_state
 from app.services.provider_quota_policy import enforce_provider_quota
 
@@ -31,6 +36,7 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
         try:
             enforce_provider_quota(request)
             enforce_provider_budget()
+            enforce_provider_degradation_preflight()
         except ProviderExecutionError as exc:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -41,8 +47,11 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
         response = adapter.execute(request)
         if mode == ProviderExecutionMode.OPENAI:
             record_provider_spend(response)
+            record_successful_provider_execution()
         return response
     except ProviderExecutionError as exc:
+        if mode == ProviderExecutionMode.OPENAI:
+            record_provider_failure(exc.category)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"{exc.category.value}: {exc.message}",

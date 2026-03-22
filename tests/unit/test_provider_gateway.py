@@ -171,6 +171,44 @@ def test_execute_text_generation_rejects_live_provider_when_budget_is_exceeded()
     monkeypatch.undo()
 
 
+def test_execute_text_generation_opens_circuit_after_repeated_provider_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _BrokenLiveAdapter:
+        def execute(self, request: ProviderExecutionRequest) -> object:
+            raise ProviderExecutionError(
+                category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+                message="simulated timeout",
+            )
+
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 2
+    settings.live_text_circuit_open_seconds = 60
+    monkeypatch.setattr(
+        "app.services.provider_gateway.resolve_text_generation_adapter",
+        lambda mode: _BrokenLiveAdapter(),
+    )
+
+    with pytest.raises(HTTPException) as first_exc:
+        execute_text_generation(_request())
+    assert "PROVIDER_TIMEOUT" in str(first_exc.value.detail)
+
+    with pytest.raises(HTTPException) as second_exc:
+        execute_text_generation(_request())
+    assert "PROVIDER_TIMEOUT" in str(second_exc.value.detail)
+
+    with pytest.raises(HTTPException) as third_exc:
+        execute_text_generation(_request())
+    assert "CIRCUIT_OPEN" in str(third_exc.value.detail)
+
+
 def test_execute_text_generation_routes_stub_mode_through_stub_provider() -> None:
     settings.provider_mode = "stub"
 

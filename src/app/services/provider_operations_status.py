@@ -3,11 +3,11 @@ from __future__ import annotations
 from app.config import settings
 from app.contracts.providers import (
     ProviderBudgetState,
-    ProviderDegradationStatusDescriptor,
     ProviderOperationsState,
     ProviderOperationsStatusResponse,
 )
 from app.services.provider_budget_policy import build_provider_budget_policy
+from app.services.provider_degradation_state import build_provider_degradation_status
 from app.services.provider_live_execution_state import build_provider_live_execution_state
 from app.services.provider_quota_policy import build_provider_quota_policy
 
@@ -16,7 +16,7 @@ def build_provider_operations_status() -> ProviderOperationsStatusResponse:
     live_execution_state = build_provider_live_execution_state()
     quota_policy = build_provider_quota_policy()
     budget_policy = build_provider_budget_policy()
-    degradation_status = _build_provider_degradation_status()
+    degradation_status = build_provider_degradation_status()
 
     operations_state, blocking_reasons = _resolve_provider_operations_state(
         live_execution_state=live_execution_state,
@@ -42,23 +42,12 @@ def build_provider_operations_status() -> ProviderOperationsStatusResponse:
             degradation_status=degradation_status,
         ),
     )
-
-
-def _build_provider_degradation_status() -> ProviderDegradationStatusDescriptor:
-    return ProviderDegradationStatusDescriptor(
-        status="DOCUMENTED_ONLY",
-        findings=[
-            "Provider degradation and circuit-breaker posture remain documented-only until RFC-0004 Slice 4 is implemented."
-        ],
-    )
-
-
 def _resolve_provider_operations_state(
     *,
     live_execution_state: object,
     quota_policy: object,
     budget_policy: object,
-    degradation_status: ProviderDegradationStatusDescriptor,
+    degradation_status: object,
 ) -> tuple[ProviderOperationsState, list[str]]:
     blocking_reasons: list[str] = []
 
@@ -98,12 +87,15 @@ def _resolve_provider_operations_state(
         )
         return (ProviderOperationsState.BUDGET_SOFT_LIMIT, blocking_reasons)
 
-    if degradation_status.status == "DEGRADED_UPSTREAM":
-        blocking_reasons.extend(degradation_status.findings)
+    degradation_status_value = getattr(degradation_status, "status")
+    degradation_findings = getattr(degradation_status, "findings")
+
+    if degradation_status_value == "DEGRADED_UPSTREAM":
+        blocking_reasons.extend(degradation_findings)
         return (ProviderOperationsState.DEGRADED_UPSTREAM, blocking_reasons)
 
-    if degradation_status.status == "CIRCUIT_OPEN":
-        blocking_reasons.extend(degradation_status.findings)
+    if degradation_status_value == "CIRCUIT_OPEN":
+        blocking_reasons.extend(degradation_findings)
         return (ProviderOperationsState.CIRCUIT_OPEN, blocking_reasons)
 
     return (ProviderOperationsState.NORMAL, blocking_reasons)
@@ -113,8 +105,9 @@ def _build_provider_operations_summary(
     *,
     operations_state: ProviderOperationsState,
     live_execution_enabled: bool,
-    degradation_status: ProviderDegradationStatusDescriptor,
+    degradation_status: object,
 ) -> list[str]:
+    degradation_status_value = getattr(degradation_status, "status")
     return [
         f"Provider operations state is `{operations_state.value}`.",
         (
@@ -124,7 +117,7 @@ def _build_provider_operations_summary(
         ),
         (
             "Upstream degradation posture remains documented-only in the current slice."
-            if degradation_status.status == "DOCUMENTED_ONLY"
+            if degradation_status_value == "DOCUMENTED_ONLY"
             else "Upstream degradation posture is actively enforced."
         ),
     ]

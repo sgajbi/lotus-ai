@@ -70,6 +70,7 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
     assert evidence.descriptors[1].evidence_type == "prompt_selection"
     assert evidence.descriptors[2].evidence_type == "provider_resolution"
     assert evidence.descriptors[2].attributes["adapter_kind"] == "STUB"
+    assert evidence.descriptors[2].attributes["degradation_status"] == "DOCUMENTED_ONLY"
     assert evidence.descriptors[2].attributes["timeout_ms"] == 4000
     assert evidence.descriptors[2].attributes["retry_count"] == 0
     assert evidence.descriptors[2].attributes["max_output_tokens"] == 512

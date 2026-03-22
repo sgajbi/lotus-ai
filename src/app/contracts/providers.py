@@ -37,6 +37,7 @@ class ProviderFailureCategory(str, Enum):
     TASK_NOT_ALLOWLISTED = "TASK_NOT_ALLOWLISTED"
     QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
     BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
+    CIRCUIT_OPEN = "CIRCUIT_OPEN"
     PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
     PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"
     PROVIDER_UPSTREAM_ERROR = "PROVIDER_UPSTREAM_ERROR"
@@ -125,6 +126,40 @@ class ProviderOperationsState(str, Enum):
 class ProviderDegradationStatusDescriptor(BaseModel):
     status: str = Field(
         description="Current upstream degradation posture for the live provider path."
+    )
+    enforcement_enabled: bool = Field(
+        description="Whether degraded-upstream and circuit-breaker controls are currently enabled."
+    )
+    configuration_valid: bool = Field(
+        description="Whether degraded-upstream control configuration is internally consistent."
+    )
+    consecutive_failure_count: int = Field(
+        description="Current consecutive live-provider failure count tracked by the degradation controller."
+    )
+    degraded_failure_count_threshold: int | None = Field(
+        default=None,
+        description="Configured consecutive-failure threshold for degraded-upstream posture, when enabled.",
+    )
+    circuit_open_failure_count_threshold: int | None = Field(
+        default=None,
+        description="Configured consecutive-failure threshold for circuit-open posture, when enabled.",
+    )
+    circuit_open_remaining_seconds: int | None = Field(
+        default=None,
+        description="Remaining circuit-open cooldown window in seconds, when the circuit is currently open.",
+    )
+    last_failure_category: ProviderFailureCategory | None = Field(
+        default=None,
+        description="Most recent live-provider failure category recorded by the degradation controller, when one exists.",
+    )
+    timeout_failure_count: int = Field(
+        description="Count of tracked provider timeout failures in the current process lifetime."
+    )
+    rate_limited_failure_count: int = Field(
+        description="Count of tracked provider rate-limit failures in the current process lifetime."
+    )
+    upstream_error_failure_count: int = Field(
+        description="Count of tracked provider upstream-error failures in the current process lifetime."
     )
     findings: list[str] = Field(
         default_factory=list,
