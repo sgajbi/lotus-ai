@@ -11,6 +11,7 @@ from app.contracts.tasks import (
     TaskExecutionRequest,
     TaskInputMode,
 )
+from app.config import settings
 from app.services.task_executor import execute_task
 
 
@@ -189,6 +190,34 @@ def test_execute_task_runs_bounded_knowledge_answer() -> None:
     assert response.result.structured_output["support_score"] >= 0.5
     assert response.result.structured_output["citations"][0]["source_id"] == "lotus-platform-rfcs"
     assert "Sources: lotus-platform-rfcs" in response.result.message
+
+
+def test_execute_task_uses_indexed_retrieval_when_enabled() -> None:
+    settings.retrieval_mode = "enabled"
+
+    response = execute_task(
+        TaskExecutionRequest(
+            task_id="knowledge_search.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ks-indexed"),
+            context=TaskContextEnvelope(
+                summary="Search Lotus knowledge sources",
+                payload={
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                source_refs=["lotus-manage:knowledge-search:indexed"],
+            ),
+            expected_output_label=OutputLabel.RETRIEVAL_ANSWER,
+        )
+    )
+
+    assert response.audit.provider_mode == "indexed_search"
+    assert response.result.structured_output["provider_id"] == "retrieval.indexed"
+    assert response.result.structured_output["catalog_only"] is False
+    assert response.result.structured_output["retrieval_execution_stage"] == "INDEXED_SEARCH"
+    assert response.result.structured_output["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
 
 
 def test_execute_task_refuses_low_support_knowledge_answer() -> None:

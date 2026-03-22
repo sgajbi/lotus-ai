@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from app.config import settings
 
 
 def test_task_execute_contract(client: TestClient) -> None:
@@ -277,6 +278,42 @@ def test_task_execute_contract_supports_bounded_knowledge_answer(client: TestCli
     assert body["result"]["structured_output"]["support_score"] >= 0.5
     assert body["result"]["structured_output"]["citations"][0]["source_id"] == "lotus-platform-rfcs"
     assert "Sources: lotus-platform-rfcs" in body["result"]["message"]
+
+
+def test_task_execute_contract_uses_indexed_retrieval_when_enabled(client: TestClient) -> None:
+    settings.retrieval_mode = "enabled"
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "knowledge_search.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-knowledge-indexed",
+                "requested_by": "ops.user@lotus",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Search Lotus knowledge sources",
+                "payload": {
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                "source_refs": ["lotus-manage:knowledge-search:indexed"],
+            },
+            "expected_output_label": "RETRIEVAL_ANSWER",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["audit"]["provider_mode"] == "indexed_search"
+    assert body["result"]["structured_output"]["provider_id"] == "retrieval.indexed"
+    assert body["result"]["structured_output"]["catalog_only"] is False
+    assert body["result"]["structured_output"]["retrieval_execution_stage"] == "INDEXED_SEARCH"
+    assert body["result"]["structured_output"]["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
 
 
 def test_task_execute_contract_refuses_low_support_knowledge_answer(client: TestClient) -> None:

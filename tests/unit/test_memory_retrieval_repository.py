@@ -26,6 +26,18 @@ def test_memory_retrieval_repository_returns_seeded_document_and_chunks() -> Non
     assert repository.count_embedding_records_for_source("lotus-platform-rfcs") >= 2
 
 
+def test_memory_retrieval_repository_returns_searchable_indexed_chunks() -> None:
+    repository = InMemoryRetrievalRepository()
+
+    indexed_chunks = repository.list_searchable_indexed_chunks(["lotus-platform-rfcs"])
+
+    assert indexed_chunks
+    assert indexed_chunks[0].source_id == "lotus-platform-rfcs"
+    assert indexed_chunks[0].embedding_status == "PERSISTED"
+    assert indexed_chunks[0].vector_dimensions == 16
+    assert len(indexed_chunks[0].embedding_vector) == 16
+
+
 def test_memory_retrieval_repository_returns_none_or_empty_for_unknown_records() -> None:
     repository = InMemoryRetrievalRepository()
 
@@ -46,6 +58,16 @@ def test_memory_retrieval_repository_marks_empty_sources_as_pending_index_jobs()
     assert job.status == "PENDING"
     assert job.document_count == 0
     assert job.embedding_record_count == 0
+
+
+def test_memory_retrieval_repository_marks_searchable_indexed_sources_as_completed_jobs() -> None:
+    repository = InMemoryRetrievalRepository()
+
+    job = repository.get_index_job("retjob_lotus_platform_rfcs")
+
+    assert job is not None
+    assert job.status == "COMPLETED"
+    assert "persisted embeddings" in job.message
 
 
 def test_memory_retrieval_repository_exposes_persisted_job_events() -> None:

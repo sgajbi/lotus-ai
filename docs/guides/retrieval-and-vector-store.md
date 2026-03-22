@@ -4,9 +4,11 @@ This guide records the current retrieval-storage direction for `lotus-ai`.
 
 ## Current State
 
-Right now, `lotus-ai` does not have a live vector store wired into runtime retrieval.
+Right now, `lotus-ai` has a bounded indexed retrieval path over persisted preview embeddings,
+but it does not yet push similarity search down into PostgreSQL with `pgvector`.
 
-That is intentional. We are still building the retrieval layer in disciplined slices.
+That split is intentional. We are building retrieval in disciplined slices and keeping the
+current live path honest about what is already implemented versus what remains planned.
 
 ## Storage Decision
 
@@ -66,11 +68,20 @@ What exists today:
 7. retrieval search now flows through an explicit execution gateway before any live backend is introduced,
 8. retrieval execution status is exposed separately from retrieval catalog status.
 
+What exists now:
+
+1. searchable document promotion is explicit,
+2. chunk durability includes stable content checksums,
+3. embedding records now persist deterministic preview vectors,
+4. retrieval can execute bounded indexed search over those persisted vectors when enabled,
+5. catalog-only search remains available as the governed fallback when live retrieval is disabled.
+
 What does not exist yet:
 
-1. live embedding generation,
-2. runtime vector writes,
-3. production retrieval execution over indexed vectors.
+1. provider-backed embedding generation,
+2. PostgreSQL-side `pgvector` similarity execution,
+3. runtime vector writes from a live ingestion pipeline,
+4. production-scale retrieval rollout.
 
 This split is deliberate. We want the retrieval contract, governance posture, and observability model to become stable before live indexing is enabled.
 
@@ -119,11 +130,12 @@ Retrieval job detail now also exposes:
 3. persisted indexing lifecycle events,
 4. explicit blocked or failed indexing states for sources that are not yet promotable.
 
-The search endpoint remains governed. In foundation phase it can now return bounded
-catalog-only hits from a small enabled staged-source subset, while live vector retrieval
-remains disabled.
+The search endpoint remains governed. In foundation phase it now supports:
 
-Current searchable catalog-only documents are a promoted subset of the staged corpus. Today they
+1. bounded indexed hits from promoted persisted preview embeddings when retrieval is enabled,
+2. bounded catalog-only hits from the same promoted corpus when retrieval is disabled.
+
+Current searchable documents are a promoted subset of the staged corpus. Today they
 sit under these enabled sources:
 
 1. `lotus-platform-rfcs`
@@ -132,6 +144,10 @@ sit under these enabled sources:
 `/platform/runtime-status` now embeds retrieval governance posture directly so operators can review
 retrieval rollout state from the same top-level runtime surface that already carries async and
 provider governance posture.
+
+`/platform/retrieval/execution-status` distinguishes the two execution stages explicitly, so
+operators can tell whether retrieval is currently running through the indexed path or the
+catalog-only fallback.
 
 ## Retrieval Evaluation Posture
 

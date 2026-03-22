@@ -152,9 +152,10 @@ Audit inspection also supports a bounded catalog view now, with explicit caller,
 tenant, task, category, and output-label filters plus limit controls, so operator and support
 workflows can inspect recent executions without relying only on direct request-id lookup.
 
-Retrieval execution now also supports a deterministic catalog-only path for enabled staged
-sources, so Lotus apps can get bounded preview hits from curated corpus metadata before live
-vector retrieval is activated.
+Retrieval execution now supports two governed paths:
+
+1. a deterministic catalog-only fallback when live retrieval is disabled,
+2. a real indexed path over promoted persisted preview embeddings when retrieval is enabled.
 
 The initial enabled subset is intentionally small and is now governed at document level:
 Lotus platform RFCs and lotus-ai architecture documents are promoted into searchable scope,
@@ -168,15 +169,15 @@ Per-document rollout posture is also exposed through `/platform/retrieval/docume
 so searchable versus staged retrieval scope is visible directly instead of being inferred only
 from source-level enablement.
 
-Durable retrieval chunk posture is also now more explicit: staged chunks carry persisted content
-checksums, and embedding-record counts surface through retrieval runtime and job status even
-before live embedding generation is enabled.
+Durable retrieval chunk posture is also now more explicit: promoted searchable chunks carry
+persisted content checksums plus persisted preview embedding vectors, and embedding-record counts
+surface through retrieval runtime and job status.
 
 Retrieval indexing posture is also more explicit now: retrieval job detail carries deterministic
 chunking strategy, replay support, and persisted lifecycle events, so blocked indexing states are
 visible directly instead of being implied by static staged prose.
 
-`knowledge_search.v1` now uses that same bounded retrieval path directly, so the task
+`knowledge_search.v1` now uses that governed retrieval path directly, so the task
 execution surface has a real governed knowledge-search capability instead of a generic
 placeholder for retrieval-class work.
 
@@ -185,7 +186,7 @@ bounded retrieval path, with explicit citations preserved in the task result pay
 
 Low-support retrieval matches now produce an explicit conservative refusal mode for
 `knowledge_answer.v1` instead of a weak answer, which keeps the retrieval-backed task path
-more defensible under the current catalog-only execution model.
+more defensible under the current indexed-or-fallback execution model.
 
 Task runtime posture is now also exposed through a dedicated `/platform/tasks/runtime-status`
 surface and embedded into `/platform/runtime-status`, so operators can distinguish stub-backed
@@ -247,7 +248,8 @@ Initial storage direction:
 
 1. PostgreSQL as the canonical durable database,
 2. `pgvector` as the first vector-store extension,
-3. no separate vector database unless later evidence justifies it.
+3. service-layer similarity over persisted preview vectors as the current pre-pgvector execution slice,
+4. no separate vector database unless later evidence justifies it.
 
 Retrieval and evaluation workloads are also expected to move through worker-style execution paths
 when they become heavy enough to threaten API responsiveness.

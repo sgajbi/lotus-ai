@@ -27,8 +27,16 @@ def test_sqlalchemy_retrieval_repository_returns_seeded_catalog(tmp_path: Path) 
     )
     assert job is not None
     assert job.source_id == "lotus-platform-rfcs"
+    assert job.status == "COMPLETED"
     assert job.embedding_record_count >= 2
     assert repository.count_embedding_records() >= 4
+
+    indexed_chunks = repository.list_searchable_indexed_chunks(["lotus-platform-rfcs"])
+    assert indexed_chunks
+    assert indexed_chunks[0].source_id == "lotus-platform-rfcs"
+    assert indexed_chunks[0].embedding_status == "PERSISTED"
+    assert indexed_chunks[0].vector_dimensions == 16
+    assert len(indexed_chunks[0].embedding_vector) == 16
 
 
 def test_sqlalchemy_retrieval_repository_returns_none_for_unknown_records(

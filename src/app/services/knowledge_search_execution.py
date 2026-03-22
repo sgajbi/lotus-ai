@@ -2,21 +2,33 @@ from __future__ import annotations
 
 from app.config import settings
 from app.contracts.providers import ProviderExecutionResponse
+from app.contracts.retrieval import RetrievalExecutionStage
 from app.services.knowledge_retrieval_payloads import build_citation_entries, top_support_score
 from app.services.knowledge_retrieval_runtime import execute_knowledge_retrieval
 from app.services.task_execution_models import TaskExecutionContext
 
 _KNOWLEDGE_SEARCH_PROVIDER_ID = "retrieval.catalog"
-_KNOWLEDGE_SEARCH_PROVIDER_MODE = "catalog_only"
+_KNOWLEDGE_SEARCH_INDEXED_PROVIDER_ID = "retrieval.indexed"
 
 
 def execute_knowledge_search(*, context: TaskExecutionContext) -> ProviderExecutionResponse:
     retrieval = execute_knowledge_retrieval(context=context)
     retrieval_response = retrieval.retrieval_response
     citations = build_citation_entries(retrieval_response.hits)
+    execution_stage = retrieval_response.execution_stage
+    provider_id = (
+        _KNOWLEDGE_SEARCH_INDEXED_PROVIDER_ID
+        if execution_stage == RetrievalExecutionStage.INDEXED_SEARCH
+        else _KNOWLEDGE_SEARCH_PROVIDER_ID
+    )
+    provider_mode = (
+        "indexed_search"
+        if execution_stage == RetrievalExecutionStage.INDEXED_SEARCH
+        else "catalog_only"
+    )
     return ProviderExecutionResponse(
-        provider_id=_KNOWLEDGE_SEARCH_PROVIDER_ID,
-        provider_mode=_KNOWLEDGE_SEARCH_PROVIDER_MODE,
+        provider_id=provider_id,
+        provider_mode=provider_mode,
         stubbed=False,
         message=(
             f"Knowledge search returned {len(retrieval_response.hits)} bounded "
@@ -24,9 +36,10 @@ def execute_knowledge_search(*, context: TaskExecutionContext) -> ProviderExecut
         ),
         structured_output={
             "phase": settings.delivery_phase,
-            "provider_id": _KNOWLEDGE_SEARCH_PROVIDER_ID,
-            "provider_mode": _KNOWLEDGE_SEARCH_PROVIDER_MODE,
-            "catalog_only": True,
+            "provider_id": provider_id,
+            "provider_mode": provider_mode,
+            "catalog_only": execution_stage == RetrievalExecutionStage.CATALOG_ONLY,
+            "retrieval_execution_stage": execution_stage.value,
             "query": retrieval.query,
             "source_ids": retrieval.source_ids,
             "vector_store": retrieval_response.vector_store,

@@ -48,10 +48,11 @@ The current execution posture is:
 - audit records now also preserve optional caller identity fields such as `requested_by` and `tenant_id`, so operator review and downstream support flows retain full caller traceability instead of only app-level correlation metadata,
 - audit inspection now includes a bounded catalog endpoint with caller, requester, tenant, task, category, and output-label filters plus explicit limits, so downstream support and review flows can inspect recent executions without scanning by request id only,
 - retrieval search can now return deterministic catalog-only hits from enabled staged sources in foundation phase, which gives downstream apps bounded search utility before live vector retrieval is activated,
+- retrieval also now has a real indexed execution path over promoted persisted preview embeddings when `LOTUS_AI_RETRIEVAL_MODE=enabled`, while catalog-only search remains the governed fallback when live retrieval is disabled,
 - the initial enabled catalog-only retrieval subset is intentionally small and now governed at document level: searchable documents are an explicit promoted subset inside enabled sources, while the rest of the staged corpus remains non-searchable,
 - retrieval source governance and document governance are now exposed directly, so source-level enablement and document-level promotion can be reviewed without reading repository fixtures or migrations,
-- `knowledge_search.v1` is now enabled as a bounded task and routes through that governed catalog-only retrieval path rather than the generic text stub,
-- `knowledge_answer.v1` is now enabled as a bounded, citation-carrying answer task built on the same governed catalog-only retrieval path,
+- `knowledge_search.v1` is now enabled as a bounded task and routes through either indexed retrieval or the governed catalog-only fallback instead of the generic text stub,
+- `knowledge_answer.v1` is now enabled as a bounded, citation-carrying answer task built on the same governed retrieval path,
 - retrieval-backed tasks now emit explicit structured citations and `knowledge_answer.v1` refuses low-support answers instead of overstating weak retrieval matches,
 - platform status now exposes a dedicated bounded task-runtime view so operators can distinguish stub-backed tasks from retrieval-backed tasks directly,
 - platform task APIs now also expose bounded execution-summary, evidence-summary, and retrieval-summary views built from persisted audit records, so real task usage, retrieval-answer quality, and source/refusal patterns can be measured instead of inferred,
@@ -121,9 +122,10 @@ The current persistence posture is:
 
 The current retrieval-storage decision is:
 
-- no vector store is wired yet,
+- persisted preview embedding vectors now back the current bounded indexed retrieval slice,
 - the planned first vector store is PostgreSQL with `pgvector`,
-- we are intentionally avoiding a separate vector database until scale or workload evidence justifies it.
+- we are intentionally avoiding a separate vector database until scale or workload evidence justifies it,
+- similarity scoring currently runs in the service layer over persisted vectors and remains a stepping stone to PostgreSQL-side `pgvector` search rather than the final production execution shape.
 
 The current retrieval posture is:
 
@@ -131,7 +133,8 @@ The current retrieval posture is:
 - retrieval source discovery is exposed through the platform API,
 - provider posture discovery is exposed through the platform API,
 - runtime posture for retrieval and platform services is exposed through the platform API,
-- live retrieval search remains disabled until embeddings and vector indexing are wired.
+- retrieval can execute through indexed search only when explicitly enabled,
+- catalog-only search remains the governed fallback when live retrieval is disabled.
 
 ## What lotus-ai Does
 

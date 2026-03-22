@@ -5,6 +5,7 @@ from typing import Protocol
 from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
     RetrievalDocumentDescriptor,
+    RetrievalIndexedChunkDescriptor,
     RetrievalIndexJobEventDescriptor,
     RetrievalIndexJobDescriptor,
     RetrievalSourceDescriptor,
@@ -23,6 +24,10 @@ class RetrievalRepository(Protocol):
     def get_document(self, document_id: str) -> RetrievalDocumentDescriptor | None: ...
 
     def list_chunks_for_document(self, document_id: str) -> list[RetrievalChunkDescriptor]: ...
+
+    def list_searchable_indexed_chunks(
+        self, source_ids: list[str]
+    ) -> list[RetrievalIndexedChunkDescriptor]: ...
 
     def count_embedding_records(self) -> int: ...
 

@@ -25,9 +25,31 @@ def test_search_sources_returns_catalog_only_hits_for_enabled_seeded_sources() -
     response = search_sources(request)
 
     assert response.status == RetrievalStatus.READY
+    assert response.execution_stage == RetrievalExecutionStage.CATALOG_ONLY
     assert response.hits[0].source_id == "lotus-platform-rfcs"
     assert response.hits[0].score > 0.0
     assert "catalog-only hits" in response.message
+
+
+def test_search_sources_returns_indexed_hits_when_live_retrieval_enabled() -> None:
+    from app.config import settings
+
+    settings.retrieval_mode = "enabled"
+    request = RetrievalSearchRequest(
+        query="shared ai platform service",
+        caller_app="lotus-workbench",
+        correlation_id="corr-ret-1-indexed",
+        source_ids=["lotus-platform-rfcs"],
+    )
+
+    response = search_sources(request)
+
+    assert response.status == RetrievalStatus.READY
+    assert response.execution_stage == RetrievalExecutionStage.INDEXED_SEARCH
+    assert response.hits[0].document_id == "lotus-platform-rfc-0069"
+    assert "Live indexed retrieval is active" in response.message
+
+    settings.retrieval_mode = "disabled"
 
 
 def test_search_sources_rejects_disabled_source_ids_before_execution() -> None:
@@ -74,6 +96,8 @@ def test_search_sources_returns_hits_for_enabled_source_subset() -> None:
         hits=[
             RetrievalSearchHit(
                 source_id="lotus-platform-rfcs",
+                document_id="lotus-platform-rfc-0069",
+                chunk_id="chunk_rfc_0069_0001",
                 score=0.98,
                 snippet="RFC-0069 defines lotus-ai as the shared AI platform service.",
             )
@@ -88,5 +112,6 @@ def test_search_sources_returns_hits_for_enabled_source_subset() -> None:
         response = search_sources(request)
 
     assert response.status == RetrievalStatus.READY
+    assert response.execution_stage == RetrievalExecutionStage.CATALOG_ONLY
     assert response.hits[0].source_id == "lotus-platform-rfcs"
     assert response.message == "Search completed."

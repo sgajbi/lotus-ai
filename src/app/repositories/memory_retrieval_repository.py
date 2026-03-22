@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import cast
 
 from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
     RetrievalEmbeddingStatus,
     RetrievalDocumentDescriptor,
     RetrievalDocumentPromotionStatus,
+    RetrievalIndexedChunkDescriptor,
     RetrievalIndexJobEventDescriptor,
     RetrievalIndexJobEventStatus,
     RetrievalIndexJobDescriptor,
@@ -17,6 +19,7 @@ from app.contracts.retrieval import (
     RetrievalSourceKind,
 )
 from app.repositories.retrieval_repository import RetrievalRepository
+from app.retrieval.foundation_embedding import build_preview_embedding
 
 
 class InMemoryRetrievalRepository(RetrievalRepository):
@@ -56,7 +59,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     location="lotus-platform/rfcs/RFC-0068-centralized-shared-infrastructure-ownership-and-migration.md",
                     promotion_status=RetrievalDocumentPromotionStatus.SEARCHABLE,
                     chunk_count=1,
-                    index_status=RetrievalIndexStatus.STAGED,
+                    index_status=RetrievalIndexStatus.INDEXED,
                 ),
                 RetrievalDocumentDescriptor(
                     document_id="lotus-platform-rfc-0069",
@@ -65,7 +68,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     location="lotus-platform/rfcs/RFC-0069-lotus-ai-shared-ai-platform-service.md",
                     promotion_status=RetrievalDocumentPromotionStatus.SEARCHABLE,
                     chunk_count=1,
-                    index_status=RetrievalIndexStatus.STAGED,
+                    index_status=RetrievalIndexStatus.INDEXED,
                 ),
             ],
             "lotus-platform-standards": [
@@ -87,7 +90,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     location="lotus-ai/docs/architecture/system-overview.md",
                     promotion_status=RetrievalDocumentPromotionStatus.SEARCHABLE,
                     chunk_count=1,
-                    index_status=RetrievalIndexStatus.STAGED,
+                    index_status=RetrievalIndexStatus.INDEXED,
                 ),
                 RetrievalDocumentDescriptor(
                     document_id="lotus-ai-retrieval-vector-store-guide",
@@ -96,7 +99,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     location="lotus-ai/docs/guides/retrieval-and-vector-store.md",
                     promotion_status=RetrievalDocumentPromotionStatus.SEARCHABLE,
                     chunk_count=1,
-                    index_status=RetrievalIndexStatus.STAGED,
+                    index_status=RetrievalIndexStatus.INDEXED,
                 ),
             ],
             "lotus-openapi-derived": [],
@@ -111,7 +114,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     token_estimate=180,
                     content_checksum="sha256:chunk-rfc-0068-0001",
                     preview="Move ownership of shared platform infrastructure to lotus-platform.",
-                    index_status=RetrievalIndexStatus.STAGED,
+                    index_status=RetrievalIndexStatus.INDEXED,
                 )
             ],
             "lotus-platform-rfc-0069": [
@@ -123,7 +126,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     token_estimate=210,
                     content_checksum="sha256:chunk-rfc-0069-0001",
                     preview="Introduce lotus-ai as a dedicated shared AI platform service for Lotus applications.",
-                    index_status=RetrievalIndexStatus.STAGED,
+                    index_status=RetrievalIndexStatus.INDEXED,
                 )
             ],
             "lotus-platform-observability-standards": [
@@ -147,7 +150,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     token_estimate=170,
                     content_checksum="sha256:chunk-system-overview-0001",
                     preview="lotus-ai is the shared AI platform service for Lotus.",
-                    index_status=RetrievalIndexStatus.STAGED,
+                    index_status=RetrievalIndexStatus.INDEXED,
                 )
             ],
             "lotus-ai-retrieval-vector-store-guide": [
@@ -159,30 +162,61 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     token_estimate=190,
                     content_checksum="sha256:chunk-retrieval-guide-0001",
                     preview="The first vector-store architecture for lotus-ai is PostgreSQL plus pgvector.",
-                    index_status=RetrievalIndexStatus.STAGED,
+                    index_status=RetrievalIndexStatus.INDEXED,
                 )
             ],
         }
         self._embedding_records: dict[str, dict[str, object]] = {
             "emb_chunk_rfc_0068_0001": {
                 "chunk_id": "chunk_rfc_0068_0001",
+                "document_id": "lotus-platform-rfc-0068",
                 "source_id": "lotus-platform-rfcs",
-                "status": RetrievalEmbeddingStatus.STAGED,
+                "embedding_model": "foundation.text-embedding-preview",
+                "embedding_status": RetrievalEmbeddingStatus.PERSISTED,
+                "vector_dimensions": 16,
+                "content_checksum": "sha256:chunk-rfc-0068-0001",
+                "embedding_vector": build_preview_embedding(
+                    "RFC-0068 Centralized Shared Infrastructure Ownership and Migration "
+                    "Move ownership of shared platform infrastructure to lotus-platform."
+                ),
             },
             "emb_chunk_rfc_0069_0001": {
                 "chunk_id": "chunk_rfc_0069_0001",
+                "document_id": "lotus-platform-rfc-0069",
                 "source_id": "lotus-platform-rfcs",
-                "status": RetrievalEmbeddingStatus.STAGED,
+                "embedding_model": "foundation.text-embedding-preview",
+                "embedding_status": RetrievalEmbeddingStatus.PERSISTED,
+                "vector_dimensions": 16,
+                "content_checksum": "sha256:chunk-rfc-0069-0001",
+                "embedding_vector": build_preview_embedding(
+                    "RFC-0069 lotus-ai Shared AI Platform Service "
+                    "Introduce lotus-ai as a dedicated shared AI platform service for Lotus applications."
+                ),
             },
             "emb_chunk_system_overview_0001": {
                 "chunk_id": "chunk_system_overview_0001",
+                "document_id": "lotus-ai-system-overview",
                 "source_id": "lotus-ai-architecture",
-                "status": RetrievalEmbeddingStatus.STAGED,
+                "embedding_model": "foundation.text-embedding-preview",
+                "embedding_status": RetrievalEmbeddingStatus.PERSISTED,
+                "vector_dimensions": 16,
+                "content_checksum": "sha256:chunk-system-overview-0001",
+                "embedding_vector": build_preview_embedding(
+                    "lotus-ai System Overview lotus-ai is the shared AI platform service for Lotus."
+                ),
             },
             "emb_chunk_retrieval_guide_0001": {
                 "chunk_id": "chunk_retrieval_guide_0001",
+                "document_id": "lotus-ai-retrieval-vector-store-guide",
                 "source_id": "lotus-ai-architecture",
-                "status": RetrievalEmbeddingStatus.STAGED,
+                "embedding_model": "foundation.text-embedding-preview",
+                "embedding_status": RetrievalEmbeddingStatus.PERSISTED,
+                "vector_dimensions": 16,
+                "content_checksum": "sha256:chunk-retrieval-guide-0001",
+                "embedding_vector": build_preview_embedding(
+                    "lotus-ai Retrieval and Vector Store Guide "
+                    "The first vector-store architecture for lotus-ai is PostgreSQL plus pgvector."
+                ),
             },
         }
         self._job_events: dict[str, list[RetrievalIndexJobEventDescriptor]] = {
@@ -207,9 +241,9 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     event_id="evt_retjob_lotus_platform_rfcs_embedding_generation",
                     job_id="retjob_lotus_platform_rfcs",
                     stage=RetrievalPipelineStage.STAGED,
-                    status=RetrievalIndexJobEventStatus.STAGED,
+                    status=RetrievalIndexJobEventStatus.COMPLETED,
                     recorded_at="2026-03-22T08:02:00Z",
-                    notes="Embedding records are staged in persistence, but live generation remains disabled.",
+                    notes="Persisted preview embeddings are available for promoted RFC chunks and can back bounded indexed retrieval.",
                 ),
             ],
             "retjob_lotus_platform_standards": [
@@ -251,9 +285,9 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     event_id="evt_retjob_lotus_ai_architecture_embedding_generation",
                     job_id="retjob_lotus_ai_architecture",
                     stage=RetrievalPipelineStage.STAGED,
-                    status=RetrievalIndexJobEventStatus.STAGED,
+                    status=RetrievalIndexJobEventStatus.COMPLETED,
                     recorded_at="2026-03-22T08:22:00Z",
-                    notes="Embedding records are staged in persistence, but live generation remains disabled.",
+                    notes="Persisted preview embeddings are available for promoted architecture chunks and can back bounded indexed retrieval.",
                 ),
             ],
             "retjob_lotus_openapi_derived": [
@@ -293,6 +327,56 @@ class InMemoryRetrievalRepository(RetrievalRepository):
     def list_chunks_for_document(self, document_id: str) -> list[RetrievalChunkDescriptor]:
         return deepcopy(self._chunks.get(document_id, []))
 
+    def list_searchable_indexed_chunks(
+        self, source_ids: list[str]
+    ) -> list[RetrievalIndexedChunkDescriptor]:
+        requested_source_ids = set(source_ids)
+        documents_by_id = {
+            document.document_id: document
+            for documents in self._documents.values()
+            for document in documents
+        }
+        chunks_by_id = {
+            chunk.chunk_id: chunk
+            for chunks in self._chunks.values()
+            for chunk in chunks
+        }
+        indexed_chunks: list[RetrievalIndexedChunkDescriptor] = []
+        for embedding_id, record in self._embedding_records.items():
+            source_id = str(record["source_id"])
+            if requested_source_ids and source_id not in requested_source_ids:
+                continue
+            document = documents_by_id.get(str(record["document_id"]))
+            chunk = chunks_by_id.get(str(record["chunk_id"]))
+            if document is None or chunk is None:
+                continue
+            if document.promotion_status != RetrievalDocumentPromotionStatus.SEARCHABLE:
+                continue
+            if document.index_status != RetrievalIndexStatus.INDEXED:
+                continue
+            if chunk.index_status != RetrievalIndexStatus.INDEXED:
+                continue
+            if record["embedding_status"] != RetrievalEmbeddingStatus.PERSISTED:
+                continue
+            if str(record["content_checksum"]) != chunk.content_checksum:
+                continue
+            indexed_chunks.append(
+                RetrievalIndexedChunkDescriptor(
+                    embedding_id=embedding_id,
+                    chunk_id=chunk.chunk_id,
+                    document_id=chunk.document_id,
+                    source_id=chunk.source_id,
+                    document_title=document.title,
+                    content_checksum=chunk.content_checksum,
+                    snippet=chunk.preview,
+                    embedding_model=str(record["embedding_model"]),
+                    embedding_status=record["embedding_status"],
+                    vector_dimensions=cast(int, record["vector_dimensions"]),
+                    embedding_vector=cast(list[float], record["embedding_vector"]),
+                )
+            )
+        return indexed_chunks
+
     def count_embedding_records(self) -> int:
         return len(self._embedding_records)
 
@@ -310,14 +394,23 @@ class InMemoryRetrievalRepository(RetrievalRepository):
             chunk_count = sum(
                 len(self._chunks.get(document.document_id, [])) for document in documents
             )
+            searchable_documents = [
+                document
+                for document in documents
+                if document.promotion_status == RetrievalDocumentPromotionStatus.SEARCHABLE
+            ]
+            indexed_document_count = sum(
+                1 for document in searchable_documents if document.index_status == RetrievalIndexStatus.INDEXED
+            )
             if not documents:
                 status = RetrievalJobStatus.PENDING
                 message = "No staged documents yet for this retrieval source."
+            elif searchable_documents and indexed_document_count == len(searchable_documents):
+                status = RetrievalJobStatus.COMPLETED
+                message = "Promoted documents have persisted embeddings and are ready for bounded indexed retrieval."
             else:
                 status = RetrievalJobStatus.STAGED
-                message = (
-                    "Documents are staged for indexing, but vector indexing is not enabled yet."
-                )
+                message = "Documents are staged for indexing, but promoted indexed coverage is incomplete."
             jobs.append(
                 RetrievalIndexJobDescriptor(
                     job_id=f"retjob_{source.source_id.replace('-', '_')}",

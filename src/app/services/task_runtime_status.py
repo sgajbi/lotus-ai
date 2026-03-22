@@ -35,26 +35,40 @@ def build_task_runtime_status() -> TaskRuntimeStatusResponse:
 
 def _build_task_descriptor(*, task: CapabilityDescriptor) -> TaskRuntimeDescriptor:
     if task.task_id == "knowledge_search.v1":
+        retrieval_enabled = settings.retrieval_mode == "enabled"
         return TaskRuntimeDescriptor(
             task_id=task.task_id,
             category=TaskCategory.KNOWLEDGE_SEARCH,
             enabled=True,
             output_label=OutputLabel.RETRIEVAL_ANSWER,
-            execution_path="retrieval.catalog_search",
-            provider_mode="catalog_only",
+            execution_path=(
+                "retrieval.indexed_search" if retrieval_enabled else "retrieval.catalog_search"
+            ),
+            provider_mode="indexed_search" if retrieval_enabled else "catalog_only",
             stubbed=False,
-            notes="Bounded retrieval hits from enabled staged approved sources.",
+            notes=(
+                "Bounded indexed retrieval over promoted persisted chunks."
+                if retrieval_enabled
+                else "Catalog-only fallback over enabled promoted sources while live retrieval is disabled."
+            ),
         )
     if task.task_id == "knowledge_answer.v1":
+        retrieval_enabled = settings.retrieval_mode == "enabled"
         return TaskRuntimeDescriptor(
             task_id=task.task_id,
             category=TaskCategory.KNOWLEDGE_ANSWER,
             enabled=True,
             output_label=OutputLabel.RETRIEVAL_ANSWER,
-            execution_path="retrieval.catalog_answer",
-            provider_mode="catalog_answer",
+            execution_path=(
+                "retrieval.indexed_answer" if retrieval_enabled else "retrieval.catalog_answer"
+            ),
+            provider_mode="indexed_answer" if retrieval_enabled else "catalog_answer",
             stubbed=False,
-            notes="Conservative citation-backed answer with explicit refusal on low-support retrieval.",
+            notes=(
+                "Conservative citation-backed answer over promoted indexed retrieval support."
+                if retrieval_enabled
+                else "Conservative citation-backed answer with explicit refusal on low-support catalog retrieval."
+            ),
         )
     return TaskRuntimeDescriptor(
         task_id=task.task_id,

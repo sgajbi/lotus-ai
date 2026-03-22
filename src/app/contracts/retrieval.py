@@ -163,6 +163,24 @@ class RetrievalChunkDescriptor(BaseModel):
     index_status: RetrievalIndexStatus = Field(description="Indexing status for the chunk.")
 
 
+class RetrievalIndexedChunkDescriptor(BaseModel):
+    embedding_id: str = Field(description="Stable embedding record identifier.")
+    chunk_id: str = Field(description="Stable chunk identifier.")
+    document_id: str = Field(description="Parent retrieval document identifier.")
+    source_id: str = Field(description="Parent retrieval source identifier.")
+    document_title: str = Field(description="Human-readable document title for the indexed chunk.")
+    content_checksum: str = Field(description="Stable checksum for the indexed chunk contents.")
+    snippet: str = Field(description="Short snippet preview for the indexed chunk.")
+    embedding_model: str = Field(description="Embedding model label used for the indexed chunk.")
+    embedding_status: RetrievalEmbeddingStatus = Field(
+        description="Current embedding persistence status for the indexed chunk."
+    )
+    vector_dimensions: int = Field(description="Vector dimension count for the indexed chunk.")
+    embedding_vector: list[float] = Field(
+        description="Deterministic embedding vector persisted for the indexed chunk."
+    )
+
+
 class RetrievalChunkCatalogResponse(BaseModel):
     document_id: str = Field(description="Parent retrieval document identifier.")
     source_id: str = Field(description="Parent retrieval source identifier.")
@@ -314,12 +332,17 @@ class RetrievalSearchRequest(BaseModel):
 
 class RetrievalSearchHit(BaseModel):
     source_id: str = Field(description="Retrieval source identifier that produced the hit.")
+    document_id: str = Field(description="Retrieval document identifier that produced the hit.")
+    chunk_id: str = Field(description="Retrieval chunk identifier that produced the hit.")
     score: float = Field(description="Relevance score associated with the hit.")
     snippet: str = Field(description="Short snippet preview for the hit.")
 
 
 class RetrievalSearchResponse(BaseModel):
     status: RetrievalStatus = Field(description="Current retrieval execution status.")
+    execution_stage: "RetrievalExecutionStage" = Field(
+        description="Execution stage that produced the current retrieval response."
+    )
     query: str = Field(description="Original caller query.")
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     hits: list[RetrievalSearchHit] = Field(description="Retrieval hits returned by the search.")
@@ -327,6 +350,7 @@ class RetrievalSearchResponse(BaseModel):
 
 
 class RetrievalExecutionStage(str, Enum):
+    INDEXED_SEARCH = "INDEXED_SEARCH"
     CATALOG_ONLY = "CATALOG_ONLY"
     SEARCH_DISABLED = "SEARCH_DISABLED"
     INDEXING_DISABLED = "INDEXING_DISABLED"

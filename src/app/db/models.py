@@ -96,6 +96,7 @@ class RetrievalChunkEmbeddingModel(Base):
     embedding_model: Mapped[str] = mapped_column(String(128), nullable=False)
     embedding_status: Mapped[str] = mapped_column(String(64), nullable=False)
     vector_dimensions: Mapped[int] = mapped_column(Integer, nullable=False)
+    embedding_vector: Mapped[list[float]] = mapped_column(JSON, nullable=False)
     content_checksum: Mapped[str] = mapped_column(String(128), nullable=False)
 
     chunk: Mapped["RetrievalChunkModel"] = relationship(back_populates="embeddings")

@@ -38,6 +38,7 @@ def search_sources(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
 
     return RetrievalSearchResponse(
         status=execution.status,
+        execution_stage=execution.execution_stage,
         query=request.query,
         vector_store=execution.vector_store,
         hits=execution.hits,

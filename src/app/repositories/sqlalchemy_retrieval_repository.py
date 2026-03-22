@@ -9,6 +9,8 @@ from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
     RetrievalDocumentDescriptor,
     RetrievalDocumentPromotionStatus,
+    RetrievalEmbeddingStatus,
+    RetrievalIndexedChunkDescriptor,
     RetrievalIndexJobEventDescriptor,
     RetrievalIndexJobEventStatus,
     RetrievalIndexJobDescriptor,
@@ -76,6 +78,56 @@ class SqlAlchemyRetrievalRepository:
                 .order_by(RetrievalChunkModel.chunk_order)
             ).all()
             return [self._to_chunk_descriptor(chunk) for chunk in chunks]
+
+    def list_searchable_indexed_chunks(
+        self, source_ids: list[str]
+    ) -> list[RetrievalIndexedChunkDescriptor]:
+        with self._session_factory() as session:
+            statement = (
+                select(
+                    RetrievalChunkEmbeddingModel,
+                    RetrievalChunkModel,
+                    RetrievalDocumentModel,
+                )
+                .join(RetrievalChunkModel, RetrievalChunkModel.chunk_id == RetrievalChunkEmbeddingModel.chunk_id)
+                .join(
+                    RetrievalDocumentModel,
+                    RetrievalDocumentModel.document_id == RetrievalChunkEmbeddingModel.document_id,
+                )
+                .where(
+                    RetrievalDocumentModel.promotion_status
+                    == RetrievalDocumentPromotionStatus.SEARCHABLE.value,
+                    RetrievalDocumentModel.index_status == RetrievalIndexStatus.INDEXED.value,
+                    RetrievalChunkModel.index_status == RetrievalIndexStatus.INDEXED.value,
+                    RetrievalChunkEmbeddingModel.embedding_status
+                    == RetrievalEmbeddingStatus.PERSISTED.value,
+                    RetrievalChunkEmbeddingModel.content_checksum == RetrievalChunkModel.content_checksum,
+                )
+                .order_by(
+                    RetrievalChunkEmbeddingModel.source_id,
+                    RetrievalChunkEmbeddingModel.document_id,
+                    RetrievalChunkModel.chunk_order,
+                )
+            )
+            if source_ids:
+                statement = statement.where(RetrievalChunkEmbeddingModel.source_id.in_(source_ids))
+            rows = session.execute(statement).all()
+            return [
+                RetrievalIndexedChunkDescriptor(
+                    embedding_id=embedding.embedding_id,
+                    chunk_id=chunk.chunk_id,
+                    document_id=chunk.document_id,
+                    source_id=chunk.source_id,
+                    document_title=document.title,
+                    content_checksum=chunk.content_checksum,
+                    snippet=chunk.preview,
+                    embedding_model=embedding.embedding_model,
+                    embedding_status=RetrievalEmbeddingStatus(embedding.embedding_status),
+                    vector_dimensions=embedding.vector_dimensions,
+                    embedding_vector=embedding.embedding_vector,
+                )
+                for embedding, chunk, document in rows
+            ]
 
     def count_embedding_records(self) -> int:
         with self._session_factory() as session:

@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from app.config import settings
 
 
 def test_retrieval_source_catalog_route(client: TestClient) -> None:
@@ -83,6 +84,20 @@ def test_retrieval_execution_status_route(client: TestClient) -> None:
     assert body["retrieval_mode"] == "disabled"
     assert body["execution_stage"] == "SEARCH_DISABLED"
     assert body["live_search_enabled"] is False
+
+
+def test_retrieval_execution_status_route_reports_indexed_search_when_enabled(
+    client: TestClient,
+) -> None:
+    settings.retrieval_mode = "enabled"
+
+    response = client.get("/platform/retrieval/execution-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["retrieval_mode"] == "enabled"
+    assert body["execution_stage"] == "INDEXED_SEARCH"
+    assert body["live_search_enabled"] is True
 
 
 def test_retrieval_activation_readiness_route(client: TestClient) -> None:
@@ -214,8 +229,32 @@ def test_retrieval_search_route_returns_catalog_only_hits_for_enabled_sources(
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "READY"
+    assert body["execution_stage"] == "CATALOG_ONLY"
     assert body["hits"][0]["source_id"] == "lotus-platform-rfcs"
+    assert body["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
+    assert body["hits"][0]["chunk_id"] == "chunk_rfc_0069_0001"
     assert "catalog-only hits" in body["message"]
+
+
+def test_retrieval_search_route_returns_indexed_hits_when_enabled(client: TestClient) -> None:
+    settings.retrieval_mode = "enabled"
+
+    response = client.post(
+        "/platform/retrieval/search",
+        json={
+            "query": "shared ai platform service",
+            "caller_app": "lotus-workbench",
+            "correlation_id": "corr-ret-2-indexed",
+            "source_ids": ["lotus-platform-rfcs"],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "READY"
+    assert body["execution_stage"] == "INDEXED_SEARCH"
+    assert body["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
+    assert "Live indexed retrieval is active" in body["message"]
 
 
 def test_retrieval_search_route_rejects_disabled_source_filter(client: TestClient) -> None:
