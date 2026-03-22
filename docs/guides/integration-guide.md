@@ -1,5 +1,15 @@
 # Integration Guide
 
+## Platform Discovery
+
+Before integrating a Lotus app with `lotus-ai`, upstream teams should inspect:
+
+1. `GET /platform/runtime-status` for the current operating posture,
+2. `GET /platform/capabilities` for currently exposed task contracts,
+3. `GET /platform/retrieval/runtime-status` for retrieval-specific persistence and corpus posture when retrieval features are relevant.
+
+This keeps downstream integration decisions grounded in actual runtime capability rather than assumptions.
+
 This guide explains how other Lotus apps should integrate with `lotus-ai`.
 
 ## Core Rule

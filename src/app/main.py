@@ -5,6 +5,7 @@ from app.config import settings
 from app.middleware.correlation import CorrelationIdMiddleware
 from app.routers.audit import router as audit_router
 from app.routers.capabilities import router as capabilities_router
+from app.routers.platform import router as platform_router
 from app.routers.prompts import router as prompts_router
 from app.routers.retrieval import router as retrieval_router
 from app.routers.tasks import router as tasks_router
@@ -24,6 +25,7 @@ app = FastAPI(
 )
 app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
 Instrumentator().instrument(app).expose(app)
+app.include_router(platform_router)
 app.include_router(capabilities_router)
 app.include_router(prompts_router)
 app.include_router(retrieval_router)
@@ -105,5 +107,6 @@ async def root() -> dict[str, object]:
             "safety",
             "evals",
             "task_apis",
+            "platform_runtime_status",
         ],
     }

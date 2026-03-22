@@ -35,6 +35,7 @@ The current retrieval posture is:
 
 - approved retrieval sources are registered explicitly,
 - retrieval source discovery is exposed through the platform API,
+- runtime posture for retrieval and platform services is exposed through the platform API,
 - live retrieval search remains disabled until embeddings and vector indexing are wired.
 
 ## What lotus-ai Does

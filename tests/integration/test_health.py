@@ -27,6 +27,21 @@ def test_platform_capabilities_contract() -> None:
     assert any(task["task_id"] == "explain.v1" for task in body["tasks"])
 
 
+def test_platform_runtime_status_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["delivery_phase"] == "foundation"
+    assert body["audit_store_mode"] == "memory"
+    assert body["retrieval_store_mode"] == "memory"
+    assert body["migration_contract_enforced"] is True
+    assert body["prompt_count"] >= 3
+
+
 def test_task_execute_contract() -> None:
     client = TestClient(app)
     response = client.post(
