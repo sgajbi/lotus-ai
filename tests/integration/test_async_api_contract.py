@@ -1,11 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
 
-
-def test_async_runtime_status_route() -> None:
-    client = TestClient(app)
-
+def test_async_runtime_status_route(client: TestClient) -> None:
     response = client.get("/platform/async/runtime-status")
 
     assert response.status_code == 200
@@ -25,9 +21,7 @@ def test_async_runtime_status_route() -> None:
     assert any(job["job_type"] == "retrieval_indexing" for job in body["supported_job_types"])
 
 
-def test_async_queue_backend_catalog_route() -> None:
-    client = TestClient(app)
-
+def test_async_queue_backend_catalog_route(client: TestClient) -> None:
     response = client.get("/platform/async/queue-backends")
 
     assert response.status_code == 200
@@ -40,9 +34,7 @@ def test_async_queue_backend_catalog_route() -> None:
     assert body["backends"][2]["backend_id"] == "kafka_orchestrated"
 
 
-def test_async_worker_execution_catalog_route() -> None:
-    client = TestClient(app)
-
+def test_async_worker_execution_catalog_route(client: TestClient) -> None:
     response = client.get("/platform/async/worker-executions")
 
     assert response.status_code == 200
@@ -55,9 +47,7 @@ def test_async_worker_execution_catalog_route() -> None:
     assert body["workers"][2]["worker_id"] == "queue_backed_workers"
 
 
-def test_async_activation_readiness_route() -> None:
-    client = TestClient(app)
-
+def test_async_activation_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/async/activation-readiness")
 
     assert response.status_code == 200
@@ -71,9 +61,7 @@ def test_async_activation_readiness_route() -> None:
     assert len(body["activation_path"]) == 4
 
 
-def test_async_runbook_readiness_route() -> None:
-    client = TestClient(app)
-
+def test_async_runbook_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/async/runbook-readiness")
 
     assert response.status_code == 200
@@ -86,9 +74,7 @@ def test_async_runbook_readiness_route() -> None:
     assert body["items"][1]["status"] == "NOT_READY"
 
 
-def test_async_governance_status_route() -> None:
-    client = TestClient(app)
-
+def test_async_governance_status_route(client: TestClient) -> None:
     response = client.get("/platform/async/governance-status")
 
     assert response.status_code == 200
@@ -101,9 +87,7 @@ def test_async_governance_status_route() -> None:
     assert len(body["governance_summary"]) == 2
 
 
-def test_async_job_catalog_route() -> None:
-    client = TestClient(app)
-
+def test_async_job_catalog_route(client: TestClient) -> None:
     response = client.get("/platform/async/jobs")
 
     assert response.status_code == 200
@@ -116,9 +100,7 @@ def test_async_job_catalog_route() -> None:
     assert body["jobs"][1]["related_evaluation_run_id"] == "foundation_eval_2026_03_21_001"
 
 
-def test_async_job_detail_route() -> None:
-    client = TestClient(app)
-
+def test_async_job_detail_route(client: TestClient) -> None:
     response = client.get("/platform/async/jobs/asyncjob_retrieval_indexing_001")
 
     assert response.status_code == 200
@@ -129,18 +111,14 @@ def test_async_job_detail_route() -> None:
     assert body["job"]["related_evaluation_run_id"] is None
 
 
-def test_async_job_detail_route_returns_not_found_for_unknown_job() -> None:
-    client = TestClient(app)
-
+def test_async_job_detail_route_returns_not_found_for_unknown_job(client: TestClient) -> None:
     response = client.get("/platform/async/jobs/missing_async_job")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Async job artifact 'missing_async_job' was not found."
 
 
-def test_async_job_submit_route_returns_rejected_contract_response() -> None:
-    client = TestClient(app)
-
+def test_async_job_submit_route_returns_rejected_contract_response(client: TestClient) -> None:
     response = client.post(
         "/platform/async/jobs/submit",
         json={
@@ -160,9 +138,9 @@ def test_async_job_submit_route_returns_rejected_contract_response() -> None:
     assert body["queue_mode"] == "DISABLED"
 
 
-def test_async_job_submit_route_returns_not_found_for_unknown_job_type() -> None:
-    client = TestClient(app)
-
+def test_async_job_submit_route_returns_not_found_for_unknown_job_type(
+    client: TestClient,
+) -> None:
     response = client.post(
         "/platform/async/jobs/submit",
         json={

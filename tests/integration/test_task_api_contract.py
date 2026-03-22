@@ -1,10 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
 
-
-def test_task_execute_contract() -> None:
-    client = TestClient(app)
+def test_task_execute_contract(client: TestClient) -> None:
     response = client.post(
         "/ai/tasks/execute",
         json={
@@ -36,8 +33,7 @@ def test_task_execute_contract() -> None:
     assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"
 
 
-def test_audit_record_route_returns_saved_execution() -> None:
-    client = TestClient(app)
+def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
     execute_response = client.post(
         "/ai/tasks/execute",
         json={
@@ -67,9 +63,7 @@ def test_audit_record_route_returns_saved_execution() -> None:
     ]
 
 
-def test_audit_record_route_returns_not_found_for_unknown_request() -> None:
-    client = TestClient(app)
-
+def test_audit_record_route_returns_not_found_for_unknown_request(client: TestClient) -> None:
     response = client.get("/ai/audit/missing_request_id")
 
     assert response.status_code == 404

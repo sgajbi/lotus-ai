@@ -1,11 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
 
-
-def test_safety_policy_route() -> None:
-    client = TestClient(app)
-
+def test_safety_policy_route(client: TestClient) -> None:
     response = client.get("/platform/safety/policy")
 
     assert response.status_code == 200
@@ -16,9 +12,7 @@ def test_safety_policy_route() -> None:
     assert any(task["task_id"] == "explain.v1" for task in body["task_policies"])
 
 
-def test_safety_runtime_status_route() -> None:
-    client = TestClient(app)
-
+def test_safety_runtime_status_route(client: TestClient) -> None:
     response = client.get("/platform/safety/runtime-status")
 
     assert response.status_code == 200

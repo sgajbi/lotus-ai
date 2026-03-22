@@ -1,11 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
 
-
-def test_prompt_registry_routes() -> None:
-    client = TestClient(app)
-
+def test_prompt_registry_routes(client: TestClient) -> None:
     list_response = client.get("/platform/prompts")
     assert list_response.status_code == 200
     assert any(prompt["task_id"] == "explain.v1" for prompt in list_response.json())
@@ -17,9 +13,7 @@ def test_prompt_registry_routes() -> None:
     assert detail_response.json()["management_mode"] == "SEEDED_MEMORY"
 
 
-def test_prompt_governance_route() -> None:
-    client = TestClient(app)
-
+def test_prompt_governance_route(client: TestClient) -> None:
     response = client.get("/platform/prompts/governance")
 
     assert response.status_code == 200
@@ -31,9 +25,7 @@ def test_prompt_governance_route() -> None:
     assert body["active_prompt_count"] >= 7
 
 
-def test_prompt_runtime_status_route() -> None:
-    client = TestClient(app)
-
+def test_prompt_runtime_status_route(client: TestClient) -> None:
     response = client.get("/platform/prompts/runtime-status")
 
     assert response.status_code == 200
@@ -44,9 +36,7 @@ def test_prompt_runtime_status_route() -> None:
     assert any(selection["task_id"] == "explain.v1" for selection in body["selections"])
 
 
-def test_prompt_activation_readiness_route() -> None:
-    client = TestClient(app)
-
+def test_prompt_activation_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/prompts/activation-readiness")
 
     assert response.status_code == 200
@@ -59,9 +49,7 @@ def test_prompt_activation_readiness_route() -> None:
     assert len(body["activation_path"]) == 4
 
 
-def test_prompt_runbook_readiness_route() -> None:
-    client = TestClient(app)
-
+def test_prompt_runbook_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/prompts/runbook-readiness")
 
     assert response.status_code == 200
@@ -74,9 +62,7 @@ def test_prompt_runbook_readiness_route() -> None:
     assert body["items"][1]["status"] == "NOT_READY"
 
 
-def test_prompt_evidence_readiness_route() -> None:
-    client = TestClient(app)
-
+def test_prompt_evidence_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/prompts/evidence-readiness")
 
     assert response.status_code == 200
@@ -89,9 +75,7 @@ def test_prompt_evidence_readiness_route() -> None:
     assert body["items"][1]["status"] == "NOT_READY"
 
 
-def test_prompt_governance_status_route() -> None:
-    client = TestClient(app)
-
+def test_prompt_governance_status_route(client: TestClient) -> None:
     response = client.get("/platform/prompts/governance-status")
 
     assert response.status_code == 200

@@ -1,23 +1,19 @@
 from fastapi.testclient import TestClient
-from app.main import app
 
 
-def test_health_endpoints() -> None:
-    client = TestClient(app)
+def test_health_endpoints(client: TestClient) -> None:
     assert client.get("/health").status_code == 200
     assert client.get("/health/live").status_code == 200
     assert client.get("/health/ready").status_code == 200
 
 
-def test_correlation_header_propagation() -> None:
-    client = TestClient(app)
+def test_correlation_header_propagation(client: TestClient) -> None:
     response = client.get("/health", headers={"X-Correlation-Id": "corr-123"})
     assert response.status_code == 200
     assert response.headers["X-Correlation-Id"] == "corr-123"
 
 
-def test_platform_capabilities_contract() -> None:
-    client = TestClient(app)
+def test_platform_capabilities_contract(client: TestClient) -> None:
     response = client.get("/platform/capabilities")
 
     assert response.status_code == 200
@@ -27,9 +23,7 @@ def test_platform_capabilities_contract() -> None:
     assert any(task["task_id"] == "explain.v1" for task in body["tasks"])
 
 
-def test_platform_runtime_status_route() -> None:
-    client = TestClient(app)
-
+def test_platform_runtime_status_route(client: TestClient) -> None:
     response = client.get("/platform/runtime-status")
 
     assert response.status_code == 200
@@ -95,9 +89,7 @@ def test_platform_runtime_status_route() -> None:
     assert body["prompt_count"] >= 3
 
 
-def test_service_metadata_exposes_store_modes() -> None:
-    client = TestClient(app)
-
+def test_service_metadata_exposes_store_modes(client: TestClient) -> None:
     response = client.get("/metadata")
 
     assert response.status_code == 200

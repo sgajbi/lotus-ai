@@ -1,11 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
 
-
-def test_evaluation_catalog_route() -> None:
-    client = TestClient(app)
-
+def test_evaluation_catalog_route(client: TestClient) -> None:
     response = client.get("/platform/evals/catalog")
 
     assert response.status_code == 200
@@ -53,9 +49,7 @@ def test_evaluation_catalog_route() -> None:
     )
 
 
-def test_evaluation_runtime_status_route() -> None:
-    client = TestClient(app)
-
+def test_evaluation_runtime_status_route(client: TestClient) -> None:
     response = client.get("/platform/evals/runtime-status")
 
     assert response.status_code == 200
@@ -78,9 +72,7 @@ def test_evaluation_runtime_status_route() -> None:
     assert body["evaluation_runner_active"] is False
 
 
-def test_evaluation_run_catalog_route() -> None:
-    client = TestClient(app)
-
+def test_evaluation_run_catalog_route(client: TestClient) -> None:
     response = client.get("/platform/evals/runs")
 
     assert response.status_code == 200
@@ -94,9 +86,7 @@ def test_evaluation_run_catalog_route() -> None:
     assert body["runs"][1]["status"] == "SUPERSEDED"
 
 
-def test_evaluation_run_detail_route() -> None:
-    client = TestClient(app)
-
+def test_evaluation_run_detail_route(client: TestClient) -> None:
     response = client.get("/platform/evals/runs/foundation_eval_2026_03_22_001")
 
     assert response.status_code == 200
@@ -106,9 +96,7 @@ def test_evaluation_run_detail_route() -> None:
     assert body["run"]["seam_coverage"][0]["seam_id"] == "task_execution"
 
 
-def test_evaluation_run_detail_route_returns_superseded_artifact() -> None:
-    client = TestClient(app)
-
+def test_evaluation_run_detail_route_returns_superseded_artifact(client: TestClient) -> None:
     response = client.get("/platform/evals/runs/foundation_eval_2026_03_21_001")
 
     assert response.status_code == 200
@@ -119,18 +107,16 @@ def test_evaluation_run_detail_route_returns_superseded_artifact() -> None:
     assert body["run"]["seam_coverage"][-1]["staged_fixture_count"] == 0
 
 
-def test_evaluation_run_detail_route_returns_not_found_for_unknown_run() -> None:
-    client = TestClient(app)
-
+def test_evaluation_run_detail_route_returns_not_found_for_unknown_run(
+    client: TestClient,
+) -> None:
     response = client.get("/platform/evals/runs/missing_run")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Evaluation run artifact 'missing_run' was not found."
 
 
-def test_evaluation_fixture_detail_route() -> None:
-    client = TestClient(app)
-
+def test_evaluation_fixture_detail_route(client: TestClient) -> None:
     response = client.get("/platform/evals/fixtures/retrieval_citation_examples")
 
     assert response.status_code == 200
@@ -143,9 +129,9 @@ def test_evaluation_fixture_detail_route() -> None:
     assert body["cases"][0]["case_id"] == "search_rfc_answer_requires_citation"
 
 
-def test_evaluation_fixture_detail_route_returns_not_found_for_unknown_fixture() -> None:
-    client = TestClient(app)
-
+def test_evaluation_fixture_detail_route_returns_not_found_for_unknown_fixture(
+    client: TestClient,
+) -> None:
     response = client.get("/platform/evals/fixtures/missing_fixture")
 
     assert response.status_code == 404

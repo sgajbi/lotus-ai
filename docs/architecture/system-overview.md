@@ -115,6 +115,9 @@ evaluation contract coverage can evolve independently of the broader platform he
 Async API behavior is also verified through its own dedicated integration module so async
 contract coverage can evolve independently of the broader platform health suite.
 
+The standard integration API modules now share a common test client fixture so harness setup
+is centralized without hiding route-level assertions behind generic helpers.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

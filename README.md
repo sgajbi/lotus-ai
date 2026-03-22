@@ -35,6 +35,7 @@ The current execution posture is:
 - safety API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
 - evaluation API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
 - async API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
+- standard integration API modules now share a common `client` fixture so test harness setup stays centralized while assertions remain explicit,
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,

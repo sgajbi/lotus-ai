@@ -1,11 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
 
-
-def test_provider_catalog_route() -> None:
-    client = TestClient(app)
-
+def test_provider_catalog_route(client: TestClient) -> None:
     response = client.get("/platform/providers")
 
     assert response.status_code == 200
@@ -17,9 +13,7 @@ def test_provider_catalog_route() -> None:
     assert any(provider["provider_id"] == "text.stub" for provider in body["providers"])
 
 
-def test_provider_policy_route() -> None:
-    client = TestClient(app)
-
+def test_provider_policy_route(client: TestClient) -> None:
     response = client.get("/platform/providers/policy")
 
     assert response.status_code == 200
@@ -28,9 +22,7 @@ def test_provider_policy_route() -> None:
     assert any(policy["capability"] == "TEXT_GENERATION" for policy in body["policies"])
 
 
-def test_provider_activation_readiness_route() -> None:
-    client = TestClient(app)
-
+def test_provider_activation_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/providers/activation-readiness")
 
     assert response.status_code == 200
@@ -43,9 +35,7 @@ def test_provider_activation_readiness_route() -> None:
     assert len(body["activation_path"]) == 4
 
 
-def test_provider_runbook_readiness_route() -> None:
-    client = TestClient(app)
-
+def test_provider_runbook_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/providers/runbook-readiness")
 
     assert response.status_code == 200
@@ -58,9 +48,7 @@ def test_provider_runbook_readiness_route() -> None:
     assert body["items"][1]["status"] == "NOT_READY"
 
 
-def test_provider_evidence_readiness_route() -> None:
-    client = TestClient(app)
-
+def test_provider_evidence_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/providers/evidence-readiness")
 
     assert response.status_code == 200
@@ -73,9 +61,7 @@ def test_provider_evidence_readiness_route() -> None:
     assert body["items"][1]["status"] == "NOT_READY"
 
 
-def test_provider_governance_status_route() -> None:
-    client = TestClient(app)
-
+def test_provider_governance_status_route(client: TestClient) -> None:
     response = client.get("/platform/providers/governance-status")
 
     assert response.status_code == 200
