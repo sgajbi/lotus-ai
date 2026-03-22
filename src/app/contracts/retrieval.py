@@ -267,3 +267,29 @@ class RetrievalActivationReadinessResponse(BaseModel):
     activation_path: list[str] = Field(
         description="Governed high-level path required before live retrieval execution can be enabled."
     )
+
+
+class RetrievalRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(description="Stable retrieval runbook readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before live retrieval activation."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class RetrievalRunbookReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval runbook readiness view.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    runbook_ready: bool = Field(
+        description="Whether retrieval operational runbook readiness is currently sufficient for activation."
+    )
+    required_item_count: int = Field(
+        description="Number of retrieval runbook items currently required for activation."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required retrieval runbook items currently marked complete."
+    )
+    items: list[RetrievalRunbookReadinessItem] = Field(
+        description="Governed retrieval operational runbook readiness items."
+    )

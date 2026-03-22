@@ -12,6 +12,7 @@ from app.contracts.retrieval import (
     RetrievalIndexingPolicyResponse,
     RetrievalExecutionStatusResponse,
     RetrievalRuntimeStatusResponse,
+    RetrievalRunbookReadinessResponse,
     RetrievalSearchRequest,
     RetrievalSearchResponse,
     RetrievalSourceCatalogResponse,
@@ -28,6 +29,7 @@ from app.services.retrieval_catalog_service import (
 )
 from app.services.retrieval_activation_readiness import build_retrieval_activation_readiness
 from app.services.retrieval_execution_status import build_retrieval_execution_status
+from app.services.retrieval_runbook_readiness import build_retrieval_runbook_readiness
 from app.services.retrieval_service import search_sources
 
 router = APIRouter(prefix="/platform/retrieval", tags=["retrieval"])
@@ -121,6 +123,24 @@ async def get_retrieval_execution_status_route() -> RetrievalExecutionStatusResp
 )
 async def get_retrieval_activation_readiness_route() -> RetrievalActivationReadinessResponse:
     return build_retrieval_activation_readiness()
+
+
+@router.get(
+    "/runbook-readiness",
+    response_model=RetrievalRunbookReadinessResponse,
+    operation_id="getRetrievalRunbookReadiness",
+    summary="Get retrieval runbook readiness",
+    description=(
+        "Returns the operational runbook readiness required before lotus-ai live retrieval "
+        "execution can be activated in a governed environment."
+    ),
+    responses={
+        200: {"description": "Retrieval runbook readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_runbook_readiness_route() -> RetrievalRunbookReadinessResponse:
+    return build_retrieval_runbook_readiness()
 
 
 @router.get(

@@ -336,6 +336,24 @@ Current posture:
 2. the endpoint returns explicit blocking findings and a governed activation path,
 3. foundation phase remains not activatable until a separate retrieval rollout slice changes execution posture.
 
+## Decision 15B: Retrieval Runbook Readiness Should Be Exposed As A Separate Operational Contract
+
+Decision:
+
+`lotus-ai` exposes retrieval runbook readiness separately from retrieval technical activation readiness.
+
+Why:
+
+1. live retrieval rollout needs operational preparedness that is distinct from retrieval execution posture,
+2. bank-grade activation review should explicitly cover reindex, replay, and retrieval observability readiness,
+3. separating runbook readiness keeps retrieval activation governance explicit and auditable.
+
+Current posture:
+
+1. `/platform/retrieval/runbook-readiness` exposes required retrieval operational readiness items,
+2. required runbook items remain not ready in foundation phase,
+3. live retrieval activation should not be considered complete in future rollout slices without both technical and runbook readiness.
+
 ## Decision 16: Prompt Runtime Selection Should Be Inspectable
 
 Decision:
