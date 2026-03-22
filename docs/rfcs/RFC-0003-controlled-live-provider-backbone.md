@@ -83,6 +83,13 @@ The first live provider rollout should:
 3. be enabled only through explicit reviewed configuration and governance evidence,
 4. preserve the current stub path as the fallback and safe default.
 
+The first live provider rollout should also be intentionally narrow:
+
+1. one provider integration,
+2. one allowlisted model family at first,
+3. task-level allowlisting rather than blanket service-wide enablement,
+4. no silent drift from stubbed execution to live execution.
+
 ## Architecture Direction
 
 ### Provider Adapter Layer
@@ -104,6 +111,12 @@ Live provider execution must include:
 4. rate-limit and quota controls,
 5. fallback behavior when the live path is unavailable or blocked.
 
+Fallback must remain explicit:
+
+1. approved tasks may use an explicit reviewed fallback path,
+2. blocked live rollout must not silently masquerade as successful live execution,
+3. operator-facing surfaces must make stubbed, blocked, and live execution distinguishable.
+
 ### Audit and Evidence
 
 The live path must preserve:
@@ -114,6 +127,12 @@ The live path must preserve:
 4. token and cost accounting where available,
 5. enough structured evidence for support review and rollout governance.
 
+Audit behavior must also remain bank-grade:
+
+1. credentials and provider secrets must never be persisted,
+2. prompt/system content must remain governed by existing prompt and audit posture rather than raw provider SDK logging,
+3. provider response evidence must be structured enough for incident review without requiring replay against the live provider.
+
 ### Safety and Grounding
 
 The provider backbone must not weaken existing controls:
@@ -123,6 +142,27 @@ The provider backbone must not weaken existing controls:
 3. safety posture remains explicit and inspectable,
 4. live generation must not bypass task-level output contracts.
 
+### Configuration and Secret Handling
+
+Live provider activation must also define:
+
+1. credential source-of-truth and environment handling,
+2. explicit startup/readiness behavior when credentials are missing or malformed,
+3. redaction rules for provider-related operational telemetry,
+4. configuration surfaces that separate supported provider modes from enabled rollout state.
+
+### Rollout States
+
+Provider rollout should be treated as an explicit progression:
+
+1. `DOCUMENTED_ONLY`
+2. `STUB_DEFAULT`
+3. `ALLOWLISTED_DISABLED`
+4. `CANARY_ENABLED`
+5. `ROLLED_OUT`
+
+The implementation does not need to expose those exact labels immediately, but the rollout model should remain this explicit in behavior and governance.
+
 ## Data and Operational Requirements
 
 1. Live provider activation remains disabled by default until governance gates are satisfied.
@@ -131,6 +171,8 @@ The provider backbone must not weaken existing controls:
 4. Operational runbooks must exist for rate limits, outages, degraded fallback, and cost anomalies.
 5. Provider execution telemetry must be inspectable without reading raw SDK logs.
 6. CI and evaluation assets must cover provider failure and fallback behavior, not only happy-path execution.
+7. Task-level routing into live provider execution must be reviewable and bounded.
+8. Activation must preserve a deterministic fallback or refusal posture for blocked-live cases.
 
 ## Delivery Slices
 
@@ -148,7 +190,21 @@ Acceptance gate:
 2. contracts are stable and tested,
 3. the gateway is cleaner and more modular than the current stub-only branch.
 
-### Slice 2: Controlled Live Text Generation Path
+### Slice 2: Credential, Configuration, and Rollout-State Contracts
+
+Outcome:
+
+1. live-provider credentials and configuration posture are modeled explicitly,
+2. rollout state is separated from supported provider mode,
+3. startup/readiness behavior for malformed or missing provider configuration is defined.
+
+Acceptance gate:
+
+1. missing or invalid credentials fail clearly,
+2. no secret material appears in logs, runtime status, or audit records,
+3. rollout state remains inspectable before any live task execution is possible.
+
+### Slice 3: Controlled Live Text Generation Path
 
 Outcome:
 
@@ -162,7 +218,7 @@ Acceptance gate:
 2. stub fallback remains intact,
 3. no hidden runtime enablement exists.
 
-### Slice 3: Execution Hardening
+### Slice 4: Execution Hardening
 
 Outcome:
 
@@ -176,7 +232,7 @@ Acceptance gate:
 2. audit evidence preserves execution posture,
 3. operator-facing runtime surfaces reflect the live path honestly.
 
-### Slice 4: Task Runtime Integration
+### Slice 5: Task Runtime Integration
 
 Outcome:
 
@@ -190,7 +246,7 @@ Acceptance gate:
 2. non-retrieval tasks remain contract-bound,
 3. task audit and evidence surfaces remain clear.
 
-### Slice 5: Evaluation and Failure-Mode Evidence
+### Slice 6: Evaluation and Failure-Mode Evidence
 
 Outcome:
 
@@ -204,7 +260,7 @@ Acceptance gate:
 2. failure-mode evidence is visible in provider governance posture,
 3. CI gates protect core provider contracts.
 
-### Slice 6: Operational Activation Readiness
+### Slice 7: Operational Activation Readiness
 
 Outcome:
 
@@ -224,6 +280,7 @@ Acceptance gate:
 2. cost visibility can lag actual usage if token accounting is treated as optional,
 3. weak fallback behavior can make the platform harder to debug than the current stub path,
 4. live generation can weaken enterprise trust if it is activated before retrieval grounding and safety controls remain clearly enforced.
+5. provider credential handling can create avoidable risk if secret-management and audit-redaction rules are not explicit from the first slice.
 
 ## Alternatives Considered
 
@@ -255,6 +312,15 @@ Reason:
 2. text-generation rollout is the higher-value and higher-risk next phase,
 3. embedding-provider activation can be handled as a follow-on slice if still needed.
 
+### Alternative 4: Service-Wide Live Provider Enablement
+
+Rejected.
+
+Reason:
+
+1. bank-grade rollout should be task-bounded and reviewable,
+2. service-wide enablement would make fallback, evaluation, and support posture too coarse.
+
 ## Acceptance Criteria
 
 This RFC is complete when:
@@ -264,8 +330,9 @@ This RFC is complete when:
 3. task execution can use the live provider path only when rollout posture permits it,
 4. provider audit and evidence surfaces preserve meaningful execution detail,
 5. provider failure, timeout, and fallback behavior are evaluated and governed,
-6. provider operations and rollout readiness are documented and reviewable,
-7. the platform remains retrieval-grounded and citation-first where applicable.
+6. credentials, rollout state, and startup/readiness behavior are explicit and inspectable,
+7. provider operations and rollout readiness are documented and reviewable,
+8. the platform remains retrieval-grounded and citation-first where applicable.
 
 ## Approval Requested
 
