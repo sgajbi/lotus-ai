@@ -128,5 +128,6 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     )
     assert spec["paths"]["/ai/tasks/execute"]["post"]["operationId"] == "executeTask"
     assert spec["paths"]["/ai/audit/{request_id}"]["get"]["operationId"] == "getAuditRecord"
+    assert spec["paths"]["/ai/audit"]["get"]["operationId"] == "listAuditRecords"
     assert spec["paths"]["/metadata"]["get"]["operationId"] == "getServiceMetadata"
     assert spec["paths"]["/"]["get"]["operationId"] == "getServiceOverview"

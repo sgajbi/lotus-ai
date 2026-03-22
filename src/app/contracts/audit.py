@@ -38,3 +38,16 @@ class AuditRecordResponse(BaseModel):
     evidence: ExecutionEvidenceBundle = Field(
         description="Structured execution evidence preserved with the audit record."
     )
+
+
+class AuditRecordCatalogResponse(BaseModel):
+    service: str = Field(description="Service name emitting the audit catalog response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    record_count: int = Field(description="Number of audit records returned in this response.")
+    filters_applied: dict[str, str | int] = Field(
+        default_factory=dict,
+        description="Bounded query filters applied while building the audit catalog response.",
+    )
+    records: list[AuditRecordResponse] = Field(
+        description="Audit records matching the requested bounded filter set."
+    )

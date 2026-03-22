@@ -1,11 +1,58 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
-from app.contracts.audit import AuditRecordResponse
+from app.config import settings
+from app.contracts.audit import AuditRecordCatalogResponse, AuditRecordResponse
 from app.services.audit_store import get_audit_store
 
 router = APIRouter(prefix="/ai/audit", tags=["audit"])
+
+
+@router.get(
+    "",
+    response_model=AuditRecordCatalogResponse,
+    operation_id="listAuditRecords",
+    summary="List lotus-ai audit records",
+    description=(
+        "Returns a bounded catalog of lotus-ai audit records using optional caller and task "
+        "filters. Results are ordered by most recent generated timestamp first."
+    ),
+    responses={
+        200: {"description": "Audit catalog returned successfully."},
+        422: {"description": "Invalid query parameters supplied."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def list_audit_records(
+    caller_app: str | None = Query(
+        default=None,
+        description="Optional caller application filter for the audit catalog.",
+    ),
+    task_id: str | None = Query(
+        default=None,
+        description="Optional task identifier filter for the audit catalog.",
+    ),
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=100,
+        description="Maximum number of audit records to return.",
+    ),
+) -> AuditRecordCatalogResponse:
+    records = get_audit_store().list(caller_app=caller_app, task_id=task_id, limit=limit)
+    filters_applied: dict[str, str | int] = {"limit": limit}
+    if caller_app is not None:
+        filters_applied["caller_app"] = caller_app
+    if task_id is not None:
+        filters_applied["task_id"] = task_id
+    return AuditRecordCatalogResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        record_count=len(records),
+        filters_applied=filters_applied,
+        records=records,
+    )
 
 
 @router.get(

@@ -68,6 +68,50 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
     assert body["structured_output"]["caller_app"] == "lotus-advise"
 
 
+def test_audit_catalog_route_returns_filtered_records(client: TestClient) -> None:
+    client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-catalog-1",
+            },
+            "context": {
+                "summary": "Explain rebalance outcome",
+                "payload": {"status": "BLOCKED"},
+                "source_refs": ["lotus-manage:run:reb_catalog_1"],
+            },
+        },
+    )
+    client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "summarize.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-advise",
+                "correlation_id": "corr-catalog-2",
+            },
+            "context": {
+                "summary": "Summarize proposal workflow",
+                "payload": {"status": "PENDING_REVIEW"},
+                "source_refs": ["lotus-advise:proposal:prop_catalog_1"],
+            },
+        },
+    )
+
+    response = client.get("/ai/audit", params={"caller_app": "lotus-advise", "limit": 10})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["filters_applied"] == {"limit": 10, "caller_app": "lotus-advise"}
+    assert body["record_count"] >= 1
+    assert all(record["caller_app"] == "lotus-advise" for record in body["records"])
+
+
 def test_audit_record_route_returns_not_found_for_unknown_request(client: TestClient) -> None:
     response = client.get("/ai/audit/missing_request_id")
 

@@ -17,3 +17,22 @@ class InMemoryAuditRepository:
     def get(self, request_id: str) -> AuditRecordResponse | None:
         with self._lock:
             return self._records.get(request_id)
+
+    def list(
+        self,
+        *,
+        caller_app: str | None = None,
+        task_id: str | None = None,
+        limit: int = 20,
+    ) -> list[AuditRecordResponse]:
+        with self._lock:
+            records = sorted(
+                self._records.values(),
+                key=lambda record: record.generated_at,
+                reverse=True,
+            )
+            if caller_app is not None:
+                records = [record for record in records if record.caller_app == caller_app]
+            if task_id is not None:
+                records = [record for record in records if record.task_id == task_id]
+            return records[:limit]

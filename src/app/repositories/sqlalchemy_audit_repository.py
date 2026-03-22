@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -51,6 +52,22 @@ class SqlAlchemyAuditRepository:
             if model is None:
                 return None
             return self._to_contract(model)
+
+    def list(
+        self,
+        *,
+        caller_app: str | None = None,
+        task_id: str | None = None,
+        limit: int = 20,
+    ) -> list[AuditRecordResponse]:
+        statement = select(AuditRecordModel).order_by(AuditRecordModel.generated_at.desc()).limit(limit)
+        if caller_app is not None:
+            statement = statement.where(AuditRecordModel.caller_app == caller_app)
+        if task_id is not None:
+            statement = statement.where(AuditRecordModel.task_id == task_id)
+        with self._session_factory() as session:
+            models = session.execute(statement).scalars().all()
+            return [self._to_contract(model) for model in models]
 
     def _to_contract(self, model: AuditRecordModel) -> AuditRecordResponse:
         return AuditRecordResponse(
