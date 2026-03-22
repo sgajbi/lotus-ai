@@ -462,6 +462,24 @@ Current posture:
 2. required runbook items remain not ready in foundation phase,
 3. live prompt activation should not be considered complete in future rollout slices without both technical and runbook readiness.
 
+## Decision 17C: Prompt Governance Review Should Have A Single Summary Surface
+
+Decision:
+
+`lotus-ai` exposes a combined prompt governance-status view for rollout review.
+
+Why:
+
+1. prompt rollout review should not require operators to manually merge multiple endpoints to assess activation posture,
+2. a bank-grade live-prompt activation review needs both technical and operational prompt posture in one governed response,
+3. the summary endpoint reduces interpretation drift while preserving the more detailed prompt readiness endpoints underneath.
+
+Current posture:
+
+1. `/platform/prompts/governance-status` embeds both activation readiness and runbook readiness,
+2. the response explicitly reports blocked prompt governance posture in foundation phase,
+3. detailed prompt readiness endpoints remain available for deeper inspection and future rollout work.
+
 ## Decision 18: Task Runs Should Emit Structured Execution Evidence
 
 Decision:

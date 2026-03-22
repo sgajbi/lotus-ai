@@ -6,11 +6,13 @@ from app.contracts.prompts import (
     PromptActivationReadinessResponse,
     PromptDescriptor,
     PromptGovernanceStatusResponse,
+    PromptGovernanceStatusSummaryResponse,
     PromptRunbookReadinessResponse,
     PromptRuntimeStatusResponse,
 )
 from app.services.prompt_activation_readiness import build_prompt_activation_readiness
 from app.services.prompt_governance import build_prompt_governance_status
+from app.services.prompt_governance_status import build_prompt_governance_status_summary
 from app.services.prompt_registry import get_prompt_or_raise, list_registered_prompts
 from app.services.prompt_runbook_readiness import build_prompt_runbook_readiness
 from app.services.prompt_status import build_prompt_runtime_status
@@ -106,6 +108,24 @@ async def get_prompt_activation_readiness_route() -> PromptActivationReadinessRe
 )
 async def get_prompt_runbook_readiness_route() -> PromptRunbookReadinessResponse:
     return build_prompt_runbook_readiness()
+
+
+@router.get(
+    "/governance-status",
+    response_model=PromptGovernanceStatusSummaryResponse,
+    operation_id="getPromptGovernanceSummary",
+    summary="Get lotus-ai prompt governance status",
+    description=(
+        "Returns the combined prompt rollout governance posture, including technical activation "
+        "readiness and operational runbook readiness for future live activation."
+    ),
+    responses={
+        200: {"description": "Prompt governance summary returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_prompt_governance_summary_route() -> PromptGovernanceStatusSummaryResponse:
+    return build_prompt_governance_status_summary()
 
 
 @router.get(

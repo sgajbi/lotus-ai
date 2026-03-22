@@ -131,3 +131,23 @@ class PromptRunbookReadinessResponse(BaseModel):
     items: list[PromptRunbookReadinessItem] = Field(
         description="Governed prompt operational runbook readiness items."
     )
+
+
+class PromptGovernanceStatusSummaryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the prompt governance status view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    governance_ready: bool = Field(
+        description="Whether prompt governance posture is currently sufficient for live activation."
+    )
+    activation_readiness: PromptActivationReadinessResponse = Field(
+        description="Technical activation-readiness summary for prompt rollout."
+    )
+    runbook_readiness: PromptRunbookReadinessResponse = Field(
+        description="Operational runbook-readiness summary for prompt rollout."
+    )
+    blocking_area_count: int = Field(
+        description="Number of top-level prompt governance areas currently blocking activation."
+    )
+    governance_summary: list[str] = Field(
+        description="Human-readable summary of the current prompt governance posture."
+    )

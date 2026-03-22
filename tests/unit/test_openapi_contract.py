@@ -67,6 +67,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/prompts/runbook-readiness"]["get"]["operationId"] == (
         "getPromptRunbookReadiness"
     )
+    assert spec["paths"]["/platform/prompts/governance-status"]["get"]["operationId"] == (
+        "getPromptGovernanceSummary"
+    )
     assert spec["paths"]["/platform/prompts/governance"]["get"]["operationId"] == (
         "getPromptGovernanceStatus"
     )

@@ -611,6 +611,21 @@ def test_prompt_runbook_readiness_route() -> None:
     assert body["items"][1]["status"] == "NOT_READY"
 
 
+def test_prompt_governance_status_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/prompts/governance-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["governance_ready"] is False
+    assert body["blocking_area_count"] == 2
+    assert body["activation_readiness"]["activation_ready"] is False
+    assert body["runbook_readiness"]["runbook_ready"] is False
+    assert len(body["governance_summary"]) == 2
+
+
 def test_service_metadata_exposes_store_modes() -> None:
     client = TestClient(app)
 

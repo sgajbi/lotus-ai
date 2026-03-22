@@ -207,8 +207,9 @@ Current rules:
 3. prompt runtime selection is visible through `/platform/prompts/runtime-status`,
 4. prompt activation readiness is visible through `/platform/prompts/activation-readiness`,
 5. prompt runbook readiness is visible through `/platform/prompts/runbook-readiness`,
-6. runtime prompt mutation remains disabled in foundation phase,
-7. live prompt promotion remains repository-governed until a stronger activation model is introduced.
+6. prompt governance status is visible through `/platform/prompts/governance-status`,
+7. runtime prompt mutation remains disabled in foundation phase,
+8. live prompt promotion remains repository-governed until a stronger activation model is introduced.
 
 ## Safety Posture
 
