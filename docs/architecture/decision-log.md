@@ -425,3 +425,21 @@ Current posture:
 1. `retrieval_citation_examples` is now backed by a fixture file,
 2. evaluation runtime status counts retrieval cases alongside explanation and summarization cases,
 3. live retrieval execution remains disabled until the retrieval gateway is explicitly activated.
+
+## Decision 26: Evaluation Fixtures Should Be Inspectable By Family
+
+Decision:
+
+`lotus-ai` exposes read-only detail for a single evaluation fixture family instead of limiting evaluation inspection to aggregate catalog views.
+
+Why:
+
+1. downstream teams and QA workflows often need to target one governed fixture family at a time,
+2. case-level metadata should be discoverable without requiring direct repository file access,
+3. read-only fixture detail improves inspectability without exposing mutable evaluation execution behavior.
+
+Current posture:
+
+1. `GET /platform/evals/fixtures/{fixture_id}` returns fixture descriptor, task association, and case-level metadata,
+2. the endpoint intentionally excludes raw mutable execution payloads,
+3. fixture inventory remains repository-governed and manifest-validated.

@@ -8,6 +8,7 @@ from typing import Any
 from app.contracts.evals import (
     EvaluationAssetStatus,
     EvaluationEvidenceCategoryDescriptor,
+    EvaluationFixtureCaseDescriptor,
     EvaluationFixtureDescriptor,
 )
 
@@ -23,6 +24,19 @@ class EvaluationFixtureManifest:
         self.manifest_version = manifest_version
         self.evidence_categories = evidence_categories
         self.fixture_families = fixture_families
+
+
+class EvaluationFixtureFamily:
+    def __init__(
+        self,
+        *,
+        descriptor: EvaluationFixtureDescriptor,
+        task_id: str | None,
+        cases: list[EvaluationFixtureCaseDescriptor],
+    ) -> None:
+        self.descriptor = descriptor
+        self.task_id = task_id
+        self.cases = cases
 
 
 class EvaluationFixtureManifestValidationError(ValueError):
@@ -57,6 +71,24 @@ def load_evaluation_fixture_manifest() -> EvaluationFixtureManifest:
     )
 
 
+def load_evaluation_fixture_family(*, fixture_id: str) -> EvaluationFixtureFamily:
+    repo_root = Path(__file__).resolve().parents[3]
+    manifest = load_evaluation_fixture_manifest()
+    fixture = next(
+        (fixture for fixture in manifest.fixture_families if fixture.fixture_id == fixture_id),
+        None,
+    )
+    if fixture is None:
+        raise EvaluationFixtureManifestValidationError(
+            f"Unknown evaluation fixture family '{fixture_id}'."
+        )
+    task_id, cases = _load_fixture_family_detail(
+        repo_root=repo_root,
+        manifest_path=fixture.manifest_path,
+    )
+    return EvaluationFixtureFamily(descriptor=fixture, task_id=task_id, cases=cases)
+
+
 def validate_evaluation_fixture_manifest(
     *,
     repo_root: Path,
@@ -83,6 +115,30 @@ def _load_case_count(*, repo_root: Path, manifest_path: str | None) -> int:
             f"Fixture manifest file has non-list cases payload: {fixture_path}"
         )
     return len(cases)
+
+
+def _load_fixture_family_detail(
+    *,
+    repo_root: Path,
+    manifest_path: str | None,
+) -> tuple[str | None, list[EvaluationFixtureCaseDescriptor]]:
+    if manifest_path is None:
+        return None, []
+    fixture_path = repo_root / manifest_path
+    with fixture_path.open("r", encoding="utf-8") as fixture_file:
+        payload = json.load(fixture_file)
+    cases = payload.get("cases", [])
+    if not isinstance(cases, list):
+        raise EvaluationFixtureManifestValidationError(
+            f"Fixture manifest file has non-list cases payload: {fixture_path}"
+        )
+    return (
+        payload.get("task_id"),
+        [
+            EvaluationFixtureCaseDescriptor(case_id=case["case_id"], summary=case["summary"])
+            for case in cases
+        ],
+    )
 
 
 def _validate_evidence_categories(evidence_categories: Any) -> None:

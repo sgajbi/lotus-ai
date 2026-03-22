@@ -74,12 +74,19 @@ The current platform inspection surface for evaluation readiness is:
 
 1. `GET /platform/evals/catalog`
 2. `GET /platform/evals/runtime-status`
+3. `GET /platform/evals/fixtures/{fixture_id}`
 
 This catalog exposes:
 
 1. current execution evidence categories,
 2. staged fixture families,
 3. the current delivery-phase posture for evaluation assets.
+
+Fixture-family detail exposes:
+
+1. the governed descriptor for a specific fixture family,
+2. associated `task_id` when available,
+3. case-level metadata such as `case_id` and `summary` without surfacing mutable payload internals through the API.
 
 The source of truth for fixture inventory is now:
 

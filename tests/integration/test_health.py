@@ -73,6 +73,30 @@ def test_evaluation_runtime_status_route() -> None:
     assert body["evaluation_runner_active"] is False
 
 
+def test_evaluation_fixture_detail_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/evals/fixtures/retrieval_citation_examples")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["manifest_version"] == "foundation.v1"
+    assert body["fixture"]["fixture_id"] == "retrieval_citation_examples"
+    assert body["task_id"] == "retrieval.search.v1"
+    assert len(body["cases"]) == 2
+    assert body["cases"][0]["case_id"] == "search_rfc_answer_requires_citation"
+
+
+def test_evaluation_fixture_detail_route_returns_not_found_for_unknown_fixture() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/evals/fixtures/missing_fixture")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Evaluation fixture family 'missing_fixture' was not found."
+
+
 def test_provider_catalog_route() -> None:
     client = TestClient(app)
 

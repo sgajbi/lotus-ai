@@ -31,6 +31,30 @@ class EvaluationFixtureDescriptor(BaseModel):
     )
 
 
+class EvaluationFixtureCaseDescriptor(BaseModel):
+    case_id: str = Field(description="Stable evaluation case identifier within the fixture family.")
+    summary: str = Field(description="Short human-readable summary of the evaluation case.")
+
+
+class EvaluationFixtureDetailResponse(BaseModel):
+    service: str = Field(description="Service name emitting the evaluation fixture detail.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    manifest_version: str = Field(
+        description="Version identifier for the evaluation fixture manifest."
+    )
+    fixture: EvaluationFixtureDescriptor = Field(
+        description="Governed descriptor for the requested evaluation fixture family."
+    )
+    task_id: str | None = Field(
+        default=None,
+        description="Bounded task identifier associated with the fixture family when available.",
+    )
+    cases: list[EvaluationFixtureCaseDescriptor] = Field(
+        description="Case-level metadata for the fixture family without embedding raw prompt payloads."
+    )
+
+
 class EvaluationCatalogResponse(BaseModel):
     service: str = Field(description="Service name emitting the evaluation catalog.")
     version: str = Field(description="Current lotus-ai service version.")
