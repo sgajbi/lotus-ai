@@ -75,11 +75,12 @@ Owns:
 2. governed queue backend strategy exposure,
 3. governed worker execution strategy exposure,
 4. governed async activation-readiness exposure,
-5. known background job-type inventory,
-6. seeded async job artifact inspection,
-7. governed async job submission contracts,
-8. relationships between async job artifacts and evaluation history when applicable,
-9. the contract boundary for future worker-backed execution.
+5. governed async runbook-readiness exposure,
+6. known background job-type inventory,
+7. seeded async job artifact inspection,
+8. governed async job submission contracts,
+9. relationships between async job artifacts and evaluation history when applicable,
+10. the contract boundary for future worker-backed execution.
 
 ### Providers
 
@@ -164,6 +165,7 @@ It is not appropriate right now as the base architecture for all of `lotus-ai`.
 9. `/platform/async/queue-backends`
 10. `/platform/async/worker-executions`
 11. `/platform/async/activation-readiness`
+12. `/platform/async/runbook-readiness`
 
 The current capability endpoint is intentionally simple. It gives other Lotus apps a stable discovery surface while the rest of the platform is still under construction.
 

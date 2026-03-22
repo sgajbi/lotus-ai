@@ -714,3 +714,21 @@ Current posture:
 1. `/platform/async/activation-readiness` exposes whether async execution is activatable today,
 2. the endpoint returns explicit blocking findings and a governed activation path,
 3. foundation phase remains not activatable until a separate rollout slice changes queue, worker, and job enablement posture together.
+
+## Decision 42: Async Runbook Readiness Should Be Exposed As A Separate Operational Contract
+
+Decision:
+
+`lotus-ai` exposes async runbook readiness separately from technical activation readiness.
+
+Why:
+
+1. operational preparedness is a first-class bank-grade requirement, not an implied consequence of technical configuration,
+2. queue and worker posture may be ready before on-call, replay, or observability procedures are ready,
+3. separating runbook readiness keeps rollout governance explicit and auditable.
+
+Current posture:
+
+1. `/platform/async/runbook-readiness` exposes required operational readiness items,
+2. required runbook items remain not ready in foundation phase,
+3. async activation should not be considered complete in future rollout slices without both technical and runbook readiness.

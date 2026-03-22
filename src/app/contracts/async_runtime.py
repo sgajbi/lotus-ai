@@ -221,3 +221,30 @@ class AsyncActivationReadinessResponse(BaseModel):
     activation_path: list[str] = Field(
         description="Governed high-level path required before live async execution can be enabled."
     )
+
+
+class AsyncRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(description="Stable async runbook readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before live async activation."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class AsyncRunbookReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the async runbook readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    runbook_ready: bool = Field(
+        description="Whether async operational runbook readiness is currently sufficient for activation."
+    )
+    required_item_count: int = Field(
+        description="Number of runbook items currently required for activation."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required runbook items currently marked complete."
+    )
+    items: list[AsyncRunbookReadinessItem] = Field(
+        description="Governed async operational runbook readiness items."
+    )

@@ -15,6 +15,8 @@
 - General health: /health
 - Metadata: /metadata
 - Platform runtime status: /platform/runtime-status
+- Async activation readiness: /platform/async/activation-readiness
+- Async runbook readiness: /platform/async/runbook-readiness
 - Evaluation runtime status: /platform/evals/runtime-status
 - Safety runtime status: /platform/safety/runtime-status
 - Retrieval runtime status: /platform/retrieval/runtime-status
@@ -46,6 +48,16 @@ Expected operator flow for SQL-backed stores:
 7. only then proceed with rollout if readiness is `READY`
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
+
+## Async Activation Governance
+
+Before any future async activation slice:
+
+1. verify `GET /platform/async/activation-readiness`
+2. verify `GET /platform/async/runbook-readiness`
+3. confirm queue backend and worker execution posture are still governed and explicitly selected
+4. confirm observability, replay, escalation, and incident procedures are documented and approved
+5. only then proceed with any activation rollout review
 
 ## Incident First Checks
 
