@@ -111,7 +111,21 @@ The durable async model should preserve these invariants:
 2. worker claim must be atomic so one runnable job is not executed concurrently by multiple workers,
 3. lease expiry and retry eligibility must be derived from persisted timestamps,
 4. status transitions must be explainable from persisted attempts and events,
-5. operator-facing summaries must be derivable without consulting process-local worker memory.
+5. operator-facing summaries must be derivable without consulting process-local worker memory,
+6. retry, replay, or duplicate client submission must not silently create ambiguous execution truth for the same logical work item.
+
+### Job Lifecycle Semantics
+
+The first durable async runtime should use an explicit and narrow lifecycle model.
+
+Required lifecycle properties:
+
+1. submitted, runnable, claimed, running, completed, failed, and terminally-abandoned posture must be distinguishable,
+2. retryable failure must remain distinct from terminal failure,
+3. lease expiry must not itself imply success, failure, or completion,
+4. replay or requeue must create explicit new attempt history rather than mutating prior execution history out of existence.
+
+The implementation should prefer a small explicit state machine over ad hoc status transitions spread across services.
 
 ## Architecture Direction
 
@@ -143,7 +157,8 @@ The first delivery should be conservative and explicit:
 2. worker claim, heartbeat, and completion transitions are atomic,
 3. retry and lease semantics are deterministic and time-based,
 4. restart behavior preserves authoritative job truth,
-5. the implementation should prefer simple transaction boundaries over asynchronous reconciliation.
+5. worker ownership must be explicit enough to explain who currently holds a claim,
+6. the implementation should prefer simple transaction boundaries over asynchronous reconciliation.
 
 ### Runtime and Governance Surfaces
 
@@ -173,7 +188,8 @@ Required operational semantics:
 1. lease timeout, retry window, and terminal-state rules must be explicit,
 2. abandoned jobs must have deterministic recovery behavior,
 3. retries must record attempt history rather than rewriting history in place,
-4. replay or manual requeue actions must be governed state transitions, not table edits.
+4. replay or manual requeue actions must be governed state transitions, not table edits,
+5. if idempotency keys or equivalent submission deduplication are introduced, their scope and collision behavior must be explicit and testable.
 
 ## First-Class Job Types
 
@@ -196,6 +212,8 @@ The first implementation should resist broad job-type expansion until the backbo
 7. The database schema must be migration-managed and integration-tested.
 8. Runtime summaries must be able to explain queued, running, failed, and completed posture from persisted state.
 9. Artifact-based async documentation should remain governed, but it must no longer masquerade as live runtime truth after cutover.
+10. Job progress or status messaging must not overstate execution progress when a worker has only claimed but not actually completed work.
+11. Duplicate submission, retry, and replay semantics must be explicit enough to prevent ambiguous operator truth.
 
 ## Delivery Slices
 
@@ -227,7 +245,8 @@ Acceptance gate:
 1. persisted submission creates authoritative job records,
 2. restart does not erase queued or terminal job truth,
 3. integration tests cover runtime-backed catalog and detail views,
-4. unsupported job types still fail truthfully.
+4. unsupported job types still fail truthfully,
+5. duplicate or repeated submission behavior is explicit and covered by meaningful tests.
 
 ### Slice 3: Worker Claim, Lease, and Completion Semantics
 
@@ -242,7 +261,8 @@ Acceptance gate:
 1. concurrent worker claim cannot double-execute the same runnable attempt,
 2. abandoned or expired leases become recoverable deterministically,
 3. terminal-state transitions are durable and reviewable,
-4. tests cover claim, completion, lease expiry, and retry flows.
+4. tests cover claim, completion, lease expiry, and retry flows,
+5. worker ownership and attempt history remain inspectable during failure and recovery.
 
 ### Slice 4: Runtime-Backed Retrieval Indexing Execution
 
@@ -272,7 +292,8 @@ Acceptance gate:
 1. runtime and governance summaries stay aligned,
 2. eval and runbook assets match implementation reality,
 3. restart-survival and worker-recovery scenarios are covered by meaningful tests,
-4. the service is materially closer to enterprise-grade background execution.
+4. the service is materially closer to enterprise-grade background execution,
+5. job status and progress wording remains conservative and truthful under claim, retry, and recovery paths.
 
 ## Risks
 
@@ -320,7 +341,8 @@ This RFC is complete when:
 4. retrieval indexing can run through the authoritative async runtime,
 5. no runtime-backed async job type depends on process-local mutable globals for lifecycle truth,
 6. runbooks and eval assets reflect the durable async state model,
-7. the platform is materially closer to bank-grade background execution.
+7. duplicate submission, replay, and retry semantics are explicit and reviewable,
+8. the platform is materially closer to bank-grade background execution.
 
 ## Approval Requested
 
