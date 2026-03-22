@@ -10,8 +10,8 @@ from app.services.task_execution_pipeline import (
 
 
 def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
-    capability = validate_task_request(request)
-    resolved = resolve_task_execution(request, capability=capability)
-    response = build_task_execution_response(request, resolved=resolved)
-    persist_task_execution_audit(request, response=response)
+    context = validate_task_request(request)
+    resolved = resolve_task_execution(context=context)
+    response = build_task_execution_response(resolved=resolved)
+    persist_task_execution_audit(context=context, response=response)
     return response

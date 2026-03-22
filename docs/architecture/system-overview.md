@@ -68,7 +68,7 @@ contracts without hidden node-local behavior.
 Current task execution runtime is intentionally split into small pipeline stages:
 
 1. request validation against the bounded capability catalog,
-2. prompt resolution from the governed prompt runtime-selection service,
+2. runtime-context construction containing capability, prompt, safety, and execution metadata,
 3. safety posture resolution from output-label policy,
 4. provider execution through the internal provider gateway,
 5. evidence assembly for prompt, provider, safety, and retrieval posture,
@@ -76,6 +76,9 @@ Current task execution runtime is intentionally split into small pipeline stages
 
 Prompt runtime status and task execution now share the same runtime-selection rule rather than
 encoding prompt-selection semantics separately in different services.
+
+The runtime context object exists to keep later pipeline stages small and explicit instead of
+threading overlapping request, prompt, and safety fields through multiple function signatures.
 
 ### Async Runtime
 

@@ -12,6 +12,7 @@ from app.contracts.tasks import (
     TaskInputMode,
 )
 from app.services.task_executor import execute_task
+from app.services.task_execution_pipeline import validate_task_request
 
 
 def _request(
@@ -98,3 +99,17 @@ def test_execute_task_persists_sorted_audit_context_keys(mocker: MockerFixture) 
     assert audit_record.caller_app == "lotus-manage"
     assert audit_record.correlation_id == "corr-123"
     assert audit_record.prompt_version == "foundation.explain.v1"
+
+
+def test_validate_task_request_builds_runtime_context() -> None:
+    context = validate_task_request(
+        _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
+    )
+
+    assert context.request.task_id == "explain.v1"
+    assert context.capability.task_id == "explain.v1"
+    assert context.prompt.prompt_version == "foundation.explain.v1"
+    assert context.safety_outcome.safety_mode == "documented_only"
+    assert context.safety_outcome.redaction_posture == "MINIMIZATION_REQUIRED"
+    assert context.request_id.startswith("air_")
+    assert context.generated_at.endswith("+00:00")

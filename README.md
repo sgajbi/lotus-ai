@@ -23,6 +23,7 @@ The current execution posture is:
 - task execution now flows through an explicit internal runtime pipeline with separate validation, resolution, response, evidence, and audit stages,
 - the provider handoff now carries resolved output-label and safety metadata rather than only raw caller context,
 - prompt runtime selection is now resolved through a shared runtime service used by both task execution and prompt-status reporting,
+- task execution now builds a shared runtime context object so later stages consume one coherent execution model instead of duplicated fields,
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
