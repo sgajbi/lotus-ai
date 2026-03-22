@@ -14,6 +14,7 @@ Goals:
 2. Define service purpose, boundaries, and non-goals.
 3. Create architecture, security, integration, and evaluation documents.
 4. Introduce typed capability and task contracts.
+5. Define the long-term scalability and deployment model early so later slices do not drift into a non-scalable shape.
 
 Delivery outcomes:
 
@@ -118,3 +119,12 @@ Goals:
 3. Keep human-in-the-loop controls where consequences are non-trivial.
 
 This phase should only start after prior phases have real usage evidence.
+
+## Cross-Phase Scaling Rule
+
+Across all phases, we should preserve the same target shape:
+
+1. stateless API-serving components,
+2. durable governed stores for production correctness,
+3. worker-backed execution for expensive or long-running work,
+4. clean internal seams that allow later deployment splits without breaking external contracts.

@@ -44,7 +44,7 @@ The current execution posture is:
 - recorded evaluation run artifacts are now exposed through read-only inspection endpoints,
 - recorded evaluation run artifacts are now validated by a dedicated gate,
 - evaluation run artifacts now model both current and superseded lifecycle states,
- - live model execution remains disabled until a governed provider rollout exists.
+- live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:
 
@@ -164,6 +164,13 @@ That means:
 - no speculative overbuilding,
 - no hidden AI behavior in critical workflows.
 
+The service also follows a strict scalability model:
+
+1. API-serving components stay stateless,
+2. durable state moves to governed stores,
+3. long-running work scales through worker processes,
+4. internal seams stay clean enough to split into separate deployables later without changing external contracts.
+
 ## Framework Stance
 
 `lotus-ai` is not being built around a large AI orchestration framework as its core architecture.
@@ -211,6 +218,7 @@ make lint
 make typecheck
 make openapi-gate
 make eval-manifest-gate
+make eval-run-gate
 make migration-smoke
 make runtime-mode-smoke
 make ci
@@ -232,6 +240,7 @@ docker compose up --build
 
 - architecture overview: `docs/architecture/system-overview.md`
 - startup readiness deployment policy: `docs/architecture/startup-readiness-deployment-policy.md`
+- scalability and deployment model: `docs/architecture/scalability-and-deployment-model.md`
 - phased roadmap: `docs/architecture/phased-roadmap.md`
 - decisions and rationale: `docs/architecture/decision-log.md`
 - domain integration guide: `docs/guides/integration-guide.md`

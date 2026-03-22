@@ -22,6 +22,12 @@ The other Lotus applications remain responsible for:
 
 The service is intentionally being built in layers.
 
+The required scalability posture is documented separately in:
+
+- [scalability-and-deployment-model.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/scalability-and-deployment-model.md)
+
+That document should be treated as a strict architecture rule, not optional guidance.
+
 ### Contracts
 
 - `src/app/contracts/`
@@ -55,6 +61,9 @@ Owns:
 2. capability catalog assembly,
 3. future prompt and provider orchestration.
 
+The API-facing service layer should remain stateless so multiple replicas can serve the same
+contracts without hidden node-local behavior.
+
 ### Providers
 
 - `src/app/providers/`
@@ -81,6 +90,9 @@ Initial storage direction:
 1. PostgreSQL as the canonical durable database,
 2. `pgvector` as the first vector-store extension,
 3. no separate vector database unless later evidence justifies it.
+
+Retrieval and evaluation workloads are also expected to move through worker-style execution paths
+when they become heavy enough to threaten API responsiveness.
 
 ### Routers
 
@@ -170,3 +182,7 @@ Current rules:
 The canonical reference is:
 
 - `docs/architecture/startup-readiness-deployment-policy.md`
+
+The canonical scalability reference is:
+
+- `docs/architecture/scalability-and-deployment-model.md`

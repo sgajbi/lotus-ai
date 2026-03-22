@@ -569,3 +569,22 @@ Current posture:
 1. the latest run remains `RECORDED`,
 2. an older run is exposed as `SUPERSEDED`,
 3. run catalogs now summarize artifacts by lifecycle status.
+
+## Decision 34: Scalability Must Be Designed In As A First-Class Platform Constraint
+
+Decision:
+
+`lotus-ai` must scale as a stateless platform API plus independently scalable background workers around governed durable stores.
+
+Why:
+
+1. bank-grade platform services cannot depend on in-process state for production correctness,
+2. the main scaling pressure will come from external providers, retrieval/indexing work, and shared-service noisy-neighbor effects,
+3. clean internal seams keep the path open for future deployment splits without forcing external contract rewrites.
+
+Current posture:
+
+1. the canonical scalability document is `docs/architecture/scalability-and-deployment-model.md`,
+2. API-serving components are expected to remain stateless,
+3. long-running and high-latency work is expected to move through worker-style execution paths,
+4. provider gateway, retrieval, evaluation, safety, prompt governance, and audit/supportability must remain separable subdomains.
