@@ -197,6 +197,7 @@ docker compose up --build
 ## Documentation
 
 - architecture overview: `docs/architecture/system-overview.md`
+- startup readiness deployment policy: `docs/architecture/startup-readiness-deployment-policy.md`
 - phased roadmap: `docs/architecture/phased-roadmap.md`
 - decisions and rationale: `docs/architecture/decision-log.md`
 - domain integration guide: `docs/guides/integration-guide.md`

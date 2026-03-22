@@ -42,7 +42,8 @@ Owns:
 1. service phase settings,
 2. provider mode settings,
 3. retrieval mode settings,
-4. safety mode settings.
+4. safety mode settings,
+5. startup readiness and readiness-probe policy settings.
 
 ### Services
 
@@ -118,6 +119,19 @@ It is not appropriate right now as the base architecture for all of `lotus-ai`.
 3. `/health/live`
 4. `/health/ready`
 5. `/metadata`
-6. `/platform/capabilities`
+6. `/platform/runtime-status`
+7. `/platform/capabilities`
 
 The current capability endpoint is intentionally simple. It gives other Lotus apps a stable discovery surface while the rest of the platform is still under construction.
+
+## Deployment Policy
+
+`lotus-ai` now has an explicit deployment policy for:
+
+1. startup blocking behavior,
+2. readiness-probe degradation behavior,
+3. environment-specific persistence expectations.
+
+The canonical reference is:
+
+- `docs/architecture/startup-readiness-deployment-policy.md`

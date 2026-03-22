@@ -99,3 +99,22 @@ Why:
 Future position:
 
 LangGraph can be reconsidered for bounded internal orchestration later, especially for async multi-step flows, but it should remain an implementation detail rather than the public platform architecture.
+
+## Decision 8: Startup and Readiness Policies Are Separate Controls
+
+Decision:
+
+`lotus-ai` treats startup blocking policy and readiness-probe degradation policy as separate operational controls.
+
+Why:
+
+1. some environments need visibility without startup failure,
+2. enterprise environments need stricter rollout behavior,
+3. orchestration signaling and startup permissiveness solve different problems,
+4. separating them keeps policy explicit instead of embedding assumptions in one switch.
+
+Current target posture:
+
+1. local development: `warn` + `observe`
+2. shared integration: `warn` + `degrade`
+3. enterprise / production-like: `enforce` + `degrade`
