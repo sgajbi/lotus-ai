@@ -53,6 +53,7 @@ class RetrievalDocumentModel(Base):
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     location: Mapped[str] = mapped_column(Text, nullable=False)
+    promotion_status: Mapped[str] = mapped_column(String(64), nullable=False)
     index_status: Mapped[str] = mapped_column(String(64), nullable=False)
 
     source: Mapped["RetrievalSourceModel"] = relationship(back_populates="documents")

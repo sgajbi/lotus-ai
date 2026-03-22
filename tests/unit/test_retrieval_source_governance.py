@@ -11,11 +11,13 @@ def test_build_retrieval_source_governance_summarizes_enabled_and_staged_sources
         source.source_id == "lotus-platform-rfcs"
         and source.governance_status == "SEARCH_ENABLED"
         and source.search_enabled is True
+        and source.searchable_document_count >= 1
         for source in response.sources
     )
     assert any(
         source.source_id == "lotus-platform-standards"
         and source.governance_status == "STAGED_ONLY"
         and source.search_enabled is False
+        and source.staged_document_count >= 1
         for source in response.sources
     )

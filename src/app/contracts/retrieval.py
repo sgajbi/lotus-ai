@@ -26,6 +26,11 @@ class RetrievalIndexStatus(str, Enum):
     INDEXED = "INDEXED"
 
 
+class RetrievalDocumentPromotionStatus(str, Enum):
+    STAGED = "STAGED"
+    SEARCHABLE = "SEARCHABLE"
+
+
 class RetrievalJobStatus(str, Enum):
     PENDING = "PENDING"
     STAGED = "STAGED"
@@ -64,6 +69,12 @@ class RetrievalSourceGovernanceDescriptor(BaseModel):
         description="Whether the source is currently allowed to participate in catalog-only retrieval."
     )
     document_count: int = Field(description="Number of staged documents currently registered.")
+    searchable_document_count: int = Field(
+        description="Number of documents currently promoted into searchable retrieval scope."
+    )
+    staged_document_count: int = Field(
+        description="Number of documents staged but not yet promoted into searchable scope."
+    )
     chunk_count: int = Field(description="Number of staged chunks currently registered.")
     index_status: RetrievalIndexStatus = Field(description="Current staged indexing status.")
     notes: str = Field(description="Human-readable explanation of the source governance posture.")
@@ -85,11 +96,45 @@ class RetrievalSourceGovernanceResponse(BaseModel):
     )
 
 
+class RetrievalDocumentGovernanceDescriptor(BaseModel):
+    document_id: str = Field(description="Stable retrieval document identifier.")
+    source_id: str = Field(description="Retrieval source identifier for the document.")
+    title: str = Field(description="Human-readable title for the document.")
+    promotion_status: RetrievalDocumentPromotionStatus = Field(
+        description="Current governance promotion posture for the document."
+    )
+    search_enabled: bool = Field(
+        description="Whether the document is currently eligible for retrieval execution."
+    )
+    chunk_count: int = Field(description="Current staged chunk count for the document.")
+    index_status: RetrievalIndexStatus = Field(description="Current indexing status for the document.")
+    notes: str = Field(description="Human-readable explanation of the document governance posture.")
+
+
+class RetrievalDocumentGovernanceResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval document governance view.")
+    retrieval_mode: str = Field(description="Current retrieval mode configured for lotus-ai.")
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    document_count: int = Field(description="Number of retrieval documents currently registered.")
+    searchable_document_count: int = Field(
+        description="Number of retrieval documents currently promoted into searchable scope."
+    )
+    staged_document_count: int = Field(
+        description="Number of retrieval documents staged but not yet searchable."
+    )
+    documents: list[RetrievalDocumentGovernanceDescriptor] = Field(
+        description="Per-document governance posture for the currently registered retrieval corpus."
+    )
+
+
 class RetrievalDocumentDescriptor(BaseModel):
     document_id: str = Field(description="Stable retrieval document identifier.")
     source_id: str = Field(description="Retrieval source identifier for the document.")
     title: str = Field(description="Human-readable title for the document.")
     location: str = Field(description="Repository-relative or logical location of the document.")
+    promotion_status: RetrievalDocumentPromotionStatus = Field(
+        description="Current promotion posture for the document within retrieval governance."
+    )
     chunk_count: int = Field(description="Current staged chunk count for the document.")
     index_status: RetrievalIndexStatus = Field(description="Indexing status for the document.")
 

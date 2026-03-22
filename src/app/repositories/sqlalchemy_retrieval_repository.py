@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
     RetrievalDocumentDescriptor,
+    RetrievalDocumentPromotionStatus,
     RetrievalIndexJobDescriptor,
     RetrievalIndexStatus,
     RetrievalJobStatus,
@@ -108,6 +109,7 @@ class SqlAlchemyRetrievalRepository:
             source_id=model.source_id,
             title=model.title,
             location=model.location,
+            promotion_status=RetrievalDocumentPromotionStatus(model.promotion_status),
             chunk_count=chunk_count,
             index_status=RetrievalIndexStatus(model.index_status),
         )

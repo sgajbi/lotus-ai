@@ -58,7 +58,7 @@ The retrieval indexing lifecycle is intentionally staged.
 What exists today:
 
 1. approved sources are registered explicitly,
-2. documents are inventoried per source,
+2. documents are inventoried per source with explicit promotion posture,
 3. staged chunks are visible per document,
 4. indexing jobs and indexing policy are exposed through API contracts,
 5. retrieval metadata is served through a repository seam rather than hard-coded module state,
@@ -95,22 +95,25 @@ Current configuration modes:
 The current retrieval API exposes:
 
 1. source discovery,
-2. retrieval runtime status,
-3. retrieval execution status,
-4. retrieval activation readiness,
-5. retrieval runbook readiness,
-6. retrieval governance status,
-7. source-level index status,
-8. indexing policy,
-9. indexing job catalog and job detail,
-10. document inventory,
-11. chunk inventory.
+2. source governance,
+3. document governance,
+4. retrieval runtime status,
+5. retrieval execution status,
+6. retrieval activation readiness,
+7. retrieval runbook readiness,
+8. retrieval governance status,
+9. source-level index status,
+10. indexing policy,
+11. indexing job catalog and job detail,
+12. document inventory,
+13. chunk inventory.
 
 The search endpoint remains governed. In foundation phase it can now return bounded
 catalog-only hits from a small enabled staged-source subset, while live vector retrieval
 remains disabled.
 
-Current enabled catalog-only sources:
+Current searchable catalog-only documents are a promoted subset of the staged corpus. Today they
+sit under these enabled sources:
 
 1. `lotus-platform-rfcs`
 2. `lotus-ai-architecture`

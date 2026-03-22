@@ -34,17 +34,21 @@ def _build_source_governance_descriptor(
     *, source: RetrievalSourceDescriptor
 ) -> RetrievalSourceGovernanceDescriptor:
     inventory = summarize_retrieval_source_inventory(source.source_id)
+    search_enabled = source.enabled and inventory.searchable_document_count > 0
     governance_status, notes = _derive_source_governance(
         enabled=source.enabled,
         document_count=inventory.document_count,
+        searchable_document_count=inventory.searchable_document_count,
         index_status=inventory.index_status,
     )
     return RetrievalSourceGovernanceDescriptor(
         source_id=source.source_id,
         kind=source.kind,
         governance_status=governance_status,
-        search_enabled=source.enabled,
+        search_enabled=search_enabled,
         document_count=inventory.document_count,
+        searchable_document_count=inventory.searchable_document_count,
+        staged_document_count=inventory.staged_document_count,
         chunk_count=inventory.chunk_count,
         index_status=inventory.index_status,
         notes=notes,
@@ -52,22 +56,31 @@ def _build_source_governance_descriptor(
 
 
 def _derive_source_governance(
-    *, enabled: bool, document_count: int, index_status: RetrievalIndexStatus
+    *,
+    enabled: bool,
+    document_count: int,
+    searchable_document_count: int,
+    index_status: RetrievalIndexStatus,
 ) -> tuple[str, str]:
-    if enabled:
+    if enabled and searchable_document_count > 0:
         return (
             "SEARCH_ENABLED",
-            "Approved for bounded catalog-only retrieval during foundation phase.",
+            "Approved for bounded retrieval because one or more staged documents are promoted into searchable scope.",
         )
     if document_count == 0:
         return (
             "EMPTY",
             "Registered as an approved source class, but no staged documents are loaded yet.",
         )
+    if enabled and searchable_document_count == 0:
+        return (
+            "PROMOTION_REQUIRED",
+            "The source is enabled, but no staged documents are yet promoted into searchable scope.",
+        )
     if index_status == RetrievalIndexStatus.STAGED:
         return (
             "STAGED_ONLY",
-            "Documents are staged but the source is not yet promoted into catalog-only retrieval.",
+            "Documents are staged but not yet promoted into searchable retrieval scope.",
         )
     return (
         "REGISTERED_ONLY",

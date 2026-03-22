@@ -156,13 +156,17 @@ Retrieval execution now also supports a deterministic catalog-only path for enab
 sources, so Lotus apps can get bounded preview hits from curated corpus metadata before live
 vector retrieval is activated.
 
-The initial enabled subset is intentionally small: Lotus platform RFCs and lotus-ai
-architecture documents are searchable through the catalog-only path, while other staged
-sources remain disabled until they are explicitly promoted.
+The initial enabled subset is intentionally small and is now governed at document level:
+Lotus platform RFCs and lotus-ai architecture documents are promoted into searchable scope,
+while other staged documents remain non-searchable until they are explicitly promoted.
 
 Per-source rollout posture is also exposed through `/platform/retrieval/source-governance`, so
 registered, staged-only, and currently searchable corpus slices are reviewed through an explicit
 governance surface rather than inferred from raw source rows.
+
+Per-document rollout posture is also exposed through `/platform/retrieval/document-governance`,
+so searchable versus staged retrieval scope is visible directly instead of being inferred only
+from source-level enablement.
 
 `knowledge_search.v1` now uses that same bounded retrieval path directly, so the task
 execution surface has a real governed knowledge-search capability instead of a generic

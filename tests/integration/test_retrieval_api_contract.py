@@ -22,12 +22,34 @@ def test_retrieval_source_governance_route(client: TestClient) -> None:
     assert any(
         source["source_id"] == "lotus-platform-rfcs"
         and source["governance_status"] == "SEARCH_ENABLED"
+        and source["searchable_document_count"] >= 1
         for source in body["sources"]
     )
     assert any(
         source["source_id"] == "lotus-platform-standards"
         and source["governance_status"] == "STAGED_ONLY"
+        and source["staged_document_count"] >= 1
         for source in body["sources"]
+    )
+
+
+def test_retrieval_document_governance_route(client: TestClient) -> None:
+    response = client.get("/platform/retrieval/document-governance")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["searchable_document_count"] >= 4
+    assert body["staged_document_count"] >= 1
+    assert any(
+        document["document_id"] == "lotus-platform-rfc-0069"
+        and document["promotion_status"] == "SEARCHABLE"
+        for document in body["documents"]
+    )
+    assert any(
+        document["document_id"] == "lotus-platform-observability-standards"
+        and document["promotion_status"] == "STAGED"
+        for document in body["documents"]
     )
 
 
@@ -150,7 +172,9 @@ def test_retrieval_documents_route(client: TestClient) -> None:
     body = response.json()
     assert body["source_id"] == "lotus-platform-rfcs"
     assert any(
-        document["document_id"] == "lotus-platform-rfc-0069" for document in body["documents"]
+        document["document_id"] == "lotus-platform-rfc-0069"
+        and document["promotion_status"] == "SEARCHABLE"
+        for document in body["documents"]
     )
 
 

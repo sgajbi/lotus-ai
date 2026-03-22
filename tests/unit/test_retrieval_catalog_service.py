@@ -4,6 +4,7 @@ from fastapi import HTTPException
 
 from app.contracts.retrieval import (
     RetrievalDocumentDescriptor,
+    RetrievalDocumentPromotionStatus,
     RetrievalIndexStatus,
     RetrievalSourceDescriptor,
     RetrievalSourceKind,
@@ -46,6 +47,7 @@ def test_get_retrieval_index_status_marks_sources_as_indexed_and_not_indexed() -
                 source_id="indexed-source",
                 title="Indexed Doc",
                 location="docs/indexed.md",
+                promotion_status=RetrievalDocumentPromotionStatus.SEARCHABLE,
                 chunk_count=1,
                 index_status=RetrievalIndexStatus.INDEXED,
             )

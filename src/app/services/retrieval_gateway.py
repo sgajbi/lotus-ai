@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from app.config import settings
 from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
+    RetrievalDocumentPromotionStatus,
     RetrievalExecutionRequest,
     RetrievalExecutionResponse,
     RetrievalExecutionStage,
@@ -68,6 +69,8 @@ def _build_catalog_only_hits(request: RetrievalExecutionRequest) -> list[Retriev
     ranked_hits: list[tuple[float, str, str]] = []
     for source in enabled_sources:
         for document in repository.list_documents_for_source(source.source_id):
+            if document.promotion_status != RetrievalDocumentPromotionStatus.SEARCHABLE:
+                continue
             for chunk in repository.list_chunks_for_document(document.document_id):
                 score = _score_catalog_chunk(
                     query_terms=query_terms,

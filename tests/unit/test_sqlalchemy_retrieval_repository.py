@@ -15,7 +15,11 @@ def test_sqlalchemy_retrieval_repository_returns_seeded_catalog(tmp_path: Path) 
     job = repository.get_index_job("retjob_lotus_platform_rfcs")
 
     assert any(source.source_id == "lotus-platform-rfcs" for source in sources)
-    assert any(document.document_id == "lotus-platform-rfc-0069" for document in documents)
+    assert any(
+        document.document_id == "lotus-platform-rfc-0069"
+        and document.promotion_status == "SEARCHABLE"
+        for document in documents
+    )
     assert any(chunk.chunk_id == "chunk_rfc_0069_0001" for chunk in chunks)
     assert job is not None
     assert job.source_id == "lotus-platform-rfcs"

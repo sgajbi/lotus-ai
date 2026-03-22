@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.contracts.retrieval import RetrievalIndexStatus
+from app.contracts.retrieval import RetrievalDocumentPromotionStatus, RetrievalIndexStatus
 from app.services.retrieval_store import get_retrieval_repository
 
 
@@ -10,6 +10,8 @@ from app.services.retrieval_store import get_retrieval_repository
 class RetrievalSourceInventorySummary:
     source_id: str
     document_count: int
+    searchable_document_count: int
+    staged_document_count: int
     chunk_count: int
     index_status: RetrievalIndexStatus
 
@@ -18,6 +20,8 @@ class RetrievalSourceInventorySummary:
 class RetrievalRuntimeInventorySummary:
     source_count: int
     document_count: int
+    searchable_document_count: int
+    staged_document_count: int
     chunk_count: int
     index_job_count: int
 
@@ -34,9 +38,16 @@ def summarize_retrieval_source_inventory(source_id: str) -> RetrievalSourceInven
         index_status = RetrievalIndexStatus.INDEXED
     else:
         index_status = RetrievalIndexStatus.STAGED
+    searchable_document_count = sum(
+        1
+        for document in documents
+        if document.promotion_status == RetrievalDocumentPromotionStatus.SEARCHABLE
+    )
     return RetrievalSourceInventorySummary(
         source_id=source_id,
         document_count=len(documents),
+        searchable_document_count=searchable_document_count,
+        staged_document_count=len(documents) - searchable_document_count,
         chunk_count=chunk_count,
         index_status=index_status,
     )
@@ -57,6 +68,16 @@ def summarize_retrieval_runtime_inventory() -> RetrievalRuntimeInventorySummary:
     return RetrievalRuntimeInventorySummary(
         source_count=len(sources),
         document_count=len(documents),
+        searchable_document_count=sum(
+            1
+            for document in documents
+            if document.promotion_status == RetrievalDocumentPromotionStatus.SEARCHABLE
+        ),
+        staged_document_count=sum(
+            1
+            for document in documents
+            if document.promotion_status == RetrievalDocumentPromotionStatus.STAGED
+        ),
         chunk_count=chunk_count,
         index_job_count=len(jobs),
     )
