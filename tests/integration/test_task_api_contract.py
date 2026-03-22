@@ -189,3 +189,42 @@ def test_task_execute_contract_supports_bounded_knowledge_search(client: TestCli
     assert body["result"]["structured_output"]["catalog_only"] is True
     assert body["result"]["structured_output"]["hit_count"] >= 1
     assert body["result"]["structured_output"]["hits"][0]["source_id"] == "lotus-platform-rfcs"
+
+
+def test_task_execute_contract_supports_bounded_knowledge_answer(client: TestClient) -> None:
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "knowledge_answer.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-knowledge-2",
+                "requested_by": "ops.user@lotus",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Answer from Lotus knowledge sources",
+                "payload": {
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                "source_refs": ["lotus-manage:knowledge-answer:001"],
+            },
+            "expected_output_label": "RETRIEVAL_ANSWER",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["task_id"] == "knowledge_answer.v1"
+    assert body["category"] == "knowledge_answer"
+    assert body["output_label"] == "RETRIEVAL_ANSWER"
+    assert body["audit"]["stubbed"] is False
+    assert body["audit"]["provider_mode"] == "catalog_answer"
+    assert body["audit"]["prompt_version"] == "foundation.knowledge_answer.v1"
+    assert body["result"]["structured_output"]["provider_id"] == "retrieval.answer"
+    assert body["result"]["structured_output"]["catalog_only"] is True
+    assert body["result"]["structured_output"]["citations"][0] == "lotus-platform-rfcs"
+    assert "Sources: lotus-platform-rfcs" in body["result"]["message"]

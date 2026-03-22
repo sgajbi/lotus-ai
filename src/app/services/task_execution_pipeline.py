@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
 from app.services.audit_store import get_audit_store
+from app.services.knowledge_answer_execution import execute_knowledge_answer
 from app.services.knowledge_search_execution import execute_knowledge_search
 from app.services.provider_request_builder import build_provider_execution_request
 from app.services.task_execution_context_builder import build_task_execution_context
@@ -21,6 +22,8 @@ def resolve_task_execution(
 ) -> ResolvedTaskExecution:
     if context.capability.category == TaskCategory.KNOWLEDGE_SEARCH:
         provider_execution = execute_knowledge_search(context=context)
+    elif context.capability.category == TaskCategory.KNOWLEDGE_ANSWER:
+        provider_execution = execute_knowledge_answer(context=context)
     else:
         provider_execution = execute_text_generation(
             build_provider_execution_request(context=context)

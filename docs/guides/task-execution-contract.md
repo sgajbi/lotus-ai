@@ -16,6 +16,8 @@ Exception:
 
 1. `knowledge_search.v1` now returns bounded catalog-only retrieval hits from the enabled
    staged-source subset instead of the generic text stub.
+2. `knowledge_answer.v1` now returns a conservative citation-carrying answer built from the
+   same bounded retrieval hits instead of the generic text stub.
 
 This is intentional:
 
@@ -72,6 +74,7 @@ Supported enabled tasks in foundation phase:
 4. `extract.v1`
 5. `generate_structured.v1`
 6. `knowledge_search.v1`
+7. `knowledge_answer.v1`
 
 `knowledge_search.v1` expects retrieval-specific context in `context.payload`:
 
@@ -79,8 +82,11 @@ Supported enabled tasks in foundation phase:
 2. optional `source_ids: string[]`
 3. optional `limit: int` between `1` and `20`
 
-`knowledge_answer.v1` remains registered but disabled until there is a real answer-generation path
-on top of governed retrieval.
+`knowledge_answer.v1` expects the same retrieval-specific context and returns:
+
+1. a conservative answer string in `result.message`
+2. `citations` in `result.structured_output`
+3. the bounded retrieval hits used to assemble the answer
 
 ## Error Behavior
 

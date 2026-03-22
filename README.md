@@ -48,6 +48,7 @@ The current execution posture is:
 - retrieval search can now return deterministic catalog-only hits from enabled staged sources in foundation phase, which gives downstream apps bounded search utility before live vector retrieval is activated,
 - the initial enabled catalog-only retrieval subset is intentionally small: Lotus platform RFCs and lotus-ai architecture documents are searchable, while the rest of the staged corpus remains disabled,
 - `knowledge_search.v1` is now enabled as a bounded task and routes through that governed catalog-only retrieval path rather than the generic text stub,
+- `knowledge_answer.v1` is now enabled as a bounded, citation-carrying answer task built on the same governed catalog-only retrieval path,
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,

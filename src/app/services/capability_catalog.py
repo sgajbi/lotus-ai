@@ -60,7 +60,7 @@ def build_capability_catalog() -> CapabilityCatalogResponse:
             CapabilityDescriptor(
                 task_id="knowledge_answer.v1",
                 category=TaskCategory.KNOWLEDGE_ANSWER,
-                enabled=False,
+                enabled=True,
                 output_label=OutputLabel.RETRIEVAL_ANSWER,
                 description="Answer questions from approved Lotus knowledge sources with citations.",
             ),

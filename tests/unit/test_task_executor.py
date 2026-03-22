@@ -152,3 +152,35 @@ def test_execute_task_rejects_invalid_knowledge_search_payload() -> None:
         assert "context.payload.query" in str(exc.detail)
     else:
         raise AssertionError("Expected HTTPException for invalid knowledge-search payload")
+
+
+def test_execute_task_runs_bounded_knowledge_answer() -> None:
+    response = execute_task(
+        TaskExecutionRequest(
+            task_id="knowledge_answer.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ka-123"),
+            context=TaskContextEnvelope(
+                summary="Answer from Lotus knowledge sources",
+                payload={
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                source_refs=["lotus-manage:knowledge-answer:001"],
+            ),
+            expected_output_label=OutputLabel.RETRIEVAL_ANSWER,
+        )
+    )
+
+    assert response.status == "COMPLETED"
+    assert response.task_id == "knowledge_answer.v1"
+    assert response.output_label == OutputLabel.RETRIEVAL_ANSWER
+    assert response.audit.stubbed is False
+    assert response.audit.prompt_version == "foundation.knowledge_answer.v1"
+    assert response.audit.provider_mode == "catalog_answer"
+    assert response.result.structured_output["provider_id"] == "retrieval.answer"
+    assert response.result.structured_output["catalog_only"] is True
+    assert response.result.structured_output["hit_count"] >= 1
+    assert response.result.structured_output["citations"][0] == "lotus-platform-rfcs"
+    assert "Sources: lotus-platform-rfcs" in response.result.message

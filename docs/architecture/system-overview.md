@@ -164,6 +164,9 @@ sources remain disabled until they are explicitly promoted.
 execution surface has a real governed knowledge-search capability instead of a generic
 placeholder for retrieval-class work.
 
+`knowledge_answer.v1` now also builds a conservative source-backed answer on top of the same
+bounded retrieval path, with explicit citations preserved in the task result payload.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`
