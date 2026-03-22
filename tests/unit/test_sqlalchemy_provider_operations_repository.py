@@ -4,8 +4,10 @@ from app.contracts.providers import ProviderFailureCategory, ProviderQuotaScope
 from app.repositories.provider_operations_repository import (
     ProviderBudgetStateRecord,
     ProviderDegradationStateRecord,
+    ProviderOperationsEventRecord,
     ProviderQuotaStateRecord,
 )
+from app.contracts.providers import ProviderOperationsControlActionType
 from app.repositories.sqlalchemy_provider_operations_repository import (
     SqlAlchemyProviderOperationsRepository,
 )
@@ -128,3 +130,55 @@ def test_sqlalchemy_provider_operations_repository_applies_atomic_mutations(
     assert degradation.consecutive_failure_count == 2
     assert degradation.timeout_failure_count == 1
     assert degradation.upstream_error_failure_count == 1
+
+
+def test_sqlalchemy_provider_operations_repository_records_events_and_resets_state(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-ops.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyProviderOperationsRepository(database_url)
+
+    repository.increment_quota_state(
+        scope=ProviderQuotaScope.DEFAULT,
+        scope_key="global",
+        amount=1,
+        updated_at="2026-03-23T00:00:00Z",
+    )
+    repository.add_budget_spend(
+        budget_key="live_text_generation",
+        amount_usd=0.75,
+        updated_at="2026-03-23T00:01:00Z",
+    )
+    repository.record_degradation_failure(
+        degradation_key="live_text_generation",
+        category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+        updated_at="2026-03-23T00:02:00Z",
+    )
+    repository.save_operations_event(
+        ProviderOperationsEventRecord(
+            event_id="evt-1",
+            action_type=ProviderOperationsControlActionType.RESET_ALL_PROVIDER_OPERATIONS,
+            scope=None,
+            scope_key=None,
+            reason="Operator reset after review",
+            requested_by="ops.user@lotus",
+            approved_by="approver.user@lotus",
+            affected_record_count=3,
+            recorded_at="2026-03-23T00:03:00Z",
+        )
+    )
+
+    assert repository.reset_quota_states() == 1
+    assert repository.reset_budget_state(budget_key="live_text_generation") == 1
+    assert repository.reset_degradation_state(degradation_key="live_text_generation") == 1
+    events = repository.list_operations_events(limit=10)
+
+    assert len(events) == 1
+    assert events[0].event_id == "evt-1"
+    assert (
+        events[0].action_type == ProviderOperationsControlActionType.RESET_ALL_PROVIDER_OPERATIONS
+    )
+    assert repository.list_quota_states() == []
+    assert repository.get_budget_state(budget_key="live_text_generation") is None
+    assert repository.get_degradation_state(degradation_key="live_text_generation") is None

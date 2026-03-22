@@ -168,6 +168,17 @@ def test_provider_operations_status_route(client: TestClient) -> None:
     assert "Current blocking or warning detail:" in body["summary"][-1]
 
 
+def test_provider_operations_control_history_route(client: TestClient) -> None:
+    response = client.get("/platform/providers/control-plane-actions")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["control_plane_store_mode"] == "memory"
+    assert body["reset_actions_supported"] is False
+    assert body["latest_events"] == []
+
+
 def test_provider_operations_status_route_reports_durable_sql_backed_circuit_state(
     client: TestClient, tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
@@ -205,6 +216,56 @@ def test_provider_operations_status_route_reports_durable_sql_backed_circuit_sta
     assert body["degradation_status"]["upstream_error_failure_count"] == 1
 
 
+def test_provider_operations_control_action_route_resets_durable_sql_backed_state(
+    client: TestClient, tmp_path: Path
+) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-ops-reset.db'}"
+    settings.live_text_quota_enforced = True
+    settings.live_text_default_quota_limit = 2
+    settings.live_text_budget_enforced = True
+    settings.live_text_input_cost_per_1k_tokens = 0.01
+    settings.live_text_output_cost_per_1k_tokens = 0.03
+    settings.live_text_hard_budget_usd = 1.0
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 2
+    settings.live_text_circuit_open_seconds = 60
+    upgrade_database_to_head(settings.database_url)
+
+    request = _request("explain.v1", expected_output_label=None)
+    provider_request = build_provider_execution_request(context=validate_task_request(request))
+    enforce_provider_quota(provider_request)
+    record_provider_spend(_budget_response(0.75))
+    record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
+
+    response = client.post(
+        "/platform/providers/control-plane-actions/reset",
+        json={
+            "action_type": "RESET_ALL_PROVIDER_OPERATIONS",
+            "requested_by": "ops.user@lotus",
+            "approved_by": "approver.user@lotus",
+            "reason": "Clear durable provider controls after reviewed recovery.",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["event"]["action_type"] == "RESET_ALL_PROVIDER_OPERATIONS"
+    assert body["event"]["affected_record_count"] == 3
+
+    quota_response = client.get("/platform/providers/quota-policy")
+    budget_response = client.get("/platform/providers/budget-policy")
+    history_response = client.get("/platform/providers/control-plane-actions")
+
+    assert quota_response.status_code == 200
+    assert budget_response.status_code == 200
+    assert history_response.status_code == 200
+    assert quota_response.json()["quotas"][0]["current_request_count"] == 0
+    assert budget_response.json()["current_spend_usd"] == 0.0
+    assert history_response.json()["latest_events"][0]["event_id"] == body["event"]["event_id"]
+
+
 def test_provider_activation_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/providers/activation-readiness")
 
@@ -217,10 +278,11 @@ def test_provider_activation_readiness_route(client: TestClient) -> None:
     assert body["text_generation_configuration"]["credential_status"] == "NOT_CONFIGURED"
     assert body["activation_ready"] is False
     assert len(body["blocking_findings"]) == 4
-    assert len(body["activation_path"]) == 8
+    assert len(body["activation_path"]) == 9
     assert "/platform/providers/quota-policy" in body["activation_path"][1]
     assert "/platform/providers/budget-policy" in body["activation_path"][2]
     assert "/platform/providers/operations-status" in body["activation_path"][3]
+    assert "/platform/providers/control-plane-actions" in body["activation_path"][4]
     assert "/platform/providers/governance-status" in body["activation_path"][-1]
 
 

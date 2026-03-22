@@ -74,6 +74,7 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
         "Review `/platform/providers/quota-policy` to confirm live-provider quota enforcement scope, matching order, and blocking posture before activation expands.",
         "Review `/platform/providers/budget-policy` to confirm live-provider spend posture, soft-limit signaling, and hard-budget blocking semantics before activation expands.",
         "Review `/platform/providers/operations-status` to confirm top-level rollout-versus-operations blocking posture in one operator-facing summary before activation expands.",
+        "Review `/platform/providers/control-plane-actions` to confirm recent durable quota, budget, and degradation reset actions are explicit and reviewable before activation expands.",
         "Verify allowlisted rollout configuration and credential posture through `/platform/providers/activation-readiness` before any live mode is considered.",
         "Confirm provider evaluation and failure-mode evidence through `/platform/providers/evidence-readiness`.",
         "Confirm on-call, quota-handling, rollback, and observability readiness through `/platform/providers/runbook-readiness`.",

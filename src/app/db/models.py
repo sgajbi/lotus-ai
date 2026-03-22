@@ -131,3 +131,17 @@ class ProviderDegradationStateModel(Base):
     rate_limited_failure_count: Mapped[int] = mapped_column(Integer, nullable=False)
     upstream_error_failure_count: Mapped[int] = mapped_column(Integer, nullable=False)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class ProviderOperationsEventModel(Base):
+    __tablename__ = "provider_operations_events"
+
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    scope: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    scope_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    requested_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    affected_record_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

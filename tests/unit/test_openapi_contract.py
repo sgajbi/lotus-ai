@@ -53,6 +53,13 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/providers/operations-status"]["get"]["operationId"] == (
         "getProviderOperationsStatus"
     )
+    assert spec["paths"]["/platform/providers/control-plane-actions"]["get"]["operationId"] == (
+        "getProviderOperationsControlHistory"
+    )
+    assert (
+        spec["paths"]["/platform/providers/control-plane-actions/reset"]["post"]["operationId"]
+        == "applyProviderOperationsControlAction"
+    )
     assert spec["paths"]["/platform/providers/activation-readiness"]["get"]["operationId"] == (
         "getProviderActivationReadiness"
     )

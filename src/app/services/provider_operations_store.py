@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from app.config import settings
-from app.repositories.memory_provider_operations_repository import InMemoryProviderOperationsRepository
+from app.repositories.memory_provider_operations_repository import (
+    InMemoryProviderOperationsRepository,
+)
 from app.repositories.provider_operations_repository import ProviderOperationsRepository
 from app.repositories.sqlalchemy_provider_operations_repository import (
     SqlAlchemyProviderOperationsRepository,

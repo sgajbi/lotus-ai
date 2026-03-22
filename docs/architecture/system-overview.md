@@ -191,6 +191,10 @@ The provider-evidence and operations runbook surfaces also now treat that durabl
 the real control plane: evaluation fixtures, recorded baselines, and operator guidance describe
 restart-survival and durable recovery posture explicitly instead of assuming process-local resets.
 
+That control plane now also exposes a dedicated reset-action history and bounded reset action
+surface, so quota, budget, and degradation recovery can be reviewed as explicit operator actions
+with reason and approval metadata instead of relying on ad hoc table edits or service restarts.
+
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
 

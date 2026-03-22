@@ -141,11 +141,8 @@ def enforce_provider_quota(request: ProviderExecutionRequest) -> None:
 
 
 def reset_provider_quota_counters() -> None:
-    # Quota reset remains a test-only convenience helper until governed rollover/reset semantics
-    # are introduced in later RFC-0005 slices.
-    from app.services.provider_operations_store import reset_provider_operations_store_cache
-
-    reset_provider_operations_store_cache()
+    repository = get_provider_operations_store()
+    repository.reset_quota_states()
 
 
 def _parse_quota_mapping(

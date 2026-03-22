@@ -8,6 +8,9 @@ from app.contracts.providers import (
     ProviderCatalogResponse,
     ProviderEvidenceReadinessResponse,
     ProviderGovernanceStatusResponse,
+    ProviderOperationsControlActionRequest,
+    ProviderOperationsControlActionResponse,
+    ProviderOperationsControlHistoryResponse,
     ProviderOperationsStatusResponse,
     ProviderPolicyResponse,
     ProviderQuotaPolicyResponse,
@@ -18,6 +21,10 @@ from app.services.provider_budget_policy import build_provider_budget_policy
 from app.services.provider_catalog import build_provider_catalog
 from app.services.provider_evidence_readiness import build_provider_evidence_readiness
 from app.services.provider_governance_status import build_provider_governance_status
+from app.services.provider_operations_control import (
+    apply_provider_operations_control_action,
+    build_provider_operations_control_history,
+)
 from app.services.provider_operations_status import build_provider_operations_status
 from app.services.provider_policy import build_provider_policy
 from app.services.provider_quota_policy import build_provider_quota_policy
@@ -114,6 +121,50 @@ async def get_provider_budget_policy_route() -> ProviderBudgetPolicyResponse:
 )
 async def get_provider_operations_status_route() -> ProviderOperationsStatusResponse:
     return build_provider_operations_status()
+
+
+@router.get(
+    "/control-plane-actions",
+    response_model=ProviderOperationsControlHistoryResponse,
+    operation_id="getProviderOperationsControlHistory",
+    summary="Get lotus-ai provider operations control-plane history",
+    description=(
+        "Returns the recent governed provider-operations reset and recovery actions recorded for "
+        "lotus-ai, including whether durable control-plane reset actions are currently supported."
+    ),
+    responses={
+        200: {"description": "Provider operations control-plane history returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_operations_control_history_route() -> (
+    ProviderOperationsControlHistoryResponse
+):
+    return build_provider_operations_control_history()
+
+
+@router.post(
+    "/control-plane-actions/reset",
+    response_model=ProviderOperationsControlActionResponse,
+    operation_id="applyProviderOperationsControlAction",
+    summary="Apply a lotus-ai provider operations control-plane reset action",
+    description=(
+        "Applies one governed provider-operations reset action and records durable operator "
+        "reason and approval metadata for later review."
+    ),
+    responses={
+        200: {"description": "Provider operations control-plane action applied successfully."},
+        409: {
+            "description": "Durable provider-operations control actions are not currently supported."
+        },
+        422: {"description": "Invalid provider-operations control action request."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def apply_provider_operations_control_action_route(
+    request: ProviderOperationsControlActionRequest,
+) -> ProviderOperationsControlActionResponse:
+    return apply_provider_operations_control_action(request)
 
 
 @router.get(

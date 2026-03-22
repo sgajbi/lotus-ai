@@ -2,19 +2,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, select
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy import create_engine, delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
-from app.contracts.providers import ProviderFailureCategory, ProviderQuotaScope
+from app.contracts.providers import (
+    ProviderFailureCategory,
+    ProviderOperationsControlActionType,
+    ProviderQuotaScope,
+)
 from app.db.models import (
     ProviderBudgetStateModel,
     ProviderDegradationStateModel,
+    ProviderOperationsEventModel,
     ProviderQuotaStateModel,
 )
 from app.repositories.provider_operations_repository import (
     ProviderBudgetStateRecord,
     ProviderDegradationStateRecord,
+    ProviderOperationsEventRecord,
     ProviderOperationsRepository,
     ProviderQuotaStateRecord,
 )
@@ -68,30 +74,34 @@ class SqlAlchemyProviderOperationsRepository(ProviderOperationsRepository):
         amount: int,
         updated_at: str,
     ) -> ProviderQuotaStateRecord:
-        with self._session_factory() as session:
-            statement = sqlite_insert(ProviderQuotaStateModel).values(
-                scope=scope.value,
-                scope_key=scope_key,
-                request_count=amount,
-                updated_at=updated_at,
-            )
-            statement = statement.on_conflict_do_update(
-                index_elements=[
-                    ProviderQuotaStateModel.scope,
-                    ProviderQuotaStateModel.scope_key,
-                ],
-                set_={
-                    "request_count": ProviderQuotaStateModel.request_count + amount,
-                    "updated_at": updated_at,
-                },
-            )
-            session.execute(statement)
-            session.commit()
-
-        record = self.get_quota_state(scope=scope, scope_key=scope_key)
-        if record is None:
-            raise RuntimeError("Failed to load incremented provider quota state.")
-        return record
+        for _ in range(2):
+            with self._session_factory() as session:
+                try:
+                    model = session.execute(
+                        select(ProviderQuotaStateModel)
+                        .where(
+                            ProviderQuotaStateModel.scope == scope.value,
+                            ProviderQuotaStateModel.scope_key == scope_key,
+                        )
+                        .with_for_update()
+                    ).scalar_one_or_none()
+                    if model is None:
+                        model = ProviderQuotaStateModel(
+                            scope=scope.value,
+                            scope_key=scope_key,
+                            request_count=amount,
+                            updated_at=updated_at,
+                        )
+                        session.add(model)
+                    else:
+                        model.request_count += amount
+                        model.updated_at = updated_at
+                    session.commit()
+                    return self._to_quota_record(model)
+                except IntegrityError:
+                    session.rollback()
+                    continue
+        raise RuntimeError("Failed to increment provider quota state atomically.")
 
     def get_budget_state(self, *, budget_key: str) -> ProviderBudgetStateRecord | None:
         with self._session_factory() as session:
@@ -117,26 +127,30 @@ class SqlAlchemyProviderOperationsRepository(ProviderOperationsRepository):
         amount_usd: float,
         updated_at: str,
     ) -> ProviderBudgetStateRecord:
-        with self._session_factory() as session:
-            statement = sqlite_insert(ProviderBudgetStateModel).values(
-                budget_key=budget_key,
-                current_spend_usd=amount_usd,
-                updated_at=updated_at,
-            )
-            statement = statement.on_conflict_do_update(
-                index_elements=[ProviderBudgetStateModel.budget_key],
-                set_={
-                    "current_spend_usd": ProviderBudgetStateModel.current_spend_usd + amount_usd,
-                    "updated_at": updated_at,
-                },
-            )
-            session.execute(statement)
-            session.commit()
-
-        record = self.get_budget_state(budget_key=budget_key)
-        if record is None:
-            raise RuntimeError("Failed to load incremented provider budget state.")
-        return record
+        for _ in range(2):
+            with self._session_factory() as session:
+                try:
+                    model = session.execute(
+                        select(ProviderBudgetStateModel)
+                        .where(ProviderBudgetStateModel.budget_key == budget_key)
+                        .with_for_update()
+                    ).scalar_one_or_none()
+                    if model is None:
+                        model = ProviderBudgetStateModel(
+                            budget_key=budget_key,
+                            current_spend_usd=round(amount_usd, 8),
+                            updated_at=updated_at,
+                        )
+                        session.add(model)
+                    else:
+                        model.current_spend_usd = round(model.current_spend_usd + amount_usd, 8)
+                        model.updated_at = updated_at
+                    session.commit()
+                    return self._to_budget_record(model)
+                except IntegrityError:
+                    session.rollback()
+                    continue
+        raise RuntimeError("Failed to add provider budget spend atomically.")
 
     def get_degradation_state(
         self,
@@ -175,43 +189,112 @@ class SqlAlchemyProviderOperationsRepository(ProviderOperationsRepository):
         category: ProviderFailureCategory,
         updated_at: str,
     ) -> ProviderDegradationStateRecord:
+        for _ in range(2):
+            with self._session_factory() as session:
+                try:
+                    model = session.execute(
+                        select(ProviderDegradationStateModel)
+                        .where(ProviderDegradationStateModel.degradation_key == degradation_key)
+                        .with_for_update()
+                    ).scalar_one_or_none()
+                    if model is None:
+                        model = ProviderDegradationStateModel(
+                            degradation_key=degradation_key,
+                            consecutive_failure_count=1,
+                            last_failure_category=category.value,
+                            circuit_open_until=None,
+                            timeout_failure_count=int(
+                                category == ProviderFailureCategory.PROVIDER_TIMEOUT
+                            ),
+                            rate_limited_failure_count=int(
+                                category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
+                            ),
+                            upstream_error_failure_count=int(
+                                category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
+                            ),
+                            updated_at=updated_at,
+                        )
+                        session.add(model)
+                    else:
+                        model.consecutive_failure_count += 1
+                        model.last_failure_category = category.value
+                        model.timeout_failure_count += int(
+                            category == ProviderFailureCategory.PROVIDER_TIMEOUT
+                        )
+                        model.rate_limited_failure_count += int(
+                            category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
+                        )
+                        model.upstream_error_failure_count += int(
+                            category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
+                        )
+                        model.updated_at = updated_at
+                    session.commit()
+                    return self._to_degradation_record(model)
+                except IntegrityError:
+                    session.rollback()
+                    continue
+        raise RuntimeError("Failed to record provider degradation failure atomically.")
+
+    def reset_quota_states(
+        self,
+        *,
+        scope: ProviderQuotaScope | None = None,
+        scope_key: str | None = None,
+    ) -> int:
         with self._session_factory() as session:
-            statement = sqlite_insert(ProviderDegradationStateModel).values(
-                degradation_key=degradation_key,
-                consecutive_failure_count=1,
-                last_failure_category=category.value,
-                circuit_open_until=None,
-                timeout_failure_count=int(category == ProviderFailureCategory.PROVIDER_TIMEOUT),
-                rate_limited_failure_count=int(
-                    category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
-                ),
-                upstream_error_failure_count=int(
-                    category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-                ),
-                updated_at=updated_at,
+            statement = delete(ProviderQuotaStateModel)
+            if scope is not None:
+                statement = statement.where(ProviderQuotaStateModel.scope == scope.value)
+            if scope_key is not None:
+                statement = statement.where(ProviderQuotaStateModel.scope_key == scope_key)
+            result = session.execute(statement)
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
+
+    def reset_budget_state(self, *, budget_key: str) -> int:
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(ProviderBudgetStateModel).where(
+                    ProviderBudgetStateModel.budget_key == budget_key
+                )
             )
-            statement = statement.on_conflict_do_update(
-                index_elements=[ProviderDegradationStateModel.degradation_key],
-                set_={
-                    "consecutive_failure_count": ProviderDegradationStateModel.consecutive_failure_count
-                    + 1,
-                    "last_failure_category": category.value,
-                    "timeout_failure_count": ProviderDegradationStateModel.timeout_failure_count
-                    + int(category == ProviderFailureCategory.PROVIDER_TIMEOUT),
-                    "rate_limited_failure_count": ProviderDegradationStateModel.rate_limited_failure_count
-                    + int(category == ProviderFailureCategory.PROVIDER_RATE_LIMITED),
-                    "upstream_error_failure_count": ProviderDegradationStateModel.upstream_error_failure_count
-                    + int(category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR),
-                    "updated_at": updated_at,
-                },
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
+
+    def reset_degradation_state(self, *, degradation_key: str) -> int:
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(ProviderDegradationStateModel).where(
+                    ProviderDegradationStateModel.degradation_key == degradation_key
+                )
             )
-            session.execute(statement)
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
+
+    def save_operations_event(self, record: ProviderOperationsEventRecord) -> None:
+        model = ProviderOperationsEventModel(
+            event_id=record.event_id,
+            action_type=record.action_type.value,
+            scope=record.scope.value if record.scope is not None else None,
+            scope_key=record.scope_key,
+            reason=record.reason,
+            requested_by=record.requested_by,
+            approved_by=record.approved_by,
+            affected_record_count=record.affected_record_count,
+            recorded_at=record.recorded_at,
+        )
+        with self._session_factory() as session:
+            session.add(model)
             session.commit()
 
-        record = self.get_degradation_state(degradation_key=degradation_key)
-        if record is None:
-            raise RuntimeError("Failed to load incremented provider degradation state.")
-        return record
+    def list_operations_events(self, *, limit: int) -> list[ProviderOperationsEventRecord]:
+        with self._session_factory() as session:
+            models = session.scalars(
+                select(ProviderOperationsEventModel)
+                .order_by(ProviderOperationsEventModel.recorded_at.desc())
+                .limit(limit)
+            ).all()
+            return [self._to_event_record(model) for model in models]
 
     def _to_quota_record(self, model: ProviderQuotaStateModel) -> ProviderQuotaStateRecord:
         return ProviderQuotaStateRecord(
@@ -245,6 +328,21 @@ class SqlAlchemyProviderOperationsRepository(ProviderOperationsRepository):
             rate_limited_failure_count=model.rate_limited_failure_count,
             upstream_error_failure_count=model.upstream_error_failure_count,
             updated_at=model.updated_at,
+        )
+
+    def _to_event_record(
+        self, model: ProviderOperationsEventModel
+    ) -> ProviderOperationsEventRecord:
+        return ProviderOperationsEventRecord(
+            event_id=model.event_id,
+            action_type=ProviderOperationsControlActionType(model.action_type),
+            scope=ProviderQuotaScope(model.scope) if model.scope is not None else None,
+            scope_key=model.scope_key,
+            reason=model.reason,
+            requested_by=model.requested_by,
+            approved_by=model.approved_by,
+            affected_record_count=model.affected_record_count,
+            recorded_at=model.recorded_at,
         )
 
     def _ensure_sqlite_parent_directory(self) -> None:

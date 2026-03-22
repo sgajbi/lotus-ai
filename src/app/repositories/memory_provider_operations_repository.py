@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from app.contracts.providers import ProviderFailureCategory, ProviderQuotaScope
+from app.contracts.providers import (
+    ProviderFailureCategory,
+    ProviderQuotaScope,
+)
 from app.repositories.provider_operations_repository import (
     ProviderBudgetStateRecord,
     ProviderDegradationStateRecord,
+    ProviderOperationsEventRecord,
     ProviderOperationsRepository,
     ProviderQuotaStateRecord,
 )
@@ -16,6 +20,7 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
         self._quota_states: dict[tuple[ProviderQuotaScope, str], ProviderQuotaStateRecord] = {}
         self._budget_states: dict[str, ProviderBudgetStateRecord] = {}
         self._degradation_states: dict[str, ProviderDegradationStateRecord] = {}
+        self._event_records: list[ProviderOperationsEventRecord] = []
 
     def list_quota_states(self) -> list[ProviderQuotaStateRecord]:
         return [
@@ -132,3 +137,30 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
         )
         self._degradation_states[degradation_key] = deepcopy(updated)
         return deepcopy(updated)
+
+    def reset_quota_states(
+        self,
+        *,
+        scope: ProviderQuotaScope | None = None,
+        scope_key: str | None = None,
+    ) -> int:
+        keys = [
+            key
+            for key in self._quota_states
+            if (scope is None or key[0] == scope) and (scope_key is None or key[1] == scope_key)
+        ]
+        for key in keys:
+            self._quota_states.pop(key, None)
+        return len(keys)
+
+    def reset_budget_state(self, *, budget_key: str) -> int:
+        return int(self._budget_states.pop(budget_key, None) is not None)
+
+    def reset_degradation_state(self, *, degradation_key: str) -> int:
+        return int(self._degradation_states.pop(degradation_key, None) is not None)
+
+    def save_operations_event(self, record: ProviderOperationsEventRecord) -> None:
+        self._event_records.insert(0, deepcopy(record))
+
+    def list_operations_events(self, *, limit: int) -> list[ProviderOperationsEventRecord]:
+        return [deepcopy(record) for record in self._event_records[:limit]]

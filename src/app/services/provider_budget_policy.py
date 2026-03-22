@@ -10,7 +10,6 @@ from app.contracts.providers import (
     ProviderFailureCategory,
 )
 from app.providers.base import ProviderExecutionError
-from app.repositories.provider_operations_repository import ProviderBudgetStateRecord
 from app.services.provider_operations_store import get_provider_operations_store
 
 _BUDGET_KEY = "live_text_generation"
@@ -144,13 +143,7 @@ def record_provider_spend(response: ProviderExecutionResponse) -> None:
 
 def reset_provider_budget_state() -> None:
     repository = get_provider_operations_store()
-    repository.save_budget_state(
-        ProviderBudgetStateRecord(
-            budget_key=_BUDGET_KEY,
-            current_spend_usd=0.0,
-            updated_at=_utcnow(),
-        )
-    )
+    repository.reset_budget_state(budget_key=_BUDGET_KEY)
 
 
 def _resolve_budget_state(

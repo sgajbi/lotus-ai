@@ -3,7 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from app.contracts.providers import ProviderFailureCategory, ProviderQuotaScope
+from app.contracts.providers import (
+    ProviderFailureCategory,
+    ProviderOperationsControlActionType,
+    ProviderQuotaScope,
+)
 
 
 @dataclass(frozen=True)
@@ -31,6 +35,19 @@ class ProviderDegradationStateRecord:
     rate_limited_failure_count: int
     upstream_error_failure_count: int
     updated_at: str
+
+
+@dataclass(frozen=True)
+class ProviderOperationsEventRecord:
+    event_id: str
+    action_type: ProviderOperationsControlActionType
+    scope: ProviderQuotaScope | None
+    scope_key: str | None
+    reason: str
+    requested_by: str
+    approved_by: str
+    affected_record_count: int
+    recorded_at: str
 
 
 class ProviderOperationsRepository(Protocol):
@@ -91,3 +108,23 @@ class ProviderOperationsRepository(Protocol):
         updated_at: str,
     ) -> ProviderDegradationStateRecord:
         """Atomically persist one tracked provider failure and return the updated degradation state."""
+
+    def reset_quota_states(
+        self,
+        *,
+        scope: ProviderQuotaScope | None = None,
+        scope_key: str | None = None,
+    ) -> int:
+        """Reset quota state records and return the number of affected rows."""
+
+    def reset_budget_state(self, *, budget_key: str) -> int:
+        """Reset one budget state record and return the number of affected rows."""
+
+    def reset_degradation_state(self, *, degradation_key: str) -> int:
+        """Reset one degradation state record and return the number of affected rows."""
+
+    def save_operations_event(self, record: ProviderOperationsEventRecord) -> None:
+        """Persist one provider-operations control event record."""
+
+    def list_operations_events(self, *, limit: int) -> list[ProviderOperationsEventRecord]:
+        """List most recent provider-operations control event records."""

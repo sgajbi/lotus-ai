@@ -97,14 +97,8 @@ def record_successful_provider_execution() -> None:
 
 
 def reset_provider_degradation_state() -> None:
-    _save_degradation_record(
-        consecutive_failure_count=0,
-        last_failure_category=None,
-        circuit_open_until=None,
-        timeout_failure_count=0,
-        rate_limited_failure_count=0,
-        upstream_error_failure_count=0,
-    )
+    repository = get_provider_operations_store()
+    repository.reset_degradation_state(degradation_key=_DEGRADATION_KEY)
 
 
 def _resolve_provider_degradation_state() -> ProviderDegradationState:

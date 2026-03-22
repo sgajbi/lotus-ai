@@ -323,6 +323,7 @@ RFC-0005 has been implemented in five delivery slices plus a final closure-quali
 4. Slice 4 moved provider degradation and circuit-open posture onto the durable store so failure tracking and cooldown state survive restart.
 5. Slice 5 aligned runtime summaries, eval assets, recorded run artifacts, and runbooks with the durable provider-operations control plane.
 6. The final hardening pass moved quota, spend, and tracked degradation mutations into repository-owned atomic operations so blocking-state updates no longer depend on service-layer read-modify-write sequences.
+7. The final closure work added durable provider-operations control events plus governed reset actions, so reset and recovery are now explicit, reviewable control-plane behavior instead of only a runbook aspiration.
 
 The implemented result is:
 

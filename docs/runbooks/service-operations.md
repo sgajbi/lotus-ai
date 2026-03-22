@@ -24,6 +24,7 @@
 - Provider quota policy: /platform/providers/quota-policy
 - Provider budget policy: /platform/providers/budget-policy
 - Provider operations status: /platform/providers/operations-status
+- Provider operations control history: /platform/providers/control-plane-actions
 - Provider runbook readiness: /platform/providers/runbook-readiness
 - Provider evidence readiness: /platform/providers/evidence-readiness
 - Provider governance status: /platform/providers/governance-status
@@ -105,14 +106,22 @@ Operator rules:
 1. do not treat a service restart as a quota, spend, or circuit reset
 2. review `/platform/providers/quota-policy`, `/platform/providers/budget-policy`, and `/platform/providers/operations-status` before assuming provider posture has cleared
 3. investigate persistent blocking posture as durable control-plane state, not as stale process memory
-4. any future reset, rollover, or recovery action must be governed and documented rather than applied as an ad hoc table edit
+4. use `POST /platform/providers/control-plane-actions/reset` for governed quota, budget, and degradation resets rather than ad hoc table edits
 
 Current recovery expectations:
 
-1. quota exhaustion remains durable until a governed reset or rollover procedure exists
-2. tracked spend remains durable until a governed budget-period or reset procedure exists
-3. circuit-open posture remains durable until the persisted cooldown expires or a governed recovery action is defined
+1. quota exhaustion remains durable until a governed rollover or reset action is applied and recorded
+2. tracked spend remains durable until a governed budget reset action is applied and recorded
+3. circuit-open posture remains durable until the persisted cooldown expires or a governed degradation reset action is applied and recorded
 4. restart alone must not be used as an operational workaround for provider controls
+
+Current governed reset procedure:
+
+1. inspect `/platform/providers/control-plane-actions` to review recent provider control-plane actions
+2. confirm `/platform/providers/quota-policy`, `/platform/providers/budget-policy`, and `/platform/providers/operations-status` reflect the blocking posture that requires intervention
+3. apply `POST /platform/providers/control-plane-actions/reset` with explicit operator reason, requester, and approver metadata
+4. verify the resulting control-plane event is visible in `/platform/providers/control-plane-actions`
+5. re-check `/platform/providers/quota-policy`, `/platform/providers/budget-policy`, `/platform/providers/operations-status`, and the embedded `provider_operations` block in `/platform/runtime-status`
 
 ## Prompt Activation Governance
 
