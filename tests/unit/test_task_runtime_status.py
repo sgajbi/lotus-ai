@@ -20,3 +20,16 @@ def test_task_runtime_status_reports_blocked_provider_path_when_mode_is_unsuppor
     explain_task = next(task for task in status.tasks if task.task_id == "explain.v1")
     assert explain_task.execution_path == "provider.blocked_text"
     assert explain_task.provider_mode == "openai"
+
+
+def test_task_runtime_status_reflects_allowlisted_but_disabled_live_provider_posture() -> None:
+    settings.provider_rollout_state = "ALLOWLISTED_DISABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-4.1-mini"
+    settings.live_text_provider_api_key = "secret"
+
+    status = build_task_runtime_status()
+
+    explain_task = next(task for task in status.tasks if task.task_id == "explain.v1")
+    assert explain_task.execution_path == "provider.stub_text"
+    assert "allowlisted" in explain_task.notes

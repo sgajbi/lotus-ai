@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from app.config import settings
 from app.contracts.tasks import CapabilityDescriptor
+from app.services.provider_rollout_posture import build_provider_rollout_posture
 
 
 @dataclass(frozen=True)
@@ -35,13 +36,15 @@ def build_task_execution_path(task: CapabilityDescriptor) -> TaskExecutionPathDe
 def _build_provider_backed_task_execution_path(
     *, task: CapabilityDescriptor
 ) -> TaskExecutionPathDescriptor:
+    rollout_posture = build_provider_rollout_posture()
     execution_path = "provider.stub_text"
-    notes = "Foundation-phase deterministic stub path through the provider gateway."
+    notes = rollout_posture.notes
     if settings.provider_mode not in {"disabled", "stub"}:
         execution_path = "provider.blocked_text"
         notes = (
             "Task remains provider-backed, but current provider mode is not supported in the "
-            "current phase and will be rejected before execution."
+            "current phase and will be rejected before execution. "
+            f"{rollout_posture.notes}"
         )
     return TaskExecutionPathDescriptor(
         execution_path=execution_path,

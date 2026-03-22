@@ -41,6 +41,22 @@ def test_task_execution_path_reports_provider_stub_for_supported_foundation_mode
     assert descriptor.execution_path == "provider.stub_text"
     assert descriptor.provider_mode == "disabled"
     assert descriptor.stubbed is True
+    assert "stub path" in descriptor.notes
+
+
+def test_task_execution_path_reports_allowlisted_disabled_live_posture_honestly() -> None:
+    settings.provider_rollout_state = "ALLOWLISTED_DISABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-4.1-mini"
+    settings.live_text_provider_api_key = "secret"
+
+    descriptor = build_task_execution_path(
+        _capability("explain.v1", TaskCategory.EXPLAIN, OutputLabel.EXPLANATION_ONLY)
+    )
+
+    assert descriptor.execution_path == "provider.stub_text"
+    assert descriptor.stubbed is True
+    assert "allowlisted" in descriptor.notes
 
 
 def test_task_execution_path_reports_blocked_provider_posture_for_unsupported_mode() -> None:

@@ -46,8 +46,9 @@ def test_provider_activation_readiness_route(client: TestClient) -> None:
     assert body["text_generation_configuration"]["rollout_state"] == "STUB_DEFAULT"
     assert body["text_generation_configuration"]["credential_status"] == "NOT_CONFIGURED"
     assert body["activation_ready"] is False
-    assert len(body["blocking_findings"]) == 5
+    assert len(body["blocking_findings"]) == 6
     assert len(body["activation_path"]) == 5
+    assert "/platform/providers/governance-status" in body["activation_path"][-1]
 
 
 def test_provider_runbook_readiness_route(client: TestClient) -> None:
@@ -57,10 +58,11 @@ def test_provider_runbook_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
-    assert body["required_item_count"] == 4
+    assert body["required_item_count"] == 5
     assert body["completed_required_item_count"] == 0
     assert body["items"][0]["runbook_id"] == "provider_operational_runbook"
     assert body["items"][1]["status"] == "NOT_READY"
+    assert body["items"][3]["runbook_id"] == "provider_incident_response_and_rollback"
 
 
 def test_provider_evidence_readiness_route(client: TestClient) -> None:

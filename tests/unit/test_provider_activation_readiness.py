@@ -17,8 +17,9 @@ def test_provider_activation_readiness_reports_foundation_blockers() -> None:
         readiness.text_generation_configuration.credential_status
         == ProviderCredentialStatus.NOT_CONFIGURED
     )
-    assert len(readiness.blocking_findings) == 5
+    assert len(readiness.blocking_findings) == 6
     assert len(readiness.activation_path) == 5
+    assert "/platform/providers/governance-status" in readiness.activation_path[-1]
 
 
 def test_provider_activation_readiness_reports_invalid_live_configuration() -> None:

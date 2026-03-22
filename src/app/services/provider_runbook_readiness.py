@@ -6,9 +6,11 @@ from app.contracts.providers import (
     ProviderRunbookReadinessResponse,
 )
 from app.services.governance_readiness import summarize_activation_items
+from app.services.provider_rollout_posture import build_provider_rollout_posture
 
 
 def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
+    rollout_posture = build_provider_rollout_posture()
     items = [
         ProviderRunbookReadinessItem(
             runbook_id="provider_operational_runbook",
@@ -16,7 +18,7 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
             required_for_activation=True,
             notes=(
                 "Provider operating model is documented at a foundation level, but live-provider "
-                "activation steps are not yet finalized."
+                f"activation steps are not yet finalized. {rollout_posture.notes}"
             ),
         ),
         ProviderRunbookReadinessItem(
@@ -35,6 +37,15 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
             notes=(
                 "Runbooks for provider usage limits, rate-limit incidents, and cost-protection "
                 "responses are not yet documented."
+            ),
+        ),
+        ProviderRunbookReadinessItem(
+            runbook_id="provider_incident_response_and_rollback",
+            status="NOT_READY",
+            required_for_activation=True,
+            notes=(
+                "Provider incident response, rollback, and safe reversion procedures for live "
+                "execution are not yet documented."
             ),
         ),
         ProviderRunbookReadinessItem(

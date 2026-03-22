@@ -211,7 +211,7 @@ Why:
 Current posture:
 
 1. retrieval-backed task paths resolve to dedicated retrieval execution semantics,
-2. provider-backed tasks resolve to stubbed or blocked provider posture depending on current provider mode,
+2. provider-backed tasks now resolve to stubbed, allowlisted-but-disabled, or blocked provider posture depending on current provider mode and rollout state,
 3. runtime-status builders now consume that shared task-path abstraction instead of re-encoding the routing split themselves.
 
 ## Decision 11D: Provider Rollout State Must Be Separate From Supported Runtime Mode
@@ -248,7 +248,7 @@ Why:
 Current posture:
 
 1. `/platform/providers/activation-readiness` exposes whether provider execution is activatable today,
-2. the endpoint returns explicit blocking findings and a governed activation path,
+2. the endpoint returns explicit blocking findings plus an end-to-end activation path that references the provider catalog, policy, evidence, runbook, governance, and embedded runtime-status views,
 3. foundation phase remains not activatable until a separate provider rollout slice changes execution posture.
 
 ## Decision 11B: Provider Runbook Readiness Should Be Exposed As A Separate Operational Contract
@@ -266,7 +266,7 @@ Why:
 Current posture:
 
 1. `/platform/providers/runbook-readiness` exposes required provider operational readiness items,
-2. required runbook items remain not ready in foundation phase,
+2. required runbook items now explicitly include incident response and rollback readiness in addition to escalation, quota, and observability posture,
 3. live-provider activation should not be considered complete in future rollout slices without both technical and runbook readiness.
 
 ## Decision 11C: Provider Governance Review Should Have A Single Summary Surface

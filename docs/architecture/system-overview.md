@@ -152,6 +152,11 @@ retry, and output-token controls. Even though current foundation execution remai
 those controls now exist as part of the provider contract so live rollout can inherit a real
 execution-hardening seam rather than implicit provider-SDK defaults.
 
+Provider rollout posture is now also centralized in one small helper so activation readiness,
+runbook readiness, and task-runtime notes all describe the same live-provider path honestly.
+That keeps operator-facing status aligned when rollout is still stub-default versus when a live
+provider has been allowlisted but remains intentionally disabled.
+
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
 
@@ -353,6 +358,10 @@ evidence readiness together.
 Provider evidence readiness is now grounded in real evaluation assets rather than only a static
 checklist: staged provider policy, runtime, and failure-mode fixtures plus a recorded provider
 regression baseline are visible directly through the governed evidence-readiness surface.
+
+Provider runbook readiness also now treats incident response and rollback as first-class required
+activation items, so live-provider rollout cannot be considered operationally ready with only
+generic escalation and dashboard guidance.
 
 ## Prompt Posture
 
