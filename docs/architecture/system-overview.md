@@ -72,11 +72,12 @@ contracts without hidden node-local behavior.
 Owns:
 
 1. async queue and worker posture exposure,
-2. known background job-type inventory,
-3. seeded async job artifact inspection,
-4. governed async job submission contracts,
-5. relationships between async job artifacts and evaluation history when applicable,
-6. the contract boundary for future worker-backed execution.
+2. governed queue backend strategy exposure,
+3. known background job-type inventory,
+4. seeded async job artifact inspection,
+5. governed async job submission contracts,
+6. relationships between async job artifacts and evaluation history when applicable,
+7. the contract boundary for future worker-backed execution.
 
 ### Providers
 
@@ -158,6 +159,7 @@ It is not appropriate right now as the base architecture for all of `lotus-ai`.
 6. `/platform/runtime-status`
 7. `/platform/capabilities`
 8. `/platform/async/runtime-status`
+9. `/platform/async/queue-backends`
 
 The current capability endpoint is intentionally simple. It gives other Lotus apps a stable discovery surface while the rest of the platform is still under construction.
 

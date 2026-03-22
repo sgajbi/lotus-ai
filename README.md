@@ -45,6 +45,7 @@ The current execution posture is:
 - recorded evaluation run artifacts are now validated by a dedicated gate,
 - evaluation run artifacts now model both current and superseded lifecycle states,
 - async queue and worker posture is now exposed through a dedicated runtime-status endpoint,
+- governed queue backend strategies are now exposed through a dedicated async catalog endpoint,
 - seeded async job artifacts are now exposed and validated through dedicated contracts,
 - async job submission now has a governed request/response contract with explicit foundation-phase rejection behavior,
 - async job artifacts can now reference related evaluation run artifacts for cross-seam traceability,

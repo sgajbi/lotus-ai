@@ -37,10 +37,28 @@ def test_async_runtime_status_route() -> None:
     assert body["service"] == "lotus-ai"
     assert body["queue_mode"] == "DISABLED"
     assert body["worker_mode"] == "DOCUMENTED_ONLY"
+    assert body["queue_backend"] == "none"
+    assert body["supported_queue_backends"][0]["backend_id"] == "none"
+    assert body["supported_queue_backends"][1]["backend_id"] == "redis_queue"
     assert body["active_worker_count"] == 0
     assert body["enqueued_job_count"] == 1
     assert body["recorded_job_count"] == 2
     assert any(job["job_type"] == "retrieval_indexing" for job in body["supported_job_types"])
+
+
+def test_async_queue_backend_catalog_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/async/queue-backends")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["active_queue_backend"] == "none"
+    assert body["backend_count"] == 3
+    assert body["backends"][0]["backend_id"] == "none"
+    assert body["backends"][1]["backend_id"] == "redis_queue"
+    assert body["backends"][2]["backend_id"] == "kafka_orchestrated"
 
 
 def test_async_job_catalog_route() -> None:
@@ -336,6 +354,7 @@ def test_platform_runtime_status_route() -> None:
     assert body["retrieval_store"]["status"] == "READY"
     assert body["async_runtime"]["queue_mode"] == "DISABLED"
     assert body["async_runtime"]["worker_mode"] == "DOCUMENTED_ONLY"
+    assert body["async_runtime"]["supported_queue_backends"][0]["backend_id"] == "none"
     assert body["async_runtime"]["active_worker_count"] == 0
     assert body["async_runtime"]["enqueued_job_count"] == 1
     assert body["async_runtime"]["recorded_job_count"] == 2

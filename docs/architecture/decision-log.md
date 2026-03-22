@@ -660,3 +660,21 @@ Current posture:
 1. async job artifacts may include `related_evaluation_run_id`,
 2. the async job registry validates related evaluation run references against the governed evaluation run registry,
 3. evaluation-linked async history is now inspectable through the async job APIs.
+
+## Decision 39: Queue Backend Strategy Should Be Inspectable Before Activation
+
+Decision:
+
+`lotus-ai` exposes a governed queue-backend catalog before any live async backend is turned on.
+
+Why:
+
+1. operators need to understand not only that async execution is disabled, but also which backend strategies are recognized by the platform,
+2. queue-selection posture should be explicit and reviewable before rollout introduces mutable infrastructure state,
+3. this keeps future Redis-style queue activation or event-stream integration behind a stable inspection surface.
+
+Current posture:
+
+1. `/platform/async/queue-backends` exposes the current foundation default and documented future backend options,
+2. async runtime status now includes the supported queue backend descriptors,
+3. the active backend remains `none` until a separate governed activation slice enables live queue execution.

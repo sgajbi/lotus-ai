@@ -34,6 +34,26 @@ class AsyncJobTypeDescriptor(BaseModel):
     notes: str = Field(description="Human-readable notes about the async job type posture.")
 
 
+class AsyncQueueBackendDescriptor(BaseModel):
+    backend_id: str = Field(description="Stable queue backend identifier.")
+    enabled: bool = Field(
+        description="Whether the queue backend is currently enabled for live lotus-ai async execution."
+    )
+    backend_class: str = Field(
+        description="Operational category describing the queue backend architecture."
+    )
+    selection_state: str = Field(
+        description="Governed runtime selection posture for the queue backend."
+    )
+    supports_durable_queue: bool = Field(
+        description="Whether the backend is designed to provide durable queue semantics."
+    )
+    supports_worker_scaling: bool = Field(
+        description="Whether the backend is intended to support horizontally scaled workers."
+    )
+    notes: str = Field(description="Human-readable notes about the queue backend posture.")
+
+
 class AsyncJobArtifactDescriptor(BaseModel):
     job_id: str = Field(description="Stable async job artifact identifier.")
     job_type: str = Field(description="Stable async job type identifier.")
@@ -111,6 +131,9 @@ class AsyncRuntimeStatusResponse(BaseModel):
     queue_mode: AsyncQueueMode = Field(description="Current queue execution mode.")
     worker_mode: AsyncWorkerMode = Field(description="Current worker runtime mode.")
     queue_backend: str = Field(description="Current queue backend posture label.")
+    supported_queue_backends: list[AsyncQueueBackendDescriptor] = Field(
+        description="Known queue backend strategies and their current selection posture."
+    )
     active_worker_count: int = Field(
         description="Number of active worker replicas currently exposed."
     )
@@ -123,4 +146,15 @@ class AsyncRuntimeStatusResponse(BaseModel):
     )
     message: str = Field(
         description="Human-readable explanation of the current async runtime posture."
+    )
+
+
+class AsyncQueueBackendCatalogResponse(BaseModel):
+    service: str = Field(description="Service name emitting the queue backend catalog.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    active_queue_backend: str = Field(description="Current active queue backend posture label.")
+    backend_count: int = Field(description="Number of queue backend strategies currently exposed.")
+    backends: list[AsyncQueueBackendDescriptor] = Field(
+        description="Known queue backend strategies and their current posture."
     )
