@@ -1,7 +1,8 @@
 # RFC-0002: Real Retrieval Backbone
 
-- Status: Implemented
+- Status: Closed
 - Date: 2026-03-22
+- Closed Date: 2026-03-22
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
 
@@ -12,6 +13,12 @@
 This RFC moves retrieval from catalog-only staged metadata lookup to durable indexed retrieval over promoted content, backed by PostgreSQL and `pgvector`, with explicit governance for source promotion, indexing, searchability, and citation behavior.
 
 The goal is to make `knowledge_search.v1` and `knowledge_answer.v1` trustworthy platform capabilities rather than bounded demos over seeded catalog metadata.
+
+## Closure Status
+
+This RFC is closed.
+
+It is considered closed because the implementation outcomes and close-out slices described here now exist in the repository, the local quality gates are green, and the remaining work is no longer “finish the retrieval backbone” work. Future work should build on this backbone rather than reopen it.
 
 ## Implementation Status
 
@@ -327,11 +334,16 @@ This RFC is complete when:
 6. indexed retrieval ranking is owned by the backend seam rather than the gateway service layer,
 7. deterministic indexing replay is available through the governed async-work model.
 
-## Approval Requested
+## Close-Out Notes
 
-Approve this RFC if the team agrees that:
+The retrieval backbone is now materially in place:
 
-1. real retrieval is the next major platform phase,
-2. `PostgreSQL + pgvector` is the first production retrieval backend,
-3. delivery should proceed in the slices defined above,
-4. live provider expansion should remain secondary to grounded retrieval quality.
+1. document and source promotion are explicit and inspectable,
+2. chunk and embedding persistence are migration-managed,
+3. indexed retrieval execution exists behind the retrieval backend seam,
+4. retrieval-backed answer support is hardened and audited,
+5. deterministic indexing refresh exists,
+6. async indexing orchestration exists in governed stubbed mode,
+7. evaluation and operational posture reflect the implemented retrieval path.
+
+Follow-on work should be tracked under new RFCs or implementation plans, not by extending this RFC indefinitely.
