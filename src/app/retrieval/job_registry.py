@@ -130,20 +130,26 @@ def build_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
 
 
 def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
-    repository = get_retrieval_repository()
     store_status = get_retrieval_store_runtime_status()
-    sources = repository.list_sources()
-    documents = [
-        document
-        for source in sources
-        for document in repository.list_documents_for_source(source.source_id)
-    ]
-    chunks = [
-        chunk
-        for document in documents
-        for chunk in repository.list_chunks_for_document(document.document_id)
-    ]
-    jobs = repository.list_index_jobs()
+    if store_status.status == "READY":
+        repository = get_retrieval_repository()
+        sources = repository.list_sources()
+        documents = [
+            document
+            for source in sources
+            for document in repository.list_documents_for_source(source.source_id)
+        ]
+        chunks = [
+            chunk
+            for document in documents
+            for chunk in repository.list_chunks_for_document(document.document_id)
+        ]
+        jobs = repository.list_index_jobs()
+    else:
+        sources = []
+        documents = []
+        chunks = []
+        jobs = []
     return RetrievalRuntimeStatusResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,
