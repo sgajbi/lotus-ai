@@ -66,6 +66,18 @@
       "manifest_path": "docs/evals/fixtures/providers.failure/basic_cases.json"
     },
     {
+      "fixture_id": "provider_operations_examples",
+      "status": "STAGED",
+      "description": "Provider quota and budget operations evaluation examples.",
+      "manifest_path": "docs/evals/fixtures/providers.operations/basic_cases.json"
+    },
+    {
+      "fixture_id": "provider_degradation_examples",
+      "status": "STAGED",
+      "description": "Provider degraded-upstream and circuit-open evaluation examples.",
+      "manifest_path": "docs/evals/fixtures/providers.degradation/basic_cases.json"
+    },
+    {
       "fixture_id": "safety_policy_examples",
       "status": "STAGED",
       "description": "Safety policy and runtime-posture evaluation examples.",

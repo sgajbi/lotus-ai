@@ -40,6 +40,15 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
             ),
         ),
         ProviderRunbookReadinessItem(
+            runbook_id="provider_spend_anomaly_response",
+            status="NOT_READY",
+            required_for_activation=True,
+            notes=(
+                "Runbooks for soft-budget alerts, hard-budget blocks, and spend-anomaly escalation "
+                "are not yet documented."
+            ),
+        ),
+        ProviderRunbookReadinessItem(
             runbook_id="provider_incident_response_and_rollback",
             status="NOT_READY",
             required_for_activation=True,
@@ -49,12 +58,21 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
             ),
         ),
         ProviderRunbookReadinessItem(
+            runbook_id="provider_degradation_and_circuit_response",
+            status="NOT_READY",
+            required_for_activation=True,
+            notes=(
+                "Runbooks for degraded-upstream operation, circuit-open response, cooldown review, "
+                "and safe re-enable procedures are not yet documented."
+            ),
+        ),
+        ProviderRunbookReadinessItem(
             runbook_id="provider_observability_dashboard_pack",
             status="NOT_READY",
             required_for_activation=True,
             notes=(
-                "Dedicated provider latency, failure, and quota dashboards and alerts must be "
-                "defined before activation."
+                "Dedicated provider latency, failure, quota, budget, and degradation dashboards "
+                "and alerts must be defined before activation."
             ),
         ),
     ]

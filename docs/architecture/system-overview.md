@@ -384,12 +384,17 @@ review rollout-blocked versus operations-blocked state from the same top-level r
 without stitching together quota, budget, and degradation-related endpoints manually.
 
 Provider evidence readiness is now grounded in real evaluation assets rather than only a static
-checklist: staged provider policy, runtime, and failure-mode fixtures plus a recorded provider
-regression baseline are visible directly through the governed evidence-readiness surface.
+checklist: staged provider policy, runtime, failure-mode, operations, and degradation fixtures
+plus a recorded provider regression baseline are visible directly through the governed
+evidence-readiness surface.
 
 Provider runbook readiness also now treats incident response and rollback as first-class required
 activation items, so live-provider rollout cannot be considered operationally ready with only
 generic escalation and dashboard guidance.
+
+Provider runbook readiness now also treats spend-anomaly response and degradation/circuit-open
+response as first-class required activation items, so the new provider operations controls cannot
+be activated safely on paper while still being operationally unsupported.
 
 ## Prompt Posture
 

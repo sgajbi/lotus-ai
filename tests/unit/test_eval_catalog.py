@@ -72,6 +72,28 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
         == "docs/evals/fixtures/providers.failure/basic_cases.json"
     )
     assert provider_failure_fixture.case_count == 2
+    provider_operations_fixture = next(
+        fixture
+        for fixture in catalog.fixture_families
+        if fixture.fixture_id == "provider_operations_examples"
+    )
+    assert provider_operations_fixture.status == "STAGED"
+    assert (
+        provider_operations_fixture.manifest_path
+        == "docs/evals/fixtures/providers.operations/basic_cases.json"
+    )
+    assert provider_operations_fixture.case_count == 2
+    provider_degradation_fixture = next(
+        fixture
+        for fixture in catalog.fixture_families
+        if fixture.fixture_id == "provider_degradation_examples"
+    )
+    assert provider_degradation_fixture.status == "STAGED"
+    assert (
+        provider_degradation_fixture.manifest_path
+        == "docs/evals/fixtures/providers.degradation/basic_cases.json"
+    )
+    assert provider_degradation_fixture.case_count == 2
     safety_fixture = next(
         fixture
         for fixture in catalog.fixture_families

@@ -11,8 +11,14 @@ from app.services.provider_evidence_inventory import build_provider_evidence_inv
 _PROVIDER_POLICY_FIXTURE_IDS = frozenset({"provider_policy_examples"})
 _PROVIDER_RUNTIME_FIXTURE_IDS = frozenset({"provider_runtime_examples"})
 _PROVIDER_FAILURE_FIXTURE_IDS = frozenset({"provider_failure_mode_examples"})
+_PROVIDER_OPERATIONS_FIXTURE_IDS = frozenset({"provider_operations_examples"})
+_PROVIDER_DEGRADATION_FIXTURE_IDS = frozenset({"provider_degradation_examples"})
 _PROVIDER_RECORDED_BASELINE_FIXTURE_IDS = (
-    _PROVIDER_POLICY_FIXTURE_IDS | _PROVIDER_RUNTIME_FIXTURE_IDS | _PROVIDER_FAILURE_FIXTURE_IDS
+    _PROVIDER_POLICY_FIXTURE_IDS
+    | _PROVIDER_RUNTIME_FIXTURE_IDS
+    | _PROVIDER_FAILURE_FIXTURE_IDS
+    | _PROVIDER_OPERATIONS_FIXTURE_IDS
+    | _PROVIDER_DEGRADATION_FIXTURE_IDS
 )
 
 
@@ -21,6 +27,12 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
     policy_fixture_ready = _PROVIDER_POLICY_FIXTURE_IDS.issubset(inventory.staged_fixture_ids)
     runtime_fixture_ready = _PROVIDER_RUNTIME_FIXTURE_IDS.issubset(inventory.staged_fixture_ids)
     failure_fixture_ready = _PROVIDER_FAILURE_FIXTURE_IDS.issubset(inventory.staged_fixture_ids)
+    operations_fixture_ready = _PROVIDER_OPERATIONS_FIXTURE_IDS.issubset(
+        inventory.staged_fixture_ids
+    )
+    degradation_fixture_ready = _PROVIDER_DEGRADATION_FIXTURE_IDS.issubset(
+        inventory.staged_fixture_ids
+    )
     regression_baseline_ready = _PROVIDER_RECORDED_BASELINE_FIXTURE_IDS.issubset(
         inventory.recorded_provider_fixture_ids
     )
@@ -61,6 +73,26 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
             ),
         ),
         ProviderEvidenceReadinessItem(
+            evidence_id="provider_operations_fixture_pack",
+            status="READY" if operations_fixture_ready else "NOT_READY",
+            required_for_activation=True,
+            notes=(
+                "Provider operations fixtures cover quota-blocked and hard-budget-blocked live execution posture."
+                if operations_fixture_ready
+                else "Provider quota and budget operations fixtures are not yet staged."
+            ),
+        ),
+        ProviderEvidenceReadinessItem(
+            evidence_id="provider_degradation_fixture_pack",
+            status="READY" if degradation_fixture_ready else "NOT_READY",
+            required_for_activation=True,
+            notes=(
+                "Provider degradation fixtures cover degraded-upstream and circuit-open execution posture."
+                if degradation_fixture_ready
+                else "Provider degraded-upstream and circuit-open fixtures are not yet staged."
+            ),
+        ),
+        ProviderEvidenceReadinessItem(
             evidence_id="provider_regression_run_baseline",
             status="READY" if regression_baseline_ready else "NOT_READY",
             required_for_activation=True,
@@ -78,8 +110,8 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
             required_for_activation=True,
             notes=(
                 "Provider-resolution evidence is emitted in foundation phase, but a live-provider "
-                "audit traceability pack linking credentials, cost, and execution review is not "
-                "yet approved."
+                "audit traceability pack linking credentials, cost, quota, budget, and degradation "
+                "review is not yet approved."
                 if audit_traceability_staged
                 else "Provider-resolution evidence categories are not yet staged."
             ),

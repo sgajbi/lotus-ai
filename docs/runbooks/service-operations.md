@@ -21,6 +21,9 @@
 - Async runbook readiness: /platform/async/runbook-readiness
 - Async governance status: /platform/async/governance-status
 - Provider activation readiness: /platform/providers/activation-readiness
+- Provider quota policy: /platform/providers/quota-policy
+- Provider budget policy: /platform/providers/budget-policy
+- Provider operations status: /platform/providers/operations-status
 - Provider runbook readiness: /platform/providers/runbook-readiness
 - Provider evidence readiness: /platform/providers/evidence-readiness
 - Provider governance status: /platform/providers/governance-status
@@ -82,15 +85,16 @@ Before any future live-provider activation slice:
 
 1. verify `GET /platform/providers/governance-status`
 2. inspect `GET /platform/providers/activation-readiness` when technical blockers need detail
-3. inspect `GET /platform/providers/runbook-readiness` when operational blockers need detail
-4. inspect `GET /platform/providers/evidence-readiness` when evaluation, audit, or failover evidence blockers need detail
-5. confirm the embedded `provider_governance` block in `GET /platform/runtime-status` matches the detailed provider governance view
-6. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
-7. confirm staged provider policy, runtime, and failure-mode fixtures plus the recorded provider regression baseline still match the intended rollout posture
-8. confirm vendor escalation, rate-limit response, rollback, and provider observability procedures are documented and approved
-9. confirm provider-backed task runtime notes still describe the current rollout truthfully, especially when a live provider is allowlisted but intentionally disabled
-10. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
-11. only then proceed with any live-provider activation rollout review
+3. inspect `GET /platform/providers/quota-policy`, `GET /platform/providers/budget-policy`, and `GET /platform/providers/operations-status` when quota, budget, or degradation blockers need detail
+4. inspect `GET /platform/providers/runbook-readiness` when operational blockers need detail
+5. inspect `GET /platform/providers/evidence-readiness` when evaluation, audit, or failover evidence blockers need detail
+6. confirm the embedded `provider_governance` and `provider_operations` blocks in `GET /platform/runtime-status` match the detailed provider views
+7. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
+8. confirm staged provider policy, runtime, failure-mode, operations, and degradation fixtures plus the recorded provider regression baseline still match the intended rollout posture
+9. confirm vendor escalation, quota response, spend-anomaly response, circuit-open response, rollback, and provider observability procedures are documented and approved
+10. confirm provider-backed task runtime notes still describe the current rollout truthfully, especially when a live provider is allowlisted but intentionally disabled
+11. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
+12. only then proceed with any live-provider activation rollout review
 
 ## Prompt Activation Governance
 

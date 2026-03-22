@@ -105,11 +105,12 @@ def test_provider_runbook_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
-    assert body["required_item_count"] == 5
+    assert body["required_item_count"] == 7
     assert body["completed_required_item_count"] == 0
     assert body["items"][0]["runbook_id"] == "provider_operational_runbook"
     assert body["items"][1]["status"] == "NOT_READY"
-    assert body["items"][3]["runbook_id"] == "provider_incident_response_and_rollback"
+    assert body["items"][3]["runbook_id"] == "provider_spend_anomaly_response"
+    assert body["items"][5]["runbook_id"] == "provider_degradation_and_circuit_response"
 
 
 def test_provider_evidence_readiness_route(client: TestClient) -> None:
@@ -119,15 +120,19 @@ def test_provider_evidence_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["evidence_ready"] is False
-    assert body["required_item_count"] == 6
-    assert body["completed_required_item_count"] == 4
+    assert body["required_item_count"] == 8
+    assert body["completed_required_item_count"] == 6
     assert body["items"][0]["evidence_id"] == "provider_policy_fixture_pack"
     assert body["items"][0]["status"] == "READY"
     assert body["items"][1]["evidence_id"] == "provider_runtime_fixture_pack"
     assert body["items"][1]["status"] == "READY"
-    assert body["items"][3]["evidence_id"] == "provider_regression_run_baseline"
+    assert body["items"][3]["evidence_id"] == "provider_operations_fixture_pack"
     assert body["items"][3]["status"] == "READY"
-    assert body["items"][4]["status"] == "FOUNDATION_STAGED"
+    assert body["items"][4]["evidence_id"] == "provider_degradation_fixture_pack"
+    assert body["items"][4]["status"] == "READY"
+    assert body["items"][5]["evidence_id"] == "provider_regression_run_baseline"
+    assert body["items"][5]["status"] == "READY"
+    assert body["items"][6]["status"] == "FOUNDATION_STAGED"
 
 
 def test_provider_governance_status_route(client: TestClient) -> None:
