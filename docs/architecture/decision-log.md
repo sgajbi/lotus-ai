@@ -317,3 +317,21 @@ Current posture:
 1. evaluation readiness is inspectable through `/platform/evals/catalog`,
 2. evidence categories mirror the deterministic execution evidence bundle,
 3. fixture families are staged and documented before a fuller evaluation runner exists.
+
+## Decision 20: Platform Runtime Status Should Summarize Evaluation Posture
+
+Decision:
+
+`/platform/runtime-status` now embeds evaluation runtime posture in addition to the dedicated evaluation endpoints.
+
+Why:
+
+1. evaluation readiness is part of operational platform posture, not just developer documentation,
+2. operators should not need multiple endpoint hops for routine readiness checks,
+3. this keeps evaluation aligned with the same runtime-summary pattern already used for prompt and safety posture.
+
+Current posture:
+
+1. evaluation runtime status is available through `/platform/evals/runtime-status`,
+2. platform runtime status embeds the same evaluation summary,
+3. the evaluation runner remains inactive in the foundation phase.

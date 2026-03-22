@@ -15,6 +15,7 @@
 - General health: /health
 - Metadata: /metadata
 - Platform runtime status: /platform/runtime-status
+- Evaluation runtime status: /platform/evals/runtime-status
 - Safety runtime status: /platform/safety/runtime-status
 - Retrieval runtime status: /platform/retrieval/runtime-status
 
@@ -38,10 +39,11 @@ Expected operator flow for SQL-backed stores:
 
 1. apply migrations with `make migration-apply`
 2. verify `GET /platform/runtime-status`
-3. confirm prompt runtime selection in the embedded prompt runtime summary
-4. verify `GET /platform/safety/runtime-status`
-5. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
-6. only then proceed with rollout if readiness is `READY`
+3. confirm evaluation runtime posture in the embedded evaluation summary
+4. confirm prompt runtime selection in the embedded prompt runtime summary
+5. verify `GET /platform/safety/runtime-status`
+6. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
+7. only then proceed with rollout if readiness is `READY`
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
 

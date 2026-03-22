@@ -43,6 +43,18 @@ def test_evaluation_catalog_route() -> None:
     )
 
 
+def test_evaluation_runtime_status_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/evals/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["evidence_category_count"] == 5
+    assert body["evaluation_runner_active"] is False
+
+
 def test_provider_catalog_route() -> None:
     client = TestClient(app)
 
@@ -109,6 +121,8 @@ def test_platform_runtime_status_route() -> None:
     assert body["audit_store"]["status"] == "READY"
     assert body["retrieval_store"]["mode"] == "memory"
     assert body["retrieval_store"]["status"] == "READY"
+    assert body["evaluation_runtime"]["evidence_category_count"] == 5
+    assert body["evaluation_runtime"]["evaluation_runner_active"] is False
     assert body["prompt_runtime"]["selection_mode"] == "STATIC_ACTIVE"
     assert body["prompt_runtime"]["active_prompt_count"] >= 7
     assert any(

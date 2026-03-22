@@ -73,6 +73,7 @@ work has a stable evidence schema to build on.
 The current platform inspection surface for evaluation readiness is:
 
 1. `GET /platform/evals/catalog`
+2. `GET /platform/evals/runtime-status`
 
 This catalog exposes:
 

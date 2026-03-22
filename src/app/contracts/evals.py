@@ -33,3 +33,24 @@ class EvaluationCatalogResponse(BaseModel):
     fixture_families: list[EvaluationFixtureDescriptor] = Field(
         description="Known evaluation fixture families for current and planned regression coverage."
     )
+
+
+class EvaluationRuntimeStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the evaluation runtime status.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    evidence_category_count: int = Field(
+        description="Number of execution evidence categories currently exposed."
+    )
+    staged_fixture_count: int = Field(
+        description="Number of evaluation fixture families currently staged."
+    )
+    documented_fixture_count: int = Field(
+        description="Number of evaluation fixture families that remain documented-only."
+    )
+    evaluation_runner_active: bool = Field(
+        description="Whether a live evaluation runner is active in the current phase."
+    )
+    message: str = Field(
+        description="Human-readable explanation of the current evaluation posture."
+    )
