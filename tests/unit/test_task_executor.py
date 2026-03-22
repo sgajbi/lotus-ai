@@ -129,6 +129,9 @@ def test_execute_task_runs_bounded_knowledge_search() -> None:
     assert response.result.structured_output["catalog_only"] is True
     assert response.result.structured_output["query"] == "shared ai platform service"
     assert response.result.structured_output["hit_count"] >= 1
+    assert response.result.structured_output["citation_count"] >= 1
+    assert response.result.structured_output["support_score"] >= 0.5
+    assert response.result.structured_output["citations"][0]["source_id"] == "lotus-platform-rfcs"
     assert response.result.structured_output["hits"][0]["source_id"] == "lotus-platform-rfcs"
 
 
@@ -182,5 +185,32 @@ def test_execute_task_runs_bounded_knowledge_answer() -> None:
     assert response.result.structured_output["provider_id"] == "retrieval.answer"
     assert response.result.structured_output["catalog_only"] is True
     assert response.result.structured_output["hit_count"] >= 1
-    assert response.result.structured_output["citations"][0] == "lotus-platform-rfcs"
+    assert response.result.structured_output["answer_mode"] == "CITATION_BACKED"
+    assert response.result.structured_output["support_score"] >= 0.5
+    assert response.result.structured_output["citations"][0]["source_id"] == "lotus-platform-rfcs"
     assert "Sources: lotus-platform-rfcs" in response.result.message
+
+
+def test_execute_task_refuses_low_support_knowledge_answer() -> None:
+    response = execute_task(
+        TaskExecutionRequest(
+            task_id="knowledge_answer.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ka-124"),
+            context=TaskContextEnvelope(
+                summary="Answer from Lotus knowledge sources",
+                payload={
+                    "query": "shared migration standards",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                source_refs=["lotus-manage:knowledge-answer:002"],
+            ),
+            expected_output_label=OutputLabel.RETRIEVAL_ANSWER,
+        )
+    )
+
+    assert response.status == "COMPLETED"
+    assert response.result.structured_output["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT"
+    assert response.result.structured_output["support_score"] < 0.75
+    assert "Insufficient support" in response.result.message

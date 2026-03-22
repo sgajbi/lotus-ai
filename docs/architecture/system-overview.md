@@ -167,6 +167,10 @@ placeholder for retrieval-class work.
 `knowledge_answer.v1` now also builds a conservative source-backed answer on top of the same
 bounded retrieval path, with explicit citations preserved in the task result payload.
 
+Low-support retrieval matches now produce an explicit conservative refusal mode for
+`knowledge_answer.v1` instead of a weak answer, which keeps the retrieval-backed task path
+more defensible under the current catalog-only execution model.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

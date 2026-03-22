@@ -232,6 +232,9 @@ def test_task_execute_contract_supports_bounded_knowledge_search(client: TestCli
     assert body["result"]["structured_output"]["provider_id"] == "retrieval.catalog"
     assert body["result"]["structured_output"]["catalog_only"] is True
     assert body["result"]["structured_output"]["hit_count"] >= 1
+    assert body["result"]["structured_output"]["citation_count"] >= 1
+    assert body["result"]["structured_output"]["support_score"] >= 0.5
+    assert body["result"]["structured_output"]["citations"][0]["source_id"] == "lotus-platform-rfcs"
     assert body["result"]["structured_output"]["hits"][0]["source_id"] == "lotus-platform-rfcs"
 
 
@@ -270,5 +273,40 @@ def test_task_execute_contract_supports_bounded_knowledge_answer(client: TestCli
     assert body["audit"]["prompt_version"] == "foundation.knowledge_answer.v1"
     assert body["result"]["structured_output"]["provider_id"] == "retrieval.answer"
     assert body["result"]["structured_output"]["catalog_only"] is True
-    assert body["result"]["structured_output"]["citations"][0] == "lotus-platform-rfcs"
+    assert body["result"]["structured_output"]["answer_mode"] == "CITATION_BACKED"
+    assert body["result"]["structured_output"]["support_score"] >= 0.5
+    assert body["result"]["structured_output"]["citations"][0]["source_id"] == "lotus-platform-rfcs"
     assert "Sources: lotus-platform-rfcs" in body["result"]["message"]
+
+
+def test_task_execute_contract_refuses_low_support_knowledge_answer(client: TestClient) -> None:
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "knowledge_answer.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-knowledge-3",
+                "requested_by": "ops.user@lotus",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Answer from Lotus knowledge sources",
+                "payload": {
+                    "query": "shared migration standards",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                "source_refs": ["lotus-manage:knowledge-answer:003"],
+            },
+            "expected_output_label": "RETRIEVAL_ANSWER",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["task_id"] == "knowledge_answer.v1"
+    assert body["result"]["structured_output"]["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT"
+    assert body["result"]["structured_output"]["support_score"] < 0.75
+    assert "Insufficient support" in body["result"]["message"]

@@ -18,6 +18,8 @@ Exception:
    staged-source subset instead of the generic text stub.
 2. `knowledge_answer.v1` now returns a conservative citation-carrying answer built from the
    same bounded retrieval hits instead of the generic text stub.
+3. low-support `knowledge_answer.v1` executions now return an explicit refusal message instead
+   of overstating weak retrieval support.
 
 This is intentional:
 
@@ -87,6 +89,8 @@ Supported enabled tasks in foundation phase:
 1. a conservative answer string in `result.message`
 2. `citations` in `result.structured_output`
 3. the bounded retrieval hits used to assemble the answer
+4. `answer_mode` and `support_score` so callers can distinguish citation-backed answers from
+   explicit low-support refusals
 
 ## Error Behavior
 
