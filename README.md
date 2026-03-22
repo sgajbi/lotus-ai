@@ -37,6 +37,7 @@ The current execution posture is:
 - a second file-backed fixture family now exists for `summarize.v1`,
 - retrieval citation and refusal examples are now staged as file-backed evaluation fixtures,
 - provider policy behavior is now staged as file-backed evaluation fixtures,
+- safety policy behavior is now staged as file-backed evaluation fixtures,
 - evaluation fixture manifest validity is now enforced by a dedicated CI gate,
 - live model execution remains disabled until a governed provider rollout exists.
 

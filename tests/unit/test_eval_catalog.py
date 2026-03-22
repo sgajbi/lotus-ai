@@ -42,3 +42,11 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
     assert provider_fixture.status == "STAGED"
     assert provider_fixture.manifest_path == "docs/evals/fixtures/providers.policy/basic_cases.json"
     assert provider_fixture.case_count == 2
+    safety_fixture = next(
+        fixture
+        for fixture in catalog.fixture_families
+        if fixture.fixture_id == "safety_policy_examples"
+    )
+    assert safety_fixture.status == "STAGED"
+    assert safety_fixture.manifest_path == "docs/evals/fixtures/safety.policy/basic_cases.json"
+    assert safety_fixture.case_count == 2

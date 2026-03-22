@@ -1,0 +1,37 @@
+{
+  "task_id": "safety.policy.v1",
+  "fixture_family": "safety_policy_examples",
+  "cases": [
+    {
+      "case_id": "explanation_task_requires_minimization",
+      "summary": "Explanation tasks require minimization and explicit response labeling.",
+      "input": {
+        "task_id": "explain.v1",
+        "output_label": "EXPLANATION_ONLY"
+      },
+      "expected": {
+        "redaction_posture": "MINIMIZATION_REQUIRED",
+        "response_labeling_required": true,
+        "intended_use_note_contains": "explanatory assistance"
+      }
+    },
+    {
+      "case_id": "runtime_safety_status_tracks_enforced_controls",
+      "summary": "Runtime safety posture keeps enforced and documented controls separated in foundation phase.",
+      "input": {
+        "safety_mode": "documented_only"
+      },
+      "expected": {
+        "enforced_control_ids": [
+          "response_labeling",
+          "correlation_and_audit"
+        ],
+        "documented_only_control_ids": [
+          "context_minimization",
+          "runtime_redaction_engine"
+        ],
+        "runtime_redaction_active": false
+      }
+    }
+  ]
+}

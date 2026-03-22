@@ -461,3 +461,21 @@ Current posture:
 1. `provider_policy_examples` is now backed by a fixture file,
 2. evaluation runtime status counts provider-policy cases alongside task and retrieval cases,
 3. live provider execution remains disabled until a separate governed activation slice exists.
+
+## Decision 28: Safety Policy Should Be Covered By Evaluation Fixtures Before Runtime Redaction Exists
+
+Decision:
+
+Safety policy and runtime safety posture are staged as governed evaluation fixtures before any runtime redaction engine is introduced.
+
+Why:
+
+1. safety semantics are already part of the public platform contract and should be regression-tested as such,
+2. enforced-versus-documented control separation is a core governance promise in foundation phase,
+3. fixture-backed expectations let us evolve safety implementation later without losing the documented operational posture.
+
+Current posture:
+
+1. `safety_policy_examples` is now backed by a fixture file,
+2. evaluation runtime status counts safety-policy cases alongside task, retrieval, and provider-policy cases,
+3. runtime redaction remains documented-only until a later governed activation slice.
