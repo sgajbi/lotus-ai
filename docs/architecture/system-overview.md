@@ -118,6 +118,10 @@ contract coverage can evolve independently of the broader platform health suite.
 The standard integration API modules now share a common test client fixture so harness setup
 is centralized without hiding route-level assertions behind generic helpers.
 
+Runbook, evidence, and governance builders also share a small readiness helper for item-count
+and blocking-count bookkeeping, so the domain services stay focused on their own governed
+content instead of repeating the same counting logic.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

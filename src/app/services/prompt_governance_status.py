@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.config import settings
 from app.contracts.prompts import PromptGovernanceStatusSummaryResponse
+from app.services.governance_readiness import summarize_governance_flags
 from app.services.prompt_activation_readiness import build_prompt_activation_readiness
 from app.services.prompt_evidence_readiness import build_prompt_evidence_readiness
 from app.services.prompt_runbook_readiness import build_prompt_runbook_readiness
@@ -11,15 +12,10 @@ def build_prompt_governance_status_summary() -> PromptGovernanceStatusSummaryRes
     activation_readiness = build_prompt_activation_readiness()
     runbook_readiness = build_prompt_runbook_readiness()
     evidence_readiness = build_prompt_evidence_readiness()
-    governance_ready = (
-        activation_readiness.activation_ready
-        and runbook_readiness.runbook_ready
-        and evidence_readiness.evidence_ready
-    )
-    blocking_area_count = (
-        int(not activation_readiness.activation_ready)
-        + int(not runbook_readiness.runbook_ready)
-        + int(not evidence_readiness.evidence_ready)
+    governance_ready, blocking_area_count = summarize_governance_flags(
+        activation_readiness.activation_ready,
+        runbook_readiness.runbook_ready,
+        evidence_readiness.evidence_ready,
     )
     governance_summary = [
         "Prompt technical activation remains blocked in foundation phase until live promotion, approval, and rollback controls are explicitly rolled out.",
