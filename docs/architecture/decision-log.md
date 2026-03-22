@@ -210,6 +210,24 @@ Current posture:
 2. required runbook items remain not ready in foundation phase,
 3. live-provider activation should not be considered complete in future rollout slices without both technical and runbook readiness.
 
+## Decision 11C: Provider Governance Review Should Have A Single Summary Surface
+
+Decision:
+
+`lotus-ai` exposes a combined provider governance-status view for rollout review.
+
+Why:
+
+1. provider rollout review should not require operators to manually merge multiple endpoints to assess activation posture,
+2. a bank-grade live-provider activation review needs both technical and operational provider posture in one governed response,
+3. the summary endpoint reduces interpretation drift while preserving the more detailed provider readiness endpoints underneath.
+
+Current posture:
+
+1. `/platform/providers/governance-status` embeds both activation readiness and runbook readiness,
+2. the response explicitly reports blocked provider governance posture in foundation phase,
+3. detailed provider readiness endpoints remain available for deeper inspection and future rollout work.
+
 ## Decision 12: Safety Posture Must Be Inspectable
 
 Decision:

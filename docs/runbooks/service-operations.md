@@ -20,6 +20,7 @@
 - Async governance status: /platform/async/governance-status
 - Provider activation readiness: /platform/providers/activation-readiness
 - Provider runbook readiness: /platform/providers/runbook-readiness
+- Provider governance status: /platform/providers/governance-status
 - Evaluation runtime status: /platform/evals/runtime-status
 - Safety runtime status: /platform/safety/runtime-status
 - Retrieval runtime status: /platform/retrieval/runtime-status
@@ -68,11 +69,12 @@ Before any future async activation slice:
 
 Before any future live-provider activation slice:
 
-1. verify `GET /platform/providers/activation-readiness`
-2. inspect `GET /platform/providers/runbook-readiness`
-3. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
-4. confirm vendor escalation, rate-limit response, and provider observability procedures are documented and approved
-5. only then proceed with any live-provider activation rollout review
+1. verify `GET /platform/providers/governance-status`
+2. inspect `GET /platform/providers/activation-readiness` when technical blockers need detail
+3. inspect `GET /platform/providers/runbook-readiness` when operational blockers need detail
+4. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
+5. confirm vendor escalation, rate-limit response, and provider observability procedures are documented and approved
+6. only then proceed with any live-provider activation rollout review
 
 ## Incident First Checks
 

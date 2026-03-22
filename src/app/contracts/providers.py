@@ -148,3 +148,23 @@ class ProviderRunbookReadinessResponse(BaseModel):
     items: list[ProviderRunbookReadinessItem] = Field(
         description="Governed provider operational runbook readiness items."
     )
+
+
+class ProviderGovernanceStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the provider governance status view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    governance_ready: bool = Field(
+        description="Whether provider governance posture is currently sufficient for live activation."
+    )
+    activation_readiness: ProviderActivationReadinessResponse = Field(
+        description="Technical activation-readiness summary for provider execution."
+    )
+    runbook_readiness: ProviderRunbookReadinessResponse = Field(
+        description="Operational runbook-readiness summary for provider execution."
+    )
+    blocking_area_count: int = Field(
+        description="Number of top-level provider governance areas currently blocking activation."
+    )
+    governance_summary: list[str] = Field(
+        description="Human-readable summary of the current provider governance posture."
+    )

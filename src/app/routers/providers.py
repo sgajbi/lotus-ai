@@ -5,11 +5,13 @@ from fastapi import APIRouter
 from app.contracts.providers import (
     ProviderActivationReadinessResponse,
     ProviderCatalogResponse,
+    ProviderGovernanceStatusResponse,
     ProviderPolicyResponse,
     ProviderRunbookReadinessResponse,
 )
 from app.services.provider_activation_readiness import build_provider_activation_readiness
 from app.services.provider_catalog import build_provider_catalog
+from app.services.provider_governance_status import build_provider_governance_status
 from app.services.provider_policy import build_provider_policy
 from app.services.provider_runbook_readiness import build_provider_runbook_readiness
 
@@ -86,3 +88,21 @@ async def get_provider_activation_readiness_route() -> ProviderActivationReadine
 )
 async def get_provider_runbook_readiness_route() -> ProviderRunbookReadinessResponse:
     return build_provider_runbook_readiness()
+
+
+@router.get(
+    "/governance-status",
+    response_model=ProviderGovernanceStatusResponse,
+    operation_id="getProviderGovernanceStatus",
+    summary="Get lotus-ai provider governance status",
+    description=(
+        "Returns the combined technical and operational governance posture for lotus-ai live "
+        "provider execution so rollout reviewers can assess activation readiness in one view."
+    ),
+    responses={
+        200: {"description": "Provider governance status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_governance_status_route() -> ProviderGovernanceStatusResponse:
+    return build_provider_governance_status()
