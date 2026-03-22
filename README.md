@@ -17,6 +17,12 @@ Current goals:
 
 This is deliberate. The early focus is to make `lotus-ai` understandable, testable, and governable before it becomes feature-rich.
 
+The current persistence posture is:
+
+- in-memory audit storage by default for simple local development,
+- a SQLAlchemy-backed audit adapter available behind the same repository interface for durable storage,
+- explicit configuration to move between the two without changing API contracts.
+
 ## What lotus-ai Does
 
 - LLM gateway and model routing

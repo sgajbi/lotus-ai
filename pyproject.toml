@@ -13,7 +13,8 @@ dependencies = [
   "uvicorn>=0.41.0",
   "pydantic>=2.12.0",
   "pydantic-settings>=2.13.0",
-  "prometheus-fastapi-instrumentator>=7.1.0"
+  "prometheus-fastapi-instrumentator>=7.1.0",
+  "sqlalchemy>=2.0.44"
 ]
 
 [project.optional-dependencies]

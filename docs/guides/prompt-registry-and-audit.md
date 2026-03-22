@@ -34,17 +34,36 @@ This is intentionally simple for foundation phase.
 
 Current implementation:
 
-1. in-memory audit store abstraction,
-2. save-on-execution behavior,
-3. retrieval by `request_id`.
+1. repository abstraction for audit persistence,
+2. in-memory adapter for simple development,
+3. SQLAlchemy adapter for durable storage,
+4. save-on-execution behavior,
+5. retrieval by `request_id`.
 
-This gives us immediate traceability while keeping persistence pragmatic.
+This gives us immediate traceability while keeping the persistence architecture clean.
 
-## Why In-Memory First
+## Why We Introduced the Repository Seam First
 
-1. We want the contract and service seams first.
-2. We do not yet need a durable database just to validate the architecture.
-3. Moving to PostgreSQL later should be an implementation change behind the same service interfaces.
+1. We wanted contract and service seams before durable storage complexity.
+2. We wanted durable persistence to be an adapter change, not an API redesign.
+3. The same execution flow should work against memory and SQL-backed stores.
+
+## Durable Persistence Path
+
+Current durable path:
+
+1. `LOTUS_AI_AUDIT_STORE_MODE=sqlalchemy`
+2. `LOTUS_AI_DATABASE_URL=<db-url>`
+
+The SQLAlchemy adapter currently creates the audit table automatically for the configured database.
+
+This is an incremental step, not the final enterprise migration posture.
+
+The long-term target remains:
+
+1. versioned migrations,
+2. PostgreSQL as the canonical durable runtime store,
+3. migration smoke checks aligned to Lotus platform standards.
 
 ## Current Endpoints
 
@@ -56,8 +75,8 @@ This gives us immediate traceability while keeping persistence pragmatic.
 
 Likely next evolution:
 
-1. prompt files or database-backed prompt registry,
-2. durable audit persistence in PostgreSQL,
+1. database-backed prompt registry or prompt asset packaging,
+2. migration-managed PostgreSQL audit persistence,
 3. tenant-aware prompt selection,
 4. prompt promotion and rollback workflow,
 5. richer audit records including safety-policy outcomes.
