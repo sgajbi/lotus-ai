@@ -200,6 +200,10 @@ rate-limit, and upstream-error failure counts plus circuit-open cooldown timesta
 through the configured provider-operations store instead of process-local memory, so degraded and
 circuit-open posture remain durable when the SQL-backed provider-ops path is enabled.
 
+The provider-evidence and operations runbook surfaces now also treat that durable state model as
+the real control plane. Evaluation fixtures, recorded baselines, and operator guidance now describe
+restart-survival and durable recovery posture explicitly instead of assuming process-local resets.
+
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
 

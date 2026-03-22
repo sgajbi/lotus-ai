@@ -31,6 +31,22 @@
         "must_emit_structured_rejection": true,
         "expected_outcome": "BUDGET_BLOCK"
       }
+    },
+    {
+      "case_id": "persisted_budget_posture_survives_runtime_restart",
+      "summary": "Tracked spend should remain authoritative after a service restart when the durable provider-operations store is enabled.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "openai",
+        "provider_operations_store_mode": "sqlalchemy",
+        "recorded_spend_usd": 0.75,
+        "hard_budget_usd": 1.0
+      },
+      "expected": {
+        "budget_state": "SOFT_LIMIT_REACHED",
+        "must_survive_restart": true,
+        "expected_outcome": "DURABLE_BUDGET_POSTURE"
+      }
     }
   ]
 }

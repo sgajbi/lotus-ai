@@ -27,7 +27,7 @@ def test_evaluation_seam_coverage_reports_staged_fixtures_by_platform_boundary()
 
     provider_execution = seam_coverage[2]
     assert provider_execution.staged_fixture_count == 5
-    assert provider_execution.staged_case_count == 10
+    assert provider_execution.staged_case_count == 12
     assert provider_execution.fixture_ids == [
         "provider_policy_examples",
         "provider_runtime_examples",

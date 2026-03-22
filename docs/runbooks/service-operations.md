@@ -96,6 +96,24 @@ Before any future live-provider activation slice:
 11. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
 12. only then proceed with any live-provider activation rollout review
 
+## Durable Provider Operations Recovery
+
+When `LOTUS_AI_PROVIDER_OPERATIONS_STORE_MODE=sqlalchemy`, quota, budget, and degradation posture are durable rather than process-local.
+
+Operator rules:
+
+1. do not treat a service restart as a quota, spend, or circuit reset
+2. review `/platform/providers/quota-policy`, `/platform/providers/budget-policy`, and `/platform/providers/operations-status` before assuming provider posture has cleared
+3. investigate persistent blocking posture as durable control-plane state, not as stale process memory
+4. any future reset, rollover, or recovery action must be governed and documented rather than applied as an ad hoc table edit
+
+Current recovery expectations:
+
+1. quota exhaustion remains durable until a governed reset or rollover procedure exists
+2. tracked spend remains durable until a governed budget-period or reset procedure exists
+3. circuit-open posture remains durable until the persisted cooldown expires or a governed recovery action is defined
+4. restart alone must not be used as an operational workaround for provider controls
+
 ## Prompt Activation Governance
 
 Before any future live-prompt activation slice:

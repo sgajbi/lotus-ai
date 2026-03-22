@@ -82,7 +82,7 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
         provider_operations_fixture.manifest_path
         == "docs/evals/fixtures/providers.operations/basic_cases.json"
     )
-    assert provider_operations_fixture.case_count == 2
+    assert provider_operations_fixture.case_count == 3
     provider_degradation_fixture = next(
         fixture
         for fixture in catalog.fixture_families
@@ -93,7 +93,7 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
         provider_degradation_fixture.manifest_path
         == "docs/evals/fixtures/providers.degradation/basic_cases.json"
     )
-    assert provider_degradation_fixture.case_count == 2
+    assert provider_degradation_fixture.case_count == 3
     safety_fixture = next(
         fixture
         for fixture in catalog.fixture_families
