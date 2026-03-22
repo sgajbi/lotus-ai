@@ -72,9 +72,10 @@ Before any future live-provider activation slice:
 1. verify `GET /platform/providers/governance-status`
 2. inspect `GET /platform/providers/activation-readiness` when technical blockers need detail
 3. inspect `GET /platform/providers/runbook-readiness` when operational blockers need detail
-4. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
-5. confirm vendor escalation, rate-limit response, and provider observability procedures are documented and approved
-6. only then proceed with any live-provider activation rollout review
+4. confirm the embedded `provider_governance` block in `GET /platform/runtime-status` matches the detailed provider governance view
+5. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
+6. confirm vendor escalation, rate-limit response, and provider observability procedures are documented and approved
+7. only then proceed with any live-provider activation rollout review
 
 ## Incident First Checks
 

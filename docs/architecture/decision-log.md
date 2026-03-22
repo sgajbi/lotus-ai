@@ -228,6 +228,24 @@ Current posture:
 2. the response explicitly reports blocked provider governance posture in foundation phase,
 3. detailed provider readiness endpoints remain available for deeper inspection and future rollout work.
 
+## Decision 11D: Platform Runtime Status Should Embed Provider Governance Posture
+
+Decision:
+
+`/platform/runtime-status` now embeds provider governance posture in addition to the dedicated provider governance endpoint.
+
+Why:
+
+1. platform operators should have one primary runtime entry point that includes the top-level provider rollout posture,
+2. provider governance is operationally significant once multiple provider readiness surfaces exist,
+3. embedding the summary reduces endpoint hopping while preserving the dedicated provider governance endpoint.
+
+Current posture:
+
+1. platform runtime status includes `provider_governance`,
+2. provider governance remains separately inspectable through `/platform/providers/governance-status`,
+3. foundation phase continues to report blocked provider governance in both views.
+
 ## Decision 12: Safety Posture Must Be Inspectable
 
 Decision:

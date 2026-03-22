@@ -191,6 +191,10 @@ Current rules:
 7. task execution already flows through an internal provider gateway,
 8. runtime execution remains disabled until a stronger provider gateway and safety posture is in place.
 
+`/platform/runtime-status` now embeds provider governance posture directly so operators can review
+provider rollout state from the same top-level runtime surface that already carries async
+governance posture.
+
 ## Safety Posture
 
 `lotus-ai` exposes a governed safety policy so downstream teams can inspect what is enforced today
