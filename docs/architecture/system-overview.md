@@ -17,3 +17,90 @@ The other Lotus applications remain responsible for:
 2. domain semantics,
 3. deterministic workflows,
 4. applying or rejecting AI output.
+
+## Architectural Shape
+
+The service is intentionally being built in layers.
+
+### Contracts
+
+- `src/app/contracts/`
+
+Owns:
+
+1. task categories,
+2. output labels,
+3. capability catalog response models,
+4. future task request and response envelopes.
+
+### Configuration
+
+- `src/app/config.py`
+
+Owns:
+
+1. service phase settings,
+2. provider mode settings,
+3. retrieval mode settings,
+4. safety mode settings.
+
+### Services
+
+- `src/app/services/`
+
+Owns:
+
+1. orchestration logic behind routers,
+2. capability catalog assembly,
+3. future prompt and provider orchestration.
+
+### Routers
+
+- `src/app/routers/`
+
+Owns:
+
+1. public API endpoints,
+2. OpenAPI-facing contracts,
+3. upstream integration surfaces.
+
+## Framework Policy
+
+`lotus-ai` is a normal backend service first and an AI platform second.
+
+That means the service is built around:
+
+1. explicit API contracts,
+2. typed Python modules,
+3. observable service orchestration,
+4. Lotus-owned safety and audit controls.
+
+AI frameworks may be used selectively, but they must not become the source of truth for:
+
+1. request flow,
+2. task semantics,
+3. output policy,
+4. audit boundaries.
+
+## LangGraph Guidance
+
+LangGraph is currently out of the foundation scope.
+
+It may be appropriate later for:
+
+1. bounded async orchestration,
+2. multi-step tool workflows,
+3. internal state-machine style AI execution.
+
+It is not appropriate right now as the base architecture for all of `lotus-ai`.
+
+## Current Foundation Endpoints
+
+1. `/`
+2. `/health`
+3. `/health/live`
+4. `/health/ready`
+5. `/metadata`
+6. `/platform/capabilities`
+
+The current capability endpoint is intentionally simple. It gives other Lotus apps a stable discovery surface while the rest of the platform is still under construction.
