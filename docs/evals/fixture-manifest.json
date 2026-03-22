@@ -25,8 +25,9 @@
   "fixture_families": [
     {
       "fixture_id": "task_capability_contracts",
-      "status": "DOCUMENTED",
-      "description": "Contract fixtures covering supported task surfaces and policy behavior."
+      "status": "STAGED",
+      "description": "Contract fixtures covering supported task surfaces and policy behavior.",
+      "manifest_path": "docs/evals/fixtures/tasks.contracts/basic_cases.json"
     },
     {
       "fixture_id": "explanation_task_examples",

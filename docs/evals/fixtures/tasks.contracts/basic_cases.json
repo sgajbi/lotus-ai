@@ -1,0 +1,30 @@
+{
+  "task_id": "task.capability.v1",
+  "fixture_family": "task_capability_contracts",
+  "cases": [
+    {
+      "case_id": "explain_task_is_enabled_and_explanation_only",
+      "summary": "The explanation task remains enabled and bound to explanation-only output.",
+      "input": {
+        "task_id": "explain.v1"
+      },
+      "expected": {
+        "enabled": true,
+        "category": "explain",
+        "output_label": "EXPLANATION_ONLY"
+      }
+    },
+    {
+      "case_id": "knowledge_search_task_remains_disabled_until_retrieval_activation",
+      "summary": "Knowledge-search stays disabled while retrieval execution is not yet active.",
+      "input": {
+        "task_id": "knowledge_search.v1"
+      },
+      "expected": {
+        "enabled": false,
+        "category": "knowledge_search",
+        "output_label": "RETRIEVAL_ANSWER"
+      }
+    }
+  ]
+}

@@ -126,6 +126,10 @@ The first safety-policy staged fixture asset now exists at:
 
 1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/safety.policy/basic_cases.json)
 
-This gives the platform real file-backed fixture families for `explain.v1`, `summarize.v1`,
-governed retrieval citation/refusal behavior, provider-policy behavior, and safety-policy behavior
-while the remaining inventory stays documented.
+The task-capability contract fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/tasks.contracts/basic_cases.json)
+
+This gives the platform real file-backed fixture families for task capability contracts, `explain.v1`,
+`summarize.v1`, governed retrieval citation/refusal behavior, provider-policy behavior, and
+safety-policy behavior.

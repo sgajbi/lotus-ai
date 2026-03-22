@@ -8,6 +8,14 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
     assert catalog.delivery_phase == "foundation"
     assert catalog.manifest_version == "foundation.v1"
     assert any(category.category_id == "task_contract" for category in catalog.evidence_categories)
+    task_fixture = next(
+        fixture
+        for fixture in catalog.fixture_families
+        if fixture.fixture_id == "task_capability_contracts"
+    )
+    assert task_fixture.status == "STAGED"
+    assert task_fixture.manifest_path == "docs/evals/fixtures/tasks.contracts/basic_cases.json"
+    assert task_fixture.case_count == 2
     explain_fixture = next(
         fixture
         for fixture in catalog.fixture_families

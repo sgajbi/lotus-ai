@@ -479,3 +479,21 @@ Current posture:
 1. `safety_policy_examples` is now backed by a fixture file,
 2. evaluation runtime status counts safety-policy cases alongside task, retrieval, and provider-policy cases,
 3. runtime redaction remains documented-only until a later governed activation slice.
+
+## Decision 29: The Initial Evaluation Inventory Should Be Fully File-Backed
+
+Decision:
+
+The remaining task-capability contract family is staged so the initial evaluation inventory is fully backed by governed fixture files.
+
+Why:
+
+1. leaving one documented-only family weakens the promise that current evaluation posture is artifact-backed,
+2. task enablement and output-label contracts are part of the service surface and deserve the same governed treatment as the other seams,
+3. fully staged inventory gives later evaluation tooling a clean, uniform substrate.
+
+Current posture:
+
+1. `task_capability_contracts` is now backed by a fixture file,
+2. the initial evaluation manifest no longer has documented-only families,
+3. every current fixture family is discoverable, validated, and file-backed.
