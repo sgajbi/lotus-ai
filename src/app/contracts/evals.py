@@ -27,6 +27,9 @@ class EvaluationCatalogResponse(BaseModel):
     service: str = Field(description="Service name emitting the evaluation catalog.")
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    manifest_version: str = Field(
+        description="Version identifier for the evaluation fixture manifest."
+    )
     evidence_categories: list[EvaluationEvidenceCategoryDescriptor] = Field(
         description="Execution evidence categories currently emitted by lotus-ai."
     )
@@ -39,6 +42,9 @@ class EvaluationRuntimeStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the evaluation runtime status.")
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    manifest_version: str = Field(
+        description="Version identifier for the evaluation fixture manifest."
+    )
     evidence_category_count: int = Field(
         description="Number of execution evidence categories currently exposed."
     )

@@ -80,3 +80,10 @@ This catalog exposes:
 1. current execution evidence categories,
 2. staged fixture families,
 3. the current delivery-phase posture for evaluation assets.
+
+The source of truth for fixture inventory is now:
+
+1. [fixture-manifest.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixture-manifest.json)
+
+This manifest is versioned so evaluation catalog and runtime status surfaces can point to a governed
+artifact instead of only hardcoded service metadata.

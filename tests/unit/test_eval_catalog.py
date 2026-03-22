@@ -6,6 +6,7 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
 
     assert catalog.service == "lotus-ai"
     assert catalog.delivery_phase == "foundation"
+    assert catalog.manifest_version == "foundation.v1"
     assert any(category.category_id == "task_contract" for category in catalog.evidence_categories)
     assert any(
         fixture.fixture_id == "task_capability_contracts" for fixture in catalog.fixture_families

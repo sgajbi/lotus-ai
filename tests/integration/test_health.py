@@ -35,6 +35,7 @@ def test_evaluation_catalog_route() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
+    assert body["manifest_version"] == "foundation.v1"
     assert any(
         category["category_id"] == "task_contract" for category in body["evidence_categories"]
     )
@@ -51,6 +52,7 @@ def test_evaluation_runtime_status_route() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
+    assert body["manifest_version"] == "foundation.v1"
     assert body["evidence_category_count"] == 5
     assert body["evaluation_runner_active"] is False
 
@@ -121,6 +123,7 @@ def test_platform_runtime_status_route() -> None:
     assert body["audit_store"]["status"] == "READY"
     assert body["retrieval_store"]["mode"] == "memory"
     assert body["retrieval_store"]["status"] == "READY"
+    assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
     assert body["evaluation_runtime"]["evidence_category_count"] == 5
     assert body["evaluation_runtime"]["evaluation_runner_active"] is False
     assert body["prompt_runtime"]["selection_mode"] == "STATIC_ACTIVE"

@@ -31,6 +31,7 @@ The current execution posture is:
 - task execution responses now include structured evidence about prompt, provider, safety, and retrieval posture,
 - evaluation catalog now exposes staged evidence categories and fixture families,
 - platform runtime status now summarizes evaluation runtime posture too,
+- evaluation fixture inventory is now backed by a versioned in-repo manifest,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

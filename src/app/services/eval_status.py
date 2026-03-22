@@ -21,6 +21,7 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
         service=catalog.service,
         version=catalog.version,
         delivery_phase=catalog.delivery_phase,
+        manifest_version=catalog.manifest_version,
         evidence_category_count=len(catalog.evidence_categories),
         staged_fixture_count=staged_fixture_count,
         documented_fixture_count=documented_fixture_count,

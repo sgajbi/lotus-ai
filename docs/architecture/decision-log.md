@@ -335,3 +335,21 @@ Current posture:
 1. evaluation runtime status is available through `/platform/evals/runtime-status`,
 2. platform runtime status embeds the same evaluation summary,
 3. the evaluation runner remains inactive in the foundation phase.
+
+## Decision 21: Evaluation Inventory Should Live In A Versioned Manifest
+
+Decision:
+
+Evaluation fixture families and evidence-category inventory are now sourced from a versioned in-repo manifest.
+
+Why:
+
+1. evaluation readiness should be backed by a governed artifact, not only service code,
+2. a manifest creates a stable bridge to future fixture files and evaluation runners,
+3. runtime and catalog surfaces can now report manifest version as part of the operational contract.
+
+Current posture:
+
+1. the evaluation manifest lives under `docs/evals/fixture-manifest.json`,
+2. evaluation catalog and runtime status are sourced from that manifest,
+3. the manifest remains read-only and repository-governed in the foundation phase.

@@ -1,0 +1,47 @@
+{
+  "manifest_version": "foundation.v1",
+  "evidence_categories": [
+    {
+      "category_id": "task_contract",
+      "description": "Bounded task contract and caller selection evidence."
+    },
+    {
+      "category_id": "prompt_selection",
+      "description": "Resolved prompt version and management provenance evidence."
+    },
+    {
+      "category_id": "provider_resolution",
+      "description": "Provider gateway and execution-path resolution evidence."
+    },
+    {
+      "category_id": "safety_outcome",
+      "description": "Applied safety posture and enforced-control evidence."
+    },
+    {
+      "category_id": "retrieval_posture",
+      "description": "Current retrieval execution posture captured at task runtime."
+    }
+  ],
+  "fixture_families": [
+    {
+      "fixture_id": "task_capability_contracts",
+      "status": "STAGED",
+      "description": "Contract fixtures covering supported task surfaces and policy behavior."
+    },
+    {
+      "fixture_id": "explanation_task_examples",
+      "status": "DOCUMENTED",
+      "description": "Golden examples for explanation-oriented tasks."
+    },
+    {
+      "fixture_id": "summarization_task_examples",
+      "status": "DOCUMENTED",
+      "description": "Golden examples for summarization-oriented tasks."
+    },
+    {
+      "fixture_id": "retrieval_citation_examples",
+      "status": "DOCUMENTED",
+      "description": "Retrieval citation and refusal evaluation examples for later activation."
+    }
+  ]
+}
