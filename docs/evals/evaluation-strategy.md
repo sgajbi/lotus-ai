@@ -69,3 +69,13 @@ Current evidence categories:
 
 This evidence is intentionally deterministic in foundation phase so later evaluation and regression
 work has a stable evidence schema to build on.
+
+The current platform inspection surface for evaluation readiness is:
+
+1. `GET /platform/evals/catalog`
+
+This catalog exposes:
+
+1. current execution evidence categories,
+2. staged fixture families,
+3. the current delivery-phase posture for evaluation assets.

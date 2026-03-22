@@ -27,6 +27,22 @@ def test_platform_capabilities_contract() -> None:
     assert any(task["task_id"] == "explain.v1" for task in body["tasks"])
 
 
+def test_evaluation_catalog_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/evals/catalog")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert any(
+        category["category_id"] == "task_contract" for category in body["evidence_categories"]
+    )
+    assert any(
+        fixture["fixture_id"] == "task_capability_contracts" for fixture in body["fixture_families"]
+    )
+
+
 def test_provider_catalog_route() -> None:
     client = TestClient(app)
 

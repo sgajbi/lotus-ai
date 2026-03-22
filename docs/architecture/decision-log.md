@@ -299,3 +299,21 @@ Current posture:
 1. task responses emit evidence for task contract, prompt selection, provider resolution, safety outcome, and retrieval posture,
 2. evidence is deterministic and read-only in foundation phase,
 3. live provider behavior is still disabled; the evidence model exists ahead of it.
+
+## Decision 19: Evaluation Readiness Should Be Discoverable
+
+Decision:
+
+`lotus-ai` exposes a read-only evaluation catalog so teams can inspect execution evidence categories and staged fixture families directly from the service.
+
+Why:
+
+1. evaluation posture should be visible as a platform capability, not buried only in docs,
+2. regression and governance workflows need a stable surface to target,
+3. this prepares the service for future fixture manifests and evaluation APIs without overbuilding them now.
+
+Current posture:
+
+1. evaluation readiness is inspectable through `/platform/evals/catalog`,
+2. evidence categories mirror the deterministic execution evidence bundle,
+3. fixture families are staged and documented before a fuller evaluation runner exists.
