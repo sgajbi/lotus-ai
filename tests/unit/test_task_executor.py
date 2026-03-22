@@ -1,5 +1,9 @@
-from fastapi import HTTPException
+from typing import cast
 
+from fastapi import HTTPException
+from pytest_mock import MockerFixture
+
+from app.contracts.audit import AuditRecordResponse
 from app.contracts.tasks import (
     CallerMetadata,
     OutputLabel,
@@ -67,3 +71,28 @@ def test_execute_task_rejects_output_label_mismatch() -> None:
         assert "Expected output label does not match task configuration" in str(exc.detail)
     else:
         raise AssertionError("Expected HTTPException for output label mismatch")
+
+
+def test_execute_task_persists_sorted_audit_context_keys(mocker: MockerFixture) -> None:
+    audit_store = mocker.Mock()
+    mocker.patch("app.services.task_execution_pipeline.get_audit_store", return_value=audit_store)
+
+    execute_task(
+        TaskExecutionRequest(
+            task_id="explain.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-123"),
+            context=TaskContextEnvelope(
+                summary="Explain rebalance outcome",
+                payload={"zeta": 1, "alpha": 2},
+                source_refs=["lotus-manage:run:reb_001"],
+            ),
+            expected_output_label=OutputLabel.EXPLANATION_ONLY,
+        )
+    )
+
+    audit_record = cast(AuditRecordResponse, audit_store.save.call_args.args[0])
+    assert audit_record.context_keys == ["alpha", "zeta"]
+    assert audit_record.caller_app == "lotus-manage"
+    assert audit_record.correlation_id == "corr-123"
+    assert audit_record.prompt_version == "foundation.explain.v1"

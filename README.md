@@ -20,6 +20,7 @@ This is deliberate. The early focus is to make `lotus-ai` understandable, testab
 The current execution posture is:
 
 - task execution flows through an explicit internal provider gateway,
+- task execution now flows through an explicit internal runtime pipeline with separate validation, resolution, response, evidence, and audit stages,
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
@@ -141,6 +142,10 @@ The preferred integration model is:
 2. it calls `lotus-ai` for a bounded AI task,
 3. `lotus-ai` returns a governed result with audit metadata,
 4. the calling app remains responsible for business meaning and user-facing application.
+
+Internally, `lotus-ai` now also treats task execution as a governed pipeline rather than a single
+monolithic function. That keeps the runtime easier to test, easier to audit, and easier to extend
+when live providers and retrieval execution are introduced later.
 
 Examples:
 

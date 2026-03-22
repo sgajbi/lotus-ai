@@ -59,10 +59,20 @@ Owns:
 
 1. orchestration logic behind routers,
 2. capability catalog assembly,
-3. future prompt and provider orchestration.
+3. prompt and provider orchestration,
+4. task execution pipeline stages for validation, resolution, response assembly, and audit persistence.
 
 The API-facing service layer should remain stateless so multiple replicas can serve the same
 contracts without hidden node-local behavior.
+
+Current task execution runtime is intentionally split into small pipeline stages:
+
+1. request validation against the bounded capability catalog,
+2. prompt resolution from the governed prompt registry,
+3. safety posture resolution from output-label policy,
+4. provider execution through the internal provider gateway,
+5. evidence assembly for prompt, provider, safety, and retrieval posture,
+6. audit persistence through the configured audit repository seam.
 
 ### Async Runtime
 
