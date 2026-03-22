@@ -15,6 +15,8 @@ class AuditRecordModel(Base):
     output_label: Mapped[str] = mapped_column(String(64), nullable=False)
     caller_app: Mapped[str] = mapped_column(String(128), nullable=False)
     correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    requested_by: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     prompt_version: Mapped[str] = mapped_column(String(128), nullable=False)
     provider_mode: Mapped[str] = mapped_column(String(64), nullable=False)
     safety_mode: Mapped[str] = mapped_column(String(64), nullable=False)

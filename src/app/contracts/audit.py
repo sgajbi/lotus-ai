@@ -16,6 +16,14 @@ class AuditRecordResponse(BaseModel):
     output_label: OutputLabel = Field(description="Output label emitted by the task execution.")
     caller_app: str = Field(description="Calling Lotus application associated with the request.")
     correlation_id: str = Field(description="Correlation identifier propagated by the caller.")
+    requested_by: str | None = Field(
+        default=None,
+        description="Optional human or system identity associated with the request.",
+    )
+    tenant_id: str | None = Field(
+        default=None,
+        description="Optional tenant or environment ownership marker for the request.",
+    )
     prompt_version: str = Field(description="Prompt version associated with the execution.")
     provider_mode: str = Field(description="Provider mode active for the execution.")
     safety_mode: str = Field(description="Safety mode applied to the execution.")

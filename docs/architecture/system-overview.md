@@ -144,6 +144,10 @@ provider path is actually introduced.
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
 
+Audit persistence now also preserves optional caller identity fields such as `requested_by` and
+`tenant_id`, so support and review workflows retain the full caller traceability carried by the
+task request rather than only application-level correlation metadata.
+
 Audit inspection also supports a bounded catalog view now, with explicit caller/task filters and
 limit controls, so operator and support workflows can inspect recent executions without relying
 only on direct request-id lookup.

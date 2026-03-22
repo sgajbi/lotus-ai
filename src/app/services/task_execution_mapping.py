@@ -78,6 +78,8 @@ def map_audit_record(
         output_label=response.output_label,
         caller_app=context.request.caller.caller_app,
         correlation_id=context.request.caller.correlation_id,
+        requested_by=context.request.caller.requested_by,
+        tenant_id=context.request.caller.tenant_id,
         prompt_version=response.audit.prompt_version,
         provider_mode=response.audit.provider_mode,
         safety_mode=response.audit.safety.safety_mode,

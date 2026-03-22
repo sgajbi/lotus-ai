@@ -10,6 +10,8 @@ def test_task_execute_contract(client: TestClient) -> None:
             "caller": {
                 "caller_app": "lotus-manage",
                 "correlation_id": "corr-456",
+                "requested_by": "ops.user@lotus",
+                "tenant_id": "tenant-sg-001",
             },
             "context": {
                 "summary": "Explain rebalance outcome",
@@ -42,6 +44,8 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
             "caller": {
                 "caller_app": "lotus-advise",
                 "correlation_id": "corr-789",
+                "requested_by": "advisor.user@lotus",
+                "tenant_id": "tenant-us-002",
             },
             "context": {
                 "summary": "Summarize proposal workflow",
@@ -56,6 +60,8 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
     assert audit_response.status_code == 200
     body = audit_response.json()
     assert body["caller_app"] == "lotus-advise"
+    assert body["requested_by"] == "advisor.user@lotus"
+    assert body["tenant_id"] == "tenant-us-002"
     assert body["category"] == "summarize"
     assert body["output_label"] == "DRAFT"
     assert body["prompt_version"] == "foundation.summarize.v1"

@@ -32,6 +32,22 @@ def test_map_audit_record_preserves_sorted_context_keys() -> None:
     assert audit_record.category == response.category
     assert audit_record.output_label == response.output_label
     assert audit_record.caller_app == "lotus-manage"
+    assert audit_record.requested_by is None
+    assert audit_record.tenant_id is None
     assert audit_record.context_keys == ["rule_count", "status"]
     assert audit_record.result_preview == response.result.message
     assert audit_record.evidence == response.evidence
+
+
+def test_map_audit_record_preserves_full_caller_identity() -> None:
+    request = _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
+    request.caller.requested_by = "ops.user@lotus"
+    request.caller.tenant_id = "tenant-sg-001"
+    context = validate_task_request(request)
+    resolved = resolve_task_execution(context=context)
+    response = map_task_execution_response(resolved=resolved)
+
+    audit_record = map_audit_record(context=context, response=response)
+
+    assert audit_record.requested_by == "ops.user@lotus"
+    assert audit_record.tenant_id == "tenant-sg-001"

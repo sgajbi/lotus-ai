@@ -43,6 +43,7 @@ The current execution posture is:
 - retrieval source/runtime inventory counting now lives in a dedicated helper, so retrieval status and job builders share the same derived counts instead of recomputing document and chunk totals independently,
 - the provider gateway now makes the foundation-stage execution path explicit: supported modes are validated first, then all execution routes through the stub provider until a governed live path exists,
 - audit records now preserve task category, output label, and execution evidence, so post-execution inspection remains useful without replaying the original task request,
+- audit records now also preserve optional caller identity fields such as `requested_by` and `tenant_id`, so operator review and downstream support flows retain full caller traceability instead of only app-level correlation metadata,
 - audit inspection now includes a bounded catalog endpoint with caller/task filters and explicit limits, so downstream support and review flows can inspect recent executions without scanning by request id only,
 - retrieval search can now return deterministic catalog-only hits from enabled staged sources in foundation phase, which gives downstream apps bounded search utility before live vector retrieval is activated,
 - the provider gateway currently routes only to documented stub providers,

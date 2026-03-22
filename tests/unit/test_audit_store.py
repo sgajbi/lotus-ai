@@ -14,6 +14,8 @@ def test_in_memory_audit_store_save_and_get() -> None:
         output_label=OutputLabel.EXPLANATION_ONLY,
         caller_app="lotus-manage",
         correlation_id="corr-123",
+        requested_by="ops.user@lotus",
+        tenant_id="tenant-sg-001",
         prompt_version="foundation.explain.v1",
         provider_mode="disabled",
         safety_mode="documented_only",
@@ -52,6 +54,8 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
         output_label=OutputLabel.EXPLANATION_ONLY,
         caller_app="lotus-manage",
         correlation_id="corr-old",
+        requested_by="ops.user@lotus",
+        tenant_id="tenant-sg-001",
         prompt_version="foundation.explain.v1",
         provider_mode="disabled",
         safety_mode="documented_only",
@@ -81,6 +85,8 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
             "category": TaskCategory.SUMMARIZE,
             "output_label": OutputLabel.DRAFT,
             "caller_app": "lotus-advise",
+            "requested_by": "advisor.user@lotus",
+            "tenant_id": "tenant-us-002",
             "generated_at": "2026-03-22T01:00:00Z",
         }
     )
