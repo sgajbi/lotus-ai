@@ -80,6 +80,9 @@ encoding prompt-selection semantics separately in different services.
 The runtime context object exists to keep later pipeline stages small and explicit instead of
 threading overlapping request, prompt, and safety fields through multiple function signatures.
 
+Response and audit-record construction now also live in a dedicated mapping layer so the pipeline
+itself stays focused on execution stages rather than serialization details.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`
