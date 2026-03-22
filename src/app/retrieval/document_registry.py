@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 from app.contracts.retrieval import (
+    RetrievalChunkCatalogResponse,
+    RetrievalChunkDescriptor,
     RetrievalDocumentCatalogResponse,
     RetrievalDocumentDescriptor,
     RetrievalIndexStatus,
     RetrievalIndexStatusResponse,
+    RetrievalIndexJobCatalogResponse,
+    RetrievalIndexJobDescriptor,
+    RetrievalJobStatus,
     RetrievalSourceStatusDescriptor,
 )
 from app.config import settings
@@ -60,6 +65,64 @@ _DOCUMENTS: dict[str, list[RetrievalDocumentDescriptor]] = {
     "lotus-openapi-derived": [],
 }
 
+_CHUNKS: dict[str, list[RetrievalChunkDescriptor]] = {
+    "lotus-platform-rfc-0068": [
+        RetrievalChunkDescriptor(
+            chunk_id="chunk_rfc_0068_0001",
+            document_id="lotus-platform-rfc-0068",
+            source_id="lotus-platform-rfcs",
+            chunk_order=1,
+            token_estimate=180,
+            preview="Move ownership of shared platform infrastructure to lotus-platform.",
+            index_status=RetrievalIndexStatus.STAGED,
+        )
+    ],
+    "lotus-platform-rfc-0069": [
+        RetrievalChunkDescriptor(
+            chunk_id="chunk_rfc_0069_0001",
+            document_id="lotus-platform-rfc-0069",
+            source_id="lotus-platform-rfcs",
+            chunk_order=1,
+            token_estimate=210,
+            preview="Introduce lotus-ai as a dedicated shared AI platform service for Lotus applications.",
+            index_status=RetrievalIndexStatus.STAGED,
+        )
+    ],
+    "lotus-platform-observability-standards": [
+        RetrievalChunkDescriptor(
+            chunk_id="chunk_obs_0001",
+            document_id="lotus-platform-observability-standards",
+            source_id="lotus-platform-standards",
+            chunk_order=1,
+            token_estimate=165,
+            preview="Cross-cutting governance for this stack is defined in Platform Observability Standards.",
+            index_status=RetrievalIndexStatus.STAGED,
+        )
+    ],
+    "lotus-ai-system-overview": [
+        RetrievalChunkDescriptor(
+            chunk_id="chunk_system_overview_0001",
+            document_id="lotus-ai-system-overview",
+            source_id="lotus-ai-architecture",
+            chunk_order=1,
+            token_estimate=170,
+            preview="lotus-ai is the shared AI platform service for Lotus.",
+            index_status=RetrievalIndexStatus.STAGED,
+        )
+    ],
+    "lotus-ai-retrieval-vector-store-guide": [
+        RetrievalChunkDescriptor(
+            chunk_id="chunk_retrieval_guide_0001",
+            document_id="lotus-ai-retrieval-vector-store-guide",
+            source_id="lotus-ai-architecture",
+            chunk_order=1,
+            token_estimate=190,
+            preview="The first vector-store architecture for lotus-ai is PostgreSQL plus pgvector.",
+            index_status=RetrievalIndexStatus.STAGED,
+        )
+    ],
+}
+
 
 def list_documents_for_source(source_id: str) -> RetrievalDocumentCatalogResponse:
     return RetrievalDocumentCatalogResponse(
@@ -67,6 +130,19 @@ def list_documents_for_source(source_id: str) -> RetrievalDocumentCatalogRespons
         vector_store=VECTOR_STORE_STRATEGY,
         documents=_DOCUMENTS.get(source_id, []),
     )
+
+
+def list_chunks_for_document(document_id: str) -> RetrievalChunkCatalogResponse | None:
+    for source_id, documents in _DOCUMENTS.items():
+        for document in documents:
+            if document.document_id == document_id:
+                return RetrievalChunkCatalogResponse(
+                    document_id=document_id,
+                    source_id=source_id,
+                    vector_store=VECTOR_STORE_STRATEGY,
+                    chunks=_CHUNKS.get(document_id, []),
+                )
+    return None
 
 
 def build_retrieval_index_status() -> RetrievalIndexStatusResponse:
@@ -93,4 +169,32 @@ def build_retrieval_index_status() -> RetrievalIndexStatusResponse:
         retrieval_mode=settings.retrieval_mode,
         vector_store=VECTOR_STORE_STRATEGY,
         sources=source_statuses,
+    )
+
+
+def build_retrieval_job_catalog() -> RetrievalIndexJobCatalogResponse:
+    jobs: list[RetrievalIndexJobDescriptor] = []
+    for source_id, documents in _DOCUMENTS.items():
+        chunk_count = sum(len(_CHUNKS.get(document.document_id, [])) for document in documents)
+        if not documents:
+            status = RetrievalJobStatus.PENDING
+            message = "No staged documents yet for this retrieval source."
+        else:
+            status = RetrievalJobStatus.STAGED
+            message = "Documents are staged for indexing, but vector indexing is not enabled yet."
+        jobs.append(
+            RetrievalIndexJobDescriptor(
+                job_id=f"retjob_{source_id.replace('-', '_')}",
+                source_id=source_id,
+                status=status,
+                document_count=len(documents),
+                chunk_count=chunk_count,
+                message=message,
+            )
+        )
+
+    return RetrievalIndexJobCatalogResponse(
+        service=settings.service_name,
+        vector_store=VECTOR_STORE_STRATEGY,
+        jobs=jobs,
     )

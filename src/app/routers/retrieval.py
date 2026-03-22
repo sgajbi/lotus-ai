@@ -3,7 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.contracts.retrieval import (
+    RetrievalChunkCatalogResponse,
     RetrievalDocumentCatalogResponse,
+    RetrievalIndexJobCatalogResponse,
     RetrievalIndexStatusResponse,
     RetrievalSearchRequest,
     RetrievalSearchResponse,
@@ -11,6 +13,8 @@ from app.contracts.retrieval import (
 )
 from app.retrieval.source_registry import list_retrieval_sources
 from app.services.retrieval_catalog_service import (
+    get_chunks_for_document,
+    get_retrieval_job_catalog,
     get_documents_for_source,
     get_retrieval_index_status,
 )
@@ -54,6 +58,23 @@ async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
 
 
 @router.get(
+    "/index-jobs",
+    response_model=RetrievalIndexJobCatalogResponse,
+    summary="List retrieval indexing jobs",
+    description=(
+        "Returns the currently known retrieval indexing jobs for the staged corpus. "
+        "This gives platform visibility into indexing readiness before live vector indexing is enabled."
+    ),
+    responses={
+        200: {"description": "Retrieval indexing jobs returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def list_retrieval_index_jobs_route() -> RetrievalIndexJobCatalogResponse:
+    return get_retrieval_job_catalog()
+
+
+@router.get(
     "/sources/{source_id}/documents",
     response_model=RetrievalDocumentCatalogResponse,
     summary="List staged retrieval documents for a source",
@@ -68,6 +89,23 @@ async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
 )
 async def list_retrieval_documents_route(source_id: str) -> RetrievalDocumentCatalogResponse:
     return get_documents_for_source(source_id)
+
+
+@router.get(
+    "/documents/{document_id}/chunks",
+    response_model=RetrievalChunkCatalogResponse,
+    summary="List staged retrieval chunks for a document",
+    description=(
+        "Returns the currently staged retrieval chunks associated with a retrieval document identifier."
+    ),
+    responses={
+        200: {"description": "Retrieval chunk catalog returned successfully."},
+        404: {"description": "Retrieval document not found."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def list_retrieval_chunks_route(document_id: str) -> RetrievalChunkCatalogResponse:
+    return get_chunks_for_document(document_id)
 
 
 @router.post(

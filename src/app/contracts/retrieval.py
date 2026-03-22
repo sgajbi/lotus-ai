@@ -23,6 +23,12 @@ class RetrievalIndexStatus(str, Enum):
     INDEXED = "INDEXED"
 
 
+class RetrievalJobStatus(str, Enum):
+    PENDING = "PENDING"
+    STAGED = "STAGED"
+    COMPLETED = "COMPLETED"
+
+
 class RetrievalSourceDescriptor(BaseModel):
     source_id: str = Field(description="Stable retrieval source identifier.")
     kind: RetrievalSourceKind = Field(description="High-level source category.")
@@ -48,6 +54,25 @@ class RetrievalDocumentDescriptor(BaseModel):
     index_status: RetrievalIndexStatus = Field(description="Indexing status for the document.")
 
 
+class RetrievalChunkDescriptor(BaseModel):
+    chunk_id: str = Field(description="Stable chunk identifier.")
+    document_id: str = Field(description="Parent retrieval document identifier.")
+    source_id: str = Field(description="Parent retrieval source identifier.")
+    chunk_order: int = Field(description="Stable chunk order within the document.")
+    token_estimate: int = Field(description="Estimated token count for the chunk.")
+    preview: str = Field(description="Short preview of the chunk contents.")
+    index_status: RetrievalIndexStatus = Field(description="Indexing status for the chunk.")
+
+
+class RetrievalChunkCatalogResponse(BaseModel):
+    document_id: str = Field(description="Parent retrieval document identifier.")
+    source_id: str = Field(description="Parent retrieval source identifier.")
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    chunks: list[RetrievalChunkDescriptor] = Field(
+        description="Known chunks currently staged for the document."
+    )
+
+
 class RetrievalDocumentCatalogResponse(BaseModel):
     source_id: str = Field(description="Retrieval source identifier for the returned documents.")
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
@@ -69,6 +94,23 @@ class RetrievalIndexStatusResponse(BaseModel):
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     sources: list[RetrievalSourceStatusDescriptor] = Field(
         description="Source-level indexing status details."
+    )
+
+
+class RetrievalIndexJobDescriptor(BaseModel):
+    job_id: str = Field(description="Stable retrieval indexing job identifier.")
+    source_id: str = Field(description="Retrieval source identifier owned by the job.")
+    status: RetrievalJobStatus = Field(description="Current status for the indexing job.")
+    document_count: int = Field(description="Number of staged documents covered by the job.")
+    chunk_count: int = Field(description="Number of staged chunks covered by the job.")
+    message: str = Field(description="Human-readable job status message.")
+
+
+class RetrievalIndexJobCatalogResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval job catalog.")
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    jobs: list[RetrievalIndexJobDescriptor] = Field(
+        description="Known retrieval indexing jobs for the staged corpus."
     )
 
 

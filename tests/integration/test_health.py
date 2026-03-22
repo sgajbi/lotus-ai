@@ -117,6 +117,17 @@ def test_retrieval_index_status_route() -> None:
     assert any(source["source_id"] == "lotus-platform-rfcs" for source in body["sources"])
 
 
+def test_retrieval_index_jobs_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/retrieval/index-jobs")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert any(job["source_id"] == "lotus-platform-rfcs" for job in body["jobs"])
+
+
 def test_retrieval_documents_route() -> None:
     client = TestClient(app)
 
@@ -128,6 +139,17 @@ def test_retrieval_documents_route() -> None:
     assert any(
         document["document_id"] == "lotus-platform-rfc-0069" for document in body["documents"]
     )
+
+
+def test_retrieval_chunks_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/retrieval/documents/lotus-platform-rfc-0069/chunks")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["document_id"] == "lotus-platform-rfc-0069"
+    assert any(chunk["chunk_id"] == "chunk_rfc_0069_0001" for chunk in body["chunks"])
 
 
 def test_retrieval_search_route_returns_conflict_when_disabled() -> None:
