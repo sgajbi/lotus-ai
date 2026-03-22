@@ -1,5 +1,7 @@
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.safety import RedactionPosture
+from app.contracts.tasks import OutputLabel, TaskCategory
 from app.repositories.memory_audit_repository import InMemoryAuditRepository
 
 
@@ -8,6 +10,8 @@ def test_in_memory_audit_store_save_and_get() -> None:
     record = AuditRecordResponse(
         request_id="air_test",
         task_id="explain.v1",
+        category=TaskCategory.EXPLAIN,
+        output_label=OutputLabel.EXPLANATION_ONLY,
         caller_app="lotus-manage",
         correlation_id="corr-123",
         prompt_version="foundation.explain.v1",
@@ -22,6 +26,15 @@ def test_in_memory_audit_store_save_and_get() -> None:
         source_refs=["lotus-manage:run:reb_1"],
         result_preview="Stub execution completed.",
         structured_output={"phase": "foundation"},
+        evidence=ExecutionEvidenceBundle(
+            descriptors=[
+                ExecutionEvidenceDescriptor(
+                    evidence_type="task_contract",
+                    summary="Task contract selected.",
+                    attributes={"task_id": "explain.v1"},
+                )
+            ]
+        ),
     )
 
     store.save(record)

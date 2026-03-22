@@ -11,6 +11,8 @@ class AuditRecordModel(Base):
 
     request_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     task_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    output_label: Mapped[str] = mapped_column(String(64), nullable=False)
     caller_app: Mapped[str] = mapped_column(String(128), nullable=False)
     correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
     prompt_version: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -25,6 +27,7 @@ class AuditRecordModel(Base):
     source_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     result_preview: Mapped[str] = mapped_column(Text, nullable=False)
     structured_output: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    evidence: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
 
 
 class RetrievalSourceModel(Base):

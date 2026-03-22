@@ -29,6 +29,9 @@ def test_map_audit_record_preserves_sorted_context_keys() -> None:
     audit_record = map_audit_record(context=context, response=response)
 
     assert audit_record.request_id == context.request_id
+    assert audit_record.category == response.category
+    assert audit_record.output_label == response.output_label
     assert audit_record.caller_app == "lotus-manage"
     assert audit_record.context_keys == ["rule_count", "status"]
     assert audit_record.result_preview == response.result.message
+    assert audit_record.evidence == response.evidence

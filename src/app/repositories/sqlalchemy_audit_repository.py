@@ -6,7 +6,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.safety import RedactionPosture
+from app.contracts.tasks import OutputLabel, TaskCategory
 from app.db.models import AuditRecordModel
 
 
@@ -21,6 +23,8 @@ class SqlAlchemyAuditRepository:
         model = AuditRecordModel(
             request_id=record.request_id,
             task_id=record.task_id,
+            category=record.category.value,
+            output_label=record.output_label.value,
             caller_app=record.caller_app,
             correlation_id=record.correlation_id,
             prompt_version=record.prompt_version,
@@ -35,6 +39,7 @@ class SqlAlchemyAuditRepository:
             source_refs=record.source_refs,
             result_preview=record.result_preview,
             structured_output=record.structured_output,
+            evidence=record.evidence.model_dump(mode="json"),
         )
         with self._session_factory() as session:
             session.merge(model)
@@ -51,6 +56,8 @@ class SqlAlchemyAuditRepository:
         return AuditRecordResponse(
             request_id=model.request_id,
             task_id=model.task_id,
+            category=TaskCategory(model.category),
+            output_label=OutputLabel(model.output_label),
             caller_app=model.caller_app,
             correlation_id=model.correlation_id,
             prompt_version=model.prompt_version,
@@ -65,6 +72,7 @@ class SqlAlchemyAuditRepository:
             source_refs=model.source_refs,
             result_preview=model.result_preview,
             structured_output=model.structured_output,
+            evidence=ExecutionEvidenceBundle.model_validate(model.evidence),
         )
 
     def _ensure_sqlite_parent_directory(self) -> None:

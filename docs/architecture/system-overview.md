@@ -141,6 +141,9 @@ The provider gateway also stays intentionally explicit in foundation phase: supp
 modes are validated first, and then execution routes through the stub provider until a live
 provider path is actually introduced.
 
+Audit persistence now also preserves task category, output label, and execution evidence, so
+downstream inspection of prior executions does not depend on replaying the original task call.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

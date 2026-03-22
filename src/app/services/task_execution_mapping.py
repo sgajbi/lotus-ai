@@ -74,6 +74,8 @@ def map_audit_record(
     return AuditRecordResponse(
         request_id=response.audit.request_id,
         task_id=response.task_id,
+        category=response.category,
+        output_label=response.output_label,
         caller_app=context.request.caller.caller_app,
         correlation_id=context.request.caller.correlation_id,
         prompt_version=response.audit.prompt_version,
@@ -88,4 +90,5 @@ def map_audit_record(
         source_refs=context.request.context.source_refs,
         result_preview=response.result.message,
         structured_output=response.result.structured_output,
+        evidence=response.evidence,
     )

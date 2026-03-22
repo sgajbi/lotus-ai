@@ -54,13 +54,18 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
 
     audit_response = client.get(f"/ai/audit/{request_id}")
     assert audit_response.status_code == 200
-    assert audit_response.json()["caller_app"] == "lotus-advise"
-    assert audit_response.json()["prompt_version"] == "foundation.summarize.v1"
-    assert audit_response.json()["safety_mode"] == "documented_only"
-    assert audit_response.json()["enforced_safety_controls"] == [
+    body = audit_response.json()
+    assert body["caller_app"] == "lotus-advise"
+    assert body["category"] == "summarize"
+    assert body["output_label"] == "DRAFT"
+    assert body["prompt_version"] == "foundation.summarize.v1"
+    assert body["safety_mode"] == "documented_only"
+    assert body["enforced_safety_controls"] == [
         "response_labeling",
         "correlation_and_audit",
     ]
+    assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
+    assert body["structured_output"]["caller_app"] == "lotus-advise"
 
 
 def test_audit_record_route_returns_not_found_for_unknown_request(client: TestClient) -> None:

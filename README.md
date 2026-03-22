@@ -42,6 +42,7 @@ The current execution posture is:
 - evaluation fixture inventory counting now lives in a dedicated summary helper, so evaluation runtime status focuses on response assembly instead of recounting manifest data inline,
 - retrieval source/runtime inventory counting now lives in a dedicated helper, so retrieval status and job builders share the same derived counts instead of recomputing document and chunk totals independently,
 - the provider gateway now makes the foundation-stage execution path explicit: supported modes are validated first, then all execution routes through the stub provider until a governed live path exists,
+- audit records now preserve task category, output label, and execution evidence, so post-execution inspection remains useful without replaying the original task request,
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,

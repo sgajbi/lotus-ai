@@ -1,7 +1,9 @@
 from pathlib import Path
 
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.safety import RedactionPosture
+from app.contracts.tasks import OutputLabel, TaskCategory
 from app.repositories.sqlalchemy_audit_repository import SqlAlchemyAuditRepository
 from tests.support.migration_runner import upgrade_database_to_head
 
@@ -14,6 +16,8 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
     record = AuditRecordResponse(
         request_id="air_sql_1",
         task_id="explain.v1",
+        category=TaskCategory.EXPLAIN,
+        output_label=OutputLabel.EXPLANATION_ONLY,
         caller_app="lotus-manage",
         correlation_id="corr-sql-1",
         prompt_version="foundation.explain.v1",
@@ -28,6 +32,15 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
         source_refs=["lotus-manage:run:reb_sql_1"],
         result_preview="Stub execution completed.",
         structured_output={"phase": "foundation"},
+        evidence=ExecutionEvidenceBundle(
+            descriptors=[
+                ExecutionEvidenceDescriptor(
+                    evidence_type="task_contract",
+                    summary="Task contract selected.",
+                    attributes={"task_id": "explain.v1"},
+                )
+            ]
+        ),
     )
 
     repository.save(record)
