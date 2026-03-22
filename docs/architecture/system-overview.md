@@ -83,6 +83,9 @@ threading overlapping request, prompt, and safety fields through multiple functi
 Response and audit-record construction now also live in a dedicated mapping layer so the pipeline
 itself stays focused on execution stages rather than serialization details.
 
+Provider request construction is also isolated in a dedicated builder so the pipeline no longer
+assembles provider payloads inline.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

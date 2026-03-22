@@ -25,6 +25,7 @@ The current execution posture is:
 - prompt runtime selection is now resolved through a shared runtime service used by both task execution and prompt-status reporting,
 - task execution now builds a shared runtime context object so later stages consume one coherent execution model instead of duplicated fields,
 - response and audit-record assembly for task execution now live in a dedicated mapper layer instead of being embedded in pipeline orchestration,
+- provider execution requests are now assembled through a dedicated builder instead of inline payload construction,
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,

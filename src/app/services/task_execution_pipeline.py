@@ -7,7 +7,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 
 from app.contracts.prompts import PromptDescriptor
-from app.contracts.providers import ProviderExecutionRequest, ProviderExecutionResponse
+from app.contracts.providers import ProviderExecutionResponse
 from app.contracts.safety import SafetyExecutionOutcome
 from app.contracts.tasks import (
     CapabilityDescriptor,
@@ -16,6 +16,7 @@ from app.contracts.tasks import (
 )
 from app.services.audit_store import get_audit_store
 from app.services.capability_catalog import get_capability_by_task_id
+from app.services.provider_request_builder import build_provider_execution_request
 from app.services.task_execution_mapping import map_audit_record, map_task_execution_response
 from app.services.prompt_runtime import resolve_runtime_prompt_or_raise
 from app.services.provider_gateway import execute_text_generation
@@ -75,17 +76,7 @@ def resolve_task_execution(
     context: TaskExecutionContext,
 ) -> ResolvedTaskExecution:
     provider_execution = execute_text_generation(
-        ProviderExecutionRequest(
-            task_id=context.capability.task_id,
-            caller_app=context.request.caller.caller_app,
-            prompt_version=context.prompt.prompt_version,
-            output_label=context.capability.output_label.value,
-            safety_mode=context.safety_outcome.safety_mode,
-            redaction_posture=context.safety_outcome.redaction_posture.value,
-            context_summary=context.request.context.summary,
-            context_payload=context.request.context.payload,
-            source_refs=context.request.context.source_refs,
-        )
+        build_provider_execution_request(context=context)
     )
     return ResolvedTaskExecution(
         context=context,
