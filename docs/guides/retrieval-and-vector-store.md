@@ -106,7 +106,14 @@ The current retrieval API exposes:
 10. document inventory,
 11. chunk inventory.
 
-The search endpoint remains governed and intentionally disabled until the retrieval execution layer is ready.
+The search endpoint remains governed. In foundation phase it can now return bounded
+catalog-only hits from a small enabled staged-source subset, while live vector retrieval
+remains disabled.
+
+Current enabled catalog-only sources:
+
+1. `lotus-platform-rfcs`
+2. `lotus-ai-architecture`
 
 `/platform/runtime-status` now embeds retrieval governance posture directly so operators can review
 retrieval rollout state from the same top-level runtime surface that already carries async and

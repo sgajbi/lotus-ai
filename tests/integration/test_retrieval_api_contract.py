@@ -143,15 +143,36 @@ def test_retrieval_chunks_route(client: TestClient) -> None:
     assert any(chunk["chunk_id"] == "chunk_rfc_0069_0001" for chunk in body["chunks"])
 
 
-def test_retrieval_search_route_returns_conflict_when_disabled(client: TestClient) -> None:
+def test_retrieval_search_route_returns_catalog_only_hits_for_enabled_sources(
+    client: TestClient,
+) -> None:
     response = client.post(
         "/platform/retrieval/search",
         json={
-            "query": "What does RFC-0069 say?",
+            "query": "shared ai platform service",
             "caller_app": "lotus-workbench",
             "correlation_id": "corr-ret-2",
+            "source_ids": ["lotus-platform-rfcs"],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "READY"
+    assert body["hits"][0]["source_id"] == "lotus-platform-rfcs"
+    assert "catalog-only hits" in body["message"]
+
+
+def test_retrieval_search_route_rejects_disabled_source_filter(client: TestClient) -> None:
+    response = client.post(
+        "/platform/retrieval/search",
+        json={
+            "query": "platform observability standards",
+            "caller_app": "lotus-workbench",
+            "correlation_id": "corr-ret-3",
+            "source_ids": ["lotus-platform-standards"],
         },
     )
 
     assert response.status_code == 409
-    assert "Retrieval search is not enabled yet" in response.json()["detail"]
+    assert "not enabled" in response.json()["detail"]

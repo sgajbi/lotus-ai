@@ -156,6 +156,10 @@ Retrieval execution now also supports a deterministic catalog-only path for enab
 sources, so Lotus apps can get bounded preview hits from curated corpus metadata before live
 vector retrieval is activated.
 
+The initial enabled subset is intentionally small: Lotus platform RFCs and lotus-ai
+architecture documents are searchable through the catalog-only path, while other staged
+sources remain disabled until they are explicitly promoted.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

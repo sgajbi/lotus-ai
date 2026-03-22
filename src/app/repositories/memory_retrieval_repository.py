@@ -20,7 +20,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
             RetrievalSourceDescriptor(
                 source_id="lotus-platform-rfcs",
                 kind=RetrievalSourceKind.RFC,
-                enabled=False,
+                enabled=True,
                 description="Approved Lotus platform RFC documents.",
             ),
             RetrievalSourceDescriptor(
@@ -32,7 +32,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
             RetrievalSourceDescriptor(
                 source_id="lotus-ai-architecture",
                 kind=RetrievalSourceKind.ARCHITECTURE,
-                enabled=False,
+                enabled=True,
                 description="lotus-ai architecture, guides, and service-local design documentation.",
             ),
             RetrievalSourceDescriptor(
