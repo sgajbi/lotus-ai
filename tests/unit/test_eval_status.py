@@ -10,7 +10,7 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.evidence_category_count == 5
     assert status.staged_fixture_count >= 10
     assert status.documented_fixture_count == 0
-    assert status.staged_case_count == 20
+    assert status.staged_case_count == 22
     assert [item.seam_id for item in status.seam_coverage] == [
         "task_execution",
         "retrieval",
@@ -20,7 +20,7 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.seam_coverage[0].staged_fixture_count == 3
     assert status.seam_coverage[0].staged_case_count == 6
     assert status.seam_coverage[2].staged_fixture_count == 5
-    assert status.seam_coverage[2].staged_case_count == 10
+    assert status.seam_coverage[2].staged_case_count == 12
     assert status.recorded_run_count == 2
     assert status.latest_recorded_run_id == "foundation_eval_2026_03_22_001"
     assert status.latest_recorded_run_status == "RECORDED"

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app.config import settings
 from app.contracts.providers import (
     ProviderAdapterKind,
@@ -10,6 +12,8 @@ from app.services.provider_budget_policy import (
     record_provider_spend,
 )
 from app.providers.base import ProviderExecutionError
+from app.services.provider_operations_store import reset_provider_operations_store_cache
+from tests.support.migration_runner import upgrade_database_to_head
 
 
 def _response(cost: float | None, *, stubbed: bool = False) -> ProviderExecutionResponse:
@@ -138,3 +142,47 @@ def test_record_provider_spend_ignores_stubbed_or_unpriced_responses() -> None:
 
     assert response.current_spend_usd == 0.0
     assert response.budget_state == ProviderBudgetState.BELOW_SOFT_LIMIT
+
+
+def test_provider_budget_policy_persists_spend_in_sql_store_across_store_reset(
+    tmp_path: Path,
+) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-budget.db'}"
+    settings.live_text_budget_enforced = True
+    settings.live_text_input_cost_per_1k_tokens = 0.01
+    settings.live_text_output_cost_per_1k_tokens = 0.03
+    settings.live_text_soft_budget_usd = 1.0
+    settings.live_text_hard_budget_usd = 2.0
+    upgrade_database_to_head(settings.database_url)
+
+    record_provider_spend(_response(0.75))
+    reset_provider_operations_store_cache()
+
+    response = build_provider_budget_policy()
+
+    assert response.current_spend_usd == 0.75
+    assert response.budget_state == ProviderBudgetState.BELOW_SOFT_LIMIT
+
+
+def test_provider_budget_policy_durable_enforcement_blocks_on_persisted_hard_limit(
+    tmp_path: Path,
+) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-budget.db'}"
+    settings.live_text_budget_enforced = True
+    settings.live_text_input_cost_per_1k_tokens = 0.01
+    settings.live_text_output_cost_per_1k_tokens = 0.03
+    settings.live_text_soft_budget_usd = 0.5
+    settings.live_text_hard_budget_usd = 1.0
+    upgrade_database_to_head(settings.database_url)
+
+    record_provider_spend(_response(1.0))
+    reset_provider_operations_store_cache()
+
+    try:
+        enforce_provider_budget()
+    except ProviderExecutionError as exc:
+        assert exc.category.value == "BUDGET_EXCEEDED"
+    else:
+        raise AssertionError("Expected persisted hard-budget posture to block execution")

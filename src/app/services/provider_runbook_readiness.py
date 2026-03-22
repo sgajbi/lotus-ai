@@ -36,7 +36,7 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
             required_for_activation=True,
             notes=(
                 "Runbooks for provider usage limits, rate-limit incidents, and cost-protection "
-                "responses are not yet documented."
+                "responses are not yet documented, including how operators review and reset durable quota state safely through the control-plane action surface."
             ),
         ),
         ProviderRunbookReadinessItem(
@@ -45,7 +45,7 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
             required_for_activation=True,
             notes=(
                 "Runbooks for soft-budget alerts, hard-budget blocks, and spend-anomaly escalation "
-                "are not yet documented."
+                "are not yet documented, including how durable spend posture is reviewed and recovered safely through the control-plane action surface."
             ),
         ),
         ProviderRunbookReadinessItem(
@@ -63,7 +63,7 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
             required_for_activation=True,
             notes=(
                 "Runbooks for degraded-upstream operation, circuit-open response, cooldown review, "
-                "and safe re-enable procedures are not yet documented."
+                "and safe re-enable procedures are not yet documented, including durable circuit-state recovery through the control-plane action surface."
             ),
         ),
         ProviderRunbookReadinessItem(

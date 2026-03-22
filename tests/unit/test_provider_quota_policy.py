@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app.config import settings
 from app.contracts.providers import ProviderQuotaScope
 from app.providers.base import ProviderExecutionError
@@ -5,8 +7,10 @@ from app.services.provider_quota_policy import (
     build_provider_quota_policy,
     enforce_provider_quota,
 )
+from app.services.provider_operations_store import reset_provider_operations_store_cache
 from app.services.provider_request_builder import build_provider_execution_request
 from app.services.task_execution_pipeline import validate_task_request
+from tests.support.migration_runner import upgrade_database_to_head
 from tests.unit.test_task_executor import _request
 
 
@@ -116,3 +120,54 @@ def test_provider_quota_policy_enforcement_rejects_invalid_configuration() -> No
         assert exc.category.value == "INVALID_QUOTA_CONFIGURATION"
     else:
         raise AssertionError("Expected invalid quota configuration to block execution")
+
+
+def test_provider_quota_policy_persists_counts_in_sql_store_across_store_reset(
+    tmp_path: Path,
+) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-ops.db'}"
+    settings.live_text_quota_enforced = True
+    settings.live_text_default_quota_limit = 2
+    settings.live_text_task_quota_limits = "explain.v1=2"
+    upgrade_database_to_head(settings.database_url)
+
+    request = _request("explain.v1", expected_output_label=None)
+    context = validate_task_request(request)
+    provider_request = build_provider_execution_request(context=context)
+
+    enforce_provider_quota(provider_request)
+    reset_provider_operations_store_cache()
+
+    response = build_provider_quota_policy()
+
+    task_quota = next(quota for quota in response.quotas if quota.scope == ProviderQuotaScope.TASK)
+    default_quota = next(
+        quota for quota in response.quotas if quota.scope == ProviderQuotaScope.DEFAULT
+    )
+    assert task_quota.current_request_count == 1
+    assert default_quota.current_request_count == 1
+
+
+def test_provider_quota_policy_durable_enforcement_blocks_on_persisted_limit(
+    tmp_path: Path,
+) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-ops.db'}"
+    settings.live_text_quota_enforced = True
+    settings.live_text_task_quota_limits = "explain.v1=1"
+    upgrade_database_to_head(settings.database_url)
+
+    request = _request("explain.v1", expected_output_label=None)
+    context = validate_task_request(request)
+    provider_request = build_provider_execution_request(context=context)
+
+    enforce_provider_quota(provider_request)
+    reset_provider_operations_store_cache()
+
+    try:
+        enforce_provider_quota(provider_request)
+    except ProviderExecutionError as exc:
+        assert exc.category.value == "QUOTA_EXCEEDED"
+    else:
+        raise AssertionError("Expected persisted quota state to block the second execution")

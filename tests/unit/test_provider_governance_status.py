@@ -11,3 +11,4 @@ def test_provider_governance_status_reports_blocked_foundation_posture() -> None
     assert status.runbook_readiness.runbook_ready is False
     assert status.evidence_readiness.evidence_ready is False
     assert len(status.governance_summary) == 3
+    assert "durable provider-operations control plane" in status.governance_summary[2]

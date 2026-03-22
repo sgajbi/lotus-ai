@@ -178,6 +178,23 @@ runbook readiness, and task-runtime notes all describe the same live-provider pa
 That keeps operator-facing status aligned when rollout is still stub-default versus when a live
 provider has been allowlisted but remains intentionally disabled.
 
+Provider operations durability now has an explicit repository seam and migration-managed
+relational schema, and quota, budget, plus tracked degradation mutations all flow through that
+configured provider-operations store instead of process-local counters. The durable control plane
+now owns accepted-request counts, structured spend accumulation, timeout/rate-limit/upstream-error
+failure tracking, and circuit-open cooldown timestamps, so operator truth remains consistent across
+restart when the SQL-backed provider-operations path is enabled.
+
+Those durable mutations now happen at the repository layer rather than through service-layer
+read-modify-write sequences, which keeps provider blocking state closer to the authoritative store.
+The provider-evidence and operations runbook surfaces also now treat that durable state model as
+the real control plane: evaluation fixtures, recorded baselines, and operator guidance describe
+restart-survival and durable recovery posture explicitly instead of assuming process-local resets.
+
+That control plane now also exposes a dedicated reset-action history and bounded reset action
+surface, so quota, budget, and degradation recovery can be reviewed as explicit operator actions
+with reason and approval metadata instead of relying on ad hoc table edits or service restarts.
+
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
 

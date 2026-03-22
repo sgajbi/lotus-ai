@@ -6,7 +6,7 @@
       "status": "RECORDED",
       "manifest_version": "foundation.v1",
       "staged_fixture_count": 10,
-      "staged_case_count": 20,
+      "staged_case_count": 22,
       "seam_coverage": [
         {
           "seam_id": "task_execution",
@@ -36,7 +36,7 @@
             "provider_degradation_examples"
           ],
           "staged_fixture_count": 5,
-          "staged_case_count": 10
+          "staged_case_count": 12
         },
         {
           "seam_id": "safety_policy",
@@ -47,7 +47,7 @@
           "staged_case_count": 2
         }
       ],
-      "notes": "Baseline foundation-phase evaluation inventory snapshot recorded after provider operations and degradation evidence fixtures were staged."
+      "notes": "Baseline foundation-phase evaluation inventory snapshot recorded after provider operations and degradation evidence fixtures were expanded to cover durable restart-survival posture."
     },
     {
       "run_id": "foundation_eval_2026_03_21_001",

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, ForeignKey, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -101,3 +101,47 @@ class PromptDefinitionModel(Base):
     source_reference: Mapped[str] = mapped_column(Text, nullable=False)
     system_instructions: Mapped[str] = mapped_column(Text, nullable=False)
     output_contract_notes: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderQuotaStateModel(Base):
+    __tablename__ = "provider_quota_state"
+
+    scope: Mapped[str] = mapped_column(String(32), primary_key=True)
+    scope_key: Mapped[str] = mapped_column(String(256), primary_key=True)
+    request_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class ProviderBudgetStateModel(Base):
+    __tablename__ = "provider_budget_state"
+
+    budget_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    current_spend_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class ProviderDegradationStateModel(Base):
+    __tablename__ = "provider_degradation_state"
+
+    degradation_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    consecutive_failure_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    last_failure_category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    circuit_open_until: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    timeout_failure_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    rate_limited_failure_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    upstream_error_failure_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class ProviderOperationsEventModel(Base):
+    __tablename__ = "provider_operations_events"
+
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    scope: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    scope_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    requested_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    affected_record_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

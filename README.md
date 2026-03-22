@@ -61,11 +61,14 @@ The current execution posture is:
 - provider surfaces now also expose explicit text-generation rollout state and live-provider configuration posture, so supported runtime mode and future activation posture are no longer conflated,
 - live provider requests now carry optional requester and tenant identity into the provider seam so caller-aware quota enforcement can be modeled truthfully instead of only at the outer task API,
 - provider execution requests now carry bounded timeout, retry, and output-token controls even in foundation phase, so later live rollout inherits an explicit execution-hardening seam instead of implicit SDK defaults,
-- live-provider quota enforcement now has a deterministic in-process contract that blocks over-limit execution attempts explicitly instead of silently falling back when quota posture is configured,
-- live-provider budget enforcement now has a deterministic in-process contract that blocks hard-budget overflow explicitly while keeping soft-budget posture inspectable and non-blocking,
-- live-provider degradation controls now model explicit degraded-upstream and circuit-open posture with typed timeout, rate-limit, and upstream-error failure tracking plus cooldown-based reset semantics,
+- live-provider quota enforcement now uses the configured provider-operations store so accepted request counts can remain durable across restarts when the SQL-backed provider-ops path is enabled, while still blocking over-limit execution attempts explicitly,
+- live-provider budget enforcement now uses the configured provider-operations store so tracked spend can remain durable across restarts when the SQL-backed provider-ops path is enabled, while still blocking hard-budget overflow explicitly and keeping soft-budget posture inspectable and non-blocking,
+- live-provider degradation controls now also use the configured provider-operations store so degraded-upstream and circuit-open posture can remain durable across restarts when the SQL-backed provider-ops path is enabled, while still modeling typed timeout, rate-limit, and upstream-error failure tracking plus cooldown-based reset semantics,
+- durable provider-operations mutations now happen at the repository layer for quota, spend, and tracked failure counters, which reduces read-modify-write drift in the live-provider control path,
+- provider operations now also expose a governed control-plane action history plus explicit reset actions for quota, budget, and degradation posture when the SQL-backed provider-operations store is active, so restart is no longer the only reviewable recovery story,
 - provider evidence readiness is now data-backed by staged provider runtime and failure-mode eval fixtures plus a recorded provider regression baseline, so rollout review is tied to governed evidence rather than only a placeholder checklist,
 - provider evidence readiness is now also backed by staged provider operations and degradation eval fixtures, so quota, budget, degraded-upstream, and circuit-open behavior are governed through the same file-backed evaluation model as the rest of the provider seam,
+- provider operations and degradation eval assets now also include durable restart-survival posture, so the recorded provider baseline reflects the persisted control plane rather than only process-local behavior,
 - task runtime posture now resolves through a shared task-execution-path helper, so retrieval-backed and provider-backed task paths are described in one place instead of being split across runtime-summary branches, and provider-backed tasks now distinguish plain stub-default posture from allowlisted-but-still-disabled live rollout posture in operator-facing notes,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - provider runbook readiness is now exposed through a dedicated operational-readiness endpoint with explicit incident-response and rollback requirements,
@@ -126,6 +129,7 @@ The current persistence posture is:
 - a SQLAlchemy-backed audit adapter available behind the same repository interface for durable storage,
 - in-memory retrieval metadata by default, with a SQLAlchemy-backed retrieval adapter available behind the same repository seam,
 - explicit configuration to move between the two without changing API contracts,
+- explicit provider-operations repository seams and migration-managed SQL tables now back durable quota, budget, and degradation state when the SQL-backed provider-operations path is enabled,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 - prompt promotion remains read-only at runtime and is governed through reviewed repository changes plus Alembic-managed persistence updates.
 - startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.

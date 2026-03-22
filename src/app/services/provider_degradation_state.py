@@ -9,15 +9,10 @@ from app.contracts.providers import (
     ProviderFailureCategory,
 )
 from app.providers.base import ProviderExecutionError
+from app.repositories.provider_operations_repository import ProviderDegradationStateRecord
+from app.services.provider_operations_store import get_provider_operations_store
 
-_FAILURE_COUNTS: dict[ProviderFailureCategory, int] = {
-    ProviderFailureCategory.PROVIDER_TIMEOUT: 0,
-    ProviderFailureCategory.PROVIDER_RATE_LIMITED: 0,
-    ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR: 0,
-}
-_CONSECUTIVE_FAILURE_COUNT = 0
-_LAST_FAILURE_CATEGORY: ProviderFailureCategory | None = None
-_CIRCUIT_OPEN_UNTIL: datetime | None = None
+_DEGRADATION_KEY = "live_text_generation"
 
 
 @dataclass(frozen=True)
@@ -75,35 +70,40 @@ def enforce_provider_degradation_preflight() -> None:
 
 
 def record_provider_failure(category: ProviderFailureCategory) -> None:
-    global _CONSECUTIVE_FAILURE_COUNT, _LAST_FAILURE_CATEGORY
-    if category not in _FAILURE_COUNTS:
+    if category not in _tracked_failure_categories():
         return
-    _FAILURE_COUNTS[category] += 1
-    _CONSECUTIVE_FAILURE_COUNT += 1
-    _LAST_FAILURE_CATEGORY = category
+
+    repository = get_provider_operations_store()
+    repository.record_degradation_failure(
+        degradation_key=_DEGRADATION_KEY,
+        category=category,
+        updated_at=_utcnow().isoformat(),
+    )
     state = _resolve_provider_degradation_state()
     if state.enforcement_enabled and state.configuration_valid and state.status == "CIRCUIT_OPEN":
         _open_circuit()
 
 
 def record_successful_provider_execution() -> None:
-    global _CONSECUTIVE_FAILURE_COUNT, _LAST_FAILURE_CATEGORY, _CIRCUIT_OPEN_UNTIL
-    _CONSECUTIVE_FAILURE_COUNT = 0
-    _LAST_FAILURE_CATEGORY = None
-    _CIRCUIT_OPEN_UNTIL = None
+    state_record = _load_degradation_record()
+    _save_degradation_record(
+        consecutive_failure_count=0,
+        last_failure_category=None,
+        circuit_open_until=None,
+        timeout_failure_count=state_record.timeout_failure_count,
+        rate_limited_failure_count=state_record.rate_limited_failure_count,
+        upstream_error_failure_count=state_record.upstream_error_failure_count,
+    )
 
 
 def reset_provider_degradation_state() -> None:
-    global _CONSECUTIVE_FAILURE_COUNT, _LAST_FAILURE_CATEGORY, _CIRCUIT_OPEN_UNTIL
-    for key in _FAILURE_COUNTS:
-        _FAILURE_COUNTS[key] = 0
-    _CONSECUTIVE_FAILURE_COUNT = 0
-    _LAST_FAILURE_CATEGORY = None
-    _CIRCUIT_OPEN_UNTIL = None
+    repository = get_provider_operations_store()
+    repository.reset_degradation_state(degradation_key=_DEGRADATION_KEY)
 
 
 def _resolve_provider_degradation_state() -> ProviderDegradationState:
     findings: list[str] = []
+    state_record = _load_degradation_record()
     enforcement_enabled = settings.live_text_degradation_enforced
     degraded_threshold = settings.live_text_degraded_failure_count_threshold
     circuit_threshold = settings.live_text_circuit_open_failure_count_threshold
@@ -115,18 +115,14 @@ def _resolve_provider_degradation_state() -> ProviderDegradationState:
             status="DOCUMENTED_ONLY",
             enforcement_enabled=False,
             configuration_valid=True,
-            consecutive_failure_count=_CONSECUTIVE_FAILURE_COUNT,
+            consecutive_failure_count=state_record.consecutive_failure_count,
             degraded_failure_count_threshold=degraded_threshold,
             circuit_open_failure_count_threshold=circuit_threshold,
             circuit_open_remaining_seconds=None,
-            last_failure_category=_LAST_FAILURE_CATEGORY,
-            timeout_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_TIMEOUT],
-            rate_limited_failure_count=_FAILURE_COUNTS[
-                ProviderFailureCategory.PROVIDER_RATE_LIMITED
-            ],
-            upstream_error_failure_count=_FAILURE_COUNTS[
-                ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-            ],
+            last_failure_category=state_record.last_failure_category,
+            timeout_failure_count=state_record.timeout_failure_count,
+            rate_limited_failure_count=state_record.rate_limited_failure_count,
+            upstream_error_failure_count=state_record.upstream_error_failure_count,
             findings=[
                 "Provider degradation and circuit-breaker posture remain documented-only until degradation controls are explicitly enabled."
             ],
@@ -162,65 +158,54 @@ def _resolve_provider_degradation_state() -> ProviderDegradationState:
             status="INVALID",
             enforcement_enabled=True,
             configuration_valid=False,
-            consecutive_failure_count=_CONSECUTIVE_FAILURE_COUNT,
+            consecutive_failure_count=state_record.consecutive_failure_count,
             degraded_failure_count_threshold=degraded_threshold,
             circuit_open_failure_count_threshold=circuit_threshold,
             circuit_open_remaining_seconds=None,
-            last_failure_category=_LAST_FAILURE_CATEGORY,
-            timeout_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_TIMEOUT],
-            rate_limited_failure_count=_FAILURE_COUNTS[
-                ProviderFailureCategory.PROVIDER_RATE_LIMITED
-            ],
-            upstream_error_failure_count=_FAILURE_COUNTS[
-                ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-            ],
+            last_failure_category=state_record.last_failure_category,
+            timeout_failure_count=state_record.timeout_failure_count,
+            rate_limited_failure_count=state_record.rate_limited_failure_count,
+            upstream_error_failure_count=state_record.upstream_error_failure_count,
             findings=findings,
         )
 
-    circuit_remaining_seconds = _remaining_circuit_open_seconds()
+    circuit_remaining_seconds = _remaining_circuit_open_seconds(state_record.circuit_open_until)
+    state_record = _load_degradation_record()
     if circuit_remaining_seconds is not None:
         return ProviderDegradationState(
             status="CIRCUIT_OPEN",
             enforcement_enabled=True,
             configuration_valid=True,
-            consecutive_failure_count=_CONSECUTIVE_FAILURE_COUNT,
+            consecutive_failure_count=state_record.consecutive_failure_count,
             degraded_failure_count_threshold=degraded_threshold,
             circuit_open_failure_count_threshold=circuit_threshold,
             circuit_open_remaining_seconds=circuit_remaining_seconds,
-            last_failure_category=_LAST_FAILURE_CATEGORY,
-            timeout_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_TIMEOUT],
-            rate_limited_failure_count=_FAILURE_COUNTS[
-                ProviderFailureCategory.PROVIDER_RATE_LIMITED
-            ],
-            upstream_error_failure_count=_FAILURE_COUNTS[
-                ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-            ],
+            last_failure_category=state_record.last_failure_category,
+            timeout_failure_count=state_record.timeout_failure_count,
+            rate_limited_failure_count=state_record.rate_limited_failure_count,
+            upstream_error_failure_count=state_record.upstream_error_failure_count,
             findings=[
                 "Provider circuit breaker is currently open because repeated upstream failures crossed the configured circuit threshold."
             ],
         )
 
-    if _CONSECUTIVE_FAILURE_COUNT >= (circuit_threshold or 0):
+    if state_record.consecutive_failure_count >= (circuit_threshold or 0):
         _open_circuit()
         return _resolve_provider_degradation_state()
 
-    if _CONSECUTIVE_FAILURE_COUNT >= (degraded_threshold or 0):
+    if state_record.consecutive_failure_count >= (degraded_threshold or 0):
         return ProviderDegradationState(
             status="DEGRADED_UPSTREAM",
             enforcement_enabled=True,
             configuration_valid=True,
-            consecutive_failure_count=_CONSECUTIVE_FAILURE_COUNT,
+            consecutive_failure_count=state_record.consecutive_failure_count,
             degraded_failure_count_threshold=degraded_threshold,
             circuit_open_failure_count_threshold=circuit_threshold,
             circuit_open_remaining_seconds=None,
-            last_failure_category=_LAST_FAILURE_CATEGORY,
-            timeout_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_TIMEOUT],
-            rate_limited_failure_count=_FAILURE_COUNTS[
-                ProviderFailureCategory.PROVIDER_RATE_LIMITED
-            ],
-            upstream_error_failure_count=_FAILURE_COUNTS[
-                ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-            ],
+            last_failure_category=state_record.last_failure_category,
+            timeout_failure_count=state_record.timeout_failure_count,
+            rate_limited_failure_count=state_record.rate_limited_failure_count,
+            upstream_error_failure_count=state_record.upstream_error_failure_count,
             findings=[
                 "Provider upstream is currently degraded because consecutive failures crossed the configured degraded threshold."
             ],
@@ -230,39 +215,99 @@ def _resolve_provider_degradation_state() -> ProviderDegradationState:
         status="NORMAL",
         enforcement_enabled=True,
         configuration_valid=True,
-        consecutive_failure_count=_CONSECUTIVE_FAILURE_COUNT,
+        consecutive_failure_count=state_record.consecutive_failure_count,
         degraded_failure_count_threshold=degraded_threshold,
         circuit_open_failure_count_threshold=circuit_threshold,
         circuit_open_remaining_seconds=None,
-        last_failure_category=_LAST_FAILURE_CATEGORY,
-        timeout_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_TIMEOUT],
-        rate_limited_failure_count=_FAILURE_COUNTS[ProviderFailureCategory.PROVIDER_RATE_LIMITED],
-        upstream_error_failure_count=_FAILURE_COUNTS[
-            ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-        ],
+        last_failure_category=state_record.last_failure_category,
+        timeout_failure_count=state_record.timeout_failure_count,
+        rate_limited_failure_count=state_record.rate_limited_failure_count,
+        upstream_error_failure_count=state_record.upstream_error_failure_count,
         findings=[
             "Provider degradation controls are enabled and the live provider path is currently healthy."
         ],
     )
 
 
-def _remaining_circuit_open_seconds() -> int | None:
-    global _CIRCUIT_OPEN_UNTIL, _CONSECUTIVE_FAILURE_COUNT, _LAST_FAILURE_CATEGORY
-    if _CIRCUIT_OPEN_UNTIL is None:
+def _remaining_circuit_open_seconds(circuit_open_until: str | None) -> int | None:
+    if circuit_open_until is None:
         return None
-    remaining = int((_CIRCUIT_OPEN_UNTIL - _utcnow()).total_seconds())
+    until = datetime.fromisoformat(circuit_open_until)
+    remaining = int((until - _utcnow()).total_seconds())
     if remaining > 0:
         return remaining
-    _CIRCUIT_OPEN_UNTIL = None
-    _CONSECUTIVE_FAILURE_COUNT = 0
-    _LAST_FAILURE_CATEGORY = None
+    state_record = _load_degradation_record()
+    _save_degradation_record(
+        consecutive_failure_count=0,
+        last_failure_category=None,
+        circuit_open_until=None,
+        timeout_failure_count=state_record.timeout_failure_count,
+        rate_limited_failure_count=state_record.rate_limited_failure_count,
+        upstream_error_failure_count=state_record.upstream_error_failure_count,
+    )
     return None
 
 
 def _open_circuit() -> None:
-    global _CIRCUIT_OPEN_UNTIL
+    state_record = _load_degradation_record()
     cooldown_seconds = settings.live_text_circuit_open_seconds or 0
-    _CIRCUIT_OPEN_UNTIL = _utcnow() + timedelta(seconds=cooldown_seconds)
+    _save_degradation_record(
+        consecutive_failure_count=state_record.consecutive_failure_count,
+        last_failure_category=state_record.last_failure_category,
+        circuit_open_until=(_utcnow() + timedelta(seconds=cooldown_seconds)).isoformat(),
+        timeout_failure_count=state_record.timeout_failure_count,
+        rate_limited_failure_count=state_record.rate_limited_failure_count,
+        upstream_error_failure_count=state_record.upstream_error_failure_count,
+    )
+
+
+def _tracked_failure_categories() -> set[ProviderFailureCategory]:
+    return {
+        ProviderFailureCategory.PROVIDER_TIMEOUT,
+        ProviderFailureCategory.PROVIDER_RATE_LIMITED,
+        ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
+    }
+
+
+def _load_degradation_record() -> ProviderDegradationStateRecord:
+    repository = get_provider_operations_store()
+    record = repository.get_degradation_state(degradation_key=_DEGRADATION_KEY)
+    if record is not None:
+        return record
+    return ProviderDegradationStateRecord(
+        degradation_key=_DEGRADATION_KEY,
+        consecutive_failure_count=0,
+        last_failure_category=None,
+        circuit_open_until=None,
+        timeout_failure_count=0,
+        rate_limited_failure_count=0,
+        upstream_error_failure_count=0,
+        updated_at=_utcnow().isoformat(),
+    )
+
+
+def _save_degradation_record(
+    *,
+    consecutive_failure_count: int,
+    last_failure_category: ProviderFailureCategory | None,
+    circuit_open_until: str | None,
+    timeout_failure_count: int,
+    rate_limited_failure_count: int,
+    upstream_error_failure_count: int,
+) -> None:
+    repository = get_provider_operations_store()
+    repository.save_degradation_state(
+        ProviderDegradationStateRecord(
+            degradation_key=_DEGRADATION_KEY,
+            consecutive_failure_count=consecutive_failure_count,
+            last_failure_category=last_failure_category,
+            circuit_open_until=circuit_open_until,
+            timeout_failure_count=timeout_failure_count,
+            rate_limited_failure_count=rate_limited_failure_count,
+            upstream_error_failure_count=upstream_error_failure_count,
+            updated_at=_utcnow().isoformat(),
+        )
+    )
 
 
 def _utcnow() -> datetime:

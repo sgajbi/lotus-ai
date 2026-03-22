@@ -9,6 +9,7 @@ from app.services.audit_store import reset_audit_store_cache
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import reset_provider_budget_state
 from app.services.provider_degradation_state import reset_provider_degradation_state
+from app.services.provider_operations_store import reset_provider_operations_store_cache
 from app.services.provider_quota_policy import reset_provider_quota_counters
 from app.services.retrieval_store import reset_retrieval_repository
 
@@ -41,6 +42,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "audit_store_mode": settings.audit_store_mode,
         "prompt_store_mode": settings.prompt_store_mode,
         "retrieval_store_mode": settings.retrieval_store_mode,
+        "provider_operations_store_mode": settings.provider_operations_store_mode,
         "startup_readiness_policy": settings.startup_readiness_policy,
         "readiness_probe_policy": settings.readiness_probe_policy,
         "database_url": settings.database_url,
@@ -56,3 +58,4 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_provider_budget_state()
         reset_provider_degradation_state()
         reset_provider_quota_counters()
+        reset_provider_operations_store_cache()

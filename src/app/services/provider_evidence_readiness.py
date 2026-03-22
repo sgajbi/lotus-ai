@@ -77,7 +77,7 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
             status="READY" if operations_fixture_ready else "NOT_READY",
             required_for_activation=True,
             notes=(
-                "Provider operations fixtures cover quota-blocked and hard-budget-blocked live execution posture."
+                "Provider operations fixtures cover quota-blocked, hard-budget-blocked, and durable budget restart-survival posture."
                 if operations_fixture_ready
                 else "Provider quota and budget operations fixtures are not yet staged."
             ),
@@ -87,7 +87,7 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
             status="READY" if degradation_fixture_ready else "NOT_READY",
             required_for_activation=True,
             notes=(
-                "Provider degradation fixtures cover degraded-upstream and circuit-open execution posture."
+                "Provider degradation fixtures cover degraded-upstream, circuit-open, and durable cooldown recovery posture."
                 if degradation_fixture_ready
                 else "Provider degraded-upstream and circuit-open fixtures are not yet staged."
             ),
@@ -97,10 +97,10 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
             status="READY" if regression_baseline_ready else "NOT_READY",
             required_for_activation=True,
             notes=(
-                "A recorded evaluation run proves provider policy, runtime, and failure-mode "
+                "A recorded evaluation run proves provider policy, runtime, failure-mode, and durable provider-operations "
                 f"coverage in '{inventory.latest_recorded_provider_run_id}'."
                 if regression_baseline_ready and inventory.latest_recorded_provider_run_id
-                else "A governed recorded run proving provider policy, runtime, and failure-mode "
+                else "A governed recorded run proving provider policy, runtime, failure-mode, and durable provider-operations "
                 "coverage is not yet present."
             ),
         ),

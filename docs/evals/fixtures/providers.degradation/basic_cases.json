@@ -30,6 +30,22 @@
         "must_reject_before_live_provider_call": true,
         "expected_outcome": "CIRCUIT_OPEN"
       }
+    },
+    {
+      "case_id": "persisted_circuit_posture_survives_restart_until_cooldown_expires",
+      "summary": "Circuit-open posture should remain authoritative across restart and only clear after the persisted cooldown window elapses.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "openai",
+        "provider_operations_store_mode": "sqlalchemy",
+        "circuit_open_seconds": 60
+      },
+      "expected": {
+        "operations_state": "CIRCUIT_OPEN",
+        "must_survive_restart": true,
+        "must_clear_only_after_persisted_cooldown": true,
+        "expected_outcome": "DURABLE_CIRCUIT_POSTURE"
+      }
     }
   ]
 }

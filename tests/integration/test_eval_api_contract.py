@@ -56,13 +56,13 @@ def test_evaluation_catalog_route(client: TestClient) -> None:
     assert any(
         fixture["fixture_id"] == "provider_operations_examples"
         and fixture["manifest_path"] == "docs/evals/fixtures/providers.operations/basic_cases.json"
-        and fixture["case_count"] == 2
+        and fixture["case_count"] == 3
         for fixture in body["fixture_families"]
     )
     assert any(
         fixture["fixture_id"] == "provider_degradation_examples"
         and fixture["manifest_path"] == "docs/evals/fixtures/providers.degradation/basic_cases.json"
-        and fixture["case_count"] == 2
+        and fixture["case_count"] == 3
         for fixture in body["fixture_families"]
     )
     assert any(
@@ -81,7 +81,7 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["manifest_version"] == "foundation.v1"
     assert body["evidence_category_count"] == 5
-    assert body["staged_case_count"] == 20
+    assert body["staged_case_count"] == 22
     assert [item["seam_id"] for item in body["seam_coverage"]] == [
         "task_execution",
         "retrieval",
@@ -91,7 +91,7 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     assert body["seam_coverage"][0]["staged_fixture_count"] == 3
     assert body["seam_coverage"][0]["staged_case_count"] == 6
     assert body["seam_coverage"][2]["staged_fixture_count"] == 5
-    assert body["seam_coverage"][2]["staged_case_count"] == 10
+    assert body["seam_coverage"][2]["staged_case_count"] == 12
     assert body["recorded_run_count"] == 2
     assert body["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["latest_recorded_run_status"] == "RECORDED"
@@ -108,7 +108,7 @@ def test_evaluation_run_catalog_route(client: TestClient) -> None:
     assert body["latest_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["status_counts"]["RECORDED"] == 1
     assert body["status_counts"]["SUPERSEDED"] == 1
-    assert body["runs"][0]["staged_case_count"] == 20
+    assert body["runs"][0]["staged_case_count"] == 22
     assert body["runs"][1]["status"] == "SUPERSEDED"
 
 

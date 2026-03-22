@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from app.config import settings
 from app.contracts.providers import (
@@ -13,6 +14,7 @@ from app.contracts.providers import (
 )
 from app.providers.base import ProviderExecutionError
 from app.services.capability_catalog import get_capability_by_task_id
+from app.services.provider_operations_store import get_provider_operations_store
 
 _MATCHING_ORDER = [
     ProviderQuotaScope.TENANT,
@@ -20,7 +22,6 @@ _MATCHING_ORDER = [
     ProviderQuotaScope.TASK,
     ProviderQuotaScope.DEFAULT,
 ]
-_COUNTERS: dict[tuple[ProviderQuotaScope, str], int] = {}
 
 
 @dataclass(frozen=True)
@@ -49,20 +50,27 @@ def parse_provider_quota_policy() -> ParsedProviderQuotaPolicy:
     findings: list[str] = []
     configuration_valid = True
     quotas: list[ProviderQuotaDescriptor] = []
+    current_counts = _load_quota_counts()
 
     task_entries, task_findings = _parse_quota_mapping(
         settings.live_text_task_quota_limits,
         scope=ProviderQuotaScope.TASK,
+        current_counts=current_counts,
     )
     caller_entries, caller_findings = _parse_quota_mapping(
         settings.live_text_caller_quota_limits,
         scope=ProviderQuotaScope.CALLER_APP,
+        current_counts=current_counts,
     )
     tenant_entries, tenant_findings = _parse_quota_mapping(
         settings.live_text_tenant_quota_limits,
         scope=ProviderQuotaScope.TENANT,
+        current_counts=current_counts,
     )
-    default_quota, default_findings = _parse_default_quota(settings.live_text_default_quota_limit)
+    default_quota, default_findings = _parse_default_quota(
+        settings.live_text_default_quota_limit,
+        current_counts=current_counts,
+    )
 
     findings.extend(task_findings)
     findings.extend(caller_findings)
@@ -129,18 +137,19 @@ def enforce_provider_quota(request: ProviderExecutionRequest) -> None:
             )
 
     for quota in applicable:
-        counter_key = (quota.scope, quota.scope_key)
-        _COUNTERS[counter_key] = _COUNTERS.get(counter_key, 0) + 1
+        _increment_quota_count(scope=quota.scope, scope_key=quota.scope_key)
 
 
 def reset_provider_quota_counters() -> None:
-    _COUNTERS.clear()
+    repository = get_provider_operations_store()
+    repository.reset_quota_states()
 
 
 def _parse_quota_mapping(
     raw_value: str,
     *,
     scope: ProviderQuotaScope,
+    current_counts: dict[tuple[ProviderQuotaScope, str], int],
 ) -> tuple[list[ProviderQuotaDescriptor], list[str]]:
     descriptors: list[ProviderQuotaDescriptor] = []
     findings: list[str] = []
@@ -165,6 +174,7 @@ def _parse_quota_mapping(
                 scope=scope,
                 scope_key=scope_key,
                 request_limit=limit,
+                current_counts=current_counts,
             )
         )
 
@@ -173,6 +183,8 @@ def _parse_quota_mapping(
 
 def _parse_default_quota(
     raw_limit: int | None,
+    *,
+    current_counts: dict[tuple[ProviderQuotaScope, str], int],
 ) -> tuple[ProviderQuotaDescriptor | None, list[str]]:
     findings: list[str] = []
     if raw_limit is None:
@@ -185,6 +197,7 @@ def _parse_default_quota(
             scope=ProviderQuotaScope.DEFAULT,
             scope_key="global",
             request_limit=raw_limit,
+            current_counts=current_counts,
         ),
         findings,
     )
@@ -214,9 +227,10 @@ def _build_quota_descriptor(
     scope: ProviderQuotaScope,
     scope_key: str,
     request_limit: int,
+    current_counts: dict[tuple[ProviderQuotaScope, str], int],
 ) -> ProviderQuotaDescriptor:
     counter_key = (scope, scope_key)
-    current_count = _COUNTERS.get(counter_key, 0)
+    current_count = current_counts.get(counter_key, 0)
     return ProviderQuotaDescriptor(
         scope=scope,
         scope_key=scope_key,
@@ -242,6 +256,7 @@ def _matching_quota_descriptors(
     *,
     request: ProviderExecutionRequest,
 ) -> list[ProviderQuotaDescriptor]:
+    current_counts = _load_quota_counts()
     matched: list[ProviderQuotaDescriptor] = []
     for quota in quotas:
         if quota.scope == ProviderQuotaScope.DEFAULT:
@@ -250,6 +265,7 @@ def _matching_quota_descriptors(
                     scope=quota.scope,
                     scope_key=quota.scope_key,
                     request_limit=quota.request_limit,
+                    current_counts=current_counts,
                 )
             )
         elif quota.scope == ProviderQuotaScope.TASK and quota.scope_key == request.task_id:
@@ -258,6 +274,7 @@ def _matching_quota_descriptors(
                     scope=quota.scope,
                     scope_key=quota.scope_key,
                     request_limit=quota.request_limit,
+                    current_counts=current_counts,
                 )
             )
         elif quota.scope == ProviderQuotaScope.CALLER_APP and quota.scope_key == request.caller_app:
@@ -266,6 +283,7 @@ def _matching_quota_descriptors(
                     scope=quota.scope,
                     scope_key=quota.scope_key,
                     request_limit=quota.request_limit,
+                    current_counts=current_counts,
                 )
             )
         elif (
@@ -278,6 +296,7 @@ def _matching_quota_descriptors(
                     scope=quota.scope,
                     scope_key=quota.scope_key,
                     request_limit=quota.request_limit,
+                    current_counts=current_counts,
                 )
             )
     return sorted(matched, key=lambda item: _MATCHING_ORDER.index(item.scope))
@@ -293,3 +312,25 @@ def _dedupe_quota_descriptors(
         unique.values(),
         key=lambda item: (_MATCHING_ORDER.index(item.scope), item.scope_key),
     )
+
+
+def _load_quota_counts() -> dict[tuple[ProviderQuotaScope, str], int]:
+    repository = get_provider_operations_store()
+    return {
+        (record.scope, record.scope_key): record.request_count
+        for record in repository.list_quota_states()
+    }
+
+
+def _increment_quota_count(*, scope: ProviderQuotaScope, scope_key: str) -> None:
+    repository = get_provider_operations_store()
+    repository.increment_quota_state(
+        scope=scope,
+        scope_key=scope_key,
+        amount=1,
+        updated_at=_utcnow(),
+    )
+
+
+def _utcnow() -> str:
+    return datetime.now(UTC).isoformat()
