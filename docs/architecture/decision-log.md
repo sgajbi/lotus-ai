@@ -624,3 +624,21 @@ Current posture:
 1. `/platform/async/jobs` and `/platform/async/jobs/{job_id}` expose seeded async job artifacts,
 2. async runtime status now reports queued and recorded job counts,
 3. async job artifacts are validated by a dedicated gate before being exposed through the API.
+
+## Decision 37: Async Submission Should Be Contract-First And Explicitly Rejected Before Activation
+
+Decision:
+
+`lotus-ai` exposes an async job submission contract before live queue execution is enabled, and supported submissions return explicit rejected responses during foundation phase.
+
+Why:
+
+1. callers should be able to integrate to the future submission surface before workers are activated,
+2. explicit rejected responses are more useful than missing endpoints or undocumented refusal behavior,
+3. this keeps the path from synchronous to async execution governed and testable.
+
+Current posture:
+
+1. `/platform/async/jobs/submit` validates known job types,
+2. supported job types return a typed `REJECTED` response while queue execution remains disabled,
+3. unknown job types are rejected explicitly with a not-found response.

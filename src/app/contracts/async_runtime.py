@@ -20,6 +20,11 @@ class AsyncJobStatus(str, Enum):
     SUPERSEDED = "SUPERSEDED"
 
 
+class AsyncSubmissionStatus(str, Enum):
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+
+
 class AsyncJobTypeDescriptor(BaseModel):
     job_type: str = Field(description="Stable async job type identifier.")
     enabled: bool = Field(description="Whether the async job type is enabled in the current phase.")
@@ -59,6 +64,40 @@ class AsyncJobDetailResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
     job: AsyncJobArtifactDescriptor = Field(description="Recorded async job artifact detail.")
+
+
+class AsyncJobSubmissionRequest(BaseModel):
+    job_type: str = Field(description="Stable async job type identifier requested by the caller.")
+    caller_app: str = Field(
+        description="Calling Lotus application submitting the async job request."
+    )
+    correlation_id: str = Field(
+        description="Caller-provided correlation identifier for the request."
+    )
+    payload_summary: str = Field(
+        description="Short description of the intended async work payload."
+    )
+
+
+class AsyncJobSubmissionResponse(BaseModel):
+    service: str = Field(description="Service name emitting the async job submission response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    submission_status: AsyncSubmissionStatus = Field(
+        description="Submission outcome under the current async runtime posture."
+    )
+    queue_mode: AsyncQueueMode = Field(
+        description="Queue mode that governed the submission decision."
+    )
+    worker_mode: AsyncWorkerMode = Field(
+        description="Worker mode that governed the submission decision."
+    )
+    job_type: str = Field(description="Stable async job type identifier evaluated for submission.")
+    accepted: bool = Field(description="Whether the async submission was accepted.")
+    job_id: str | None = Field(
+        default=None, description="Assigned async job id when submission is accepted."
+    )
+    message: str = Field(description="Human-readable explanation of the submission outcome.")
 
 
 class AsyncRuntimeStatusResponse(BaseModel):

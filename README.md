@@ -46,6 +46,7 @@ The current execution posture is:
 - evaluation run artifacts now model both current and superseded lifecycle states,
 - async queue and worker posture is now exposed through a dedicated runtime-status endpoint,
 - seeded async job artifacts are now exposed and validated through dedicated contracts,
+- async job submission now has a governed request/response contract with explicit foundation-phase rejection behavior,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

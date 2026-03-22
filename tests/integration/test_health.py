@@ -78,6 +78,45 @@ def test_async_job_detail_route_returns_not_found_for_unknown_job() -> None:
     assert response.json()["detail"] == "Async job artifact 'missing_async_job' was not found."
 
 
+def test_async_job_submit_route_returns_rejected_contract_response() -> None:
+    client = TestClient(app)
+
+    response = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "retrieval_indexing",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-async-submit-001",
+            "payload_summary": "Index newly approved RFC documents.",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["submission_status"] == "REJECTED"
+    assert body["accepted"] is False
+    assert body["job_id"] is None
+    assert body["queue_mode"] == "DISABLED"
+
+
+def test_async_job_submit_route_returns_not_found_for_unknown_job_type() -> None:
+    client = TestClient(app)
+
+    response = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "missing_job_type",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-async-submit-002",
+            "payload_summary": "Unknown async work.",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Unknown lotus-ai async job type: missing_job_type"
+
+
 def test_evaluation_catalog_route() -> None:
     client = TestClient(app)
 

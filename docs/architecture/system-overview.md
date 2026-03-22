@@ -74,7 +74,8 @@ Owns:
 1. async queue and worker posture exposure,
 2. known background job-type inventory,
 3. seeded async job artifact inspection,
-4. the contract boundary for future worker-backed execution.
+4. governed async job submission contracts,
+5. the contract boundary for future worker-backed execution.
 
 ### Providers
 
