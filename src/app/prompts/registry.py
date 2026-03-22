@@ -1,12 +1,19 @@
 from __future__ import annotations
 
-from app.contracts.prompts import PromptDescriptor
+from app.contracts.prompts import (
+    PromptDescriptor,
+    PromptLifecycleStatus,
+    PromptManagementMode,
+)
 
 _PROMPTS: dict[str, PromptDescriptor] = {
     "explain.v1": PromptDescriptor(
         task_id="explain.v1",
         prompt_version="foundation.explain.v1",
         prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.ACTIVE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
         system_instructions=(
             "Explain structured Lotus domain outputs clearly, conservatively, and without "
             "inventing missing business facts."
@@ -19,6 +26,9 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         task_id="summarize.v1",
         prompt_version="foundation.summarize.v1",
         prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.ACTIVE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
         system_instructions=(
             "Summarize caller-provided structured inputs into concise, decision-supporting text."
         ),
@@ -28,6 +38,9 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         task_id="classify.v1",
         prompt_version="foundation.classify.v1",
         prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.ACTIVE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
         system_instructions=(
             "Classify caller-provided structured content into bounded categories only."
         ),
@@ -37,6 +50,9 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         task_id="extract.v1",
         prompt_version="foundation.extract.v1",
         prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.ACTIVE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
         system_instructions="Extract structured fields from curated caller content.",
         output_contract_notes="Extraction output must stay schema-bound and conservative.",
     ),
@@ -44,6 +60,9 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         task_id="generate_structured.v1",
         prompt_version="foundation.generate_structured.v1",
         prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.ACTIVE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
         system_instructions=(
             "Generate schema-bound structured output from curated caller context."
         ),
@@ -53,6 +72,9 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         task_id="knowledge_search.v1",
         prompt_version="foundation.knowledge_search.v1",
         prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.ACTIVE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
         system_instructions="Search approved Lotus knowledge sources with traceable provenance.",
         output_contract_notes="Citations and source attribution are mandatory when enabled.",
     ),
@@ -60,6 +82,9 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         task_id="knowledge_answer.v1",
         prompt_version="foundation.knowledge_answer.v1",
         prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.ACTIVE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
         system_instructions=(
             "Answer questions from approved Lotus knowledge sources with explicit citations."
         ),

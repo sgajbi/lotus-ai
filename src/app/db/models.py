@@ -88,5 +88,8 @@ class PromptDefinitionModel(Base):
     task_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     prompt_version: Mapped[str] = mapped_column(String(128), nullable=False)
     prompt_kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    lifecycle_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    management_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_reference: Mapped[str] = mapped_column(Text, nullable=False)
     system_instructions: Mapped[str] = mapped_column(Text, nullable=False)
     output_contract_notes: Mapped[str] = mapped_column(Text, nullable=False)

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.contracts.prompts import PromptDescriptor
+from app.contracts.prompts import PromptDescriptor, PromptGovernanceStatusResponse
+from app.services.prompt_governance import build_prompt_governance_status
 from app.services.prompt_registry import get_prompt_or_raise, list_registered_prompts
 
 router = APIRouter(prefix="/platform/prompts", tags=["platform"])
@@ -24,6 +25,24 @@ router = APIRouter(prefix="/platform/prompts", tags=["platform"])
 )
 async def list_prompts_route() -> list[PromptDescriptor]:
     return list_registered_prompts()
+
+
+@router.get(
+    "/governance",
+    response_model=PromptGovernanceStatusResponse,
+    operation_id="getPromptGovernanceStatus",
+    summary="Get lotus-ai prompt governance status",
+    description=(
+        "Returns the current prompt governance posture, including whether runtime mutation "
+        "is allowed and how prompt promotion is managed in the current phase."
+    ),
+    responses={
+        200: {"description": "Prompt governance status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_prompt_governance_route() -> PromptGovernanceStatusResponse:
+    return build_prompt_governance_status()
 
 
 @router.get(

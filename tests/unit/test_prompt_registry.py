@@ -1,3 +1,4 @@
+from app.contracts.prompts import PromptLifecycleStatus, PromptManagementMode
 from fastapi import HTTPException
 
 from app.config import settings
@@ -17,6 +18,8 @@ def test_get_prompt_or_raise_returns_registered_prompt() -> None:
 
     assert prompt.prompt_version == "foundation.explain.v1"
     assert prompt.prompt_kind == "system"
+    assert prompt.lifecycle_status == PromptLifecycleStatus.ACTIVE
+    assert prompt.management_mode == PromptManagementMode.SEEDED_MEMORY
 
 
 def test_get_prompt_or_raise_rejects_unknown_prompt() -> None:
@@ -36,3 +39,4 @@ def test_list_registered_prompts_uses_active_prompt_store_mode() -> None:
     prompts = list_registered_prompts()
 
     assert any(prompt.task_id == "knowledge_answer.v1" for prompt in prompts)
+    assert all(prompt.source_reference == "app.prompts.registry:_PROMPTS" for prompt in prompts)

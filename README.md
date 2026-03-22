@@ -21,10 +21,12 @@ The current persistence posture is:
 
 - in-memory audit storage by default for simple local development,
 - in-memory prompt registry by default, with a SQLAlchemy-backed prompt adapter available behind the same repository seam,
+- prompt definitions now expose lifecycle and provenance metadata in both memory and SQL-backed modes,
 - a SQLAlchemy-backed audit adapter available behind the same repository interface for durable storage,
 - in-memory retrieval metadata by default, with a SQLAlchemy-backed retrieval adapter available behind the same repository seam,
 - explicit configuration to move between the two without changing API contracts,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
+- prompt promotion remains read-only at runtime and is governed through reviewed repository changes plus Alembic-managed persistence updates.
 - startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.
 - readiness probe policy defaults to `observe` and can be raised to `degrade` when orchestration should react to readiness findings.
 

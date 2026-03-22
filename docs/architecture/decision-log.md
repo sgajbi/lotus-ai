@@ -118,3 +118,21 @@ Current target posture:
 1. local development: `warn` + `observe`
 2. shared integration: `warn` + `degrade`
 3. enterprise / production-like: `enforce` + `degrade`
+
+## Decision 9: Prompt Promotion Is Read-Only at Runtime
+
+Decision:
+
+Prompt definitions in `lotus-ai` are inspectable through APIs, but runtime mutation and promotion remain disabled.
+
+Why:
+
+1. prompt changes are platform-governed behavior changes and must stay reviewable,
+2. bank-grade environments need provenance and controlled rollout for prompt changes,
+3. repository-reviewed changes plus Alembic-managed persistence keep promotion traceable without adding unsafe runtime write paths too early.
+
+Current posture:
+
+1. prompt definitions expose lifecycle and provenance metadata,
+2. SQL-backed prompt definitions are promoted through migrations,
+3. runtime prompt write APIs remain disabled until a stronger approval and rollout model exists.

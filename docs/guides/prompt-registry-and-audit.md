@@ -27,8 +27,11 @@ Current prompt fields:
 1. `task_id`
 2. `prompt_version`
 3. `prompt_kind`
-4. `system_instructions`
-5. `output_contract_notes`
+4. `lifecycle_status`
+5. `management_mode`
+6. `source_reference`
+7. `system_instructions`
+8. `output_contract_notes`
 
 This is intentionally simple for foundation phase.
 
@@ -42,7 +45,19 @@ The current enterprise posture is:
 1. prompt definitions can remain memory-backed for local development,
 2. durable prompt definitions are seeded and managed through Alembic revisions,
 3. prompt-store mode is independent from audit and retrieval store mode,
-4. public prompt APIs do not change when the backing store changes.
+4. prompt definitions expose lifecycle and provenance metadata in every store mode,
+5. prompt promotion remains read-only at runtime,
+6. public prompt APIs do not change when the backing store changes.
+
+## Prompt Governance
+
+Current governance posture:
+
+1. runtime prompt mutation APIs are disabled,
+2. prompt promotion write APIs are disabled,
+3. prompt promotion happens through reviewed repository changes,
+4. SQL-backed prompt promotion is completed through Alembic-managed persistence updates,
+5. the current governance posture is visible through `GET /platform/prompts/governance`.
 
 ## Audit Store
 
@@ -81,7 +96,8 @@ The current enterprise posture is:
 
 1. `GET /platform/prompts`
 2. `GET /platform/prompts/{task_id}`
-3. `GET /ai/audit/{request_id}`
+3. `GET /platform/prompts/governance`
+4. `GET /ai/audit/{request_id}`
 
 ## Future Direction
 
@@ -89,5 +105,5 @@ Likely next evolution:
 
 1. prompt promotion and rollback workflow,
 2. tenant-aware prompt selection,
-3. prompt approval status and provenance metadata,
+3. richer prompt approval status and promotion-history metadata,
 4. richer audit records including safety-policy outcomes.

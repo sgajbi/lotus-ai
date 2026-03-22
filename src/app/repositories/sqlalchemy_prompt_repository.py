@@ -5,7 +5,11 @@ from pathlib import Path
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from app.contracts.prompts import PromptDescriptor
+from app.contracts.prompts import (
+    PromptDescriptor,
+    PromptLifecycleStatus,
+    PromptManagementMode,
+)
 from app.db.models import PromptDefinitionModel
 
 
@@ -35,6 +39,9 @@ class SqlAlchemyPromptRepository:
             task_id=model.task_id,
             prompt_version=model.prompt_version,
             prompt_kind=model.prompt_kind,
+            lifecycle_status=PromptLifecycleStatus(model.lifecycle_status),
+            management_mode=PromptManagementMode(model.management_mode),
+            source_reference=model.source_reference,
             system_instructions=model.system_instructions,
             output_contract_notes=model.output_contract_notes,
         )

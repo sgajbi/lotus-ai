@@ -82,10 +82,26 @@ def test_prompt_registry_routes() -> None:
     list_response = client.get("/platform/prompts")
     assert list_response.status_code == 200
     assert any(prompt["task_id"] == "explain.v1" for prompt in list_response.json())
+    assert all(prompt["lifecycle_status"] == "ACTIVE" for prompt in list_response.json())
 
     detail_response = client.get("/platform/prompts/explain.v1")
     assert detail_response.status_code == 200
     assert detail_response.json()["prompt_version"] == "foundation.explain.v1"
+    assert detail_response.json()["management_mode"] == "SEEDED_MEMORY"
+
+
+def test_prompt_governance_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/prompts/governance")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["prompt_store_mode"] == "memory"
+    assert body["management_mode"] == "SEEDED_MEMORY"
+    assert body["runtime_mutation_enabled"] is False
+    assert body["promotion_write_api_enabled"] is False
+    assert body["active_prompt_count"] >= 7
 
 
 def test_service_metadata_exposes_store_modes() -> None:
@@ -96,6 +112,7 @@ def test_service_metadata_exposes_store_modes() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["auditStoreMode"] == "memory"
+    assert body["promptStoreMode"] == "memory"
     assert body["retrievalStoreMode"] == "memory"
     assert body["startupReadinessPolicy"] == "warn"
     assert body["readinessProbePolicy"] == "observe"
