@@ -4,7 +4,10 @@ from pydantic import BaseModel, Field
 
 from app.contracts.async_runtime import AsyncGovernanceStatusResponse, AsyncRuntimeStatusResponse
 from app.contracts.evals import EvaluationRuntimeStatusResponse
-from app.contracts.prompts import PromptRuntimeStatusResponse
+from app.contracts.prompts import (
+    PromptGovernanceStatusSummaryResponse,
+    PromptRuntimeStatusResponse,
+)
 from app.contracts.providers import ProviderGovernanceStatusResponse
 from app.contracts.retrieval import RetrievalGovernanceStatusResponse
 from app.contracts.runtime_readiness import (
@@ -35,6 +38,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     retrieval_governance: RetrievalGovernanceStatusResponse = Field(
         description="Current retrieval governance posture for lotus-ai."
+    )
+    prompt_governance: PromptGovernanceStatusSummaryResponse = Field(
+        description="Current prompt governance posture for lotus-ai."
     )
     evaluation_runtime: EvaluationRuntimeStatusResponse = Field(
         description="Current evaluation runtime posture for lotus-ai."

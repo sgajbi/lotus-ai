@@ -480,6 +480,24 @@ Current posture:
 2. the response explicitly reports blocked prompt governance posture in foundation phase,
 3. detailed prompt readiness endpoints remain available for deeper inspection and future rollout work.
 
+## Decision 17D: Platform Runtime Status Should Embed Prompt Governance Posture
+
+Decision:
+
+`/platform/runtime-status` now embeds prompt governance posture in addition to the dedicated prompt governance endpoint.
+
+Why:
+
+1. platform operators should have one primary runtime entry point that includes the top-level prompt rollout posture,
+2. prompt governance is operationally significant once multiple prompt readiness surfaces exist,
+3. embedding the summary reduces endpoint hopping while preserving the dedicated prompt governance endpoint.
+
+Current posture:
+
+1. platform runtime status includes `prompt_governance`,
+2. prompt governance remains separately inspectable through `/platform/prompts/governance-status`,
+3. foundation phase continues to report blocked prompt governance in both views.
+
 ## Decision 18: Task Runs Should Emit Structured Execution Evidence
 
 Decision:

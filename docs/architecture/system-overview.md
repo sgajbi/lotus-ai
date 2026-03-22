@@ -211,6 +211,10 @@ Current rules:
 7. runtime prompt mutation remains disabled in foundation phase,
 8. live prompt promotion remains repository-governed until a stronger activation model is introduced.
 
+`/platform/runtime-status` now embeds prompt governance posture directly so operators can review
+prompt rollout state from the same top-level runtime surface that already carries async, provider,
+and retrieval governance posture.
+
 ## Safety Posture
 
 `lotus-ai` exposes a governed safety policy so downstream teams can inspect what is enforced today

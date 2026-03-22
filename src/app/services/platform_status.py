@@ -9,6 +9,7 @@ from app.services.async_governance_status_service import build_async_governance_
 from app.services.async_runtime_status import build_async_runtime_status
 from app.services.capability_catalog import build_capability_catalog
 from app.services.eval_status import build_evaluation_runtime_status
+from app.services.prompt_governance_status import build_prompt_governance_status_summary
 from app.services.prompt_registry import list_registered_prompts
 from app.services.prompt_status import build_prompt_runtime_status
 from app.services.provider_governance_status import build_provider_governance_status
@@ -27,6 +28,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     async_governance = build_async_governance_status()
     provider_governance = build_provider_governance_status()
     retrieval_governance = build_retrieval_governance_status()
+    prompt_governance = build_prompt_governance_status_summary()
     evaluation_runtime = build_evaluation_runtime_status()
     prompt_runtime = build_prompt_runtime_status()
     audit_store = get_audit_store_runtime_status()
@@ -48,6 +50,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         async_governance=async_governance,
         provider_governance=provider_governance,
         retrieval_governance=retrieval_governance,
+        prompt_governance=prompt_governance,
         evaluation_runtime=evaluation_runtime,
         prompt_runtime=prompt_runtime,
         safety_runtime=safety_runtime,
