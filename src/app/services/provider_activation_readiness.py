@@ -47,11 +47,13 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
         live_execution_state.live_execution_enabled
         and (not quota_policy.quota_enforced or quota_policy.configuration_valid)
         and (not budget_policy.budget_enforced or budget_policy.configuration_valid)
+        and budget_policy.budget_state != ProviderBudgetState.HARD_LIMIT_BLOCKED
         and (
             not degradation_status.enforcement_enabled
             or (
                 degradation_status.configuration_valid
-                and degradation_status.status not in {"DEGRADED_UPSTREAM", "CIRCUIT_OPEN", "INVALID"}
+                and degradation_status.status
+                not in {"DEGRADED_UPSTREAM", "CIRCUIT_OPEN", "INVALID"}
             )
         )
     ):

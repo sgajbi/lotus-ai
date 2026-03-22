@@ -14,5 +14,7 @@ def test_provider_evidence_inventory_reports_staged_and_recorded_provider_assets
             "provider_policy_examples",
             "provider_runtime_examples",
             "provider_failure_mode_examples",
+            "provider_operations_examples",
+            "provider_degradation_examples",
         }
     )

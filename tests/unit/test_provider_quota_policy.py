@@ -1,5 +1,6 @@
 from app.config import settings
 from app.contracts.providers import ProviderQuotaScope
+from app.providers.base import ProviderExecutionError
 from app.services.provider_quota_policy import (
     build_provider_quota_policy,
     enforce_provider_quota,
@@ -45,7 +46,9 @@ def test_provider_quota_policy_reports_configured_scopes_and_usage() -> None:
     assert response.quota_enforced is True
     assert response.configuration_valid is True
     assert len(response.quotas) == 4
-    tenant_quota = next(quota for quota in response.quotas if quota.scope == ProviderQuotaScope.TENANT)
+    tenant_quota = next(
+        quota for quota in response.quotas if quota.scope == ProviderQuotaScope.TENANT
+    )
     caller_quota = next(
         quota for quota in response.quotas if quota.scope == ProviderQuotaScope.CALLER_APP
     )
@@ -78,4 +81,38 @@ def test_provider_quota_policy_rejects_invalid_task_scope() -> None:
     response = build_provider_quota_policy()
 
     assert response.configuration_valid is False
-    assert any("not valid for live text-generation quota enforcement" in finding for finding in response.findings)
+    assert any(
+        "not valid for live text-generation quota enforcement" in finding
+        for finding in response.findings
+    )
+
+
+def test_provider_quota_policy_rejects_blank_scope_key_and_invalid_default_limit() -> None:
+    settings.live_text_quota_enforced = True
+    settings.live_text_task_quota_limits = "=2"
+    settings.live_text_default_quota_limit = 0
+
+    response = build_provider_quota_policy()
+
+    assert response.configuration_valid is False
+    assert any("non-empty scope key" in finding for finding in response.findings)
+    assert any(
+        "Default provider quota limit must be a positive integer." in finding
+        for finding in response.findings
+    )
+
+
+def test_provider_quota_policy_enforcement_rejects_invalid_configuration() -> None:
+    settings.live_text_quota_enforced = True
+    settings.live_text_task_quota_limits = "broken-entry"
+
+    request = _request("explain.v1", expected_output_label=None)
+    context = validate_task_request(request)
+    provider_request = build_provider_execution_request(context=context)
+
+    try:
+        enforce_provider_quota(provider_request)
+    except ProviderExecutionError as exc:
+        assert exc.category.value == "INVALID_QUOTA_CONFIGURATION"
+    else:
+        raise AssertionError("Expected invalid quota configuration to block execution")

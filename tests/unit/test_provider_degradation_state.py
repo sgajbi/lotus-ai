@@ -120,3 +120,62 @@ def test_provider_degradation_status_resets_after_circuit_cooldown(
 
     assert status.status == "NORMAL"
     assert status.consecutive_failure_count == 0
+
+
+def test_provider_degradation_preflight_rejects_invalid_configuration() -> None:
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 2
+    settings.live_text_circuit_open_failure_count_threshold = 1
+    settings.live_text_circuit_open_seconds = -1
+
+    status = build_provider_degradation_status()
+
+    assert status.status == "INVALID"
+    assert status.configuration_valid is False
+
+    try:
+        enforce_provider_degradation_preflight()
+    except ProviderExecutionError as exc:
+        assert exc.category == ProviderFailureCategory.CIRCUIT_OPEN
+    else:
+        raise AssertionError("Expected invalid degradation configuration to block execution")
+
+
+def test_provider_degradation_status_rejects_missing_circuit_threshold() -> None:
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 0
+    settings.live_text_circuit_open_seconds = 60
+
+    status = build_provider_degradation_status()
+
+    assert status.status == "INVALID"
+    assert any("circuit-open failure-count threshold" in finding for finding in status.findings)
+
+
+def test_provider_degradation_status_rejects_degraded_threshold_above_circuit_threshold() -> None:
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 3
+    settings.live_text_circuit_open_failure_count_threshold = 2
+    settings.live_text_circuit_open_seconds = 60
+
+    status = build_provider_degradation_status()
+
+    assert status.status == "INVALID"
+    assert any(
+        "must not exceed the circuit-open threshold" in finding for finding in status.findings
+    )
+
+
+def test_provider_degradation_ignores_untracked_failure_categories() -> None:
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 2
+    settings.live_text_circuit_open_seconds = 60
+
+    record_provider_failure(ProviderFailureCategory.CIRCUIT_OPEN)
+
+    status = build_provider_degradation_status()
+
+    assert status.status == "NORMAL"
+    assert status.consecutive_failure_count == 0

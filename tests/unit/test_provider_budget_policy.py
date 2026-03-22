@@ -74,6 +74,24 @@ def test_provider_budget_policy_rejects_invalid_configuration() -> None:
     assert any("must not exceed" in finding for finding in response.findings)
 
 
+def test_provider_budget_policy_rejects_non_positive_budget_values() -> None:
+    settings.live_text_budget_enforced = True
+    settings.live_text_soft_budget_usd = 0.0
+    settings.live_text_hard_budget_usd = -1.0
+
+    response = build_provider_budget_policy()
+
+    assert response.configuration_valid is False
+    assert any(
+        "Soft provider budget must be a positive USD value" in finding
+        for finding in response.findings
+    )
+    assert any(
+        "Hard provider budget must be a positive USD value" in finding
+        for finding in response.findings
+    )
+
+
 def test_provider_budget_policy_blocks_when_hard_limit_is_reached() -> None:
     settings.live_text_budget_enforced = True
     settings.live_text_input_cost_per_1k_tokens = 0.01
@@ -92,3 +110,31 @@ def test_provider_budget_policy_blocks_when_hard_limit_is_reached() -> None:
         assert exc.category.value == "BUDGET_EXCEEDED"
     else:
         raise AssertionError("Expected hard-budget enforcement to block execution")
+
+
+def test_provider_budget_policy_enforcement_rejects_invalid_configuration() -> None:
+    settings.live_text_budget_enforced = True
+    settings.live_text_hard_budget_usd = 1.0
+
+    try:
+        enforce_provider_budget()
+    except ProviderExecutionError as exc:
+        assert exc.category.value == "INVALID_BUDGET_CONFIGURATION"
+    else:
+        raise AssertionError("Expected invalid budget configuration to block execution")
+
+
+def test_record_provider_spend_ignores_stubbed_or_unpriced_responses() -> None:
+    settings.live_text_budget_enforced = True
+    settings.live_text_input_cost_per_1k_tokens = 0.01
+    settings.live_text_output_cost_per_1k_tokens = 0.03
+    settings.live_text_soft_budget_usd = 1.0
+    settings.live_text_hard_budget_usd = 2.0
+
+    record_provider_spend(_response(0.5, stubbed=True))
+    record_provider_spend(_response(None))
+
+    response = build_provider_budget_policy()
+
+    assert response.current_spend_usd == 0.0
+    assert response.budget_state == ProviderBudgetState.BELOW_SOFT_LIMIT
