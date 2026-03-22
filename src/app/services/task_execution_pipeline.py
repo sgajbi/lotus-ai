@@ -21,7 +21,7 @@ from app.contracts.tasks import (
 from app.services.audit_store import get_audit_store
 from app.services.capability_catalog import get_capability_by_task_id
 from app.services.execution_evidence import build_execution_evidence
-from app.services.prompt_registry import get_prompt_or_raise
+from app.services.prompt_runtime import resolve_runtime_prompt_or_raise
 from app.services.provider_gateway import execute_text_generation
 from app.services.safety_runtime import build_safety_execution_outcome
 
@@ -64,13 +64,13 @@ def resolve_task_execution(
     *,
     capability: CapabilityDescriptor,
 ) -> ResolvedTaskExecution:
-    prompt = get_prompt_or_raise(request.task_id)
+    resolved_prompt = resolve_runtime_prompt_or_raise(request.task_id)
     safety_outcome = build_safety_execution_outcome(capability.output_label)
     provider_execution = execute_text_generation(
         ProviderExecutionRequest(
             task_id=capability.task_id,
             caller_app=request.caller.caller_app,
-            prompt_version=prompt.prompt_version,
+            prompt_version=resolved_prompt.prompt.prompt_version,
             output_label=capability.output_label.value,
             safety_mode=safety_outcome.safety_mode,
             redaction_posture=safety_outcome.redaction_posture.value,
@@ -81,7 +81,7 @@ def resolve_task_execution(
     )
     return ResolvedTaskExecution(
         capability=capability,
-        prompt=prompt,
+        prompt=resolved_prompt.prompt,
         safety_outcome=safety_outcome,
         provider_execution=provider_execution,
         request_id=f"air_{uuid4().hex}",
