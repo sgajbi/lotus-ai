@@ -40,6 +40,8 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
     assert response.result.structured_output["phase"] == "foundation"
     assert response.result.structured_output["provider_id"] == "text.stub"
     assert response.result.structured_output["context_keys"] == ["rule_count", "status"]
+    assert response.result.structured_output["output_label"] == "EXPLANATION_ONLY"
+    assert response.result.structured_output["redaction_posture"] == "MINIMIZATION_REQUIRED"
     assert response.audit.stubbed is True
     assert response.audit.prompt_version == "foundation.explain.v1"
     assert response.audit.safety.safety_mode == "documented_only"
