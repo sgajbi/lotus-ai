@@ -11,6 +11,7 @@ from app.contracts.retrieval import (
     RetrievalIndexingPolicyResponse,
     RetrievalJobStatus,
     RetrievalPipelineStage,
+    RetrievalRuntimeStatusResponse,
 )
 from app.retrieval.document_registry import document_chunk_count
 from app.retrieval.policy import (
@@ -113,6 +114,7 @@ def build_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
         service=settings.service_name,
         vector_store=VECTOR_STORE_STRATEGY,
         retrieval_mode=settings.retrieval_mode,
+        retrieval_store_mode=settings.retrieval_store_mode,
         embedding_provider_mode=settings.embedding_provider_mode,
         chunking_strategy=CHUNKING_STRATEGY,
         embedding_strategy=EMBEDDING_STRATEGY,
@@ -123,4 +125,32 @@ def build_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
             "Approved source curation is required before any document enters the retrieval corpus.",
             "PostgreSQL with pgvector remains the first vector-store architecture for lotus-ai.",
         ],
+    )
+
+
+def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
+    repository = get_retrieval_repository()
+    sources = repository.list_sources()
+    documents = [
+        document
+        for source in sources
+        for document in repository.list_documents_for_source(source.source_id)
+    ]
+    chunks = [
+        chunk
+        for document in documents
+        for chunk in repository.list_chunks_for_document(document.document_id)
+    ]
+    jobs = repository.list_index_jobs()
+    return RetrievalRuntimeStatusResponse(
+        service=settings.service_name,
+        delivery_phase=settings.delivery_phase,
+        retrieval_mode=settings.retrieval_mode,
+        retrieval_store_mode=settings.retrieval_store_mode,
+        database_configured=bool(settings.database_url),
+        vector_store=VECTOR_STORE_STRATEGY,
+        source_count=len(sources),
+        document_count=len(documents),
+        chunk_count=len(chunks),
+        index_job_count=len(jobs),
     )

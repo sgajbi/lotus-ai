@@ -15,6 +15,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/retrieval/index-status"]["get"]["operationId"] == (
         "getRetrievalIndexStatus"
     )
+    assert spec["paths"]["/platform/retrieval/runtime-status"]["get"]["operationId"] == (
+        "getRetrievalRuntimeStatus"
+    )
     assert spec["paths"]["/platform/retrieval/indexing-policy"]["get"]["operationId"] == (
         "getRetrievalIndexingPolicy"
     )

@@ -68,6 +68,17 @@ def test_prompt_registry_routes() -> None:
     assert detail_response.json()["prompt_version"] == "foundation.explain.v1"
 
 
+def test_service_metadata_exposes_store_modes() -> None:
+    client = TestClient(app)
+
+    response = client.get("/metadata")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["auditStoreMode"] == "memory"
+    assert body["retrievalStoreMode"] == "memory"
+
+
 def test_audit_record_route_returns_saved_execution() -> None:
     client = TestClient(app)
     execute_response = client.post(
@@ -117,6 +128,18 @@ def test_retrieval_index_status_route() -> None:
     assert any(source["source_id"] == "lotus-platform-rfcs" for source in body["sources"])
 
 
+def test_retrieval_runtime_status_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/retrieval/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["retrieval_store_mode"] == "memory"
+    assert body["source_count"] >= 4
+
+
 def test_retrieval_index_jobs_route() -> None:
     client = TestClient(app)
 
@@ -137,6 +160,7 @@ def test_retrieval_indexing_policy_route() -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["persistence_strategy"] == "postgresql+pgvector"
+    assert body["retrieval_store_mode"] == "memory"
 
 
 def test_retrieval_index_job_detail_route() -> None:

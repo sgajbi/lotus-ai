@@ -9,6 +9,7 @@ from app.contracts.retrieval import (
     RetrievalIndexJobDetailResponse,
     RetrievalIndexStatusResponse,
     RetrievalIndexingPolicyResponse,
+    RetrievalRuntimeStatusResponse,
     RetrievalSearchRequest,
     RetrievalSearchResponse,
     RetrievalSourceCatalogResponse,
@@ -17,6 +18,7 @@ from app.retrieval.source_registry import list_retrieval_sources
 from app.services.retrieval_catalog_service import (
     get_chunks_for_document,
     get_retrieval_indexing_policy,
+    get_retrieval_runtime_status,
     get_retrieval_job_detail_or_raise,
     get_retrieval_job_catalog,
     get_documents_for_source,
@@ -61,6 +63,24 @@ async def list_retrieval_sources_route() -> RetrievalSourceCatalogResponse:
 )
 async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
     return get_retrieval_index_status()
+
+
+@router.get(
+    "/runtime-status",
+    response_model=RetrievalRuntimeStatusResponse,
+    operation_id="getRetrievalRuntimeStatus",
+    summary="Get retrieval runtime status",
+    description=(
+        "Returns the active retrieval execution and persistence posture for lotus-ai, including "
+        "which metadata store is currently backing the retrieval catalog."
+    ),
+    responses={
+        200: {"description": "Retrieval runtime status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_runtime_status_route() -> RetrievalRuntimeStatusResponse:
+    return get_retrieval_runtime_status()
 
 
 @router.get(

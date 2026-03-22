@@ -141,6 +141,7 @@ class RetrievalIndexingPolicyResponse(BaseModel):
     service: str = Field(description="Service name emitting the retrieval indexing policy.")
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     retrieval_mode: str = Field(description="Current retrieval mode configured for lotus-ai.")
+    retrieval_store_mode: str = Field(description="Current retrieval metadata store mode.")
     embedding_provider_mode: str = Field(description="Current embedding provider mode.")
     chunking_strategy: str = Field(description="Current chunking strategy label.")
     embedding_strategy: str = Field(description="Current embedding strategy label.")
@@ -150,6 +151,29 @@ class RetrievalIndexingPolicyResponse(BaseModel):
     )
     notes: list[str] = Field(
         description="Important governance notes describing current retrieval indexing constraints."
+    )
+
+
+class RetrievalRuntimeStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval runtime status.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    retrieval_mode: str = Field(description="Current retrieval execution mode.")
+    retrieval_store_mode: str = Field(description="Current retrieval metadata store mode.")
+    database_configured: bool = Field(
+        description="Whether a database URL is configured for durable retrieval metadata."
+    )
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    source_count: int = Field(
+        description="Number of retrieval sources visible through the active store."
+    )
+    document_count: int = Field(
+        description="Number of retrieval documents visible through the active store."
+    )
+    chunk_count: int = Field(
+        description="Number of retrieval chunks visible through the active store."
+    )
+    index_job_count: int = Field(
+        description="Number of retrieval indexing jobs visible through the active store."
     )
 
 

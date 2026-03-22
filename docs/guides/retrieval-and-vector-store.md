@@ -93,10 +93,11 @@ Current configuration modes:
 The current retrieval API exposes:
 
 1. source discovery,
-2. source-level index status,
-3. indexing policy,
-4. indexing job catalog and job detail,
-5. document inventory,
-6. chunk inventory.
+2. retrieval runtime status,
+3. source-level index status,
+4. indexing policy,
+5. indexing job catalog and job detail,
+6. document inventory,
+7. chunk inventory.
 
 The search endpoint remains governed and intentionally disabled until the retrieval execution layer is ready.

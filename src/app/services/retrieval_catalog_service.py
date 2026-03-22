@@ -9,6 +9,7 @@ from app.contracts.retrieval import (
     RetrievalIndexJobDetailResponse,
     RetrievalIndexStatusResponse,
     RetrievalIndexingPolicyResponse,
+    RetrievalRuntimeStatusResponse,
 )
 from app.retrieval.document_registry import (
     build_retrieval_index_status,
@@ -17,6 +18,7 @@ from app.retrieval.document_registry import (
 )
 from app.retrieval.job_registry import (
     build_retrieval_indexing_policy,
+    build_retrieval_runtime_status,
     build_retrieval_job_catalog,
     get_retrieval_job_detail,
 )
@@ -57,3 +59,7 @@ def get_retrieval_job_detail_or_raise(job_id: str) -> RetrievalIndexJobDetailRes
 
 def get_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
     return build_retrieval_indexing_policy()
+
+
+def get_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
+    return build_retrieval_runtime_status()

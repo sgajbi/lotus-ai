@@ -68,6 +68,8 @@ async def metadata() -> dict[str, str]:
         "service": SERVICE_NAME,
         "version": SERVICE_VERSION,
         "roundingPolicyVersion": ROUNDING_POLICY_VERSION,
+        "auditStoreMode": settings.audit_store_mode,
+        "retrievalStoreMode": settings.retrieval_store_mode,
     }
 
 
@@ -95,6 +97,7 @@ async def root() -> dict[str, object]:
         "embeddingProviderMode": settings.embedding_provider_mode,
         "safetyMode": settings.safety_mode,
         "auditStoreMode": settings.audit_store_mode,
+        "retrievalStoreMode": settings.retrieval_store_mode,
         "capabilityAreas": [
             "llm_gateway",
             "prompt_registry",
