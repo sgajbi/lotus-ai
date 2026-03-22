@@ -21,6 +21,14 @@ class EvaluationFixtureDescriptor(BaseModel):
         description="Current maturity status for the fixture family."
     )
     description: str = Field(description="Human-readable description of the fixture family.")
+    manifest_path: str | None = Field(
+        default=None,
+        description="Repository-relative path to the backing fixture asset when one exists.",
+    )
+    case_count: int = Field(
+        default=0,
+        description="Number of concrete fixture cases currently staged for the family.",
+    )
 
 
 class EvaluationCatalogResponse(BaseModel):
@@ -53,6 +61,9 @@ class EvaluationRuntimeStatusResponse(BaseModel):
     )
     documented_fixture_count: int = Field(
         description="Number of evaluation fixture families that remain documented-only."
+    )
+    staged_case_count: int = Field(
+        description="Total number of concrete staged evaluation cases across all fixture families."
     )
     evaluation_runner_active: bool = Field(
         description="Whether a live evaluation runner is active in the current phase."

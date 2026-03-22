@@ -87,3 +87,10 @@ The source of truth for fixture inventory is now:
 
 This manifest is versioned so evaluation catalog and runtime status surfaces can point to a governed
 artifact instead of only hardcoded service metadata.
+
+The first concrete staged fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/explain.v1/basic_cases.json)
+
+This gives the platform one real file-backed fixture family for `explain.v1` while the rest of the
+evaluation inventory remains staged or documented.

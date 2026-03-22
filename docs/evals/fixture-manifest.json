@@ -25,13 +25,14 @@
   "fixture_families": [
     {
       "fixture_id": "task_capability_contracts",
-      "status": "STAGED",
+      "status": "DOCUMENTED",
       "description": "Contract fixtures covering supported task surfaces and policy behavior."
     },
     {
       "fixture_id": "explanation_task_examples",
-      "status": "DOCUMENTED",
-      "description": "Golden examples for explanation-oriented tasks."
+      "status": "STAGED",
+      "description": "Golden examples for explanation-oriented tasks.",
+      "manifest_path": "docs/evals/fixtures/explain.v1/basic_cases.json"
     },
     {
       "fixture_id": "summarization_task_examples",

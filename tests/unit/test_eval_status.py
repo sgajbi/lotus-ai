@@ -10,4 +10,5 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.evidence_category_count == 5
     assert status.staged_fixture_count >= 1
     assert status.documented_fixture_count >= 1
+    assert status.staged_case_count == 2
     assert status.evaluation_runner_active is False

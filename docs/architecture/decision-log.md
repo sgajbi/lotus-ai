@@ -353,3 +353,21 @@ Current posture:
 1. the evaluation manifest lives under `docs/evals/fixture-manifest.json`,
 2. evaluation catalog and runtime status are sourced from that manifest,
 3. the manifest remains read-only and repository-governed in the foundation phase.
+
+## Decision 22: At Least One Evaluation Family Should Be File-Backed Early
+
+Decision:
+
+The first real staged evaluation family is now backed by fixture files for `explain.v1`.
+
+Why:
+
+1. a manifest alone does not prove the asset shape we want future evaluation tooling to consume,
+2. one concrete family lets us validate file format, counting, and runtime inventory behavior early,
+3. it creates a practical template for later summarization, retrieval, and domain-specific fixture families.
+
+Current posture:
+
+1. `explanation_task_examples` is now staged with a backing fixture file,
+2. evaluation catalog reports manifest path and case count per family,
+3. evaluation runtime status reports total staged case count.

@@ -17,6 +17,7 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
         for fixture in catalog.fixture_families
         if fixture.status == EvaluationAssetStatus.DOCUMENTED
     )
+    staged_case_count = sum(fixture.case_count for fixture in catalog.fixture_families)
     return EvaluationRuntimeStatusResponse(
         service=catalog.service,
         version=catalog.version,
@@ -25,6 +26,7 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
         evidence_category_count=len(catalog.evidence_categories),
         staged_fixture_count=staged_fixture_count,
         documented_fixture_count=documented_fixture_count,
+        staged_case_count=staged_case_count,
         evaluation_runner_active=False,
         message=(
             "Evaluation assets are cataloged and partially staged, but no live evaluation runner "
