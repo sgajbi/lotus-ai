@@ -86,6 +86,9 @@ itself stays focused on execution stages rather than serialization details.
 Provider request construction is also isolated in a dedicated builder so the pipeline no longer
 assembles provider payloads inline.
 
+Capability and output-label validation are also isolated in a dedicated validator so the runtime
+pipeline no longer mixes policy enforcement with context construction.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`
