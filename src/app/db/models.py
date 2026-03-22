@@ -112,6 +112,22 @@ class RetrievalIndexJobModel(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False)
 
     source: Mapped["RetrievalSourceModel"] = relationship(back_populates="index_jobs")
+    events: Mapped[list["RetrievalIndexJobEventModel"]] = relationship(back_populates="job")
+
+
+class RetrievalIndexJobEventModel(Base):
+    __tablename__ = "retrieval_index_job_events"
+
+    event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    job_id: Mapped[str] = mapped_column(
+        ForeignKey("retrieval_index_jobs.job_id"), nullable=False, index=True
+    )
+    stage: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(64), nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    notes: Mapped[str] = mapped_column(Text, nullable=False)
+
+    job: Mapped["RetrievalIndexJobModel"] = relationship(back_populates="events")
 
 
 class PromptDefinitionModel(Base):

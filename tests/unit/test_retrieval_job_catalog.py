@@ -32,7 +32,18 @@ def test_get_retrieval_job_detail_returns_staged_steps() -> None:
     response = get_retrieval_job_detail_or_raise("retjob_lotus_platform_rfcs")
 
     assert response.job.source_id == "lotus-platform-rfcs"
+    assert response.chunking_strategy == "markdown-section-v1"
+    assert response.embedding_strategy == "provider-disabled"
+    assert response.replay_supported is True
     assert any(step.step_id.endswith(".embedding_generation") for step in response.steps)
+    assert any(event.status == "COMPLETED" for event in response.events)
+
+
+def test_get_retrieval_job_detail_exposes_failed_events_for_blocked_jobs() -> None:
+    response = get_retrieval_job_detail_or_raise("retjob_lotus_platform_standards")
+
+    assert any(event.status == "FAILED" for event in response.events)
+    assert any("searchable scope" in event.notes for event in response.events)
 
 
 def test_get_retrieval_indexing_policy_returns_pgvector_strategy() -> None:

@@ -7,9 +7,12 @@ from app.contracts.retrieval import (
     RetrievalEmbeddingStatus,
     RetrievalDocumentDescriptor,
     RetrievalDocumentPromotionStatus,
+    RetrievalIndexJobEventDescriptor,
+    RetrievalIndexJobEventStatus,
     RetrievalIndexJobDescriptor,
     RetrievalIndexStatus,
     RetrievalJobStatus,
+    RetrievalPipelineStage,
     RetrievalSourceDescriptor,
     RetrievalSourceKind,
 )
@@ -182,6 +185,88 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                 "status": RetrievalEmbeddingStatus.STAGED,
             },
         }
+        self._job_events: dict[str, list[RetrievalIndexJobEventDescriptor]] = {
+            "retjob_lotus_platform_rfcs": [
+                RetrievalIndexJobEventDescriptor(
+                    event_id="evt_retjob_lotus_platform_rfcs_source_curation",
+                    job_id="retjob_lotus_platform_rfcs",
+                    stage=RetrievalPipelineStage.STAGED,
+                    status=RetrievalIndexJobEventStatus.COMPLETED,
+                    recorded_at="2026-03-22T08:00:00Z",
+                    notes="Approved RFC source inventory and promoted documents are ready for deterministic indexing.",
+                ),
+                RetrievalIndexJobEventDescriptor(
+                    event_id="evt_retjob_lotus_platform_rfcs_document_inventory",
+                    job_id="retjob_lotus_platform_rfcs",
+                    stage=RetrievalPipelineStage.STAGED,
+                    status=RetrievalIndexJobEventStatus.COMPLETED,
+                    recorded_at="2026-03-22T08:01:00Z",
+                    notes="Document inventory and chunk checksums were recorded for replayable indexing.",
+                ),
+                RetrievalIndexJobEventDescriptor(
+                    event_id="evt_retjob_lotus_platform_rfcs_embedding_generation",
+                    job_id="retjob_lotus_platform_rfcs",
+                    stage=RetrievalPipelineStage.STAGED,
+                    status=RetrievalIndexJobEventStatus.STAGED,
+                    recorded_at="2026-03-22T08:02:00Z",
+                    notes="Embedding records are staged in persistence, but live generation remains disabled.",
+                ),
+            ],
+            "retjob_lotus_platform_standards": [
+                RetrievalIndexJobEventDescriptor(
+                    event_id="evt_retjob_lotus_platform_standards_source_curation",
+                    job_id="retjob_lotus_platform_standards",
+                    stage=RetrievalPipelineStage.STAGED,
+                    status=RetrievalIndexJobEventStatus.COMPLETED,
+                    recorded_at="2026-03-22T08:10:00Z",
+                    notes="Standards source inventory is approved and staged for indexing.",
+                ),
+                RetrievalIndexJobEventDescriptor(
+                    event_id="evt_retjob_lotus_platform_standards_document_inventory",
+                    job_id="retjob_lotus_platform_standards",
+                    stage=RetrievalPipelineStage.STAGED,
+                    status=RetrievalIndexJobEventStatus.FAILED,
+                    recorded_at="2026-03-22T08:11:00Z",
+                    notes="Indexing is blocked because staged standards documents are not yet promoted into searchable scope.",
+                ),
+            ],
+            "retjob_lotus_ai_architecture": [
+                RetrievalIndexJobEventDescriptor(
+                    event_id="evt_retjob_lotus_ai_architecture_source_curation",
+                    job_id="retjob_lotus_ai_architecture",
+                    stage=RetrievalPipelineStage.STAGED,
+                    status=RetrievalIndexJobEventStatus.COMPLETED,
+                    recorded_at="2026-03-22T08:20:00Z",
+                    notes="Architecture source inventory and promoted documents are ready for deterministic indexing.",
+                ),
+                RetrievalIndexJobEventDescriptor(
+                    event_id="evt_retjob_lotus_ai_architecture_document_inventory",
+                    job_id="retjob_lotus_ai_architecture",
+                    stage=RetrievalPipelineStage.STAGED,
+                    status=RetrievalIndexJobEventStatus.COMPLETED,
+                    recorded_at="2026-03-22T08:21:00Z",
+                    notes="Document inventory and chunk checksums were recorded for replayable indexing.",
+                ),
+                RetrievalIndexJobEventDescriptor(
+                    event_id="evt_retjob_lotus_ai_architecture_embedding_generation",
+                    job_id="retjob_lotus_ai_architecture",
+                    stage=RetrievalPipelineStage.STAGED,
+                    status=RetrievalIndexJobEventStatus.STAGED,
+                    recorded_at="2026-03-22T08:22:00Z",
+                    notes="Embedding records are staged in persistence, but live generation remains disabled.",
+                ),
+            ],
+            "retjob_lotus_openapi_derived": [
+                RetrievalIndexJobEventDescriptor(
+                    event_id="evt_retjob_lotus_openapi_derived_source_curation",
+                    job_id="retjob_lotus_openapi_derived",
+                    stage=RetrievalPipelineStage.STAGED,
+                    status=RetrievalIndexJobEventStatus.FAILED,
+                    recorded_at="2026-03-22T08:30:00Z",
+                    notes="No promoted documents are available yet for this source, so indexing cannot proceed.",
+                )
+            ],
+        }
 
     def list_sources(self) -> list[RetrievalSourceDescriptor]:
         return deepcopy(self._sources)
@@ -251,3 +336,6 @@ class InMemoryRetrievalRepository(RetrievalRepository):
             if job.job_id == job_id:
                 return job
         return None
+
+    def list_index_job_events(self, job_id: str) -> list[RetrievalIndexJobEventDescriptor]:
+        return deepcopy(self._job_events.get(job_id, []))

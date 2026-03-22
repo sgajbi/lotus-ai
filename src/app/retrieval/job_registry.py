@@ -4,14 +4,18 @@ from fastapi import HTTPException, status
 
 from app.config import settings
 from app.contracts.retrieval import (
+    RetrievalIndexJobEventDescriptor,
     RetrievalIndexJobCatalogResponse,
     RetrievalIndexJobDescriptor,
     RetrievalIndexJobDetailResponse,
-    RetrievalIndexJobStepDescriptor,
     RetrievalIndexingPolicyResponse,
     RetrievalJobStatus,
     RetrievalPipelineStage,
     RetrievalRuntimeStatusResponse,
+)
+from app.retrieval.indexing_lifecycle import (
+    build_default_index_job_events,
+    build_default_index_job_steps,
 )
 from app.retrieval.inventory_summary import (
     RetrievalRuntimeInventorySummary,
@@ -71,45 +75,17 @@ def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
     for source_id in get_retrieval_repository().list_source_ids():
         descriptor = _build_job_descriptor(source_id)
         if descriptor.job_id == job_id:
+            events = _get_job_events(job_id)
             return RetrievalIndexJobDetailResponse(
                 service=settings.service_name,
                 vector_store=VECTOR_STORE_STRATEGY,
                 embedding_provider_mode=settings.embedding_provider_mode,
+                chunking_strategy=CHUNKING_STRATEGY,
+                embedding_strategy=EMBEDDING_STRATEGY,
+                replay_supported=True,
                 job=descriptor,
-                steps=[
-                    RetrievalIndexJobStepDescriptor(
-                        step_id=f"{job_id}.source_curation",
-                        name="Source curation",
-                        stage=RetrievalPipelineStage.STAGED,
-                        description=(
-                            "Approved source inventory is explicitly curated before indexing is enabled."
-                        ),
-                    ),
-                    RetrievalIndexJobStepDescriptor(
-                        step_id=f"{job_id}.document_inventory",
-                        name="Document inventory",
-                        stage=RetrievalPipelineStage.STAGED,
-                        description=(
-                            "Documents and staged chunk counts are visible through the retrieval catalog."
-                        ),
-                    ),
-                    RetrievalIndexJobStepDescriptor(
-                        step_id=f"{job_id}.embedding_generation",
-                        name="Embedding generation",
-                        stage=RetrievalPipelineStage.STAGED,
-                        description=(
-                            "Durable embedding records are now staged in persistence, but live generation is not enabled in runtime execution."
-                        ),
-                    ),
-                    RetrievalIndexJobStepDescriptor(
-                        step_id=f"{job_id}.vector_persistence",
-                        name="Vector persistence",
-                        stage=RetrievalPipelineStage.DOCUMENTED,
-                        description=(
-                            "Durable vector persistence will use PostgreSQL with pgvector when enabled."
-                        ),
-                    ),
-                ],
+                steps=build_default_index_job_steps(job_id=job_id),
+                events=events,
             )
 
     raise HTTPException(
@@ -133,6 +109,7 @@ def build_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
             "Indexing remains staged until retrieval execution and embedding generation are enabled.",
             "Approved source curation is required before any document enters the retrieval corpus.",
             "Chunk durability fields and embedding-record schema are persisted before live vector execution is introduced.",
+            "Indexing job lifecycle events are persisted so replay posture and blocked states are inspectable.",
             "PostgreSQL with pgvector remains the first vector-store architecture for lotus-ai.",
         ],
     )
@@ -167,3 +144,10 @@ def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
         embedding_record_count=inventory.embedding_record_count,
         index_job_count=inventory.index_job_count,
     )
+
+
+def _get_job_events(job_id: str) -> list[RetrievalIndexJobEventDescriptor]:
+    events = get_retrieval_repository().list_index_job_events(job_id)
+    if events:
+        return events
+    return build_default_index_job_events(job_id=job_id)

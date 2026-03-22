@@ -9,9 +9,12 @@ from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
     RetrievalDocumentDescriptor,
     RetrievalDocumentPromotionStatus,
+    RetrievalIndexJobEventDescriptor,
+    RetrievalIndexJobEventStatus,
     RetrievalIndexJobDescriptor,
     RetrievalIndexStatus,
     RetrievalJobStatus,
+    RetrievalPipelineStage,
     RetrievalSourceDescriptor,
     RetrievalSourceKind,
 )
@@ -19,6 +22,7 @@ from app.db.models import (
     RetrievalChunkModel,
     RetrievalChunkEmbeddingModel,
     RetrievalDocumentModel,
+    RetrievalIndexJobEventModel,
     RetrievalIndexJobModel,
     RetrievalSourceModel,
 )
@@ -102,6 +106,18 @@ class SqlAlchemyRetrievalRepository:
                 return None
             return self._to_job_descriptor(session, job)
 
+    def list_index_job_events(self, job_id: str) -> list[RetrievalIndexJobEventDescriptor]:
+        with self._session_factory() as session:
+            events = session.scalars(
+                select(RetrievalIndexJobEventModel)
+                .where(RetrievalIndexJobEventModel.job_id == job_id)
+                .order_by(
+                    RetrievalIndexJobEventModel.recorded_at,
+                    RetrievalIndexJobEventModel.event_id,
+                )
+            ).all()
+            return [self._to_job_event_descriptor(event) for event in events]
+
     def _to_source_descriptor(self, model: RetrievalSourceModel) -> RetrievalSourceDescriptor:
         return RetrievalSourceDescriptor(
             source_id=model.source_id,
@@ -169,6 +185,18 @@ class SqlAlchemyRetrievalRepository:
                 .where(RetrievalChunkEmbeddingModel.source_id == model.source_id),
             ),
             message=model.message,
+        )
+
+    def _to_job_event_descriptor(
+        self, model: RetrievalIndexJobEventModel
+    ) -> RetrievalIndexJobEventDescriptor:
+        return RetrievalIndexJobEventDescriptor(
+            event_id=model.event_id,
+            job_id=model.job_id,
+            stage=RetrievalPipelineStage(model.stage),
+            status=RetrievalIndexJobEventStatus(model.status),
+            recorded_at=model.recorded_at,
+            notes=model.notes,
         )
 
     def _count_rows(self, session: Session, statement: Select[tuple[int]]) -> int:

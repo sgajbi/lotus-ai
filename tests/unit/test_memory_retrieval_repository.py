@@ -46,3 +46,12 @@ def test_memory_retrieval_repository_marks_empty_sources_as_pending_index_jobs()
     assert job.status == "PENDING"
     assert job.document_count == 0
     assert job.embedding_record_count == 0
+
+
+def test_memory_retrieval_repository_exposes_persisted_job_events() -> None:
+    repository = InMemoryRetrievalRepository()
+
+    events = repository.list_index_job_events("retjob_lotus_platform_standards")
+
+    assert any(event.status == "FAILED" for event in events)
+    assert any("promoted into searchable scope" in event.notes for event in events)

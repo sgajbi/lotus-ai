@@ -37,6 +37,12 @@ class RetrievalJobStatus(str, Enum):
     COMPLETED = "COMPLETED"
 
 
+class RetrievalIndexJobEventStatus(str, Enum):
+    STAGED = "STAGED"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
 class RetrievalEmbeddingStatus(str, Enum):
     STAGED = "STAGED"
     PERSISTED = "PERSISTED"
@@ -221,10 +227,29 @@ class RetrievalIndexJobDetailResponse(BaseModel):
     service: str = Field(description="Service name emitting the retrieval job detail.")
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     embedding_provider_mode: str = Field(description="Current embedding provider mode.")
+    chunking_strategy: str = Field(description="Deterministic chunking strategy assigned to the job.")
+    embedding_strategy: str = Field(
+        description="Embedding persistence strategy assigned to the job."
+    )
+    replay_supported: bool = Field(
+        description="Whether the job lifecycle is designed to support deterministic replay."
+    )
     job: RetrievalIndexJobDescriptor = Field(description="Retrieval indexing job descriptor.")
     steps: list[RetrievalIndexJobStepDescriptor] = Field(
         description="Ordered retrieval indexing steps for the job."
     )
+    events: list["RetrievalIndexJobEventDescriptor"] = Field(
+        description="Persisted retrieval indexing job lifecycle events."
+    )
+
+
+class RetrievalIndexJobEventDescriptor(BaseModel):
+    event_id: str = Field(description="Stable retrieval indexing job event identifier.")
+    job_id: str = Field(description="Parent retrieval indexing job identifier.")
+    stage: RetrievalPipelineStage = Field(description="Lifecycle stage associated with the event.")
+    status: RetrievalIndexJobEventStatus = Field(description="Outcome recorded for the event.")
+    recorded_at: str = Field(description="UTC timestamp when the event was recorded.")
+    notes: str = Field(description="Human-readable explanation of the event.")
 
 
 class RetrievalIndexingPolicyResponse(BaseModel):

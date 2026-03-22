@@ -5,6 +5,7 @@ from typing import Protocol
 from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
     RetrievalDocumentDescriptor,
+    RetrievalIndexJobEventDescriptor,
     RetrievalIndexJobDescriptor,
     RetrievalSourceDescriptor,
 )
@@ -30,3 +31,5 @@ class RetrievalRepository(Protocol):
     def list_index_jobs(self) -> list[RetrievalIndexJobDescriptor]: ...
 
     def get_index_job(self, job_id: str) -> RetrievalIndexJobDescriptor | None: ...
+
+    def list_index_job_events(self, job_id: str) -> list[RetrievalIndexJobEventDescriptor]: ...

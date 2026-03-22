@@ -172,6 +172,10 @@ Durable retrieval chunk posture is also now more explicit: staged chunks carry p
 checksums, and embedding-record counts surface through retrieval runtime and job status even
 before live embedding generation is enabled.
 
+Retrieval indexing posture is also more explicit now: retrieval job detail carries deterministic
+chunking strategy, replay support, and persisted lifecycle events, so blocked indexing states are
+visible directly instead of being implied by static staged prose.
+
 `knowledge_search.v1` now uses that same bounded retrieval path directly, so the task
 execution surface has a real governed knowledge-search capability instead of a generic
 placeholder for retrieval-class work.

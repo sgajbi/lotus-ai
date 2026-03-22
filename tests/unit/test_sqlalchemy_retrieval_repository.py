@@ -43,6 +43,18 @@ def test_sqlalchemy_retrieval_repository_returns_none_for_unknown_records(
     assert repository.get_index_job("missing-job") is None
     assert repository.list_documents_for_source("missing-source") == []
     assert repository.list_chunks_for_document("missing-document") == []
+    assert repository.list_index_job_events("missing-job") == []
+
+
+def test_sqlalchemy_retrieval_repository_returns_seeded_job_events(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-retrieval.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyRetrievalRepository(database_url)
+
+    events = repository.list_index_job_events("retjob_lotus_platform_standards")
+
+    assert any(event.status == "FAILED" for event in events)
+    assert any(event.stage == "STAGED" for event in events)
 
 
 def test_sqlalchemy_retrieval_repository_creates_parent_directory_for_sqlite_file(

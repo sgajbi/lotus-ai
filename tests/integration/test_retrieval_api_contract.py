@@ -166,7 +166,10 @@ def test_retrieval_index_job_detail_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["job"]["source_id"] == "lotus-platform-rfcs"
+    assert body["chunking_strategy"] == "markdown-section-v1"
+    assert body["replay_supported"] is True
     assert any(step["step_id"].endswith(".embedding_generation") for step in body["steps"])
+    assert any(event["status"] == "COMPLETED" for event in body["events"])
 
 
 def test_retrieval_documents_route(client: TestClient) -> None:
