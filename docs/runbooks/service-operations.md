@@ -95,7 +95,8 @@ Before any future live-prompt activation slice:
 5. confirm the embedded `prompt_governance` block in `GET /platform/runtime-status` matches the detailed prompt governance view
 6. confirm prompt governance and runtime-selection posture still reflect reviewed repository-governed rollout unless explicitly approved otherwise
 7. confirm named approvers, rollback procedures, and prompt audit-evidence procedures are documented and approved
-8. only then proceed with any live-prompt activation rollout review
+8. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
+9. only then proceed with any live-prompt activation rollout review
 
 ## Retrieval Activation Governance
 

@@ -62,7 +62,8 @@ Current governance posture:
 7. the current prompt activation-readiness posture is visible through `GET /platform/prompts/activation-readiness`,
 8. the current prompt operational-readiness posture is visible through `GET /platform/prompts/runbook-readiness`,
 9. the current prompt evidence-readiness posture is visible through `GET /platform/prompts/evidence-readiness`,
-10. the combined prompt rollout review posture is visible through `GET /platform/prompts/governance-status`.
+10. the combined prompt rollout review posture is visible through `GET /platform/prompts/governance-status`,
+11. the combined prompt rollout review posture now includes technical, operational, and evidence readiness in one response.
 
 ## Audit Store
 

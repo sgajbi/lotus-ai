@@ -38,7 +38,7 @@ The current execution posture is:
 - prompt activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - prompt runbook readiness is now exposed through a dedicated operational-readiness endpoint,
 - prompt evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
-- prompt governance status is now exposed through a dedicated review-summary endpoint,
+- prompt governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
 - platform runtime status now embeds prompt governance posture directly,
 - platform runtime status now summarizes prompt runtime posture directly,
 - task execution responses now include structured evidence about prompt, provider, safety, and retrieval posture,

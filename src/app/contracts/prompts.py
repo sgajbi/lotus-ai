@@ -171,6 +171,9 @@ class PromptGovernanceStatusSummaryResponse(BaseModel):
     runbook_readiness: PromptRunbookReadinessResponse = Field(
         description="Operational runbook-readiness summary for prompt rollout."
     )
+    evidence_readiness: PromptEvidenceReadinessResponse = Field(
+        description="Evaluation and audit evidence-readiness summary for prompt rollout."
+    )
     blocking_area_count: int = Field(
         description="Number of top-level prompt governance areas currently blocking activation."
     )

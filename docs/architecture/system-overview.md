@@ -214,7 +214,8 @@ Current rules:
 
 `/platform/runtime-status` now embeds prompt governance posture directly so operators can review
 prompt rollout state from the same top-level runtime surface that already carries async, provider,
-and retrieval governance posture.
+and retrieval governance posture. Prompt governance now summarizes technical activation, runbook,
+and evidence readiness together.
 
 ## Safety Posture
 
