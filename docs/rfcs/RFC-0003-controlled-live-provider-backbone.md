@@ -1,19 +1,18 @@
 # RFC-0003: Controlled Live Provider Backbone
 
-- Status: Implemented
+- Status: In Progress
 - Date: 2026-03-22
-- Implemented Date: 2026-03-23
 - Owners: lotus-ai
 
 ## Summary
 
 `lotus-ai` should implement a controlled live provider backbone as the next major platform phase.
 
-This RFC moved provider execution from a pure stub-only foundation posture to a governed live-provider backbone for text generation, while intentionally keeping activation disabled by default until technical, operational, and evidence gates are satisfied.
+This RFC moves provider execution from a pure stub-only foundation posture to a governed live-provider backbone for text generation, while intentionally keeping activation disabled by default until technical, operational, and evidence gates are satisfied.
 
-The goal was to make `knowledge_answer.v1` and the broader task runtime capable of enterprise-grade live generation without weakening retrieval grounding, auditability, safety posture, or operational control.
+The goal is to make `knowledge_answer.v1` and the broader task runtime capable of enterprise-grade live generation without weakening retrieval grounding, auditability, safety posture, or operational control.
 
-This RFC is now implemented as the provider-backbone RFC for `lotus-ai`. The implementation established the controlled live-provider seam, rollout-state contracts, execution hardening, task-runtime integration, evaluation evidence, and operational activation-readiness posture. It did not enable live provider execution by default, which was always an explicit part of the design.
+The implementation so far has established the controlled live-provider seam, rollout-state contracts, execution hardening, task-runtime integration, evaluation evidence, and operational activation-readiness posture. It has not yet completed the core live-provider execution goal, which remains the most important closure gap for this RFC.
 
 ## Why This Is Next
 
@@ -325,7 +324,7 @@ Reason:
 
 ## Acceptance Criteria
 
-## What Was Implemented
+## What Has Been Implemented
 
 Implemented scope under RFC-0003 includes:
 
@@ -338,9 +337,18 @@ Implemented scope under RFC-0003 includes:
 7. provider evidence readiness grounded in staged eval assets and recorded regression runs,
 8. provider operational activation readiness that explicitly includes incident response, rollback, observability, and quota-handling expectations.
 
+## Remaining Closure Gaps
+
+RFC-0003 should not be treated as complete yet because these material gaps still remain:
+
+1. there is still no real allowlisted live text-generation adapter integrated behind the provider gateway; the current documented live-provider adapter is a governed rejection seam, not an executable live path,
+2. provider policy still only permits `disabled` and `stub` modes for text generation, so the configured live rollout state cannot yet drive a real live-provider execution path,
+3. task-level allowlisting for live provider execution is not implemented yet, even though the RFC explicitly called for bounded task-level rollout rather than blanket service-wide enablement,
+4. token and cost accounting are still not preserved in provider contracts or provider execution evidence, even though the RFC called for those fields where available.
+
 ## Acceptance Criteria
 
-This RFC is complete because:
+This RFC will be complete when:
 
 1. one live text-generation provider path exists behind the provider gateway,
 2. that path is disabled by default and allowlisted explicitly,
