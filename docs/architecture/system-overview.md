@@ -130,6 +130,9 @@ Prompt runtime services also own lifecycle counting now, so prompt governance an
 runtime status share the same lifecycle summary source instead of duplicating active-prompt
 filtering in separate builders.
 
+Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
+case-count derivation is isolated from the final runtime-status response assembly.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

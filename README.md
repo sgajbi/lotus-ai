@@ -39,6 +39,7 @@ The current execution posture is:
 - shared readiness bookkeeping now lives in one small service helper so runbook, evidence, and governance builders can focus on domain-specific content instead of repeating counting logic,
 - platform runtime-status assembly now has direct unit coverage and an isolated startup-readiness state helper, so the top-level operator summary is easier to reason about and safer to evolve,
 - prompt lifecycle counting now lives alongside prompt runtime selection, so prompt status and prompt governance builders no longer recalculate active-prompt inventory independently,
+- evaluation fixture inventory counting now lives in a dedicated summary helper, so evaluation runtime status focuses on response assembly instead of recounting manifest data inline,
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
