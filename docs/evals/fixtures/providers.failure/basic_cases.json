@@ -21,7 +21,7 @@
       "summary": "Provider fallback behavior should never be silent when live execution remains blocked.",
       "input": {
         "task_id": "summarize.v1",
-        "configured_mode": "live_documented",
+        "configured_mode": "openai",
         "fallback_allowed": false
       },
       "expected": {

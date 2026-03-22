@@ -19,17 +19,23 @@ class ProviderLifecycleStatus(str, Enum):
 class ProviderExecutionMode(str, Enum):
     DISABLED = "disabled"
     STUB = "stub"
+    OPENAI = "openai"
 
 
 class ProviderAdapterKind(str, Enum):
     STUB = "STUB"
-    DOCUMENTED_LIVE = "DOCUMENTED_LIVE"
+    OPENAI_LIVE = "OPENAI_LIVE"
 
 
 class ProviderFailureCategory(str, Enum):
     UNSUPPORTED_MODE = "UNSUPPORTED_MODE"
     LIVE_EXECUTION_NOT_ENABLED = "LIVE_EXECUTION_NOT_ENABLED"
     PROVIDER_NOT_REGISTERED = "PROVIDER_NOT_REGISTERED"
+    INVALID_LIVE_CONFIGURATION = "INVALID_LIVE_CONFIGURATION"
+    TASK_NOT_ALLOWLISTED = "TASK_NOT_ALLOWLISTED"
+    PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
+    PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"
+    PROVIDER_UPSTREAM_ERROR = "PROVIDER_UPSTREAM_ERROR"
 
 
 class ProviderRolloutState(str, Enum):
@@ -57,6 +63,10 @@ class ProviderConfigurationStatusDescriptor(BaseModel):
     configured_live_model_id: str | None = Field(
         default=None,
         description="Allowlisted live model identifier configured for future activation, when present.",
+    )
+    allowlisted_task_ids: list[str] = Field(
+        default_factory=list,
+        description="Bounded task identifiers currently allowlisted for future live text-generation execution.",
     )
     credential_status: ProviderCredentialStatus = Field(
         description="Current credential posture for the configured live provider path."
@@ -152,6 +162,12 @@ class ProviderExecutionRequest(BaseModel):
     task_id: str = Field(description="Bounded lotus-ai task identifier being executed.")
     caller_app: str = Field(description="Calling Lotus application or platform component.")
     prompt_version: str = Field(description="Resolved prompt version for this execution.")
+    system_instructions: str = Field(
+        description="Resolved system instructions for the executing task prompt."
+    )
+    output_contract_notes: str = Field(
+        description="Resolved output-contract notes constraining live provider behavior."
+    )
     output_label: str = Field(description="Resolved output label for the executing task.")
     safety_mode: str = Field(description="Resolved safety mode for the executing task.")
     redaction_posture: str = Field(description="Resolved redaction posture for the executing task.")
@@ -197,6 +213,30 @@ class ProviderExecutionResponse(BaseModel):
     max_output_tokens: int | None = Field(
         default=None,
         description="Output-token budget applied to this execution, when applicable.",
+    )
+    model_id: str | None = Field(
+        default=None,
+        description="Model identifier used for provider execution when one is available.",
+    )
+    provider_request_id: str | None = Field(
+        default=None,
+        description="Upstream provider request identifier when one is available.",
+    )
+    input_tokens: int | None = Field(
+        default=None,
+        description="Input-token count reported by the provider when available.",
+    )
+    output_tokens: int | None = Field(
+        default=None,
+        description="Output-token count reported by the provider when available.",
+    )
+    total_tokens: int | None = Field(
+        default=None,
+        description="Total token count reported by the provider when available.",
+    )
+    estimated_cost_usd: float | None = Field(
+        default=None,
+        description="Estimated USD cost for the provider execution when rate-card data is configured.",
     )
     stubbed: bool = Field(description="Whether execution was handled by a stub provider path.")
     message: str = Field(description="Human-readable execution message returned by the provider.")

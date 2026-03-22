@@ -6,16 +6,15 @@ from app.contracts.providers import ProviderCredentialStatus, ProviderRolloutSta
 from app.services.provider_configuration_status import (
     build_text_generation_configuration_status,
 )
+from app.services.provider_live_execution_state import build_provider_live_execution_state
 from app.services.provider_rollout_posture import build_provider_rollout_posture
 
 
 def build_provider_activation_readiness() -> ProviderActivationReadinessResponse:
     configuration = build_text_generation_configuration_status()
     rollout_posture = build_provider_rollout_posture()
+    live_execution_state = build_provider_live_execution_state()
     blocking_findings = [
-        "Live model execution remains disabled in the current foundation phase.",
-        "Configured provider modes are limited to disabled and stub execution paths.",
-        "No governed allowlisted live provider integration has been approved for text generation.",
         "Embedding provider activation remains blocked until retrieval execution and indexing controls are live.",
     ]
     if configuration.rollout_state == ProviderRolloutState.ALLOWLISTED_DISABLED:
@@ -28,7 +27,13 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
         blocking_findings.append(
             "No live-provider credentials are configured for any future allowlisted text-generation path."
         )
-    blocking_findings.append(rollout_posture.notes)
+    if live_execution_state.live_execution_enabled:
+        activation_ready = True
+    else:
+        activation_ready = False
+        if live_execution_state.blocking_reason is not None:
+            blocking_findings.append(live_execution_state.blocking_reason)
+        blocking_findings.append(rollout_posture.notes)
     activation_path = [
         "Review `/platform/providers` and `/platform/providers/policy` to confirm the provider catalog, adapter kind, runtime mode, and selected execution path match the intended rollout posture.",
         "Verify allowlisted rollout configuration and credential posture through `/platform/providers/activation-readiness` before any live mode is considered.",
@@ -42,7 +47,7 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
         provider_mode=settings.provider_mode,
         embedding_provider_mode=settings.embedding_provider_mode,
         text_generation_configuration=configuration,
-        activation_ready=False,
+        activation_ready=activation_ready,
         blocking_findings=blocking_findings,
         activation_path=activation_path,
     )

@@ -12,7 +12,7 @@ from app.providers.registry import (
 )
 
 
-def test_provider_registry_lists_stub_and_documented_live_descriptors() -> None:
+def test_provider_registry_lists_stub_and_openai_live_descriptors() -> None:
     descriptors = list_registered_provider_descriptors()
 
     assert any(
@@ -21,8 +21,8 @@ def test_provider_registry_lists_stub_and_documented_live_descriptors() -> None:
         for descriptor in descriptors
     )
     assert any(
-        descriptor.provider_id == "text.live_documented"
-        and descriptor.adapter_kind == ProviderAdapterKind.DOCUMENTED_LIVE
+        descriptor.provider_id == "text.openai"
+        and descriptor.adapter_kind == ProviderAdapterKind.OPENAI_LIVE
         and descriptor.failure_category_on_use == ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
         for descriptor in descriptors
     )

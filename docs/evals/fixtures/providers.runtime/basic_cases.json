@@ -20,11 +20,11 @@
       }
     },
     {
-      "case_id": "documented_live_provider_rejects_until_rollout_enabled",
-      "summary": "Documented live-provider paths should reject cleanly until rollout posture explicitly allows activation.",
+      "case_id": "openai_live_provider_rejects_until_rollout_enabled",
+      "summary": "The allowlisted OpenAI live-provider path should reject cleanly until rollout posture explicitly allows activation.",
       "input": {
         "task_id": "explain.v1",
-        "configured_mode": "live_documented",
+        "configured_mode": "openai",
         "rollout_state": "ALLOWLISTED_DISABLED"
       },
       "expected": {

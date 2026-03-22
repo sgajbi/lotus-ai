@@ -6,6 +6,10 @@ from app.contracts.providers import (
     ProviderCredentialStatus,
     ProviderRolloutState,
 )
+from app.services.provider_task_allowlist import (
+    list_invalid_live_text_allowlisted_task_ids,
+    list_live_text_allowlisted_task_ids,
+)
 
 
 def build_text_generation_configuration_status() -> ProviderConfigurationStatusDescriptor:
@@ -13,6 +17,8 @@ def build_text_generation_configuration_status() -> ProviderConfigurationStatusD
     configured_live_provider_id = settings.live_text_provider_id
     configured_live_model_id = settings.live_text_model_id
     api_key = settings.live_text_provider_api_key
+    allowlisted_task_ids = list_live_text_allowlisted_task_ids()
+    invalid_allowlisted_task_ids = list_invalid_live_text_allowlisted_task_ids()
 
     findings: list[str] = []
     configuration_valid = True
@@ -39,6 +45,21 @@ def build_text_generation_configuration_status() -> ProviderConfigurationStatusD
         configuration_valid = False
         findings.append(
             "Live-provider rollout state requires allowlisted provider id, model id, and provider credential configuration."
+        )
+    if rollout_requires_live_config and not allowlisted_task_ids:
+        configuration_valid = False
+        findings.append(
+            "Live-provider rollout state requires at least one allowlisted task id for bounded activation."
+        )
+    if invalid_allowlisted_task_ids:
+        configuration_valid = False
+        findings.append(
+            "Live-provider task allowlist contains unknown or retrieval-backed task ids, which are not valid for live text-generation rollout."
+        )
+    if configured_live_provider_id not in {None, "text.openai"}:
+        configuration_valid = False
+        findings.append(
+            "Configured live text provider id is not recognized by the current provider backbone."
         )
 
     if not rollout_requires_live_config and populated_live_config_count > 0:
@@ -71,6 +92,7 @@ def build_text_generation_configuration_status() -> ProviderConfigurationStatusD
         rollout_state=resolved_rollout_state,
         configured_live_provider_id=configured_live_provider_id,
         configured_live_model_id=configured_live_model_id,
+        allowlisted_task_ids=allowlisted_task_ids,
         credential_status=credential_status,
         configuration_valid=configuration_valid,
         findings=findings,

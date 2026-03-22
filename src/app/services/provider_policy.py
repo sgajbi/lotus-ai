@@ -15,10 +15,16 @@ from app.providers.registry import resolve_text_generation_adapter
 from app.services.provider_configuration_status import (
     build_text_generation_configuration_status,
 )
+from app.services.provider_live_execution_state import build_provider_live_execution_state
 
 
 def build_provider_policy() -> ProviderPolicyResponse:
     selected_text_provider = _resolve_selected_text_provider()
+    live_execution_state = build_provider_live_execution_state()
+    if settings.provider_mode == ProviderExecutionMode.OPENAI.value:
+        rejection_category = ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
+    else:
+        rejection_category = ProviderFailureCategory.UNSUPPORTED_MODE
     return ProviderPolicyResponse(
         service=settings.service_name,
         version=settings.service_version,
@@ -30,14 +36,15 @@ def build_provider_policy() -> ProviderPolicyResponse:
                 allowed_modes=[
                     ProviderExecutionMode.DISABLED,
                     ProviderExecutionMode.STUB,
+                    ProviderExecutionMode.OPENAI,
                 ],
                 selected_provider_id=selected_text_provider[0],
                 selected_adapter_kind=selected_text_provider[1],
-                live_execution_enabled=False,
-                rejection_category=ProviderFailureCategory.UNSUPPORTED_MODE,
+                live_execution_enabled=live_execution_state.live_execution_enabled,
+                rejection_category=rejection_category,
                 rejection_behavior=(
-                    "Reject unsupported provider modes with HTTP 503 until a governed live "
-                    "provider rollout is approved."
+                    "Reject unsupported provider modes, blocked live rollout states, and "
+                    "non-allowlisted tasks with HTTP 503 until governed live execution is approved."
                 ),
             ),
             ProviderPolicyDescriptor(
@@ -77,6 +84,6 @@ def require_supported_text_generation_mode() -> ProviderExecutionMode:
 def _resolve_selected_text_provider() -> tuple[str, ProviderAdapterKind]:
     configured_mode = settings.provider_mode
     if configured_mode not in {mode.value for mode in ProviderExecutionMode}:
-        return ("text.unresolved", ProviderAdapterKind.DOCUMENTED_LIVE)
+        return ("text.unresolved", ProviderAdapterKind.OPENAI_LIVE)
     adapter = resolve_text_generation_adapter(ProviderExecutionMode(configured_mode))
     return (adapter.descriptor.provider_id, adapter.descriptor.adapter_kind)

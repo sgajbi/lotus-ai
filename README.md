@@ -53,7 +53,7 @@ The current execution posture is:
 - retrieval-backed tasks now emit explicit structured citations and `knowledge_answer.v1` refuses low-support answers instead of overstating weak retrieval matches,
 - platform status now exposes a dedicated bounded task-runtime view so operators can distinguish stub-backed tasks from retrieval-backed tasks directly,
 - platform task APIs now also expose bounded execution-summary, evidence-summary, and retrieval-summary views built from persisted audit records, so real task usage, retrieval-answer quality, and source/refusal patterns can be measured instead of inferred,
-- the provider catalog now distinguishes stub adapters from documented-live adapter seams even though no live provider is enabled yet,
+- the provider catalog now distinguishes the stub adapter from the allowlisted OpenAI live adapter seam, while live execution remains disabled by default unless rollout, credentials, and task allowlisting permit it,
 - provider policy now exposes selected adapter kind and structured rejection category in addition to supported runtime modes,
 - provider surfaces now also expose explicit text-generation rollout state and live-provider configuration posture, so supported runtime mode and future activation posture are no longer conflated,
 - provider execution requests now carry bounded timeout, retry, and output-token controls even in foundation phase, so later live rollout inherits an explicit execution-hardening seam instead of implicit SDK defaults,

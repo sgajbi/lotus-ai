@@ -1,6 +1,6 @@
 # RFC-0003: Controlled Live Provider Backbone
 
-- Status: In Progress
+- Status: Implemented
 - Date: 2026-03-22
 - Owners: lotus-ai
 
@@ -337,14 +337,23 @@ Implemented scope under RFC-0003 includes:
 7. provider evidence readiness grounded in staged eval assets and recorded regression runs,
 8. provider operational activation readiness that explicitly includes incident response, rollback, observability, and quota-handling expectations.
 
-## Remaining Closure Gaps
+## Closure Summary
 
-RFC-0003 should not be treated as complete yet because these material gaps still remain:
+RFC-0003 is now complete.
 
-1. there is still no real allowlisted live text-generation adapter integrated behind the provider gateway; the current documented live-provider adapter is a governed rejection seam, not an executable live path,
-2. provider policy still only permits `disabled` and `stub` modes for text generation, so the configured live rollout state cannot yet drive a real live-provider execution path,
-3. task-level allowlisting for live provider execution is not implemented yet, even though the RFC explicitly called for bounded task-level rollout rather than blanket service-wide enablement,
-4. token and cost accounting are still not preserved in provider contracts or provider execution evidence, even though the RFC called for those fields where available.
+The closure work added:
+
+1. a real allowlisted OpenAI live text-generation adapter behind the provider gateway,
+2. provider policy support for `openai` mode without weakening disabled-by-default rollout posture,
+3. explicit task-level allowlisting for live provider execution,
+4. provider token and estimated-cost accounting in provider response and execution evidence.
+
+The platform remains governed even with that live path in place:
+
+1. live execution is still disabled by default,
+2. rollout posture, credentials, and task allowlisting must all agree before live execution can occur,
+3. retrieval-backed tasks remain retrieval-grounded and do not silently drift into live provider generation,
+4. provider activation, evidence, runbook, and governance surfaces remain the operator review boundary for activation.
 
 ## Acceptance Criteria
 

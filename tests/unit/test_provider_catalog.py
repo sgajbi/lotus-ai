@@ -1,3 +1,4 @@
+from app.config import settings
 from app.contracts.providers import (
     ProviderAdapterKind,
     ProviderCredentialStatus,
@@ -21,8 +22,8 @@ def test_provider_catalog_exposes_documented_disabled_execution_posture() -> Non
     assert catalog.runtime_execution_enabled is False
     assert any(provider.provider_id == "text.stub" for provider in catalog.providers)
     assert any(
-        provider.provider_id == "text.live_documented"
-        and provider.adapter_kind == ProviderAdapterKind.DOCUMENTED_LIVE
+        provider.provider_id == "text.openai"
+        and provider.adapter_kind == ProviderAdapterKind.OPENAI_LIVE
         and provider.failure_category_on_use == ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
         for provider in catalog.providers
     )
@@ -31,3 +32,20 @@ def test_provider_catalog_exposes_documented_disabled_execution_posture() -> Non
         for provider in catalog.providers
     )
     assert all(provider.enabled_for_execution is False for provider in catalog.providers)
+
+
+def test_provider_catalog_marks_openai_provider_executable_when_rollout_allows_it() -> None:
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+
+    catalog = build_provider_catalog()
+
+    openai_provider = next(
+        provider for provider in catalog.providers if provider.provider_id == "text.openai"
+    )
+    assert catalog.runtime_execution_enabled is True
+    assert openai_provider.enabled_for_execution is True

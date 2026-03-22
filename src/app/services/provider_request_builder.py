@@ -14,6 +14,8 @@ def build_provider_execution_request(
         task_id=context.capability.task_id,
         caller_app=context.request.caller.caller_app,
         prompt_version=context.prompt.prompt_version,
+        system_instructions=context.prompt.system_instructions,
+        output_contract_notes=context.prompt.output_contract_notes,
         output_label=context.capability.output_label.value,
         safety_mode=context.safety_outcome.safety_mode,
         redaction_posture=context.safety_outcome.redaction_posture.value,

@@ -139,8 +139,9 @@ independently by retrieval status and job builders.
 
 The provider gateway also stays intentionally explicit in foundation phase: supported provider
 modes are validated first, provider selection resolves through a small registered adapter seam,
-and current executable modes still route through the stub provider until a live provider path is
-actually introduced.
+and live OpenAI execution is only available when rollout state, credentials, and task-level
+allowlisting all permit it. Otherwise provider-backed tasks continue through the deterministic
+stub path or fail with an explicit blocked-live posture.
 
 Provider runtime mode and provider rollout posture are now also separated explicitly. The
 provider APIs expose current supported execution mode, future rollout state, and live-provider
@@ -238,7 +239,7 @@ Owns:
 
 1. provider-specific execution adapters,
 2. deterministic stub providers for foundation phase,
-3. documented live-provider adapter seams that are visible in the catalog before activation,
+3. governed live-provider adapters that remain disabled by default until rollout permits activation,
 4. the future boundary where live model SDK integrations will sit.
 
 ### Retrieval

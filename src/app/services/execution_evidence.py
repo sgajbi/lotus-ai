@@ -92,6 +92,36 @@ def _provider_descriptor(
                 else {}
             ),
             **(
+                {"model_id": provider_execution.model_id}
+                if provider_execution.model_id is not None
+                else {}
+            ),
+            **(
+                {"provider_request_id": provider_execution.provider_request_id}
+                if provider_execution.provider_request_id is not None
+                else {}
+            ),
+            **(
+                {"input_tokens": provider_execution.input_tokens}
+                if provider_execution.input_tokens is not None
+                else {}
+            ),
+            **(
+                {"output_tokens": provider_execution.output_tokens}
+                if provider_execution.output_tokens is not None
+                else {}
+            ),
+            **(
+                {"total_tokens": provider_execution.total_tokens}
+                if provider_execution.total_tokens is not None
+                else {}
+            ),
+            **(
+                {"estimated_cost_usd": provider_execution.estimated_cost_usd}
+                if provider_execution.estimated_cost_usd is not None
+                else {}
+            ),
+            **(
                 {"adapter_kind": provider_execution.adapter_kind.value}
                 if provider_execution.adapter_kind is not None
                 else {}

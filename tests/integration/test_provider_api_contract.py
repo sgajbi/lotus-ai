@@ -14,8 +14,8 @@ def test_provider_catalog_route(client: TestClient) -> None:
     assert body["runtime_execution_enabled"] is False
     assert any(provider["provider_id"] == "text.stub" for provider in body["providers"])
     assert any(
-        provider["provider_id"] == "text.live_documented"
-        and provider["adapter_kind"] == "DOCUMENTED_LIVE"
+        provider["provider_id"] == "text.openai"
+        and provider["adapter_kind"] == "OPENAI_LIVE"
         and provider["failure_category_on_use"] == "LIVE_EXECUTION_NOT_ENABLED"
         for provider in body["providers"]
     )
@@ -33,6 +33,7 @@ def test_provider_policy_route(client: TestClient) -> None:
     )
     assert text_policy["selected_adapter_kind"] == "STUB"
     assert text_policy["rejection_category"] == "UNSUPPORTED_MODE"
+    assert text_policy["allowed_modes"] == ["disabled", "stub", "openai"]
 
 
 def test_provider_activation_readiness_route(client: TestClient) -> None:
@@ -46,7 +47,7 @@ def test_provider_activation_readiness_route(client: TestClient) -> None:
     assert body["text_generation_configuration"]["rollout_state"] == "STUB_DEFAULT"
     assert body["text_generation_configuration"]["credential_status"] == "NOT_CONFIGURED"
     assert body["activation_ready"] is False
-    assert len(body["blocking_findings"]) == 6
+    assert len(body["blocking_findings"]) == 4
     assert len(body["activation_path"]) == 5
     assert "/platform/providers/governance-status" in body["activation_path"][-1]
 
