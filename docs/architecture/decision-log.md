@@ -191,3 +191,21 @@ Current posture:
 1. safety policy is inspectable through `/platform/safety/policy`,
 2. response labeling and audit evidence are enforced controls,
 3. redaction remains documented guidance at this phase rather than a runtime mutation engine.
+
+## Decision 13: Safety Outcomes Belong In Audit Metadata
+
+Decision:
+
+Each task execution must persist the safety posture that applied to the run, not just expose safety policy separately.
+
+Why:
+
+1. audit consumers need execution-specific evidence instead of only a platform-wide policy view,
+2. future safety rollout changes should remain traceable per request,
+3. this creates a clean bridge from documented safety posture to future enforced runtime controls.
+
+Current posture:
+
+1. execution audit metadata now records `safety_mode`,
+2. task-specific `redaction_posture` is persisted per run,
+3. enforced safety-control identifiers are stored with each audit record.

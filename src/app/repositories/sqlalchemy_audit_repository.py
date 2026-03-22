@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.safety import RedactionPosture
 from app.db.models import AuditRecordModel
 
 
@@ -24,6 +25,9 @@ class SqlAlchemyAuditRepository:
             correlation_id=record.correlation_id,
             prompt_version=record.prompt_version,
             provider_mode=record.provider_mode,
+            safety_mode=record.safety_mode,
+            redaction_posture=record.redaction_posture.value,
+            enforced_safety_controls=record.enforced_safety_controls,
             generated_at=record.generated_at,
             stubbed=record.stubbed,
             context_summary=record.context_summary,
@@ -51,6 +55,9 @@ class SqlAlchemyAuditRepository:
             correlation_id=model.correlation_id,
             prompt_version=model.prompt_version,
             provider_mode=model.provider_mode,
+            safety_mode=model.safety_mode,
+            redaction_posture=RedactionPosture(model.redaction_posture),
+            enforced_safety_controls=model.enforced_safety_controls,
             generated_at=model.generated_at,
             stubbed=model.stubbed,
             context_summary=model.context_summary,

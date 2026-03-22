@@ -23,6 +23,7 @@ The current execution posture is:
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - safety policy exposes task-level output-label and redaction posture,
+- task audit records now persist the applied safety posture for every execution,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

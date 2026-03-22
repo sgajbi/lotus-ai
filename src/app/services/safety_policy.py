@@ -60,14 +60,14 @@ def build_safety_policy() -> SafetyPolicyResponse:
 def _build_task_safety_descriptor(task_id: str, output_label: OutputLabel) -> TaskSafetyDescriptor:
     return TaskSafetyDescriptor(
         task_id=task_id,
-        output_label=output_label,
-        redaction_posture=_redaction_posture_for_label(output_label),
+        output_label=output_label.value,
+        redaction_posture=get_redaction_posture_for_label(output_label),
         response_labeling_required=True,
         intended_use_notes=_intended_use_notes_for_label(output_label),
     )
 
 
-def _redaction_posture_for_label(output_label: OutputLabel) -> RedactionPosture:
+def get_redaction_posture_for_label(output_label: OutputLabel) -> RedactionPosture:
     if output_label in {OutputLabel.EXPLANATION_ONLY, OutputLabel.RETRIEVAL_ANSWER}:
         return RedactionPosture.MINIMIZATION_REQUIRED
     return RedactionPosture.DOCUMENTED_ONLY

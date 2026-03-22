@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.safety import RedactionPosture
 from app.repositories.sqlalchemy_audit_repository import SqlAlchemyAuditRepository
 from tests.support.migration_runner import upgrade_database_to_head
 
@@ -17,6 +18,9 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
         correlation_id="corr-sql-1",
         prompt_version="foundation.explain.v1",
         provider_mode="disabled",
+        safety_mode="documented_only",
+        redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
+        enforced_safety_controls=["response_labeling", "correlation_and_audit"],
         generated_at="2026-03-22T00:00:00Z",
         stubbed=True,
         context_summary="Explain rebalance outcome",

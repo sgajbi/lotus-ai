@@ -4,8 +4,6 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from app.contracts.tasks import OutputLabel
-
 
 class SafetyControlStatus(str, Enum):
     DOCUMENTED = "DOCUMENTED"
@@ -25,7 +23,7 @@ class SafetyControlDescriptor(BaseModel):
 
 class TaskSafetyDescriptor(BaseModel):
     task_id: str = Field(description="Bounded lotus-ai task identifier.")
-    output_label: OutputLabel = Field(description="Output label associated with the task.")
+    output_label: str = Field(description="Output label associated with the task.")
     redaction_posture: RedactionPosture = Field(
         description="Declared redaction and minimization posture for the task."
     )
@@ -46,4 +44,17 @@ class SafetyPolicyResponse(BaseModel):
     )
     task_policies: list[TaskSafetyDescriptor] = Field(
         description="Task-level safety posture for bounded lotus-ai capabilities."
+    )
+
+
+class SafetyExecutionOutcome(BaseModel):
+    safety_mode: str = Field(
+        description="Configured lotus-ai safety mode applied to the execution."
+    )
+    output_label: str = Field(description="Output label attached to the executed task.")
+    redaction_posture: RedactionPosture = Field(
+        description="Redaction posture associated with the executed task."
+    )
+    enforced_controls: list[str] = Field(
+        description="Stable identifiers for safety controls enforced for the execution."
     )

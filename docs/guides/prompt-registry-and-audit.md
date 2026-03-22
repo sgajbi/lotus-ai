@@ -72,6 +72,12 @@ Current implementation:
 
 This gives us immediate traceability while keeping the persistence architecture clean.
 
+Current audit fields also include execution safety posture:
+
+1. `safety_mode`
+2. `redaction_posture`
+3. `enforced_safety_controls`
+
 ## Why We Introduced the Repository Seam First
 
 1. We wanted contract and service seams before durable storage complexity.

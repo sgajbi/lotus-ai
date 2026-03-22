@@ -38,6 +38,12 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
     assert response.result.structured_output["context_keys"] == ["rule_count", "status"]
     assert response.audit.stubbed is True
     assert response.audit.prompt_version == "foundation.explain.v1"
+    assert response.audit.safety.safety_mode == "documented_only"
+    assert response.audit.safety.redaction_posture == "MINIMIZATION_REQUIRED"
+    assert response.audit.safety.enforced_controls == [
+        "response_labeling",
+        "correlation_and_audit",
+    ]
 
 
 def test_execute_task_rejects_unknown_task() -> None:

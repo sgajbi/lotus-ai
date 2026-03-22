@@ -50,6 +50,13 @@ Current foundation enforcement posture:
 3. redaction posture is declared per task but not yet runtime-enforced,
 4. callers remain responsible for context minimization.
 
+Current audit evidence retained for executions now includes:
+
+1. applied `safety_mode`,
+2. resolved task `redaction_posture`,
+3. enforced safety-control identifiers,
+4. output label and prompt/provider context already attached to the execution.
+
 ## Deferred Security Work
 
 1. secret scanning for prompt assets,

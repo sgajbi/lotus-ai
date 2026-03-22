@@ -18,6 +18,7 @@ from app.services.audit_store import get_audit_store
 from app.services.capability_catalog import get_capability_by_task_id
 from app.services.provider_gateway import execute_text_generation
 from app.services.prompt_registry import get_prompt_or_raise
+from app.services.safety_runtime import build_safety_execution_outcome
 
 
 def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
@@ -42,6 +43,7 @@ def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
         )
     prompt = get_prompt_or_raise(request.task_id)
     request_id = f"air_{uuid4().hex}"
+    safety_outcome = build_safety_execution_outcome(capability.output_label)
     provider_execution = execute_text_generation(
         ProviderExecutionRequest(
             task_id=capability.task_id,
@@ -71,6 +73,7 @@ def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
             output_label=capability.output_label,
             prompt_version=prompt.prompt_version,
             provider_mode=provider_execution.provider_mode,
+            safety=safety_outcome,
             generated_at=datetime.now(UTC).isoformat(),
             stubbed=provider_execution.stubbed,
         ),
@@ -83,6 +86,9 @@ def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
             correlation_id=request.caller.correlation_id,
             prompt_version=response.audit.prompt_version,
             provider_mode=response.audit.provider_mode,
+            safety_mode=response.audit.safety.safety_mode,
+            redaction_posture=response.audit.safety.redaction_posture,
+            enforced_safety_controls=response.audit.safety.enforced_controls,
             generated_at=response.audit.generated_at,
             stubbed=response.audit.stubbed,
             context_summary=request.context.summary,

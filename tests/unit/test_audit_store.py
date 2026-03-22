@@ -1,4 +1,5 @@
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.safety import RedactionPosture
 from app.repositories.memory_audit_repository import InMemoryAuditRepository
 
 
@@ -11,6 +12,9 @@ def test_in_memory_audit_store_save_and_get() -> None:
         correlation_id="corr-123",
         prompt_version="foundation.explain.v1",
         provider_mode="disabled",
+        safety_mode="documented_only",
+        redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
+        enforced_safety_controls=["response_labeling", "correlation_and_audit"],
         generated_at="2026-03-22T00:00:00Z",
         stubbed=True,
         context_summary="Explain rebalance outcome",

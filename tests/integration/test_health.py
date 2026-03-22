@@ -111,6 +111,8 @@ def test_task_execute_contract() -> None:
     assert body["status"] == "COMPLETED"
     assert body["audit"]["stubbed"] is True
     assert body["audit"]["prompt_version"] == "foundation.explain.v1"
+    assert body["audit"]["safety"]["safety_mode"] == "documented_only"
+    assert body["audit"]["safety"]["redaction_posture"] == "MINIMIZATION_REQUIRED"
     assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"
 
 
@@ -180,6 +182,11 @@ def test_audit_record_route_returns_saved_execution() -> None:
     assert audit_response.status_code == 200
     assert audit_response.json()["caller_app"] == "lotus-advise"
     assert audit_response.json()["prompt_version"] == "foundation.summarize.v1"
+    assert audit_response.json()["safety_mode"] == "documented_only"
+    assert audit_response.json()["enforced_safety_controls"] == [
+        "response_labeling",
+        "correlation_and_audit",
+    ]
 
 
 def test_retrieval_source_catalog_route() -> None:
