@@ -696,3 +696,21 @@ Current posture:
 1. `/platform/async/worker-executions` exposes the current foundation default and documented future worker options,
 2. async runtime status now includes the supported worker execution descriptors,
 3. the active worker execution remains `none` until a separate governed activation slice enables live workers.
+
+## Decision 41: Async Activation Readiness Should Be Summarized Explicitly
+
+Decision:
+
+`lotus-ai` exposes a dedicated async activation-readiness view instead of expecting operators to infer readiness by manually combining queue, worker, and submission posture.
+
+Why:
+
+1. rollout readiness is a higher-level operational question than catalog inspection alone,
+2. bank-grade services should expose blocking findings and activation path explicitly rather than relying on implicit interpretation,
+3. this creates a stable operator-facing contract for future async rollout reviews.
+
+Current posture:
+
+1. `/platform/async/activation-readiness` exposes whether async execution is activatable today,
+2. the endpoint returns explicit blocking findings and a governed activation path,
+3. foundation phase remains not activatable until a separate rollout slice changes queue, worker, and job enablement posture together.

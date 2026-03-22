@@ -79,6 +79,22 @@ def test_async_worker_execution_catalog_route() -> None:
     assert body["workers"][2]["worker_id"] == "queue_backed_workers"
 
 
+def test_async_activation_readiness_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/async/activation-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["activation_ready"] is False
+    assert body["queue_backend"] == "none"
+    assert body["worker_execution"] == "none"
+    assert body["supported_job_type_count"] == 3
+    assert len(body["blocking_findings"]) == 4
+    assert len(body["activation_path"]) == 4
+
+
 def test_async_job_catalog_route() -> None:
     client = TestClient(app)
 

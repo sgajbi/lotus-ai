@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.contracts.async_runtime import (
+    AsyncActivationReadinessResponse,
     AsyncJobCatalogResponse,
     AsyncJobDetailResponse,
     AsyncJobSubmissionRequest,
@@ -11,6 +12,7 @@ from app.contracts.async_runtime import (
     AsyncRuntimeStatusResponse,
     AsyncWorkerExecutionCatalogResponse,
 )
+from app.services.async_activation_readiness_service import build_async_activation_readiness
 from app.services.async_job_service import build_async_job_catalog, build_async_job_detail
 from app.services.async_queue_backend_service import build_async_queue_backend_catalog
 from app.services.async_submission_service import submit_async_job
@@ -72,6 +74,24 @@ async def get_async_queue_backend_catalog_route() -> AsyncQueueBackendCatalogRes
 )
 async def get_async_worker_execution_catalog_route() -> AsyncWorkerExecutionCatalogResponse:
     return build_async_worker_execution_catalog()
+
+
+@router.get(
+    "/activation-readiness",
+    response_model=AsyncActivationReadinessResponse,
+    operation_id="getAsyncActivationReadiness",
+    summary="Get lotus-ai async activation readiness",
+    description=(
+        "Returns whether lotus-ai async execution is currently ready for live activation, along "
+        "with the blocking findings and governed activation path for a future rollout."
+    ),
+    responses={
+        200: {"description": "Async activation readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_async_activation_readiness_route() -> AsyncActivationReadinessResponse:
+    return build_async_activation_readiness()
 
 
 @router.get(

@@ -199,3 +199,25 @@ class AsyncWorkerExecutionCatalogResponse(BaseModel):
     workers: list[AsyncWorkerExecutionDescriptor] = Field(
         description="Known worker execution strategies and their current posture."
     )
+
+
+class AsyncActivationReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the async activation readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    activation_ready: bool = Field(
+        description="Whether lotus-ai async execution is currently ready for live activation."
+    )
+    queue_backend: str = Field(description="Current active queue backend posture label.")
+    worker_execution: str = Field(description="Current active worker execution posture label.")
+    queue_mode: AsyncQueueMode = Field(description="Current queue execution mode.")
+    worker_mode: AsyncWorkerMode = Field(description="Current worker runtime mode.")
+    supported_job_type_count: int = Field(
+        description="Number of governed async job types currently exposed."
+    )
+    blocking_findings: list[str] = Field(
+        description="Human-readable reasons why async execution is not yet activatable."
+    )
+    activation_path: list[str] = Field(
+        description="Governed high-level path required before live async execution can be enabled."
+    )
