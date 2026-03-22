@@ -95,6 +95,23 @@ The first version should use the service database, not external infrastructure, 
 
 The external contracts for provider operations should remain stable wherever possible. The implementation focus is durability and correctness, not widening the public API unnecessarily.
 
+## State Model and Invariants
+
+This RFC establishes one authoritative rule:
+
+1. provider quota, budget, and degradation truth must come from one durable state model,
+2. runtime summaries and enforcement decisions must derive from that same durable state,
+3. process-local memory may cache or assemble responses, but it must not become an independent source of operator truth,
+4. no endpoint should mix durable counters with process-local fallback values once a slice is cut over.
+
+The durable state model should preserve these invariants:
+
+1. quota consumption must be atomic at the enforced scope,
+2. budget accumulation must be monotonic unless an explicit governed reset is recorded,
+3. degradation counters and circuit-open transitions must be durable across restart,
+4. cooldown expiry must be derived from persisted timestamps rather than process uptime,
+5. operator-visible blocking states must be explainable from persisted records and configuration.
+
 ## Architecture Direction
 
 ### Provider Operations Persistence
@@ -124,7 +141,9 @@ The first delivery should be conservative and explicit:
 1. writes happen synchronously in the provider control path,
 2. enforcement reads from authoritative persisted state,
 3. cooldown and reset semantics are deterministic,
-4. restart behavior preserves provider-ops truth.
+4. restart behavior preserves provider-ops truth,
+5. increments and state transitions that affect blocking behavior must be atomic,
+6. the implementation should prefer simple transaction boundaries over asynchronous reconciliation.
 
 ### Runtime and Governance Surfaces
 
@@ -138,6 +157,24 @@ Existing endpoints should continue to expose:
 
 But those views should now report durable state rather than process-local snapshots.
 
+### Cutover and Reset Semantics
+
+The migration from process-local state to durable state should avoid split-brain truth.
+
+Required cutover rules:
+
+1. each slice must switch a control path fully to durable reads and writes rather than partially shadow-writing indefinitely,
+2. if seed or bootstrap values are needed, they must be explicit and documented,
+3. after cutover, restart behavior must demonstrate that operator state survives without hidden in-memory reconstruction,
+4. any manual reset or rollover action must be represented as a governed state transition, not an undocumented table edit.
+
+Required operational semantics:
+
+1. quota windows must define their boundary and reset behavior explicitly,
+2. budget periods must define whether they are cumulative or bounded to a named interval,
+3. degradation recovery must define what clears counts, what only clears circuit-open state, and what remains as incident evidence,
+4. cooldown timing must remain truthful even if the service restarts repeatedly during the cooldown window.
+
 ## Data and Operational Requirements
 
 1. Provider operations state must survive service restart.
@@ -146,6 +183,9 @@ But those views should now report durable state rather than process-local snapsh
 4. Reset behavior must be explicit, bounded, and operationally reviewable.
 5. State persistence must not leak credentials or raw provider payloads.
 6. The database schema must be migration-managed and integration-tested.
+7. Atomic write semantics must be explicit for quota consumption, spend accumulation, and degradation transitions.
+8. Operator-facing summaries must be able to explain blocking state from persisted records without consulting process-local memory.
+9. Repository unavailability must fail safely and truthfully rather than silently bypassing provider controls.
 
 ## Delivery Slices
 
@@ -161,7 +201,8 @@ Acceptance gate:
 
 1. schema is migration-managed,
 2. repository contracts are unit-tested,
-3. no hidden runtime table creation exists.
+3. no hidden runtime table creation exists,
+4. state entities and keys are specific enough that quota, budget, and degradation truth are not forced into a generic opaque blob.
 
 ### Slice 2: Durable Quota State
 
@@ -175,7 +216,8 @@ Acceptance gate:
 
 1. restart does not reset quota truth,
 2. scoped quota behavior remains truthful,
-3. integration tests cover persisted enforcement.
+3. integration tests cover persisted enforcement,
+4. concurrent quota consumption cannot undercount or silently over-admit due to non-atomic writes.
 
 ### Slice 3: Durable Budget State
 
@@ -189,7 +231,8 @@ Acceptance gate:
 
 1. restart does not reset spend posture,
 2. hard-budget blocking remains explicit,
-3. tests cover persisted spend accumulation.
+3. tests cover persisted spend accumulation,
+4. successful executions cannot double-count spend across retry or replay paths without an explicit recorded reason.
 
 ### Slice 4: Durable Degradation and Circuit State
 
@@ -203,7 +246,8 @@ Acceptance gate:
 
 1. cooldown semantics are deterministic and tested,
 2. incident-review summaries remain truthful,
-3. invalid configuration and degraded state are still distinguished clearly.
+3. invalid configuration and degraded state are still distinguished clearly,
+4. repeated upstream failures across restarts still converge to the same durable circuit posture.
 
 ### Slice 5: Runtime, Eval, and Runbook Convergence
 
@@ -217,7 +261,8 @@ Acceptance gate:
 
 1. runtime and governance summaries stay aligned,
 2. eval and runbook assets match implementation reality,
-3. the service is materially closer to enterprise-grade provider operations.
+3. the service is materially closer to enterprise-grade provider operations,
+4. restart-survival and database-backed operator-truth scenarios are covered by meaningful tests rather than only unit-level helpers.
 
 ## Risks
 
@@ -264,7 +309,9 @@ This RFC is complete when:
 3. provider degradation and circuit state are durable,
 4. provider operations summaries remain truthful across restart and instance boundaries,
 5. runbooks and eval assets reflect the durable state model,
-6. the platform is materially closer to bank-grade live-provider operation.
+6. no provider-ops enforcement path depends on process-local mutable globals for operator truth,
+7. reset, rollover, and cooldown semantics are explicit, durable, and reviewable,
+8. the platform is materially closer to bank-grade live-provider operation.
 
 ## Approval Requested
 
