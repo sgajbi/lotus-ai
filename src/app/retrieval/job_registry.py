@@ -12,16 +12,18 @@ from app.contracts.retrieval import (
     RetrievalJobStatus,
     RetrievalPipelineStage,
 )
-from app.retrieval.document_registry import DOCUMENTS, document_chunk_count
-from app.retrieval.source_registry import VECTOR_STORE_STRATEGY
-
-CHUNKING_STRATEGY = "markdown-section-v1"
-EMBEDDING_STRATEGY = "provider-disabled"
-PERSISTENCE_STRATEGY = "postgresql+pgvector"
+from app.retrieval.document_registry import document_chunk_count
+from app.retrieval.policy import (
+    CHUNKING_STRATEGY,
+    EMBEDDING_STRATEGY,
+    PERSISTENCE_STRATEGY,
+    VECTOR_STORE_STRATEGY,
+)
+from app.services.retrieval_store import get_retrieval_repository
 
 
 def _build_job_descriptor(source_id: str) -> RetrievalIndexJobDescriptor:
-    documents = DOCUMENTS.get(source_id, [])
+    documents = get_retrieval_repository().list_documents_for_source(source_id)
     chunk_count = sum(document_chunk_count(document.document_id) for document in documents)
     if not documents:
         status_value = RetrievalJobStatus.PENDING
@@ -41,7 +43,10 @@ def _build_job_descriptor(source_id: str) -> RetrievalIndexJobDescriptor:
 
 
 def build_retrieval_job_catalog() -> RetrievalIndexJobCatalogResponse:
-    jobs = [_build_job_descriptor(source_id) for source_id in DOCUMENTS]
+    jobs = [
+        _build_job_descriptor(source_id)
+        for source_id in get_retrieval_repository().list_source_ids()
+    ]
     return RetrievalIndexJobCatalogResponse(
         service=settings.service_name,
         vector_store=VECTOR_STORE_STRATEGY,
@@ -50,7 +55,7 @@ def build_retrieval_job_catalog() -> RetrievalIndexJobCatalogResponse:
 
 
 def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
-    for source_id in DOCUMENTS:
+    for source_id in get_retrieval_repository().list_source_ids():
         descriptor = _build_job_descriptor(source_id)
         if descriptor.job_id == job_id:
             return RetrievalIndexJobDetailResponse(

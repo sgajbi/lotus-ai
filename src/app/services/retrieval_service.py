@@ -8,7 +8,8 @@ from app.contracts.retrieval import (
     RetrievalSearchResponse,
     RetrievalStatus,
 )
-from app.retrieval.source_registry import VECTOR_STORE_STRATEGY, list_retrieval_sources
+from app.retrieval.policy import VECTOR_STORE_STRATEGY
+from app.services.retrieval_store import get_retrieval_repository
 
 
 def search_sources(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
@@ -21,8 +22,9 @@ def search_sources(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
             ),
         )
 
-    catalog = list_retrieval_sources()
-    enabled_source_ids = {source.source_id for source in catalog.sources if source.enabled}
+    enabled_source_ids = {
+        source.source_id for source in get_retrieval_repository().list_sources() if source.enabled
+    }
     if request.source_ids and not set(request.source_ids).issubset(enabled_source_ids):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

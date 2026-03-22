@@ -60,7 +60,8 @@ What exists today:
 1. approved sources are registered explicitly,
 2. documents are inventoried per source,
 3. staged chunks are visible per document,
-4. indexing jobs and indexing policy are exposed through API contracts.
+4. indexing jobs and indexing policy are exposed through API contracts,
+5. retrieval metadata is served through a repository seam rather than hard-coded module state.
 
 What does not exist yet:
 
@@ -69,6 +70,17 @@ What does not exist yet:
 3. production retrieval execution over indexed vectors.
 
 This split is deliberate. We want the retrieval contract, governance posture, and observability model to become stable before live indexing is enabled.
+
+## Retrieval Metadata Ownership
+
+The current retrieval metadata posture is:
+
+1. `lotus-ai` owns the retrieval repository interface,
+2. the current implementation is a seeded in-memory repository,
+3. service logic reads retrieval metadata through that interface,
+4. future durable retrieval persistence can replace the adapter without changing API contracts.
+
+This keeps the service modular and makes the next move to SQL-backed retrieval metadata a persistence change rather than a product-surface rewrite.
 
 ## Retrieval API Surface
 
