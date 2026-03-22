@@ -45,6 +45,28 @@ def test_search_sources_rejects_disabled_source_ids_before_execution() -> None:
     assert "not enabled" in str(exc_info.value.detail)
 
 
+def test_search_sources_returns_catalog_only_hits_for_enabled_seeded_sources() -> None:
+    request = RetrievalSearchRequest(
+        query="shared ai platform service",
+        caller_app="lotus-workbench",
+        correlation_id="corr-ret-2b",
+        source_ids=["lotus-platform-rfcs"],
+    )
+    repository = InMemoryRetrievalRepository()
+    repository._sources[0].enabled = True  # noqa: SLF001 - targeted test override of seeded state
+
+    with (
+        patch("app.services.retrieval_service.get_retrieval_repository", return_value=repository),
+        patch("app.services.retrieval_gateway.get_retrieval_repository", return_value=repository),
+    ):
+        response = search_sources(request)
+
+    assert response.status == RetrievalStatus.READY
+    assert response.hits[0].source_id == "lotus-platform-rfcs"
+    assert response.hits[0].score > 0.0
+    assert "catalog-only hits" in response.message
+
+
 def test_search_sources_returns_hits_for_enabled_source_subset() -> None:
     request = RetrievalSearchRequest(
         query="What does RFC-0069 say?",

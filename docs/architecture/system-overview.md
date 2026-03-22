@@ -148,6 +148,10 @@ Audit inspection also supports a bounded catalog view now, with explicit caller/
 limit controls, so operator and support workflows can inspect recent executions without relying
 only on direct request-id lookup.
 
+Retrieval execution now also supports a deterministic catalog-only path for enabled staged
+sources, so Lotus apps can get bounded preview hits from curated corpus metadata before live
+vector retrieval is activated.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`
