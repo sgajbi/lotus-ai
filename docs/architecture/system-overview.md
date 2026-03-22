@@ -171,6 +171,10 @@ Low-support retrieval matches now produce an explicit conservative refusal mode 
 `knowledge_answer.v1` instead of a weak answer, which keeps the retrieval-backed task path
 more defensible under the current catalog-only execution model.
 
+Task runtime posture is now also exposed through a dedicated `/platform/tasks/runtime-status`
+surface and embedded into `/platform/runtime-status`, so operators can distinguish stub-backed
+task paths from retrieval-backed task paths without inferring that from task behavior alone.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

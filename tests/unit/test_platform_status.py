@@ -39,6 +39,9 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.retrieval_governance.blocking_area_count == 3
     assert status.prompt_governance.blocking_area_count == 3
     assert status.evaluation_runtime.manifest_version == "foundation.v1"
+    assert status.task_runtime.enabled_task_count >= 7
+    assert status.task_runtime.retrieval_backed_task_count == 2
+    assert status.task_runtime.tasks[0].task_id == "explain.v1"
     assert status.safety_runtime.runtime_redaction_active is False
     assert status.startup_readiness_blocking is True
     assert status.startup_readiness_warnings == ["audit store: configuration required"]

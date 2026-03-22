@@ -79,6 +79,12 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert any(
         selection["task_id"] == "explain.v1" for selection in body["prompt_runtime"]["selections"]
     )
+    assert body["task_runtime"]["enabled_task_count"] >= 7
+    assert body["task_runtime"]["retrieval_backed_task_count"] == 2
+    assert any(
+        task["task_id"] == "knowledge_search.v1" and task["stubbed"] is False
+        for task in body["task_runtime"]["tasks"]
+    )
     assert body["safety_runtime"]["runtime_redaction_active"] is False
     assert body["safety_runtime"]["enforced_control_ids"] == [
         "response_labeling",
