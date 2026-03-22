@@ -5,6 +5,7 @@ from app.contracts.prompts import (
     PromptEvidenceReadinessItem,
     PromptEvidenceReadinessResponse,
 )
+from app.services.governance_readiness import summarize_activation_items
 
 
 def build_prompt_evidence_readiness() -> PromptEvidenceReadinessResponse:
@@ -46,15 +47,12 @@ def build_prompt_evidence_readiness() -> PromptEvidenceReadinessResponse:
             ),
         ),
     ]
-    required_items = [item for item in items if item.required_for_activation]
-    completed_required_items = [
-        item for item in required_items if item.status in {"READY", "ACTIVATED"}
-    ]
+    required_item_count, completed_required_item_count = summarize_activation_items(items)
     return PromptEvidenceReadinessResponse(
         service=settings.service_name,
         version=settings.service_version,
         evidence_ready=False,
-        required_item_count=len(required_items),
-        completed_required_item_count=len(completed_required_items),
+        required_item_count=required_item_count,
+        completed_required_item_count=completed_required_item_count,
         items=items,
     )

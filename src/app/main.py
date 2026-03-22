@@ -18,6 +18,7 @@ from app.routers.providers import router as providers_router
 from app.routers.retrieval import router as retrieval_router
 from app.routers.safety import router as safety_router
 from app.routers.tasks import router as tasks_router
+from app.routers.task_runtime import router as task_runtime_router
 from app.services.startup_policy import apply_startup_readiness_policy
 
 SERVICE_NAME = settings.service_name
@@ -53,6 +54,7 @@ app.include_router(providers_router)
 app.include_router(prompts_router)
 app.include_router(retrieval_router)
 app.include_router(safety_router)
+app.include_router(task_runtime_router)
 app.include_router(tasks_router)
 app.include_router(audit_router)
 
@@ -141,6 +143,7 @@ async def root() -> dict[str, object]:
             "prompt_registry",
             "retrieval",
             "safety",
+            "task_runtime",
             "evals",
             "task_apis",
             "platform_runtime_status",

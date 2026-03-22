@@ -20,6 +20,39 @@ This is deliberate. The early focus is to make `lotus-ai` understandable, testab
 The current execution posture is:
 
 - task execution flows through an explicit internal provider gateway,
+- task execution now flows through an explicit internal runtime pipeline with separate validation, resolution, response, evidence, and audit stages,
+- the provider handoff now carries resolved output-label and safety metadata rather than only raw caller context,
+- prompt runtime selection is now resolved through a shared runtime service used by both task execution and prompt-status reporting,
+- task execution now builds a shared runtime context object so later stages consume one coherent execution model instead of duplicated fields,
+- response and audit-record assembly for task execution now live in a dedicated mapper layer instead of being embedded in pipeline orchestration,
+- provider execution requests are now assembled through a dedicated builder instead of inline payload construction,
+- capability and expected-output validation now live in a dedicated validator instead of being embedded in task context construction,
+- runtime-context construction and shared execution models now live in dedicated modules rather than inside the pipeline service,
+- task execution and audit API behavior now have their own dedicated integration module instead of relying only on the broad health suite,
+- prompt API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
+- provider API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
+- retrieval API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
+- safety API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
+- evaluation API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
+- async API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
+- standard integration API modules now share a common `client` fixture so test harness setup stays centralized while assertions remain explicit,
+- shared readiness bookkeeping now lives in one small service helper so runbook, evidence, and governance builders can focus on domain-specific content instead of repeating counting logic,
+- platform runtime-status assembly now has direct unit coverage and an isolated startup-readiness state helper, so the top-level operator summary is easier to reason about and safer to evolve,
+- prompt lifecycle counting now lives alongside prompt runtime selection, so prompt status and prompt governance builders no longer recalculate active-prompt inventory independently,
+- evaluation fixture inventory counting now lives in a dedicated summary helper, so evaluation runtime status focuses on response assembly instead of recounting manifest data inline,
+- retrieval source/runtime inventory counting now lives in a dedicated helper, so retrieval status and job builders share the same derived counts instead of recomputing document and chunk totals independently,
+- the provider gateway now makes the foundation-stage execution path explicit: supported modes are validated first, then all execution routes through the stub provider until a governed live path exists,
+- audit records now preserve task category, output label, and execution evidence, so post-execution inspection remains useful without replaying the original task request,
+- audit records now also preserve optional caller identity fields such as `requested_by` and `tenant_id`, so operator review and downstream support flows retain full caller traceability instead of only app-level correlation metadata,
+- audit inspection now includes a bounded catalog endpoint with caller, requester, tenant, task, category, and output-label filters plus explicit limits, so downstream support and review flows can inspect recent executions without scanning by request id only,
+- retrieval search can now return deterministic catalog-only hits from enabled staged sources in foundation phase, which gives downstream apps bounded search utility before live vector retrieval is activated,
+- the initial enabled catalog-only retrieval subset is intentionally small: Lotus platform RFCs and lotus-ai architecture documents are searchable, while the rest of the staged corpus remains disabled,
+- retrieval source governance is now exposed directly, so enabled versus staged-only corpus slices can be reviewed without reading repository fixtures or migrations,
+- `knowledge_search.v1` is now enabled as a bounded task and routes through that governed catalog-only retrieval path rather than the generic text stub,
+- `knowledge_answer.v1` is now enabled as a bounded, citation-carrying answer task built on the same governed catalog-only retrieval path,
+- retrieval-backed tasks now emit explicit structured citations and `knowledge_answer.v1` refuses low-support answers instead of overstating weak retrieval matches,
+- platform status now exposes a dedicated bounded task-runtime view so operators can distinguish stub-backed tasks from retrieval-backed tasks directly,
+- platform task APIs now also expose bounded execution-summary, evidence-summary, and retrieval-summary views built from persisted audit records, so real task usage, retrieval-answer quality, and source/refusal patterns can be measured instead of inferred,
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
@@ -141,6 +174,10 @@ The preferred integration model is:
 2. it calls `lotus-ai` for a bounded AI task,
 3. `lotus-ai` returns a governed result with audit metadata,
 4. the calling app remains responsible for business meaning and user-facing application.
+
+Internally, `lotus-ai` now also treats task execution as a governed pipeline rather than a single
+monolithic function. That keeps the runtime easier to test, easier to audit, and easier to extend
+when live providers and retrieval execution are introduced later.
 
 Examples:
 

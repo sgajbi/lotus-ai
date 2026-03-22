@@ -1,25 +1,15 @@
 from __future__ import annotations
 
-from app.contracts.evals import (
-    EvaluationAssetStatus,
-    EvaluationRuntimeStatusResponse,
-)
+from app.contracts.evals import EvaluationRuntimeStatusResponse
 from app.services.eval_catalog import build_evaluation_catalog
+from app.services.eval_inventory_summary import summarize_evaluation_inventory
 from app.services.eval_run_service import build_evaluation_run_catalog
 from app.services.eval_seam_summary import build_evaluation_seam_coverage
 
 
 def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
     catalog = build_evaluation_catalog()
-    staged_fixture_count = sum(
-        1 for fixture in catalog.fixture_families if fixture.status == EvaluationAssetStatus.STAGED
-    )
-    documented_fixture_count = sum(
-        1
-        for fixture in catalog.fixture_families
-        if fixture.status == EvaluationAssetStatus.DOCUMENTED
-    )
-    staged_case_count = sum(fixture.case_count for fixture in catalog.fixture_families)
+    inventory_summary = summarize_evaluation_inventory(catalog)
     seam_coverage = build_evaluation_seam_coverage()
     run_catalog = build_evaluation_run_catalog()
     latest_run = run_catalog.runs[0] if run_catalog.runs else None
@@ -28,10 +18,10 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
         version=catalog.version,
         delivery_phase=catalog.delivery_phase,
         manifest_version=catalog.manifest_version,
-        evidence_category_count=len(catalog.evidence_categories),
-        staged_fixture_count=staged_fixture_count,
-        documented_fixture_count=documented_fixture_count,
-        staged_case_count=staged_case_count,
+        evidence_category_count=inventory_summary.evidence_category_count,
+        staged_fixture_count=inventory_summary.staged_fixture_count,
+        documented_fixture_count=inventory_summary.documented_fixture_count,
+        staged_case_count=inventory_summary.staged_case_count,
         seam_coverage=seam_coverage,
         recorded_run_count=run_catalog.run_count,
         latest_recorded_run_id=run_catalog.latest_run_id,

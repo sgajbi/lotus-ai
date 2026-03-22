@@ -14,6 +14,7 @@ from app.contracts.runtime_readiness import (
     StoreRuntimeStatusDescriptor,
 )
 from app.contracts.safety import SafetyRuntimeStatusResponse
+from app.contracts.task_runtime import TaskRuntimeStatusResponse
 
 
 class PlatformRuntimeStatusResponse(BaseModel):
@@ -47,6 +48,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     prompt_runtime: PromptRuntimeStatusResponse = Field(
         description="Current prompt runtime selection posture for lotus-ai."
+    )
+    task_runtime: TaskRuntimeStatusResponse = Field(
+        description="Current bounded task runtime posture for lotus-ai."
     )
     safety_runtime: SafetyRuntimeStatusResponse = Field(
         description="Current safety runtime posture for lotus-ai."

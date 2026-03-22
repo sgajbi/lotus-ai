@@ -64,6 +64,18 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"
     )
+    assert spec["paths"]["/platform/tasks/runtime-status"]["get"]["operationId"] == (
+        "getTaskRuntimeStatus"
+    )
+    assert spec["paths"]["/platform/tasks/execution-summary"]["get"]["operationId"] == (
+        "getTaskExecutionSummary"
+    )
+    assert spec["paths"]["/platform/tasks/evidence-summary"]["get"]["operationId"] == (
+        "getTaskExecutionEvidenceSummary"
+    )
+    assert spec["paths"]["/platform/tasks/retrieval-summary"]["get"]["operationId"] == (
+        "getTaskRetrievalExecutionSummary"
+    )
     assert spec["paths"]["/platform/prompts/activation-readiness"]["get"]["operationId"] == (
         "getPromptActivationReadiness"
     )
@@ -119,6 +131,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         spec["paths"]["/platform/retrieval/sources/{source_id}/documents"]["get"]["operationId"]
         == "listRetrievalSourceDocuments"
     )
+    assert spec["paths"]["/platform/retrieval/source-governance"]["get"]["operationId"] == (
+        "getRetrievalSourceGovernance"
+    )
     assert (
         spec["paths"]["/platform/retrieval/documents/{document_id}/chunks"]["get"]["operationId"]
         == "listRetrievalDocumentChunks"
@@ -128,5 +143,6 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     )
     assert spec["paths"]["/ai/tasks/execute"]["post"]["operationId"] == "executeTask"
     assert spec["paths"]["/ai/audit/{request_id}"]["get"]["operationId"] == "getAuditRecord"
+    assert spec["paths"]["/ai/audit"]["get"]["operationId"] == "listAuditRecords"
     assert spec["paths"]["/metadata"]["get"]["operationId"] == "getServiceMetadata"
     assert spec["paths"]["/"]["get"]["operationId"] == "getServiceOverview"

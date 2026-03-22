@@ -59,10 +59,137 @@ Owns:
 
 1. orchestration logic behind routers,
 2. capability catalog assembly,
-3. future prompt and provider orchestration.
+3. prompt and provider orchestration,
+4. task execution pipeline stages for validation, resolution, response assembly, and audit persistence.
 
 The API-facing service layer should remain stateless so multiple replicas can serve the same
 contracts without hidden node-local behavior.
+
+Current task execution runtime is intentionally split into small pipeline stages:
+
+1. request validation against the bounded capability catalog,
+2. runtime-context construction containing capability, prompt, safety, and execution metadata,
+3. safety posture resolution from output-label policy,
+4. provider execution through the internal provider gateway,
+5. evidence assembly for prompt, provider, safety, and retrieval posture,
+6. audit persistence through the configured audit repository seam.
+
+Prompt runtime status and task execution now share the same runtime-selection rule rather than
+encoding prompt-selection semantics separately in different services.
+
+The runtime context object exists to keep later pipeline stages small and explicit instead of
+threading overlapping request, prompt, and safety fields through multiple function signatures.
+
+Response and audit-record construction now also live in a dedicated mapping layer so the pipeline
+itself stays focused on execution stages rather than serialization details.
+
+Provider request construction is also isolated in a dedicated builder so the pipeline no longer
+assembles provider payloads inline.
+
+Capability and output-label validation are also isolated in a dedicated validator so the runtime
+pipeline no longer mixes policy enforcement with context construction.
+
+Runtime-context construction now also lives in a dedicated builder, and the shared execution
+context models are isolated in their own module so pipeline, mapping, and provider-request
+services can depend on the same runtime types without import coupling.
+
+Public task and audit API behavior is now also verified through a dedicated integration module
+instead of being buried only inside the broader health suite.
+
+Prompt API behavior is also verified through its own dedicated integration module so prompt
+governance and runtime contract coverage can evolve independently of the broader platform
+health suite.
+
+Provider API behavior is also verified through its own dedicated integration module so
+provider contract coverage can evolve independently of the broader platform health suite.
+
+Retrieval API behavior is also verified through its own dedicated integration module so
+retrieval contract coverage can evolve independently of the broader platform health suite.
+
+Safety API behavior is also verified through its own dedicated integration module so safety
+contract coverage can evolve independently of the broader platform health suite.
+
+Evaluation API behavior is also verified through its own dedicated integration module so
+evaluation contract coverage can evolve independently of the broader platform health suite.
+
+Async API behavior is also verified through its own dedicated integration module so async
+contract coverage can evolve independently of the broader platform health suite.
+
+The standard integration API modules now share a common test client fixture so harness setup
+is centralized without hiding route-level assertions behind generic helpers.
+
+Runbook, evidence, and governance builders also share a small readiness helper for item-count
+and blocking-count bookkeeping, so the domain services stay focused on their own governed
+content instead of repeating the same counting logic.
+
+The top-level platform runtime summary also isolates startup-readiness state extraction and has
+direct unit coverage, so changes to operator-facing status aggregation do not rely only on
+route-level integration tests.
+
+Prompt runtime services also own lifecycle counting now, so prompt governance and prompt
+runtime status share the same lifecycle summary source instead of duplicating active-prompt
+filtering in separate builders.
+
+Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
+case-count derivation is isolated from the final runtime-status response assembly.
+
+Retrieval services also use a dedicated inventory-summary helper now, so source-level and
+runtime-level document and chunk counts are derived in one place instead of being recomputed
+independently by retrieval status and job builders.
+
+The provider gateway also stays intentionally explicit in foundation phase: supported provider
+modes are validated first, and then execution routes through the stub provider until a live
+provider path is actually introduced.
+
+Audit persistence now also preserves task category, output label, and execution evidence, so
+downstream inspection of prior executions does not depend on replaying the original task call.
+
+Audit persistence now also preserves optional caller identity fields such as `requested_by` and
+`tenant_id`, so support and review workflows retain the full caller traceability carried by the
+task request rather than only application-level correlation metadata.
+
+Audit inspection also supports a bounded catalog view now, with explicit caller, requester,
+tenant, task, category, and output-label filters plus limit controls, so operator and support
+workflows can inspect recent executions without relying only on direct request-id lookup.
+
+Retrieval execution now also supports a deterministic catalog-only path for enabled staged
+sources, so Lotus apps can get bounded preview hits from curated corpus metadata before live
+vector retrieval is activated.
+
+The initial enabled subset is intentionally small: Lotus platform RFCs and lotus-ai
+architecture documents are searchable through the catalog-only path, while other staged
+sources remain disabled until they are explicitly promoted.
+
+Per-source rollout posture is also exposed through `/platform/retrieval/source-governance`, so
+registered, staged-only, and currently searchable corpus slices are reviewed through an explicit
+governance surface rather than inferred from raw source rows.
+
+`knowledge_search.v1` now uses that same bounded retrieval path directly, so the task
+execution surface has a real governed knowledge-search capability instead of a generic
+placeholder for retrieval-class work.
+
+`knowledge_answer.v1` now also builds a conservative source-backed answer on top of the same
+bounded retrieval path, with explicit citations preserved in the task result payload.
+
+Low-support retrieval matches now produce an explicit conservative refusal mode for
+`knowledge_answer.v1` instead of a weak answer, which keeps the retrieval-backed task path
+more defensible under the current catalog-only execution model.
+
+Task runtime posture is now also exposed through a dedicated `/platform/tasks/runtime-status`
+surface and embedded into `/platform/runtime-status`, so operators can distinguish stub-backed
+task paths from retrieval-backed task paths without inferring that from task behavior alone.
+
+Task execution activity is also exposed through `/platform/tasks/execution-summary`, which
+samples persisted audit records to show category-level and provider-mode execution counts across
+recent task runs.
+
+`/platform/tasks/evidence-summary` adds a parallel bounded view over execution evidence,
+including citation-bearing executions plus retrieval answer-mode counts for citation-backed
+answers and conservative refusals.
+
+`/platform/tasks/retrieval-summary` adds a retrieval-specific bounded view over recent
+knowledge-search and knowledge-answer executions, including source usage, retrieval status,
+and refusal patterns.
 
 ### Async Runtime
 

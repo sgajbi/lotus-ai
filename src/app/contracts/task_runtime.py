@@ -1,0 +1,189 @@
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+from app.contracts.tasks import OutputLabel, TaskCategory
+
+
+class TaskRuntimeDescriptor(BaseModel):
+    task_id: str = Field(description="Stable Lotus AI task identifier.")
+    category: TaskCategory = Field(description="Task category exposed by lotus-ai.")
+    enabled: bool = Field(description="Whether the task is currently enabled for execution.")
+    output_label: OutputLabel = Field(description="Output label emitted by the task.")
+    execution_path: str = Field(description="Current internal execution path used for the task.")
+    provider_mode: str = Field(description="Provider mode associated with the task execution path.")
+    stubbed: bool = Field(description="Whether the current task path is stub-backed.")
+    notes: str = Field(
+        description="Human-readable explanation of the current task runtime posture."
+    )
+
+
+class TaskRuntimeCategorySummary(BaseModel):
+    category: TaskCategory = Field(description="Task category represented by the summary row.")
+    task_count: int = Field(description="Total number of tasks in the category.")
+    enabled_task_count: int = Field(description="Number of enabled tasks in the category.")
+    stubbed_task_count: int = Field(description="Number of stub-backed tasks in the category.")
+
+
+class TaskRuntimeStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the task runtime status.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    enabled_task_count: int = Field(description="Number of currently enabled bounded tasks.")
+    stubbed_task_count: int = Field(
+        description="Number of enabled tasks that are still stub-backed."
+    )
+    retrieval_backed_task_count: int = Field(
+        description="Number of enabled tasks currently backed by the governed retrieval path."
+    )
+    categories: list[TaskRuntimeCategorySummary] = Field(
+        description="Category-level runtime summary across bounded lotus-ai tasks."
+    )
+    tasks: list[TaskRuntimeDescriptor] = Field(
+        description="Per-task runtime posture for bounded lotus-ai tasks."
+    )
+
+
+class TaskExecutionCategorySample(BaseModel):
+    category: TaskCategory = Field(
+        description="Task category represented in the sampled execution set."
+    )
+    execution_count: int = Field(description="Number of sampled executions in the category.")
+
+
+class TaskExecutionProviderSample(BaseModel):
+    provider_mode: str = Field(
+        description="Provider mode represented in the sampled execution set."
+    )
+    execution_count: int = Field(
+        description="Number of sampled executions using the provider mode."
+    )
+
+
+class TaskExecutionEvidenceTypeSample(BaseModel):
+    evidence_type: str = Field(description="Stable evidence type represented in the sampled set.")
+    execution_count: int = Field(
+        description="Number of sampled executions carrying the evidence type."
+    )
+
+
+class TaskExecutionAnswerModeSample(BaseModel):
+    answer_mode: str = Field(
+        description="Structured retrieval answer mode represented in the sampled execution set."
+    )
+    execution_count: int = Field(description="Number of sampled executions using the answer mode.")
+
+
+class TaskRetrievalExecutionTaskSample(BaseModel):
+    task_id: str = Field(
+        description="Retrieval-backed task identifier represented in the sampled set."
+    )
+    execution_count: int = Field(description="Number of sampled executions for the task.")
+
+
+class TaskRetrievalExecutionStatusSample(BaseModel):
+    retrieval_status: str = Field(
+        description="Retrieval status represented in the sampled execution set."
+    )
+    execution_count: int = Field(
+        description="Number of sampled executions using the retrieval status."
+    )
+
+
+class TaskRetrievalExecutionSourceSample(BaseModel):
+    source_id: str = Field(
+        description="Retrieval source identifier represented in the sampled set."
+    )
+    execution_count: int = Field(
+        description="Number of sampled executions that referenced the retrieval source."
+    )
+
+
+class TaskExecutionSummaryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the task execution summary.")
+    version: str = Field(description="Current lotus-ai service version.")
+    sampled_record_limit: int = Field(
+        description="Maximum number of recent audit records included in the sampled execution summary."
+    )
+    sampled_record_count: int = Field(description="Number of sampled execution records processed.")
+    stubbed_execution_count: int = Field(
+        description="Number of sampled executions that were stub-backed."
+    )
+    non_stubbed_execution_count: int = Field(
+        description="Number of sampled executions that used non-stubbed runtime paths."
+    )
+    latest_generated_at: str | None = Field(
+        default=None,
+        description="Most recent generated timestamp observed in the sampled execution set.",
+    )
+    categories: list[TaskExecutionCategorySample] = Field(
+        description="Category-level counts across the sampled execution set."
+    )
+    provider_modes: list[TaskExecutionProviderSample] = Field(
+        description="Provider-mode counts across the sampled execution set."
+    )
+
+
+class TaskExecutionEvidenceSummaryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the task execution evidence summary.")
+    version: str = Field(description="Current lotus-ai service version.")
+    sampled_record_limit: int = Field(
+        description="Maximum number of recent audit records included in the sampled evidence summary."
+    )
+    sampled_record_count: int = Field(description="Number of sampled execution records processed.")
+    citation_bearing_execution_count: int = Field(
+        description="Number of sampled executions carrying one or more structured citations."
+    )
+    citation_backed_answer_count: int = Field(
+        description="Number of sampled executions that produced a citation-backed retrieval answer."
+    )
+    refused_answer_count: int = Field(
+        description="Number of sampled executions that produced an explicit low-support refusal."
+    )
+    latest_generated_at: str | None = Field(
+        default=None,
+        description="Most recent generated timestamp observed in the sampled execution set.",
+    )
+    answer_modes: list[TaskExecutionAnswerModeSample] = Field(
+        description="Structured retrieval answer modes observed in the sampled execution set."
+    )
+    evidence_types: list[TaskExecutionEvidenceTypeSample] = Field(
+        description="Execution evidence types observed across the sampled execution set."
+    )
+
+
+class TaskRetrievalExecutionSummaryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval execution summary.")
+    version: str = Field(description="Current lotus-ai service version.")
+    sampled_record_limit: int = Field(
+        description="Maximum number of recent audit records included in the sampled retrieval summary."
+    )
+    sampled_record_count: int = Field(description="Number of sampled execution records processed.")
+    retrieval_execution_count: int = Field(
+        description="Number of sampled executions belonging to retrieval-backed task paths."
+    )
+    knowledge_search_execution_count: int = Field(
+        description="Number of sampled retrieval executions for knowledge_search.v1."
+    )
+    knowledge_answer_execution_count: int = Field(
+        description="Number of sampled retrieval executions for knowledge_answer.v1."
+    )
+    refused_answer_count: int = Field(
+        description="Number of sampled retrieval executions that produced an explicit low-support refusal."
+    )
+    latest_generated_at: str | None = Field(
+        default=None,
+        description="Most recent generated timestamp observed in the sampled retrieval execution set.",
+    )
+    tasks: list[TaskRetrievalExecutionTaskSample] = Field(
+        description="Retrieval-backed task counts across the sampled execution set."
+    )
+    retrieval_statuses: list[TaskRetrievalExecutionStatusSample] = Field(
+        description="Retrieval-status counts across the sampled execution set."
+    )
+    answer_modes: list[TaskExecutionAnswerModeSample] = Field(
+        description="Structured retrieval answer modes observed in the sampled execution set."
+    )
+    sources: list[TaskRetrievalExecutionSourceSample] = Field(
+        description="Retrieval source identifiers referenced across the sampled execution set."
+    )

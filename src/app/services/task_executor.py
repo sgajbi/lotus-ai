@@ -1,110 +1,17 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from uuid import uuid4
-
-from fastapi import HTTPException, status
-
-from app.contracts.audit import AuditRecordResponse
-from app.contracts.providers import ProviderExecutionRequest
-from app.contracts.tasks import (
-    TaskExecutionRequest,
-    TaskExecutionResponse,
-    TaskExecutionResult,
-    TaskExecutionStatus,
-    TaskAuditMetadata,
+from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
+from app.services.task_execution_pipeline import (
+    build_task_execution_response,
+    persist_task_execution_audit,
+    resolve_task_execution,
+    validate_task_request,
 )
-from app.services.audit_store import get_audit_store
-from app.services.capability_catalog import get_capability_by_task_id
-from app.services.execution_evidence import build_execution_evidence
-from app.services.provider_gateway import execute_text_generation
-from app.services.prompt_registry import get_prompt_or_raise
-from app.services.safety_runtime import build_safety_execution_outcome
 
 
 def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
-    capability = get_capability_by_task_id(request.task_id)
-    if capability is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Unknown lotus-ai task_id: {request.task_id}",
-        )
-    if not capability.enabled:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Task is registered but not enabled in the current phase: {request.task_id}",
-        )
-    if request.expected_output_label and request.expected_output_label != capability.output_label:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Expected output label does not match task configuration: "
-                f"{request.expected_output_label} != {capability.output_label}"
-            ),
-        )
-    prompt = get_prompt_or_raise(request.task_id)
-    request_id = f"air_{uuid4().hex}"
-    safety_outcome = build_safety_execution_outcome(capability.output_label)
-    provider_execution = execute_text_generation(
-        ProviderExecutionRequest(
-            task_id=capability.task_id,
-            caller_app=request.caller.caller_app,
-            prompt_version=prompt.prompt_version,
-            context_summary=request.context.summary,
-            context_payload=request.context.payload,
-            source_refs=request.context.source_refs,
-        )
-    )
-    evidence = build_execution_evidence(
-        request=request,
-        capability=capability,
-        prompt=prompt,
-        provider_execution=provider_execution,
-        safety_outcome=safety_outcome,
-    )
-    response = TaskExecutionResponse(
-        status=TaskExecutionStatus.COMPLETED,
-        task_id=capability.task_id,
-        category=capability.category,
-        output_label=capability.output_label,
-        result=TaskExecutionResult(
-            message=provider_execution.message,
-            structured_output={
-                **provider_execution.structured_output,
-                "input_mode": request.input_mode,
-                "caller_app": request.caller.caller_app,
-            },
-        ),
-        evidence=evidence,
-        audit=TaskAuditMetadata(
-            request_id=request_id,
-            task_id=capability.task_id,
-            output_label=capability.output_label,
-            prompt_version=prompt.prompt_version,
-            provider_mode=provider_execution.provider_mode,
-            safety=safety_outcome,
-            generated_at=datetime.now(UTC).isoformat(),
-            stubbed=provider_execution.stubbed,
-        ),
-    )
-    get_audit_store().save(
-        AuditRecordResponse(
-            request_id=response.audit.request_id,
-            task_id=response.task_id,
-            caller_app=request.caller.caller_app,
-            correlation_id=request.caller.correlation_id,
-            prompt_version=response.audit.prompt_version,
-            provider_mode=response.audit.provider_mode,
-            safety_mode=response.audit.safety.safety_mode,
-            redaction_posture=response.audit.safety.redaction_posture,
-            enforced_safety_controls=response.audit.safety.enforced_controls,
-            generated_at=response.audit.generated_at,
-            stubbed=response.audit.stubbed,
-            context_summary=request.context.summary,
-            context_keys=sorted(request.context.payload.keys()),
-            source_refs=request.context.source_refs,
-            result_preview=response.result.message,
-            structured_output=response.result.structured_output,
-        )
-    )
+    context = validate_task_request(request)
+    resolved = resolve_task_execution(context=context)
+    response = build_task_execution_response(resolved=resolved)
+    persist_task_execution_audit(context=context, response=response)
     return response

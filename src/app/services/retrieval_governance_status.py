@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.config import settings
 from app.contracts.retrieval import RetrievalGovernanceStatusResponse
+from app.services.governance_readiness import summarize_governance_flags
 from app.services.retrieval_activation_readiness import build_retrieval_activation_readiness
 from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
 from app.services.retrieval_runbook_readiness import build_retrieval_runbook_readiness
@@ -11,15 +12,10 @@ def build_retrieval_governance_status() -> RetrievalGovernanceStatusResponse:
     activation_readiness = build_retrieval_activation_readiness()
     runbook_readiness = build_retrieval_runbook_readiness()
     evidence_readiness = build_retrieval_evidence_readiness()
-    governance_ready = (
-        activation_readiness.activation_ready
-        and runbook_readiness.runbook_ready
-        and evidence_readiness.evidence_ready
-    )
-    blocking_area_count = (
-        int(not activation_readiness.activation_ready)
-        + int(not runbook_readiness.runbook_ready)
-        + int(not evidence_readiness.evidence_ready)
+    governance_ready, blocking_area_count = summarize_governance_flags(
+        activation_readiness.activation_ready,
+        runbook_readiness.runbook_ready,
+        evidence_readiness.evidence_ready,
     )
     governance_summary = [
         "Retrieval technical activation remains blocked in foundation phase until live indexing, search, and embedding controls are explicitly rolled out.",

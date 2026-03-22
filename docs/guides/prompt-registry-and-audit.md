@@ -84,6 +84,13 @@ Current audit fields also include execution safety posture:
 2. `redaction_posture`
 3. `enforced_safety_controls`
 
+Current audit fields also preserve caller traceability:
+
+1. `caller_app`
+2. `correlation_id`
+3. `requested_by`
+4. `tenant_id`
+
 ## Why We Introduced the Repository Seam First
 
 1. We wanted contract and service seams before durable storage complexity.
@@ -115,6 +122,17 @@ The current enterprise posture is:
 7. `GET /platform/prompts/evidence-readiness`
 8. `GET /platform/prompts/governance-status`
 9. `GET /ai/audit/{request_id}`
+10. `GET /ai/audit`
+
+`GET /ai/audit` supports bounded filtering by:
+
+1. `caller_app`
+2. `task_id`
+3. `category`
+4. `output_label`
+5. `requested_by`
+6. `tenant_id`
+7. `limit`
 
 ## Future Direction
 

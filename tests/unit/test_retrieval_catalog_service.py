@@ -56,7 +56,10 @@ def test_get_retrieval_index_status_marks_sources_as_indexed_and_not_indexed() -
         "indexed-doc": repository.list_chunks_for_document("lotus-platform-rfc-0069")
     }
 
-    with patch("app.retrieval.document_registry.get_retrieval_repository", return_value=repository):
+    with (
+        patch("app.retrieval.document_registry.get_retrieval_repository", return_value=repository),
+        patch("app.retrieval.inventory_summary.get_retrieval_repository", return_value=repository),
+    ):
         response = get_retrieval_index_status()
 
     indexed_status = next(

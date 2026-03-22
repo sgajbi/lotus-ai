@@ -53,7 +53,7 @@ jobs:
         run: make async-job-gate
       - name: Migration Smoke
         env:
-          LOTUS_AI_DATABASE_URL: sqlite:///:memory:
+          LOTUS_AI_DATABASE_URL: "sqlite:///:memory:"
         run: make migration-smoke
       - name: Security Audit
         run: make security-audit

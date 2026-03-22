@@ -12,6 +12,15 @@ Provide a governed, contract-first task execution API that Lotus apps can integr
 
 During foundation phase, supported tasks return deterministic stub results.
 
+Exception:
+
+1. `knowledge_search.v1` now returns bounded catalog-only retrieval hits from the enabled
+   staged-source subset instead of the generic text stub.
+2. `knowledge_answer.v1` now returns a conservative citation-carrying answer built from the
+   same bounded retrieval hits instead of the generic text stub.
+3. low-support `knowledge_answer.v1` executions now return an explicit refusal message instead
+   of overstating weak retrieval support.
+
 This is intentional:
 
 1. downstream apps can integrate early,
@@ -66,8 +75,22 @@ Supported enabled tasks in foundation phase:
 3. `classify.v1`
 4. `extract.v1`
 5. `generate_structured.v1`
+6. `knowledge_search.v1`
+7. `knowledge_answer.v1`
 
-Retrieval tasks remain registered but disabled until retrieval infrastructure is ready.
+`knowledge_search.v1` expects retrieval-specific context in `context.payload`:
+
+1. required `query: string`
+2. optional `source_ids: string[]`
+3. optional `limit: int` between `1` and `20`
+
+`knowledge_answer.v1` expects the same retrieval-specific context and returns:
+
+1. a conservative answer string in `result.message`
+2. `citations` in `result.structured_output`
+3. the bounded retrieval hits used to assemble the answer
+4. `answer_mode` and `support_score` so callers can distinguish citation-backed answers from
+   explicit low-support refusals
 
 ## Error Behavior
 
