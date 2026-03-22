@@ -50,6 +50,18 @@ class TaskExecutionProviderSample(BaseModel):
     execution_count: int = Field(description="Number of sampled executions using the provider mode.")
 
 
+class TaskExecutionEvidenceTypeSample(BaseModel):
+    evidence_type: str = Field(description="Stable evidence type represented in the sampled set.")
+    execution_count: int = Field(description="Number of sampled executions carrying the evidence type.")
+
+
+class TaskExecutionAnswerModeSample(BaseModel):
+    answer_mode: str = Field(
+        description="Structured retrieval answer mode represented in the sampled execution set."
+    )
+    execution_count: int = Field(description="Number of sampled executions using the answer mode.")
+
+
 class TaskExecutionSummaryResponse(BaseModel):
     service: str = Field(description="Service name emitting the task execution summary.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -70,4 +82,32 @@ class TaskExecutionSummaryResponse(BaseModel):
     )
     provider_modes: list[TaskExecutionProviderSample] = Field(
         description="Provider-mode counts across the sampled execution set."
+    )
+
+
+class TaskExecutionEvidenceSummaryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the task execution evidence summary.")
+    version: str = Field(description="Current lotus-ai service version.")
+    sampled_record_limit: int = Field(
+        description="Maximum number of recent audit records included in the sampled evidence summary."
+    )
+    sampled_record_count: int = Field(description="Number of sampled execution records processed.")
+    citation_bearing_execution_count: int = Field(
+        description="Number of sampled executions carrying one or more structured citations."
+    )
+    citation_backed_answer_count: int = Field(
+        description="Number of sampled executions that produced a citation-backed retrieval answer."
+    )
+    refused_answer_count: int = Field(
+        description="Number of sampled executions that produced an explicit low-support refusal."
+    )
+    latest_generated_at: str | None = Field(
+        default=None,
+        description="Most recent generated timestamp observed in the sampled execution set.",
+    )
+    answer_modes: list[TaskExecutionAnswerModeSample] = Field(
+        description="Structured retrieval answer modes observed in the sampled execution set."
+    )
+    evidence_types: list[TaskExecutionEvidenceTypeSample] = Field(
+        description="Execution evidence types observed across the sampled execution set."
     )

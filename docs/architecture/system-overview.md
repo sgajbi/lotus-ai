@@ -179,6 +179,10 @@ Task execution activity is also exposed through `/platform/tasks/execution-summa
 samples persisted audit records to show category-level and provider-mode execution counts across
 recent task runs.
 
+`/platform/tasks/evidence-summary` adds a parallel bounded view over execution evidence,
+including citation-bearing executions plus retrieval answer-mode counts for citation-backed
+answers and conservative refusals.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

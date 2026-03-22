@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query
 
-from app.contracts.task_runtime import TaskExecutionSummaryResponse, TaskRuntimeStatusResponse
+from app.contracts.task_runtime import (
+    TaskExecutionEvidenceSummaryResponse,
+    TaskExecutionSummaryResponse,
+    TaskRuntimeStatusResponse,
+)
+from app.services.task_execution_evidence_summary import build_task_execution_evidence_summary
 from app.services.task_execution_summary import build_task_execution_summary
 from app.services.task_runtime_status import build_task_runtime_status
 
@@ -51,3 +56,29 @@ async def get_task_execution_summary_route(
     ),
 ) -> TaskExecutionSummaryResponse:
     return build_task_execution_summary(limit=limit)
+
+
+@router.get(
+    "/evidence-summary",
+    response_model=TaskExecutionEvidenceSummaryResponse,
+    operation_id="getTaskExecutionEvidenceSummary",
+    summary="Get lotus-ai task execution evidence summary",
+    description=(
+        "Returns a bounded sampled summary of execution evidence, including retrieval answer "
+        "modes and citation-bearing executions observed in persisted audit records."
+    ),
+    responses={
+        200: {"description": "Task execution evidence summary returned successfully."},
+        422: {"description": "Invalid query parameters supplied."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_task_execution_evidence_summary_route(
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=200,
+        description="Maximum number of recent audit records to sample for the evidence summary.",
+    ),
+) -> TaskExecutionEvidenceSummaryResponse:
+    return build_task_execution_evidence_summary(limit=limit)
