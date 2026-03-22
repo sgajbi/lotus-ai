@@ -133,6 +133,32 @@ class PromptRunbookReadinessResponse(BaseModel):
     )
 
 
+class PromptEvidenceReadinessItem(BaseModel):
+    evidence_id: str = Field(description="Stable prompt evidence-readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the evidence requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this evidence item must be complete before live prompt rollout activation."
+    )
+    notes: str = Field(description="Human-readable explanation of the evidence requirement.")
+
+
+class PromptEvidenceReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the prompt evidence readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    evidence_ready: bool = Field(
+        description="Whether prompt evidence posture is currently sufficient for activation."
+    )
+    required_item_count: int = Field(
+        description="Number of prompt evidence items currently required for activation."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required prompt evidence items currently marked complete."
+    )
+    items: list[PromptEvidenceReadinessItem] = Field(
+        description="Governed prompt evidence-readiness items."
+    )
+
+
 class PromptGovernanceStatusSummaryResponse(BaseModel):
     service: str = Field(description="Service name emitting the prompt governance status view.")
     version: str = Field(description="Current lotus-ai service version.")

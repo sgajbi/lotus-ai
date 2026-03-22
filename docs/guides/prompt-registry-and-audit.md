@@ -61,7 +61,8 @@ Current governance posture:
 6. the active runtime prompt selection set is visible through `GET /platform/prompts/runtime-status`,
 7. the current prompt activation-readiness posture is visible through `GET /platform/prompts/activation-readiness`,
 8. the current prompt operational-readiness posture is visible through `GET /platform/prompts/runbook-readiness`,
-9. the combined prompt rollout review posture is visible through `GET /platform/prompts/governance-status`.
+9. the current prompt evidence-readiness posture is visible through `GET /platform/prompts/evidence-readiness`,
+10. the combined prompt rollout review posture is visible through `GET /platform/prompts/governance-status`.
 
 ## Audit Store
 
@@ -110,8 +111,9 @@ The current enterprise posture is:
 4. `GET /platform/prompts/runtime-status`
 5. `GET /platform/prompts/activation-readiness`
 6. `GET /platform/prompts/runbook-readiness`
-7. `GET /platform/prompts/governance-status`
-8. `GET /ai/audit/{request_id}`
+7. `GET /platform/prompts/evidence-readiness`
+8. `GET /platform/prompts/governance-status`
+9. `GET /ai/audit/{request_id}`
 
 ## Future Direction
 

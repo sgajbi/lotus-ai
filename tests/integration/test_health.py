@@ -615,6 +615,21 @@ def test_prompt_runbook_readiness_route() -> None:
     assert body["items"][1]["status"] == "NOT_READY"
 
 
+def test_prompt_evidence_readiness_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/prompts/evidence-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["evidence_ready"] is False
+    assert body["required_item_count"] == 4
+    assert body["completed_required_item_count"] == 0
+    assert body["items"][0]["evidence_id"] == "prompt_fixture_coverage_pack"
+    assert body["items"][1]["status"] == "NOT_READY"
+
+
 def test_prompt_governance_status_route() -> None:
     client = TestClient(app)
 

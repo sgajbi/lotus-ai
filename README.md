@@ -37,6 +37,7 @@ The current execution posture is:
 - prompts now expose runtime selection status in addition to governance posture,
 - prompt activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - prompt runbook readiness is now exposed through a dedicated operational-readiness endpoint,
+- prompt evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
 - prompt governance status is now exposed through a dedicated review-summary endpoint,
 - platform runtime status now embeds prompt governance posture directly,
 - platform runtime status now summarizes prompt runtime posture directly,

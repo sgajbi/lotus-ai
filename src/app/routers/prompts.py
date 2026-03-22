@@ -5,12 +5,14 @@ from fastapi import APIRouter
 from app.contracts.prompts import (
     PromptActivationReadinessResponse,
     PromptDescriptor,
+    PromptEvidenceReadinessResponse,
     PromptGovernanceStatusResponse,
     PromptGovernanceStatusSummaryResponse,
     PromptRunbookReadinessResponse,
     PromptRuntimeStatusResponse,
 )
 from app.services.prompt_activation_readiness import build_prompt_activation_readiness
+from app.services.prompt_evidence_readiness import build_prompt_evidence_readiness
 from app.services.prompt_governance import build_prompt_governance_status
 from app.services.prompt_governance_status import build_prompt_governance_status_summary
 from app.services.prompt_registry import get_prompt_or_raise, list_registered_prompts
@@ -108,6 +110,24 @@ async def get_prompt_activation_readiness_route() -> PromptActivationReadinessRe
 )
 async def get_prompt_runbook_readiness_route() -> PromptRunbookReadinessResponse:
     return build_prompt_runbook_readiness()
+
+
+@router.get(
+    "/evidence-readiness",
+    response_model=PromptEvidenceReadinessResponse,
+    operation_id="getPromptEvidenceReadiness",
+    summary="Get lotus-ai prompt evidence readiness",
+    description=(
+        "Returns whether lotus-ai prompt rollout is currently supported by the required "
+        "evaluation, audit, and rollback evidence needed for future live activation."
+    ),
+    responses={
+        200: {"description": "Prompt evidence readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_prompt_evidence_readiness_route() -> PromptEvidenceReadinessResponse:
+    return build_prompt_evidence_readiness()
 
 
 @router.get(

@@ -23,6 +23,7 @@
 - Provider governance status: /platform/providers/governance-status
 - Prompt activation readiness: /platform/prompts/activation-readiness
 - Prompt runbook readiness: /platform/prompts/runbook-readiness
+- Prompt evidence readiness: /platform/prompts/evidence-readiness
 - Prompt governance status: /platform/prompts/governance-status
 - Retrieval activation readiness: /platform/retrieval/activation-readiness
 - Retrieval runbook readiness: /platform/retrieval/runbook-readiness
@@ -90,10 +91,11 @@ Before any future live-prompt activation slice:
 1. verify `GET /platform/prompts/governance-status`
 2. inspect `GET /platform/prompts/activation-readiness` when technical blockers need detail
 3. inspect `GET /platform/prompts/runbook-readiness` when operational blockers need detail
-4. confirm the embedded `prompt_governance` block in `GET /platform/runtime-status` matches the detailed prompt governance view
-5. confirm prompt governance and runtime-selection posture still reflect reviewed repository-governed rollout unless explicitly approved otherwise
-6. confirm named approvers, rollback procedures, and prompt audit-evidence procedures are documented and approved
-7. only then proceed with any live-prompt activation rollout review
+4. inspect `GET /platform/prompts/evidence-readiness` when evaluation, audit, or rollback evidence blockers need detail
+5. confirm the embedded `prompt_governance` block in `GET /platform/runtime-status` matches the detailed prompt governance view
+6. confirm prompt governance and runtime-selection posture still reflect reviewed repository-governed rollout unless explicitly approved otherwise
+7. confirm named approvers, rollback procedures, and prompt audit-evidence procedures are documented and approved
+8. only then proceed with any live-prompt activation rollout review
 
 ## Retrieval Activation Governance
 

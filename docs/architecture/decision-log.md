@@ -498,6 +498,24 @@ Current posture:
 2. prompt governance remains separately inspectable through `/platform/prompts/governance-status`,
 3. foundation phase continues to report blocked prompt governance in both views.
 
+## Decision 17E: Prompt Evidence Readiness Should Be Exposed Before Live Prompt Rollout
+
+Decision:
+
+`lotus-ai` exposes prompt evidence readiness separately from prompt technical and operational readiness.
+
+Why:
+
+1. bank-grade prompt activation review should require explicit evaluation, audit, and rollback evidence rather than assuming those concerns are covered by technical or runbook posture alone,
+2. prompt rollout needs a stable evidence contract before any live promotion path is introduced,
+3. separating evidence readiness keeps future prompt activation criteria inspectable and auditable.
+
+Current posture:
+
+1. `/platform/prompts/evidence-readiness` exposes required prompt evidence items,
+2. required evidence items remain not ready in foundation phase,
+3. prompt governance review can now inspect evidence posture separately while the combined governance summary remains unchanged in this slice.
+
 ## Decision 18: Task Runs Should Emit Structured Execution Evidence
 
 Decision:
