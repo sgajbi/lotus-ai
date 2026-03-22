@@ -49,6 +49,8 @@ jobs:
         run: make openapi-gate
       - name: Evaluation Manifest Gate
         run: make eval-manifest-gate
+      - name: Evaluation Run Gate
+        run: make eval-run-gate
       - name: Migration Smoke
         env:
           LOTUS_AI_DATABASE_URL: sqlite:///:memory:

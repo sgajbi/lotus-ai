@@ -533,3 +533,21 @@ Current posture:
 1. `/platform/evals/runs` and `/platform/evals/runs/{run_id}` expose recorded evaluation artifacts,
 2. evaluation runtime status now reports recorded run count and latest run identifiers,
 3. live evaluation execution remains inactive and separate from artifact inspection.
+
+## Decision 32: Evaluation Run Artifacts Must Be Validated By A Dedicated Gate
+
+Decision:
+
+Recorded evaluation run artifacts are governed by a dedicated validation gate, not just runtime parsing.
+
+Why:
+
+1. recorded evaluation artifacts are part of the platform’s inspection contract and should fail fast when malformed,
+2. artifact drift against the fixture manifest would weaken traceability,
+3. one shared validation path keeps CLI checks, CI enforcement, and runtime loading consistent.
+
+Current posture:
+
+1. `make eval-run-gate` validates `docs/evals/run-artifacts.json`,
+2. CI runs the evaluation run gate alongside the fixture-manifest gate,
+3. runtime loading uses the same validation rules as the dedicated gate.

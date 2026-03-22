@@ -42,6 +42,7 @@ The current execution posture is:
 - evaluation fixture manifest validity is now enforced by a dedicated CI gate,
 - evaluation runtime status now summarizes staged coverage by platform seam,
 - recorded evaluation run artifacts are now exposed through read-only inspection endpoints,
+- recorded evaluation run artifacts are now validated by a dedicated gate,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

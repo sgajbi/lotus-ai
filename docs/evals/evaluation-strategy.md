@@ -103,6 +103,17 @@ Recorded evaluation run artifacts expose:
 2. seam-oriented coverage captured with the run artifact,
 3. a read-only artifact trail even while a live evaluation runner is still inactive.
 
+The run-artifact registry is also validated by a dedicated gate:
+
+1. `make eval-run-gate`
+
+That gate validates:
+
+1. unique run identifiers,
+2. current manifest-version alignment,
+3. seam-coverage totals and fixture references,
+4. basic recorded artifact completeness before artifacts are exposed through the API.
+
 The source of truth for fixture inventory is now:
 
 1. [fixture-manifest.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixture-manifest.json)
