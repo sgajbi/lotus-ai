@@ -318,6 +318,24 @@ Current posture:
 2. the gateway rejects live retrieval execution while the platform remains in staged retrieval mode,
 3. catalog, indexing, and execution status are now separate but coordinated surfaces.
 
+## Decision 15A: Retrieval Activation Readiness Should Be Exposed Before Live Search Rollout
+
+Decision:
+
+`lotus-ai` exposes a dedicated retrieval activation-readiness view before any live retrieval execution is enabled.
+
+Why:
+
+1. retrieval rollout is a higher-level operational decision than execution-status inspection alone,
+2. bank-grade activation review needs explicit blocking findings and activation path for live search and indexing,
+3. this keeps retrieval activation governed and reviewable before any runtime execution changes.
+
+Current posture:
+
+1. `/platform/retrieval/activation-readiness` exposes whether retrieval execution is activatable today,
+2. the endpoint returns explicit blocking findings and a governed activation path,
+3. foundation phase remains not activatable until a separate retrieval rollout slice changes execution posture.
+
 ## Decision 16: Prompt Runtime Selection Should Be Inspectable
 
 Decision:

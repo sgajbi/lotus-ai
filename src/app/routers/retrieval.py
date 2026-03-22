@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.contracts.retrieval import (
+    RetrievalActivationReadinessResponse,
     RetrievalChunkCatalogResponse,
     RetrievalDocumentCatalogResponse,
     RetrievalIndexJobCatalogResponse,
@@ -25,6 +26,7 @@ from app.services.retrieval_catalog_service import (
     get_documents_for_source,
     get_retrieval_index_status,
 )
+from app.services.retrieval_activation_readiness import build_retrieval_activation_readiness
 from app.services.retrieval_execution_status import build_retrieval_execution_status
 from app.services.retrieval_service import search_sources
 
@@ -101,6 +103,24 @@ async def get_retrieval_runtime_status_route() -> RetrievalRuntimeStatusResponse
 )
 async def get_retrieval_execution_status_route() -> RetrievalExecutionStatusResponse:
     return build_retrieval_execution_status()
+
+
+@router.get(
+    "/activation-readiness",
+    response_model=RetrievalActivationReadinessResponse,
+    operation_id="getRetrievalActivationReadiness",
+    summary="Get retrieval activation readiness",
+    description=(
+        "Returns whether lotus-ai live retrieval execution is currently ready for activation, "
+        "along with the blocking findings and governed activation path for future rollout."
+    ),
+    responses={
+        200: {"description": "Retrieval activation readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_activation_readiness_route() -> RetrievalActivationReadinessResponse:
+    return build_retrieval_activation_readiness()
 
 
 @router.get(

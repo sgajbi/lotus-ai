@@ -30,6 +30,7 @@ The current execution posture is:
 - task audit records now persist the applied safety posture for every execution,
 - runtime safety status exposes which controls are enforced versus documented-only,
 - retrieval now has an explicit execution seam and runtime execution-status surface,
+- retrieval activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - prompts now expose runtime selection status in addition to governance posture,
 - platform runtime status now summarizes prompt runtime posture directly,
 - task execution responses now include structured evidence about prompt, provider, safety, and retrieval posture,

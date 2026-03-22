@@ -671,6 +671,21 @@ def test_retrieval_execution_status_route() -> None:
     assert body["live_search_enabled"] is False
 
 
+def test_retrieval_activation_readiness_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/retrieval/activation-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["retrieval_mode"] == "disabled"
+    assert body["embedding_provider_mode"] == "disabled"
+    assert body["activation_ready"] is False
+    assert len(body["blocking_findings"]) == 4
+    assert len(body["activation_path"]) == 4
+
+
 def test_retrieval_index_jobs_route() -> None:
     client = TestClient(app)
 

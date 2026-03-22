@@ -249,3 +249,21 @@ class RetrievalExecutionStatusResponse(BaseModel):
     live_search_enabled: bool = Field(description="Whether live retrieval search is active.")
     live_indexing_enabled: bool = Field(description="Whether live retrieval indexing is active.")
     message: str = Field(description="Human-readable explanation of the retrieval execution state.")
+
+
+class RetrievalActivationReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the retrieval activation readiness view."
+    )
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    retrieval_mode: str = Field(description="Configured retrieval execution mode.")
+    embedding_provider_mode: str = Field(description="Configured embedding provider mode.")
+    activation_ready: bool = Field(
+        description="Whether live retrieval execution is currently ready for activation."
+    )
+    blocking_findings: list[str] = Field(
+        description="Human-readable reasons why retrieval execution is not yet activatable."
+    )
+    activation_path: list[str] = Field(
+        description="Governed high-level path required before live retrieval execution can be enabled."
+    )
