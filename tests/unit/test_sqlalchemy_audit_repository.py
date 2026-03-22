@@ -119,6 +119,10 @@ def test_sqlalchemy_audit_repository_list_filters_and_orders_latest_first(
 
     all_records = repository.list()
     advise_records = repository.list(caller_app="lotus-advise", limit=10)
+    tenant_records = repository.list(tenant_id="tenant-us-002", limit=10)
+    requester_records = repository.list(requested_by="advisor.user@lotus", limit=10)
 
     assert [record.request_id for record in all_records] == ["air_sql_new", "air_sql_old"]
     assert [record.request_id for record in advise_records] == ["air_sql_new"]
+    assert [record.request_id for record in tenant_records] == ["air_sql_new"]
+    assert [record.request_id for record in requester_records] == ["air_sql_new"]

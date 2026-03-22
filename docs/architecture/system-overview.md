@@ -148,9 +148,9 @@ Audit persistence now also preserves optional caller identity fields such as `re
 `tenant_id`, so support and review workflows retain the full caller traceability carried by the
 task request rather than only application-level correlation metadata.
 
-Audit inspection also supports a bounded catalog view now, with explicit caller/task filters and
-limit controls, so operator and support workflows can inspect recent executions without relying
-only on direct request-id lookup.
+Audit inspection also supports a bounded catalog view now, with explicit caller, requester,
+tenant, and task filters plus limit controls, so operator and support workflows can inspect
+recent executions without relying only on direct request-id lookup.
 
 Retrieval execution now also supports a deterministic catalog-only path for enabled staged
 sources, so Lotus apps can get bounded preview hits from curated corpus metadata before live

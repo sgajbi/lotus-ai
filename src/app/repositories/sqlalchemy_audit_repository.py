@@ -60,6 +60,8 @@ class SqlAlchemyAuditRepository:
         *,
         caller_app: str | None = None,
         task_id: str | None = None,
+        requested_by: str | None = None,
+        tenant_id: str | None = None,
         limit: int = 20,
     ) -> list[AuditRecordResponse]:
         statement = select(AuditRecordModel).order_by(AuditRecordModel.generated_at.desc()).limit(limit)
@@ -67,6 +69,10 @@ class SqlAlchemyAuditRepository:
             statement = statement.where(AuditRecordModel.caller_app == caller_app)
         if task_id is not None:
             statement = statement.where(AuditRecordModel.task_id == task_id)
+        if requested_by is not None:
+            statement = statement.where(AuditRecordModel.requested_by == requested_by)
+        if tenant_id is not None:
+            statement = statement.where(AuditRecordModel.tenant_id == tenant_id)
         with self._session_factory() as session:
             models = session.execute(statement).scalars().all()
             return [self._to_contract(model) for model in models]

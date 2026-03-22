@@ -83,6 +83,8 @@ def test_audit_catalog_route_returns_filtered_records(client: TestClient) -> Non
             "caller": {
                 "caller_app": "lotus-manage",
                 "correlation_id": "corr-catalog-1",
+                "requested_by": "ops.user@lotus",
+                "tenant_id": "tenant-sg-001",
             },
             "context": {
                 "summary": "Explain rebalance outcome",
@@ -99,6 +101,8 @@ def test_audit_catalog_route_returns_filtered_records(client: TestClient) -> Non
             "caller": {
                 "caller_app": "lotus-advise",
                 "correlation_id": "corr-catalog-2",
+                "requested_by": "advisor.user@lotus",
+                "tenant_id": "tenant-us-002",
             },
             "context": {
                 "summary": "Summarize proposal workflow",
@@ -116,6 +120,26 @@ def test_audit_catalog_route_returns_filtered_records(client: TestClient) -> Non
     assert body["filters_applied"] == {"limit": 10, "caller_app": "lotus-advise"}
     assert body["record_count"] >= 1
     assert all(record["caller_app"] == "lotus-advise" for record in body["records"])
+
+    identity_filtered_response = client.get(
+        "/ai/audit",
+        params={
+            "requested_by": "advisor.user@lotus",
+            "tenant_id": "tenant-us-002",
+            "limit": 10,
+        },
+    )
+
+    assert identity_filtered_response.status_code == 200
+    identity_body = identity_filtered_response.json()
+    assert identity_body["filters_applied"] == {
+        "limit": 10,
+        "requested_by": "advisor.user@lotus",
+        "tenant_id": "tenant-us-002",
+    }
+    assert identity_body["record_count"] >= 1
+    assert all(record["requested_by"] == "advisor.user@lotus" for record in identity_body["records"])
+    assert all(record["tenant_id"] == "tenant-us-002" for record in identity_body["records"])
 
 
 def test_audit_record_route_returns_not_found_for_unknown_request(client: TestClient) -> None:

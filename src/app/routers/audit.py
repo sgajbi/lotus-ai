@@ -33,6 +33,14 @@ async def list_audit_records(
         default=None,
         description="Optional task identifier filter for the audit catalog.",
     ),
+    requested_by: str | None = Query(
+        default=None,
+        description="Optional requester identity filter for the audit catalog.",
+    ),
+    tenant_id: str | None = Query(
+        default=None,
+        description="Optional tenant identifier filter for the audit catalog.",
+    ),
     limit: int = Query(
         default=20,
         ge=1,
@@ -40,12 +48,22 @@ async def list_audit_records(
         description="Maximum number of audit records to return.",
     ),
 ) -> AuditRecordCatalogResponse:
-    records = get_audit_store().list(caller_app=caller_app, task_id=task_id, limit=limit)
+    records = get_audit_store().list(
+        caller_app=caller_app,
+        task_id=task_id,
+        requested_by=requested_by,
+        tenant_id=tenant_id,
+        limit=limit,
+    )
     filters_applied: dict[str, str | int] = {"limit": limit}
     if caller_app is not None:
         filters_applied["caller_app"] = caller_app
     if task_id is not None:
         filters_applied["task_id"] = task_id
+    if requested_by is not None:
+        filters_applied["requested_by"] = requested_by
+    if tenant_id is not None:
+        filters_applied["tenant_id"] = tenant_id
     return AuditRecordCatalogResponse(
         service=settings.service_name,
         version=settings.service_version,

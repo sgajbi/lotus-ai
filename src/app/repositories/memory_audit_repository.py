@@ -23,6 +23,8 @@ class InMemoryAuditRepository:
         *,
         caller_app: str | None = None,
         task_id: str | None = None,
+        requested_by: str | None = None,
+        tenant_id: str | None = None,
         limit: int = 20,
     ) -> list[AuditRecordResponse]:
         with self._lock:
@@ -35,4 +37,8 @@ class InMemoryAuditRepository:
                 records = [record for record in records if record.caller_app == caller_app]
             if task_id is not None:
                 records = [record for record in records if record.task_id == task_id]
+            if requested_by is not None:
+                records = [record for record in records if record.requested_by == requested_by]
+            if tenant_id is not None:
+                records = [record for record in records if record.tenant_id == tenant_id]
             return records[:limit]

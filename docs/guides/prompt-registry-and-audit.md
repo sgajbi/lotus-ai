@@ -124,6 +124,14 @@ The current enterprise posture is:
 9. `GET /ai/audit/{request_id}`
 10. `GET /ai/audit`
 
+`GET /ai/audit` supports bounded filtering by:
+
+1. `caller_app`
+2. `task_id`
+3. `requested_by`
+4. `tenant_id`
+5. `limit`
+
 ## Future Direction
 
 Likely next evolution:
