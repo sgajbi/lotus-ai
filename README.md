@@ -50,6 +50,7 @@ The current execution posture is:
 - async activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - async runbook readiness is now exposed through a dedicated operational-readiness endpoint,
 - async governance status is now exposed through a dedicated review-summary endpoint,
+- platform runtime status now embeds async governance posture directly,
 - seeded async job artifacts are now exposed and validated through dedicated contracts,
 - async job submission now has a governed request/response contract with explicit foundation-phase rejection behavior,
 - async job artifacts can now reference related evaluation run artifacts for cross-seam traceability,

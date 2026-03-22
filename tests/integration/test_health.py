@@ -427,6 +427,10 @@ def test_platform_runtime_status_route() -> None:
     assert body["async_runtime"]["active_worker_count"] == 0
     assert body["async_runtime"]["enqueued_job_count"] == 1
     assert body["async_runtime"]["recorded_job_count"] == 2
+    assert body["async_governance"]["governance_ready"] is False
+    assert body["async_governance"]["blocking_area_count"] == 2
+    assert body["async_governance"]["activation_readiness"]["activation_ready"] is False
+    assert body["async_governance"]["runbook_readiness"]["runbook_ready"] is False
     assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
     assert body["evaluation_runtime"]["evidence_category_count"] == 5
     assert body["evaluation_runtime"]["staged_case_count"] == 12

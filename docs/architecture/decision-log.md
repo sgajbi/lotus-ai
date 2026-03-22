@@ -750,3 +750,21 @@ Current posture:
 1. `/platform/async/governance-status` embeds both activation readiness and runbook readiness,
 2. the response explicitly reports blocked governance posture in foundation phase,
 3. detailed readiness endpoints remain available for deeper inspection and future rollout work.
+
+## Decision 44: Platform Runtime Status Should Embed Async Governance Posture
+
+Decision:
+
+`/platform/runtime-status` now embeds async governance posture in addition to async runtime posture.
+
+Why:
+
+1. platform operators should have one primary runtime entry point that includes both execution posture and rollout-governance posture,
+2. async governance is operationally significant once multiple async readiness surfaces exist,
+3. embedding the summary reduces endpoint hopping while preserving the dedicated async governance endpoint.
+
+Current posture:
+
+1. platform runtime status includes both `async_runtime` and `async_governance`,
+2. async governance remains separately inspectable through `/platform/async/governance-status`,
+3. foundation phase continues to report blocked async governance in both views.

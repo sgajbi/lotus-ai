@@ -171,6 +171,10 @@ It is not appropriate right now as the base architecture for all of `lotus-ai`.
 
 The current capability endpoint is intentionally simple. It gives other Lotus apps a stable discovery surface while the rest of the platform is still under construction.
 
+`/platform/runtime-status` now embeds both async runtime posture and async governance posture so
+operators have one primary entry point for rollout review without losing the more detailed async
+inspection endpoints.
+
 ## Provider Posture
 
 `lotus-ai` exposes a governed provider catalog so downstream teams can inspect execution posture

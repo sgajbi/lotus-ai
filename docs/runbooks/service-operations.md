@@ -57,9 +57,10 @@ Before any future async activation slice:
 1. verify `GET /platform/async/governance-status`
 2. inspect `GET /platform/async/activation-readiness` when technical blockers need detail
 3. inspect `GET /platform/async/runbook-readiness` when operational blockers need detail
-4. confirm queue backend and worker execution posture are still governed and explicitly selected
-5. confirm observability, replay, escalation, and incident procedures are documented and approved
-6. only then proceed with any activation rollout review
+4. confirm the embedded `async_governance` block in `GET /platform/runtime-status` matches the detailed async governance view
+5. confirm queue backend and worker execution posture are still governed and explicitly selected
+6. confirm observability, replay, escalation, and incident procedures are documented and approved
+7. only then proceed with any activation rollout review
 
 ## Incident First Checks
 
