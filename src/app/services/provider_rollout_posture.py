@@ -49,9 +49,7 @@ def build_provider_rollout_posture() -> ProviderRolloutPosture:
             "controls still determine whether provider-backed execution is truly active."
         )
     else:
-        notes = (
-            "Provider rollout remains documented but not yet allowlisted for live execution."
-        )
+        notes = "Provider rollout remains documented but not yet allowlisted for live execution."
 
     return ProviderRolloutPosture(
         rollout_state=configuration.rollout_state,

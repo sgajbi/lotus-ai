@@ -1,17 +1,19 @@
 # RFC-0003: Controlled Live Provider Backbone
 
-- Status: Proposed
+- Status: Implemented
 - Date: 2026-03-22
+- Implemented Date: 2026-03-23
 - Owners: lotus-ai
-- Requires Approval From: lotus-ai maintainers
 
 ## Summary
 
 `lotus-ai` should implement a controlled live provider backbone as the next major platform phase.
 
-This RFC moves provider execution from deterministic stub-only behavior to a governed live provider path for text generation, while keeping activation disabled by default until technical, operational, and evidence gates are satisfied.
+This RFC moved provider execution from a pure stub-only foundation posture to a governed live-provider backbone for text generation, while intentionally keeping activation disabled by default until technical, operational, and evidence gates are satisfied.
 
-The goal is to make `knowledge_answer.v1` and the broader task runtime capable of enterprise-grade live generation without weakening retrieval grounding, auditability, safety posture, or operational control.
+The goal was to make `knowledge_answer.v1` and the broader task runtime capable of enterprise-grade live generation without weakening retrieval grounding, auditability, safety posture, or operational control.
+
+This RFC is now implemented as the provider-backbone RFC for `lotus-ai`. The implementation established the controlled live-provider seam, rollout-state contracts, execution hardening, task-runtime integration, evaluation evidence, and operational activation-readiness posture. It did not enable live provider execution by default, which was always an explicit part of the design.
 
 ## Why This Is Next
 
@@ -27,7 +29,7 @@ Retrieval came first because grounded enterprise behavior matters more than gene
 
 ## Problem Statement
 
-Current provider behavior is still intentionally conservative:
+The original problem was that provider behavior was intentionally conservative:
 
 1. supported provider modes are validated,
 2. execution always routes through the deterministic stub provider,
@@ -35,7 +37,7 @@ Current provider behavior is still intentionally conservative:
 4. no real provider SDK path exists yet,
 5. no live cost, timeout, retry, quota, or failover behavior exists yet.
 
-This keeps the platform safe, but it also means `lotus-ai` is still not exercising the core live model-execution path that a shared AI platform ultimately needs.
+This kept the platform safe, but it also meant `lotus-ai` was not yet exercising the core live model-execution path that a shared AI platform ultimately needs.
 
 ## Goals
 
@@ -323,7 +325,22 @@ Reason:
 
 ## Acceptance Criteria
 
-This RFC is complete when:
+## What Was Implemented
+
+Implemented scope under RFC-0003 includes:
+
+1. a real provider adapter seam beside the stub path,
+2. explicit provider mode, adapter-kind, failure-category, and rollout-state contracts,
+3. explicit live-provider configuration and credential posture without exposing secret material,
+4. bounded provider execution controls for timeout, retry, and output-token budget,
+5. task-runtime integration that now distinguishes retrieval-backed, stubbed provider-backed, blocked provider-backed, and allowlisted-but-disabled provider posture honestly,
+6. provider evaluation fixtures covering policy, runtime, and failure-mode behavior,
+7. provider evidence readiness grounded in staged eval assets and recorded regression runs,
+8. provider operational activation readiness that explicitly includes incident response, rollback, observability, and quota-handling expectations.
+
+## Acceptance Criteria
+
+This RFC is complete because:
 
 1. one live text-generation provider path exists behind the provider gateway,
 2. that path is disabled by default and allowlisted explicitly,
@@ -333,12 +350,3 @@ This RFC is complete when:
 6. credentials, rollout state, and startup/readiness behavior are explicit and inspectable,
 7. provider operations and rollout readiness are documented and reviewable,
 8. the platform remains retrieval-grounded and citation-first where applicable.
-
-## Approval Requested
-
-Approve this RFC if the team agrees that:
-
-1. controlled live provider execution is the next major platform phase,
-2. rollout should begin with one governed text-generation provider only,
-3. activation must remain disabled by default until technical, evidence, and runbook gates are satisfied,
-4. retrieval grounding and citation-first behavior must remain stronger priorities than generative breadth.
