@@ -375,6 +375,21 @@ def test_provider_policy_route() -> None:
     assert any(policy["capability"] == "TEXT_GENERATION" for policy in body["policies"])
 
 
+def test_provider_activation_readiness_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/providers/activation-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["provider_mode"] == "disabled"
+    assert body["embedding_provider_mode"] == "disabled"
+    assert body["activation_ready"] is False
+    assert len(body["blocking_findings"]) == 4
+    assert len(body["activation_path"]) == 4
+
+
 def test_safety_policy_route() -> None:
     client = TestClient(app)
 

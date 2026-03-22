@@ -174,6 +174,24 @@ Current posture:
 2. only `disabled` and `stub` modes are currently supported for text and embedding capabilities,
 3. unsupported modes are rejected with a service-unavailable response.
 
+## Decision 11A: Provider Activation Readiness Should Be Exposed Before Live Rollout
+
+Decision:
+
+`lotus-ai` exposes a dedicated provider activation-readiness view before any live provider execution is enabled.
+
+Why:
+
+1. provider rollout is a higher-level operational decision than catalog and policy inspection alone,
+2. bank-grade activation review needs explicit blocking findings and activation path for provider execution,
+3. this keeps live model enablement governed and reviewable before any runtime execution changes.
+
+Current posture:
+
+1. `/platform/providers/activation-readiness` exposes whether provider execution is activatable today,
+2. the endpoint returns explicit blocking findings and a governed activation path,
+3. foundation phase remains not activatable until a separate provider rollout slice changes execution posture.
+
 ## Decision 12: Safety Posture Must Be Inspectable
 
 Decision:

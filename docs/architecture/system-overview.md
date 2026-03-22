@@ -184,9 +184,10 @@ Current rules:
 
 1. provider inventory is visible through `/platform/providers`,
 2. provider execution policy is visible through `/platform/providers/policy`,
-3. foundation-phase providers are documented and inspectable,
-4. task execution already flows through an internal provider gateway,
-5. runtime execution remains disabled until a stronger provider gateway and safety posture is in place.
+3. provider activation readiness is visible through `/platform/providers/activation-readiness`,
+4. foundation-phase providers are documented and inspectable,
+5. task execution already flows through an internal provider gateway,
+6. runtime execution remains disabled until a stronger provider gateway and safety posture is in place.
 
 ## Safety Posture
 

@@ -104,3 +104,21 @@ class ProviderExecutionResponse(BaseModel):
         default_factory=dict,
         description="Structured execution payload emitted by the provider layer.",
     )
+
+
+class ProviderActivationReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the provider activation readiness view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    provider_mode: str = Field(description="Configured text-generation provider mode.")
+    embedding_provider_mode: str = Field(description="Configured embedding provider mode.")
+    activation_ready: bool = Field(
+        description="Whether provider execution is currently ready for live activation."
+    )
+    blocking_findings: list[str] = Field(
+        description="Human-readable reasons why provider execution is not yet activatable."
+    )
+    activation_path: list[str] = Field(
+        description="Governed high-level path required before live provider execution can be enabled."
+    )
