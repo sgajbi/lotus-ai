@@ -596,6 +596,21 @@ def test_prompt_activation_readiness_route() -> None:
     assert len(body["activation_path"]) == 4
 
 
+def test_prompt_runbook_readiness_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/prompts/runbook-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["runbook_ready"] is False
+    assert body["required_item_count"] == 4
+    assert body["completed_required_item_count"] == 0
+    assert body["items"][0]["runbook_id"] == "prompt_operational_runbook"
+    assert body["items"][1]["status"] == "NOT_READY"
+
+
 def test_service_metadata_exposes_store_modes() -> None:
     client = TestClient(app)
 

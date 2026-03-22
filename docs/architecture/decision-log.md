@@ -444,6 +444,24 @@ Current posture:
 2. the endpoint returns explicit blocking findings and a governed activation path,
 3. foundation phase remains not activatable until a separate prompt rollout slice changes promotion posture.
 
+## Decision 17B: Prompt Runbook Readiness Should Be Exposed As A Separate Operational Contract
+
+Decision:
+
+`lotus-ai` exposes prompt runbook readiness separately from prompt technical activation readiness.
+
+Why:
+
+1. live prompt rollout needs operational preparedness that is distinct from prompt definition and runtime-selection posture,
+2. bank-grade prompt activation review should explicitly cover change approval, rollback, and audit-evidence support procedures,
+3. separating runbook readiness keeps prompt rollout governance explicit and auditable.
+
+Current posture:
+
+1. `/platform/prompts/runbook-readiness` exposes required prompt operational readiness items,
+2. required runbook items remain not ready in foundation phase,
+3. live prompt activation should not be considered complete in future rollout slices without both technical and runbook readiness.
+
 ## Decision 18: Task Runs Should Emit Structured Execution Evidence
 
 Decision:

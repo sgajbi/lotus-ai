@@ -59,7 +59,8 @@ Current governance posture:
 4. SQL-backed prompt promotion is completed through Alembic-managed persistence updates,
 5. the current governance posture is visible through `GET /platform/prompts/governance`,
 6. the active runtime prompt selection set is visible through `GET /platform/prompts/runtime-status`,
-7. the current prompt activation-readiness posture is visible through `GET /platform/prompts/activation-readiness`.
+7. the current prompt activation-readiness posture is visible through `GET /platform/prompts/activation-readiness`,
+8. the current prompt operational-readiness posture is visible through `GET /platform/prompts/runbook-readiness`.
 
 ## Audit Store
 
@@ -107,7 +108,8 @@ The current enterprise posture is:
 3. `GET /platform/prompts/governance`
 4. `GET /platform/prompts/runtime-status`
 5. `GET /platform/prompts/activation-readiness`
-6. `GET /ai/audit/{request_id}`
+6. `GET /platform/prompts/runbook-readiness`
+7. `GET /ai/audit/{request_id}`
 
 ## Future Direction
 

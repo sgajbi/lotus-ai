@@ -195,6 +195,21 @@ Current rules:
 provider rollout state from the same top-level runtime surface that already carries async
 governance posture.
 
+## Prompt Posture
+
+`lotus-ai` exposes governed prompt posture so downstream teams can inspect both runtime selection
+and rollout readiness without relying on repository tribal knowledge.
+
+Current rules:
+
+1. prompt definition inventory is visible through `/platform/prompts`,
+2. prompt governance posture is visible through `/platform/prompts/governance`,
+3. prompt runtime selection is visible through `/platform/prompts/runtime-status`,
+4. prompt activation readiness is visible through `/platform/prompts/activation-readiness`,
+5. prompt runbook readiness is visible through `/platform/prompts/runbook-readiness`,
+6. runtime prompt mutation remains disabled in foundation phase,
+7. live prompt promotion remains repository-governed until a stronger activation model is introduced.
+
 ## Safety Posture
 
 `lotus-ai` exposes a governed safety policy so downstream teams can inspect what is enforced today

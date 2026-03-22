@@ -21,6 +21,8 @@
 - Provider activation readiness: /platform/providers/activation-readiness
 - Provider runbook readiness: /platform/providers/runbook-readiness
 - Provider governance status: /platform/providers/governance-status
+- Prompt activation readiness: /platform/prompts/activation-readiness
+- Prompt runbook readiness: /platform/prompts/runbook-readiness
 - Retrieval activation readiness: /platform/retrieval/activation-readiness
 - Retrieval runbook readiness: /platform/retrieval/runbook-readiness
 - Retrieval governance status: /platform/retrieval/governance-status
@@ -79,6 +81,16 @@ Before any future live-provider activation slice:
 5. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
 6. confirm vendor escalation, rate-limit response, and provider observability procedures are documented and approved
 7. only then proceed with any live-provider activation rollout review
+
+## Prompt Activation Governance
+
+Before any future live-prompt activation slice:
+
+1. verify `GET /platform/prompts/activation-readiness`
+2. inspect `GET /platform/prompts/runbook-readiness` when operational blockers need detail
+3. confirm prompt governance and runtime-selection posture still reflect reviewed repository-governed rollout unless explicitly approved otherwise
+4. confirm named approvers, rollback procedures, and prompt audit-evidence procedures are documented and approved
+5. only then proceed with any live-prompt activation rollout review
 
 ## Retrieval Activation Governance
 

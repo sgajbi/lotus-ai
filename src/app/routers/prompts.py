@@ -6,11 +6,13 @@ from app.contracts.prompts import (
     PromptActivationReadinessResponse,
     PromptDescriptor,
     PromptGovernanceStatusResponse,
+    PromptRunbookReadinessResponse,
     PromptRuntimeStatusResponse,
 )
 from app.services.prompt_activation_readiness import build_prompt_activation_readiness
 from app.services.prompt_governance import build_prompt_governance_status
 from app.services.prompt_registry import get_prompt_or_raise, list_registered_prompts
+from app.services.prompt_runbook_readiness import build_prompt_runbook_readiness
 from app.services.prompt_status import build_prompt_runtime_status
 
 router = APIRouter(prefix="/platform/prompts", tags=["platform"])
@@ -86,6 +88,24 @@ async def get_prompt_runtime_status_route() -> PromptRuntimeStatusResponse:
 )
 async def get_prompt_activation_readiness_route() -> PromptActivationReadinessResponse:
     return build_prompt_activation_readiness()
+
+
+@router.get(
+    "/runbook-readiness",
+    response_model=PromptRunbookReadinessResponse,
+    operation_id="getPromptRunbookReadiness",
+    summary="Get lotus-ai prompt runbook readiness",
+    description=(
+        "Returns whether lotus-ai prompt rollout is currently supported by the required "
+        "operational runbooks and support procedures for future live activation."
+    ),
+    responses={
+        200: {"description": "Prompt runbook readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_prompt_runbook_readiness_route() -> PromptRunbookReadinessResponse:
+    return build_prompt_runbook_readiness()
 
 
 @router.get(

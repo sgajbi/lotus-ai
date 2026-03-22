@@ -105,3 +105,29 @@ class PromptActivationReadinessResponse(BaseModel):
     activation_path: list[str] = Field(
         description="Governed high-level path required before live prompt promotion can be enabled."
     )
+
+
+class PromptRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(description="Stable prompt runbook readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before live prompt rollout activation."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class PromptRunbookReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the prompt runbook readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    runbook_ready: bool = Field(
+        description="Whether prompt operational runbook readiness is currently sufficient for activation."
+    )
+    required_item_count: int = Field(
+        description="Number of prompt runbook items currently required for activation."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required prompt runbook items currently marked complete."
+    )
+    items: list[PromptRunbookReadinessItem] = Field(
+        description="Governed prompt operational runbook readiness items."
+    )
