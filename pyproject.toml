@@ -9,6 +9,7 @@ description = "Shared AI platform service for Lotus applications"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+  "alembic>=1.16.0",
   "fastapi>=0.133.0",
   "uvicorn>=0.41.0",
   "pydantic>=2.12.0",

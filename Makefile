@@ -1,4 +1,4 @@
-.PHONY: install lint monetary-float-guard typecheck openapi-gate test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
+.PHONY: install lint monetary-float-guard typecheck openapi-gate migration-smoke migration-apply test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
 
 install:
 	python -m pip install --upgrade pip
@@ -16,6 +16,12 @@ typecheck:
 
 openapi-gate:
 	python scripts/openapi_quality_gate.py
+
+migration-smoke:
+	python scripts/migration_contract_check.py --mode alembic-sql
+
+migration-apply:
+	python -m alembic upgrade head
 
 test:
 	$(MAKE) test-unit
@@ -39,9 +45,9 @@ test-coverage:
 security-audit:
 	python -m pip_audit
 
-check: lint typecheck openapi-gate test
+check: lint typecheck openapi-gate migration-smoke test
 
-ci: lint typecheck openapi-gate test-integration test-e2e test-coverage security-audit
+ci: lint typecheck openapi-gate migration-smoke test-integration test-e2e test-coverage security-audit
 
 docker-build:
 	docker build -t backend-service:ci-test .

@@ -46,6 +46,10 @@ jobs:
         run: make typecheck
       - name: OpenAPI Gate
         run: make openapi-gate
+      - name: Migration Smoke
+        env:
+          LOTUS_AI_DATABASE_URL: sqlite:///:memory:
+        run: make migration-smoke
       - name: Security Audit
         run: make security-audit
 

@@ -2,32 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import JSON, Boolean, String, Text, create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from app.contracts.audit import AuditRecordResponse
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-class AuditRecordModel(Base):
-    __tablename__ = "audit_records"
-
-    request_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    task_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    caller_app: Mapped[str] = mapped_column(String(128), nullable=False)
-    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    prompt_version: Mapped[str] = mapped_column(String(128), nullable=False)
-    provider_mode: Mapped[str] = mapped_column(String(64), nullable=False)
-    generated_at: Mapped[str] = mapped_column(String(64), nullable=False)
-    stubbed: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    context_summary: Mapped[str] = mapped_column(Text, nullable=False)
-    context_keys: Mapped[list[str]] = mapped_column(JSON, nullable=False)
-    source_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False)
-    result_preview: Mapped[str] = mapped_column(Text, nullable=False)
-    structured_output: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+from app.db.models import AuditRecordModel
 
 
 class SqlAlchemyAuditRepository:
@@ -36,7 +15,6 @@ class SqlAlchemyAuditRepository:
         self._ensure_sqlite_parent_directory()
         self._engine = create_engine(database_url, future=True)
         self._session_factory = sessionmaker(bind=self._engine, autoflush=False, future=True)
-        Base.metadata.create_all(self._engine)
 
     def save(self, record: AuditRecordResponse) -> None:
         model = AuditRecordModel(

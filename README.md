@@ -21,7 +21,8 @@ The current persistence posture is:
 
 - in-memory audit storage by default for simple local development,
 - a SQLAlchemy-backed audit adapter available behind the same repository interface for durable storage,
-- explicit configuration to move between the two without changing API contracts.
+- explicit configuration to move between the two without changing API contracts,
+- Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 
 The current retrieval-storage decision is:
 
@@ -172,6 +173,7 @@ make install
 make lint
 make typecheck
 make openapi-gate
+make migration-smoke
 make ci
 ```
 
@@ -201,4 +203,5 @@ docker compose up --build
 - service-local RFCs: `docs/rfcs/`
 - service standards: `docs/standards/`
 - API documentation standard: `docs/standards/api-documentation.md`
+- migration contract standard: `docs/standards/migration-contract.md`
 - platform governance source: `../lotus-platform/rfcs/RFC-0069-lotus-ai-shared-ai-platform-service.md`

@@ -38,7 +38,8 @@ Current implementation:
 2. in-memory adapter for simple development,
 3. SQLAlchemy adapter for durable storage,
 4. save-on-execution behavior,
-5. retrieval by `request_id`.
+5. retrieval by `request_id`,
+6. Alembic-managed schema contract for relational persistence.
 
 This gives us immediate traceability while keeping the persistence architecture clean.
 
@@ -55,15 +56,12 @@ Current durable path:
 1. `LOTUS_AI_AUDIT_STORE_MODE=sqlalchemy`
 2. `LOTUS_AI_DATABASE_URL=<db-url>`
 
-The SQLAlchemy adapter currently creates the audit table automatically for the configured database.
+The current enterprise posture is:
 
-This is an incremental step, not the final enterprise migration posture.
-
-The long-term target remains:
-
-1. versioned migrations,
-2. PostgreSQL as the canonical durable runtime store,
-3. migration smoke checks aligned to Lotus platform standards.
+1. repository adapters assume schema already exists,
+2. schema changes are managed through Alembic revisions,
+3. migration smoke checks are part of the normal quality gate,
+4. PostgreSQL remains the canonical durable runtime target.
 
 ## Current Endpoints
 
@@ -76,7 +74,7 @@ The long-term target remains:
 Likely next evolution:
 
 1. database-backed prompt registry or prompt asset packaging,
-2. migration-managed PostgreSQL audit persistence,
+2. PostgreSQL-backed runtime persistence beyond the initial audit table,
 3. tenant-aware prompt selection,
 4. prompt promotion and rollback workflow,
 5. richer audit records including safety-policy outcomes.

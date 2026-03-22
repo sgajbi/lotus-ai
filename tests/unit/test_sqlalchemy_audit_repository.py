@@ -2,10 +2,12 @@ from pathlib import Path
 
 from app.contracts.audit import AuditRecordResponse
 from app.repositories.sqlalchemy_audit_repository import SqlAlchemyAuditRepository
+from tests.support.migration_runner import upgrade_database_to_head
 
 
 def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
     database_url = f"sqlite:///{tmp_path / 'lotus-ai-audit.db'}"
+    upgrade_database_to_head(database_url)
     repository = SqlAlchemyAuditRepository(database_url)
 
     record = AuditRecordResponse(
