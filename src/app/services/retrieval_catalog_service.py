@@ -2,13 +2,23 @@ from __future__ import annotations
 
 from fastapi import HTTPException, status
 
-from app.contracts.retrieval import RetrievalDocumentCatalogResponse, RetrievalIndexStatusResponse
-from app.contracts.retrieval import RetrievalChunkCatalogResponse, RetrievalIndexJobCatalogResponse
+from app.contracts.retrieval import (
+    RetrievalChunkCatalogResponse,
+    RetrievalDocumentCatalogResponse,
+    RetrievalIndexJobCatalogResponse,
+    RetrievalIndexJobDetailResponse,
+    RetrievalIndexStatusResponse,
+    RetrievalIndexingPolicyResponse,
+)
 from app.retrieval.document_registry import (
     build_retrieval_index_status,
-    build_retrieval_job_catalog,
     list_chunks_for_document,
     list_documents_for_source,
+)
+from app.retrieval.job_registry import (
+    build_retrieval_indexing_policy,
+    build_retrieval_job_catalog,
+    get_retrieval_job_detail,
 )
 from app.retrieval.source_registry import list_retrieval_sources
 
@@ -39,3 +49,11 @@ def get_chunks_for_document(document_id: str) -> RetrievalChunkCatalogResponse:
 
 def get_retrieval_job_catalog() -> RetrievalIndexJobCatalogResponse:
     return build_retrieval_job_catalog()
+
+
+def get_retrieval_job_detail_or_raise(job_id: str) -> RetrievalIndexJobDetailResponse:
+    return get_retrieval_job_detail(job_id)
+
+
+def get_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
+    return build_retrieval_indexing_policy()

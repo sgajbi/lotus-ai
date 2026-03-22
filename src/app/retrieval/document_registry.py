@@ -7,15 +7,12 @@ from app.contracts.retrieval import (
     RetrievalDocumentDescriptor,
     RetrievalIndexStatus,
     RetrievalIndexStatusResponse,
-    RetrievalIndexJobCatalogResponse,
-    RetrievalIndexJobDescriptor,
-    RetrievalJobStatus,
     RetrievalSourceStatusDescriptor,
 )
 from app.config import settings
 from app.retrieval.source_registry import VECTOR_STORE_STRATEGY
 
-_DOCUMENTS: dict[str, list[RetrievalDocumentDescriptor]] = {
+DOCUMENTS: dict[str, list[RetrievalDocumentDescriptor]] = {
     "lotus-platform-rfcs": [
         RetrievalDocumentDescriptor(
             document_id="lotus-platform-rfc-0068",
@@ -65,7 +62,7 @@ _DOCUMENTS: dict[str, list[RetrievalDocumentDescriptor]] = {
     "lotus-openapi-derived": [],
 }
 
-_CHUNKS: dict[str, list[RetrievalChunkDescriptor]] = {
+CHUNKS: dict[str, list[RetrievalChunkDescriptor]] = {
     "lotus-platform-rfc-0068": [
         RetrievalChunkDescriptor(
             chunk_id="chunk_rfc_0068_0001",
@@ -128,27 +125,31 @@ def list_documents_for_source(source_id: str) -> RetrievalDocumentCatalogRespons
     return RetrievalDocumentCatalogResponse(
         source_id=source_id,
         vector_store=VECTOR_STORE_STRATEGY,
-        documents=_DOCUMENTS.get(source_id, []),
+        documents=DOCUMENTS.get(source_id, []),
     )
 
 
 def list_chunks_for_document(document_id: str) -> RetrievalChunkCatalogResponse | None:
-    for source_id, documents in _DOCUMENTS.items():
+    for source_id, documents in DOCUMENTS.items():
         for document in documents:
             if document.document_id == document_id:
                 return RetrievalChunkCatalogResponse(
                     document_id=document_id,
                     source_id=source_id,
                     vector_store=VECTOR_STORE_STRATEGY,
-                    chunks=_CHUNKS.get(document_id, []),
+                    chunks=CHUNKS.get(document_id, []),
                 )
     return None
 
 
+def document_chunk_count(document_id: str) -> int:
+    return len(CHUNKS.get(document_id, []))
+
+
 def build_retrieval_index_status() -> RetrievalIndexStatusResponse:
     source_statuses: list[RetrievalSourceStatusDescriptor] = []
-    for source_id, documents in _DOCUMENTS.items():
-        chunk_count = sum(document.chunk_count for document in documents)
+    for source_id, documents in DOCUMENTS.items():
+        chunk_count = sum(document_chunk_count(document.document_id) for document in documents)
         if not documents:
             status = RetrievalIndexStatus.NOT_INDEXED
         elif all(document.index_status == RetrievalIndexStatus.INDEXED for document in documents):
@@ -169,32 +170,4 @@ def build_retrieval_index_status() -> RetrievalIndexStatusResponse:
         retrieval_mode=settings.retrieval_mode,
         vector_store=VECTOR_STORE_STRATEGY,
         sources=source_statuses,
-    )
-
-
-def build_retrieval_job_catalog() -> RetrievalIndexJobCatalogResponse:
-    jobs: list[RetrievalIndexJobDescriptor] = []
-    for source_id, documents in _DOCUMENTS.items():
-        chunk_count = sum(len(_CHUNKS.get(document.document_id, [])) for document in documents)
-        if not documents:
-            status = RetrievalJobStatus.PENDING
-            message = "No staged documents yet for this retrieval source."
-        else:
-            status = RetrievalJobStatus.STAGED
-            message = "Documents are staged for indexing, but vector indexing is not enabled yet."
-        jobs.append(
-            RetrievalIndexJobDescriptor(
-                job_id=f"retjob_{source_id.replace('-', '_')}",
-                source_id=source_id,
-                status=status,
-                document_count=len(documents),
-                chunk_count=chunk_count,
-                message=message,
-            )
-        )
-
-    return RetrievalIndexJobCatalogResponse(
-        service=settings.service_name,
-        vector_store=VECTOR_STORE_STRATEGY,
-        jobs=jobs,
     )

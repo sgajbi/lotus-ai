@@ -50,3 +50,35 @@ We should only consider a separate vector database later if we have evidence suc
 2. Every retrieved answer should preserve provenance.
 3. Source curation matters more than index size.
 4. Vector search is a means to governed retrieval, not the product architecture itself.
+
+## Indexing Lifecycle
+
+The retrieval indexing lifecycle is intentionally staged.
+
+What exists today:
+
+1. approved sources are registered explicitly,
+2. documents are inventoried per source,
+3. staged chunks are visible per document,
+4. indexing jobs and indexing policy are exposed through API contracts.
+
+What does not exist yet:
+
+1. live embedding generation,
+2. runtime vector writes,
+3. production retrieval execution over indexed vectors.
+
+This split is deliberate. We want the retrieval contract, governance posture, and observability model to become stable before live indexing is enabled.
+
+## Retrieval API Surface
+
+The current retrieval API exposes:
+
+1. source discovery,
+2. source-level index status,
+3. indexing policy,
+4. indexing job catalog and job detail,
+5. document inventory,
+6. chunk inventory.
+
+The search endpoint remains governed and intentionally disabled until the retrieval execution layer is ready.

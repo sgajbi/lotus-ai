@@ -6,7 +6,9 @@ from app.contracts.retrieval import (
     RetrievalChunkCatalogResponse,
     RetrievalDocumentCatalogResponse,
     RetrievalIndexJobCatalogResponse,
+    RetrievalIndexJobDetailResponse,
     RetrievalIndexStatusResponse,
+    RetrievalIndexingPolicyResponse,
     RetrievalSearchRequest,
     RetrievalSearchResponse,
     RetrievalSourceCatalogResponse,
@@ -14,6 +16,8 @@ from app.contracts.retrieval import (
 from app.retrieval.source_registry import list_retrieval_sources
 from app.services.retrieval_catalog_service import (
     get_chunks_for_document,
+    get_retrieval_indexing_policy,
+    get_retrieval_job_detail_or_raise,
     get_retrieval_job_catalog,
     get_documents_for_source,
     get_retrieval_index_status,
@@ -60,6 +64,24 @@ async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
 
 
 @router.get(
+    "/indexing-policy",
+    response_model=RetrievalIndexingPolicyResponse,
+    operation_id="getRetrievalIndexingPolicy",
+    summary="Get retrieval indexing policy",
+    description=(
+        "Returns the governed retrieval indexing posture for lotus-ai, including chunking, "
+        "embedding, and vector persistence strategy labels for the current phase."
+    ),
+    responses={
+        200: {"description": "Retrieval indexing policy returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_indexing_policy_route() -> RetrievalIndexingPolicyResponse:
+    return get_retrieval_indexing_policy()
+
+
+@router.get(
     "/index-jobs",
     response_model=RetrievalIndexJobCatalogResponse,
     operation_id="listRetrievalIndexJobs",
@@ -75,6 +97,25 @@ async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
 )
 async def list_retrieval_index_jobs_route() -> RetrievalIndexJobCatalogResponse:
     return get_retrieval_job_catalog()
+
+
+@router.get(
+    "/index-jobs/{job_id}",
+    response_model=RetrievalIndexJobDetailResponse,
+    operation_id="getRetrievalIndexJob",
+    summary="Get retrieval indexing job detail",
+    description=(
+        "Returns the detailed staged execution plan for a retrieval indexing job, including the "
+        "current lifecycle stage of each indexing step."
+    ),
+    responses={
+        200: {"description": "Retrieval indexing job detail returned successfully."},
+        404: {"description": "Retrieval indexing job not found."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_index_job_route(job_id: str) -> RetrievalIndexJobDetailResponse:
+    return get_retrieval_job_detail_or_raise(job_id)
 
 
 @router.get(

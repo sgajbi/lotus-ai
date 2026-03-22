@@ -29,6 +29,12 @@ class RetrievalJobStatus(str, Enum):
     COMPLETED = "COMPLETED"
 
 
+class RetrievalPipelineStage(str, Enum):
+    DOCUMENTED = "DOCUMENTED"
+    STAGED = "STAGED"
+    ENABLED = "ENABLED"
+
+
 class RetrievalSourceDescriptor(BaseModel):
     source_id: str = Field(description="Stable retrieval source identifier.")
     kind: RetrievalSourceKind = Field(description="High-level source category.")
@@ -111,6 +117,39 @@ class RetrievalIndexJobCatalogResponse(BaseModel):
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     jobs: list[RetrievalIndexJobDescriptor] = Field(
         description="Known retrieval indexing jobs for the staged corpus."
+    )
+
+
+class RetrievalIndexJobStepDescriptor(BaseModel):
+    step_id: str = Field(description="Stable retrieval indexing step identifier.")
+    name: str = Field(description="Human-readable retrieval indexing step name.")
+    stage: RetrievalPipelineStage = Field(description="Current lifecycle stage for the step.")
+    description: str = Field(description="Human-readable explanation of the step.")
+
+
+class RetrievalIndexJobDetailResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval job detail.")
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    embedding_provider_mode: str = Field(description="Current embedding provider mode.")
+    job: RetrievalIndexJobDescriptor = Field(description="Retrieval indexing job descriptor.")
+    steps: list[RetrievalIndexJobStepDescriptor] = Field(
+        description="Ordered retrieval indexing steps for the job."
+    )
+
+
+class RetrievalIndexingPolicyResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval indexing policy.")
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    retrieval_mode: str = Field(description="Current retrieval mode configured for lotus-ai.")
+    embedding_provider_mode: str = Field(description="Current embedding provider mode.")
+    chunking_strategy: str = Field(description="Current chunking strategy label.")
+    embedding_strategy: str = Field(description="Current embedding strategy label.")
+    persistence_strategy: str = Field(description="Current vector persistence strategy label.")
+    execution_stage: RetrievalPipelineStage = Field(
+        description="Current overall lifecycle stage for retrieval indexing."
+    )
+    notes: list[str] = Field(
+        description="Important governance notes describing current retrieval indexing constraints."
     )
 
 

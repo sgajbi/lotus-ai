@@ -128,6 +128,28 @@ def test_retrieval_index_jobs_route() -> None:
     assert any(job["source_id"] == "lotus-platform-rfcs" for job in body["jobs"])
 
 
+def test_retrieval_indexing_policy_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/retrieval/indexing-policy")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["persistence_strategy"] == "postgresql+pgvector"
+
+
+def test_retrieval_index_job_detail_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/retrieval/index-jobs/retjob_lotus_platform_rfcs")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["job"]["source_id"] == "lotus-platform-rfcs"
+    assert any(step["step_id"].endswith(".embedding_generation") for step in body["steps"])
+
+
 def test_retrieval_documents_route() -> None:
     client = TestClient(app)
 
