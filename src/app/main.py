@@ -6,6 +6,7 @@ from app.middleware.correlation import CorrelationIdMiddleware
 from app.routers.audit import router as audit_router
 from app.routers.capabilities import router as capabilities_router
 from app.routers.prompts import router as prompts_router
+from app.routers.retrieval import router as retrieval_router
 from app.routers.tasks import router as tasks_router
 
 SERVICE_NAME = settings.service_name
@@ -25,6 +26,7 @@ app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
 Instrumentator().instrument(app).expose(app)
 app.include_router(capabilities_router)
 app.include_router(prompts_router)
+app.include_router(retrieval_router)
 app.include_router(tasks_router)
 app.include_router(audit_router)
 
@@ -64,6 +66,7 @@ async def root() -> dict[str, object]:
         "phase": settings.delivery_phase,
         "providerMode": settings.provider_mode,
         "retrievalMode": settings.retrieval_mode,
+        "embeddingProviderMode": settings.embedding_provider_mode,
         "safetyMode": settings.safety_mode,
         "auditStoreMode": settings.audit_store_mode,
         "capabilityAreas": [

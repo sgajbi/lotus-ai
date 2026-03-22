@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     delivery_phase: str = "foundation"
     provider_mode: str = "disabled"
     retrieval_mode: str = "disabled"
+    embedding_provider_mode: str = "disabled"
     safety_mode: str = "documented_only"
     audit_store_mode: str = "memory"
     database_url: str | None = None

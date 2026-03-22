@@ -92,3 +92,31 @@ def test_audit_record_route_returns_saved_execution() -> None:
     assert audit_response.status_code == 200
     assert audit_response.json()["caller_app"] == "lotus-advise"
     assert audit_response.json()["prompt_version"] == "foundation.summarize.v1"
+
+
+def test_retrieval_source_catalog_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/retrieval/sources")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["vector_store"] == "postgresql+pgvector"
+    assert any(source["source_id"] == "lotus-platform-rfcs" for source in body["sources"])
+
+
+def test_retrieval_search_route_returns_conflict_when_disabled() -> None:
+    client = TestClient(app)
+
+    response = client.post(
+        "/platform/retrieval/search",
+        json={
+            "query": "What does RFC-0069 say?",
+            "caller_app": "lotus-workbench",
+            "correlation_id": "corr-ret-2",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "Retrieval search is not enabled yet" in response.json()["detail"]

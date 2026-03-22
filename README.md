@@ -29,6 +29,12 @@ The current retrieval-storage decision is:
 - the planned first vector store is PostgreSQL with `pgvector`,
 - we are intentionally avoiding a separate vector database until scale or workload evidence justifies it.
 
+The current retrieval posture is:
+
+- approved retrieval sources are registered explicitly,
+- retrieval source discovery is exposed through the platform API,
+- live retrieval search remains disabled until embeddings and vector indexing are wired.
+
 ## What lotus-ai Does
 
 - LLM gateway and model routing
