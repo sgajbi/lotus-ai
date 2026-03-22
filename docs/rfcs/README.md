@@ -5,3 +5,4 @@
 - `RFC-0003-controlled-live-provider-backbone.md` - Implemented
 - `RFC-0004-provider-operations-hardening.md` - Implemented
 - `RFC-0005-durable-provider-operations-state.md` - Proposed
+- `RFC-0006-durable-async-execution-backbone.md` - Proposed
