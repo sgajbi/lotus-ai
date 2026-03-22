@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     live_text_provider_id: str | None = None
     live_text_model_id: str | None = None
     live_text_provider_api_key: str | None = None
+    provider_timeout_ms: int = 4000
+    provider_retry_limit: int = 0
+    provider_max_output_tokens: int = 512
     retrieval_mode: str = "disabled"
     embedding_provider_mode: str = "disabled"
     safety_mode: str = "documented_only"

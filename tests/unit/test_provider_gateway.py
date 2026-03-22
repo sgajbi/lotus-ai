@@ -18,15 +18,25 @@ def test_execute_text_generation_routes_through_stub_provider() -> None:
             context_summary="Explain rebalance outcome",
             context_payload={"status": "BLOCKED", "rule_count": 3},
             source_refs=["lotus-manage:run:reb_001"],
+            timeout_ms=4000,
+            retry_limit=0,
+            max_output_tokens=512,
         )
     )
 
     assert response.provider_id == "text.stub"
     assert response.provider_mode == "disabled"
     assert response.adapter_kind == ProviderAdapterKind.STUB
+    assert response.failure_category is None
+    assert response.timeout_ms == 4000
+    assert response.retry_count == 0
+    assert response.max_output_tokens == 512
     assert response.stubbed is True
     assert response.structured_output["provider_id"] == "text.stub"
     assert response.structured_output["adapter_kind"] == "STUB"
+    assert response.structured_output["timeout_ms"] == 4000
+    assert response.structured_output["retry_count"] == 0
+    assert response.structured_output["max_output_tokens"] == 512
     assert response.structured_output["context_keys"] == ["rule_count", "status"]
     assert response.structured_output["output_label"] == "EXPLANATION_ONLY"
     assert response.structured_output["redaction_posture"] == "MINIMIZATION_REQUIRED"
@@ -47,6 +57,9 @@ def test_execute_text_generation_rejects_unsupported_provider_mode() -> None:
                 context_summary="Explain rebalance outcome",
                 context_payload={"status": "BLOCKED"},
                 source_refs=[],
+                timeout_ms=4000,
+                retry_limit=0,
+                max_output_tokens=512,
             )
         )
 
@@ -70,12 +83,18 @@ def test_execute_text_generation_routes_stub_mode_through_stub_provider() -> Non
             context_summary="Summarize proposal workflow",
             context_payload={"status": "PENDING_REVIEW"},
             source_refs=[],
+            timeout_ms=4000,
+            retry_limit=0,
+            max_output_tokens=512,
         )
     )
 
     assert response.provider_id == "text.stub"
     assert response.provider_mode == "stub"
     assert response.adapter_kind == ProviderAdapterKind.STUB
+    assert response.timeout_ms == 4000
+    assert response.retry_count == 0
+    assert response.max_output_tokens == 512
     assert response.stubbed is True
     assert response.structured_output["output_label"] == "DRAFT"
 

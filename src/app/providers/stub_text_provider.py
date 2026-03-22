@@ -31,6 +31,10 @@ class StubTextProvider:
             provider_id=self.descriptor.provider_id,
             provider_mode=settings.provider_mode,
             adapter_kind=self.descriptor.adapter_kind,
+            failure_category=None,
+            timeout_ms=request.timeout_ms,
+            retry_count=0,
+            max_output_tokens=request.max_output_tokens,
             stubbed=True,
             message=(
                 "Stub execution completed for foundation-phase task "
@@ -41,6 +45,9 @@ class StubTextProvider:
                 "provider_id": self.descriptor.provider_id,
                 "provider_mode": settings.provider_mode,
                 "adapter_kind": self.descriptor.adapter_kind.value,
+                "timeout_ms": request.timeout_ms,
+                "retry_count": 0,
+                "max_output_tokens": request.max_output_tokens,
                 "output_label": request.output_label,
                 "safety_mode": request.safety_mode,
                 "redaction_posture": request.redaction_posture,

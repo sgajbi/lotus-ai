@@ -72,6 +72,26 @@ def _provider_descriptor(
             "provider_mode": provider_execution.provider_mode,
             "stubbed": provider_execution.stubbed,
             **(
+                {"failure_category": provider_execution.failure_category.value}
+                if provider_execution.failure_category is not None
+                else {}
+            ),
+            **(
+                {"timeout_ms": provider_execution.timeout_ms}
+                if provider_execution.timeout_ms is not None
+                else {}
+            ),
+            **(
+                {"retry_count": provider_execution.retry_count}
+                if provider_execution.retry_count is not None
+                else {}
+            ),
+            **(
+                {"max_output_tokens": provider_execution.max_output_tokens}
+                if provider_execution.max_output_tokens is not None
+                else {}
+            ),
+            **(
                 {"adapter_kind": provider_execution.adapter_kind.value}
                 if provider_execution.adapter_kind is not None
                 else {}

@@ -164,6 +164,15 @@ class ProviderExecutionRequest(BaseModel):
         default_factory=list,
         description="Caller-provided source references attached to the execution request.",
     )
+    timeout_ms: int = Field(
+        description="Bounded provider timeout budget for this execution request."
+    )
+    retry_limit: int = Field(
+        description="Maximum bounded retry count allowed for this execution request."
+    )
+    max_output_tokens: int = Field(
+        description="Maximum bounded output-token budget allowed for this execution request."
+    )
 
 
 class ProviderExecutionResponse(BaseModel):
@@ -172,6 +181,22 @@ class ProviderExecutionResponse(BaseModel):
     adapter_kind: ProviderAdapterKind | None = Field(
         default=None,
         description="Registered provider adapter kind that handled the execution, when applicable.",
+    )
+    failure_category: ProviderFailureCategory | None = Field(
+        default=None,
+        description="Structured provider failure category when execution is rejected or degraded.",
+    )
+    timeout_ms: int | None = Field(
+        default=None,
+        description="Provider timeout budget applied to this execution, when applicable.",
+    )
+    retry_count: int | None = Field(
+        default=None,
+        description="Actual retry count used while executing this provider path, when applicable.",
+    )
+    max_output_tokens: int | None = Field(
+        default=None,
+        description="Output-token budget applied to this execution, when applicable.",
     )
     stubbed: bool = Field(description="Whether execution was handled by a stub provider path.")
     message: str = Field(description="Human-readable execution message returned by the provider.")

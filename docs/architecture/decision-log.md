@@ -176,6 +176,25 @@ Current posture:
 3. provider policy now exposes selected adapter kind and structured rejection category,
 4. unsupported modes are rejected with a service-unavailable response.
 
+## Decision 11E: Provider Execution Controls Must Be Explicit Before Live Rollout
+
+Decision:
+
+`lotus-ai` models provider timeout, retry, and output-token controls explicitly in the provider
+execution contract before any live provider path is activated.
+
+Why:
+
+1. bank-grade rollout should not inherit opaque SDK defaults for execution bounds,
+2. provider evidence and audit posture need to preserve execution-control context,
+3. explicit controls make later live-provider hardening cleaner and easier to review.
+
+Current posture:
+
+1. provider execution requests carry timeout, retry, and output-token bounds,
+2. provider execution evidence preserves those controls when provider-style execution is used,
+3. foundation stub execution now reflects those bounded controls even before live rollout exists.
+
 ## Decision 11D: Provider Rollout State Must Be Separate From Supported Runtime Mode
 
 Decision:

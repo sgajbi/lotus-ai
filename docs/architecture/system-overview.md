@@ -147,6 +147,11 @@ provider APIs expose current supported execution mode, future rollout state, and
 configuration posture as distinct concepts so bank-grade activation review does not depend on
 interpreting a single overloaded setting.
 
+Provider execution posture is also now bounded explicitly at request time through timeout,
+retry, and output-token controls. Even though current foundation execution remains stubbed,
+those controls now exist as part of the provider contract so live rollout can inherit a real
+execution-hardening seam rather than implicit provider-SDK defaults.
+
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
 
