@@ -1,4 +1,13 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
+
+from app.config import settings
+from app.services.provider_quota_policy import enforce_provider_quota
+from app.services.provider_request_builder import build_provider_execution_request
+from app.services.task_execution_pipeline import validate_task_request
+from tests.support.migration_runner import upgrade_database_to_head
+from tests.unit.test_task_executor import _request
 
 
 def test_provider_catalog_route(client: TestClient) -> None:
@@ -47,6 +56,30 @@ def test_provider_quota_policy_route(client: TestClient) -> None:
     assert body["configuration_valid"] is True
     assert body["matching_order"] == ["TENANT", "CALLER_APP", "TASK", "DEFAULT"]
     assert body["quotas"] == []
+
+
+def test_provider_quota_policy_route_reports_durable_sql_backed_usage(
+    client: TestClient, tmp_path: Path
+) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-ops.db'}"
+    settings.live_text_quota_enforced = True
+    settings.live_text_default_quota_limit = 3
+    settings.live_text_task_quota_limits = "explain.v1=2"
+    upgrade_database_to_head(settings.database_url)
+
+    request = _request("explain.v1", expected_output_label=None)
+    provider_request = build_provider_execution_request(context=validate_task_request(request))
+    enforce_provider_quota(provider_request)
+
+    response = client.get("/platform/providers/quota-policy")
+
+    assert response.status_code == 200
+    body = response.json()
+    task_quota = next(quota for quota in body["quotas"] if quota["scope"] == "TASK")
+    default_quota = next(quota for quota in body["quotas"] if quota["scope"] == "DEFAULT")
+    assert task_quota["current_request_count"] == 1
+    assert default_quota["current_request_count"] == 1
 
 
 def test_provider_budget_policy_route(client: TestClient) -> None:

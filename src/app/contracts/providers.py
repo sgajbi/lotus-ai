@@ -73,7 +73,7 @@ class ProviderQuotaDescriptor(BaseModel):
         description="Maximum accepted live-provider execution requests allowed for this scope."
     )
     current_request_count: int = Field(
-        description="Current in-process accepted request count observed for this scope."
+        description="Current tracked accepted request count observed for this scope."
     )
     remaining_request_count: int = Field(
         description="Remaining accepted request count before this scope is blocked."
@@ -99,7 +99,7 @@ class ProviderQuotaPolicyResponse(BaseModel):
         description="Ordered list of quota scopes evaluated for a live-provider execution request."
     )
     quotas: list[ProviderQuotaDescriptor] = Field(
-        description="Configured live-provider quota entries and their current in-process usage."
+        description="Configured live-provider quota entries and their current tracked usage."
     )
 
 

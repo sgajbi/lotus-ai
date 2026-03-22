@@ -183,6 +183,12 @@ relational schema. Quota, budget, and degradation enforcement still use the curr
 control path in the present slice, but the persistence boundary is now in place so later RFC-0005
 cutover slices can switch behavior without introducing a second data model.
 
+Provider quota enforcement has now completed that cutover: accepted live-provider request counts
+flow through the configured provider-operations store instead of module-local counters, so quota
+inspection and blocking behavior can stay durable when the SQL-backed provider-operations path is
+enabled. Budget and degradation state still remain on their existing in-memory control path until
+later RFC-0005 slices move them over deliberately.
+
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
 

@@ -61,7 +61,7 @@ The current execution posture is:
 - provider surfaces now also expose explicit text-generation rollout state and live-provider configuration posture, so supported runtime mode and future activation posture are no longer conflated,
 - live provider requests now carry optional requester and tenant identity into the provider seam so caller-aware quota enforcement can be modeled truthfully instead of only at the outer task API,
 - provider execution requests now carry bounded timeout, retry, and output-token controls even in foundation phase, so later live rollout inherits an explicit execution-hardening seam instead of implicit SDK defaults,
-- live-provider quota enforcement now has a deterministic in-process contract that blocks over-limit execution attempts explicitly instead of silently falling back when quota posture is configured,
+- live-provider quota enforcement now uses the configured provider-operations store so accepted request counts can remain durable across restarts when the SQL-backed provider-ops path is enabled, while still blocking over-limit execution attempts explicitly,
 - live-provider budget enforcement now has a deterministic in-process contract that blocks hard-budget overflow explicitly while keeping soft-budget posture inspectable and non-blocking,
 - live-provider degradation controls now model explicit degraded-upstream and circuit-open posture with typed timeout, rate-limit, and upstream-error failure tracking plus cooldown-based reset semantics,
 - provider evidence readiness is now data-backed by staged provider runtime and failure-mode eval fixtures plus a recorded provider regression baseline, so rollout review is tied to governed evidence rather than only a placeholder checklist,
