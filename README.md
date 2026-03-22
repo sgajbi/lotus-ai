@@ -30,6 +30,7 @@ The current execution posture is:
 - runtime-context construction and shared execution models now live in dedicated modules rather than inside the pipeline service,
 - task execution and audit API behavior now have their own dedicated integration module instead of relying only on the broad health suite,
 - prompt API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
+- retrieval API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
