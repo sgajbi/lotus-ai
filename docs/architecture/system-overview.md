@@ -137,6 +137,10 @@ Retrieval services also use a dedicated inventory-summary helper now, so source-
 runtime-level document and chunk counts are derived in one place instead of being recomputed
 independently by retrieval status and job builders.
 
+The provider gateway also stays intentionally explicit in foundation phase: supported provider
+modes are validated first, and then execution routes through the stub provider until a live
+provider path is actually introduced.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

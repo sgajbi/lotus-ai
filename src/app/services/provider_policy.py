@@ -63,7 +63,4 @@ def require_supported_text_generation_mode() -> ProviderExecutionMode:
 
 
 def _selected_text_provider_id() -> str:
-    mode = settings.provider_mode
-    if mode == ProviderExecutionMode.STUB.value:
-        return "text.stub"
     return "text.stub"
