@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from pytest import MonkeyPatch
 
@@ -10,7 +11,9 @@ from app.services.provider_degradation_state import (
     record_provider_failure,
     record_successful_provider_execution,
 )
+from app.services.provider_operations_store import reset_provider_operations_store_cache
 from app.providers.base import ProviderExecutionError
+from tests.support.migration_runner import upgrade_database_to_head
 
 
 def test_provider_degradation_status_reports_documented_only_by_default() -> None:
@@ -174,6 +177,68 @@ def test_provider_degradation_ignores_untracked_failure_categories() -> None:
     settings.live_text_circuit_open_seconds = 60
 
     record_provider_failure(ProviderFailureCategory.CIRCUIT_OPEN)
+
+    status = build_provider_degradation_status()
+
+    assert status.status == "NORMAL"
+    assert status.consecutive_failure_count == 0
+
+
+def test_provider_degradation_status_persists_circuit_state_in_sql_store_across_reset(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-degradation.db'}"
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 2
+    settings.live_text_circuit_open_seconds = 60
+    upgrade_database_to_head(settings.database_url)
+
+    fixed_now = datetime(2026, 3, 23, 12, 0, tzinfo=UTC)
+    monkeypatch.setattr(
+        "app.services.provider_degradation_state._utcnow",
+        lambda: fixed_now,
+    )
+
+    record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
+    record_provider_failure(ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR)
+    reset_provider_operations_store_cache()
+
+    status = build_provider_degradation_status()
+
+    assert status.status == "CIRCUIT_OPEN"
+    assert status.circuit_open_remaining_seconds == 60
+    assert status.timeout_failure_count == 1
+    assert status.upstream_error_failure_count == 1
+
+
+def test_provider_degradation_status_cooldown_recovery_survives_store_reset(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-degradation.db'}"
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 2
+    settings.live_text_circuit_open_seconds = 30
+    upgrade_database_to_head(settings.database_url)
+
+    fixed_now = datetime(2026, 3, 23, 12, 0, tzinfo=UTC)
+    monkeypatch.setattr(
+        "app.services.provider_degradation_state._utcnow",
+        lambda: fixed_now,
+    )
+
+    record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
+    record_provider_failure(ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR)
+    reset_provider_operations_store_cache()
+    monkeypatch.setattr(
+        "app.services.provider_degradation_state._utcnow",
+        lambda: fixed_now + timedelta(seconds=31),
+    )
 
     status = build_provider_degradation_status()
 

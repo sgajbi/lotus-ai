@@ -195,6 +195,11 @@ memory, so spend posture and hard-budget blocking can stay durable when the SQL-
 path is enabled. Degradation state remains on its prior in-memory path until the next RFC-0005
 slice moves it over deliberately.
 
+Provider degradation and circuit posture have now completed that cutover as well. Timeout,
+rate-limit, and upstream-error failure counts plus circuit-open cooldown timestamps now flow
+through the configured provider-operations store instead of process-local memory, so degraded and
+circuit-open posture remain durable when the SQL-backed provider-ops path is enabled.
+
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
 

@@ -1,10 +1,19 @@
 from pathlib import Path
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
 from app.config import settings
-from app.contracts.providers import ProviderAdapterKind, ProviderExecutionResponse
+from _pytest.monkeypatch import MonkeyPatch
+
+from app.contracts.providers import (
+    ProviderAdapterKind,
+    ProviderExecutionResponse,
+    ProviderFailureCategory,
+)
 from app.services.provider_budget_policy import record_provider_spend
+from app.services.provider_degradation_state import record_provider_failure
+from app.services.provider_operations_store import reset_provider_operations_store_cache
 from app.services.provider_quota_policy import enforce_provider_quota
 from app.services.provider_request_builder import build_provider_execution_request
 from app.services.task_execution_pipeline import validate_task_request
@@ -157,6 +166,43 @@ def test_provider_operations_status_route(client: TestClient) -> None:
     assert body["degradation_status"]["status"] == "DOCUMENTED_ONLY"
     assert len(body["summary"]) == 4
     assert "Current blocking or warning detail:" in body["summary"][-1]
+
+
+def test_provider_operations_status_route_reports_durable_sql_backed_circuit_state(
+    client: TestClient, tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-degradation.db'}"
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 2
+    settings.live_text_circuit_open_seconds = 60
+    upgrade_database_to_head(settings.database_url)
+
+    fixed_now = datetime(2026, 3, 23, 12, 0, tzinfo=UTC)
+    monkeypatch.setattr(
+        "app.services.provider_degradation_state._utcnow",
+        lambda: fixed_now,
+    )
+
+    record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
+    record_provider_failure(ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR)
+    reset_provider_operations_store_cache()
+
+    response = client.get("/platform/providers/operations-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["operations_state"] == "CIRCUIT_OPEN"
+    assert body["degradation_status"]["status"] == "CIRCUIT_OPEN"
+    assert body["degradation_status"]["timeout_failure_count"] == 1
+    assert body["degradation_status"]["upstream_error_failure_count"] == 1
 
 
 def test_provider_activation_readiness_route(client: TestClient) -> None:
