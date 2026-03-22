@@ -23,22 +23,25 @@ from app.services.retrieval_store import get_retrieval_repository
 
 
 def _build_job_descriptor(source_id: str) -> RetrievalIndexJobDescriptor:
-    documents = get_retrieval_repository().list_documents_for_source(source_id)
-    chunk_count = sum(document_chunk_count(document.document_id) for document in documents)
-    if not documents:
-        status_value = RetrievalJobStatus.PENDING
-        message = "No staged documents yet for this retrieval source."
-    else:
-        status_value = RetrievalJobStatus.STAGED
-        message = "Documents are staged for indexing, but vector indexing is not enabled yet."
+    repository = get_retrieval_repository()
+    job_id = f"retjob_{source_id.replace('-', '_')}"
+    descriptor = repository.get_index_job(job_id)
+    if descriptor is not None:
+        return descriptor
 
+    documents = repository.list_documents_for_source(source_id)
+    chunk_count = sum(document_chunk_count(document.document_id) for document in documents)
     return RetrievalIndexJobDescriptor(
-        job_id=f"retjob_{source_id.replace('-', '_')}",
+        job_id=job_id,
         source_id=source_id,
-        status=status_value,
+        status=RetrievalJobStatus.PENDING if not documents else RetrievalJobStatus.STAGED,
         document_count=len(documents),
         chunk_count=chunk_count,
-        message=message,
+        message=(
+            "No staged documents yet for this retrieval source."
+            if not documents
+            else "Documents are staged for indexing, but vector indexing is not enabled yet."
+        ),
     )
 
 

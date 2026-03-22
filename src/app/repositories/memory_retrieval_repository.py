@@ -5,7 +5,9 @@ from copy import deepcopy
 from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
     RetrievalDocumentDescriptor,
+    RetrievalIndexJobDescriptor,
     RetrievalIndexStatus,
+    RetrievalJobStatus,
     RetrievalSourceDescriptor,
     RetrievalSourceKind,
 )
@@ -171,3 +173,36 @@ class InMemoryRetrievalRepository(RetrievalRepository):
 
     def list_chunks_for_document(self, document_id: str) -> list[RetrievalChunkDescriptor]:
         return deepcopy(self._chunks.get(document_id, []))
+
+    def list_index_jobs(self) -> list[RetrievalIndexJobDescriptor]:
+        jobs: list[RetrievalIndexJobDescriptor] = []
+        for source in self._sources:
+            documents = self._documents.get(source.source_id, [])
+            chunk_count = sum(
+                len(self._chunks.get(document.document_id, [])) for document in documents
+            )
+            if not documents:
+                status = RetrievalJobStatus.PENDING
+                message = "No staged documents yet for this retrieval source."
+            else:
+                status = RetrievalJobStatus.STAGED
+                message = (
+                    "Documents are staged for indexing, but vector indexing is not enabled yet."
+                )
+            jobs.append(
+                RetrievalIndexJobDescriptor(
+                    job_id=f"retjob_{source.source_id.replace('-', '_')}",
+                    source_id=source.source_id,
+                    status=status,
+                    document_count=len(documents),
+                    chunk_count=chunk_count,
+                    message=message,
+                )
+            )
+        return jobs
+
+    def get_index_job(self, job_id: str) -> RetrievalIndexJobDescriptor | None:
+        for job in self.list_index_jobs():
+            if job.job_id == job_id:
+                return job
+        return None

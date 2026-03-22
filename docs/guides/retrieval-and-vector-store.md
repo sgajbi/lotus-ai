@@ -76,11 +76,17 @@ This split is deliberate. We want the retrieval contract, governance posture, an
 The current retrieval metadata posture is:
 
 1. `lotus-ai` owns the retrieval repository interface,
-2. the current implementation is a seeded in-memory repository,
+2. the current default implementation is a seeded in-memory repository,
 3. service logic reads retrieval metadata through that interface,
-4. future durable retrieval persistence can replace the adapter without changing API contracts.
+4. a SQLAlchemy-backed retrieval repository can read the same metadata from Alembic-managed tables,
+5. future retrieval persistence changes should preserve the repository contract and API surface.
 
 This keeps the service modular and makes the next move to SQL-backed retrieval metadata a persistence change rather than a product-surface rewrite.
+
+Current configuration modes:
+
+1. `LOTUS_AI_RETRIEVAL_STORE_MODE=memory` for the default seeded repository,
+2. `LOTUS_AI_RETRIEVAL_STORE_MODE=sqlalchemy` with `LOTUS_AI_DATABASE_URL` for Alembic-managed retrieval metadata.
 
 ## Retrieval API Surface
 

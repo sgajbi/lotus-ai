@@ -21,6 +21,7 @@ The current persistence posture is:
 
 - in-memory audit storage by default for simple local development,
 - a SQLAlchemy-backed audit adapter available behind the same repository interface for durable storage,
+- in-memory retrieval metadata by default, with a SQLAlchemy-backed retrieval adapter available behind the same repository seam,
 - explicit configuration to move between the two without changing API contracts,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 
