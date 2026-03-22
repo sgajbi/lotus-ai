@@ -11,6 +11,7 @@ router = APIRouter(tags=["platform"])
 @router.get(
     "/platform/capabilities",
     response_model=CapabilityCatalogResponse,
+    operation_id="getCapabilityCatalog",
     summary="Get lotus-ai capability catalog",
     description=(
         "Returns the current bounded AI task capabilities exposed by lotus-ai. "

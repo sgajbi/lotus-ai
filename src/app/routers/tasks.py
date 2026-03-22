@@ -11,6 +11,7 @@ router = APIRouter(prefix="/ai/tasks", tags=["tasks"])
 @router.post(
     "/execute",
     response_model=TaskExecutionResponse,
+    operation_id="executeTask",
     summary="Execute a bounded lotus-ai task",
     description=(
         "Validates and executes a bounded lotus-ai task using the current delivery-phase "

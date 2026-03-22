@@ -11,6 +11,7 @@ router = APIRouter(prefix="/ai/audit", tags=["audit"])
 @router.get(
     "/{request_id}",
     response_model=AuditRecordResponse,
+    operation_id="getAuditRecord",
     summary="Get lotus-ai audit record",
     description=(
         "Returns the stored audit record for a prior lotus-ai task execution request. "

@@ -26,6 +26,7 @@ router = APIRouter(prefix="/platform/retrieval", tags=["retrieval"])
 @router.get(
     "/sources",
     response_model=RetrievalSourceCatalogResponse,
+    operation_id="listRetrievalSources",
     summary="List approved retrieval sources",
     description=(
         "Returns the approved retrieval sources known to lotus-ai, together with the current "
@@ -43,6 +44,7 @@ async def list_retrieval_sources_route() -> RetrievalSourceCatalogResponse:
 @router.get(
     "/index-status",
     response_model=RetrievalIndexStatusResponse,
+    operation_id="getRetrievalIndexStatus",
     summary="Get retrieval indexing status",
     description=(
         "Returns source-level indexing status for the approved retrieval corpus currently known "
@@ -60,6 +62,7 @@ async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
 @router.get(
     "/index-jobs",
     response_model=RetrievalIndexJobCatalogResponse,
+    operation_id="listRetrievalIndexJobs",
     summary="List retrieval indexing jobs",
     description=(
         "Returns the currently known retrieval indexing jobs for the staged corpus. "
@@ -77,6 +80,7 @@ async def list_retrieval_index_jobs_route() -> RetrievalIndexJobCatalogResponse:
 @router.get(
     "/sources/{source_id}/documents",
     response_model=RetrievalDocumentCatalogResponse,
+    operation_id="listRetrievalSourceDocuments",
     summary="List staged retrieval documents for a source",
     description=(
         "Returns the currently staged retrieval documents associated with a source identifier."
@@ -94,6 +98,7 @@ async def list_retrieval_documents_route(source_id: str) -> RetrievalDocumentCat
 @router.get(
     "/documents/{document_id}/chunks",
     response_model=RetrievalChunkCatalogResponse,
+    operation_id="listRetrievalDocumentChunks",
     summary="List staged retrieval chunks for a document",
     description=(
         "Returns the currently staged retrieval chunks associated with a retrieval document identifier."
@@ -111,6 +116,7 @@ async def list_retrieval_chunks_route(document_id: str) -> RetrievalChunkCatalog
 @router.post(
     "/search",
     response_model=RetrievalSearchResponse,
+    operation_id="searchRetrievalSources",
     summary="Search approved retrieval sources",
     description=(
         "Searches approved lotus-ai retrieval sources. In the current phase, this endpoint "

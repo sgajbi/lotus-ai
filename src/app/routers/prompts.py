@@ -11,6 +11,7 @@ router = APIRouter(prefix="/platform/prompts", tags=["platform"])
 @router.get(
     "",
     response_model=list[PromptDescriptor],
+    operation_id="listPromptDefinitions",
     summary="List registered lotus-ai prompts",
     description=(
         "Returns the currently registered prompt definitions known to lotus-ai. "
@@ -28,6 +29,7 @@ async def list_prompts_route() -> list[PromptDescriptor]:
 @router.get(
     "/{task_id}",
     response_model=PromptDescriptor,
+    operation_id="getPromptDefinition",
     summary="Get lotus-ai prompt definition",
     description="Returns the registered prompt definition associated with a task identifier.",
     responses={

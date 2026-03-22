@@ -52,6 +52,7 @@ async def health_ready(response: Response) -> dict[str, str]:
 @app.get(
     "/metadata",
     tags=["platform"],
+    operation_id="getServiceMetadata",
     summary="Get lotus-ai service metadata",
     description=(
         "Returns core service metadata for lotus-ai, including service version and the "
@@ -73,6 +74,7 @@ async def metadata() -> dict[str, str]:
 @app.get(
     "/",
     tags=["platform"],
+    operation_id="getServiceOverview",
     summary="Get lotus-ai service overview",
     description=(
         "Returns the current high-level lotus-ai service state, including delivery phase and "

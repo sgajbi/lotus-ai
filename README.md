@@ -200,4 +200,5 @@ docker compose up --build
 - security and governance: `docs/security/security-and-governance.md`
 - service-local RFCs: `docs/rfcs/`
 - service standards: `docs/standards/`
+- API documentation standard: `docs/standards/api-documentation.md`
 - platform governance source: `../lotus-platform/rfcs/RFC-0069-lotus-ai-shared-ai-platform-service.md`
