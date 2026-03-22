@@ -18,7 +18,7 @@ def build_provider_catalog() -> ProviderCatalogResponse:
             lifecycle_status=ProviderLifecycleStatus.DOCUMENTED,
             runtime_mode=settings.provider_mode,
             enabled_for_execution=False,
-            source_reference="app.services.task_executor",
+            source_reference="app.services.provider_gateway",
             notes=(
                 "Foundation-phase deterministic placeholder execution path used for contract "
                 "validation and audit behavior."

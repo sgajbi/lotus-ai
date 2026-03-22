@@ -55,6 +55,16 @@ Owns:
 2. capability catalog assembly,
 3. future prompt and provider orchestration.
 
+### Providers
+
+- `src/app/providers/`
+
+Owns:
+
+1. provider-specific execution adapters,
+2. deterministic stub providers for foundation phase,
+3. the future boundary where live model SDK integrations will sit.
+
 ### Retrieval
 
 - `src/app/retrieval/`
@@ -133,7 +143,8 @@ Current rules:
 
 1. provider inventory is visible through `/platform/providers`,
 2. foundation-phase providers are documented and inspectable,
-3. runtime execution remains disabled until a stronger provider gateway and safety posture is in place.
+3. task execution already flows through an internal provider gateway,
+4. runtime execution remains disabled until a stronger provider gateway and safety posture is in place.
 
 ## Deployment Policy
 

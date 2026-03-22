@@ -136,3 +136,21 @@ Current posture:
 1. prompt definitions expose lifecycle and provenance metadata,
 2. SQL-backed prompt definitions are promoted through migrations,
 3. runtime prompt write APIs remain disabled until a stronger approval and rollout model exists.
+
+## Decision 10: Provider Gateway Before Live Models
+
+Decision:
+
+`lotus-ai` routes task execution through an explicit provider gateway before any live model SDK is enabled.
+
+Why:
+
+1. provider selection needs its own typed boundary instead of being hidden inside task orchestration,
+2. we want to prove audit and policy flow through a stable execution seam before introducing real providers,
+3. this keeps the public task API stable while letting provider internals evolve safely.
+
+Current posture:
+
+1. the gateway currently routes only to deterministic stub providers,
+2. provider inventory is visible through the provider catalog,
+3. live model execution remains disabled until safety, approval, and rollout controls mature.

@@ -17,6 +17,12 @@ Current goals:
 
 This is deliberate. The early focus is to make `lotus-ai` understandable, testable, and governable before it becomes feature-rich.
 
+The current execution posture is:
+
+- task execution flows through an explicit internal provider gateway,
+- the provider gateway currently routes only to documented stub providers,
+- live model execution remains disabled until a governed provider rollout exists.
+
 The current persistence posture is:
 
 - in-memory audit storage by default for simple local development,

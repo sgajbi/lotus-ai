@@ -34,6 +34,7 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
     assert response.status == "COMPLETED"
     assert response.task_id == "explain.v1"
     assert response.result.structured_output["phase"] == "foundation"
+    assert response.result.structured_output["provider_id"] == "text.stub"
     assert response.result.structured_output["context_keys"] == ["rule_count", "status"]
     assert response.audit.stubbed is True
     assert response.audit.prompt_version == "foundation.explain.v1"

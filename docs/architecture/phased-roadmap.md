@@ -48,6 +48,7 @@ Delivery outcomes:
 
 1. Prompt changes become reviewable and reversible.
 2. The service has a clear bridge from contract to execution policy.
+3. Task execution flows through an explicit provider gateway even while live execution remains disabled.
 
 ## Phase 3: Audit, Safety, and Redaction
 

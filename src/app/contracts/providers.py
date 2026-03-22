@@ -46,3 +46,29 @@ class ProviderCatalogResponse(BaseModel):
     providers: list[ProviderDescriptor] = Field(
         description="Governed provider catalog exposed by lotus-ai."
     )
+
+
+class ProviderExecutionRequest(BaseModel):
+    task_id: str = Field(description="Bounded lotus-ai task identifier being executed.")
+    caller_app: str = Field(description="Calling Lotus application or platform component.")
+    prompt_version: str = Field(description="Resolved prompt version for this execution.")
+    context_summary: str = Field(description="Short summary of caller-provided context.")
+    context_payload: dict[str, object] = Field(
+        default_factory=dict,
+        description="Structured context payload curated by the calling Lotus application.",
+    )
+    source_refs: list[str] = Field(
+        default_factory=list,
+        description="Caller-provided source references attached to the execution request.",
+    )
+
+
+class ProviderExecutionResponse(BaseModel):
+    provider_id: str = Field(description="Provider identifier selected for execution.")
+    provider_mode: str = Field(description="Provider mode active during execution.")
+    stubbed: bool = Field(description="Whether execution was handled by a stub provider path.")
+    message: str = Field(description="Human-readable execution message returned by the provider.")
+    structured_output: dict[str, object] = Field(
+        default_factory=dict,
+        description="Structured execution payload emitted by the provider layer.",
+    )
