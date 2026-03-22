@@ -98,3 +98,57 @@ def test_execute_task_persists_sorted_audit_context_keys(mocker: MockerFixture) 
     assert audit_record.caller_app == "lotus-manage"
     assert audit_record.correlation_id == "corr-123"
     assert audit_record.prompt_version == "foundation.explain.v1"
+
+
+def test_execute_task_runs_bounded_knowledge_search() -> None:
+    response = execute_task(
+        TaskExecutionRequest(
+            task_id="knowledge_search.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ks-123"),
+            context=TaskContextEnvelope(
+                summary="Search Lotus knowledge sources",
+                payload={
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                source_refs=["lotus-manage:knowledge-search:001"],
+            ),
+            expected_output_label=OutputLabel.RETRIEVAL_ANSWER,
+        )
+    )
+
+    assert response.status == "COMPLETED"
+    assert response.task_id == "knowledge_search.v1"
+    assert response.output_label == OutputLabel.RETRIEVAL_ANSWER
+    assert response.audit.stubbed is False
+    assert response.audit.prompt_version == "foundation.knowledge_search.v1"
+    assert response.audit.provider_mode == "catalog_only"
+    assert response.result.structured_output["provider_id"] == "retrieval.catalog"
+    assert response.result.structured_output["catalog_only"] is True
+    assert response.result.structured_output["query"] == "shared ai platform service"
+    assert response.result.structured_output["hit_count"] >= 1
+    assert response.result.structured_output["hits"][0]["source_id"] == "lotus-platform-rfcs"
+
+
+def test_execute_task_rejects_invalid_knowledge_search_payload() -> None:
+    try:
+        execute_task(
+            TaskExecutionRequest(
+                task_id="knowledge_search.v1",
+                input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+                caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ks-124"),
+                context=TaskContextEnvelope(
+                    summary="Search Lotus knowledge sources",
+                    payload={"query": "", "limit": 3},
+                    source_refs=[],
+                ),
+                expected_output_label=OutputLabel.RETRIEVAL_ANSWER,
+            )
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 422
+        assert "context.payload.query" in str(exc.detail)
+    else:
+        raise AssertionError("Expected HTTPException for invalid knowledge-search payload")

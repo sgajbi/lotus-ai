@@ -160,6 +160,10 @@ The initial enabled subset is intentionally small: Lotus platform RFCs and lotus
 architecture documents are searchable through the catalog-only path, while other staged
 sources remain disabled until they are explicitly promoted.
 
+`knowledge_search.v1` now uses that same bounded retrieval path directly, so the task
+execution surface has a real governed knowledge-search capability instead of a generic
+placeholder for retrieval-class work.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

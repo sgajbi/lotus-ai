@@ -12,6 +12,11 @@ Provide a governed, contract-first task execution API that Lotus apps can integr
 
 During foundation phase, supported tasks return deterministic stub results.
 
+Exception:
+
+1. `knowledge_search.v1` now returns bounded catalog-only retrieval hits from the enabled
+   staged-source subset instead of the generic text stub.
+
 This is intentional:
 
 1. downstream apps can integrate early,
@@ -66,8 +71,16 @@ Supported enabled tasks in foundation phase:
 3. `classify.v1`
 4. `extract.v1`
 5. `generate_structured.v1`
+6. `knowledge_search.v1`
 
-Retrieval tasks remain registered but disabled until retrieval infrastructure is ready.
+`knowledge_search.v1` expects retrieval-specific context in `context.payload`:
+
+1. required `query: string`
+2. optional `source_ids: string[]`
+3. optional `limit: int` between `1` and `20`
+
+`knowledge_answer.v1` remains registered but disabled until there is a real answer-generation path
+on top of governed retrieval.
 
 ## Error Behavior
 

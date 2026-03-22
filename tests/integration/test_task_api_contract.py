@@ -150,3 +150,42 @@ def test_audit_record_route_returns_not_found_for_unknown_request(client: TestCl
         response.json()["detail"]
         == "No lotus-ai audit record found for request_id: missing_request_id"
     )
+
+
+def test_task_execute_contract_supports_bounded_knowledge_search(client: TestClient) -> None:
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "knowledge_search.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-knowledge-1",
+                "requested_by": "ops.user@lotus",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Search Lotus knowledge sources",
+                "payload": {
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                "source_refs": ["lotus-manage:knowledge-search:001"],
+            },
+            "expected_output_label": "RETRIEVAL_ANSWER",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["task_id"] == "knowledge_search.v1"
+    assert body["category"] == "knowledge_search"
+    assert body["output_label"] == "RETRIEVAL_ANSWER"
+    assert body["audit"]["stubbed"] is False
+    assert body["audit"]["provider_mode"] == "catalog_only"
+    assert body["audit"]["prompt_version"] == "foundation.knowledge_search.v1"
+    assert body["result"]["structured_output"]["provider_id"] == "retrieval.catalog"
+    assert body["result"]["structured_output"]["catalog_only"] is True
+    assert body["result"]["structured_output"]["hit_count"] >= 1
+    assert body["result"]["structured_output"]["hits"][0]["source_id"] == "lotus-platform-rfcs"
