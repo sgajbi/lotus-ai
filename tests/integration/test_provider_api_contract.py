@@ -3,11 +3,34 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.config import settings
+from app.contracts.providers import ProviderAdapterKind, ProviderExecutionResponse
+from app.services.provider_budget_policy import record_provider_spend
 from app.services.provider_quota_policy import enforce_provider_quota
 from app.services.provider_request_builder import build_provider_execution_request
 from app.services.task_execution_pipeline import validate_task_request
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.unit.test_task_executor import _request
+
+
+def _budget_response(cost: float | None, *, stubbed: bool = False) -> ProviderExecutionResponse:
+    return ProviderExecutionResponse(
+        provider_id="text.openai",
+        provider_mode="openai",
+        adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
+        failure_category=None,
+        timeout_ms=4000,
+        retry_count=0,
+        max_output_tokens=512,
+        model_id="gpt-5.4",
+        provider_request_id="req-budget-contract-1",
+        input_tokens=100,
+        output_tokens=200,
+        total_tokens=300,
+        estimated_cost_usd=cost,
+        stubbed=stubbed,
+        message="live response",
+        structured_output={},
+    )
 
 
 def test_provider_catalog_route(client: TestClient) -> None:
@@ -94,6 +117,29 @@ def test_provider_budget_policy_route(client: TestClient) -> None:
     assert body["budget_state"] == "NOT_ENFORCED"
     assert body["current_spend_usd"] == 0.0
     assert body["remaining_budget_usd"] is None
+
+
+def test_provider_budget_policy_route_reports_durable_sql_backed_spend(
+    client: TestClient, tmp_path: Path
+) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-budget.db'}"
+    settings.live_text_budget_enforced = True
+    settings.live_text_input_cost_per_1k_tokens = 0.01
+    settings.live_text_output_cost_per_1k_tokens = 0.03
+    settings.live_text_soft_budget_usd = 0.5
+    settings.live_text_hard_budget_usd = 1.0
+    upgrade_database_to_head(settings.database_url)
+
+    record_provider_spend(_budget_response(0.75))
+
+    response = client.get("/platform/providers/budget-policy")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["current_spend_usd"] == 0.75
+    assert body["budget_state"] == "SOFT_LIMIT_REACHED"
+    assert body["remaining_budget_usd"] == 0.25
 
 
 def test_provider_operations_status_route(client: TestClient) -> None:

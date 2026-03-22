@@ -10,8 +10,10 @@ from app.contracts.providers import (
     ProviderFailureCategory,
 )
 from app.providers.base import ProviderExecutionError
+from app.repositories.provider_operations_repository import ProviderBudgetStateRecord
+from app.services.provider_operations_store import get_provider_operations_store
 
-_CURRENT_SPEND_USD = 0.0
+_BUDGET_KEY = "live_text_generation"
 
 
 @dataclass(frozen=True)
@@ -48,7 +50,7 @@ def build_provider_budget_policy() -> ProviderBudgetPolicyResponse:
 def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
     findings: list[str] = []
     configuration_valid = True
-    current_spend_usd = round(_CURRENT_SPEND_USD, 8)
+    current_spend_usd = _load_current_spend_usd()
     soft_budget_usd = settings.live_text_soft_budget_usd
     hard_budget_usd = settings.live_text_hard_budget_usd
 
@@ -106,7 +108,7 @@ def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
         usage_to_budget_notes=[
             "Tracked spend is derived only from structured live-provider cost evidence emitted by successful provider responses.",
             "Soft budget posture is advisory and inspectable; hard budget posture is blocking when enforcement is enabled.",
-            "Current slice uses deterministic in-process spend accounting so contract semantics are stable before persistent budget tracking is introduced.",
+            "Tracked spend now flows through the configured provider-operations store so budget posture can remain durable when the SQL-backed provider-operations path is enabled.",
         ],
     )
 
@@ -128,17 +130,31 @@ def enforce_provider_budget() -> None:
 
 
 def record_provider_spend(response: ProviderExecutionResponse) -> None:
-    global _CURRENT_SPEND_USD
     if response.stubbed:
         return
     if response.estimated_cost_usd is None:
         return
-    _CURRENT_SPEND_USD = round(_CURRENT_SPEND_USD + response.estimated_cost_usd, 8)
+    repository = get_provider_operations_store()
+    record = repository.get_budget_state(budget_key=_BUDGET_KEY)
+    current_spend_usd = 0.0 if record is None else record.current_spend_usd
+    repository.save_budget_state(
+        ProviderBudgetStateRecord(
+            budget_key=_BUDGET_KEY,
+            current_spend_usd=round(current_spend_usd + response.estimated_cost_usd, 8),
+            updated_at=_utcnow(),
+        )
+    )
 
 
 def reset_provider_budget_state() -> None:
-    global _CURRENT_SPEND_USD
-    _CURRENT_SPEND_USD = 0.0
+    repository = get_provider_operations_store()
+    repository.save_budget_state(
+        ProviderBudgetStateRecord(
+            budget_key=_BUDGET_KEY,
+            current_spend_usd=0.0,
+            updated_at=_utcnow(),
+        )
+    )
 
 
 def _resolve_budget_state(
@@ -158,3 +174,17 @@ def _resolve_budget_state(
     if soft_budget_usd is not None and current_spend_usd >= soft_budget_usd:
         return ProviderBudgetState.SOFT_LIMIT_REACHED
     return ProviderBudgetState.BELOW_SOFT_LIMIT
+
+
+def _load_current_spend_usd() -> float:
+    repository = get_provider_operations_store()
+    record = repository.get_budget_state(budget_key=_BUDGET_KEY)
+    if record is None:
+        return 0.0
+    return round(record.current_spend_usd, 8)
+
+
+def _utcnow() -> str:
+    from datetime import UTC, datetime
+
+    return datetime.now(UTC).isoformat()

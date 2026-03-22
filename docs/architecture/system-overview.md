@@ -189,6 +189,12 @@ inspection and blocking behavior can stay durable when the SQL-backed provider-o
 enabled. Budget and degradation state still remain on their existing in-memory control path until
 later RFC-0005 slices move them over deliberately.
 
+Provider budget enforcement has now also completed that cutover. Structured live-provider spend
+evidence now accumulates through the configured provider-operations store instead of process-local
+memory, so spend posture and hard-budget blocking can stay durable when the SQL-backed provider-ops
+path is enabled. Degradation state remains on its prior in-memory path until the next RFC-0005
+slice moves it over deliberately.
+
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
 

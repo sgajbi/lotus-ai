@@ -214,7 +214,7 @@ class ProviderBudgetPolicyResponse(BaseModel):
         description="Current provider budget state derived from configured limits and tracked spend."
     )
     current_spend_usd: float = Field(
-        description="Current in-process tracked live-provider spend in USD."
+        description="Current tracked live-provider spend in USD."
     )
     soft_budget_usd: float | None = Field(
         default=None,
