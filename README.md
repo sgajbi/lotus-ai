@@ -178,6 +178,7 @@ make lint
 make typecheck
 make openapi-gate
 make migration-smoke
+make runtime-mode-smoke
 make ci
 ```
 

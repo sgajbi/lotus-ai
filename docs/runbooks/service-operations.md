@@ -4,6 +4,7 @@
 
 - make lint
 - make typecheck
+- make runtime-mode-smoke
 - make ci
 - docker compose up --build
 
@@ -38,6 +39,8 @@ Expected operator flow for SQL-backed stores:
 2. verify `GET /platform/runtime-status`
 3. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
 4. only then proceed with rollout if readiness is `READY`
+
+CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
 
 ## Incident First Checks
 

@@ -87,9 +87,24 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+  runtime-mode-smoke:
+    name: Runtime Mode Smoke
+    needs: [lint-typecheck-security]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+      - name: Install
+        run: make install
+      - name: Verify SQL-backed runtime modes
+        run: make runtime-mode-smoke
+
   coverage-gate:
     name: Coverage Gate (Combined)
-    needs: [test-suites]
+    needs: [test-suites, runtime-mode-smoke]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
