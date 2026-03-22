@@ -74,6 +74,7 @@ Goals:
    - OpenAPI-derived documentation
 2. Support search and citation-backed knowledge answers.
 3. Keep source freshness and provenance explicit.
+4. Use PostgreSQL with `pgvector` as the first vector-store architecture.
 
 Delivery outcomes:
 

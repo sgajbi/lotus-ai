@@ -23,6 +23,12 @@ The current persistence posture is:
 - a SQLAlchemy-backed audit adapter available behind the same repository interface for durable storage,
 - explicit configuration to move between the two without changing API contracts.
 
+The current retrieval-storage decision is:
+
+- no vector store is wired yet,
+- the planned first vector store is PostgreSQL with `pgvector`,
+- we are intentionally avoiding a separate vector database until scale or workload evidence justifies it.
+
 ## What lotus-ai Does
 
 - LLM gateway and model routing
@@ -32,6 +38,23 @@ The current persistence posture is:
 - AI audit logging, cost tracking, and evaluations
 - reusable AI task APIs for explanation, summarization, extraction, classification, and structured generation
 - async AI run orchestration for longer jobs
+
+## Vector Store Direction
+
+`lotus-ai` will use PostgreSQL with `pgvector` as the first vector-store architecture.
+
+Why this is the current default:
+
+1. it fits the Lotus backend posture,
+2. it keeps operations simpler,
+3. it is sufficient for the first retrieval phases,
+4. it supports metadata filtering and provenance without introducing a separate retrieval runtime too early.
+
+What this means in practice:
+
+1. canonical durable database remains PostgreSQL,
+2. vector search lives beside the rest of the governed retrieval metadata,
+3. retrieval remains a Lotus-owned layer rather than a framework-owned abstraction.
 
 ## What lotus-ai Does Not Do
 
@@ -166,6 +189,7 @@ docker compose up --build
 - domain integration guide: `docs/guides/integration-guide.md`
 - task execution contract: `docs/guides/task-execution-contract.md`
 - prompt registry and audit: `docs/guides/prompt-registry-and-audit.md`
+- retrieval and vector store: `docs/guides/retrieval-and-vector-store.md`
 - evaluation strategy: `docs/evals/evaluation-strategy.md`
 - security and governance: `docs/security/security-and-governance.md`
 - service-local RFCs: `docs/rfcs/`

@@ -54,6 +54,23 @@ Owns:
 2. capability catalog assembly,
 3. future prompt and provider orchestration.
 
+### Retrieval
+
+- `src/app/retrieval/`
+
+Owns:
+
+1. retrieval-source definitions,
+2. chunking and indexing policies,
+3. embedding and vector-search orchestration,
+4. source provenance handling.
+
+Initial storage direction:
+
+1. PostgreSQL as the canonical durable database,
+2. `pgvector` as the first vector-store extension,
+3. no separate vector database unless later evidence justifies it.
+
 ### Routers
 
 - `src/app/routers/`
