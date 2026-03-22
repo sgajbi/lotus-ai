@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from app.contracts.evals import (
     EvaluationAssetStatus,
@@ -154,6 +154,7 @@ def _validate_evidence_categories(evidence_categories: Any) -> None:
             )
         category_id = item.get("category_id")
         _require_non_empty_string(category_id, field_name="evidence_categories[].category_id")
+        category_id = cast(str, category_id)
         _require_non_empty_string(
             item.get("description"), field_name="evidence_categories[].description"
         )
@@ -177,6 +178,7 @@ def _validate_fixture_families(*, repo_root: Path, fixture_families: Any) -> Non
             )
         fixture_id = item.get("fixture_id")
         _require_non_empty_string(fixture_id, field_name="fixture_families[].fixture_id")
+        fixture_id = cast(str, fixture_id)
         _require_non_empty_string(
             item.get("description"), field_name="fixture_families[].description"
         )
@@ -235,6 +237,7 @@ def _validate_fixture_file(*, repo_root: Path, fixture_id: str, manifest_path: s
             )
         case_id = case.get("case_id")
         _require_non_empty_string(case_id, field_name=f"{manifest_path}.cases[].case_id")
+        case_id = cast(str, case_id)
         _require_non_empty_string(
             case.get("summary"), field_name=f"{manifest_path}.cases[].summary"
         )

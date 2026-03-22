@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Generator
+
 import pytest
 
 from app.config import settings
@@ -9,7 +11,7 @@ from app.services.retrieval_store import reset_retrieval_repository
 
 
 @pytest.fixture(autouse=True)
-def reset_runtime_settings() -> None:
+def reset_runtime_settings() -> Generator[None, None, None]:
     original_values = {
         "provider_mode": settings.provider_mode,
         "embedding_provider_mode": settings.embedding_provider_mode,

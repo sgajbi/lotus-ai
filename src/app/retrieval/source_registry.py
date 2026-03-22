@@ -7,6 +7,8 @@ from app.config import settings
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
 from app.services.retrieval_store import get_retrieval_repository
 
+__all__ = ["VECTOR_STORE_STRATEGY", "list_retrieval_sources"]
+
 
 def list_retrieval_sources() -> RetrievalSourceCatalogResponse:
     return RetrievalSourceCatalogResponse(

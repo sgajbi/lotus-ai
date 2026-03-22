@@ -29,3 +29,36 @@ def test_get_audit_store_returns_sqlalchemy_repository(tmp_path: Path) -> None:
     settings.audit_store_mode = "memory"
     settings.database_url = None
     reset_audit_store_cache()
+
+
+def test_get_audit_store_rejects_sqlalchemy_mode_without_database_url() -> None:
+    settings.audit_store_mode = "sqlalchemy"
+    settings.database_url = None
+    reset_audit_store_cache()
+
+    try:
+        get_audit_store()
+    except RuntimeError as exc:
+        assert "LOTUS_AI_DATABASE_URL is required" in str(exc)
+    else:
+        raise AssertionError(
+            "Expected RuntimeError when sqlalchemy audit store has no database URL"
+        )
+
+    settings.audit_store_mode = "memory"
+    reset_audit_store_cache()
+
+
+def test_get_audit_store_rejects_unsupported_mode() -> None:
+    settings.audit_store_mode = "unsupported"
+    reset_audit_store_cache()
+
+    try:
+        get_audit_store()
+    except RuntimeError as exc:
+        assert "Unsupported LOTUS_AI_AUDIT_STORE_MODE" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for unsupported audit store mode")
+
+    settings.audit_store_mode = "memory"
+    reset_audit_store_cache()

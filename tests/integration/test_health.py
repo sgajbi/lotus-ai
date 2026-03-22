@@ -710,6 +710,18 @@ def test_audit_record_route_returns_saved_execution() -> None:
     ]
 
 
+def test_audit_record_route_returns_not_found_for_unknown_request() -> None:
+    client = TestClient(app)
+
+    response = client.get("/ai/audit/missing_request_id")
+
+    assert response.status_code == 404
+    assert (
+        response.json()["detail"]
+        == "No lotus-ai audit record found for request_id: missing_request_id"
+    )
+
+
 def test_retrieval_source_catalog_route() -> None:
     client = TestClient(app)
 

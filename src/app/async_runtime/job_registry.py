@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from app.contracts.async_runtime import AsyncJobArtifactDescriptor
 from app.evals.run_registry import load_evaluation_run_artifacts
@@ -40,6 +40,7 @@ def validate_async_job_artifacts(*, registry_payload: dict[str, Any]) -> None:
             )
         job_id = job.get("job_id")
         _require_non_empty_string(job_id, field_name="jobs[].job_id")
+        job_id = cast(str, job_id)
         if job_id in job_ids:
             raise AsyncJobArtifactValidationError(f"Duplicate async job artifact id '{job_id}'.")
         job_ids.add(job_id)

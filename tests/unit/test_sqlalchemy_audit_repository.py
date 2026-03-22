@@ -35,3 +35,14 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
     loaded = repository.get("air_sql_1")
     assert loaded == record
     assert repository.get("air_missing") is None
+
+
+def test_sqlalchemy_audit_repository_creates_parent_directory_for_sqlite_file(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "nested" / "db" / "lotus-ai-audit.db"
+    database_url = f"sqlite:///{db_path}"
+
+    SqlAlchemyAuditRepository(database_url)
+
+    assert db_path.parent.is_dir()

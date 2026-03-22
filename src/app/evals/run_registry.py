@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from app.contracts.evals import EvaluationRunArtifactDescriptor
 from app.evals.fixture_manifest import load_evaluation_fixture_manifest
@@ -47,6 +47,7 @@ def validate_evaluation_run_artifacts(
             )
         run_id = run.get("run_id")
         _require_non_empty_string(run_id, field_name="runs[].run_id")
+        run_id = cast(str, run_id)
         if run_id in run_ids:
             raise EvaluationRunArtifactValidationError(
                 f"Duplicate evaluation run artifact id '{run_id}'."
@@ -77,6 +78,7 @@ def validate_evaluation_run_artifacts(
                 )
             seam_id = seam.get("seam_id")
             _require_non_empty_string(seam_id, field_name=f"{run_id}.seam_coverage[].seam_id")
+            seam_id = cast(str, seam_id)
             if seam_id in seam_ids:
                 raise EvaluationRunArtifactValidationError(
                     f"Evaluation run artifact '{run_id}' contains duplicate seam_id '{seam_id}'."
@@ -108,6 +110,8 @@ def validate_evaluation_run_artifacts(
                 seam_case_count,
                 field_name=f"{run_id}.{seam_id}.staged_case_count",
             )
+            seam_fixture_count = cast(int, seam_fixture_count)
+            seam_case_count = cast(int, seam_case_count)
             if seam_fixture_count != len(fixture_ids):
                 raise EvaluationRunArtifactValidationError(
                     f"Evaluation run artifact '{run_id}' seam '{seam_id}' has staged_fixture_count "

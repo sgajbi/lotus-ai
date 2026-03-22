@@ -73,3 +73,32 @@ def test_validate_async_job_artifacts_rejects_unknown_related_evaluation_run() -
 
     with pytest.raises(AsyncJobArtifactValidationError, match="unknown evaluation run id"):
         validate_async_job_artifacts(registry_payload=payload)
+
+
+def test_validate_async_job_artifacts_rejects_non_list_jobs() -> None:
+    with pytest.raises(AsyncJobArtifactValidationError, match="jobs as a list"):
+        validate_async_job_artifacts(registry_payload={"jobs": {}})
+
+
+def test_validate_async_job_artifacts_rejects_non_object_job_entry() -> None:
+    with pytest.raises(AsyncJobArtifactValidationError, match="must be an object"):
+        validate_async_job_artifacts(registry_payload={"jobs": ["bad-entry"]})
+
+
+def test_validate_async_job_artifacts_rejects_blank_job_type() -> None:
+    payload = {
+        "jobs": [
+            {
+                "job_id": "asyncjob_blank_type",
+                "job_type": "",
+                "status": "QUEUED",
+                "submitted_at": "2026-03-22T10:15:00Z",
+                "caller_app": "lotus-platform",
+                "execution_path": "future_worker_queue",
+                "notes": "Blank job type.",
+            }
+        ]
+    }
+
+    with pytest.raises(AsyncJobArtifactValidationError, match="job_type"):
+        validate_async_job_artifacts(registry_payload=payload)

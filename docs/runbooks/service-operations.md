@@ -8,6 +8,8 @@
 - make ci
 - docker compose up --build
 
+`make ci` runs the security audit inside a temporary project-only virtual environment. This is intentional: the security gate should evaluate the `lotus-ai` dependency set, not unrelated packages installed in a shared developer workstation environment.
+
 ## Health and Readiness
 
 - Liveness: /health/live

@@ -42,3 +42,26 @@ def test_execute_text_generation_rejects_unsupported_provider_mode() -> None:
 
     assert exc_info.value.status_code == 503
     assert "not supported in the current phase" in str(exc_info.value.detail)
+
+    settings.provider_mode = "disabled"
+
+
+def test_execute_text_generation_routes_stub_mode_through_stub_provider() -> None:
+    settings.provider_mode = "stub"
+
+    response = execute_text_generation(
+        ProviderExecutionRequest(
+            task_id="summarize.v1",
+            caller_app="lotus-advise",
+            prompt_version="foundation.summarize.v1",
+            context_summary="Summarize proposal workflow",
+            context_payload={"status": "PENDING_REVIEW"},
+            source_refs=[],
+        )
+    )
+
+    assert response.provider_id == "text.stub"
+    assert response.provider_mode == "stub"
+    assert response.stubbed is True
+
+    settings.provider_mode = "disabled"

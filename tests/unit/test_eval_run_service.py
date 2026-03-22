@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 
+from app.contracts.evals import EvaluationRunStatus
 from app.services.eval_run_service import build_evaluation_run_catalog, build_evaluation_run_detail
 
 
@@ -9,8 +10,8 @@ def test_evaluation_run_catalog_reports_recorded_artifacts() -> None:
     assert catalog.service == "lotus-ai"
     assert catalog.run_count == 2
     assert catalog.latest_run_id == "foundation_eval_2026_03_22_001"
-    assert catalog.status_counts["RECORDED"] == 1
-    assert catalog.status_counts["SUPERSEDED"] == 1
+    assert catalog.status_counts[EvaluationRunStatus.RECORDED] == 1
+    assert catalog.status_counts[EvaluationRunStatus.SUPERSEDED] == 1
     assert catalog.runs[0].manifest_version == "foundation.v1"
     assert catalog.runs[0].staged_case_count == 12
     assert catalog.runs[1].status == "SUPERSEDED"

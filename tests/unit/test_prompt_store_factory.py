@@ -29,3 +29,36 @@ def test_get_prompt_repository_returns_sqlalchemy_repository(tmp_path: Path) -> 
     settings.prompt_store_mode = "memory"
     settings.database_url = None
     reset_prompt_store_cache()
+
+
+def test_get_prompt_repository_rejects_sqlalchemy_mode_without_database_url() -> None:
+    settings.prompt_store_mode = "sqlalchemy"
+    settings.database_url = None
+    reset_prompt_store_cache()
+
+    try:
+        get_prompt_repository()
+    except RuntimeError as exc:
+        assert "LOTUS_AI_DATABASE_URL is required" in str(exc)
+    else:
+        raise AssertionError(
+            "Expected RuntimeError when sqlalchemy prompt store has no database URL"
+        )
+
+    settings.prompt_store_mode = "memory"
+    reset_prompt_store_cache()
+
+
+def test_get_prompt_repository_rejects_unsupported_mode() -> None:
+    settings.prompt_store_mode = "unsupported"
+    reset_prompt_store_cache()
+
+    try:
+        get_prompt_repository()
+    except RuntimeError as exc:
+        assert "Unsupported LOTUS_AI_PROMPT_STORE_MODE" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for unsupported prompt store mode")
+
+    settings.prompt_store_mode = "memory"
+    reset_prompt_store_cache()

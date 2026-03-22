@@ -80,3 +80,17 @@ def test_startup_enforce_policy_blocks_unmigrated_sql_store(tmp_path: Path) -> N
         with pytest.raises(RuntimeError, match="startup readiness policy blocked startup"):
             with TestClient(app):
                 pass
+
+
+def test_health_ready_returns_draining_when_service_is_marked_draining() -> None:
+    with override_runtime_settings(
+        startup_readiness_policy="warn",
+        readiness_probe_policy="observe",
+    ):
+        with TestClient(app) as client:
+            app.state.is_draining = True
+            ready_status = client.get("/health/ready")
+            app.state.is_draining = False
+
+    assert ready_status.status_code == 503
+    assert ready_status.json()["status"] == "draining"

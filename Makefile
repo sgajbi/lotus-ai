@@ -5,14 +5,14 @@ install:
 	python -m pip install -e ".[dev]"
 
 lint:
-	ruff check .
-	ruff format --check .
+	python -m ruff check .
+	python -m ruff format --check .
 
 monetary-float-guard:
 	python scripts/check_monetary_float_usage.py
 
 typecheck:
-	mypy --config-file mypy.ini
+	python -m mypy --config-file mypy.ini
 
 openapi-gate:
 	python scripts/openapi_quality_gate.py
@@ -55,7 +55,7 @@ test-coverage:
 	python -m coverage report --fail-under=99
 
 security-audit:
-	python -m pip_audit
+	python scripts/run_security_audit.py
 
 check: lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke runtime-mode-smoke test
 

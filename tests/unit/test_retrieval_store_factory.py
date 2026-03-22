@@ -29,3 +29,36 @@ def test_get_retrieval_repository_returns_sqlalchemy_repository(tmp_path: Path) 
     settings.retrieval_store_mode = "memory"
     settings.database_url = None
     reset_retrieval_repository()
+
+
+def test_get_retrieval_repository_rejects_sqlalchemy_mode_without_database_url() -> None:
+    settings.retrieval_store_mode = "sqlalchemy"
+    settings.database_url = None
+    reset_retrieval_repository()
+
+    try:
+        get_retrieval_repository()
+    except RuntimeError as exc:
+        assert "LOTUS_AI_DATABASE_URL is required" in str(exc)
+    else:
+        raise AssertionError(
+            "Expected RuntimeError when sqlalchemy retrieval store has no database URL"
+        )
+
+    settings.retrieval_store_mode = "memory"
+    reset_retrieval_repository()
+
+
+def test_get_retrieval_repository_rejects_unsupported_mode() -> None:
+    settings.retrieval_store_mode = "unsupported"
+    reset_retrieval_repository()
+
+    try:
+        get_retrieval_repository()
+    except RuntimeError as exc:
+        assert "Unsupported LOTUS_AI_RETRIEVAL_STORE_MODE" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for unsupported retrieval store mode")
+
+    settings.retrieval_store_mode = "memory"
+    reset_retrieval_repository()

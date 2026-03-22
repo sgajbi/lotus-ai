@@ -196,6 +196,12 @@ The service also follows a strict scalability model:
 3. long-running work scales through worker processes,
 4. internal seams stay clean enough to split into separate deployables later without changing external contracts.
 
+The local security audit posture is also intentionally isolated:
+
+1. `make ci` runs dependency audit inside a temporary project-only virtual environment,
+2. this avoids false positives from unrelated machine-wide Python packages,
+3. the audit still fails on vulnerabilities in the actual `lotus-ai` dependency set.
+
 ## Framework Stance
 
 `lotus-ai` is not being built around a large AI orchestration framework as its core architecture.

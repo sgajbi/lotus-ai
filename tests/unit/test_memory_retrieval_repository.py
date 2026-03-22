@@ -18,3 +18,24 @@ def test_memory_retrieval_repository_returns_seeded_document_and_chunks() -> Non
     assert document is not None
     assert document.source_id == "lotus-platform-rfcs"
     assert any(chunk.chunk_id == "chunk_rfc_0069_0001" for chunk in chunks)
+
+
+def test_memory_retrieval_repository_returns_none_or_empty_for_unknown_records() -> None:
+    repository = InMemoryRetrievalRepository()
+
+    assert repository.get_source("missing-source") is None
+    assert repository.get_document("missing-document") is None
+    assert repository.get_index_job("missing-job") is None
+    assert repository.list_documents_for_source("missing-source") == []
+    assert repository.list_chunks_for_document("missing-document") == []
+
+
+def test_memory_retrieval_repository_marks_empty_sources_as_pending_index_jobs() -> None:
+    repository = InMemoryRetrievalRepository()
+
+    job = repository.get_index_job("retjob_lotus_openapi_derived")
+
+    assert job is not None
+    assert job.source_id == "lotus-openapi-derived"
+    assert job.status == "PENDING"
+    assert job.document_count == 0

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response, status
@@ -23,7 +26,7 @@ ROUNDING_POLICY_VERSION = "v1"
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     evaluation = apply_startup_readiness_policy()
     app.state.startup_readiness_blocking = evaluation.blocking
     app.state.startup_readiness_findings = evaluation.findings
