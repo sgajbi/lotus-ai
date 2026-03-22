@@ -107,5 +107,9 @@ The second concrete staged fixture asset now exists at:
 
 1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/summarize.v1/basic_cases.json)
 
-This gives the platform real file-backed fixture families for both `explain.v1` and `summarize.v1`
-while the rest of the evaluation inventory remains staged or documented.
+The first retrieval-oriented staged fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/retrieval.search/basic_cases.json)
+
+This gives the platform real file-backed fixture families for `explain.v1`, `summarize.v1`, and
+governed retrieval citation/refusal behavior while the remaining inventory stays documented.

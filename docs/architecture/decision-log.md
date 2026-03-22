@@ -407,3 +407,21 @@ Current posture:
 1. `make eval-manifest-gate` validates the manifest and referenced fixture files,
 2. CI now runs the evaluation manifest gate alongside OpenAPI and migration checks,
 3. runtime manifest loading uses the same validation rules as the CLI gate.
+
+## Decision 25: Retrieval Evaluation Should Be Staged Before Live Search
+
+Decision:
+
+Retrieval citation and refusal fixtures are staged before live retrieval execution is enabled.
+
+Why:
+
+1. provenance and refusal behavior are core governance concerns for retrieval and should be specified before vector search turns on,
+2. staged fixtures let us define expected citation posture even while search remains intentionally disabled,
+3. this keeps retrieval activation aligned with the same evidence-first rollout model used for prompts, safety, and task execution.
+
+Current posture:
+
+1. `retrieval_citation_examples` is now backed by a fixture file,
+2. evaluation runtime status counts retrieval cases alongside explanation and summarization cases,
+3. live retrieval execution remains disabled until the retrieval gateway is explicitly activated.
