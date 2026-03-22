@@ -192,6 +192,24 @@ Current posture:
 2. the endpoint returns explicit blocking findings and a governed activation path,
 3. foundation phase remains not activatable until a separate provider rollout slice changes execution posture.
 
+## Decision 11B: Provider Runbook Readiness Should Be Exposed As A Separate Operational Contract
+
+Decision:
+
+`lotus-ai` exposes provider runbook readiness separately from provider technical activation readiness.
+
+Why:
+
+1. live-provider rollout needs operational preparedness that is distinct from provider configuration and policy posture,
+2. bank-grade activation review should explicitly cover vendor escalation, rate-limit response, and observability readiness,
+3. separating runbook readiness keeps provider activation governance explicit and auditable.
+
+Current posture:
+
+1. `/platform/providers/runbook-readiness` exposes required provider operational readiness items,
+2. required runbook items remain not ready in foundation phase,
+3. live-provider activation should not be considered complete in future rollout slices without both technical and runbook readiness.
+
 ## Decision 12: Safety Posture Must Be Inspectable
 
 Decision:

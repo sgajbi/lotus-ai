@@ -47,6 +47,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/providers/activation-readiness"]["get"]["operationId"] == (
         "getProviderActivationReadiness"
     )
+    assert spec["paths"]["/platform/providers/runbook-readiness"]["get"]["operationId"] == (
+        "getProviderRunbookReadiness"
+    )
     assert spec["paths"]["/platform/safety/policy"]["get"]["operationId"] == "getSafetyPolicy"
     assert spec["paths"]["/platform/safety/runtime-status"]["get"]["operationId"] == (
         "getSafetyRuntimeStatus"

@@ -23,6 +23,7 @@ The current execution posture is:
 - the provider gateway currently routes only to documented stub providers,
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
+- provider runbook readiness is now exposed through a dedicated operational-readiness endpoint,
 - safety policy exposes task-level output-label and redaction posture,
 - task audit records now persist the applied safety posture for every execution,
 - runtime safety status exposes which controls are enforced versus documented-only,

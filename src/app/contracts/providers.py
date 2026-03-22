@@ -122,3 +122,29 @@ class ProviderActivationReadinessResponse(BaseModel):
     activation_path: list[str] = Field(
         description="Governed high-level path required before live provider execution can be enabled."
     )
+
+
+class ProviderRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(description="Stable provider runbook readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before live provider activation."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class ProviderRunbookReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the provider runbook readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    runbook_ready: bool = Field(
+        description="Whether provider operational runbook readiness is currently sufficient for activation."
+    )
+    required_item_count: int = Field(
+        description="Number of provider runbook items currently required for activation."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required provider runbook items currently marked complete."
+    )
+    items: list[ProviderRunbookReadinessItem] = Field(
+        description="Governed provider operational runbook readiness items."
+    )
