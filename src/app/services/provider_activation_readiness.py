@@ -25,7 +25,7 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
     rollout_posture = build_provider_rollout_posture()
     live_execution_state = build_provider_live_execution_state()
     blocking_findings = [
-        "Embedding provider activation remains blocked until retrieval execution and indexing controls are live.",
+        "Live-provider activation remains blocked until provider rollout, quota, budget, degradation, and governance controls all remain consistent together.",
     ]
     if configuration.rollout_state == ProviderRolloutState.ALLOWLISTED_DISABLED:
         blocking_findings.append(

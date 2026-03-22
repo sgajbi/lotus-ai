@@ -115,6 +115,7 @@ class ProviderBudgetState(str, Enum):
 
 class ProviderOperationsState(str, Enum):
     NORMAL = "NORMAL"
+    OPERATIONS_INVALID = "OPERATIONS_INVALID"
     QUOTA_BLOCKED = "QUOTA_BLOCKED"
     BUDGET_SOFT_LIMIT = "BUDGET_SOFT_LIMIT"
     BUDGET_BLOCKED = "BUDGET_BLOCKED"

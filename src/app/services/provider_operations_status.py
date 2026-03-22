@@ -5,6 +5,7 @@ from app.contracts.providers import (
     ProviderBudgetState,
     ProviderOperationsState,
     ProviderOperationsStatusResponse,
+    ProviderQuotaScope,
 )
 from app.services.provider_budget_policy import build_provider_budget_policy
 from app.services.provider_degradation_state import build_provider_degradation_status
@@ -40,8 +41,11 @@ def build_provider_operations_status() -> ProviderOperationsStatusResponse:
             operations_state=operations_state,
             live_execution_enabled=live_execution_state.live_execution_enabled,
             degradation_status=degradation_status,
+            blocking_reasons=blocking_reasons,
         ),
     )
+
+
 def _resolve_provider_operations_state(
     *,
     live_execution_state: object,
@@ -69,9 +73,26 @@ def _resolve_provider_operations_state(
             blocking_reasons.extend(getattr(budget_policy, "findings"))
         return (ProviderOperationsState.ROLLOUT_BLOCKED, blocking_reasons)
 
-    if quota_enforced and quotas and any(quota.remaining_request_count == 0 for quota in quotas):
+    if quota_enforced and not quota_valid:
+        blocking_reasons.extend(getattr(quota_policy, "findings"))
+        return (ProviderOperationsState.OPERATIONS_INVALID, blocking_reasons)
+
+    if budget_enforced and not budget_valid:
+        blocking_reasons.extend(getattr(budget_policy, "findings"))
+        return (ProviderOperationsState.OPERATIONS_INVALID, blocking_reasons)
+
+    degradation_enforced = getattr(degradation_status, "enforcement_enabled")
+    degradation_valid = getattr(degradation_status, "configuration_valid")
+    degradation_status_value = getattr(degradation_status, "status")
+    degradation_findings = getattr(degradation_status, "findings")
+
+    if degradation_enforced and (not degradation_valid or degradation_status_value == "INVALID"):
+        blocking_reasons.extend(degradation_findings)
+        return (ProviderOperationsState.OPERATIONS_INVALID, blocking_reasons)
+
+    if quota_enforced and _default_quota_exhausted(quotas):
         blocking_reasons.append(
-            "At least one configured live-provider quota scope is currently exhausted."
+            "The default live-provider quota scope is currently exhausted, so all live-provider execution is blocked."
         )
         return (ProviderOperationsState.QUOTA_BLOCKED, blocking_reasons)
 
@@ -86,9 +107,6 @@ def _resolve_provider_operations_state(
             "Live-provider spend has reached the configured soft budget threshold."
         )
         return (ProviderOperationsState.BUDGET_SOFT_LIMIT, blocking_reasons)
-
-    degradation_status_value = getattr(degradation_status, "status")
-    degradation_findings = getattr(degradation_status, "findings")
 
     if degradation_status_value == "DEGRADED_UPSTREAM":
         blocking_reasons.extend(degradation_findings)
@@ -106,9 +124,10 @@ def _build_provider_operations_summary(
     operations_state: ProviderOperationsState,
     live_execution_enabled: bool,
     degradation_status: object,
+    blocking_reasons: list[str],
 ) -> list[str]:
     degradation_status_value = getattr(degradation_status, "status")
-    return [
+    summary = [
         f"Provider operations state is `{operations_state.value}`.",
         (
             "Live-provider execution is currently enabled for at least one allowlisted path."
@@ -116,8 +135,19 @@ def _build_provider_operations_summary(
             else "Live-provider execution is currently not enabled; operator posture remains rollout-blocked."
         ),
         (
-            "Upstream degradation posture remains documented-only in the current slice."
+            "Upstream degradation posture remains documented-only under the current configuration."
             if degradation_status_value == "DOCUMENTED_ONLY"
             else "Upstream degradation posture is actively enforced."
         ),
     ]
+    if blocking_reasons:
+        summary.append(f"Current blocking or warning detail: {blocking_reasons[0]}")
+    return summary
+
+
+def _default_quota_exhausted(quotas: list[object]) -> bool:
+    return any(
+        getattr(quota, "scope", None) == ProviderQuotaScope.DEFAULT
+        and getattr(quota, "remaining_request_count", None) == 0
+        for quota in quotas
+    )

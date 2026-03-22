@@ -116,12 +116,13 @@ This RFC extends provider posture with operational sub-states that sit alongside
 Provider operations status must distinguish:
 
 1. `NORMAL`
-2. `QUOTA_BLOCKED`
-3. `BUDGET_SOFT_LIMIT`
-4. `BUDGET_BLOCKED`
-5. `DEGRADED_UPSTREAM`
-6. `CIRCUIT_OPEN`
-7. `ROLLOUT_BLOCKED`
+2. `OPERATIONS_INVALID`
+3. `QUOTA_BLOCKED`
+4. `BUDGET_SOFT_LIMIT`
+5. `BUDGET_BLOCKED`
+6. `DEGRADED_UPSTREAM`
+7. `CIRCUIT_OPEN`
+8. `ROLLOUT_BLOCKED`
 
 These states are operator-facing truth states. They must not be inferred from prose or reconstructed ad hoc from unrelated endpoints.
 

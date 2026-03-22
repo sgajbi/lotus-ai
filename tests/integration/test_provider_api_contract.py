@@ -76,7 +76,8 @@ def test_provider_operations_status_route(client: TestClient) -> None:
     assert body["quota_policy"]["quota_enforced"] is False
     assert body["budget_policy"]["budget_enforced"] is False
     assert body["degradation_status"]["status"] == "DOCUMENTED_ONLY"
-    assert len(body["summary"]) == 3
+    assert len(body["summary"]) == 4
+    assert "Current blocking or warning detail:" in body["summary"][-1]
 
 
 def test_provider_activation_readiness_route(client: TestClient) -> None:

@@ -21,11 +21,12 @@ For live-provider integrations, teams should read `/platform/providers/operation
 operator truth for:
 
 1. `ROLLOUT_BLOCKED`
-2. `QUOTA_BLOCKED`
-3. `BUDGET_SOFT_LIMIT`
-4. `BUDGET_BLOCKED`
-5. `DEGRADED_UPSTREAM`
-6. `CIRCUIT_OPEN`
+2. `OPERATIONS_INVALID`
+3. `QUOTA_BLOCKED`
+4. `BUDGET_SOFT_LIMIT`
+5. `BUDGET_BLOCKED`
+6. `DEGRADED_UPSTREAM`
+7. `CIRCUIT_OPEN`
 
 That surface is more authoritative than inferring provider health from individual task failures.
 

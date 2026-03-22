@@ -1,5 +1,9 @@
 from app.config import settings
-from app.contracts.providers import ProviderFailureCategory, ProviderOperationsState
+from app.contracts.providers import (
+    ProviderExecutionRequest,
+    ProviderFailureCategory,
+    ProviderOperationsState,
+)
 from app.services.provider_degradation_state import record_provider_failure
 from app.services.provider_operations_status import build_provider_operations_status
 
@@ -84,3 +88,75 @@ def test_provider_operations_status_reports_circuit_open_state() -> None:
     assert status.degradation_status.status == "CIRCUIT_OPEN"
     assert status.degradation_status.timeout_failure_count == 1
     assert status.degradation_status.upstream_error_failure_count == 1
+
+
+def test_provider_operations_status_reports_invalid_quota_configuration() -> None:
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_quota_enforced = True
+    settings.live_text_task_quota_limits = "unknown-task=1"
+
+    status = build_provider_operations_status()
+
+    assert status.runtime_execution_enabled is True
+    assert status.operations_state == ProviderOperationsState.OPERATIONS_INVALID
+    assert any("unknown or retrieval-backed task ids" in reason for reason in status.blocking_reasons)
+
+
+def test_provider_operations_status_reports_invalid_budget_configuration() -> None:
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_budget_enforced = True
+    settings.live_text_hard_budget_usd = 1.0
+
+    status = build_provider_operations_status()
+
+    assert status.runtime_execution_enabled is True
+    assert status.operations_state == ProviderOperationsState.OPERATIONS_INVALID
+    assert any("rate-card values" in reason for reason in status.blocking_reasons)
+
+
+def test_provider_operations_status_does_not_globally_block_for_task_scoped_quota_exhaustion() -> None:
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_quota_enforced = True
+    settings.live_text_task_quota_limits = "explain.v1=1"
+
+    from app.services.provider_quota_policy import enforce_provider_quota
+
+    enforce_provider_quota(
+        ProviderExecutionRequest(
+            task_id="explain.v1",
+            caller_app="lotus-manage",
+            requested_by="ops.user@lotus",
+            tenant_id="tenant-sg-001",
+            prompt_version="foundation.explain.v1",
+            system_instructions="Explain structured outputs conservatively.",
+            output_contract_notes="Return explanation only.",
+            output_label="EXPLANATION_ONLY",
+            safety_mode="documented_only",
+            redaction_posture="MINIMIZATION_REQUIRED",
+            context_summary="Explain provider quota posture",
+            context_payload={},
+            source_refs=[],
+            timeout_ms=4000,
+            retry_limit=0,
+            max_output_tokens=512,
+        )
+    )
+    status = build_provider_operations_status()
+
+    assert status.runtime_execution_enabled is True
+    assert status.operations_state == ProviderOperationsState.NORMAL
