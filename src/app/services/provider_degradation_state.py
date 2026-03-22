@@ -73,24 +73,11 @@ def record_provider_failure(category: ProviderFailureCategory) -> None:
     if category not in _tracked_failure_categories():
         return
 
-    state_record = _load_degradation_record()
-    timeout_count = state_record.timeout_failure_count
-    rate_limited_count = state_record.rate_limited_failure_count
-    upstream_error_count = state_record.upstream_error_failure_count
-    if category == ProviderFailureCategory.PROVIDER_TIMEOUT:
-        timeout_count += 1
-    elif category == ProviderFailureCategory.PROVIDER_RATE_LIMITED:
-        rate_limited_count += 1
-    elif category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR:
-        upstream_error_count += 1
-
-    _save_degradation_record(
-        consecutive_failure_count=state_record.consecutive_failure_count + 1,
-        last_failure_category=category,
-        circuit_open_until=state_record.circuit_open_until,
-        timeout_failure_count=timeout_count,
-        rate_limited_failure_count=rate_limited_count,
-        upstream_error_failure_count=upstream_error_count,
+    repository = get_provider_operations_store()
+    repository.record_degradation_failure(
+        degradation_key=_DEGRADATION_KEY,
+        category=category,
+        updated_at=_utcnow().isoformat(),
     )
     state = _resolve_provider_degradation_state()
     if state.enforcement_enabled and state.configuration_valid and state.status == "CIRCUIT_OPEN":

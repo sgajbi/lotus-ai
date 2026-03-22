@@ -13,7 +13,6 @@ from app.contracts.providers import (
     ProviderQuotaScope,
 )
 from app.providers.base import ProviderExecutionError
-from app.repositories.provider_operations_repository import ProviderQuotaStateRecord
 from app.services.capability_catalog import get_capability_by_task_id
 from app.services.provider_operations_store import get_provider_operations_store
 
@@ -328,15 +327,11 @@ def _load_quota_counts() -> dict[tuple[ProviderQuotaScope, str], int]:
 
 def _increment_quota_count(*, scope: ProviderQuotaScope, scope_key: str) -> None:
     repository = get_provider_operations_store()
-    record = repository.get_quota_state(scope=scope, scope_key=scope_key)
-    current_count = 0 if record is None else record.request_count
-    repository.save_quota_state(
-        ProviderQuotaStateRecord(
-            scope=scope,
-            scope_key=scope_key,
-            request_count=current_count + 1,
-            updated_at=_utcnow(),
-        )
+    repository.increment_quota_state(
+        scope=scope,
+        scope_key=scope_key,
+        amount=1,
+        updated_at=_utcnow(),
     )
 
 

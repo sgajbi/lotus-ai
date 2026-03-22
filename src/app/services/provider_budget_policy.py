@@ -135,14 +135,10 @@ def record_provider_spend(response: ProviderExecutionResponse) -> None:
     if response.estimated_cost_usd is None:
         return
     repository = get_provider_operations_store()
-    record = repository.get_budget_state(budget_key=_BUDGET_KEY)
-    current_spend_usd = 0.0 if record is None else record.current_spend_usd
-    repository.save_budget_state(
-        ProviderBudgetStateRecord(
-            budget_key=_BUDGET_KEY,
-            current_spend_usd=round(current_spend_usd + response.estimated_cost_usd, 8),
-            updated_at=_utcnow(),
-        )
+    repository.add_budget_spend(
+        budget_key=_BUDGET_KEY,
+        amount_usd=response.estimated_cost_usd,
+        updated_at=_utcnow(),
     )
 
 

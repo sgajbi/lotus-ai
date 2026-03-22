@@ -178,30 +178,17 @@ runbook readiness, and task-runtime notes all describe the same live-provider pa
 That keeps operator-facing status aligned when rollout is still stub-default versus when a live
 provider has been allowlisted but remains intentionally disabled.
 
-Provider operations durability now also has an explicit repository seam and migration-managed
-relational schema. Quota, budget, and degradation enforcement still use the current in-memory
-control path in the present slice, but the persistence boundary is now in place so later RFC-0005
-cutover slices can switch behavior without introducing a second data model.
+Provider operations durability now has an explicit repository seam and migration-managed
+relational schema, and quota, budget, plus tracked degradation mutations all flow through that
+configured provider-operations store instead of process-local counters. The durable control plane
+now owns accepted-request counts, structured spend accumulation, timeout/rate-limit/upstream-error
+failure tracking, and circuit-open cooldown timestamps, so operator truth remains consistent across
+restart when the SQL-backed provider-operations path is enabled.
 
-Provider quota enforcement has now completed that cutover: accepted live-provider request counts
-flow through the configured provider-operations store instead of module-local counters, so quota
-inspection and blocking behavior can stay durable when the SQL-backed provider-operations path is
-enabled. Budget and degradation state still remain on their existing in-memory control path until
-later RFC-0005 slices move them over deliberately.
-
-Provider budget enforcement has now also completed that cutover. Structured live-provider spend
-evidence now accumulates through the configured provider-operations store instead of process-local
-memory, so spend posture and hard-budget blocking can stay durable when the SQL-backed provider-ops
-path is enabled. Degradation state remains on its prior in-memory path until the next RFC-0005
-slice moves it over deliberately.
-
-Provider degradation and circuit posture have now completed that cutover as well. Timeout,
-rate-limit, and upstream-error failure counts plus circuit-open cooldown timestamps now flow
-through the configured provider-operations store instead of process-local memory, so degraded and
-circuit-open posture remain durable when the SQL-backed provider-ops path is enabled.
-
-The provider-evidence and operations runbook surfaces now also treat that durable state model as
-the real control plane. Evaluation fixtures, recorded baselines, and operator guidance now describe
+Those durable mutations now happen at the repository layer rather than through service-layer
+read-modify-write sequences, which keeps provider blocking state closer to the authoritative store.
+The provider-evidence and operations runbook surfaces also now treat that durable state model as
+the real control plane: evaluation fixtures, recorded baselines, and operator guidance describe
 restart-survival and durable recovery posture explicitly instead of assuming process-local resets.
 
 Audit persistence now also preserves task category, output label, and execution evidence, so

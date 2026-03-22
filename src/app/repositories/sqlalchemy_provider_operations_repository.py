@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from sqlalchemy import create_engine, select
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import sessionmaker
 
 from app.contracts.providers import ProviderFailureCategory, ProviderQuotaScope
@@ -59,6 +60,39 @@ class SqlAlchemyProviderOperationsRepository(ProviderOperationsRepository):
             session.merge(model)
             session.commit()
 
+    def increment_quota_state(
+        self,
+        *,
+        scope: ProviderQuotaScope,
+        scope_key: str,
+        amount: int,
+        updated_at: str,
+    ) -> ProviderQuotaStateRecord:
+        with self._session_factory() as session:
+            statement = sqlite_insert(ProviderQuotaStateModel).values(
+                scope=scope.value,
+                scope_key=scope_key,
+                request_count=amount,
+                updated_at=updated_at,
+            )
+            statement = statement.on_conflict_do_update(
+                index_elements=[
+                    ProviderQuotaStateModel.scope,
+                    ProviderQuotaStateModel.scope_key,
+                ],
+                set_={
+                    "request_count": ProviderQuotaStateModel.request_count + amount,
+                    "updated_at": updated_at,
+                },
+            )
+            session.execute(statement)
+            session.commit()
+
+        record = self.get_quota_state(scope=scope, scope_key=scope_key)
+        if record is None:
+            raise RuntimeError("Failed to load incremented provider quota state.")
+        return record
+
     def get_budget_state(self, *, budget_key: str) -> ProviderBudgetStateRecord | None:
         with self._session_factory() as session:
             model = session.get(ProviderBudgetStateModel, budget_key)
@@ -75,6 +109,34 @@ class SqlAlchemyProviderOperationsRepository(ProviderOperationsRepository):
         with self._session_factory() as session:
             session.merge(model)
             session.commit()
+
+    def add_budget_spend(
+        self,
+        *,
+        budget_key: str,
+        amount_usd: float,
+        updated_at: str,
+    ) -> ProviderBudgetStateRecord:
+        with self._session_factory() as session:
+            statement = sqlite_insert(ProviderBudgetStateModel).values(
+                budget_key=budget_key,
+                current_spend_usd=amount_usd,
+                updated_at=updated_at,
+            )
+            statement = statement.on_conflict_do_update(
+                index_elements=[ProviderBudgetStateModel.budget_key],
+                set_={
+                    "current_spend_usd": ProviderBudgetStateModel.current_spend_usd + amount_usd,
+                    "updated_at": updated_at,
+                },
+            )
+            session.execute(statement)
+            session.commit()
+
+        record = self.get_budget_state(budget_key=budget_key)
+        if record is None:
+            raise RuntimeError("Failed to load incremented provider budget state.")
+        return record
 
     def get_degradation_state(
         self,
@@ -105,6 +167,51 @@ class SqlAlchemyProviderOperationsRepository(ProviderOperationsRepository):
         with self._session_factory() as session:
             session.merge(model)
             session.commit()
+
+    def record_degradation_failure(
+        self,
+        *,
+        degradation_key: str,
+        category: ProviderFailureCategory,
+        updated_at: str,
+    ) -> ProviderDegradationStateRecord:
+        with self._session_factory() as session:
+            statement = sqlite_insert(ProviderDegradationStateModel).values(
+                degradation_key=degradation_key,
+                consecutive_failure_count=1,
+                last_failure_category=category.value,
+                circuit_open_until=None,
+                timeout_failure_count=int(category == ProviderFailureCategory.PROVIDER_TIMEOUT),
+                rate_limited_failure_count=int(
+                    category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
+                ),
+                upstream_error_failure_count=int(
+                    category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
+                ),
+                updated_at=updated_at,
+            )
+            statement = statement.on_conflict_do_update(
+                index_elements=[ProviderDegradationStateModel.degradation_key],
+                set_={
+                    "consecutive_failure_count": ProviderDegradationStateModel.consecutive_failure_count
+                    + 1,
+                    "last_failure_category": category.value,
+                    "timeout_failure_count": ProviderDegradationStateModel.timeout_failure_count
+                    + int(category == ProviderFailureCategory.PROVIDER_TIMEOUT),
+                    "rate_limited_failure_count": ProviderDegradationStateModel.rate_limited_failure_count
+                    + int(category == ProviderFailureCategory.PROVIDER_RATE_LIMITED),
+                    "upstream_error_failure_count": ProviderDegradationStateModel.upstream_error_failure_count
+                    + int(category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR),
+                    "updated_at": updated_at,
+                },
+            )
+            session.execute(statement)
+            session.commit()
+
+        record = self.get_degradation_state(degradation_key=degradation_key)
+        if record is None:
+            raise RuntimeError("Failed to load incremented provider degradation state.")
+        return record
 
     def _to_quota_record(self, model: ProviderQuotaStateModel) -> ProviderQuotaStateRecord:
         return ProviderQuotaStateRecord(

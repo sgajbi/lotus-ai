@@ -81,3 +81,50 @@ def test_sqlalchemy_provider_operations_repository_creates_parent_directory_for_
     SqlAlchemyProviderOperationsRepository(database_url)
 
     assert db_path.parent.is_dir()
+
+
+def test_sqlalchemy_provider_operations_repository_applies_atomic_mutations(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-ops.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyProviderOperationsRepository(database_url)
+
+    quota = repository.increment_quota_state(
+        scope=ProviderQuotaScope.DEFAULT,
+        scope_key="global",
+        amount=1,
+        updated_at="2026-03-23T00:00:00Z",
+    )
+    budget = repository.add_budget_spend(
+        budget_key="live_text_generation",
+        amount_usd=0.75,
+        updated_at="2026-03-23T00:01:00Z",
+    )
+    degradation = repository.record_degradation_failure(
+        degradation_key="live_text_generation",
+        category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+        updated_at="2026-03-23T00:02:00Z",
+    )
+    quota = repository.increment_quota_state(
+        scope=ProviderQuotaScope.DEFAULT,
+        scope_key="global",
+        amount=1,
+        updated_at="2026-03-23T00:03:00Z",
+    )
+    budget = repository.add_budget_spend(
+        budget_key="live_text_generation",
+        amount_usd=0.25,
+        updated_at="2026-03-23T00:04:00Z",
+    )
+    degradation = repository.record_degradation_failure(
+        degradation_key="live_text_generation",
+        category=ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
+        updated_at="2026-03-23T00:05:00Z",
+    )
+
+    assert quota.request_count == 2
+    assert budget.current_spend_usd == 1.0
+    assert degradation.consecutive_failure_count == 2
+    assert degradation.timeout_failure_count == 1
+    assert degradation.upstream_error_failure_count == 1
