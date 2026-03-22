@@ -43,7 +43,8 @@ The current execution posture is:
 - evaluation runtime status now summarizes staged coverage by platform seam,
 - recorded evaluation run artifacts are now exposed through read-only inspection endpoints,
 - recorded evaluation run artifacts are now validated by a dedicated gate,
-- live model execution remains disabled until a governed provider rollout exists.
+- evaluation run artifacts now model both current and superseded lifecycle states,
+ - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:
 

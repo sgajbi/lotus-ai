@@ -120,6 +120,9 @@ class EvaluationRunCatalogResponse(BaseModel):
         default=None,
         description="Most recent evaluation run artifact identifier when one exists.",
     )
+    status_counts: dict[EvaluationRunStatus, int] = Field(
+        description="Recorded evaluation run counts by lifecycle status."
+    )
     runs: list[EvaluationRunArtifactDescriptor] = Field(
         description="Recorded evaluation run artifacts available for inspection."
     )

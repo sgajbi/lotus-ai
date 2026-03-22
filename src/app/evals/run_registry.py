@@ -84,9 +84,9 @@ def validate_evaluation_run_artifacts(
             seam_ids.add(seam_id)
 
             fixture_ids = seam.get("fixture_ids")
-            if not isinstance(fixture_ids, list) or not fixture_ids:
+            if not isinstance(fixture_ids, list):
                 raise EvaluationRunArtifactValidationError(
-                    f"Evaluation run artifact '{run_id}' seam '{seam_id}' must define a non-empty fixture_ids list."
+                    f"Evaluation run artifact '{run_id}' seam '{seam_id}' must define fixture_ids as a list."
                 )
             for fixture_id in fixture_ids:
                 _require_non_empty_string(

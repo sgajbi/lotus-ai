@@ -30,7 +30,24 @@ def test_validate_evaluation_run_artifacts_accepts_current_shape() -> None:
                     }
                 ],
                 "notes": "Seeded baseline evaluation run artifact.",
-            }
+            },
+            {
+                "run_id": "foundation_eval_2026_03_21_001",
+                "recorded_at": "2026-03-21T09:00:00Z",
+                "status": "SUPERSEDED",
+                "manifest_version": "foundation.v1",
+                "staged_fixture_count": 0,
+                "staged_case_count": 0,
+                "seam_coverage": [
+                    {
+                        "seam_id": "safety_policy",
+                        "fixture_ids": [],
+                        "staged_fixture_count": 0,
+                        "staged_case_count": 0,
+                    }
+                ],
+                "notes": "Seeded superseded evaluation run artifact.",
+            },
         ]
     }
 

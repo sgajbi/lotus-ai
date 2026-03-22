@@ -96,7 +96,7 @@ def test_evaluation_runtime_status_route() -> None:
     ]
     assert body["seam_coverage"][0]["staged_fixture_count"] == 3
     assert body["seam_coverage"][0]["staged_case_count"] == 6
-    assert body["recorded_run_count"] == 1
+    assert body["recorded_run_count"] == 2
     assert body["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["latest_recorded_run_status"] == "RECORDED"
     assert body["evaluation_runner_active"] is False
@@ -110,9 +110,12 @@ def test_evaluation_run_catalog_route() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["run_count"] == 1
+    assert body["run_count"] == 2
     assert body["latest_run_id"] == "foundation_eval_2026_03_22_001"
+    assert body["status_counts"]["RECORDED"] == 1
+    assert body["status_counts"]["SUPERSEDED"] == 1
     assert body["runs"][0]["staged_case_count"] == 12
+    assert body["runs"][1]["status"] == "SUPERSEDED"
 
 
 def test_evaluation_run_detail_route() -> None:
@@ -125,6 +128,19 @@ def test_evaluation_run_detail_route() -> None:
     assert body["service"] == "lotus-ai"
     assert body["run"]["run_id"] == "foundation_eval_2026_03_22_001"
     assert body["run"]["seam_coverage"][0]["seam_id"] == "task_execution"
+
+
+def test_evaluation_run_detail_route_returns_superseded_artifact() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/evals/runs/foundation_eval_2026_03_21_001")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["run"]["run_id"] == "foundation_eval_2026_03_21_001"
+    assert body["run"]["status"] == "SUPERSEDED"
+    assert body["run"]["seam_coverage"][-1]["seam_id"] == "safety_policy"
+    assert body["run"]["seam_coverage"][-1]["staged_fixture_count"] == 0
 
 
 def test_evaluation_run_detail_route_returns_not_found_for_unknown_run() -> None:
@@ -231,7 +247,7 @@ def test_platform_runtime_status_route() -> None:
     assert body["evaluation_runtime"]["staged_case_count"] == 12
     assert body["evaluation_runtime"]["seam_coverage"][0]["seam_id"] == "task_execution"
     assert body["evaluation_runtime"]["seam_coverage"][0]["staged_fixture_count"] == 3
-    assert body["evaluation_runtime"]["recorded_run_count"] == 1
+    assert body["evaluation_runtime"]["recorded_run_count"] == 2
     assert body["evaluation_runtime"]["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["evaluation_runtime"]["evaluation_runner_active"] is False
     assert body["prompt_runtime"]["selection_mode"] == "STATIC_ACTIVE"

@@ -551,3 +551,21 @@ Current posture:
 1. `make eval-run-gate` validates `docs/evals/run-artifacts.json`,
 2. CI runs the evaluation run gate alongside the fixture-manifest gate,
 3. runtime loading uses the same validation rules as the dedicated gate.
+
+## Decision 33: Evaluation Run Lifecycle Should Include Superseded History
+
+Decision:
+
+The seeded evaluation run registry now includes both current and superseded artifacts.
+
+Why:
+
+1. enterprise auditability benefits from showing history, not just the latest baseline snapshot,
+2. lifecycle-aware artifacts let us exercise the contract before a live runner introduces real history,
+3. this keeps the registry realistic without adding mutable execution behavior.
+
+Current posture:
+
+1. the latest run remains `RECORDED`,
+2. an older run is exposed as `SUPERSEDED`,
+3. run catalogs now summarize artifacts by lifecycle status.
