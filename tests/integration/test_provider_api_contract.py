@@ -11,6 +11,12 @@ def test_provider_catalog_route(client: TestClient) -> None:
     assert body["embedding_provider_mode"] == "disabled"
     assert body["runtime_execution_enabled"] is False
     assert any(provider["provider_id"] == "text.stub" for provider in body["providers"])
+    assert any(
+        provider["provider_id"] == "text.live_documented"
+        and provider["adapter_kind"] == "DOCUMENTED_LIVE"
+        and provider["failure_category_on_use"] == "LIVE_EXECUTION_NOT_ENABLED"
+        for provider in body["providers"]
+    )
 
 
 def test_provider_policy_route(client: TestClient) -> None:
@@ -19,7 +25,11 @@ def test_provider_policy_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert any(policy["capability"] == "TEXT_GENERATION" for policy in body["policies"])
+    text_policy = next(
+        policy for policy in body["policies"] if policy["capability"] == "TEXT_GENERATION"
+    )
+    assert text_policy["selected_adapter_kind"] == "STUB"
+    assert text_policy["rejection_category"] == "UNSUPPORTED_MODE"
 
 
 def test_provider_activation_readiness_route(client: TestClient) -> None:

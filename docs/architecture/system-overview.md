@@ -138,8 +138,9 @@ runtime-level document and chunk counts are derived in one place instead of bein
 independently by retrieval status and job builders.
 
 The provider gateway also stays intentionally explicit in foundation phase: supported provider
-modes are validated first, and then execution routes through the stub provider until a live
-provider path is actually introduced.
+modes are validated first, provider selection resolves through a small registered adapter seam,
+and current executable modes still route through the stub provider until a live provider path is
+actually introduced.
 
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
@@ -218,7 +219,8 @@ Owns:
 
 1. provider-specific execution adapters,
 2. deterministic stub providers for foundation phase,
-3. the future boundary where live model SDK integrations will sit.
+3. documented live-provider adapter seams that are visible in the catalog before activation,
+4. the future boundary where live model SDK integrations will sit.
 
 ### Retrieval
 

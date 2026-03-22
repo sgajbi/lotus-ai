@@ -4,14 +4,18 @@ from fastapi import HTTPException, status
 
 from app.config import settings
 from app.contracts.providers import (
+    ProviderAdapterKind,
     ProviderCapability,
     ProviderExecutionMode,
+    ProviderFailureCategory,
     ProviderPolicyDescriptor,
     ProviderPolicyResponse,
 )
+from app.providers.registry import resolve_text_generation_adapter
 
 
 def build_provider_policy() -> ProviderPolicyResponse:
+    selected_text_provider = _resolve_selected_text_provider()
     return ProviderPolicyResponse(
         service=settings.service_name,
         version=settings.service_version,
@@ -23,8 +27,10 @@ def build_provider_policy() -> ProviderPolicyResponse:
                     ProviderExecutionMode.DISABLED,
                     ProviderExecutionMode.STUB,
                 ],
-                selected_provider_id=_selected_text_provider_id(),
+                selected_provider_id=selected_text_provider[0],
+                selected_adapter_kind=selected_text_provider[1],
                 live_execution_enabled=False,
+                rejection_category=ProviderFailureCategory.UNSUPPORTED_MODE,
                 rejection_behavior=(
                     "Reject unsupported provider modes with HTTP 503 until a governed live "
                     "provider rollout is approved."
@@ -38,7 +44,9 @@ def build_provider_policy() -> ProviderPolicyResponse:
                     ProviderExecutionMode.STUB,
                 ],
                 selected_provider_id="embeddings.stub",
+                selected_adapter_kind=ProviderAdapterKind.STUB,
                 live_execution_enabled=False,
+                rejection_category=ProviderFailureCategory.UNSUPPORTED_MODE,
                 rejection_behavior=(
                     "Reject unsupported embedding provider modes with HTTP 503 until retrieval "
                     "execution is enabled."
@@ -62,5 +70,9 @@ def require_supported_text_generation_mode() -> ProviderExecutionMode:
     return supported_modes[configured_mode]
 
 
-def _selected_text_provider_id() -> str:
-    return "text.stub"
+def _resolve_selected_text_provider() -> tuple[str, ProviderAdapterKind]:
+    configured_mode = settings.provider_mode
+    if configured_mode not in {mode.value for mode in ProviderExecutionMode}:
+        return ("text.unresolved", ProviderAdapterKind.DOCUMENTED_LIVE)
+    adapter = resolve_text_generation_adapter(ProviderExecutionMode(configured_mode))
+    return (adapter.descriptor.provider_id, adapter.descriptor.adapter_kind)

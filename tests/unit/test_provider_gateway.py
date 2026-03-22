@@ -2,7 +2,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.config import settings
-from app.contracts.providers import ProviderExecutionRequest
+from app.contracts.providers import ProviderAdapterKind, ProviderExecutionRequest
 from app.services.provider_gateway import execute_text_generation
 
 
@@ -23,8 +23,10 @@ def test_execute_text_generation_routes_through_stub_provider() -> None:
 
     assert response.provider_id == "text.stub"
     assert response.provider_mode == "disabled"
+    assert response.adapter_kind == ProviderAdapterKind.STUB
     assert response.stubbed is True
     assert response.structured_output["provider_id"] == "text.stub"
+    assert response.structured_output["adapter_kind"] == "STUB"
     assert response.structured_output["context_keys"] == ["rule_count", "status"]
     assert response.structured_output["output_label"] == "EXPLANATION_ONLY"
     assert response.structured_output["redaction_posture"] == "MINIMIZATION_REQUIRED"
@@ -73,6 +75,7 @@ def test_execute_text_generation_routes_stub_mode_through_stub_provider() -> Non
 
     assert response.provider_id == "text.stub"
     assert response.provider_mode == "stub"
+    assert response.adapter_kind == ProviderAdapterKind.STUB
     assert response.stubbed is True
     assert response.structured_output["output_label"] == "DRAFT"
 

@@ -1,14 +1,20 @@
 from __future__ import annotations
 
-from app.contracts.providers import ProviderExecutionRequest, ProviderExecutionResponse
-from app.providers.stub_text_provider import StubTextProvider
-from app.services.provider_policy import require_supported_text_generation_mode
+from fastapi import HTTPException, status
 
-_stub_text_provider = StubTextProvider()
+from app.contracts.providers import ProviderExecutionRequest, ProviderExecutionResponse
+from app.providers.base import ProviderExecutionError
+from app.providers.registry import resolve_text_generation_adapter
+from app.services.provider_policy import require_supported_text_generation_mode
 
 
 def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecutionResponse:
-    # Foundation-phase gateway validates configured mode but routes all supported execution
-    # through the explicit stub provider until a governed live provider path exists.
-    require_supported_text_generation_mode()
-    return _stub_text_provider.execute(request)
+    mode = require_supported_text_generation_mode()
+    adapter = resolve_text_generation_adapter(mode)
+    try:
+        return adapter.execute(request)
+    except ProviderExecutionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"{exc.category.value}: {exc.message}",
+        ) from exc

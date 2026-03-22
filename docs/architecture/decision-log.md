@@ -151,9 +151,10 @@ Why:
 
 Current posture:
 
-1. the gateway currently routes only to deterministic stub providers,
-2. provider inventory is visible through the provider catalog,
-3. live model execution remains disabled until safety, approval, and rollout controls mature.
+1. the gateway currently resolves execution through a small registered adapter seam,
+2. current executable modes still route to the deterministic stub provider,
+3. a documented-live provider seam is visible in the provider catalog before live activation,
+4. live model execution remains disabled until safety, approval, and rollout controls mature.
 
 ## Decision 11: Provider Modes Must Fail Explicitly
 
@@ -172,7 +173,8 @@ Current posture:
 
 1. provider policy is inspectable through `/platform/providers/policy`,
 2. only `disabled` and `stub` modes are currently supported for text and embedding capabilities,
-3. unsupported modes are rejected with a service-unavailable response.
+3. provider policy now exposes selected adapter kind and structured rejection category,
+4. unsupported modes are rejected with a service-unavailable response.
 
 ## Decision 11A: Provider Activation Readiness Should Be Exposed Before Live Rollout
 

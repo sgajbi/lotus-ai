@@ -1,4 +1,8 @@
-from app.contracts.providers import ProviderCapability
+from app.contracts.providers import (
+    ProviderAdapterKind,
+    ProviderCapability,
+    ProviderFailureCategory,
+)
 from app.services.provider_policy import build_provider_policy
 
 
@@ -15,4 +19,6 @@ def test_provider_policy_reports_supported_modes_and_rejection_behavior() -> Non
     assert text_policy.configured_mode == "disabled"
     assert [mode.value for mode in text_policy.allowed_modes] == ["disabled", "stub"]
     assert text_policy.selected_provider_id == "text.stub"
+    assert text_policy.selected_adapter_kind == ProviderAdapterKind.STUB
     assert text_policy.live_execution_enabled is False
+    assert text_policy.rejection_category == ProviderFailureCategory.UNSUPPORTED_MODE

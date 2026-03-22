@@ -71,6 +71,11 @@ def _provider_descriptor(
             "provider_id": provider_execution.provider_id,
             "provider_mode": provider_execution.provider_mode,
             "stubbed": provider_execution.stubbed,
+            **(
+                {"adapter_kind": provider_execution.adapter_kind.value}
+                if provider_execution.adapter_kind is not None
+                else {}
+            ),
         },
     )
 

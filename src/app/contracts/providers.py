@@ -21,11 +21,25 @@ class ProviderExecutionMode(str, Enum):
     STUB = "stub"
 
 
+class ProviderAdapterKind(str, Enum):
+    STUB = "STUB"
+    DOCUMENTED_LIVE = "DOCUMENTED_LIVE"
+
+
+class ProviderFailureCategory(str, Enum):
+    UNSUPPORTED_MODE = "UNSUPPORTED_MODE"
+    LIVE_EXECUTION_NOT_ENABLED = "LIVE_EXECUTION_NOT_ENABLED"
+    PROVIDER_NOT_REGISTERED = "PROVIDER_NOT_REGISTERED"
+
+
 class ProviderDescriptor(BaseModel):
     provider_id: str = Field(description="Stable provider identifier within lotus-ai.")
     display_name: str = Field(description="Human-readable provider name.")
     capability: ProviderCapability = Field(
         description="Primary capability area exposed by the provider."
+    )
+    adapter_kind: ProviderAdapterKind = Field(
+        description="Kind of provider adapter currently registered for this provider path."
     )
     lifecycle_status: ProviderLifecycleStatus = Field(
         description="Current lifecycle state of the provider integration."
@@ -33,6 +47,10 @@ class ProviderDescriptor(BaseModel):
     runtime_mode: str = Field(description="Configured runtime mode associated with the provider.")
     enabled_for_execution: bool = Field(
         description="Whether the provider is currently eligible for live execution."
+    )
+    failure_category_on_use: ProviderFailureCategory | None = Field(
+        default=None,
+        description="Failure category expected if this provider path is selected before it is enabled.",
     )
     source_reference: str = Field(
         description="Repository reference documenting the provider configuration."
@@ -64,8 +82,14 @@ class ProviderPolicyDescriptor(BaseModel):
     selected_provider_id: str = Field(
         description="Provider identifier currently selected for this capability."
     )
+    selected_adapter_kind: ProviderAdapterKind = Field(
+        description="Registered adapter kind currently selected for this capability."
+    )
     live_execution_enabled: bool = Field(
         description="Whether live execution is currently allowed for this capability."
+    )
+    rejection_category: ProviderFailureCategory = Field(
+        description="Structured failure category used when the configured mode is rejected."
     )
     rejection_behavior: str = Field(
         description="How lotus-ai should behave when the configured mode is unsupported."
@@ -101,6 +125,10 @@ class ProviderExecutionRequest(BaseModel):
 class ProviderExecutionResponse(BaseModel):
     provider_id: str = Field(description="Provider identifier selected for execution.")
     provider_mode: str = Field(description="Provider mode active during execution.")
+    adapter_kind: ProviderAdapterKind | None = Field(
+        default=None,
+        description="Registered provider adapter kind that handled the execution, when applicable.",
+    )
     stubbed: bool = Field(description="Whether execution was handled by a stub provider path.")
     message: str = Field(description="Human-readable execution message returned by the provider.")
     structured_output: dict[str, object] = Field(
