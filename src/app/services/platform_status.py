@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from types import SimpleNamespace
 
 from app.config import settings
@@ -21,6 +22,20 @@ from app.services.runtime_readiness import (
 from app.services.safety_status import build_safety_runtime_status
 
 
+@dataclass(frozen=True)
+class StartupReadinessState:
+    blocking: bool
+    warnings: list[str]
+
+
+def _resolve_startup_readiness_state(app_state: object | None) -> StartupReadinessState:
+    state = app_state if app_state is not None else SimpleNamespace()
+    return StartupReadinessState(
+        blocking=bool(getattr(state, "startup_readiness_blocking", False)),
+        warnings=list(getattr(state, "startup_readiness_findings", [])),
+    )
+
+
 def build_platform_runtime_status(app_state: object | None = None) -> PlatformRuntimeStatusResponse:
     capabilities = build_capability_catalog()
     prompts = list_registered_prompts()
@@ -34,7 +49,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     audit_store = get_audit_store_runtime_status()
     retrieval_store = get_retrieval_store_runtime_status()
     safety_runtime = build_safety_runtime_status()
-    state = app_state if app_state is not None else SimpleNamespace()
+    startup_state = _resolve_startup_readiness_state(app_state)
     return PlatformRuntimeStatusResponse(
         service=settings.service_name,
         version=settings.service_version,
@@ -61,6 +76,6 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         capability_count=len(capabilities.tasks),
         vector_store=VECTOR_STORE_STRATEGY,
         migration_contract_enforced=True,
-        startup_readiness_blocking=bool(getattr(state, "startup_readiness_blocking", False)),
-        startup_readiness_warnings=list(getattr(state, "startup_readiness_findings", [])),
+        startup_readiness_blocking=startup_state.blocking,
+        startup_readiness_warnings=startup_state.warnings,
     )

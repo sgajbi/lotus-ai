@@ -122,6 +122,10 @@ Runbook, evidence, and governance builders also share a small readiness helper f
 and blocking-count bookkeeping, so the domain services stay focused on their own governed
 content instead of repeating the same counting logic.
 
+The top-level platform runtime summary also isolates startup-readiness state extraction and has
+direct unit coverage, so changes to operator-facing status aggregation do not rely only on
+route-level integration tests.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`
