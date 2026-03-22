@@ -39,6 +39,8 @@ Without a durable async backbone:
 3. job inspection endpoints overstate runtime reality,
 4. restart and multi-instance operation cannot preserve authoritative job truth.
 
+This RFC should stop at the durable async backbone itself. Higher-level consumers such as runtime-backed evaluation execution should build on top of this backbone in later RFCs rather than widening this RFC into a second execution domain at the same time.
+
 ## Problem Statement
 
 Today async behavior is still mostly a governed contract shell:
@@ -172,6 +174,17 @@ Existing endpoints should continue to expose:
 
 But those views should now report durable live state rather than only governed documentation artifacts.
 
+### Operator Control Actions
+
+The durable async backbone should also define a narrow, reviewable operator control path for runtime-backed jobs.
+
+Required control semantics:
+
+1. retry, replay, requeue, abandon, or equivalent recovery actions must be explicit durable state transitions,
+2. those actions must be recorded as control-plane history rather than implied by direct table edits,
+3. job-detail and runtime-summary surfaces must remain able to explain whether a job is original, replayed, retried, or manually recovered,
+4. documentation-only job types must not expose runtime control actions that imply false live execution support.
+
 ### Cutover and Compatibility Semantics
 
 The migration from documentation-backed async state to durable runtime state should avoid split-brain truth.
@@ -214,6 +227,7 @@ The first implementation should resist broad job-type expansion until the backbo
 9. Artifact-based async documentation should remain governed, but it must no longer masquerade as live runtime truth after cutover.
 10. Job progress or status messaging must not overstate execution progress when a worker has only claimed but not actually completed work.
 11. Duplicate submission, retry, and replay semantics must be explicit enough to prevent ambiguous operator truth.
+12. Manual recovery or replay actions must be durably recorded and reviewable through operator-facing state.
 
 ## Delivery Slices
 
@@ -293,7 +307,8 @@ Acceptance gate:
 2. eval and runbook assets match implementation reality,
 3. restart-survival and worker-recovery scenarios are covered by meaningful tests,
 4. the service is materially closer to enterprise-grade background execution,
-5. job status and progress wording remains conservative and truthful under claim, retry, and recovery paths.
+5. job status and progress wording remains conservative and truthful under claim, retry, and recovery paths,
+6. documentation-backed async artifacts that remain after cutover are clearly labeled as staged or historical rather than live runtime truth.
 
 ## Risks
 
@@ -342,7 +357,8 @@ This RFC is complete when:
 5. no runtime-backed async job type depends on process-local mutable globals for lifecycle truth,
 6. runbooks and eval assets reflect the durable async state model,
 7. duplicate submission, replay, and retry semantics are explicit and reviewable,
-8. the platform is materially closer to bank-grade background execution.
+8. governed operator recovery actions are explicit and durably reviewable,
+9. the platform is materially closer to bank-grade background execution.
 
 ## Approval Requested
 
