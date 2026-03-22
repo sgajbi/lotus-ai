@@ -77,3 +77,31 @@ def test_memory_retrieval_repository_exposes_persisted_job_events() -> None:
 
     assert any(event.status == "FAILED" for event in events)
     assert any("promoted into searchable scope" in event.notes for event in events)
+
+
+def test_memory_retrieval_repository_refreshes_searchable_job() -> None:
+    repository = InMemoryRetrievalRepository()
+
+    refresh = repository.refresh_index_job("retjob_lotus_platform_rfcs")
+
+    assert refresh is not None
+    assert refresh.status == "COMPLETED"
+    assert refresh.refreshed_document_count == 2
+    assert refresh.refreshed_chunk_count >= 2
+    assert refresh.replayed_embedding_count >= 2
+    assert refresh.event.stage == "ENABLED"
+    job = repository.get_index_job("retjob_lotus_platform_rfcs")
+    assert job is not None
+    assert job.status == "COMPLETED"
+
+
+def test_memory_retrieval_repository_blocks_refresh_without_searchable_documents() -> None:
+    repository = InMemoryRetrievalRepository()
+
+    refresh = repository.refresh_index_job("retjob_lotus_platform_standards")
+
+    assert refresh is not None
+    assert refresh.status == "BLOCKED"
+    assert refresh.refreshed_document_count == 0
+    assert refresh.event.status == "FAILED"
+    assert "no searchable documents" in refresh.message

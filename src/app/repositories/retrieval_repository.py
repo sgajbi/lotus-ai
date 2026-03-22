@@ -8,6 +8,7 @@ from app.contracts.retrieval import (
     RetrievalIndexedChunkDescriptor,
     RetrievalIndexJobEventDescriptor,
     RetrievalIndexJobDescriptor,
+    RetrievalIndexJobRefreshDescriptor,
     RetrievalSourceDescriptor,
 )
 
@@ -38,3 +39,5 @@ class RetrievalRepository(Protocol):
     def get_index_job(self, job_id: str) -> RetrievalIndexJobDescriptor | None: ...
 
     def list_index_job_events(self, job_id: str) -> list[RetrievalIndexJobEventDescriptor]: ...
+
+    def refresh_index_job(self, job_id: str) -> RetrievalIndexJobRefreshDescriptor | None: ...

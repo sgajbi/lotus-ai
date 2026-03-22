@@ -65,6 +65,37 @@ def test_sqlalchemy_retrieval_repository_returns_seeded_job_events(tmp_path: Pat
     assert any(event.stage == "STAGED" for event in events)
 
 
+def test_sqlalchemy_retrieval_repository_refreshes_searchable_job(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-retrieval.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyRetrievalRepository(database_url)
+
+    refresh = repository.refresh_index_job("retjob_lotus_platform_rfcs")
+    events = repository.list_index_job_events("retjob_lotus_platform_rfcs")
+
+    assert refresh is not None
+    assert refresh.status == "COMPLETED"
+    assert refresh.refreshed_document_count == 2
+    assert refresh.replayed_embedding_count >= 2
+    assert events[-1].event_id == refresh.event.event_id
+    assert events[-1].stage == "ENABLED"
+
+
+def test_sqlalchemy_retrieval_repository_blocks_refresh_without_searchable_documents(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-retrieval.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyRetrievalRepository(database_url)
+
+    refresh = repository.refresh_index_job("retjob_lotus_platform_standards")
+
+    assert refresh is not None
+    assert refresh.status == "BLOCKED"
+    assert refresh.event.status == "FAILED"
+    assert refresh.refreshed_chunk_count == 0
+
+
 def test_sqlalchemy_retrieval_repository_creates_parent_directory_for_sqlite_file(
     tmp_path: Path,
 ) -> None:

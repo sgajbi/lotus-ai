@@ -177,6 +177,10 @@ Retrieval indexing posture is also more explicit now: retrieval job detail carri
 chunking strategy, replay support, and persisted lifecycle events, so blocked indexing states are
 visible directly instead of being implied by static staged prose.
 
+Retrieval indexing also now has a deterministic refresh action, so promoted searchable documents
+can replay chunk indexing and persisted preview embedding generation in place through the existing
+job seam instead of relying only on seeded lifecycle metadata.
+
 `knowledge_search.v1` now uses that governed retrieval path directly, so the task
 execution surface has a real governed knowledge-search capability instead of a generic
 placeholder for retrieval-class work.

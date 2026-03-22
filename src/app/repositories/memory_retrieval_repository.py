@@ -12,6 +12,8 @@ from app.contracts.retrieval import (
     RetrievalIndexJobEventDescriptor,
     RetrievalIndexJobEventStatus,
     RetrievalIndexJobDescriptor,
+    RetrievalIndexJobRefreshDescriptor,
+    RetrievalIndexJobRefreshStatus,
     RetrievalIndexStatus,
     RetrievalJobStatus,
     RetrievalPipelineStage,
@@ -20,6 +22,11 @@ from app.contracts.retrieval import (
 )
 from app.repositories.retrieval_repository import RetrievalRepository
 from app.retrieval.foundation_embedding import build_preview_embedding
+from app.retrieval.indexing_refresh import (
+    build_indexed_chunk_refresh_record,
+    build_refresh_descriptor,
+    build_refresh_event,
+)
 
 
 class InMemoryRetrievalRepository(RetrievalRepository):
@@ -432,3 +439,98 @@ class InMemoryRetrievalRepository(RetrievalRepository):
 
     def list_index_job_events(self, job_id: str) -> list[RetrievalIndexJobEventDescriptor]:
         return deepcopy(self._job_events.get(job_id, []))
+
+    def refresh_index_job(self, job_id: str) -> RetrievalIndexJobRefreshDescriptor | None:
+        job = self.get_index_job(job_id)
+        if job is None:
+            return None
+        source_documents = self._documents.get(job.source_id, [])
+        searchable_documents = [
+            document
+            for document in source_documents
+            if document.promotion_status == RetrievalDocumentPromotionStatus.SEARCHABLE
+        ]
+        if not searchable_documents:
+            message = "Deterministic indexing refresh is blocked because no searchable documents exist for this source."
+            event = self._append_refresh_event(
+                job_id=job_id,
+                status=RetrievalIndexJobRefreshStatus.BLOCKED,
+                notes=message,
+            )
+            return build_refresh_descriptor(
+                status=RetrievalIndexJobRefreshStatus.BLOCKED,
+                refreshed_document_count=0,
+                refreshed_chunk_count=0,
+                persisted_embedding_count=0,
+                replayed_embedding_count=0,
+                message=message,
+                event=event,
+            )
+
+        refreshed_chunk_count = 0
+        persisted_embedding_count = 0
+        replayed_embedding_count = 0
+        for document in searchable_documents:
+            document.index_status = RetrievalIndexStatus.INDEXED
+            for chunk in self._chunks.get(document.document_id, []):
+                refreshed_chunk_count += 1
+                chunk.index_status = RetrievalIndexStatus.INDEXED
+                refresh_record = build_indexed_chunk_refresh_record(document=document, chunk=chunk)
+                existing_embedding_id = self._find_embedding_id_for_chunk(chunk.chunk_id)
+                if existing_embedding_id is None:
+                    persisted_embedding_count += 1
+                else:
+                    replayed_embedding_count += 1
+                self._embedding_records[refresh_record.embedding_id] = {
+                    "chunk_id": chunk.chunk_id,
+                    "document_id": chunk.document_id,
+                    "source_id": chunk.source_id,
+                    "embedding_model": refresh_record.embedding_model,
+                    "embedding_status": RetrievalEmbeddingStatus.PERSISTED,
+                    "vector_dimensions": refresh_record.vector_dimensions,
+                    "content_checksum": refresh_record.content_checksum,
+                    "embedding_vector": refresh_record.embedding_vector,
+                }
+                if existing_embedding_id is not None and existing_embedding_id != refresh_record.embedding_id:
+                    del self._embedding_records[existing_embedding_id]
+
+        message = (
+            "Deterministic indexing refresh completed for promoted searchable documents."
+        )
+        event = self._append_refresh_event(
+            job_id=job_id,
+            status=RetrievalIndexJobRefreshStatus.COMPLETED,
+            notes=message,
+        )
+        return build_refresh_descriptor(
+            status=RetrievalIndexJobRefreshStatus.COMPLETED,
+            refreshed_document_count=len(searchable_documents),
+            refreshed_chunk_count=refreshed_chunk_count,
+            persisted_embedding_count=persisted_embedding_count,
+            replayed_embedding_count=replayed_embedding_count,
+            message=message,
+            event=event,
+        )
+
+    def _append_refresh_event(
+        self,
+        *,
+        job_id: str,
+        status: RetrievalIndexJobRefreshStatus,
+        notes: str,
+    ) -> RetrievalIndexJobEventDescriptor:
+        events = self._job_events.setdefault(job_id, [])
+        event = build_refresh_event(
+            job_id=job_id,
+            ordinal=len(events) + 1,
+            status=status,
+            notes=notes,
+        )
+        events.append(event)
+        return event
+
+    def _find_embedding_id_for_chunk(self, chunk_id: str) -> str | None:
+        for embedding_id, record in self._embedding_records.items():
+            if record["chunk_id"] == chunk_id:
+                return embedding_id
+        return None

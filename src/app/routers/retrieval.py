@@ -10,6 +10,7 @@ from app.contracts.retrieval import (
     RetrievalEvidenceReadinessResponse,
     RetrievalIndexJobCatalogResponse,
     RetrievalIndexJobDetailResponse,
+    RetrievalIndexJobRefreshResponse,
     RetrievalIndexStatusResponse,
     RetrievalIndexingPolicyResponse,
     RetrievalExecutionStatusResponse,
@@ -37,6 +38,7 @@ from app.services.retrieval_activation_readiness import build_retrieval_activati
 from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
 from app.services.retrieval_execution_status import build_retrieval_execution_status
 from app.services.retrieval_governance_status import build_retrieval_governance_status
+from app.services.retrieval_indexing_refresh import refresh_retrieval_index_job
 from app.services.retrieval_runbook_readiness import build_retrieval_runbook_readiness
 from app.services.retrieval_service import search_sources
 
@@ -278,6 +280,25 @@ async def get_retrieval_index_job_route(job_id: str) -> RetrievalIndexJobDetailR
     return get_retrieval_job_detail_or_raise(job_id)
 
 
+@router.post(
+    "/index-jobs/{job_id}/refresh",
+    response_model=RetrievalIndexJobRefreshResponse,
+    operation_id="refreshRetrievalIndexJob",
+    summary="Refresh retrieval indexing job",
+    description=(
+        "Deterministically refreshes chunk indexing and persisted preview embeddings for the "
+        "searchable documents owned by a retrieval indexing job."
+    ),
+    responses={
+        200: {"description": "Retrieval indexing job refreshed successfully."},
+        404: {"description": "Retrieval indexing job not found."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def refresh_retrieval_index_job_route(job_id: str) -> RetrievalIndexJobRefreshResponse:
+    return refresh_retrieval_index_job(job_id)
+
+
 @router.get(
     "/sources/{source_id}/documents",
     response_model=RetrievalDocumentCatalogResponse,
@@ -321,7 +342,8 @@ async def list_retrieval_chunks_route(document_id: str) -> RetrievalChunkCatalog
     summary="Search approved retrieval sources",
     description=(
         "Searches approved lotus-ai retrieval sources. In the current phase, this endpoint "
-        "returns a governed conflict response until live retrieval is enabled."
+        "returns either bounded indexed hits from promoted persisted embeddings or a governed "
+        "catalog-only fallback from the same promoted corpus."
     ),
     responses={
         200: {"description": "Retrieval search completed successfully."},

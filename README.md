@@ -51,6 +51,7 @@ The current execution posture is:
 - retrieval also now has a real indexed execution path over promoted persisted preview embeddings when `LOTUS_AI_RETRIEVAL_MODE=enabled`, while catalog-only search remains the governed fallback when live retrieval is disabled,
 - the initial enabled catalog-only retrieval subset is intentionally small and now governed at document level: searchable documents are an explicit promoted subset inside enabled sources, while the rest of the staged corpus remains non-searchable,
 - retrieval source governance and document governance are now exposed directly, so source-level enablement and document-level promotion can be reviewed without reading repository fixtures or migrations,
+- retrieval indexing jobs can now be deterministically refreshed through a dedicated execution route, so promoted chunks and persisted preview embeddings can be replayed in place instead of remaining purely seeded metadata,
 - `knowledge_search.v1` is now enabled as a bounded task and routes through either indexed retrieval or the governed catalog-only fallback instead of the generic text stub,
 - `knowledge_answer.v1` is now enabled as a bounded, citation-carrying answer task built on the same governed retrieval path,
 - retrieval-backed tasks now emit explicit structured citations and `knowledge_answer.v1` now requires multi-citation support plus stage-specific support thresholds before it will return a citation-backed answer,
@@ -136,6 +137,7 @@ The current retrieval posture is:
 - provider posture discovery is exposed through the platform API,
 - runtime posture for retrieval and platform services is exposed through the platform API,
 - retrieval can execute through indexed search only when explicitly enabled,
+- retrieval indexing refresh is exposed through `POST /platform/retrieval/index-jobs/{job_id}/refresh`,
 - catalog-only search remains the governed fallback when live retrieval is disabled.
 
 ## What lotus-ai Does

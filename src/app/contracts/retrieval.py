@@ -43,6 +43,11 @@ class RetrievalIndexJobEventStatus(str, Enum):
     FAILED = "FAILED"
 
 
+class RetrievalIndexJobRefreshStatus(str, Enum):
+    COMPLETED = "COMPLETED"
+    BLOCKED = "BLOCKED"
+
+
 class RetrievalEmbeddingStatus(str, Enum):
     STAGED = "STAGED"
     PERSISTED = "PERSISTED"
@@ -268,6 +273,39 @@ class RetrievalIndexJobEventDescriptor(BaseModel):
     status: RetrievalIndexJobEventStatus = Field(description="Outcome recorded for the event.")
     recorded_at: str = Field(description="UTC timestamp when the event was recorded.")
     notes: str = Field(description="Human-readable explanation of the event.")
+
+
+class RetrievalIndexJobRefreshDescriptor(BaseModel):
+    status: RetrievalIndexJobRefreshStatus = Field(
+        description="Outcome of the attempted deterministic indexing refresh."
+    )
+    refreshed_document_count: int = Field(
+        description="Number of searchable documents traversed during the refresh."
+    )
+    refreshed_chunk_count: int = Field(
+        description="Number of chunks traversed during the refresh."
+    )
+    persisted_embedding_count: int = Field(
+        description="Number of embedding records created during the refresh."
+    )
+    replayed_embedding_count: int = Field(
+        description="Number of existing embedding records replayed or updated during the refresh."
+    )
+    message: str = Field(description="Human-readable refresh outcome summary.")
+    event: RetrievalIndexJobEventDescriptor = Field(
+        description="Lifecycle event recorded for the refresh attempt."
+    )
+
+
+class RetrievalIndexJobRefreshResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval index refresh response.")
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    job: RetrievalIndexJobDescriptor = Field(
+        description="Updated retrieval indexing job descriptor after the refresh attempt."
+    )
+    refresh: RetrievalIndexJobRefreshDescriptor = Field(
+        description="Summary of the deterministic indexing refresh attempt."
+    )
 
 
 class RetrievalIndexingPolicyResponse(BaseModel):

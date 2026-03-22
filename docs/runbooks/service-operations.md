@@ -115,10 +115,11 @@ Before any future live-retrieval activation slice:
 5. confirm the embedded `retrieval_governance` block in `GET /platform/runtime-status` matches the detailed retrieval governance view
 6. confirm retrieval indexing policy and execution status still reflect governed staged posture unless explicitly approved otherwise
 7. confirm retrieval evaluation assets cover indexed search provenance, answer support thresholds, and refusal reasons
-8. confirm reindex, replay, and retrieval observability procedures are documented and approved
-9. verify recent retrieval-backed audit records preserve `support_assessment`, citation count, and refusal reasons where applicable
-10. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
-11. only then proceed with any live-retrieval activation rollout review
+8. use `POST /platform/retrieval/index-jobs/{job_id}/refresh` for deterministic replay checks before changing any wider rollout posture
+9. confirm reindex, replay, and retrieval observability procedures are documented and approved
+10. verify recent retrieval-backed audit records preserve `support_assessment`, citation count, and refusal reasons where applicable
+11. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
+12. only then proceed with any live-retrieval activation rollout review
 
 ## Incident First Checks
 

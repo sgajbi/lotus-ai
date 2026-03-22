@@ -187,6 +187,20 @@ def test_retrieval_index_job_detail_route(client: TestClient) -> None:
     assert any(event["status"] == "COMPLETED" for event in body["events"])
 
 
+def test_retrieval_index_job_refresh_route(client: TestClient) -> None:
+    response = client.post("/platform/retrieval/index-jobs/retjob_lotus_platform_rfcs/refresh")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["job"]["job_id"] == "retjob_lotus_platform_rfcs"
+    assert body["refresh"]["status"] == "COMPLETED"
+    assert body["refresh"]["refreshed_document_count"] == 2
+    assert body["refresh"]["refreshed_chunk_count"] >= 2
+    assert body["refresh"]["event"]["stage"] == "ENABLED"
+    assert body["refresh"]["event"]["status"] == "COMPLETED"
+
+
 def test_retrieval_documents_route(client: TestClient) -> None:
     response = client.get("/platform/retrieval/sources/lotus-platform-rfcs/documents")
 

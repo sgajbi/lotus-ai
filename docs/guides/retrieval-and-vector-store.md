@@ -130,6 +130,15 @@ Retrieval job detail now also exposes:
 3. persisted indexing lifecycle events,
 4. explicit blocked or failed indexing states for sources that are not yet promotable.
 
+Retrieval indexing jobs can now also be refreshed through:
+
+1. `POST /platform/retrieval/index-jobs/{job_id}/refresh`
+
+That refresh path is intentionally deterministic. It replays chunk indexing and persisted preview
+embedding generation for currently searchable documents, records a lifecycle event, and returns an
+explicit `COMPLETED` or `BLOCKED` result without pretending that live provider-backed embedding
+generation already exists.
+
 The search endpoint remains governed. In foundation phase it now supports:
 
 1. bounded indexed hits from promoted persisted preview embeddings when retrieval is enabled,

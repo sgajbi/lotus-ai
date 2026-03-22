@@ -14,11 +14,18 @@ from app.contracts.retrieval import (
     RetrievalIndexJobEventDescriptor,
     RetrievalIndexJobEventStatus,
     RetrievalIndexJobDescriptor,
+    RetrievalIndexJobRefreshDescriptor,
+    RetrievalIndexJobRefreshStatus,
     RetrievalIndexStatus,
     RetrievalJobStatus,
     RetrievalPipelineStage,
     RetrievalSourceDescriptor,
     RetrievalSourceKind,
+)
+from app.retrieval.indexing_refresh import (
+    build_indexed_chunk_refresh_record,
+    build_refresh_descriptor,
+    build_refresh_event,
 )
 from app.db.models import (
     RetrievalChunkModel,
@@ -170,6 +177,111 @@ class SqlAlchemyRetrievalRepository:
             ).all()
             return [self._to_job_event_descriptor(event) for event in events]
 
+    def refresh_index_job(self, job_id: str) -> RetrievalIndexJobRefreshDescriptor | None:
+        with self._session_factory() as session:
+            job = session.get(RetrievalIndexJobModel, job_id)
+            if job is None:
+                return None
+
+            documents = session.scalars(
+                select(RetrievalDocumentModel)
+                .where(
+                    RetrievalDocumentModel.source_id == job.source_id,
+                    RetrievalDocumentModel.promotion_status
+                    == RetrievalDocumentPromotionStatus.SEARCHABLE.value,
+                )
+                .order_by(RetrievalDocumentModel.document_id)
+            ).all()
+            if not documents:
+                message = (
+                    "Deterministic indexing refresh is blocked because no searchable documents "
+                    "exist for this source."
+                )
+                event = self._persist_refresh_event(
+                    session=session,
+                    job_id=job_id,
+                    status=RetrievalIndexJobRefreshStatus.BLOCKED,
+                    notes=message,
+                )
+                session.commit()
+                return build_refresh_descriptor(
+                    status=RetrievalIndexJobRefreshStatus.BLOCKED,
+                    refreshed_document_count=0,
+                    refreshed_chunk_count=0,
+                    persisted_embedding_count=0,
+                    replayed_embedding_count=0,
+                    message=message,
+                    event=event,
+                )
+
+            refreshed_chunk_count = 0
+            persisted_embedding_count = 0
+            replayed_embedding_count = 0
+            for document_model in documents:
+                document_model.index_status = RetrievalIndexStatus.INDEXED.value
+                document_descriptor = self._to_document_descriptor(session, document_model)
+                chunks = session.scalars(
+                    select(RetrievalChunkModel)
+                    .where(RetrievalChunkModel.document_id == document_model.document_id)
+                    .order_by(RetrievalChunkModel.chunk_order)
+                ).all()
+                for chunk_model in chunks:
+                    refreshed_chunk_count += 1
+                    chunk_model.index_status = RetrievalIndexStatus.INDEXED.value
+                    chunk_descriptor = self._to_chunk_descriptor(chunk_model)
+                    refresh_record = build_indexed_chunk_refresh_record(
+                        document=document_descriptor,
+                        chunk=chunk_descriptor,
+                    )
+                    existing_embedding = session.get(
+                        RetrievalChunkEmbeddingModel,
+                        refresh_record.embedding_id,
+                    )
+                    if existing_embedding is None:
+                        persisted_embedding_count += 1
+                        session.add(
+                            RetrievalChunkEmbeddingModel(
+                                embedding_id=refresh_record.embedding_id,
+                                chunk_id=chunk_model.chunk_id,
+                                document_id=chunk_model.document_id,
+                                source_id=chunk_model.source_id,
+                                embedding_model=refresh_record.embedding_model,
+                                embedding_status=RetrievalEmbeddingStatus.PERSISTED.value,
+                                vector_dimensions=refresh_record.vector_dimensions,
+                                embedding_vector=refresh_record.embedding_vector,
+                                content_checksum=refresh_record.content_checksum,
+                            )
+                        )
+                    else:
+                        replayed_embedding_count += 1
+                        existing_embedding.embedding_model = refresh_record.embedding_model
+                        existing_embedding.embedding_status = RetrievalEmbeddingStatus.PERSISTED.value
+                        existing_embedding.vector_dimensions = refresh_record.vector_dimensions
+                        existing_embedding.embedding_vector = refresh_record.embedding_vector
+                        existing_embedding.content_checksum = refresh_record.content_checksum
+                    session.flush()
+
+            job.status = RetrievalJobStatus.COMPLETED.value
+            job.message = (
+                "Promoted searchable documents were deterministically re-indexed for bounded retrieval."
+            )
+            event = self._persist_refresh_event(
+                session=session,
+                job_id=job_id,
+                status=RetrievalIndexJobRefreshStatus.COMPLETED,
+                notes=job.message,
+            )
+            session.commit()
+            return build_refresh_descriptor(
+                status=RetrievalIndexJobRefreshStatus.COMPLETED,
+                refreshed_document_count=len(documents),
+                refreshed_chunk_count=refreshed_chunk_count,
+                persisted_embedding_count=persisted_embedding_count,
+                replayed_embedding_count=replayed_embedding_count,
+                message=job.message,
+                event=event,
+            )
+
     def _to_source_descriptor(self, model: RetrievalSourceModel) -> RetrievalSourceDescriptor:
         return RetrievalSourceDescriptor(
             source_id=model.source_id,
@@ -253,6 +365,41 @@ class SqlAlchemyRetrievalRepository:
 
     def _count_rows(self, session: Session, statement: Select[tuple[int]]) -> int:
         return int(session.scalar(statement) or 0)
+
+    def _persist_refresh_event(
+        self,
+        *,
+        session: Session,
+        job_id: str,
+        status: RetrievalIndexJobRefreshStatus,
+        notes: str,
+    ) -> RetrievalIndexJobEventDescriptor:
+        ordinal = (
+            self._count_rows(
+                session,
+                select(func.count())
+                .select_from(RetrievalIndexJobEventModel)
+                .where(RetrievalIndexJobEventModel.job_id == job_id),
+            )
+            + 1
+        )
+        descriptor = build_refresh_event(
+            job_id=job_id,
+            ordinal=ordinal,
+            status=status,
+            notes=notes,
+        )
+        session.add(
+            RetrievalIndexJobEventModel(
+                event_id=descriptor.event_id,
+                job_id=descriptor.job_id,
+                stage=descriptor.stage.value,
+                status=descriptor.status.value,
+                recorded_at=descriptor.recorded_at,
+                notes=descriptor.notes,
+            )
+        )
+        return descriptor
 
     def _ensure_sqlite_parent_directory(self) -> None:
         prefix = "sqlite:///"
