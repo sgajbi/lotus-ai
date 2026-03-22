@@ -67,6 +67,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/tasks/runtime-status"]["get"]["operationId"] == (
         "getTaskRuntimeStatus"
     )
+    assert spec["paths"]["/platform/tasks/execution-summary"]["get"]["operationId"] == (
+        "getTaskExecutionSummary"
+    )
     assert spec["paths"]["/platform/prompts/activation-readiness"]["get"]["operationId"] == (
         "getPromptActivationReadiness"
     )

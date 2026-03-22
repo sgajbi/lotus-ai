@@ -38,3 +38,36 @@ class TaskRuntimeStatusResponse(BaseModel):
     tasks: list[TaskRuntimeDescriptor] = Field(
         description="Per-task runtime posture for bounded lotus-ai tasks."
     )
+
+
+class TaskExecutionCategorySample(BaseModel):
+    category: TaskCategory = Field(description="Task category represented in the sampled execution set.")
+    execution_count: int = Field(description="Number of sampled executions in the category.")
+
+
+class TaskExecutionProviderSample(BaseModel):
+    provider_mode: str = Field(description="Provider mode represented in the sampled execution set.")
+    execution_count: int = Field(description="Number of sampled executions using the provider mode.")
+
+
+class TaskExecutionSummaryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the task execution summary.")
+    version: str = Field(description="Current lotus-ai service version.")
+    sampled_record_limit: int = Field(
+        description="Maximum number of recent audit records included in the sampled execution summary."
+    )
+    sampled_record_count: int = Field(description="Number of sampled execution records processed.")
+    stubbed_execution_count: int = Field(description="Number of sampled executions that were stub-backed.")
+    non_stubbed_execution_count: int = Field(
+        description="Number of sampled executions that used non-stubbed runtime paths."
+    )
+    latest_generated_at: str | None = Field(
+        default=None,
+        description="Most recent generated timestamp observed in the sampled execution set.",
+    )
+    categories: list[TaskExecutionCategorySample] = Field(
+        description="Category-level counts across the sampled execution set."
+    )
+    provider_modes: list[TaskExecutionProviderSample] = Field(
+        description="Provider-mode counts across the sampled execution set."
+    )

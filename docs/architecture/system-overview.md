@@ -175,6 +175,10 @@ Task runtime posture is now also exposed through a dedicated `/platform/tasks/ru
 surface and embedded into `/platform/runtime-status`, so operators can distinguish stub-backed
 task paths from retrieval-backed task paths without inferring that from task behavior alone.
 
+Task execution activity is also exposed through `/platform/tasks/execution-summary`, which
+samples persisted audit records to show category-level and provider-mode execution counts across
+recent task runs.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

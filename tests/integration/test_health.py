@@ -23,6 +23,59 @@ def test_platform_capabilities_contract(client: TestClient) -> None:
     assert any(task["task_id"] == "explain.v1" for task in body["tasks"])
 
 
+def test_task_execution_summary_route(client: TestClient) -> None:
+    client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-summary-route-1",
+            },
+            "context": {
+                "summary": "Explain rebalance outcome",
+                "payload": {"status": "BLOCKED"},
+                "source_refs": [],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+    client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "knowledge_search.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-summary-route-2",
+            },
+            "context": {
+                "summary": "Search Lotus knowledge sources",
+                "payload": {
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                "source_refs": [],
+            },
+            "expected_output_label": "RETRIEVAL_ANSWER",
+        },
+    )
+
+    response = client.get("/platform/tasks/execution-summary", params={"limit": 20})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["sampled_record_limit"] == 20
+    assert body["sampled_record_count"] >= 2
+    assert body["stubbed_execution_count"] >= 1
+    assert body["non_stubbed_execution_count"] >= 1
+    assert any(sample["provider_mode"] == "catalog_only" for sample in body["provider_modes"])
+    assert any(sample["provider_mode"] != "catalog_only" for sample in body["provider_modes"])
+
+
 def test_platform_runtime_status_route(client: TestClient) -> None:
     response = client.get("/platform/runtime-status")
 
