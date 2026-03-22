@@ -93,6 +93,11 @@ def test_platform_runtime_status_route() -> None:
     assert body["audit_store"]["status"] == "READY"
     assert body["retrieval_store"]["mode"] == "memory"
     assert body["retrieval_store"]["status"] == "READY"
+    assert body["prompt_runtime"]["selection_mode"] == "STATIC_ACTIVE"
+    assert body["prompt_runtime"]["active_prompt_count"] >= 7
+    assert any(
+        selection["task_id"] == "explain.v1" for selection in body["prompt_runtime"]["selections"]
+    )
     assert body["safety_runtime"]["runtime_redaction_active"] is False
     assert body["safety_runtime"]["enforced_control_ids"] == [
         "response_labeling",

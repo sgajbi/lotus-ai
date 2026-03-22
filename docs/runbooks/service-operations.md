@@ -38,9 +38,10 @@ Expected operator flow for SQL-backed stores:
 
 1. apply migrations with `make migration-apply`
 2. verify `GET /platform/runtime-status`
-3. verify `GET /platform/safety/runtime-status`
-4. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
-5. only then proceed with rollout if readiness is `READY`
+3. confirm prompt runtime selection in the embedded prompt runtime summary
+4. verify `GET /platform/safety/runtime-status`
+5. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
+6. only then proceed with rollout if readiness is `READY`
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
 

@@ -27,6 +27,7 @@ The current execution posture is:
 - runtime safety status exposes which controls are enforced versus documented-only,
 - retrieval now has an explicit execution seam and runtime execution-status surface,
 - prompts now expose runtime selection status in addition to governance posture,
+- platform runtime status now summarizes prompt runtime posture directly,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

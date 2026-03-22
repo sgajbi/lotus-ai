@@ -263,3 +263,21 @@ Current posture:
 1. prompt runtime selection is inspectable through `/platform/prompts/runtime-status`,
 2. the current selection mode is static active-prompt selection,
 3. runtime promotion remains read-only and repository-governed.
+
+## Decision 17: Platform Runtime Status Should Summarize Prompt Runtime
+
+Decision:
+
+`/platform/runtime-status` now embeds prompt runtime status instead of leaving prompt rollout posture on a separate island.
+
+Why:
+
+1. operators need one primary runtime dashboard for the service,
+2. prompt runtime selection is operationally important once multiple governance surfaces exist,
+3. embedding the summary reduces the number of calls required for routine checks while preserving the dedicated prompt endpoint.
+
+Current posture:
+
+1. platform runtime status includes prompt runtime selection summary,
+2. dedicated prompt runtime status remains available for focused inspection,
+3. the embedded view remains read-only and aligned with the prompt governance model.

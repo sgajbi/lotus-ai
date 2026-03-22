@@ -7,6 +7,7 @@ from app.contracts.platform import PlatformRuntimeStatusResponse
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
 from app.services.capability_catalog import build_capability_catalog
 from app.services.prompt_registry import list_registered_prompts
+from app.services.prompt_status import build_prompt_runtime_status
 from app.services.runtime_readiness import (
     get_audit_store_runtime_status,
     get_retrieval_store_runtime_status,
@@ -17,6 +18,7 @@ from app.services.safety_status import build_safety_runtime_status
 def build_platform_runtime_status(app_state: object | None = None) -> PlatformRuntimeStatusResponse:
     capabilities = build_capability_catalog()
     prompts = list_registered_prompts()
+    prompt_runtime = build_prompt_runtime_status()
     audit_store = get_audit_store_runtime_status()
     retrieval_store = get_retrieval_store_runtime_status()
     safety_runtime = build_safety_runtime_status()
@@ -32,6 +34,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         embedding_provider_mode=settings.embedding_provider_mode,
         safety_mode=settings.safety_mode,
         prompt_store_mode=settings.prompt_store_mode,
+        prompt_runtime=prompt_runtime,
         safety_runtime=safety_runtime,
         audit_store=audit_store,
         retrieval_store=retrieval_store,
