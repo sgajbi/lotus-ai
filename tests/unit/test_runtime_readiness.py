@@ -1,5 +1,5 @@
 from app.config import settings
-from app.contracts.platform import RuntimeReadinessStatus
+from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.services.runtime_readiness import (
     get_audit_store_runtime_status,
     get_retrieval_store_runtime_status,

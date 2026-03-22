@@ -581,6 +581,21 @@ def test_prompt_runtime_status_route() -> None:
     assert any(selection["task_id"] == "explain.v1" for selection in body["selections"])
 
 
+def test_prompt_activation_readiness_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/prompts/activation-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["prompt_store_mode"] == "memory"
+    assert body["management_mode"] == "SEEDED_MEMORY"
+    assert body["activation_ready"] is False
+    assert len(body["blocking_findings"]) == 4
+    assert len(body["activation_path"]) == 4
+
+
 def test_service_metadata_exposes_store_modes() -> None:
     client = TestClient(app)
 

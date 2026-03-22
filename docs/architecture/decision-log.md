@@ -426,6 +426,24 @@ Current posture:
 2. dedicated prompt runtime status remains available for focused inspection,
 3. the embedded view remains read-only and aligned with the prompt governance model.
 
+## Decision 17A: Prompt Activation Readiness Should Be Exposed Before Live Prompt Rollout
+
+Decision:
+
+`lotus-ai` exposes a dedicated prompt activation-readiness view before any live prompt promotion path is enabled.
+
+Why:
+
+1. prompt rollout is a higher-level operational decision than prompt definition and runtime-selection inspection alone,
+2. bank-grade prompt activation review needs explicit blocking findings and activation path for live rollout changes,
+3. this keeps prompt promotion governed and reviewable before any runtime write path is introduced.
+
+Current posture:
+
+1. `/platform/prompts/activation-readiness` exposes whether prompt rollout is activatable today,
+2. the endpoint returns explicit blocking findings and a governed activation path,
+3. foundation phase remains not activatable until a separate prompt rollout slice changes promotion posture.
+
 ## Decision 18: Task Runs Should Emit Structured Execution Evidence
 
 Decision:

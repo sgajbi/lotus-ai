@@ -3,10 +3,12 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.contracts.prompts import (
+    PromptActivationReadinessResponse,
     PromptDescriptor,
     PromptGovernanceStatusResponse,
     PromptRuntimeStatusResponse,
 )
+from app.services.prompt_activation_readiness import build_prompt_activation_readiness
 from app.services.prompt_governance import build_prompt_governance_status
 from app.services.prompt_registry import get_prompt_or_raise, list_registered_prompts
 from app.services.prompt_status import build_prompt_runtime_status
@@ -66,6 +68,24 @@ async def get_prompt_governance_route() -> PromptGovernanceStatusResponse:
 )
 async def get_prompt_runtime_status_route() -> PromptRuntimeStatusResponse:
     return build_prompt_runtime_status()
+
+
+@router.get(
+    "/activation-readiness",
+    response_model=PromptActivationReadinessResponse,
+    operation_id="getPromptActivationReadiness",
+    summary="Get lotus-ai prompt activation readiness",
+    description=(
+        "Returns whether lotus-ai prompt rollout is currently ready for a live activation change, "
+        "along with the blocking findings and governed activation path for future rollout."
+    ),
+    responses={
+        200: {"description": "Prompt activation readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_prompt_activation_readiness_route() -> PromptActivationReadinessResponse:
+    return build_prompt_activation_readiness()
 
 
 @router.get(

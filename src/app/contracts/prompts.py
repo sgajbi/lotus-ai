@@ -87,3 +87,21 @@ class PromptRuntimeStatusResponse(BaseModel):
     selections: list[PromptRuntimeSelectionDescriptor] = Field(
         description="Prompt definitions currently selected for runtime use."
     )
+
+
+class PromptActivationReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the prompt activation readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    prompt_store_mode: str = Field(description="Configured prompt store mode for the runtime.")
+    management_mode: PromptManagementMode = Field(
+        description="Effective prompt management mode for the current runtime."
+    )
+    activation_ready: bool = Field(
+        description="Whether prompt rollout posture is currently ready for a live activation change."
+    )
+    blocking_findings: list[str] = Field(
+        description="Human-readable reasons why prompt rollout is not yet activatable through a live promotion path."
+    )
+    activation_path: list[str] = Field(
+        description="Governed high-level path required before live prompt promotion can be enabled."
+    )
