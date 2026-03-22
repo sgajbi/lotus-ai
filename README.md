@@ -32,6 +32,7 @@ The current execution posture is:
 - retrieval now has an explicit execution seam and runtime execution-status surface,
 - retrieval activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - retrieval runbook readiness is now exposed through a dedicated operational-readiness endpoint,
+- retrieval governance status is now exposed through a dedicated review-summary endpoint,
 - prompts now expose runtime selection status in addition to governance posture,
 - platform runtime status now summarizes prompt runtime posture directly,
 - task execution responses now include structured evidence about prompt, provider, safety, and retrieval posture,

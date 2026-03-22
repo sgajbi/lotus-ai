@@ -293,3 +293,23 @@ class RetrievalRunbookReadinessResponse(BaseModel):
     items: list[RetrievalRunbookReadinessItem] = Field(
         description="Governed retrieval operational runbook readiness items."
     )
+
+
+class RetrievalGovernanceStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval governance status view.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    governance_ready: bool = Field(
+        description="Whether retrieval governance posture is currently sufficient for live activation."
+    )
+    activation_readiness: RetrievalActivationReadinessResponse = Field(
+        description="Technical activation-readiness summary for retrieval execution."
+    )
+    runbook_readiness: RetrievalRunbookReadinessResponse = Field(
+        description="Operational runbook-readiness summary for retrieval execution."
+    )
+    blocking_area_count: int = Field(
+        description="Number of top-level retrieval governance areas currently blocking activation."
+    )
+    governance_summary: list[str] = Field(
+        description="Human-readable summary of the current retrieval governance posture."
+    )

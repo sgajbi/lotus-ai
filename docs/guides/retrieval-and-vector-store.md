@@ -99,11 +99,12 @@ The current retrieval API exposes:
 3. retrieval execution status,
 4. retrieval activation readiness,
 5. retrieval runbook readiness,
-6. source-level index status,
-7. indexing policy,
-8. indexing job catalog and job detail,
-9. document inventory,
-10. chunk inventory.
+6. retrieval governance status,
+7. source-level index status,
+8. indexing policy,
+9. indexing job catalog and job detail,
+10. document inventory,
+11. chunk inventory.
 
 The search endpoint remains governed and intentionally disabled until the retrieval execution layer is ready.
 

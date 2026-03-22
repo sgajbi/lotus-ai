@@ -23,6 +23,7 @@
 - Provider governance status: /platform/providers/governance-status
 - Retrieval activation readiness: /platform/retrieval/activation-readiness
 - Retrieval runbook readiness: /platform/retrieval/runbook-readiness
+- Retrieval governance status: /platform/retrieval/governance-status
 - Evaluation runtime status: /platform/evals/runtime-status
 - Safety runtime status: /platform/safety/runtime-status
 - Retrieval runtime status: /platform/retrieval/runtime-status
@@ -83,11 +84,12 @@ Before any future live-provider activation slice:
 
 Before any future live-retrieval activation slice:
 
-1. verify `GET /platform/retrieval/activation-readiness`
-2. inspect `GET /platform/retrieval/runbook-readiness`
-3. confirm retrieval indexing policy and execution status still reflect governed staged posture unless explicitly approved otherwise
-4. confirm reindex, replay, and retrieval observability procedures are documented and approved
-5. only then proceed with any live-retrieval activation rollout review
+1. verify `GET /platform/retrieval/governance-status`
+2. inspect `GET /platform/retrieval/activation-readiness` when technical blockers need detail
+3. inspect `GET /platform/retrieval/runbook-readiness` when operational blockers need detail
+4. confirm retrieval indexing policy and execution status still reflect governed staged posture unless explicitly approved otherwise
+5. confirm reindex, replay, and retrieval observability procedures are documented and approved
+6. only then proceed with any live-retrieval activation rollout review
 
 ## Incident First Checks
 

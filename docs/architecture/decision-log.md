@@ -354,6 +354,24 @@ Current posture:
 2. required runbook items remain not ready in foundation phase,
 3. live retrieval activation should not be considered complete in future rollout slices without both technical and runbook readiness.
 
+## Decision 15C: Retrieval Governance Review Should Have A Single Summary Surface
+
+Decision:
+
+`lotus-ai` exposes a combined retrieval governance-status view for rollout review.
+
+Why:
+
+1. retrieval rollout review should not require operators to manually merge multiple endpoints to assess activation posture,
+2. a bank-grade live-retrieval activation review needs both technical and operational retrieval posture in one governed response,
+3. the summary endpoint reduces interpretation drift while preserving the more detailed retrieval readiness endpoints underneath.
+
+Current posture:
+
+1. `/platform/retrieval/governance-status` embeds both activation readiness and runbook readiness,
+2. the response explicitly reports blocked retrieval governance posture in foundation phase,
+3. detailed retrieval readiness endpoints remain available for deeper inspection and future rollout work.
+
 ## Decision 16: Prompt Runtime Selection Should Be Inspectable
 
 Decision:

@@ -11,6 +11,7 @@ from app.contracts.retrieval import (
     RetrievalIndexStatusResponse,
     RetrievalIndexingPolicyResponse,
     RetrievalExecutionStatusResponse,
+    RetrievalGovernanceStatusResponse,
     RetrievalRuntimeStatusResponse,
     RetrievalRunbookReadinessResponse,
     RetrievalSearchRequest,
@@ -29,6 +30,7 @@ from app.services.retrieval_catalog_service import (
 )
 from app.services.retrieval_activation_readiness import build_retrieval_activation_readiness
 from app.services.retrieval_execution_status import build_retrieval_execution_status
+from app.services.retrieval_governance_status import build_retrieval_governance_status
 from app.services.retrieval_runbook_readiness import build_retrieval_runbook_readiness
 from app.services.retrieval_service import search_sources
 
@@ -141,6 +143,24 @@ async def get_retrieval_activation_readiness_route() -> RetrievalActivationReadi
 )
 async def get_retrieval_runbook_readiness_route() -> RetrievalRunbookReadinessResponse:
     return build_retrieval_runbook_readiness()
+
+
+@router.get(
+    "/governance-status",
+    response_model=RetrievalGovernanceStatusResponse,
+    operation_id="getRetrievalGovernanceStatus",
+    summary="Get retrieval governance status",
+    description=(
+        "Returns the combined technical and operational governance posture for lotus-ai live "
+        "retrieval execution so rollout reviewers can assess activation readiness in one view."
+    ),
+    responses={
+        200: {"description": "Retrieval governance status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_governance_status_route() -> RetrievalGovernanceStatusResponse:
+    return build_retrieval_governance_status()
 
 
 @router.get(
