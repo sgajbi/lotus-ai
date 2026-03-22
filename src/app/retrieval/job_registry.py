@@ -13,7 +13,11 @@ from app.contracts.retrieval import (
     RetrievalPipelineStage,
     RetrievalRuntimeStatusResponse,
 )
-from app.retrieval.document_registry import document_chunk_count
+from app.retrieval.inventory_summary import (
+    RetrievalRuntimeInventorySummary,
+    summarize_retrieval_runtime_inventory,
+    summarize_retrieval_source_inventory,
+)
 from app.retrieval.policy import (
     CHUNKING_STRATEGY,
     EMBEDDING_STRATEGY,
@@ -31,17 +35,20 @@ def _build_job_descriptor(source_id: str) -> RetrievalIndexJobDescriptor:
     if descriptor is not None:
         return descriptor
 
-    documents = repository.list_documents_for_source(source_id)
-    chunk_count = sum(document_chunk_count(document.document_id) for document in documents)
+    inventory = summarize_retrieval_source_inventory(source_id)
     return RetrievalIndexJobDescriptor(
         job_id=job_id,
         source_id=source_id,
-        status=RetrievalJobStatus.PENDING if not documents else RetrievalJobStatus.STAGED,
-        document_count=len(documents),
-        chunk_count=chunk_count,
+        status=(
+            RetrievalJobStatus.PENDING
+            if inventory.document_count == 0
+            else RetrievalJobStatus.STAGED
+        ),
+        document_count=inventory.document_count,
+        chunk_count=inventory.chunk_count,
         message=(
             "No staged documents yet for this retrieval source."
-            if not documents
+            if inventory.document_count == 0
             else "Documents are staged for indexing, but vector indexing is not enabled yet."
         ),
     )
@@ -132,24 +139,14 @@ def build_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
 def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
     store_status = get_retrieval_store_runtime_status()
     if store_status.status == "READY":
-        repository = get_retrieval_repository()
-        sources = repository.list_sources()
-        documents = [
-            document
-            for source in sources
-            for document in repository.list_documents_for_source(source.source_id)
-        ]
-        chunks = [
-            chunk
-            for document in documents
-            for chunk in repository.list_chunks_for_document(document.document_id)
-        ]
-        jobs = repository.list_index_jobs()
+        inventory = summarize_retrieval_runtime_inventory()
     else:
-        sources = []
-        documents = []
-        chunks = []
-        jobs = []
+        inventory = RetrievalRuntimeInventorySummary(
+            source_count=0,
+            document_count=0,
+            chunk_count=0,
+            index_job_count=0,
+        )
     return RetrievalRuntimeStatusResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,
@@ -159,8 +156,8 @@ def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
         retrieval_store_detail=store_status.detail,
         database_configured=store_status.database_configured,
         vector_store=VECTOR_STORE_STRATEGY,
-        source_count=len(sources),
-        document_count=len(documents),
-        chunk_count=len(chunks),
-        index_job_count=len(jobs),
+        source_count=inventory.source_count,
+        document_count=inventory.document_count,
+        chunk_count=inventory.chunk_count,
+        index_job_count=inventory.index_job_count,
     )

@@ -133,6 +133,10 @@ filtering in separate builders.
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.
 
+Retrieval services also use a dedicated inventory-summary helper now, so source-level and
+runtime-level document and chunk counts are derived in one place instead of being recomputed
+independently by retrieval status and job builders.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

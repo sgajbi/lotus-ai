@@ -3,11 +3,11 @@ from __future__ import annotations
 from app.contracts.retrieval import (
     RetrievalChunkCatalogResponse,
     RetrievalDocumentCatalogResponse,
-    RetrievalIndexStatus,
     RetrievalIndexStatusResponse,
     RetrievalSourceStatusDescriptor,
 )
 from app.config import settings
+from app.retrieval.inventory_summary import summarize_retrieval_source_inventory
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
 from app.services.retrieval_store import get_retrieval_repository
 
@@ -32,29 +32,17 @@ def list_chunks_for_document(document_id: str) -> RetrievalChunkCatalogResponse 
         )
     return None
 
-
-def document_chunk_count(document_id: str) -> int:
-    return len(get_retrieval_repository().list_chunks_for_document(document_id))
-
-
 def build_retrieval_index_status() -> RetrievalIndexStatusResponse:
     source_statuses: list[RetrievalSourceStatusDescriptor] = []
     repository = get_retrieval_repository()
     for source_id in repository.list_source_ids():
-        documents = repository.list_documents_for_source(source_id)
-        chunk_count = sum(document_chunk_count(document.document_id) for document in documents)
-        if not documents:
-            status = RetrievalIndexStatus.NOT_INDEXED
-        elif all(document.index_status == RetrievalIndexStatus.INDEXED for document in documents):
-            status = RetrievalIndexStatus.INDEXED
-        else:
-            status = RetrievalIndexStatus.STAGED
+        inventory = summarize_retrieval_source_inventory(source_id)
         source_statuses.append(
             RetrievalSourceStatusDescriptor(
-                source_id=source_id,
-                index_status=status,
-                document_count=len(documents),
-                chunk_count=chunk_count,
+                source_id=inventory.source_id,
+                index_status=inventory.index_status,
+                document_count=inventory.document_count,
+                chunk_count=inventory.chunk_count,
             )
         )
 
