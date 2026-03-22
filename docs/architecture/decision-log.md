@@ -66,3 +66,36 @@ Why:
 
 1. target customers require strong governance,
 2. startup constraints require disciplined sequencing rather than big-bang builds.
+
+## Decision 6: No Large AI Framework as the Core Architecture
+
+Decision:
+
+Do not make a large AI framework the primary architectural foundation of `lotus-ai`.
+
+Why:
+
+1. we need explicit control over contracts, safety, auditability, and request flow,
+2. framework abstractions can hide important behavior,
+3. bank-grade platform services need clarity over convenience,
+4. our current use cases do not justify an agent-first architecture.
+
+Allowed use:
+
+Frameworks or helper libraries may be used in narrow internal roles where they reduce plumbing without taking over the service design.
+
+## Decision 7: LangGraph Is Deferred, Not Rejected
+
+Decision:
+
+LangGraph is deferred from the initial implementation of `lotus-ai`.
+
+Why:
+
+1. early `lotus-ai` slices are contract-first and explanation-first,
+2. graph orchestration is not yet the main bottleneck,
+3. we should first prove the need for multi-step agent workflows with real usage evidence.
+
+Future position:
+
+LangGraph can be reconsidered for bounded internal orchestration later, especially for async multi-step flows, but it should remain an implementation detail rather than the public platform architecture.

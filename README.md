@@ -91,6 +91,45 @@ That means:
 - no speculative overbuilding,
 - no hidden AI behavior in critical workflows.
 
+## Framework Stance
+
+`lotus-ai` is not being built around a large AI orchestration framework as its core architecture.
+
+The foundation remains:
+
+- `FastAPI`
+- `Pydantic`
+- `pydantic-settings`
+- normal Python service modules
+- explicit Lotus-owned contracts, routing, safety, and audit behavior
+
+We may use targeted AI libraries where they reduce plumbing, but those libraries should remain implementation helpers rather than the definition of the platform.
+
+Current default position:
+
+1. own contracts, prompts, routing, safety, and audit logic ourselves,
+2. use provider SDKs or thin wrappers first,
+3. introduce specialized AI libraries only where they clearly improve delivery without obscuring control flow.
+
+## LangGraph Position
+
+LangGraph is not part of the initial foundation of `lotus-ai`.
+
+Why:
+
+1. the first priority is contract-first, auditable platform behavior,
+2. our early use cases are explanation, retrieval, and bounded task execution rather than complex autonomous agents,
+3. we want to avoid hidden orchestration behavior before the governance model is mature.
+
+LangGraph may be considered later for tightly bounded async or tool-using workflows, but only after:
+
+1. task contracts are stable,
+2. audit logging is complete,
+3. safety and approval controls are in place,
+4. we have real evidence that graph-style orchestration is needed.
+
+Even if adopted later, LangGraph should be used as an internal orchestration helper, not as the public architecture of `lotus-ai`.
+
 ## Quick Start
 
 ```powershell

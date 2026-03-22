@@ -17,6 +17,7 @@
 3. New task categories require documentation and test coverage.
 4. Prompt changes must be reviewable.
 5. Retrieval sources must be curated and attributable.
+6. Frameworks must not obscure audit, safety, or approval boundaries.
 
 ## Data Handling
 
@@ -45,3 +46,15 @@ No output label should imply authoritative domain execution.
 3. role-aware redaction policy engine,
 4. production-grade provider credential rotation,
 5. formal threat model.
+
+## Framework Governance
+
+Any future framework adoption, including LangGraph or similar orchestration libraries, should be judged against these questions:
+
+1. Does it preserve explicit task contracts?
+2. Does it preserve traceable request and response boundaries?
+3. Does it make audit logging easier rather than harder?
+4. Does it keep human-approval and policy gates explicit?
+5. Can the team explain the runtime behavior without relying on framework magic?
+
+If the answer to any of these is no, the framework should not be introduced into a production-facing path.

@@ -64,6 +64,36 @@ Owns:
 2. OpenAPI-facing contracts,
 3. upstream integration surfaces.
 
+## Framework Policy
+
+`lotus-ai` is a normal backend service first and an AI platform second.
+
+That means the service is built around:
+
+1. explicit API contracts,
+2. typed Python modules,
+3. observable service orchestration,
+4. Lotus-owned safety and audit controls.
+
+AI frameworks may be used selectively, but they must not become the source of truth for:
+
+1. request flow,
+2. task semantics,
+3. output policy,
+4. audit boundaries.
+
+## LangGraph Guidance
+
+LangGraph is currently out of the foundation scope.
+
+It may be appropriate later for:
+
+1. bounded async orchestration,
+2. multi-step tool workflows,
+3. internal state-machine style AI execution.
+
+It is not appropriate right now as the base architecture for all of `lotus-ai`.
+
 ## Current Foundation Endpoints
 
 1. `/`
