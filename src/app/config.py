@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     embedding_provider_mode: str = "disabled"
     safety_mode: str = "documented_only"
     audit_store_mode: str = "memory"
+    prompt_store_mode: str = "memory"
     retrieval_store_mode: str = "memory"
     startup_readiness_policy: str = "warn"
     readiness_probe_policy: str = "observe"

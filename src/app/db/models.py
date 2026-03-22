@@ -80,3 +80,13 @@ class RetrievalIndexJobModel(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False)
 
     source: Mapped["RetrievalSourceModel"] = relationship(back_populates="index_jobs")
+
+
+class PromptDefinitionModel(Base):
+    __tablename__ = "prompt_definitions"
+
+    task_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    prompt_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt_kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    system_instructions: Mapped[str] = mapped_column(Text, nullable=False)
+    output_contract_notes: Mapped[str] = mapped_column(Text, nullable=False)

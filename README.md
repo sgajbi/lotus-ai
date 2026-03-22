@@ -20,6 +20,7 @@ This is deliberate. The early focus is to make `lotus-ai` understandable, testab
 The current persistence posture is:
 
 - in-memory audit storage by default for simple local development,
+- in-memory prompt registry by default, with a SQLAlchemy-backed prompt adapter available behind the same repository seam,
 - a SQLAlchemy-backed audit adapter available behind the same repository interface for durable storage,
 - in-memory retrieval metadata by default, with a SQLAlchemy-backed retrieval adapter available behind the same repository seam,
 - explicit configuration to move between the two without changing API contracts,

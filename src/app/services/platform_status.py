@@ -29,6 +29,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         retrieval_mode=settings.retrieval_mode,
         embedding_provider_mode=settings.embedding_provider_mode,
         safety_mode=settings.safety_mode,
+        prompt_store_mode=settings.prompt_store_mode,
         audit_store=audit_store,
         retrieval_store=retrieval_store,
         database_configured=audit_store.database_configured or retrieval_store.database_configured,

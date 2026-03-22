@@ -16,9 +16,11 @@ The next platform requirement is traceability:
 
 Current implementation:
 
-1. in-repo registry keyed by `task_id`,
-2. versioned prompt descriptors,
-3. one prompt descriptor per registered task.
+1. repository abstraction for prompt definitions,
+2. in-memory prompt registry for simple development,
+3. SQLAlchemy-backed prompt registry for durable storage,
+4. versioned prompt descriptors,
+5. one prompt descriptor per registered task.
 
 Current prompt fields:
 
@@ -29,6 +31,18 @@ Current prompt fields:
 5. `output_contract_notes`
 
 This is intentionally simple for foundation phase.
+
+Current durable path:
+
+1. `LOTUS_AI_PROMPT_STORE_MODE=sqlalchemy`
+2. `LOTUS_AI_DATABASE_URL=<db-url>`
+
+The current enterprise posture is:
+
+1. prompt definitions can remain memory-backed for local development,
+2. durable prompt definitions are seeded and managed through Alembic revisions,
+3. prompt-store mode is independent from audit and retrieval store mode,
+4. public prompt APIs do not change when the backing store changes.
 
 ## Audit Store
 
@@ -73,8 +87,7 @@ The current enterprise posture is:
 
 Likely next evolution:
 
-1. database-backed prompt registry or prompt asset packaging,
-2. PostgreSQL-backed runtime persistence beyond the initial audit table,
-3. tenant-aware prompt selection,
-4. prompt promotion and rollback workflow,
-5. richer audit records including safety-policy outcomes.
+1. prompt promotion and rollback workflow,
+2. tenant-aware prompt selection,
+3. prompt approval status and provenance metadata,
+4. richer audit records including safety-policy outcomes.

@@ -31,6 +31,7 @@ class PlatformRuntimeStatusResponse(BaseModel):
     retrieval_mode: str = Field(description="Current retrieval execution mode.")
     embedding_provider_mode: str = Field(description="Current embedding provider mode.")
     safety_mode: str = Field(description="Current safety policy mode.")
+    prompt_store_mode: str = Field(description="Current prompt registry store mode.")
     audit_store: StoreRuntimeStatusDescriptor = Field(
         description="Current audit persistence runtime posture."
     )
