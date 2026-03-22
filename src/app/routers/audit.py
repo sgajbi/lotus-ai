@@ -33,6 +33,14 @@ async def list_audit_records(
         default=None,
         description="Optional task identifier filter for the audit catalog.",
     ),
+    category: str | None = Query(
+        default=None,
+        description="Optional task category filter for the audit catalog.",
+    ),
+    output_label: str | None = Query(
+        default=None,
+        description="Optional output label filter for the audit catalog.",
+    ),
     requested_by: str | None = Query(
         default=None,
         description="Optional requester identity filter for the audit catalog.",
@@ -51,6 +59,8 @@ async def list_audit_records(
     records = get_audit_store().list(
         caller_app=caller_app,
         task_id=task_id,
+        category=category,
+        output_label=output_label,
         requested_by=requested_by,
         tenant_id=tenant_id,
         limit=limit,
@@ -60,6 +70,10 @@ async def list_audit_records(
         filters_applied["caller_app"] = caller_app
     if task_id is not None:
         filters_applied["task_id"] = task_id
+    if category is not None:
+        filters_applied["category"] = category
+    if output_label is not None:
+        filters_applied["output_label"] = output_label
     if requested_by is not None:
         filters_applied["requested_by"] = requested_by
     if tenant_id is not None:

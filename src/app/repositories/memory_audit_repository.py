@@ -23,6 +23,8 @@ class InMemoryAuditRepository:
         *,
         caller_app: str | None = None,
         task_id: str | None = None,
+        category: str | None = None,
+        output_label: str | None = None,
         requested_by: str | None = None,
         tenant_id: str | None = None,
         limit: int = 20,
@@ -37,6 +39,12 @@ class InMemoryAuditRepository:
                 records = [record for record in records if record.caller_app == caller_app]
             if task_id is not None:
                 records = [record for record in records if record.task_id == task_id]
+            if category is not None:
+                records = [record for record in records if record.category.value == category]
+            if output_label is not None:
+                records = [
+                    record for record in records if record.output_label.value == output_label
+                ]
             if requested_by is not None:
                 records = [record for record in records if record.requested_by == requested_by]
             if tenant_id is not None:

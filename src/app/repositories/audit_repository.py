@@ -17,6 +17,8 @@ class AuditRepository(Protocol):
         *,
         caller_app: str | None = None,
         task_id: str | None = None,
+        category: str | None = None,
+        output_label: str | None = None,
         requested_by: str | None = None,
         tenant_id: str | None = None,
         limit: int = 20,

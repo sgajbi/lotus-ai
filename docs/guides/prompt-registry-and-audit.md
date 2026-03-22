@@ -128,9 +128,11 @@ The current enterprise posture is:
 
 1. `caller_app`
 2. `task_id`
-3. `requested_by`
-4. `tenant_id`
-5. `limit`
+3. `category`
+4. `output_label`
+5. `requested_by`
+6. `tenant_id`
+7. `limit`
 
 ## Future Direction
 

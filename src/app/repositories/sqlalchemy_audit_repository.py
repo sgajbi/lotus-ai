@@ -60,6 +60,8 @@ class SqlAlchemyAuditRepository:
         *,
         caller_app: str | None = None,
         task_id: str | None = None,
+        category: str | None = None,
+        output_label: str | None = None,
         requested_by: str | None = None,
         tenant_id: str | None = None,
         limit: int = 20,
@@ -69,6 +71,10 @@ class SqlAlchemyAuditRepository:
             statement = statement.where(AuditRecordModel.caller_app == caller_app)
         if task_id is not None:
             statement = statement.where(AuditRecordModel.task_id == task_id)
+        if category is not None:
+            statement = statement.where(AuditRecordModel.category == category)
+        if output_label is not None:
+            statement = statement.where(AuditRecordModel.output_label == output_label)
         if requested_by is not None:
             statement = statement.where(AuditRecordModel.requested_by == requested_by)
         if tenant_id is not None:

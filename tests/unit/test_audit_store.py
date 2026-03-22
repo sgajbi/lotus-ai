@@ -95,10 +95,14 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
 
     all_records = store.list()
     advise_records = store.list(caller_app="lotus-advise")
+    summarize_records = store.list(category="summarize")
+    draft_records = store.list(output_label="DRAFT")
     tenant_records = store.list(tenant_id="tenant-us-002")
     requester_records = store.list(requested_by="advisor.user@lotus")
 
     assert [record.request_id for record in all_records] == ["air_new", "air_old"]
     assert [record.request_id for record in advise_records] == ["air_new"]
+    assert [record.request_id for record in summarize_records] == ["air_new"]
+    assert [record.request_id for record in draft_records] == ["air_new"]
     assert [record.request_id for record in tenant_records] == ["air_new"]
     assert [record.request_id for record in requester_records] == ["air_new"]
