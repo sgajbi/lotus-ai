@@ -36,8 +36,10 @@ def test_platform_runtime_status_route() -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["delivery_phase"] == "foundation"
-    assert body["audit_store_mode"] == "memory"
-    assert body["retrieval_store_mode"] == "memory"
+    assert body["audit_store"]["mode"] == "memory"
+    assert body["audit_store"]["status"] == "READY"
+    assert body["retrieval_store"]["mode"] == "memory"
+    assert body["retrieval_store"]["status"] == "READY"
     assert body["migration_contract_enforced"] is True
     assert body["prompt_count"] >= 3
 
@@ -152,6 +154,7 @@ def test_retrieval_runtime_status_route() -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["retrieval_store_mode"] == "memory"
+    assert body["retrieval_store_status"] == "READY"
     assert body["source_count"] >= 4
 
 

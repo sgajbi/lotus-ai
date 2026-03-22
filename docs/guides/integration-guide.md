@@ -10,6 +10,17 @@ Before integrating a Lotus app with `lotus-ai`, upstream teams should inspect:
 
 This keeps downstream integration decisions grounded in actual runtime capability rather than assumptions.
 
+## Runtime Readiness Semantics
+
+Runtime status endpoints use explicit readiness states for persistence-backed components:
+
+1. `READY`: the configured backend is operational for the current phase.
+2. `CONFIGURATION_REQUIRED`: the selected mode requires configuration that is not present.
+3. `MIGRATION_REQUIRED`: the backend is reachable but the expected schema is not available yet.
+4. `UNAVAILABLE`: the backend could not be reached or the configured mode is unsupported.
+
+Teams should treat `READY` as the only state suitable for relying on durable platform behavior. The other states are informative and should block assumptions about operational persistence.
+
 This guide explains how other Lotus apps should integrate with `lotus-ai`.
 
 ## Core Rule

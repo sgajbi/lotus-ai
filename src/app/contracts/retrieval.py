@@ -4,6 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.platform import RuntimeReadinessStatus
+
 
 class RetrievalSourceKind(str, Enum):
     RFC = "RFC"
@@ -159,6 +161,12 @@ class RetrievalRuntimeStatusResponse(BaseModel):
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
     retrieval_mode: str = Field(description="Current retrieval execution mode.")
     retrieval_store_mode: str = Field(description="Current retrieval metadata store mode.")
+    retrieval_store_status: RuntimeReadinessStatus = Field(
+        description="Readiness status for the active retrieval metadata store."
+    )
+    retrieval_store_detail: str = Field(
+        description="Human-readable explanation of the retrieval store readiness state."
+    )
     database_configured: bool = Field(
         description="Whether a database URL is configured for durable retrieval metadata."
     )

@@ -21,6 +21,7 @@ from app.retrieval.policy import (
     VECTOR_STORE_STRATEGY,
 )
 from app.services.retrieval_store import get_retrieval_repository
+from app.services.runtime_readiness import get_retrieval_store_runtime_status
 
 
 def _build_job_descriptor(source_id: str) -> RetrievalIndexJobDescriptor:
@@ -130,6 +131,7 @@ def build_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
 
 def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
     repository = get_retrieval_repository()
+    store_status = get_retrieval_store_runtime_status()
     sources = repository.list_sources()
     documents = [
         document
@@ -147,7 +149,9 @@ def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
         delivery_phase=settings.delivery_phase,
         retrieval_mode=settings.retrieval_mode,
         retrieval_store_mode=settings.retrieval_store_mode,
-        database_configured=bool(settings.database_url),
+        retrieval_store_status=store_status.status,
+        retrieval_store_detail=store_status.detail,
+        database_configured=store_status.database_configured,
         vector_store=VECTOR_STORE_STRATEGY,
         source_count=len(sources),
         document_count=len(documents),
