@@ -515,3 +515,21 @@ Current posture:
 1. evaluation runtime status summarizes staged coverage for task execution, retrieval, provider policy, and safety policy,
 2. platform runtime status inherits the same seam summary through the embedded evaluation runtime contract,
 3. fixture-family detail remains available for deeper inspection.
+
+## Decision 31: Evaluation Run Artifacts Should Exist Before A Live Runner
+
+Decision:
+
+`lotus-ai` exposes governed, read-only evaluation run artifacts before introducing live evaluation execution.
+
+Why:
+
+1. the platform needs a durable artifact shape for recorded evaluation outcomes before a mutable runner exists,
+2. artifact inspection helps reviewers reason about baseline evaluation posture without conflating it with execution infrastructure,
+3. this creates a stable bridge from fixture inventory to future persisted evaluation runs.
+
+Current posture:
+
+1. `/platform/evals/runs` and `/platform/evals/runs/{run_id}` expose recorded evaluation artifacts,
+2. evaluation runtime status now reports recorded run count and latest run identifiers,
+3. live evaluation execution remains inactive and separate from artifact inspection.

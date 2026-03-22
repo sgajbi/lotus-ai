@@ -75,6 +75,8 @@ The current platform inspection surface for evaluation readiness is:
 1. `GET /platform/evals/catalog`
 2. `GET /platform/evals/runtime-status`
 3. `GET /platform/evals/fixtures/{fixture_id}`
+4. `GET /platform/evals/runs`
+5. `GET /platform/evals/runs/{run_id}`
 
 This catalog exposes:
 
@@ -94,6 +96,12 @@ Runtime status now also exposes seam-oriented coverage so operators can see stag
 2. retrieval,
 3. provider policy,
 4. safety policy.
+
+Recorded evaluation run artifacts expose:
+
+1. a governed snapshot of manifest version and staged counts at recording time,
+2. seam-oriented coverage captured with the run artifact,
+3. a read-only artifact trail even while a live evaluation runner is still inactive.
 
 The source of truth for fixture inventory is now:
 

@@ -10,6 +10,11 @@ class EvaluationAssetStatus(str, Enum):
     STAGED = "STAGED"
 
 
+class EvaluationRunStatus(str, Enum):
+    RECORDED = "RECORDED"
+    SUPERSEDED = "SUPERSEDED"
+
+
 class EvaluationEvidenceCategoryDescriptor(BaseModel):
     category_id: str = Field(description="Stable execution evidence category identifier.")
     description: str = Field(description="Human-readable description of the evidence category.")
@@ -81,6 +86,54 @@ class EvaluationSeamCoverageDescriptor(BaseModel):
     staged_case_count: int = Field(description="Total staged cases currently mapped to the seam.")
 
 
+class EvaluationRunArtifactDescriptor(BaseModel):
+    run_id: str = Field(description="Stable evaluation run artifact identifier.")
+    recorded_at: str = Field(description="UTC timestamp when the evaluation artifact was recorded.")
+    status: EvaluationRunStatus = Field(
+        description="Lifecycle status for the recorded evaluation artifact."
+    )
+    manifest_version: str = Field(
+        description="Evaluation fixture manifest version associated with the recorded artifact."
+    )
+    staged_fixture_count: int = Field(
+        description="Number of staged fixture families represented in the recorded artifact."
+    )
+    staged_case_count: int = Field(
+        description="Number of staged cases represented in the recorded artifact."
+    )
+    seam_coverage: list[EvaluationSeamCoverageDescriptor] = Field(
+        description="Seam-oriented coverage captured in the recorded evaluation artifact."
+    )
+    notes: str = Field(
+        description="Human-readable description of the recorded evaluation artifact."
+    )
+
+
+class EvaluationRunCatalogResponse(BaseModel):
+    service: str = Field(description="Service name emitting the evaluation run catalog.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    run_count: int = Field(
+        description="Number of recorded evaluation run artifacts currently exposed."
+    )
+    latest_run_id: str | None = Field(
+        default=None,
+        description="Most recent evaluation run artifact identifier when one exists.",
+    )
+    runs: list[EvaluationRunArtifactDescriptor] = Field(
+        description="Recorded evaluation run artifacts available for inspection."
+    )
+
+
+class EvaluationRunDetailResponse(BaseModel):
+    service: str = Field(description="Service name emitting the evaluation run detail.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    run: EvaluationRunArtifactDescriptor = Field(
+        description="Recorded evaluation run artifact detail."
+    )
+
+
 class EvaluationRuntimeStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the evaluation runtime status.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -102,6 +155,17 @@ class EvaluationRuntimeStatusResponse(BaseModel):
     )
     seam_coverage: list[EvaluationSeamCoverageDescriptor] = Field(
         description="Staged evaluation coverage summarized by major lotus-ai platform seam."
+    )
+    recorded_run_count: int = Field(
+        description="Number of recorded evaluation run artifacts currently exposed."
+    )
+    latest_recorded_run_id: str | None = Field(
+        default=None,
+        description="Most recent recorded evaluation run artifact identifier when one exists.",
+    )
+    latest_recorded_run_status: EvaluationRunStatus | None = Field(
+        default=None,
+        description="Lifecycle status for the most recent recorded evaluation run artifact.",
     )
     evaluation_runner_active: bool = Field(
         description="Whether a live evaluation runner is active in the current phase."
