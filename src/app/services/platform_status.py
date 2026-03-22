@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from app.config import settings
 from app.contracts.platform import PlatformRuntimeStatusResponse
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
+from app.services.async_runtime_status import build_async_runtime_status
 from app.services.capability_catalog import build_capability_catalog
 from app.services.eval_status import build_evaluation_runtime_status
 from app.services.prompt_registry import list_registered_prompts
@@ -19,6 +20,7 @@ from app.services.safety_status import build_safety_runtime_status
 def build_platform_runtime_status(app_state: object | None = None) -> PlatformRuntimeStatusResponse:
     capabilities = build_capability_catalog()
     prompts = list_registered_prompts()
+    async_runtime = build_async_runtime_status()
     evaluation_runtime = build_evaluation_runtime_status()
     prompt_runtime = build_prompt_runtime_status()
     audit_store = get_audit_store_runtime_status()
@@ -36,6 +38,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         embedding_provider_mode=settings.embedding_provider_mode,
         safety_mode=settings.safety_mode,
         prompt_store_mode=settings.prompt_store_mode,
+        async_runtime=async_runtime,
         evaluation_runtime=evaluation_runtime,
         prompt_runtime=prompt_runtime,
         safety_runtime=safety_runtime,

@@ -27,6 +27,21 @@ def test_platform_capabilities_contract() -> None:
     assert any(task["task_id"] == "explain.v1" for task in body["tasks"])
 
 
+def test_async_runtime_status_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/async/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["queue_mode"] == "DISABLED"
+    assert body["worker_mode"] == "DOCUMENTED_ONLY"
+    assert body["active_worker_count"] == 0
+    assert body["enqueued_job_count"] == 0
+    assert any(job["job_type"] == "retrieval_indexing" for job in body["supported_job_types"])
+
+
 def test_evaluation_catalog_route() -> None:
     client = TestClient(app)
 
@@ -242,6 +257,9 @@ def test_platform_runtime_status_route() -> None:
     assert body["audit_store"]["status"] == "READY"
     assert body["retrieval_store"]["mode"] == "memory"
     assert body["retrieval_store"]["status"] == "READY"
+    assert body["async_runtime"]["queue_mode"] == "DISABLED"
+    assert body["async_runtime"]["worker_mode"] == "DOCUMENTED_ONLY"
+    assert body["async_runtime"]["active_worker_count"] == 0
     assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
     assert body["evaluation_runtime"]["evidence_category_count"] == 5
     assert body["evaluation_runtime"]["staged_case_count"] == 12

@@ -5,6 +5,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.config import settings
 from app.middleware.correlation import CorrelationIdMiddleware
+from app.routers.async_runtime import router as async_runtime_router
 from app.routers.audit import router as audit_router
 from app.routers.capabilities import router as capabilities_router
 from app.routers.evals import router as evals_router
@@ -42,6 +43,7 @@ app = FastAPI(
 app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
 Instrumentator().instrument(app).expose(app)
 app.include_router(platform_router)
+app.include_router(async_runtime_router)
 app.include_router(capabilities_router)
 app.include_router(evals_router)
 app.include_router(providers_router)
@@ -131,6 +133,7 @@ async def root() -> dict[str, object]:
         "readinessProbePolicy": settings.readiness_probe_policy,
         "capabilityAreas": [
             "llm_gateway",
+            "async_runtime",
             "provider_catalog",
             "prompt_registry",
             "retrieval",

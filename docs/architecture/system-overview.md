@@ -64,6 +64,17 @@ Owns:
 The API-facing service layer should remain stateless so multiple replicas can serve the same
 contracts without hidden node-local behavior.
 
+### Async Runtime
+
+- `src/app/services/async_runtime_status.py`
+- `src/app/routers/async_runtime.py`
+
+Owns:
+
+1. async queue and worker posture exposure,
+2. known background job-type inventory,
+3. the contract boundary for future worker-backed execution.
+
 ### Providers
 
 - `src/app/providers/`
@@ -143,6 +154,7 @@ It is not appropriate right now as the base architecture for all of `lotus-ai`.
 5. `/metadata`
 6. `/platform/runtime-status`
 7. `/platform/capabilities`
+8. `/platform/async/runtime-status`
 
 The current capability endpoint is intentionally simple. It gives other Lotus apps a stable discovery surface while the rest of the platform is still under construction.
 

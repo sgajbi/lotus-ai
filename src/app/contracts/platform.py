@@ -4,6 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.async_runtime import AsyncRuntimeStatusResponse
 from app.contracts.evals import EvaluationRuntimeStatusResponse
 from app.contracts.prompts import PromptRuntimeStatusResponse
 from app.contracts.safety import SafetyRuntimeStatusResponse
@@ -36,6 +37,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     embedding_provider_mode: str = Field(description="Current embedding provider mode.")
     safety_mode: str = Field(description="Current safety policy mode.")
     prompt_store_mode: str = Field(description="Current prompt registry store mode.")
+    async_runtime: AsyncRuntimeStatusResponse = Field(
+        description="Current async execution posture for lotus-ai."
+    )
     evaluation_runtime: EvaluationRuntimeStatusResponse = Field(
         description="Current evaluation runtime posture for lotus-ai."
     )

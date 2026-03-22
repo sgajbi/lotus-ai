@@ -120,6 +120,11 @@ Goals:
 
 This phase should only start after prior phases have real usage evidence.
 
+Foundation note:
+
+1. queue and worker posture may be exposed before live background execution is enabled,
+2. read-only async runtime contracts are the preferred first step so scaling architecture becomes visible early.
+
 ## Cross-Phase Scaling Rule
 
 Across all phases, we should preserve the same target shape:

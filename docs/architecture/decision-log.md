@@ -588,3 +588,21 @@ Current posture:
 2. API-serving components are expected to remain stateless,
 3. long-running and high-latency work is expected to move through worker-style execution paths,
 4. provider gateway, retrieval, evaluation, safety, prompt governance, and audit/supportability must remain separable subdomains.
+
+## Decision 35: Async Runtime Should Be Exposed Before Live Queue Execution
+
+Decision:
+
+`lotus-ai` exposes a read-only async runtime contract before queue-backed execution is activated.
+
+Why:
+
+1. the scaling architecture should be visible in service contracts before heavy background execution arrives,
+2. callers and operators need to know that async job types exist even when they are not yet enabled,
+3. this creates a stable seam for future worker rollout without overcommitting to a queue implementation too early.
+
+Current posture:
+
+1. `/platform/async/runtime-status` exposes queue mode, worker mode, and known async job types,
+2. platform runtime status embeds the async runtime summary,
+3. async execution remains disabled in the foundation phase while the contract is now explicit.
