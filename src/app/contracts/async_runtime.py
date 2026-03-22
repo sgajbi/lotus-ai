@@ -40,6 +40,10 @@ class AsyncJobArtifactDescriptor(BaseModel):
     status: AsyncJobStatus = Field(description="Lifecycle status for the async job artifact.")
     submitted_at: str = Field(description="UTC timestamp when the async job artifact was created.")
     caller_app: str = Field(description="Lotus caller associated with the async job artifact.")
+    related_evaluation_run_id: str | None = Field(
+        default=None,
+        description="Related evaluation run artifact identifier when the async job contributes to evaluation history.",
+    )
     execution_path: str = Field(
         description="Current execution path assigned to the async job artifact."
     )

@@ -642,3 +642,21 @@ Current posture:
 1. `/platform/async/jobs/submit` validates known job types,
 2. supported job types return a typed `REJECTED` response while queue execution remains disabled,
 3. unknown job types are rejected explicitly with a not-found response.
+
+## Decision 38: Async Job Artifacts Should Link To Evaluation History When Relevant
+
+Decision:
+
+Async job artifacts can carry typed references to related evaluation run artifacts.
+
+Why:
+
+1. future worker-backed evaluation execution will need traceable linkage across async and evaluation seams,
+2. seeded cross-references let us validate that relationship model before live workers exist,
+3. this improves supportability without changing external business-facing contracts.
+
+Current posture:
+
+1. async job artifacts may include `related_evaluation_run_id`,
+2. the async job registry validates related evaluation run references against the governed evaluation run registry,
+3. evaluation-linked async history is now inspectable through the async job APIs.

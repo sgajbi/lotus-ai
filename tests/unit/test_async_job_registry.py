@@ -17,6 +17,7 @@ def test_validate_async_job_artifacts_accepts_current_shape() -> None:
                 "status": "QUEUED",
                 "submitted_at": "2026-03-22T10:15:00Z",
                 "caller_app": "lotus-platform",
+                "related_evaluation_run_id": None,
                 "execution_path": "future_worker_queue",
                 "notes": "Seeded async job artifact.",
             }
@@ -51,4 +52,24 @@ def test_validate_async_job_artifacts_rejects_duplicate_job_ids() -> None:
     }
 
     with pytest.raises(AsyncJobArtifactValidationError, match="Duplicate async job artifact id"):
+        validate_async_job_artifacts(registry_payload=payload)
+
+
+def test_validate_async_job_artifacts_rejects_unknown_related_evaluation_run() -> None:
+    payload = {
+        "jobs": [
+            {
+                "job_id": "asyncjob_invalid_eval_ref",
+                "job_type": "evaluation_execution",
+                "status": "SUPERSEDED",
+                "submitted_at": "2026-03-22T11:15:00Z",
+                "caller_app": "lotus-ai",
+                "related_evaluation_run_id": "missing_eval_run",
+                "execution_path": "future_worker_queue",
+                "notes": "Invalid eval run reference.",
+            }
+        ]
+    }
+
+    with pytest.raises(AsyncJobArtifactValidationError, match="unknown evaluation run id"):
         validate_async_job_artifacts(registry_payload=payload)

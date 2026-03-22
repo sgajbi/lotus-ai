@@ -75,7 +75,8 @@ Owns:
 2. known background job-type inventory,
 3. seeded async job artifact inspection,
 4. governed async job submission contracts,
-5. the contract boundary for future worker-backed execution.
+5. relationships between async job artifacts and evaluation history when applicable,
+6. the contract boundary for future worker-backed execution.
 
 ### Providers
 

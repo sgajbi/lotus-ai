@@ -55,6 +55,7 @@ def test_async_job_catalog_route() -> None:
     assert body["queued_job_count"] == 1
     assert body["jobs"][0]["job_id"] == "asyncjob_retrieval_indexing_001"
     assert body["jobs"][1]["status"] == "SUPERSEDED"
+    assert body["jobs"][1]["related_evaluation_run_id"] == "foundation_eval_2026_03_21_001"
 
 
 def test_async_job_detail_route() -> None:
@@ -67,6 +68,7 @@ def test_async_job_detail_route() -> None:
     assert body["service"] == "lotus-ai"
     assert body["job"]["job_type"] == "retrieval_indexing"
     assert body["job"]["status"] == "QUEUED"
+    assert body["job"]["related_evaluation_run_id"] is None
 
 
 def test_async_job_detail_route_returns_not_found_for_unknown_job() -> None:

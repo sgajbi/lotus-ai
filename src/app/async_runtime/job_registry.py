@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from app.contracts.async_runtime import AsyncJobArtifactDescriptor
+from app.evals.run_registry import load_evaluation_run_artifacts
 
 
 class AsyncJobArtifactValidationError(ValueError):
@@ -30,6 +31,7 @@ def validate_async_job_artifacts(*, registry_payload: dict[str, Any]) -> None:
             "Async job artifact registry must define jobs as a list."
         )
 
+    evaluation_run_ids = {run.run_id for run in load_evaluation_run_artifacts()}
     job_ids: set[str] = set()
     for job in jobs:
         if not isinstance(job, dict):
@@ -44,6 +46,17 @@ def validate_async_job_artifacts(*, registry_payload: dict[str, Any]) -> None:
         _require_non_empty_string(job.get("job_type"), field_name=f"{job_id}.job_type")
         _require_non_empty_string(job.get("submitted_at"), field_name=f"{job_id}.submitted_at")
         _require_non_empty_string(job.get("caller_app"), field_name=f"{job_id}.caller_app")
+        related_evaluation_run_id = job.get("related_evaluation_run_id")
+        if related_evaluation_run_id is not None:
+            _require_non_empty_string(
+                related_evaluation_run_id,
+                field_name=f"{job_id}.related_evaluation_run_id",
+            )
+            if related_evaluation_run_id not in evaluation_run_ids:
+                raise AsyncJobArtifactValidationError(
+                    f"Async job artifact '{job_id}' references unknown evaluation run id "
+                    f"'{related_evaluation_run_id}'."
+                )
         _require_non_empty_string(
             job.get("execution_path"),
             field_name=f"{job_id}.execution_path",
