@@ -52,6 +52,19 @@ def test_provider_policy_route() -> None:
     assert any(policy["capability"] == "TEXT_GENERATION" for policy in body["policies"])
 
 
+def test_safety_policy_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/safety/policy")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["safety_mode"] == "documented_only"
+    assert any(control["control_id"] == "response_labeling" for control in body["controls"])
+    assert any(task["task_id"] == "explain.v1" for task in body["task_policies"])
+
+
 def test_platform_runtime_status_route() -> None:
     client = TestClient(app)
 

@@ -173,3 +173,21 @@ Current posture:
 1. provider policy is inspectable through `/platform/providers/policy`,
 2. only `disabled` and `stub` modes are currently supported for text and embedding capabilities,
 3. unsupported modes are rejected with a service-unavailable response.
+
+## Decision 12: Safety Posture Must Be Inspectable
+
+Decision:
+
+`lotus-ai` exposes a read-only safety policy surface before introducing runtime redaction engines.
+
+Why:
+
+1. downstream teams need to know which controls are enforced versus documented,
+2. bank-grade platform behavior should not rely on tribal knowledge,
+3. task-level output-label and redaction posture should be visible before live model execution exists.
+
+Current posture:
+
+1. safety policy is inspectable through `/platform/safety/policy`,
+2. response labeling and audit evidence are enforced controls,
+3. redaction remains documented guidance at this phase rather than a runtime mutation engine.

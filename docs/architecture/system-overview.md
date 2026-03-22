@@ -147,6 +147,17 @@ Current rules:
 4. task execution already flows through an internal provider gateway,
 5. runtime execution remains disabled until a stronger provider gateway and safety posture is in place.
 
+## Safety Posture
+
+`lotus-ai` exposes a governed safety policy so downstream teams can inspect what is enforced today
+versus what is still documented guidance.
+
+Current rules:
+
+1. safety posture is visible through `/platform/safety/policy`,
+2. response labeling and audit evidence are already enforced,
+3. redaction is currently documented at the task-policy level and will be hardened later.
+
 ## Deployment Policy
 
 `lotus-ai` now has an explicit deployment policy for:
