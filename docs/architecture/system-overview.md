@@ -109,6 +109,9 @@ retrieval contract coverage can evolve independently of the broader platform hea
 Safety API behavior is also verified through its own dedicated integration module so safety
 contract coverage can evolve independently of the broader platform health suite.
 
+Evaluation API behavior is also verified through its own dedicated integration module so
+evaluation contract coverage can evolve independently of the broader platform health suite.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`
