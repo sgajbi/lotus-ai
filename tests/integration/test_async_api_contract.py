@@ -153,7 +153,10 @@ def test_async_runtime_status_route_reports_stubbed_runtime_when_enabled(
     assert body["worker_mode"] == "STUBBED"
     assert body["active_worker_execution"] == "in_process_stub"
     assert body["active_worker_count"] == 1
-    assert any(job["job_type"] == "retrieval_indexing" and job["enabled"] is True for job in body["supported_job_types"])
+    assert any(
+        job["job_type"] == "retrieval_indexing" and job["enabled"] is True
+        for job in body["supported_job_types"]
+    )
 
 
 def test_async_job_submit_route_accepts_stubbed_retrieval_indexing(client: TestClient) -> None:

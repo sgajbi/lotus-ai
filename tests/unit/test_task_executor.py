@@ -188,7 +188,9 @@ def test_execute_task_runs_bounded_knowledge_answer() -> None:
     assert response.result.structured_output["hit_count"] >= 1
     assert response.result.structured_output["answer_mode"] == "CITATION_BACKED"
     assert response.result.structured_output["support_score"] >= 0.5
-    assert response.result.structured_output["support_assessment"]["meets_support_threshold"] is True
+    assert (
+        response.result.structured_output["support_assessment"]["meets_support_threshold"] is True
+    )
     assert response.result.structured_output["support_assessment"]["refusal_reason"] is None
     assert response.result.structured_output["citations"][0]["source_id"] == "lotus-platform-rfcs"
     assert "Sources: lotus-platform-rfcs" in response.result.message
@@ -248,7 +250,9 @@ def test_execute_task_runs_indexed_knowledge_answer_when_enabled() -> None:
     assert response.result.structured_output["catalog_only"] is False
     assert response.result.structured_output["retrieval_execution_stage"] == "INDEXED_SEARCH"
     assert response.result.structured_output["answer_mode"] == "CITATION_BACKED"
-    assert response.result.structured_output["support_assessment"]["meets_support_threshold"] is True
+    assert (
+        response.result.structured_output["support_assessment"]["meets_support_threshold"] is True
+    )
     assert response.result.message.startswith("Based on approved Lotus sources")
 
 
@@ -274,6 +278,11 @@ def test_execute_task_refuses_low_support_knowledge_answer() -> None:
     assert response.status == "COMPLETED"
     assert response.result.structured_output["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT"
     assert response.result.structured_output["support_score"] < 0.75
-    assert response.result.structured_output["support_assessment"]["meets_support_threshold"] is False
-    assert response.result.structured_output["support_assessment"]["refusal_reason"] == "LOW_SUPPORT_SCORE"
+    assert (
+        response.result.structured_output["support_assessment"]["meets_support_threshold"] is False
+    )
+    assert (
+        response.result.structured_output["support_assessment"]["refusal_reason"]
+        == "LOW_SUPPORT_SCORE"
+    )
     assert "Insufficient support" in response.result.message

@@ -40,5 +40,6 @@ def upgrade() -> None:
         """
     )
 
+
 def downgrade() -> None:
     op.drop_column("retrieval_documents", "promotion_status")

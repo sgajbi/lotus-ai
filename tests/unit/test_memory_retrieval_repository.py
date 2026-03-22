@@ -1,5 +1,9 @@
+from app.contracts.retrieval import (
+    RetrievalEmbeddingStatus,
+    RetrievalExecutionRequest,
+    RetrievalIndexStatus,
+)
 from app.repositories.memory_retrieval_repository import InMemoryRetrievalRepository
-from app.contracts.retrieval import RetrievalExecutionRequest
 
 
 def test_memory_retrieval_repository_returns_seeded_sources() -> None:
@@ -8,6 +12,9 @@ def test_memory_retrieval_repository_returns_seeded_sources() -> None:
     sources = repository.list_sources()
 
     assert any(source.source_id == "lotus-platform-rfcs" for source in sources)
+    source = repository.get_source("lotus-platform-rfcs")
+    assert source is not None
+    assert source.source_id == "lotus-platform-rfcs"
 
 
 def test_memory_retrieval_repository_returns_seeded_document_and_chunks() -> None:
@@ -67,6 +74,40 @@ def test_memory_retrieval_repository_returns_none_or_empty_for_unknown_records()
     assert repository.list_chunks_for_document("missing-document") == []
 
 
+def test_memory_retrieval_repository_skips_invalid_indexed_chunk_records() -> None:
+    repository = InMemoryRetrievalRepository()
+    original_record = dict(repository._embedding_records["emb_chunk_rfc_0069_0001"])
+    original_document = repository._documents["lotus-platform-rfcs"][1]
+    original_chunk = repository._chunks["lotus-platform-rfc-0069"][0]
+
+    repository._embedding_records["emb_chunk_rfc_0069_0001"]["document_id"] = "missing-document"
+    repository.list_searchable_indexed_chunks(["lotus-platform-rfcs"])
+
+    repository._embedding_records["emb_chunk_rfc_0069_0001"] = dict(original_record)
+    original_document.index_status = RetrievalIndexStatus.STAGED
+    repository.list_searchable_indexed_chunks(["lotus-platform-rfcs"])
+
+    original_document.index_status = RetrievalIndexStatus.INDEXED
+    original_chunk.index_status = RetrievalIndexStatus.STAGED
+    repository.list_searchable_indexed_chunks(["lotus-platform-rfcs"])
+
+    original_chunk.index_status = RetrievalIndexStatus.INDEXED
+    repository._embedding_records["emb_chunk_rfc_0069_0001"]["embedding_status"] = (
+        RetrievalEmbeddingStatus.STAGED
+    )
+    repository.list_searchable_indexed_chunks(["lotus-platform-rfcs"])
+
+    repository._embedding_records["emb_chunk_rfc_0069_0001"]["embedding_status"] = (
+        RetrievalEmbeddingStatus.PERSISTED
+    )
+    repository._embedding_records["emb_chunk_rfc_0069_0001"]["content_checksum"] = "sha256:mismatch"
+    repository.list_searchable_indexed_chunks(["lotus-platform-rfcs"])
+
+    repository._embedding_records["emb_chunk_rfc_0069_0001"] = original_record
+    original_document.index_status = RetrievalIndexStatus.INDEXED
+    original_chunk.index_status = RetrievalIndexStatus.INDEXED
+
+
 def test_memory_retrieval_repository_marks_empty_sources_as_pending_index_jobs() -> None:
     repository = InMemoryRetrievalRepository()
 
@@ -124,3 +165,34 @@ def test_memory_retrieval_repository_blocks_refresh_without_searchable_documents
     assert refresh.refreshed_document_count == 0
     assert refresh.event.status == "FAILED"
     assert "no searchable documents" in refresh.message
+
+
+def test_memory_retrieval_repository_refresh_returns_none_for_unknown_job() -> None:
+    repository = InMemoryRetrievalRepository()
+
+    assert repository.refresh_index_job("missing-job") is None
+
+
+def test_memory_retrieval_repository_refresh_recreates_missing_embedding_record() -> None:
+    repository = InMemoryRetrievalRepository()
+    del repository._embedding_records["emb_chunk_rfc_0068_0001"]
+
+    refresh = repository.refresh_index_job("retjob_lotus_platform_rfcs")
+
+    assert refresh is not None
+    assert refresh.persisted_embedding_count >= 1
+    assert "emb_chunk_rfc_0068_0001" in repository._embedding_records
+
+
+def test_memory_retrieval_repository_refresh_replaces_legacy_embedding_id() -> None:
+    repository = InMemoryRetrievalRepository()
+    repository._embedding_records["legacy_embedding_rfc_0068"] = repository._embedding_records.pop(
+        "emb_chunk_rfc_0068_0001"
+    )
+
+    refresh = repository.refresh_index_job("retjob_lotus_platform_rfcs")
+
+    assert refresh is not None
+    assert "legacy_embedding_rfc_0068" not in repository._embedding_records
+    assert "emb_chunk_rfc_0068_0001" in repository._embedding_records
+    assert repository._find_embedding_id_for_chunk("missing-chunk") is None

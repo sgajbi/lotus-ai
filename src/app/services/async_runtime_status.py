@@ -18,7 +18,9 @@ def build_async_runtime_status() -> AsyncRuntimeStatusResponse:
     worker_executions = list_async_worker_executions()
     queue_mode = AsyncQueueMode(settings.async_queue_mode.upper())
     worker_mode = AsyncWorkerMode(settings.async_worker_mode.upper())
-    stubbed_runtime = queue_mode == AsyncQueueMode.STUBBED and worker_mode == AsyncWorkerMode.STUBBED
+    stubbed_runtime = (
+        queue_mode == AsyncQueueMode.STUBBED and worker_mode == AsyncWorkerMode.STUBBED
+    )
     return AsyncRuntimeStatusResponse(
         service=settings.service_name,
         version=settings.service_version,

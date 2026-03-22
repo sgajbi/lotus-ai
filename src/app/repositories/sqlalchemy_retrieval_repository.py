@@ -130,9 +130,7 @@ class SqlAlchemyRetrievalRepository:
                 statement = statement.where(RetrievalChunkEmbeddingModel.source_id.in_(source_ids))
             return bool(session.execute(statement.limit(1)).first())
 
-    def search_indexed_hits(
-        self, request: RetrievalExecutionRequest
-    ) -> list[RetrievalSearchHit]:
+    def search_indexed_hits(self, request: RetrievalExecutionRequest) -> list[RetrievalSearchHit]:
         if self._database_url.startswith("sqlite:///"):
             return self._search_indexed_hits_sqlite(request)
         return build_indexed_hits(
@@ -259,16 +257,16 @@ class SqlAlchemyRetrievalRepository:
                     else:
                         replayed_embedding_count += 1
                         existing_embedding.embedding_model = refresh_record.embedding_model
-                        existing_embedding.embedding_status = RetrievalEmbeddingStatus.PERSISTED.value
+                        existing_embedding.embedding_status = (
+                            RetrievalEmbeddingStatus.PERSISTED.value
+                        )
                         existing_embedding.vector_dimensions = refresh_record.vector_dimensions
                         existing_embedding.embedding_vector = refresh_record.embedding_vector
                         existing_embedding.content_checksum = refresh_record.content_checksum
                     session.flush()
 
             job.status = RetrievalJobStatus.COMPLETED.value
-            job.message = (
-                "Promoted searchable documents were deterministically re-indexed for bounded retrieval."
-            )
+            job.message = "Promoted searchable documents were deterministically re-indexed for bounded retrieval."
             event = self._persist_refresh_event(
                 session=session,
                 job_id=job_id,
@@ -370,14 +368,19 @@ class SqlAlchemyRetrievalRepository:
     def _count_rows(self, session: Session, statement: Select[tuple[int]]) -> int:
         return int(session.scalar(statement) or 0)
 
-    def _indexed_chunk_query(self) -> Select[tuple[RetrievalChunkEmbeddingModel, RetrievalChunkModel, RetrievalDocumentModel]]:
+    def _indexed_chunk_query(
+        self,
+    ) -> Select[tuple[RetrievalChunkEmbeddingModel, RetrievalChunkModel, RetrievalDocumentModel]]:
         return (
             select(
                 RetrievalChunkEmbeddingModel,
                 RetrievalChunkModel,
                 RetrievalDocumentModel,
             )
-            .join(RetrievalChunkModel, RetrievalChunkModel.chunk_id == RetrievalChunkEmbeddingModel.chunk_id)
+            .join(
+                RetrievalChunkModel,
+                RetrievalChunkModel.chunk_id == RetrievalChunkEmbeddingModel.chunk_id,
+            )
             .join(
                 RetrievalDocumentModel,
                 RetrievalDocumentModel.document_id == RetrievalChunkEmbeddingModel.document_id,
@@ -389,7 +392,8 @@ class SqlAlchemyRetrievalRepository:
                 RetrievalChunkModel.index_status == RetrievalIndexStatus.INDEXED.value,
                 RetrievalChunkEmbeddingModel.embedding_status
                 == RetrievalEmbeddingStatus.PERSISTED.value,
-                RetrievalChunkEmbeddingModel.content_checksum == RetrievalChunkModel.content_checksum,
+                RetrievalChunkEmbeddingModel.content_checksum
+                == RetrievalChunkModel.content_checksum,
             )
         )
 

@@ -55,7 +55,9 @@ def assess_knowledge_answer_support(
     )
 
 
-def select_primary_hits(hits: Sequence[RetrievalSearchHit], *, limit: int = 2) -> list[RetrievalSearchHit]:
+def select_primary_hits(
+    hits: Sequence[RetrievalSearchHit], *, limit: int = 2
+) -> list[RetrievalSearchHit]:
     return list(hits[:limit])
 
 

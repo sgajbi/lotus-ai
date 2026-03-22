@@ -27,7 +27,7 @@ def test_validate_evaluation_run_artifacts_accepts_current_shape() -> None:
                         "seam_id": "retrieval",
                         "fixture_ids": [
                             "retrieval_citation_examples",
-                            "retrieval_answer_support_examples"
+                            "retrieval_answer_support_examples",
                         ],
                         "staged_fixture_count": 2,
                         "staged_case_count": 5,

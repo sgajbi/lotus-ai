@@ -23,7 +23,9 @@ def build_execution_evidence(
         _prompt_descriptor(prompt=prompt),
         _provider_descriptor(provider_execution=provider_execution),
     ]
-    retrieval_result_descriptor = _retrieval_result_descriptor(provider_execution=provider_execution)
+    retrieval_result_descriptor = _retrieval_result_descriptor(
+        provider_execution=provider_execution
+    )
     if retrieval_result_descriptor is not None:
         descriptors.append(retrieval_result_descriptor)
     descriptors.extend(
@@ -32,9 +34,7 @@ def build_execution_evidence(
             _retrieval_descriptor(retrieval_status=retrieval_status),
         ]
     )
-    return ExecutionEvidenceBundle(
-        descriptors=descriptors
-    )
+    return ExecutionEvidenceBundle(descriptors=descriptors)
 
 
 def _task_descriptor(

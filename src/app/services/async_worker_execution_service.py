@@ -15,7 +15,9 @@ def list_async_worker_executions() -> list[AsyncWorkerExecutionDescriptor]:
             enabled=not stubbed_runtime,
             execution_class="NO_WORKER_RUNTIME",
             selection_state=(
-                "ACTIVE_FOUNDATION_DEFAULT" if not stubbed_runtime else "INACTIVE_FOUNDATION_DEFAULT"
+                "ACTIVE_FOUNDATION_DEFAULT"
+                if not stubbed_runtime
+                else "INACTIVE_FOUNDATION_DEFAULT"
             ),
             supports_horizontal_scaling=False,
             supports_job_isolation=False,
@@ -55,7 +57,9 @@ def list_async_worker_executions() -> list[AsyncWorkerExecutionDescriptor]:
 
 def build_async_worker_execution_catalog() -> AsyncWorkerExecutionCatalogResponse:
     workers = list_async_worker_executions()
-    active_worker_execution = "in_process_stub" if settings.async_worker_mode == "stubbed" else "none"
+    active_worker_execution = (
+        "in_process_stub" if settings.async_worker_mode == "stubbed" else "none"
+    )
     return AsyncWorkerExecutionCatalogResponse(
         service=settings.service_name,
         version=settings.service_version,

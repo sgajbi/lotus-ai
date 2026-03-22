@@ -276,7 +276,9 @@ def test_task_execute_contract_supports_bounded_knowledge_answer(client: TestCli
     assert body["result"]["structured_output"]["catalog_only"] is True
     assert body["result"]["structured_output"]["answer_mode"] == "CITATION_BACKED"
     assert body["result"]["structured_output"]["support_score"] >= 0.5
-    assert body["result"]["structured_output"]["support_assessment"]["meets_support_threshold"] is True
+    assert (
+        body["result"]["structured_output"]["support_assessment"]["meets_support_threshold"] is True
+    )
     assert body["result"]["structured_output"]["citations"][0]["source_id"] == "lotus-platform-rfcs"
     assert "Sources: lotus-platform-rfcs" in body["result"]["message"]
 
@@ -314,7 +316,9 @@ def test_task_execute_contract_uses_indexed_retrieval_when_enabled(client: TestC
     assert body["result"]["structured_output"]["provider_id"] == "retrieval.indexed"
     assert body["result"]["structured_output"]["catalog_only"] is False
     assert body["result"]["structured_output"]["retrieval_execution_stage"] == "INDEXED_SEARCH"
-    assert body["result"]["structured_output"]["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
+    assert (
+        body["result"]["structured_output"]["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
+    )
 
 
 def test_task_execute_contract_uses_indexed_answer_when_enabled(client: TestClient) -> None:
@@ -351,7 +355,9 @@ def test_task_execute_contract_uses_indexed_answer_when_enabled(client: TestClie
     assert body["result"]["structured_output"]["catalog_only"] is False
     assert body["result"]["structured_output"]["retrieval_execution_stage"] == "INDEXED_SEARCH"
     assert body["result"]["structured_output"]["answer_mode"] == "CITATION_BACKED"
-    assert body["result"]["structured_output"]["support_assessment"]["meets_support_threshold"] is True
+    assert (
+        body["result"]["structured_output"]["support_assessment"]["meets_support_threshold"] is True
+    )
 
 
 def test_task_execute_contract_refuses_low_support_knowledge_answer(client: TestClient) -> None:
@@ -384,5 +390,8 @@ def test_task_execute_contract_refuses_low_support_knowledge_answer(client: Test
     assert body["task_id"] == "knowledge_answer.v1"
     assert body["result"]["structured_output"]["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT"
     assert body["result"]["structured_output"]["support_score"] < 0.75
-    assert body["result"]["structured_output"]["support_assessment"]["refusal_reason"] == "LOW_SUPPORT_SCORE"
+    assert (
+        body["result"]["structured_output"]["support_assessment"]["refusal_reason"]
+        == "LOW_SUPPORT_SCORE"
+    )
     assert "Insufficient support" in body["result"]["message"]

@@ -347,9 +347,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
             for document in documents
         }
         chunks_by_id = {
-            chunk.chunk_id: chunk
-            for chunks in self._chunks.values()
-            for chunk in chunks
+            chunk.chunk_id: chunk for chunks in self._chunks.values() for chunk in chunks
         }
         indexed_chunks: list[RetrievalIndexedChunkDescriptor] = []
         for embedding_id, record in self._embedding_records.items():
@@ -390,9 +388,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
     def has_searchable_indexed_chunks(self, source_ids: list[str]) -> bool:
         return bool(self.list_searchable_indexed_chunks(source_ids))
 
-    def search_indexed_hits(
-        self, request: RetrievalExecutionRequest
-    ) -> list[RetrievalSearchHit]:
+    def search_indexed_hits(self, request: RetrievalExecutionRequest) -> list[RetrievalSearchHit]:
         return build_indexed_hits(
             indexed_chunks=self.list_searchable_indexed_chunks(request.source_ids),
             request=request,
@@ -403,9 +399,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
 
     def count_embedding_records_for_source(self, source_id: str) -> int:
         return sum(
-            1
-            for record in self._embedding_records.values()
-            if record["source_id"] == source_id
+            1 for record in self._embedding_records.values() if record["source_id"] == source_id
         )
 
     def list_index_jobs(self) -> list[RetrievalIndexJobDescriptor]:
@@ -421,7 +415,9 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                 if document.promotion_status == RetrievalDocumentPromotionStatus.SEARCHABLE
             ]
             indexed_document_count = sum(
-                1 for document in searchable_documents if document.index_status == RetrievalIndexStatus.INDEXED
+                1
+                for document in searchable_documents
+                if document.index_status == RetrievalIndexStatus.INDEXED
             )
             if not documents:
                 status = RetrievalJobStatus.PENDING
@@ -439,7 +435,9 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     status=status,
                     document_count=len(documents),
                     chunk_count=chunk_count,
-                    embedding_record_count=self.count_embedding_records_for_source(source.source_id),
+                    embedding_record_count=self.count_embedding_records_for_source(
+                        source.source_id
+                    ),
                     message=message,
                 )
             )
@@ -505,12 +503,13 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     "content_checksum": refresh_record.content_checksum,
                     "embedding_vector": refresh_record.embedding_vector,
                 }
-                if existing_embedding_id is not None and existing_embedding_id != refresh_record.embedding_id:
+                if (
+                    existing_embedding_id is not None
+                    and existing_embedding_id != refresh_record.embedding_id
+                ):
                     del self._embedding_records[existing_embedding_id]
 
-        message = (
-            "Deterministic indexing refresh completed for promoted searchable documents."
-        )
+        message = "Deterministic indexing refresh completed for promoted searchable documents."
         event = self._append_refresh_event(
             job_id=job_id,
             status=RetrievalIndexJobRefreshStatus.COMPLETED,

@@ -123,12 +123,16 @@ class RetrievalDocumentGovernanceDescriptor(BaseModel):
         description="Whether the document is currently eligible for retrieval execution."
     )
     chunk_count: int = Field(description="Current staged chunk count for the document.")
-    index_status: RetrievalIndexStatus = Field(description="Current indexing status for the document.")
+    index_status: RetrievalIndexStatus = Field(
+        description="Current indexing status for the document."
+    )
     notes: str = Field(description="Human-readable explanation of the document governance posture.")
 
 
 class RetrievalDocumentGovernanceResponse(BaseModel):
-    service: str = Field(description="Service name emitting the retrieval document governance view.")
+    service: str = Field(
+        description="Service name emitting the retrieval document governance view."
+    )
     retrieval_mode: str = Field(description="Current retrieval mode configured for lotus-ai.")
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     document_count: int = Field(description="Number of retrieval documents currently registered.")
@@ -161,9 +165,7 @@ class RetrievalChunkDescriptor(BaseModel):
     source_id: str = Field(description="Parent retrieval source identifier.")
     chunk_order: int = Field(description="Stable chunk order within the document.")
     token_estimate: int = Field(description="Estimated token count for the chunk.")
-    content_checksum: str = Field(
-        description="Stable checksum for the persisted chunk contents."
-    )
+    content_checksum: str = Field(description="Stable checksum for the persisted chunk contents.")
     preview: str = Field(description="Short preview of the chunk contents.")
     index_status: RetrievalIndexStatus = Field(description="Indexing status for the chunk.")
 
@@ -250,7 +252,9 @@ class RetrievalIndexJobDetailResponse(BaseModel):
     service: str = Field(description="Service name emitting the retrieval job detail.")
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     embedding_provider_mode: str = Field(description="Current embedding provider mode.")
-    chunking_strategy: str = Field(description="Deterministic chunking strategy assigned to the job.")
+    chunking_strategy: str = Field(
+        description="Deterministic chunking strategy assigned to the job."
+    )
     embedding_strategy: str = Field(
         description="Embedding persistence strategy assigned to the job."
     )
@@ -282,9 +286,7 @@ class RetrievalIndexJobRefreshDescriptor(BaseModel):
     refreshed_document_count: int = Field(
         description="Number of searchable documents traversed during the refresh."
     )
-    refreshed_chunk_count: int = Field(
-        description="Number of chunks traversed during the refresh."
-    )
+    refreshed_chunk_count: int = Field(description="Number of chunks traversed during the refresh.")
     persisted_embedding_count: int = Field(
         description="Number of embedding records created during the refresh."
     )

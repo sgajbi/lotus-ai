@@ -128,7 +128,9 @@ def test_build_execution_evidence_includes_retrieval_result_for_retrieval_backed
     )
 
     retrieval_result = next(
-        descriptor for descriptor in evidence.descriptors if descriptor.evidence_type == "retrieval_result"
+        descriptor
+        for descriptor in evidence.descriptors
+        if descriptor.evidence_type == "retrieval_result"
     )
     assert retrieval_result.attributes["answer_mode"] == "CITATION_BACKED"
     support_assessment = cast(dict[str, object], retrieval_result.attributes["support_assessment"])

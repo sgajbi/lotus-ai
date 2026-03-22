@@ -131,7 +131,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_retrieval_chunk_embeddings_source_id", table_name="retrieval_chunk_embeddings")
+    op.drop_index(
+        "ix_retrieval_chunk_embeddings_source_id", table_name="retrieval_chunk_embeddings"
+    )
     op.drop_index(
         "ix_retrieval_chunk_embeddings_document_id", table_name="retrieval_chunk_embeddings"
     )

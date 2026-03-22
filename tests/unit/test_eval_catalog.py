@@ -8,7 +8,9 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
     assert catalog.delivery_phase == "foundation"
     assert catalog.manifest_version == "foundation.v1"
     assert any(category.category_id == "task_contract" for category in catalog.evidence_categories)
-    assert any(category.category_id == "retrieval_result" for category in catalog.evidence_categories)
+    assert any(
+        category.category_id == "retrieval_result" for category in catalog.evidence_categories
+    )
     task_fixture = next(
         fixture
         for fixture in catalog.fixture_families
