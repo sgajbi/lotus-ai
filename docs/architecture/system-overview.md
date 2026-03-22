@@ -183,6 +183,10 @@ recent task runs.
 including citation-bearing executions plus retrieval answer-mode counts for citation-backed
 answers and conservative refusals.
 
+`/platform/tasks/retrieval-summary` adds a retrieval-specific bounded view over recent
+knowledge-search and knowledge-answer executions, including source usage, retrieval status,
+and refusal patterns.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`

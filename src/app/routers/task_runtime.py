@@ -5,10 +5,12 @@ from fastapi import APIRouter, Query
 from app.contracts.task_runtime import (
     TaskExecutionEvidenceSummaryResponse,
     TaskExecutionSummaryResponse,
+    TaskRetrievalExecutionSummaryResponse,
     TaskRuntimeStatusResponse,
 )
 from app.services.task_execution_evidence_summary import build_task_execution_evidence_summary
 from app.services.task_execution_summary import build_task_execution_summary
+from app.services.task_retrieval_execution_summary import build_task_retrieval_execution_summary
 from app.services.task_runtime_status import build_task_runtime_status
 
 router = APIRouter(prefix="/platform/tasks", tags=["platform"])
@@ -82,3 +84,29 @@ async def get_task_execution_evidence_summary_route(
     ),
 ) -> TaskExecutionEvidenceSummaryResponse:
     return build_task_execution_evidence_summary(limit=limit)
+
+
+@router.get(
+    "/retrieval-summary",
+    response_model=TaskRetrievalExecutionSummaryResponse,
+    operation_id="getTaskRetrievalExecutionSummary",
+    summary="Get lotus-ai retrieval task execution summary",
+    description=(
+        "Returns a bounded sampled summary of retrieval-backed task executions, including "
+        "source usage, retrieval statuses, and answer modes observed in persisted audit records."
+    ),
+    responses={
+        200: {"description": "Retrieval task execution summary returned successfully."},
+        422: {"description": "Invalid query parameters supplied."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_task_retrieval_execution_summary_route(
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=200,
+        description="Maximum number of recent audit records to sample for the retrieval summary.",
+    ),
+) -> TaskRetrievalExecutionSummaryResponse:
+    return build_task_retrieval_execution_summary(limit=limit)

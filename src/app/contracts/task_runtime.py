@@ -62,6 +62,23 @@ class TaskExecutionAnswerModeSample(BaseModel):
     execution_count: int = Field(description="Number of sampled executions using the answer mode.")
 
 
+class TaskRetrievalExecutionTaskSample(BaseModel):
+    task_id: str = Field(description="Retrieval-backed task identifier represented in the sampled set.")
+    execution_count: int = Field(description="Number of sampled executions for the task.")
+
+
+class TaskRetrievalExecutionStatusSample(BaseModel):
+    retrieval_status: str = Field(description="Retrieval status represented in the sampled execution set.")
+    execution_count: int = Field(description="Number of sampled executions using the retrieval status.")
+
+
+class TaskRetrievalExecutionSourceSample(BaseModel):
+    source_id: str = Field(description="Retrieval source identifier represented in the sampled set.")
+    execution_count: int = Field(
+        description="Number of sampled executions that referenced the retrieval source."
+    )
+
+
 class TaskExecutionSummaryResponse(BaseModel):
     service: str = Field(description="Service name emitting the task execution summary.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -110,4 +127,41 @@ class TaskExecutionEvidenceSummaryResponse(BaseModel):
     )
     evidence_types: list[TaskExecutionEvidenceTypeSample] = Field(
         description="Execution evidence types observed across the sampled execution set."
+    )
+
+
+class TaskRetrievalExecutionSummaryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval execution summary.")
+    version: str = Field(description="Current lotus-ai service version.")
+    sampled_record_limit: int = Field(
+        description="Maximum number of recent audit records included in the sampled retrieval summary."
+    )
+    sampled_record_count: int = Field(description="Number of sampled execution records processed.")
+    retrieval_execution_count: int = Field(
+        description="Number of sampled executions belonging to retrieval-backed task paths."
+    )
+    knowledge_search_execution_count: int = Field(
+        description="Number of sampled retrieval executions for knowledge_search.v1."
+    )
+    knowledge_answer_execution_count: int = Field(
+        description="Number of sampled retrieval executions for knowledge_answer.v1."
+    )
+    refused_answer_count: int = Field(
+        description="Number of sampled retrieval executions that produced an explicit low-support refusal."
+    )
+    latest_generated_at: str | None = Field(
+        default=None,
+        description="Most recent generated timestamp observed in the sampled retrieval execution set.",
+    )
+    tasks: list[TaskRetrievalExecutionTaskSample] = Field(
+        description="Retrieval-backed task counts across the sampled execution set."
+    )
+    retrieval_statuses: list[TaskRetrievalExecutionStatusSample] = Field(
+        description="Retrieval-status counts across the sampled execution set."
+    )
+    answer_modes: list[TaskExecutionAnswerModeSample] = Field(
+        description="Structured retrieval answer modes observed in the sampled execution set."
+    )
+    sources: list[TaskRetrievalExecutionSourceSample] = Field(
+        description="Retrieval source identifiers referenced across the sampled execution set."
     )

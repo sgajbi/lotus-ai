@@ -137,6 +137,69 @@ def test_task_execution_evidence_summary_route(client: TestClient) -> None:
     )
 
 
+def test_task_retrieval_execution_summary_route(client: TestClient) -> None:
+    client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "knowledge_search.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-rsummary-route-1",
+            },
+            "context": {
+                "summary": "Search Lotus knowledge sources",
+                "payload": {
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                "source_refs": [],
+            },
+            "expected_output_label": "RETRIEVAL_ANSWER",
+        },
+    )
+    client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "knowledge_answer.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-rsummary-route-2",
+            },
+            "context": {
+                "summary": "Answer from Lotus knowledge sources",
+                "payload": {
+                    "query": "shared migration standards",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                "source_refs": [],
+            },
+            "expected_output_label": "RETRIEVAL_ANSWER",
+        },
+    )
+
+    response = client.get("/platform/tasks/retrieval-summary", params={"limit": 20})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["sampled_record_limit"] == 20
+    assert body["sampled_record_count"] >= 2
+    assert body["retrieval_execution_count"] >= 2
+    assert body["knowledge_search_execution_count"] >= 1
+    assert body["knowledge_answer_execution_count"] >= 1
+    assert body["refused_answer_count"] >= 1
+    assert any(sample["retrieval_status"] == "READY" for sample in body["retrieval_statuses"])
+    assert any(sample["source_id"] == "lotus-platform-rfcs" for sample in body["sources"])
+    assert any(
+        sample["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT"
+        for sample in body["answer_modes"]
+    )
+
+
 def test_platform_runtime_status_route(client: TestClient) -> None:
     response = client.get("/platform/runtime-status")
 
