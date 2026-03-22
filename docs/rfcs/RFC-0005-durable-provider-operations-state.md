@@ -1,6 +1,6 @@
 # RFC-0005: Durable Provider Operations State
 
-- Status: Proposed
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -312,6 +312,24 @@ This RFC is complete when:
 6. no provider-ops enforcement path depends on process-local mutable globals for operator truth,
 7. reset, rollover, and cooldown semantics are explicit, durable, and reviewable,
 8. the platform is materially closer to bank-grade live-provider operation.
+
+## Implementation Notes
+
+RFC-0005 has been implemented in five delivery slices plus a final closure-quality hardening pass:
+
+1. Slice 1 introduced migration-managed provider-operations state tables, explicit repository contracts, and a dedicated provider-operations store seam.
+2. Slice 2 moved provider quota posture onto the durable store so quota inspection and enforcement no longer depended on process-local counters.
+3. Slice 3 moved provider budget posture onto the durable store so spend accumulation and hard-budget blocking remain durable across restart.
+4. Slice 4 moved provider degradation and circuit-open posture onto the durable store so failure tracking and cooldown state survive restart.
+5. Slice 5 aligned runtime summaries, eval assets, recorded run artifacts, and runbooks with the durable provider-operations control plane.
+6. The final hardening pass moved quota, spend, and tracked degradation mutations into repository-owned atomic operations so blocking-state updates no longer depend on service-layer read-modify-write sequences.
+
+The implemented result is:
+
+1. quota, budget, and degradation truth now come from one durable provider-operations state model,
+2. `/platform/providers/quota-policy`, `/platform/providers/budget-policy`, `/platform/providers/operations-status`, and `/platform/runtime-status` report that durable truth,
+3. provider evidence, governance, and runbook surfaces now describe durable restart-survival and recovery posture honestly,
+4. the provider control plane is materially closer to multi-instance-safe, bank-grade operator truth than the RFC-0004 in-memory posture it replaced.
 
 ## Approval Requested
 
