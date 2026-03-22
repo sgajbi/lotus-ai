@@ -16,18 +16,21 @@ def test_validate_evaluation_run_artifacts_accepts_current_shape() -> None:
     payload = {
         "runs": [
             {
-                "run_id": "foundation_eval_2026_03_22_001",
+                "run_id": "foundation_eval_2026_03_22_002",
                 "recorded_at": "2026-03-22T09:00:00Z",
                 "status": "RECORDED",
                 "manifest_version": "foundation.v1",
-                "staged_fixture_count": 1,
-                "staged_case_count": 2,
+                "staged_fixture_count": 2,
+                "staged_case_count": 5,
                 "seam_coverage": [
                     {
                         "seam_id": "retrieval",
-                        "fixture_ids": ["retrieval_citation_examples"],
-                        "staged_fixture_count": 1,
-                        "staged_case_count": 2,
+                        "fixture_ids": [
+                            "retrieval_citation_examples",
+                            "retrieval_answer_support_examples"
+                        ],
+                        "staged_fixture_count": 2,
+                        "staged_case_count": 5,
                     }
                 ],
                 "notes": "Seeded baseline evaluation run artifact.",
@@ -58,8 +61,8 @@ def test_validate_evaluation_run_artifacts_accepts_current_shape() -> None:
 def test_load_evaluation_run_artifacts_returns_seeded_run_inventory() -> None:
     runs = load_evaluation_run_artifacts()
 
-    assert runs[0].run_id == "foundation_eval_2026_03_22_001"
-    assert runs[0].staged_case_count == 12
+    assert runs[0].run_id == "foundation_eval_2026_03_22_002"
+    assert runs[0].staged_case_count == 15
     assert runs[1].status == "SUPERSEDED"
 
 

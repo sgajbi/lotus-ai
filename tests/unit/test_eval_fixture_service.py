@@ -11,7 +11,15 @@ def test_evaluation_fixture_detail_returns_case_metadata_for_staged_fixture() ->
     assert detail.fixture.fixture_id == "retrieval_citation_examples"
     assert detail.task_id == "retrieval.search.v1"
     assert len(detail.cases) == 2
-    assert detail.cases[0].case_id == "search_rfc_answer_requires_citation"
+    assert detail.cases[0].case_id == "indexed_rfc_search_returns_chunk_provenance"
+
+
+def test_evaluation_fixture_detail_returns_retrieval_answer_support_fixture() -> None:
+    detail = build_evaluation_fixture_detail(fixture_id="retrieval_answer_support_examples")
+
+    assert detail.fixture.fixture_id == "retrieval_answer_support_examples"
+    assert detail.task_id == "knowledge_answer.v1"
+    assert len(detail.cases) == 3
 
 
 def test_evaluation_fixture_detail_raises_not_found_for_unknown_fixture() -> None:

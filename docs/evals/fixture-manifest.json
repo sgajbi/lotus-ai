@@ -20,6 +20,10 @@
     {
       "category_id": "retrieval_posture",
       "description": "Current retrieval execution posture captured at task runtime."
+    },
+    {
+      "category_id": "retrieval_result",
+      "description": "Retrieval answer support, citation, and refusal evidence captured at task runtime."
     }
   ],
   "fixture_families": [
@@ -44,8 +48,14 @@
     {
       "fixture_id": "retrieval_citation_examples",
       "status": "STAGED",
-      "description": "Retrieval citation and refusal evaluation examples for later activation.",
+      "description": "Retrieval search citation and fallback evaluation examples for current activation posture.",
       "manifest_path": "docs/evals/fixtures/retrieval.search/basic_cases.json"
+    },
+    {
+      "fixture_id": "retrieval_answer_support_examples",
+      "status": "STAGED",
+      "description": "Retrieval answer support-threshold, citation, and refusal evaluation examples.",
+      "manifest_path": "docs/evals/fixtures/retrieval.answer/basic_cases.json"
     },
     {
       "fixture_id": "provider_policy_examples",

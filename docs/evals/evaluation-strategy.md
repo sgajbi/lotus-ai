@@ -65,7 +65,8 @@ Current evidence categories:
 2. prompt selection,
 3. provider resolution,
 4. safety outcome,
-5. retrieval posture.
+5. retrieval posture,
+6. retrieval result.
 
 This evidence is intentionally deterministic in foundation phase so later evaluation and regression
 work has a stable evidence schema to build on.
@@ -145,6 +146,10 @@ The first retrieval-oriented staged fixture asset now exists at:
 
 1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/retrieval.search/basic_cases.json)
 
+The first retrieval-answer support fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/retrieval.answer/basic_cases.json)
+
 The first provider-policy staged fixture asset now exists at:
 
 1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/providers.policy/basic_cases.json)
@@ -158,5 +163,5 @@ The task-capability contract fixture asset now exists at:
 1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/tasks.contracts/basic_cases.json)
 
 This gives the platform real file-backed fixture families for task capability contracts, `explain.v1`,
-`summarize.v1`, governed retrieval citation/refusal behavior, provider-policy behavior, and
-safety-policy behavior.
+`summarize.v1`, governed retrieval search behavior, retrieval-answer support/refusal behavior,
+provider-policy behavior, and safety-policy behavior.

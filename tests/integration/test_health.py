@@ -242,12 +242,14 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["prompt_governance"]["runbook_readiness"]["runbook_ready"] is False
     assert body["prompt_governance"]["evidence_readiness"]["evidence_ready"] is False
     assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
-    assert body["evaluation_runtime"]["evidence_category_count"] == 5
-    assert body["evaluation_runtime"]["staged_case_count"] == 12
+    assert body["evaluation_runtime"]["evidence_category_count"] == 6
+    assert body["evaluation_runtime"]["staged_case_count"] == 15
     assert body["evaluation_runtime"]["seam_coverage"][0]["seam_id"] == "task_execution"
     assert body["evaluation_runtime"]["seam_coverage"][0]["staged_fixture_count"] == 3
-    assert body["evaluation_runtime"]["recorded_run_count"] == 2
-    assert body["evaluation_runtime"]["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
+    assert body["evaluation_runtime"]["seam_coverage"][1]["staged_fixture_count"] == 2
+    assert body["evaluation_runtime"]["seam_coverage"][1]["staged_case_count"] == 5
+    assert body["evaluation_runtime"]["recorded_run_count"] == 3
+    assert body["evaluation_runtime"]["latest_recorded_run_id"] == "foundation_eval_2026_03_22_002"
     assert body["evaluation_runtime"]["evaluation_runner_active"] is False
     assert body["prompt_runtime"]["selection_mode"] == "STATIC_ACTIVE"
     assert body["prompt_runtime"]["active_prompt_count"] >= 7

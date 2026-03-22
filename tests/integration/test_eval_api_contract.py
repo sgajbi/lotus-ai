@@ -56,8 +56,8 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["manifest_version"] == "foundation.v1"
-    assert body["evidence_category_count"] == 5
-    assert body["staged_case_count"] == 12
+    assert body["evidence_category_count"] == 6
+    assert body["staged_case_count"] == 15
     assert [item["seam_id"] for item in body["seam_coverage"]] == [
         "task_execution",
         "retrieval",
@@ -66,8 +66,10 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     ]
     assert body["seam_coverage"][0]["staged_fixture_count"] == 3
     assert body["seam_coverage"][0]["staged_case_count"] == 6
-    assert body["recorded_run_count"] == 2
-    assert body["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
+    assert body["seam_coverage"][1]["staged_fixture_count"] == 2
+    assert body["seam_coverage"][1]["staged_case_count"] == 5
+    assert body["recorded_run_count"] == 3
+    assert body["latest_recorded_run_id"] == "foundation_eval_2026_03_22_002"
     assert body["latest_recorded_run_status"] == "RECORDED"
     assert body["evaluation_runner_active"] is False
 
@@ -78,11 +80,11 @@ def test_evaluation_run_catalog_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["run_count"] == 2
-    assert body["latest_run_id"] == "foundation_eval_2026_03_22_001"
+    assert body["run_count"] == 3
+    assert body["latest_run_id"] == "foundation_eval_2026_03_22_002"
     assert body["status_counts"]["RECORDED"] == 1
-    assert body["status_counts"]["SUPERSEDED"] == 1
-    assert body["runs"][0]["staged_case_count"] == 12
+    assert body["status_counts"]["SUPERSEDED"] == 2
+    assert body["runs"][0]["staged_case_count"] == 15
     assert body["runs"][1]["status"] == "SUPERSEDED"
 
 
@@ -126,7 +128,7 @@ def test_evaluation_fixture_detail_route(client: TestClient) -> None:
     assert body["fixture"]["fixture_id"] == "retrieval_citation_examples"
     assert body["task_id"] == "retrieval.search.v1"
     assert len(body["cases"]) == 2
-    assert body["cases"][0]["case_id"] == "search_rfc_answer_requires_citation"
+    assert body["cases"][0]["case_id"] == "indexed_rfc_search_returns_chunk_provenance"
 
 
 def test_evaluation_fixture_detail_route_returns_not_found_for_unknown_fixture(

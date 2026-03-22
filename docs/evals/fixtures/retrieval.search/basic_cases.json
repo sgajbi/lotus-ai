@@ -3,37 +3,41 @@
   "fixture_family": "retrieval_citation_examples",
   "cases": [
     {
-      "case_id": "search_rfc_answer_requires_citation",
-      "summary": "Retrieval answers should preserve source provenance for RFC-backed questions.",
+      "case_id": "indexed_rfc_search_returns_chunk_provenance",
+      "summary": "Indexed retrieval should return bounded hits with source, document, and chunk provenance when enabled.",
       "input": {
-        "query": "What does RFC-0069 say about lotus-ai ownership?",
+        "query": "What does RFC-0069 say about lotus-ai?",
         "caller_app": "lotus-workbench",
         "correlation_id": "corr-ret-001",
         "source_filters": [
           "lotus-platform-rfcs"
-        ]
+        ],
+        "retrieval_mode": "enabled"
       },
       "expected": {
-        "execution_stage": "SEARCH_DISABLED",
+        "execution_stage": "INDEXED_SEARCH",
         "must_preserve_citations": true,
-        "expected_outcome": "CONFLICT_UNTIL_ENABLED"
+        "must_preserve_chunk_provenance": true,
+        "expected_outcome": "INDEXED_HITS"
       }
     },
     {
-      "case_id": "search_insufficient_sources_refuses_cleanly",
-      "summary": "Retrieval should refuse cleanly when governed search is disabled or sources are insufficient.",
+      "case_id": "catalog_fallback_search_uses_promoted_subset",
+      "summary": "Catalog fallback should stay bounded to the promoted searchable subset when live retrieval is disabled.",
       "input": {
-        "query": "Summarize an unpublished policy memo",
+        "query": "shared ai platform service",
         "caller_app": "lotus-manage",
         "correlation_id": "corr-ret-002",
         "source_filters": [
           "lotus-platform-rfcs"
-        ]
+        ],
+        "retrieval_mode": "disabled"
       },
       "expected": {
-        "execution_stage": "SEARCH_DISABLED",
-        "must_preserve_citations": false,
-        "expected_outcome": "REFUSAL_OR_CONFLICT"
+        "execution_stage": "CATALOG_ONLY",
+        "must_preserve_citations": true,
+        "must_preserve_chunk_provenance": true,
+        "expected_outcome": "CATALOG_FALLBACK_HITS"
       }
     }
   ]

@@ -8,6 +8,7 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
     assert catalog.delivery_phase == "foundation"
     assert catalog.manifest_version == "foundation.v1"
     assert any(category.category_id == "task_contract" for category in catalog.evidence_categories)
+    assert any(category.category_id == "retrieval_result" for category in catalog.evidence_categories)
     task_fixture = next(
         fixture
         for fixture in catalog.fixture_families
@@ -42,6 +43,17 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
         retrieval_fixture.manifest_path == "docs/evals/fixtures/retrieval.search/basic_cases.json"
     )
     assert retrieval_fixture.case_count == 2
+    retrieval_answer_fixture = next(
+        fixture
+        for fixture in catalog.fixture_families
+        if fixture.fixture_id == "retrieval_answer_support_examples"
+    )
+    assert retrieval_answer_fixture.status == "STAGED"
+    assert (
+        retrieval_answer_fixture.manifest_path
+        == "docs/evals/fixtures/retrieval.answer/basic_cases.json"
+    )
+    assert retrieval_answer_fixture.case_count == 3
     provider_fixture = next(
         fixture
         for fixture in catalog.fixture_families

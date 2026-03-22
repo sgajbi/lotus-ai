@@ -1,0 +1,64 @@
+{
+  "task_id": "knowledge_answer.v1",
+  "fixture_family": "retrieval_answer_support_examples",
+  "cases": [
+    {
+      "case_id": "indexed_answer_requires_multi_citation_support",
+      "summary": "Indexed retrieval answers should return citation-backed output only when at least two supporting citations are present.",
+      "input": {
+        "query": "shared ai platform service",
+        "caller_app": "lotus-manage",
+        "correlation_id": "corr-ret-answer-001",
+        "source_filters": [
+          "lotus-platform-rfcs",
+          "lotus-ai-architecture"
+        ],
+        "retrieval_mode": "enabled"
+      },
+      "expected": {
+        "execution_stage": "INDEXED_SEARCH",
+        "answer_mode": "CITATION_BACKED",
+        "minimum_citation_count": 2,
+        "minimum_required_score": 0.65
+      }
+    },
+    {
+      "case_id": "catalog_answer_refuses_low_support_score",
+      "summary": "Catalog fallback answers should refuse when support score does not clear the stricter fallback threshold.",
+      "input": {
+        "query": "shared migration standards",
+        "caller_app": "lotus-manage",
+        "correlation_id": "corr-ret-answer-002",
+        "source_filters": [
+          "lotus-platform-rfcs"
+        ],
+        "retrieval_mode": "disabled"
+      },
+      "expected": {
+        "execution_stage": "CATALOG_ONLY",
+        "answer_mode": "REFUSED_INSUFFICIENT_SUPPORT",
+        "refusal_reason": "LOW_SUPPORT_SCORE",
+        "minimum_required_score": 0.75
+      }
+    },
+    {
+      "case_id": "indexed_answer_refuses_insufficient_citations",
+      "summary": "Indexed answers should still refuse when only one supporting citation is available even if the top score is high.",
+      "input": {
+        "query": "what does RFC-0069 say",
+        "caller_app": "lotus-workbench",
+        "correlation_id": "corr-ret-answer-003",
+        "source_filters": [
+          "lotus-platform-rfcs"
+        ],
+        "retrieval_mode": "enabled"
+      },
+      "expected": {
+        "execution_stage": "INDEXED_SEARCH",
+        "answer_mode": "REFUSED_INSUFFICIENT_SUPPORT",
+        "refusal_reason": "INSUFFICIENT_CITATIONS",
+        "minimum_citation_count": 2
+      }
+    }
+  ]
+}

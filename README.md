@@ -55,6 +55,7 @@ The current execution posture is:
 - `knowledge_answer.v1` is now enabled as a bounded, citation-carrying answer task built on the same governed retrieval path,
 - retrieval-backed tasks now emit explicit structured citations and `knowledge_answer.v1` now requires multi-citation support plus stage-specific support thresholds before it will return a citation-backed answer,
 - retrieval-backed answer executions now preserve structured support-assessment details and refusal reasons in both task output and audit evidence, so answer quality can be reviewed after the fact instead of inferred from free text alone,
+- evaluation inventory now includes dedicated retrieval-answer support fixtures and an expanded retrieval evidence category, so the eval catalog matches the current indexed-answer runtime behavior instead of lagging it,
 - platform status now exposes a dedicated bounded task-runtime view so operators can distinguish stub-backed tasks from retrieval-backed tasks directly,
 - platform task APIs now also expose bounded execution-summary, evidence-summary, and retrieval-summary views built from persisted audit records, so real task usage, retrieval-answer quality, and source/refusal patterns can be measured instead of inferred,
 - the provider gateway currently routes only to documented stub providers,
