@@ -159,6 +159,7 @@ docker compose up --build
 - decisions and rationale: `docs/architecture/decision-log.md`
 - domain integration guide: `docs/guides/integration-guide.md`
 - task execution contract: `docs/guides/task-execution-contract.md`
+- prompt registry and audit: `docs/guides/prompt-registry-and-audit.md`
 - evaluation strategy: `docs/evals/evaluation-strategy.md`
 - security and governance: `docs/security/security-and-governance.md`
 - service-local RFCs: `docs/rfcs/`

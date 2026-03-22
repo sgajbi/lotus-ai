@@ -6,6 +6,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.contracts.audit import AuditRecordResponse
 from app.contracts.tasks import (
     CapabilityDescriptor,
     TaskExecutionRequest,
@@ -14,9 +15,9 @@ from app.contracts.tasks import (
     TaskExecutionStatus,
     TaskAuditMetadata,
 )
+from app.services.audit_store import get_audit_store
 from app.services.capability_catalog import get_capability_by_task_id
-
-PROMPT_VERSION = "foundation.stub.v1"
+from app.services.prompt_registry import get_prompt_or_raise
 
 
 def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
@@ -39,23 +40,43 @@ def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
                 f"{request.expected_output_label} != {capability.output_label}"
             ),
         )
-
-    return TaskExecutionResponse(
+    prompt = get_prompt_or_raise(request.task_id)
+    request_id = f"air_{uuid4().hex}"
+    result = _build_stub_result(request=request, capability=capability)
+    response = TaskExecutionResponse(
         status=TaskExecutionStatus.COMPLETED,
         task_id=capability.task_id,
         category=capability.category,
         output_label=capability.output_label,
-        result=_build_stub_result(request=request, capability=capability),
+        result=result,
         audit=TaskAuditMetadata(
-            request_id=f"air_{uuid4().hex}",
+            request_id=request_id,
             task_id=capability.task_id,
             output_label=capability.output_label,
-            prompt_version=PROMPT_VERSION,
+            prompt_version=prompt.prompt_version,
             provider_mode=settings.provider_mode,
             generated_at=datetime.now(UTC).isoformat(),
             stubbed=True,
         ),
     )
+    get_audit_store().save(
+        AuditRecordResponse(
+            request_id=response.audit.request_id,
+            task_id=response.task_id,
+            caller_app=request.caller.caller_app,
+            correlation_id=request.caller.correlation_id,
+            prompt_version=response.audit.prompt_version,
+            provider_mode=response.audit.provider_mode,
+            generated_at=response.audit.generated_at,
+            stubbed=response.audit.stubbed,
+            context_summary=request.context.summary,
+            context_keys=sorted(request.context.payload.keys()),
+            source_refs=request.context.source_refs,
+            result_preview=response.result.message,
+            structured_output=response.result.structured_output,
+        )
+    )
+    return response
 
 
 def _build_stub_result(
