@@ -1,0 +1,35 @@
+{
+  "task_id": "provider.degradation.v1",
+  "fixture_family": "provider_degradation_examples",
+  "cases": [
+    {
+      "case_id": "degraded_upstream_requires_operator_visible_state",
+      "summary": "Repeated live-provider failures should produce explicit degraded-upstream posture before the circuit opens.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "openai",
+        "degraded_failure_count_threshold": 2,
+        "circuit_open_failure_count_threshold": 3
+      },
+      "expected": {
+        "operations_state": "DEGRADED_UPSTREAM",
+        "must_preserve_failure_classification": true,
+        "expected_outcome": "DEGRADED_UPSTREAM"
+      }
+    },
+    {
+      "case_id": "circuit_open_preflight_rejects_before_live_call",
+      "summary": "Circuit-open posture should reject before another live provider call is attempted.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "openai",
+        "circuit_open_seconds": 60
+      },
+      "expected": {
+        "failure_category": "CIRCUIT_OPEN",
+        "must_reject_before_live_provider_call": true,
+        "expected_outcome": "CIRCUIT_OPEN"
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # RFC-0004: Provider Operations Hardening
 
-- Status: Proposed
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 
@@ -116,12 +116,13 @@ This RFC extends provider posture with operational sub-states that sit alongside
 Provider operations status must distinguish:
 
 1. `NORMAL`
-2. `QUOTA_BLOCKED`
-3. `BUDGET_SOFT_LIMIT`
-4. `BUDGET_BLOCKED`
-5. `DEGRADED_UPSTREAM`
-6. `CIRCUIT_OPEN`
-7. `ROLLOUT_BLOCKED`
+2. `OPERATIONS_INVALID`
+3. `QUOTA_BLOCKED`
+4. `BUDGET_SOFT_LIMIT`
+5. `BUDGET_BLOCKED`
+6. `DEGRADED_UPSTREAM`
+7. `CIRCUIT_OPEN`
+8. `ROLLOUT_BLOCKED`
 
 These states are operator-facing truth states. They must not be inferred from prose or reconstructed ad hoc from unrelated endpoints.
 
@@ -318,3 +319,21 @@ This RFC is complete when:
 6. provider governance incorporates these operational controls cleanly,
 7. operator-facing state models do not overstate health or readiness,
 8. all new controls remain disabled-by-default unless explicitly configured.
+
+## Implementation Notes
+
+RFC-0004 has been implemented in five slices:
+
+1. Slice 1 added provider quota contracts, operator quota inspection, and live-path quota enforcement.
+2. Slice 2 added provider budget policy contracts, spend posture inspection, and hard-budget execution blocking.
+3. Slice 3 added a dedicated provider operations status view and embedded that posture into platform runtime status.
+4. Slice 4 added degraded-upstream classification, circuit-breaker behavior, and structured degradation evidence.
+5. Slice 5 added governed eval assets, recorded run artifacts, and runbook/evidence requirements for provider operations posture.
+
+The resulting provider operations layer now exposes:
+
+1. `GET /platform/providers/quota-policy`
+2. `GET /platform/providers/budget-policy`
+3. `GET /platform/providers/operations-status`
+
+The platform runtime summary also embeds provider operations posture directly, and provider governance now reflects quota, budget, degradation, eval, and runbook readiness truthfully.

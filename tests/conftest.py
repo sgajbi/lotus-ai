@@ -7,6 +7,9 @@ import pytest
 from app.config import settings
 from app.services.audit_store import reset_audit_store_cache
 from app.services.prompt_store import reset_prompt_store_cache
+from app.services.provider_budget_policy import reset_provider_budget_state
+from app.services.provider_degradation_state import reset_provider_degradation_state
+from app.services.provider_quota_policy import reset_provider_quota_counters
 from app.services.retrieval_store import reset_retrieval_repository
 
 
@@ -22,6 +25,18 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "live_text_api_base": settings.live_text_api_base,
         "live_text_input_cost_per_1k_tokens": settings.live_text_input_cost_per_1k_tokens,
         "live_text_output_cost_per_1k_tokens": settings.live_text_output_cost_per_1k_tokens,
+        "live_text_quota_enforced": settings.live_text_quota_enforced,
+        "live_text_default_quota_limit": settings.live_text_default_quota_limit,
+        "live_text_task_quota_limits": settings.live_text_task_quota_limits,
+        "live_text_caller_quota_limits": settings.live_text_caller_quota_limits,
+        "live_text_tenant_quota_limits": settings.live_text_tenant_quota_limits,
+        "live_text_budget_enforced": settings.live_text_budget_enforced,
+        "live_text_soft_budget_usd": settings.live_text_soft_budget_usd,
+        "live_text_hard_budget_usd": settings.live_text_hard_budget_usd,
+        "live_text_degradation_enforced": settings.live_text_degradation_enforced,
+        "live_text_degraded_failure_count_threshold": settings.live_text_degraded_failure_count_threshold,
+        "live_text_circuit_open_failure_count_threshold": settings.live_text_circuit_open_failure_count_threshold,
+        "live_text_circuit_open_seconds": settings.live_text_circuit_open_seconds,
         "embedding_provider_mode": settings.embedding_provider_mode,
         "audit_store_mode": settings.audit_store_mode,
         "prompt_store_mode": settings.prompt_store_mode,
@@ -38,3 +53,6 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_audit_store_cache()
         reset_prompt_store_cache()
         reset_retrieval_repository()
+        reset_provider_budget_state()
+        reset_provider_degradation_state()
+        reset_provider_quota_counters()

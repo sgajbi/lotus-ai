@@ -36,6 +36,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.service == "lotus-ai"
     assert status.async_runtime.queue_mode == "DISABLED"
     assert status.provider_governance.blocking_area_count == 3
+    assert status.provider_operations.operations_state.value == "ROLLOUT_BLOCKED"
     assert status.retrieval_governance.blocking_area_count == 3
     assert status.prompt_governance.blocking_area_count == 3
     assert status.evaluation_runtime.manifest_version == "foundation.v1"

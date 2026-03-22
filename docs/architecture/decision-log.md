@@ -233,6 +233,80 @@ Current posture:
 2. activation readiness includes live-provider configuration validity and credential posture,
 3. invalid or partial live-provider configuration is surfaced explicitly before any live execution exists.
 
+## Decision 11F: Provider Quota Posture Must Be Explicit Before Broader Live Rollout
+
+Decision:
+
+`lotus-ai` exposes provider quota posture as a first-class contract and enforces quota overflow
+explicitly in the live provider gateway.
+
+Why:
+
+1. bank-grade provider activation should not rely on undocumented in-process counters or hidden request caps,
+2. task, caller-app, and tenant-aware quota posture needs its own inspection surface separate from rollout configuration,
+3. malformed quota configuration must fail clearly rather than degrading silently into unrestricted live execution.
+
+Current posture:
+
+1. `/platform/providers/quota-policy` exposes configured task, caller-app, tenant, and default quota scopes,
+2. live-provider execution now carries requester and tenant identity into the provider seam so quota evaluation matches real caller context,
+3. live-provider execution returns explicit quota-configuration and quota-exceeded failure categories instead of silently falling back.
+
+## Decision 11G: Provider Budget Posture Must Be Explicit Before Broader Live Rollout
+
+Decision:
+
+`lotus-ai` exposes provider budget posture as a first-class contract and enforces hard-budget
+overflow explicitly in the live provider gateway.
+
+Why:
+
+1. bank-grade live-provider activation needs inspectable spend posture, not just per-request cost evidence,
+2. soft-budget and hard-budget semantics must be visible separately so operators can distinguish advisory posture from blocking posture,
+3. malformed budget configuration must fail clearly instead of drifting into unrestricted live spend.
+
+Current posture:
+
+1. `/platform/providers/budget-policy` exposes configured soft and hard thresholds plus current tracked spend,
+2. hard-budget overflow now blocks live-provider execution explicitly with a typed failure category,
+3. activation readiness now treats invalid budget enforcement posture as a real activation blocker rather than overstating live readiness.
+
+## Decision 11H: Provider Operations Status Should Have A Single Summary Surface
+
+Decision:
+
+`lotus-ai` exposes a dedicated provider-operations summary and reuses that same summary in platform runtime status.
+
+Why:
+
+1. provider rollout posture, quota posture, and budget posture are operationally related and should not require endpoint-by-endpoint reconstruction,
+2. rollout-blocked and operations-blocked must be distinguishable in one truthful operator surface,
+3. embedding the same summary in `/platform/runtime-status` avoids duplicate provider-operations assembly logic across services.
+
+Current posture:
+
+1. `/platform/providers/operations-status` exposes the top-level provider operations state,
+2. the summary embeds quota, budget, and degradation posture together,
+3. `/platform/runtime-status` now embeds the same provider operations summary directly.
+
+## Decision 11I: Provider Degradation And Circuit-Breaker Posture Must Be Explicit
+
+Decision:
+
+`lotus-ai` models provider degradation and circuit-breaker posture explicitly in the live provider gateway and operations summaries.
+
+Why:
+
+1. repeated upstream failures should become operator-visible state, not just a stream of unrelated HTTP 503s,
+2. timeout, rate-limit, and upstream-error paths need separate tracking for incident review,
+3. reset semantics should be deliberate and testable instead of relying on process restarts or hidden heuristics.
+
+Current posture:
+
+1. live-provider timeout, rate-limit, and upstream-error failures are tracked separately,
+2. the provider operations summary distinguishes `DEGRADED_UPSTREAM` from `CIRCUIT_OPEN`,
+3. circuit-open posture now resets through a configured cooldown window or a successful live execution.
+
 ## Decision 11A: Provider Activation Readiness Should Be Exposed Before Live Rollout
 
 Decision:
@@ -321,8 +395,9 @@ Current posture:
 
 1. `/platform/providers/evidence-readiness` exposes required provider evidence items,
 2. provider policy, runtime, and failure-mode fixture packs are now staged as governed evidence assets,
-3. provider evidence readiness now reflects a recorded provider regression baseline in addition to staged fixture coverage,
-4. provider governance review still remains blocked until live audit traceability and failover evidence are explicitly assembled.
+3. provider operations and degradation fixture packs are now also staged as governed evidence assets,
+4. provider evidence readiness now reflects a recorded provider regression baseline in addition to staged fixture coverage,
+5. provider governance review still remains blocked until live audit traceability and failover evidence are explicitly assembled.
 
 ## Decision 12: Safety Posture Must Be Inspectable
 

@@ -32,7 +32,12 @@ class ProviderFailureCategory(str, Enum):
     LIVE_EXECUTION_NOT_ENABLED = "LIVE_EXECUTION_NOT_ENABLED"
     PROVIDER_NOT_REGISTERED = "PROVIDER_NOT_REGISTERED"
     INVALID_LIVE_CONFIGURATION = "INVALID_LIVE_CONFIGURATION"
+    INVALID_QUOTA_CONFIGURATION = "INVALID_QUOTA_CONFIGURATION"
+    INVALID_BUDGET_CONFIGURATION = "INVALID_BUDGET_CONFIGURATION"
     TASK_NOT_ALLOWLISTED = "TASK_NOT_ALLOWLISTED"
+    QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
+    BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
+    CIRCUIT_OPEN = "CIRCUIT_OPEN"
     PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
     PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"
     PROVIDER_UPSTREAM_ERROR = "PROVIDER_UPSTREAM_ERROR"
@@ -50,6 +55,187 @@ class ProviderCredentialStatus(str, Enum):
     NOT_CONFIGURED = "NOT_CONFIGURED"
     CONFIGURED = "CONFIGURED"
     INVALID = "INVALID"
+
+
+class ProviderQuotaScope(str, Enum):
+    DEFAULT = "DEFAULT"
+    TASK = "TASK"
+    CALLER_APP = "CALLER_APP"
+    TENANT = "TENANT"
+
+
+class ProviderQuotaDescriptor(BaseModel):
+    scope: ProviderQuotaScope = Field(description="Quota scope this policy entry applies to.")
+    scope_key: str = Field(
+        description="Stable identifier for the quota scope, or `global` for the default scope."
+    )
+    request_limit: int = Field(
+        description="Maximum accepted live-provider execution requests allowed for this scope."
+    )
+    current_request_count: int = Field(
+        description="Current in-process accepted request count observed for this scope."
+    )
+    remaining_request_count: int = Field(
+        description="Remaining accepted request count before this scope is blocked."
+    )
+    notes: str = Field(description="Human-readable explanation of the quota scope semantics.")
+
+
+class ProviderQuotaPolicyResponse(BaseModel):
+    service: str = Field(description="Service name emitting the provider quota policy view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    provider_mode: str = Field(description="Configured text-generation provider mode.")
+    quota_enforced: bool = Field(
+        description="Whether live text-generation quota enforcement is currently enabled."
+    )
+    configuration_valid: bool = Field(
+        description="Whether the configured provider quota posture is internally consistent."
+    )
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable findings describing the current provider quota posture.",
+    )
+    matching_order: list[ProviderQuotaScope] = Field(
+        description="Ordered list of quota scopes evaluated for a live-provider execution request."
+    )
+    quotas: list[ProviderQuotaDescriptor] = Field(
+        description="Configured live-provider quota entries and their current in-process usage."
+    )
+
+
+class ProviderBudgetState(str, Enum):
+    NOT_ENFORCED = "NOT_ENFORCED"
+    BELOW_SOFT_LIMIT = "BELOW_SOFT_LIMIT"
+    SOFT_LIMIT_REACHED = "SOFT_LIMIT_REACHED"
+    HARD_LIMIT_BLOCKED = "HARD_LIMIT_BLOCKED"
+    INVALID = "INVALID"
+
+
+class ProviderOperationsState(str, Enum):
+    NORMAL = "NORMAL"
+    OPERATIONS_INVALID = "OPERATIONS_INVALID"
+    QUOTA_BLOCKED = "QUOTA_BLOCKED"
+    BUDGET_SOFT_LIMIT = "BUDGET_SOFT_LIMIT"
+    BUDGET_BLOCKED = "BUDGET_BLOCKED"
+    DEGRADED_UPSTREAM = "DEGRADED_UPSTREAM"
+    CIRCUIT_OPEN = "CIRCUIT_OPEN"
+    ROLLOUT_BLOCKED = "ROLLOUT_BLOCKED"
+
+
+class ProviderDegradationStatusDescriptor(BaseModel):
+    status: str = Field(
+        description="Current upstream degradation posture for the live provider path."
+    )
+    enforcement_enabled: bool = Field(
+        description="Whether degraded-upstream and circuit-breaker controls are currently enabled."
+    )
+    configuration_valid: bool = Field(
+        description="Whether degraded-upstream control configuration is internally consistent."
+    )
+    consecutive_failure_count: int = Field(
+        description="Current consecutive live-provider failure count tracked by the degradation controller."
+    )
+    degraded_failure_count_threshold: int | None = Field(
+        default=None,
+        description="Configured consecutive-failure threshold for degraded-upstream posture, when enabled.",
+    )
+    circuit_open_failure_count_threshold: int | None = Field(
+        default=None,
+        description="Configured consecutive-failure threshold for circuit-open posture, when enabled.",
+    )
+    circuit_open_remaining_seconds: int | None = Field(
+        default=None,
+        description="Remaining circuit-open cooldown window in seconds, when the circuit is currently open.",
+    )
+    last_failure_category: ProviderFailureCategory | None = Field(
+        default=None,
+        description="Most recent live-provider failure category recorded by the degradation controller, when one exists.",
+    )
+    timeout_failure_count: int = Field(
+        description="Count of tracked provider timeout failures in the current process lifetime."
+    )
+    rate_limited_failure_count: int = Field(
+        description="Count of tracked provider rate-limit failures in the current process lifetime."
+    )
+    upstream_error_failure_count: int = Field(
+        description="Count of tracked provider upstream-error failures in the current process lifetime."
+    )
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable findings describing upstream degradation posture.",
+    )
+
+
+class ProviderOperationsStatusResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the provider operations runtime status view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    provider_mode: str = Field(description="Configured text-generation provider mode.")
+    operations_state: ProviderOperationsState = Field(
+        description="Current top-level provider operations state derived from rollout, quota, budget, and degradation posture."
+    )
+    runtime_execution_enabled: bool = Field(
+        description="Whether live-provider execution is currently enabled for any provider path."
+    )
+    rollout_blocked: bool = Field(
+        description="Whether provider operations remain blocked by rollout or configuration posture."
+    )
+    quota_policy: ProviderQuotaPolicyResponse = Field(
+        description="Current live-provider quota posture."
+    )
+    budget_policy: ProviderBudgetPolicyResponse = Field(
+        description="Current live-provider budget posture."
+    )
+    degradation_status: ProviderDegradationStatusDescriptor = Field(
+        description="Current live-provider degradation posture."
+    )
+    blocking_reasons: list[str] = Field(
+        default_factory=list,
+        description="Human-readable reasons why provider operations are currently blocked or degraded.",
+    )
+    summary: list[str] = Field(
+        default_factory=list,
+        description="Human-readable summary of the current provider operations posture.",
+    )
+
+
+class ProviderBudgetPolicyResponse(BaseModel):
+    service: str = Field(description="Service name emitting the provider budget policy view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    provider_mode: str = Field(description="Configured text-generation provider mode.")
+    budget_enforced: bool = Field(
+        description="Whether live text-generation budget enforcement is currently enabled."
+    )
+    configuration_valid: bool = Field(
+        description="Whether the configured provider budget posture is internally consistent."
+    )
+    budget_state: ProviderBudgetState = Field(
+        description="Current provider budget state derived from configured limits and tracked spend."
+    )
+    current_spend_usd: float = Field(
+        description="Current in-process tracked live-provider spend in USD."
+    )
+    soft_budget_usd: float | None = Field(
+        default=None,
+        description="Configured soft budget threshold in USD, when present.",
+    )
+    hard_budget_usd: float | None = Field(
+        default=None,
+        description="Configured hard budget threshold in USD, when present.",
+    )
+    remaining_budget_usd: float | None = Field(
+        default=None,
+        description="Remaining hard-budget capacity in USD, when a hard limit is configured.",
+    )
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable findings describing the current provider budget posture.",
+    )
+    usage_to_budget_notes: list[str] = Field(
+        default_factory=list,
+        description="Human-readable notes describing how tracked spend is compared against configured budget thresholds.",
+    )
 
 
 class ProviderConfigurationStatusDescriptor(BaseModel):
@@ -161,6 +347,14 @@ class ProviderPolicyResponse(BaseModel):
 class ProviderExecutionRequest(BaseModel):
     task_id: str = Field(description="Bounded lotus-ai task identifier being executed.")
     caller_app: str = Field(description="Calling Lotus application or platform component.")
+    requested_by: str | None = Field(
+        default=None,
+        description="Optional human or system identity associated with the provider request.",
+    )
+    tenant_id: str | None = Field(
+        default=None,
+        description="Optional tenant or environment ownership marker for the provider request.",
+    )
     prompt_version: str = Field(description="Resolved prompt version for this execution.")
     system_instructions: str = Field(
         description="Resolved system instructions for the executing task prompt."

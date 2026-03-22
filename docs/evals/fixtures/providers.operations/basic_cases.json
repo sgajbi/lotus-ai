@@ -1,0 +1,36 @@
+{
+  "task_id": "provider.operations.v1",
+  "fixture_family": "provider_operations_examples",
+  "cases": [
+    {
+      "case_id": "quota_exceeded_requires_structured_rejection",
+      "summary": "Quota-blocked live-provider execution should reject explicitly and preserve the blocking category.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "openai",
+        "quota_scope": "task",
+        "request_limit": 1
+      },
+      "expected": {
+        "failure_category": "QUOTA_EXCEEDED",
+        "must_emit_structured_rejection": true,
+        "expected_outcome": "QUOTA_BLOCK"
+      }
+    },
+    {
+      "case_id": "hard_budget_block_requires_structured_rejection",
+      "summary": "Hard-budget overflow should reject explicitly and preserve the blocking category.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "openai",
+        "hard_budget_usd": 1.0,
+        "tracked_spend_usd": 1.0
+      },
+      "expected": {
+        "failure_category": "BUDGET_EXCEEDED",
+        "must_emit_structured_rejection": true,
+        "expected_outcome": "BUDGET_BLOCK"
+      }
+    }
+  ]
+}

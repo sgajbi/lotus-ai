@@ -19,8 +19,8 @@ def build_provider_governance_status() -> ProviderGovernanceStatusResponse:
     )
     governance_summary = [
         "Provider technical activation remains blocked in foundation phase until allowlisted live execution modes and controls are explicitly rolled out.",
-        "Provider operational runbook readiness remains incomplete until escalation, rate-limit, and observability procedures are fully documented and approved.",
-        "Provider evidence readiness now includes staged runtime and failure-mode fixtures plus a recorded regression baseline, but live audit traceability and failover-proof evidence still block activation.",
+        "Provider operational runbook readiness remains incomplete until escalation, spend-anomaly, degradation-response, and observability procedures are fully documented and approved.",
+        "Provider evidence readiness now includes staged runtime, operations, and degradation fixtures plus a recorded regression baseline, but live audit traceability and failover-proof evidence still block activation.",
     ]
     return ProviderGovernanceStatusResponse(
         service=settings.service_name,
