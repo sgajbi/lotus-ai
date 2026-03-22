@@ -25,6 +25,13 @@
   - startup fails when configured persistence backends are not ready
   - use this for environments that require SQL-backed stores to be migrated before rollout
 
+- `LOTUS_AI_READINESS_PROBE_POLICY=observe`
+  - `/health/ready` stays ready unless the service is draining
+  - runtime-status endpoints carry the readiness findings
+- `LOTUS_AI_READINESS_PROBE_POLICY=degrade`
+  - `/health/ready` returns `503` with `status=degraded` when startup readiness findings exist
+  - use this when orchestrators should stop routing traffic until persistence posture is operational
+
 Expected operator flow for SQL-backed stores:
 
 1. apply migrations with `make migration-apply`

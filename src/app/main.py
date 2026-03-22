@@ -61,6 +61,10 @@ async def health_ready(response: Response) -> dict[str, str]:
     if bool(getattr(app.state, "is_draining", False)):
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"status": "draining"}
+    findings = list(getattr(app.state, "startup_readiness_findings", []))
+    if settings.readiness_probe_policy == "degrade" and findings:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "degraded"}
     return {"status": "ready"}
 
 
@@ -86,6 +90,7 @@ async def metadata() -> dict[str, str]:
         "auditStoreMode": settings.audit_store_mode,
         "retrievalStoreMode": settings.retrieval_store_mode,
         "startupReadinessPolicy": settings.startup_readiness_policy,
+        "readinessProbePolicy": settings.readiness_probe_policy,
     }
 
 
@@ -115,6 +120,7 @@ async def root() -> dict[str, object]:
         "auditStoreMode": settings.audit_store_mode,
         "retrievalStoreMode": settings.retrieval_store_mode,
         "startupReadinessPolicy": settings.startup_readiness_policy,
+        "readinessProbePolicy": settings.readiness_probe_policy,
         "capabilityAreas": [
             "llm_gateway",
             "prompt_registry",

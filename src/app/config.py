@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     audit_store_mode: str = "memory"
     retrieval_store_mode: str = "memory"
     startup_readiness_policy: str = "warn"
+    readiness_probe_policy: str = "observe"
     database_url: str | None = None
 
     model_config = SettingsConfigDict(env_prefix="LOTUS_AI_", extra="ignore")

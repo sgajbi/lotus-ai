@@ -1,4 +1,5 @@
 from app.config import settings
+from app.main import app, health_ready
 from app.services.startup_policy import evaluate_startup_readiness
 
 
@@ -30,3 +31,19 @@ def test_startup_readiness_enforce_policy_blocks_non_ready_sql_store() -> None:
 
     settings.audit_store_mode = "memory"
     settings.startup_readiness_policy = "warn"
+
+
+def test_health_ready_degrades_when_probe_policy_requires_it() -> None:
+    settings.readiness_probe_policy = "degrade"
+    app.state.startup_readiness_findings = ["retrieval store: missing tables"]
+    import anyio
+    from fastapi import Response
+
+    response = Response()
+    result = anyio.run(health_ready, response)
+
+    assert response.status_code == 503
+    assert result["status"] == "degraded"
+
+    settings.readiness_probe_policy = "observe"
+    app.state.startup_readiness_findings = []

@@ -26,6 +26,7 @@ class PlatformRuntimeStatusResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
     startup_readiness_policy: str = Field(description="Configured startup readiness policy mode.")
+    readiness_probe_policy: str = Field(description="Configured readiness probe degradation mode.")
     provider_mode: str = Field(description="Current model provider execution mode.")
     retrieval_mode: str = Field(description="Current retrieval execution mode.")
     embedding_provider_mode: str = Field(description="Current embedding provider mode.")

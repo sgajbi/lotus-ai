@@ -25,6 +25,7 @@ The current persistence posture is:
 - explicit configuration to move between the two without changing API contracts,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 - startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.
+- readiness probe policy defaults to `observe` and can be raised to `degrade` when orchestration should react to readiness findings.
 
 The current retrieval-storage decision is:
 

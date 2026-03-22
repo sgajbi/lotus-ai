@@ -32,6 +32,17 @@ Teams should treat `READY` as the only state suitable for relying on durable pla
 
 For shared or enterprise environments, downstream teams should assume `enforce` is the target posture once SQL-backed stores become part of the deployment contract.
 
+## Readiness Probe Policy
+
+`lotus-ai` also separates startup policy from readiness-probe policy:
+
+1. `observe`
+   `/health/ready` remains green while runtime-status endpoints expose findings
+2. `degrade`
+   `/health/ready` reflects startup readiness findings as degraded readiness
+
+This allows teams to adopt stricter operational signaling without forcing an all-or-nothing startup failure policy in every environment.
+
 This guide explains how other Lotus apps should integrate with `lotus-ai`.
 
 ## Core Rule
