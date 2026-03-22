@@ -118,5 +118,10 @@ The first retrieval-oriented staged fixture asset now exists at:
 
 1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/retrieval.search/basic_cases.json)
 
-This gives the platform real file-backed fixture families for `explain.v1`, `summarize.v1`, and
-governed retrieval citation/refusal behavior while the remaining inventory stays documented.
+The first provider-policy staged fixture asset now exists at:
+
+1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/providers.policy/basic_cases.json)
+
+This gives the platform real file-backed fixture families for `explain.v1`, `summarize.v1`,
+governed retrieval citation/refusal behavior, and provider-policy behavior while the remaining
+inventory stays documented.

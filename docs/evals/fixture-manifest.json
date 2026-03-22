@@ -45,6 +45,12 @@
       "status": "STAGED",
       "description": "Retrieval citation and refusal evaluation examples for later activation.",
       "manifest_path": "docs/evals/fixtures/retrieval.search/basic_cases.json"
+    },
+    {
+      "fixture_id": "provider_policy_examples",
+      "status": "STAGED",
+      "description": "Provider policy and disabled-execution evaluation examples.",
+      "manifest_path": "docs/evals/fixtures/providers.policy/basic_cases.json"
     }
   ]
 }

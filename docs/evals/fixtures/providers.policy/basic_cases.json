@@ -1,0 +1,38 @@
+{
+  "task_id": "provider.policy.v1",
+  "fixture_family": "provider_policy_examples",
+  "cases": [
+    {
+      "case_id": "text_generation_stub_mode_selects_stub_provider",
+      "summary": "Text-generation policy remains bounded to the stub provider in foundation phase.",
+      "input": {
+        "capability": "TEXT_GENERATION",
+        "configured_mode": "stub"
+      },
+      "expected": {
+        "selected_provider_id": "text.stub",
+        "live_execution_enabled": false,
+        "allowed_modes": [
+          "disabled",
+          "stub"
+        ]
+      }
+    },
+    {
+      "case_id": "embedding_disabled_mode_rejects_live_execution",
+      "summary": "Embedding policy keeps live execution disabled until retrieval activation.",
+      "input": {
+        "capability": "EMBEDDINGS",
+        "configured_mode": "disabled"
+      },
+      "expected": {
+        "selected_provider_id": "embeddings.stub",
+        "live_execution_enabled": false,
+        "allowed_modes": [
+          "disabled",
+          "stub"
+        ]
+      }
+    }
+  ]
+}

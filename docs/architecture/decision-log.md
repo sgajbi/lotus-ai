@@ -443,3 +443,21 @@ Current posture:
 1. `GET /platform/evals/fixtures/{fixture_id}` returns fixture descriptor, task association, and case-level metadata,
 2. the endpoint intentionally excludes raw mutable execution payloads,
 3. fixture inventory remains repository-governed and manifest-validated.
+
+## Decision 27: Provider Policy Should Be Covered By Evaluation Fixtures Before Live Provider Rollout
+
+Decision:
+
+Provider-policy behavior is staged as a governed evaluation family before any live provider SDK is enabled.
+
+Why:
+
+1. provider selection and disabled-execution behavior are core control points that should be specified before rollout,
+2. fixture-backed expectations keep stub and disabled modes explicit and reviewable,
+3. this extends the same evidence-first discipline already applied to tasks and retrieval into provider governance.
+
+Current posture:
+
+1. `provider_policy_examples` is now backed by a fixture file,
+2. evaluation runtime status counts provider-policy cases alongside task and retrieval cases,
+3. live provider execution remains disabled until a separate governed activation slice exists.
