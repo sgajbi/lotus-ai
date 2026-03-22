@@ -73,3 +73,4 @@ def test_build_task_execution_evidence_summary_tracks_citations_and_answer_modes
         sample.answer_mode == "REFUSED_INSUFFICIENT_SUPPORT" for sample in summary.answer_modes
     )
     assert any(sample.evidence_type == "retrieval_posture" for sample in summary.evidence_types)
+    assert any(sample.evidence_type == "retrieval_result" for sample in summary.evidence_types)

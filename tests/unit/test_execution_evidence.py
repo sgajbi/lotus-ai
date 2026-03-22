@@ -1,5 +1,6 @@
 from app.contracts.prompts import PromptDescriptor, PromptLifecycleStatus, PromptManagementMode
 from app.contracts.providers import ProviderExecutionResponse
+from app.contracts.retrieval import RetrievalExecutionStage
 from app.contracts.tasks import (
     CallerMetadata,
     CapabilityDescriptor,
@@ -11,6 +12,7 @@ from app.contracts.tasks import (
 )
 from app.services.execution_evidence import build_execution_evidence
 from app.services.safety_runtime import build_safety_execution_outcome
+from typing import cast
 
 
 def test_build_execution_evidence_returns_expected_descriptors() -> None:
@@ -64,3 +66,70 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
     assert evidence.descriptors[2].evidence_type == "provider_resolution"
     assert evidence.descriptors[3].evidence_type == "safety_outcome"
     assert evidence.descriptors[4].evidence_type == "retrieval_posture"
+
+
+def test_build_execution_evidence_includes_retrieval_result_for_retrieval_backed_output() -> None:
+    request = TaskExecutionRequest(
+        task_id="knowledge_answer.v1",
+        input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+        caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ev-2"),
+        context=TaskContextEnvelope(
+            summary="Answer from Lotus knowledge sources",
+            payload={"query": "shared ai platform service"},
+            source_refs=[],
+        ),
+    )
+    capability = CapabilityDescriptor(
+        task_id="knowledge_answer.v1",
+        category=TaskCategory.KNOWLEDGE_ANSWER,
+        enabled=True,
+        output_label=OutputLabel.RETRIEVAL_ANSWER,
+        description="Answer from approved Lotus knowledge sources with citations.",
+    )
+    prompt = PromptDescriptor(
+        task_id="knowledge_answer.v1",
+        prompt_version="foundation.knowledge_answer.v1",
+        prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.ACTIVE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
+        system_instructions="Answer conservatively with explicit citations.",
+        output_contract_notes="Refuse when support is insufficient.",
+    )
+    provider_execution = ProviderExecutionResponse(
+        provider_id="retrieval.answer",
+        provider_mode="catalog_answer",
+        stubbed=False,
+        message="Answer generated.",
+        structured_output={
+            "answer_mode": "CITATION_BACKED",
+            "support_score": 0.82,
+            "retrieval_status": "READY",
+            "retrieval_execution_stage": RetrievalExecutionStage.CATALOG_ONLY.value,
+            "citation_count": 2,
+            "hit_count": 2,
+            "support_assessment": {
+                "minimum_required_score": 0.75,
+                "meets_support_threshold": True,
+                "citation_count": 2,
+                "unique_source_count": 1,
+                "refusal_reason": None,
+            },
+        },
+    )
+    safety_outcome = build_safety_execution_outcome(OutputLabel.RETRIEVAL_ANSWER)
+
+    evidence = build_execution_evidence(
+        request=request,
+        capability=capability,
+        prompt=prompt,
+        provider_execution=provider_execution,
+        safety_outcome=safety_outcome,
+    )
+
+    retrieval_result = next(
+        descriptor for descriptor in evidence.descriptors if descriptor.evidence_type == "retrieval_result"
+    )
+    assert retrieval_result.attributes["answer_mode"] == "CITATION_BACKED"
+    support_assessment = cast(dict[str, object], retrieval_result.attributes["support_assessment"])
+    assert support_assessment["meets_support_threshold"] is True

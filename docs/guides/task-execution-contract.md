@@ -14,12 +14,12 @@ During foundation phase, supported tasks return deterministic stub results.
 
 Exception:
 
-1. `knowledge_search.v1` now returns bounded catalog-only retrieval hits from the enabled
-   staged-source subset instead of the generic text stub.
+1. `knowledge_search.v1` now returns bounded retrieval hits from either the indexed path or the
+   catalog-only fallback instead of the generic text stub.
 2. `knowledge_answer.v1` now returns a conservative citation-carrying answer built from the
    same bounded retrieval hits instead of the generic text stub.
-3. low-support `knowledge_answer.v1` executions now return an explicit refusal message instead
-   of overstating weak retrieval support.
+3. low-support `knowledge_answer.v1` executions now return an explicit refusal message with a
+   structured refusal reason instead of overstating weak retrieval support.
 
 This is intentional:
 
@@ -91,6 +91,18 @@ Supported enabled tasks in foundation phase:
 3. the bounded retrieval hits used to assemble the answer
 4. `answer_mode` and `support_score` so callers can distinguish citation-backed answers from
    explicit low-support refusals
+5. `support_assessment` with:
+   - minimum required score,
+   - threshold outcome,
+   - citation count,
+   - unique source count,
+   - refusal reason when applicable
+
+Current answer-hardening rules:
+
+1. two citations are required before `knowledge_answer.v1` will return a citation-backed answer,
+2. indexed retrieval uses a lower minimum support score than catalog fallback,
+3. refusal behavior is explicit and should be preserved by callers rather than rewritten away.
 
 ## Error Behavior
 

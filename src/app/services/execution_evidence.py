@@ -18,14 +18,22 @@ def build_execution_evidence(
     safety_outcome: SafetyExecutionOutcome,
 ) -> ExecutionEvidenceBundle:
     retrieval_status = build_retrieval_execution_status()
-    return ExecutionEvidenceBundle(
-        descriptors=[
-            _task_descriptor(capability=capability, request=request),
-            _prompt_descriptor(prompt=prompt),
-            _provider_descriptor(provider_execution=provider_execution),
+    descriptors = [
+        _task_descriptor(capability=capability, request=request),
+        _prompt_descriptor(prompt=prompt),
+        _provider_descriptor(provider_execution=provider_execution),
+    ]
+    retrieval_result_descriptor = _retrieval_result_descriptor(provider_execution=provider_execution)
+    if retrieval_result_descriptor is not None:
+        descriptors.append(retrieval_result_descriptor)
+    descriptors.extend(
+        [
             _safety_descriptor(safety_outcome=safety_outcome),
             _retrieval_descriptor(retrieval_status=retrieval_status),
         ]
+    )
+    return ExecutionEvidenceBundle(
+        descriptors=descriptors
     )
 
 
@@ -88,6 +96,48 @@ def _safety_descriptor(
             "redaction_posture": safety_outcome.redaction_posture.value,
             "enforced_controls": safety_outcome.enforced_controls,
         },
+    )
+
+
+def _retrieval_result_descriptor(
+    *,
+    provider_execution: ProviderExecutionResponse,
+) -> ExecutionEvidenceDescriptor | None:
+    structured_output = provider_execution.structured_output
+    answer_mode = structured_output.get("answer_mode")
+    support_score = structured_output.get("support_score")
+    retrieval_status = structured_output.get("retrieval_status")
+    retrieval_execution_stage = structured_output.get("retrieval_execution_stage")
+    support_assessment = structured_output.get("support_assessment")
+    citation_count = structured_output.get("citation_count")
+    hit_count = structured_output.get("hit_count")
+    if (
+        answer_mode is None
+        and retrieval_status is None
+        and retrieval_execution_stage is None
+        and citation_count is None
+        and hit_count is None
+    ):
+        return None
+    attributes: dict[str, object] = {}
+    if isinstance(answer_mode, str):
+        attributes["answer_mode"] = answer_mode
+    if isinstance(support_score, (float, int)) and not isinstance(support_score, bool):
+        attributes["support_score"] = float(support_score)
+    if isinstance(retrieval_status, str):
+        attributes["retrieval_status"] = retrieval_status
+    if isinstance(retrieval_execution_stage, str):
+        attributes["retrieval_execution_stage"] = retrieval_execution_stage
+    if isinstance(citation_count, int):
+        attributes["citation_count"] = citation_count
+    if isinstance(hit_count, int):
+        attributes["hit_count"] = hit_count
+    if isinstance(support_assessment, dict):
+        attributes["support_assessment"] = support_assessment
+    return ExecutionEvidenceDescriptor(
+        evidence_type="retrieval_result",
+        summary="Execution captured retrieval-result support and citation posture for audit review.",
+        attributes=attributes,
     )
 
 

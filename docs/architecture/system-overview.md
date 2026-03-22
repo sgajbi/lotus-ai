@@ -184,9 +184,14 @@ placeholder for retrieval-class work.
 `knowledge_answer.v1` now also builds a conservative source-backed answer on top of the same
 bounded retrieval path, with explicit citations preserved in the task result payload.
 
-Low-support retrieval matches now produce an explicit conservative refusal mode for
-`knowledge_answer.v1` instead of a weak answer, which keeps the retrieval-backed task path
-more defensible under the current indexed-or-fallback execution model.
+`knowledge_answer.v1` now also applies an explicit support assessment:
+
+1. indexed retrieval uses a lower minimum score than catalog fallback,
+2. two supporting citations are required before an answer is returned,
+3. refusal reasons are preserved structurally in both task output and audit evidence.
+
+That keeps the retrieval-backed answer path more reviewable and more defensible under the current
+indexed-or-fallback execution model.
 
 Task runtime posture is now also exposed through a dedicated `/platform/tasks/runtime-status`
 surface and embedded into `/platform/runtime-status`, so operators can distinguish stub-backed

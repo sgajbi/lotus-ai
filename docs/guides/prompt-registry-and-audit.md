@@ -91,6 +91,15 @@ Current audit fields also preserve caller traceability:
 3. `requested_by`
 4. `tenant_id`
 
+Current retrieval-backed audit records also preserve answer-review details inside
+`structured_output` and execution `evidence`:
+
+1. retrieval execution stage,
+2. citation count and cited chunks,
+3. support score and combined support score,
+4. structured support assessment,
+5. explicit refusal reason when answer support is insufficient.
+
 ## Why We Introduced the Repository Seam First
 
 1. We wanted contract and service seams before durable storage complexity.
@@ -141,4 +150,4 @@ Likely next evolution:
 1. prompt promotion and rollback workflow,
 2. tenant-aware prompt selection,
 3. richer prompt approval status and promotion-history metadata,
-4. richer audit records including safety-policy outcomes.
+4. richer audit records including retrieval support summaries and later live-provider execution traces.
