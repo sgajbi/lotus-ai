@@ -86,9 +86,7 @@ class ProviderExecutionRequest(BaseModel):
     prompt_version: str = Field(description="Resolved prompt version for this execution.")
     output_label: str = Field(description="Resolved output label for the executing task.")
     safety_mode: str = Field(description="Resolved safety mode for the executing task.")
-    redaction_posture: str = Field(
-        description="Resolved redaction posture for the executing task."
-    )
+    redaction_posture: str = Field(description="Resolved redaction posture for the executing task.")
     context_summary: str = Field(description="Short summary of caller-provided context.")
     context_payload: dict[str, object] = Field(
         default_factory=dict,

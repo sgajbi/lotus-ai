@@ -132,8 +132,7 @@ def test_task_execution_evidence_summary_route(client: TestClient) -> None:
     assert body["refused_answer_count"] >= 1
     assert any(sample["answer_mode"] == "CITATION_BACKED" for sample in body["answer_modes"])
     assert any(
-        sample["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT"
-        for sample in body["answer_modes"]
+        sample["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT" for sample in body["answer_modes"]
     )
 
 
@@ -195,8 +194,7 @@ def test_task_retrieval_execution_summary_route(client: TestClient) -> None:
     assert any(sample["retrieval_status"] == "READY" for sample in body["retrieval_statuses"])
     assert any(sample["source_id"] == "lotus-platform-rfcs" for sample in body["sources"])
     assert any(
-        sample["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT"
-        for sample in body["answer_modes"]
+        sample["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT" for sample in body["answer_modes"]
     )
 
 
@@ -282,5 +280,3 @@ def test_service_metadata_exposes_store_modes(client: TestClient) -> None:
     assert body["retrievalStoreMode"] == "memory"
     assert body["startupReadinessPolicy"] == "warn"
     assert body["readinessProbePolicy"] == "observe"
-
-

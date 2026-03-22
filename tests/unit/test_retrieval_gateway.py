@@ -6,10 +6,10 @@ from app.contracts.retrieval import RetrievalExecutionRequest
 from app.services.retrieval_gateway import build_catalog_only_hit, execute_retrieval_search
 
 
-def test_execute_retrieval_search_returns_rejected_stage_when_disabled() -> None:
+def test_execute_retrieval_search_returns_catalog_only_hits_when_disabled() -> None:
     response = execute_retrieval_search(
         RetrievalExecutionRequest(
-            query="What does RFC-0069 say?",
+            query="shared ai platform service",
             caller_app="lotus-workbench",
             correlation_id="corr-ret-gw-1",
             source_ids=[],
@@ -17,10 +17,11 @@ def test_execute_retrieval_search_returns_rejected_stage_when_disabled() -> None
         )
     )
 
-    assert response.status == "REJECTED"
-    assert response.execution_stage == "SEARCH_DISABLED"
+    assert response.status == "READY"
+    assert response.execution_stage == "CATALOG_ONLY"
     assert response.vector_store == "postgresql+pgvector"
-    assert response.hits == []
+    assert response.hits
+    assert response.hits[0].source_id in {"lotus-platform-rfcs", "lotus-ai-architecture"}
 
 
 def test_execute_retrieval_search_rejects_enabled_mode_without_live_backend() -> None:
@@ -47,6 +48,7 @@ def test_build_catalog_only_hit_returns_zero_scored_catalog_hit() -> None:
     hit = build_catalog_only_hit(
         source_id="lotus-platform-rfcs",
         snippet="RFC-0069 introduces lotus-ai.",
+        score=0.0,
     )
 
     assert hit.source_id == "lotus-platform-rfcs"

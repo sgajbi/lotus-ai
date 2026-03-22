@@ -66,7 +66,9 @@ class SqlAlchemyAuditRepository:
         tenant_id: str | None = None,
         limit: int = 20,
     ) -> list[AuditRecordResponse]:
-        statement = select(AuditRecordModel).order_by(AuditRecordModel.generated_at.desc()).limit(limit)
+        statement = (
+            select(AuditRecordModel).order_by(AuditRecordModel.generated_at.desc()).limit(limit)
+        )
         if caller_app is not None:
             statement = statement.where(AuditRecordModel.caller_app == caller_app)
         if task_id is not None:

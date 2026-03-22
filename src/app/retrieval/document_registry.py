@@ -32,6 +32,7 @@ def list_chunks_for_document(document_id: str) -> RetrievalChunkCatalogResponse 
         )
     return None
 
+
 def build_retrieval_index_status() -> RetrievalIndexStatusResponse:
     source_statuses: list[RetrievalSourceStatusDescriptor] = []
     repository = get_retrieval_repository()

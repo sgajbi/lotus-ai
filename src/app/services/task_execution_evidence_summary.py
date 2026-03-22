@@ -12,7 +12,9 @@ from app.contracts.task_runtime import (
 from app.services.audit_store import get_audit_store
 
 
-def build_task_execution_evidence_summary(*, limit: int = 100) -> TaskExecutionEvidenceSummaryResponse:
+def build_task_execution_evidence_summary(
+    *, limit: int = 100
+) -> TaskExecutionEvidenceSummaryResponse:
     records = get_audit_store().list(limit=limit)
     answer_modes = [
         answer_mode
@@ -22,9 +24,7 @@ def build_task_execution_evidence_summary(*, limit: int = 100) -> TaskExecutionE
     ]
     answer_mode_counts = Counter(answer_modes)
     evidence_type_counts = Counter(
-        descriptor.evidence_type
-        for record in records
-        for descriptor in record.evidence.descriptors
+        descriptor.evidence_type for record in records for descriptor in record.evidence.descriptors
     )
     latest_generated_at = records[0].generated_at if records else None
 

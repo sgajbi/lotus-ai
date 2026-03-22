@@ -160,7 +160,9 @@ def test_audit_catalog_route_returns_filtered_records(client: TestClient) -> Non
         "tenant_id": "tenant-us-002",
     }
     assert identity_body["record_count"] >= 1
-    assert all(record["requested_by"] == "advisor.user@lotus" for record in identity_body["records"])
+    assert all(
+        record["requested_by"] == "advisor.user@lotus" for record in identity_body["records"]
+    )
     assert all(record["tenant_id"] == "tenant-us-002" for record in identity_body["records"])
 
     retrieval_filtered_response = client.get(
@@ -181,9 +183,7 @@ def test_audit_catalog_route_returns_filtered_records(client: TestClient) -> Non
     }
     assert retrieval_body["record_count"] >= 1
     assert all(record["category"] == "knowledge_answer" for record in retrieval_body["records"])
-    assert all(
-        record["output_label"] == "RETRIEVAL_ANSWER" for record in retrieval_body["records"]
-    )
+    assert all(record["output_label"] == "RETRIEVAL_ANSWER" for record in retrieval_body["records"])
 
 
 def test_audit_record_route_returns_not_found_for_unknown_request(client: TestClient) -> None:

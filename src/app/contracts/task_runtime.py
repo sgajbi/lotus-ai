@@ -13,7 +13,9 @@ class TaskRuntimeDescriptor(BaseModel):
     execution_path: str = Field(description="Current internal execution path used for the task.")
     provider_mode: str = Field(description="Provider mode associated with the task execution path.")
     stubbed: bool = Field(description="Whether the current task path is stub-backed.")
-    notes: str = Field(description="Human-readable explanation of the current task runtime posture.")
+    notes: str = Field(
+        description="Human-readable explanation of the current task runtime posture."
+    )
 
 
 class TaskRuntimeCategorySummary(BaseModel):
@@ -28,7 +30,9 @@ class TaskRuntimeStatusResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
     enabled_task_count: int = Field(description="Number of currently enabled bounded tasks.")
-    stubbed_task_count: int = Field(description="Number of enabled tasks that are still stub-backed.")
+    stubbed_task_count: int = Field(
+        description="Number of enabled tasks that are still stub-backed."
+    )
     retrieval_backed_task_count: int = Field(
         description="Number of enabled tasks currently backed by the governed retrieval path."
     )
@@ -41,18 +45,26 @@ class TaskRuntimeStatusResponse(BaseModel):
 
 
 class TaskExecutionCategorySample(BaseModel):
-    category: TaskCategory = Field(description="Task category represented in the sampled execution set.")
+    category: TaskCategory = Field(
+        description="Task category represented in the sampled execution set."
+    )
     execution_count: int = Field(description="Number of sampled executions in the category.")
 
 
 class TaskExecutionProviderSample(BaseModel):
-    provider_mode: str = Field(description="Provider mode represented in the sampled execution set.")
-    execution_count: int = Field(description="Number of sampled executions using the provider mode.")
+    provider_mode: str = Field(
+        description="Provider mode represented in the sampled execution set."
+    )
+    execution_count: int = Field(
+        description="Number of sampled executions using the provider mode."
+    )
 
 
 class TaskExecutionEvidenceTypeSample(BaseModel):
     evidence_type: str = Field(description="Stable evidence type represented in the sampled set.")
-    execution_count: int = Field(description="Number of sampled executions carrying the evidence type.")
+    execution_count: int = Field(
+        description="Number of sampled executions carrying the evidence type."
+    )
 
 
 class TaskExecutionAnswerModeSample(BaseModel):
@@ -63,17 +75,25 @@ class TaskExecutionAnswerModeSample(BaseModel):
 
 
 class TaskRetrievalExecutionTaskSample(BaseModel):
-    task_id: str = Field(description="Retrieval-backed task identifier represented in the sampled set.")
+    task_id: str = Field(
+        description="Retrieval-backed task identifier represented in the sampled set."
+    )
     execution_count: int = Field(description="Number of sampled executions for the task.")
 
 
 class TaskRetrievalExecutionStatusSample(BaseModel):
-    retrieval_status: str = Field(description="Retrieval status represented in the sampled execution set.")
-    execution_count: int = Field(description="Number of sampled executions using the retrieval status.")
+    retrieval_status: str = Field(
+        description="Retrieval status represented in the sampled execution set."
+    )
+    execution_count: int = Field(
+        description="Number of sampled executions using the retrieval status."
+    )
 
 
 class TaskRetrievalExecutionSourceSample(BaseModel):
-    source_id: str = Field(description="Retrieval source identifier represented in the sampled set.")
+    source_id: str = Field(
+        description="Retrieval source identifier represented in the sampled set."
+    )
     execution_count: int = Field(
         description="Number of sampled executions that referenced the retrieval source."
     )
@@ -86,7 +106,9 @@ class TaskExecutionSummaryResponse(BaseModel):
         description="Maximum number of recent audit records included in the sampled execution summary."
     )
     sampled_record_count: int = Field(description="Number of sampled execution records processed.")
-    stubbed_execution_count: int = Field(description="Number of sampled executions that were stub-backed.")
+    stubbed_execution_count: int = Field(
+        description="Number of sampled executions that were stub-backed."
+    )
     non_stubbed_execution_count: int = Field(
         description="Number of sampled executions that used non-stubbed runtime paths."
     )

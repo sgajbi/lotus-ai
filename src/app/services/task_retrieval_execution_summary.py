@@ -20,7 +20,9 @@ def build_task_retrieval_execution_summary(
     *, limit: int = 100
 ) -> TaskRetrievalExecutionSummaryResponse:
     records = [
-        record for record in get_audit_store().list(limit=limit) if record.task_id in _RETRIEVAL_TASK_IDS
+        record
+        for record in get_audit_store().list(limit=limit)
+        if record.task_id in _RETRIEVAL_TASK_IDS
     ]
     task_counts = Counter(record.task_id for record in records)
     retrieval_status_counts = Counter(
@@ -36,9 +38,7 @@ def build_task_retrieval_execution_summary(
         if answer_mode is not None
     )
     source_counts = Counter(
-        source_id
-        for record in records
-        for source_id in _extract_source_ids(record)
+        source_id for record in records for source_id in _extract_source_ids(record)
     )
     latest_generated_at = records[0].generated_at if records else None
 

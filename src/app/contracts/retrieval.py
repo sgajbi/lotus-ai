@@ -79,9 +79,7 @@ class RetrievalSourceGovernanceResponse(BaseModel):
     staged_only_source_count: int = Field(
         description="Number of sources staged but not currently enabled for retrieval."
     )
-    empty_source_count: int = Field(
-        description="Number of sources with no staged documents yet."
-    )
+    empty_source_count: int = Field(description="Number of sources with no staged documents yet.")
     sources: list[RetrievalSourceGovernanceDescriptor] = Field(
         description="Per-source governance posture for the currently registered retrieval corpus."
     )

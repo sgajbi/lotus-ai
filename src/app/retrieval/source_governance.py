@@ -14,10 +14,7 @@ from app.services.retrieval_store import get_retrieval_repository
 
 def build_retrieval_source_governance() -> RetrievalSourceGovernanceResponse:
     sources = get_retrieval_repository().list_sources()
-    governance_sources = [
-        _build_source_governance_descriptor(source=source)
-        for source in sources
-    ]
+    governance_sources = [_build_source_governance_descriptor(source=source) for source in sources]
     return RetrievalSourceGovernanceResponse(
         service=settings.service_name,
         retrieval_mode=settings.retrieval_mode,
