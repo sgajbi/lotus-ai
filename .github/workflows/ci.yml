@@ -51,6 +51,8 @@ jobs:
         run: make eval-manifest-gate
       - name: Evaluation Run Gate
         run: make eval-run-gate
+      - name: Async Job Gate
+        run: make async-job-gate
       - name: Migration Smoke
         env:
           LOTUS_AI_DATABASE_URL: sqlite:///:memory:

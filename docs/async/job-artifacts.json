@@ -1,0 +1,22 @@
+{
+  "jobs": [
+    {
+      "job_id": "asyncjob_retrieval_indexing_001",
+      "job_type": "retrieval_indexing",
+      "status": "QUEUED",
+      "submitted_at": "2026-03-22T10:15:00Z",
+      "caller_app": "lotus-platform",
+      "execution_path": "future_worker_queue",
+      "notes": "Seeded retrieval indexing async artifact showing the future queue-backed execution posture."
+    },
+    {
+      "job_id": "asyncjob_evaluation_execution_001",
+      "job_type": "evaluation_execution",
+      "status": "SUPERSEDED",
+      "submitted_at": "2026-03-21T16:45:00Z",
+      "caller_app": "lotus-ai",
+      "execution_path": "future_worker_queue",
+      "notes": "Superseded seeded evaluation execution artifact retained to exercise async job lifecycle history."
+    }
+  ]
+}

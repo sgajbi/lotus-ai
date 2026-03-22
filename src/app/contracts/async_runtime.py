@@ -15,6 +15,11 @@ class AsyncWorkerMode(str, Enum):
     STUBBED = "STUBBED"
 
 
+class AsyncJobStatus(str, Enum):
+    QUEUED = "QUEUED"
+    SUPERSEDED = "SUPERSEDED"
+
+
 class AsyncJobTypeDescriptor(BaseModel):
     job_type: str = Field(description="Stable async job type identifier.")
     enabled: bool = Field(description="Whether the async job type is enabled in the current phase.")
@@ -22,6 +27,38 @@ class AsyncJobTypeDescriptor(BaseModel):
         description="Current execution path for the async job type in the active runtime posture."
     )
     notes: str = Field(description="Human-readable notes about the async job type posture.")
+
+
+class AsyncJobArtifactDescriptor(BaseModel):
+    job_id: str = Field(description="Stable async job artifact identifier.")
+    job_type: str = Field(description="Stable async job type identifier.")
+    status: AsyncJobStatus = Field(description="Lifecycle status for the async job artifact.")
+    submitted_at: str = Field(description="UTC timestamp when the async job artifact was created.")
+    caller_app: str = Field(description="Lotus caller associated with the async job artifact.")
+    execution_path: str = Field(
+        description="Current execution path assigned to the async job artifact."
+    )
+    notes: str = Field(description="Human-readable description of the async job artifact.")
+
+
+class AsyncJobCatalogResponse(BaseModel):
+    service: str = Field(description="Service name emitting the async job catalog.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    job_count: int = Field(description="Number of recorded async job artifacts currently exposed.")
+    queued_job_count: int = Field(
+        description="Number of queued async job artifacts currently exposed."
+    )
+    jobs: list[AsyncJobArtifactDescriptor] = Field(
+        description="Recorded async job artifacts available for inspection."
+    )
+
+
+class AsyncJobDetailResponse(BaseModel):
+    service: str = Field(description="Service name emitting the async job detail.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    job: AsyncJobArtifactDescriptor = Field(description="Recorded async job artifact detail.")
 
 
 class AsyncRuntimeStatusResponse(BaseModel):
@@ -34,7 +71,10 @@ class AsyncRuntimeStatusResponse(BaseModel):
     active_worker_count: int = Field(
         description="Number of active worker replicas currently exposed."
     )
-    enqueued_job_count: int = Field(description="Number of enqueued async jobs currently visible.")
+    enqueued_job_count: int = Field(description="Number of queued async jobs currently visible.")
+    recorded_job_count: int = Field(
+        description="Number of recorded async job artifacts currently exposed."
+    )
     supported_job_types: list[AsyncJobTypeDescriptor] = Field(
         description="Known async job types and their current runtime posture."
     )

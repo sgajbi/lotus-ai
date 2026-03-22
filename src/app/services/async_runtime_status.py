@@ -7,9 +7,11 @@ from app.contracts.async_runtime import (
     AsyncRuntimeStatusResponse,
     AsyncWorkerMode,
 )
+from app.services.async_job_service import build_async_job_catalog
 
 
 def build_async_runtime_status() -> AsyncRuntimeStatusResponse:
+    job_catalog = build_async_job_catalog()
     return AsyncRuntimeStatusResponse(
         service=settings.service_name,
         version=settings.service_version,
@@ -18,7 +20,8 @@ def build_async_runtime_status() -> AsyncRuntimeStatusResponse:
         worker_mode=AsyncWorkerMode.DOCUMENTED_ONLY,
         queue_backend="none",
         active_worker_count=0,
-        enqueued_job_count=0,
+        enqueued_job_count=job_catalog.queued_job_count,
+        recorded_job_count=job_catalog.job_count,
         supported_job_types=[
             AsyncJobTypeDescriptor(
                 job_type="retrieval_indexing",

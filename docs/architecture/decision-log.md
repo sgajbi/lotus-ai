@@ -606,3 +606,21 @@ Current posture:
 1. `/platform/async/runtime-status` exposes queue mode, worker mode, and known async job types,
 2. platform runtime status embeds the async runtime summary,
 3. async execution remains disabled in the foundation phase while the contract is now explicit.
+
+## Decision 36: Async Job Artifacts Should Be Inspectable Before Live Queue Execution
+
+Decision:
+
+`lotus-ai` exposes seeded, read-only async job artifacts before any real worker queue is enabled.
+
+Why:
+
+1. operators and engineers need an explicit artifact model for future background work,
+2. async history and queue posture should be inspectable before they become mutable operational state,
+3. this mirrors the artifact-first pattern already used for evaluation history and keeps async rollout disciplined.
+
+Current posture:
+
+1. `/platform/async/jobs` and `/platform/async/jobs/{job_id}` expose seeded async job artifacts,
+2. async runtime status now reports queued and recorded job counts,
+3. async job artifacts are validated by a dedicated gate before being exposed through the API.

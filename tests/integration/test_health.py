@@ -38,8 +38,44 @@ def test_async_runtime_status_route() -> None:
     assert body["queue_mode"] == "DISABLED"
     assert body["worker_mode"] == "DOCUMENTED_ONLY"
     assert body["active_worker_count"] == 0
-    assert body["enqueued_job_count"] == 0
+    assert body["enqueued_job_count"] == 1
+    assert body["recorded_job_count"] == 2
     assert any(job["job_type"] == "retrieval_indexing" for job in body["supported_job_types"])
+
+
+def test_async_job_catalog_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/async/jobs")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["job_count"] == 2
+    assert body["queued_job_count"] == 1
+    assert body["jobs"][0]["job_id"] == "asyncjob_retrieval_indexing_001"
+    assert body["jobs"][1]["status"] == "SUPERSEDED"
+
+
+def test_async_job_detail_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/async/jobs/asyncjob_retrieval_indexing_001")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["job"]["job_type"] == "retrieval_indexing"
+    assert body["job"]["status"] == "QUEUED"
+
+
+def test_async_job_detail_route_returns_not_found_for_unknown_job() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/async/jobs/missing_async_job")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Async job artifact 'missing_async_job' was not found."
 
 
 def test_evaluation_catalog_route() -> None:
@@ -260,6 +296,8 @@ def test_platform_runtime_status_route() -> None:
     assert body["async_runtime"]["queue_mode"] == "DISABLED"
     assert body["async_runtime"]["worker_mode"] == "DOCUMENTED_ONLY"
     assert body["async_runtime"]["active_worker_count"] == 0
+    assert body["async_runtime"]["enqueued_job_count"] == 1
+    assert body["async_runtime"]["recorded_job_count"] == 2
     assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
     assert body["evaluation_runtime"]["evidence_category_count"] == 5
     assert body["evaluation_runtime"]["staged_case_count"] == 12

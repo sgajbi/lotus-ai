@@ -45,6 +45,7 @@ The current execution posture is:
 - recorded evaluation run artifacts are now validated by a dedicated gate,
 - evaluation run artifacts now model both current and superseded lifecycle states,
 - async queue and worker posture is now exposed through a dedicated runtime-status endpoint,
+- seeded async job artifacts are now exposed and validated through dedicated contracts,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:
@@ -220,6 +221,7 @@ make typecheck
 make openapi-gate
 make eval-manifest-gate
 make eval-run-gate
+make async-job-gate
 make migration-smoke
 make runtime-mode-smoke
 make ci
