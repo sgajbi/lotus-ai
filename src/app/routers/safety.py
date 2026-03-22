@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.contracts.safety import SafetyPolicyResponse
+from app.contracts.safety import SafetyPolicyResponse, SafetyRuntimeStatusResponse
 from app.services.safety_policy import build_safety_policy
+from app.services.safety_status import build_safety_runtime_status
 
 router = APIRouter(prefix="/platform/safety", tags=["platform"])
 
@@ -24,3 +25,21 @@ router = APIRouter(prefix="/platform/safety", tags=["platform"])
 )
 async def get_safety_policy_route() -> SafetyPolicyResponse:
     return build_safety_policy()
+
+
+@router.get(
+    "/runtime-status",
+    response_model=SafetyRuntimeStatusResponse,
+    operation_id="getSafetyRuntimeStatus",
+    summary="Get lotus-ai safety runtime status",
+    description=(
+        "Returns the current runtime safety posture for lotus-ai, including which controls are "
+        "enforced today and whether any runtime redaction engine is active."
+    ),
+    responses={
+        200: {"description": "Safety runtime status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_safety_runtime_status_route() -> SafetyRuntimeStatusResponse:
+    return build_safety_runtime_status()

@@ -24,6 +24,7 @@ The current execution posture is:
 - provider policy exposes which runtime modes are supported and how unsupported modes are rejected,
 - safety policy exposes task-level output-label and redaction posture,
 - task audit records now persist the applied safety posture for every execution,
+- runtime safety status exposes which controls are enforced versus documented-only,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

@@ -65,6 +65,19 @@ def test_safety_policy_route() -> None:
     assert any(task["task_id"] == "explain.v1" for task in body["task_policies"])
 
 
+def test_safety_runtime_status_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/safety/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["safety_mode"] == "documented_only"
+    assert body["runtime_redaction_active"] is False
+    assert body["enforced_control_ids"] == ["response_labeling", "correlation_and_audit"]
+
+
 def test_platform_runtime_status_route() -> None:
     client = TestClient(app)
 
@@ -80,6 +93,11 @@ def test_platform_runtime_status_route() -> None:
     assert body["audit_store"]["status"] == "READY"
     assert body["retrieval_store"]["mode"] == "memory"
     assert body["retrieval_store"]["status"] == "READY"
+    assert body["safety_runtime"]["runtime_redaction_active"] is False
+    assert body["safety_runtime"]["enforced_control_ids"] == [
+        "response_labeling",
+        "correlation_and_audit",
+    ]
     assert body["migration_contract_enforced"] is True
     assert body["startup_readiness_blocking"] is False
     assert body["prompt_count"] >= 3

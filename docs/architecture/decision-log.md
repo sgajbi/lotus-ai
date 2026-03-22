@@ -209,3 +209,21 @@ Current posture:
 1. execution audit metadata now records `safety_mode`,
 2. task-specific `redaction_posture` is persisted per run,
 3. enforced safety-control identifiers are stored with each audit record.
+
+## Decision 14: Runtime Safety Status Should Be Observable
+
+Decision:
+
+`lotus-ai` exposes a dedicated runtime safety status surface in addition to policy and audit metadata.
+
+Why:
+
+1. operators need a quick operational view without inspecting individual audit records,
+2. platform runtime status should summarize safety posture just like persistence posture,
+3. it creates a clean place to surface future runtime redaction or policy-engine activation.
+
+Current posture:
+
+1. runtime safety status is inspectable through `/platform/safety/runtime-status`,
+2. platform runtime status now embeds a safety runtime summary,
+3. runtime redaction remains inactive in the foundation phase.

@@ -155,8 +155,9 @@ versus what is still documented guidance.
 Current rules:
 
 1. safety posture is visible through `/platform/safety/policy`,
-2. response labeling and audit evidence are already enforced,
-3. redaction is currently documented at the task-policy level and will be hardened later.
+2. runtime safety status is visible through `/platform/safety/runtime-status`,
+3. response labeling and audit evidence are already enforced,
+4. redaction is currently documented at the task-policy level and will be hardened later.
 
 ## Deployment Policy
 

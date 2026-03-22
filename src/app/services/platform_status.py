@@ -11,6 +11,7 @@ from app.services.runtime_readiness import (
     get_audit_store_runtime_status,
     get_retrieval_store_runtime_status,
 )
+from app.services.safety_status import build_safety_runtime_status
 
 
 def build_platform_runtime_status(app_state: object | None = None) -> PlatformRuntimeStatusResponse:
@@ -18,6 +19,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     prompts = list_registered_prompts()
     audit_store = get_audit_store_runtime_status()
     retrieval_store = get_retrieval_store_runtime_status()
+    safety_runtime = build_safety_runtime_status()
     state = app_state if app_state is not None else SimpleNamespace()
     return PlatformRuntimeStatusResponse(
         service=settings.service_name,
@@ -30,6 +32,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         embedding_provider_mode=settings.embedding_provider_mode,
         safety_mode=settings.safety_mode,
         prompt_store_mode=settings.prompt_store_mode,
+        safety_runtime=safety_runtime,
         audit_store=audit_store,
         retrieval_store=retrieval_store,
         database_configured=audit_store.database_configured or retrieval_store.database_configured,

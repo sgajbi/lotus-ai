@@ -47,6 +47,22 @@ class SafetyPolicyResponse(BaseModel):
     )
 
 
+class SafetyRuntimeStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the safety runtime status.")
+    version: str = Field(description="Current lotus-ai service version.")
+    safety_mode: str = Field(description="Configured lotus-ai safety mode.")
+    runtime_redaction_active: bool = Field(
+        description="Whether any runtime redaction engine is currently active."
+    )
+    enforced_control_ids: list[str] = Field(
+        description="Safety controls currently enforced at runtime."
+    )
+    documented_only_control_ids: list[str] = Field(
+        description="Safety controls that are documented but not runtime-enforced yet."
+    )
+    task_policy_count: int = Field(description="Number of task-level safety policies exposed.")
+
+
 class SafetyExecutionOutcome(BaseModel):
     safety_mode: str = Field(
         description="Configured lotus-ai safety mode applied to the execution."
