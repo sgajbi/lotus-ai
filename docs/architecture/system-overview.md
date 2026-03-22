@@ -178,6 +178,11 @@ runbook readiness, and task-runtime notes all describe the same live-provider pa
 That keeps operator-facing status aligned when rollout is still stub-default versus when a live
 provider has been allowlisted but remains intentionally disabled.
 
+Provider operations durability now also has an explicit repository seam and migration-managed
+relational schema. Quota, budget, and degradation enforcement still use the current in-memory
+control path in the present slice, but the persistence boundary is now in place so later RFC-0005
+cutover slices can switch behavior without introducing a second data model.
+
 Audit persistence now also preserves task category, output label, and execution evidence, so
 downstream inspection of prior executions does not depend on replaying the original task call.
 

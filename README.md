@@ -126,6 +126,7 @@ The current persistence posture is:
 - a SQLAlchemy-backed audit adapter available behind the same repository interface for durable storage,
 - in-memory retrieval metadata by default, with a SQLAlchemy-backed retrieval adapter available behind the same repository seam,
 - explicit configuration to move between the two without changing API contracts,
+- explicit provider-operations repository seams and migration-managed SQL tables now exist for future durable quota, budget, and degradation state, even though enforcement still remains in-memory until RFC-0005 cutover slices switch behavior over,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 - prompt promotion remains read-only at runtime and is governed through reviewed repository changes plus Alembic-managed persistence updates.
 - startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.
