@@ -3,11 +3,17 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.contracts.retrieval import (
+    RetrievalDocumentCatalogResponse,
+    RetrievalIndexStatusResponse,
     RetrievalSearchRequest,
     RetrievalSearchResponse,
     RetrievalSourceCatalogResponse,
 )
 from app.retrieval.source_registry import list_retrieval_sources
+from app.services.retrieval_catalog_service import (
+    get_documents_for_source,
+    get_retrieval_index_status,
+)
 from app.services.retrieval_service import search_sources
 
 router = APIRouter(prefix="/platform/retrieval", tags=["retrieval"])
@@ -24,6 +30,31 @@ router = APIRouter(prefix="/platform/retrieval", tags=["retrieval"])
 )
 async def list_retrieval_sources_route() -> RetrievalSourceCatalogResponse:
     return list_retrieval_sources()
+
+
+@router.get(
+    "/index-status",
+    response_model=RetrievalIndexStatusResponse,
+    summary="Get retrieval indexing status",
+    description=(
+        "Returns source-level indexing status for the approved retrieval corpus currently known "
+        "to lotus-ai."
+    ),
+)
+async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
+    return get_retrieval_index_status()
+
+
+@router.get(
+    "/sources/{source_id}/documents",
+    response_model=RetrievalDocumentCatalogResponse,
+    summary="List staged retrieval documents for a source",
+    description=(
+        "Returns the currently staged retrieval documents associated with a source identifier."
+    ),
+)
+async def list_retrieval_documents_route(source_id: str) -> RetrievalDocumentCatalogResponse:
+    return get_documents_for_source(source_id)
 
 
 @router.post(

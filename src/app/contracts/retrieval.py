@@ -17,6 +17,12 @@ class RetrievalStatus(str, Enum):
     READY = "READY"
 
 
+class RetrievalIndexStatus(str, Enum):
+    NOT_INDEXED = "NOT_INDEXED"
+    STAGED = "STAGED"
+    INDEXED = "INDEXED"
+
+
 class RetrievalSourceDescriptor(BaseModel):
     source_id: str = Field(description="Stable retrieval source identifier.")
     kind: RetrievalSourceKind = Field(description="High-level source category.")
@@ -30,6 +36,39 @@ class RetrievalSourceCatalogResponse(BaseModel):
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     sources: list[RetrievalSourceDescriptor] = Field(
         description="Approved retrieval source descriptors known to lotus-ai."
+    )
+
+
+class RetrievalDocumentDescriptor(BaseModel):
+    document_id: str = Field(description="Stable retrieval document identifier.")
+    source_id: str = Field(description="Retrieval source identifier for the document.")
+    title: str = Field(description="Human-readable title for the document.")
+    location: str = Field(description="Repository-relative or logical location of the document.")
+    chunk_count: int = Field(description="Current staged chunk count for the document.")
+    index_status: RetrievalIndexStatus = Field(description="Indexing status for the document.")
+
+
+class RetrievalDocumentCatalogResponse(BaseModel):
+    source_id: str = Field(description="Retrieval source identifier for the returned documents.")
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    documents: list[RetrievalDocumentDescriptor] = Field(
+        description="Known documents currently staged under the retrieval source."
+    )
+
+
+class RetrievalSourceStatusDescriptor(BaseModel):
+    source_id: str = Field(description="Retrieval source identifier.")
+    index_status: RetrievalIndexStatus = Field(description="Current source-level indexing status.")
+    document_count: int = Field(description="Number of staged documents in the source.")
+    chunk_count: int = Field(description="Total staged chunk count across the source.")
+
+
+class RetrievalIndexStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval index status.")
+    retrieval_mode: str = Field(description="Current retrieval mode configured for lotus-ai.")
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    sources: list[RetrievalSourceStatusDescriptor] = Field(
+        description="Source-level indexing status details."
     )
 
 

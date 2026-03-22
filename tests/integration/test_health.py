@@ -106,6 +106,30 @@ def test_retrieval_source_catalog_route() -> None:
     assert any(source["source_id"] == "lotus-platform-rfcs" for source in body["sources"])
 
 
+def test_retrieval_index_status_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/retrieval/index-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert any(source["source_id"] == "lotus-platform-rfcs" for source in body["sources"])
+
+
+def test_retrieval_documents_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/retrieval/sources/lotus-platform-rfcs/documents")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source_id"] == "lotus-platform-rfcs"
+    assert any(
+        document["document_id"] == "lotus-platform-rfc-0069" for document in body["documents"]
+    )
+
+
 def test_retrieval_search_route_returns_conflict_when_disabled() -> None:
     client = TestClient(app)
 
