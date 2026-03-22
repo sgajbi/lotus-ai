@@ -96,6 +96,10 @@ services can depend on the same runtime types without import coupling.
 Public task and audit API behavior is now also verified through a dedicated integration module
 instead of being buried only inside the broader health suite.
 
+Prompt API behavior is also verified through its own dedicated integration module so prompt
+governance and runtime contract coverage can evolve independently of the broader platform
+health suite.
+
 ### Async Runtime
 
 - `src/app/services/async_runtime_status.py`
