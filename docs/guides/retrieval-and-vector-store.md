@@ -108,6 +108,10 @@ The current retrieval API exposes:
 
 The search endpoint remains governed and intentionally disabled until the retrieval execution layer is ready.
 
+`/platform/runtime-status` now embeds retrieval governance posture directly so operators can review
+retrieval rollout state from the same top-level runtime surface that already carries async and
+provider governance posture.
+
 ## Retrieval Evaluation Posture
 
 Retrieval evaluation is now staged with file-backed fixture inventory.

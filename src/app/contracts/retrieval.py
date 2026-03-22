@@ -4,7 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from app.contracts.platform import RuntimeReadinessStatus
+from app.contracts.runtime_readiness import RuntimeReadinessStatus
 
 
 class RetrievalSourceKind(str, Enum):

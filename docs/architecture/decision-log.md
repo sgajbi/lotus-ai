@@ -372,6 +372,24 @@ Current posture:
 2. the response explicitly reports blocked retrieval governance posture in foundation phase,
 3. detailed retrieval readiness endpoints remain available for deeper inspection and future rollout work.
 
+## Decision 15D: Platform Runtime Status Should Embed Retrieval Governance Posture
+
+Decision:
+
+`/platform/runtime-status` now embeds retrieval governance posture in addition to the dedicated retrieval governance endpoint.
+
+Why:
+
+1. platform operators should have one primary runtime entry point that includes the top-level retrieval rollout posture,
+2. retrieval governance is operationally significant once multiple retrieval readiness surfaces exist,
+3. embedding the summary reduces endpoint hopping while preserving the dedicated retrieval governance endpoint.
+
+Current posture:
+
+1. platform runtime status includes `retrieval_governance`,
+2. retrieval governance remains separately inspectable through `/platform/retrieval/governance-status`,
+3. foundation phase continues to report blocked retrieval governance in both views.
+
 ## Decision 16: Prompt Runtime Selection Should Be Inspectable
 
 Decision:

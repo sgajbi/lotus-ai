@@ -87,9 +87,10 @@ Before any future live-retrieval activation slice:
 1. verify `GET /platform/retrieval/governance-status`
 2. inspect `GET /platform/retrieval/activation-readiness` when technical blockers need detail
 3. inspect `GET /platform/retrieval/runbook-readiness` when operational blockers need detail
-4. confirm retrieval indexing policy and execution status still reflect governed staged posture unless explicitly approved otherwise
-5. confirm reindex, replay, and retrieval observability procedures are documented and approved
-6. only then proceed with any live-retrieval activation rollout review
+4. confirm the embedded `retrieval_governance` block in `GET /platform/runtime-status` matches the detailed retrieval governance view
+5. confirm retrieval indexing policy and execution status still reflect governed staged posture unless explicitly approved otherwise
+6. confirm reindex, replay, and retrieval observability procedures are documented and approved
+7. only then proceed with any live-retrieval activation rollout review
 
 ## Incident First Checks
 

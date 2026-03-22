@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
-from app.contracts.platform import RuntimeReadinessStatus, StoreRuntimeStatusDescriptor
+from app.contracts.runtime_readiness import RuntimeReadinessStatus, StoreRuntimeStatusDescriptor
 
 
 def _probe_sql_tables(expected_tables: Iterable[str]) -> tuple[RuntimeReadinessStatus, str]:
