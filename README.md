@@ -25,6 +25,7 @@ The current execution posture is:
 - safety policy exposes task-level output-label and redaction posture,
 - task audit records now persist the applied safety posture for every execution,
 - runtime safety status exposes which controls are enforced versus documented-only,
+- retrieval now has an explicit execution seam and runtime execution-status surface,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

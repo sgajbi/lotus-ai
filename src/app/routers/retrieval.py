@@ -9,6 +9,7 @@ from app.contracts.retrieval import (
     RetrievalIndexJobDetailResponse,
     RetrievalIndexStatusResponse,
     RetrievalIndexingPolicyResponse,
+    RetrievalExecutionStatusResponse,
     RetrievalRuntimeStatusResponse,
     RetrievalSearchRequest,
     RetrievalSearchResponse,
@@ -24,6 +25,7 @@ from app.services.retrieval_catalog_service import (
     get_documents_for_source,
     get_retrieval_index_status,
 )
+from app.services.retrieval_execution_status import build_retrieval_execution_status
 from app.services.retrieval_service import search_sources
 
 router = APIRouter(prefix="/platform/retrieval", tags=["retrieval"])
@@ -81,6 +83,24 @@ async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
 )
 async def get_retrieval_runtime_status_route() -> RetrievalRuntimeStatusResponse:
     return get_retrieval_runtime_status()
+
+
+@router.get(
+    "/execution-status",
+    response_model=RetrievalExecutionStatusResponse,
+    operation_id="getRetrievalExecutionStatus",
+    summary="Get retrieval execution status",
+    description=(
+        "Returns the staged retrieval execution posture for lotus-ai, distinguishing approved "
+        "catalog contracts from live search or indexing execution."
+    ),
+    responses={
+        200: {"description": "Retrieval execution status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_execution_status_route() -> RetrievalExecutionStatusResponse:
+    return build_retrieval_execution_status()
 
 
 @router.get(

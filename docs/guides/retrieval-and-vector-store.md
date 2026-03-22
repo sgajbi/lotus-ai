@@ -61,7 +61,9 @@ What exists today:
 2. documents are inventoried per source,
 3. staged chunks are visible per document,
 4. indexing jobs and indexing policy are exposed through API contracts,
-5. retrieval metadata is served through a repository seam rather than hard-coded module state.
+5. retrieval metadata is served through a repository seam rather than hard-coded module state,
+6. retrieval search now flows through an explicit execution gateway before any live backend is introduced,
+7. retrieval execution status is exposed separately from retrieval catalog status.
 
 What does not exist yet:
 
@@ -94,10 +96,11 @@ The current retrieval API exposes:
 
 1. source discovery,
 2. retrieval runtime status,
-3. source-level index status,
-4. indexing policy,
-5. indexing job catalog and job detail,
-6. document inventory,
-7. chunk inventory.
+3. retrieval execution status,
+4. source-level index status,
+5. indexing policy,
+6. indexing job catalog and job detail,
+7. document inventory,
+8. chunk inventory.
 
 The search endpoint remains governed and intentionally disabled until the retrieval execution layer is ready.

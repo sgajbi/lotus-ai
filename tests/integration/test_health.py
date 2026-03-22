@@ -243,6 +243,19 @@ def test_retrieval_runtime_status_route() -> None:
     assert body["source_count"] >= 4
 
 
+def test_retrieval_execution_status_route() -> None:
+    client = TestClient(app)
+
+    response = client.get("/platform/retrieval/execution-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["retrieval_mode"] == "disabled"
+    assert body["execution_stage"] == "SEARCH_DISABLED"
+    assert body["live_search_enabled"] is False
+
+
 def test_retrieval_index_jobs_route() -> None:
     client = TestClient(app)
 

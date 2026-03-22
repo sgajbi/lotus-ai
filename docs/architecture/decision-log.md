@@ -227,3 +227,21 @@ Current posture:
 1. runtime safety status is inspectable through `/platform/safety/runtime-status`,
 2. platform runtime status now embeds a safety runtime summary,
 3. runtime redaction remains inactive in the foundation phase.
+
+## Decision 15: Retrieval Needs Its Own Execution Gateway
+
+Decision:
+
+Retrieval search now flows through an explicit execution gateway before any live vector search backend is introduced.
+
+Why:
+
+1. search execution needs a clean boundary separate from catalog and indexing metadata,
+2. this lets us make disabled-versus-enabled retrieval behavior explicit and testable,
+3. future live retrieval backends can be introduced behind the same seam without changing the public retrieval API.
+
+Current posture:
+
+1. retrieval execution is inspectable through `/platform/retrieval/execution-status`,
+2. the gateway rejects live retrieval execution while the platform remains in staged retrieval mode,
+3. catalog, indexing, and execution status are now separate but coordinated surfaces.

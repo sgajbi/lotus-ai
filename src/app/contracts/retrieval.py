@@ -17,6 +17,7 @@ class RetrievalSourceKind(str, Enum):
 class RetrievalStatus(str, Enum):
     DISABLED = "DISABLED"
     READY = "READY"
+    REJECTED = "REJECTED"
 
 
 class RetrievalIndexStatus(str, Enum):
@@ -208,3 +209,43 @@ class RetrievalSearchResponse(BaseModel):
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     hits: list[RetrievalSearchHit] = Field(description="Retrieval hits returned by the search.")
     message: str = Field(description="Human-readable retrieval status message.")
+
+
+class RetrievalExecutionStage(str, Enum):
+    CATALOG_ONLY = "CATALOG_ONLY"
+    SEARCH_DISABLED = "SEARCH_DISABLED"
+    INDEXING_DISABLED = "INDEXING_DISABLED"
+
+
+class RetrievalExecutionRequest(BaseModel):
+    query: str = Field(description="Search query provided by the caller.")
+    caller_app: str = Field(description="Calling Lotus application requesting retrieval.")
+    correlation_id: str = Field(description="Correlation identifier for the retrieval request.")
+    source_ids: list[str] = Field(
+        default_factory=list,
+        description="Optional source filters limiting retrieval to approved source ids.",
+    )
+    limit: int = Field(default=5, ge=1, le=20, description="Maximum number of hits requested.")
+
+
+class RetrievalExecutionResponse(BaseModel):
+    status: RetrievalStatus = Field(description="Execution outcome for the retrieval request.")
+    execution_stage: RetrievalExecutionStage = Field(
+        description="Current retrieval execution stage applied to the request."
+    )
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    hits: list[RetrievalSearchHit] = Field(description="Retrieval hits returned by the gateway.")
+    message: str = Field(description="Human-readable retrieval execution message.")
+
+
+class RetrievalExecutionStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval execution status.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    retrieval_mode: str = Field(description="Configured retrieval execution mode.")
+    execution_stage: RetrievalExecutionStage = Field(
+        description="Current staged retrieval execution posture."
+    )
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    live_search_enabled: bool = Field(description="Whether live retrieval search is active.")
+    live_indexing_enabled: bool = Field(description="Whether live retrieval indexing is active.")
+    message: str = Field(description="Human-readable explanation of the retrieval execution state.")

@@ -2,26 +2,16 @@ from __future__ import annotations
 
 from fastapi import HTTPException, status
 
-from app.config import settings
 from app.contracts.retrieval import (
+    RetrievalExecutionRequest,
     RetrievalSearchRequest,
     RetrievalSearchResponse,
-    RetrievalStatus,
 )
-from app.retrieval.policy import VECTOR_STORE_STRATEGY
+from app.services.retrieval_gateway import execute_retrieval_search
 from app.services.retrieval_store import get_retrieval_repository
 
 
 def search_sources(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
-    if settings.retrieval_mode != "enabled":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Retrieval search is not enabled yet. "
-                "lotus-ai currently exposes the approved-source catalog before live retrieval is active."
-            ),
-        )
-
     enabled_source_ids = {
         source.source_id for source in get_retrieval_repository().list_sources() if source.enabled
     }
@@ -31,10 +21,25 @@ def search_sources(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
             detail="Requested source_ids include one or more sources that are not enabled.",
         )
 
+    execution = execute_retrieval_search(
+        RetrievalExecutionRequest(
+            query=request.query,
+            caller_app=request.caller_app,
+            correlation_id=request.correlation_id,
+            source_ids=request.source_ids,
+            limit=request.limit,
+        )
+    )
+    if execution.status.value == "REJECTED":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=execution.message,
+        )
+
     return RetrievalSearchResponse(
-        status=RetrievalStatus.READY,
+        status=execution.status,
         query=request.query,
-        vector_store=VECTOR_STORE_STRATEGY,
-        hits=[],
-        message="Retrieval search is enabled but no backend implementation is wired yet.",
+        vector_store=execution.vector_store,
+        hits=execution.hits,
+        message=execution.message,
     )
