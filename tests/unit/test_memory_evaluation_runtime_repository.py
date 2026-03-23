@@ -139,3 +139,25 @@ def test_memory_evaluation_runtime_repository_replaces_attempt_and_case_result_r
     assert len(results) == 1
     assert results[0].outcome == "PASS"
 
+
+def test_memory_evaluation_runtime_repository_get_attempt_returns_persisted_attempt() -> None:
+    repository = InMemoryEvaluationRuntimeRepository()
+    repository.save_attempt(
+        EvaluationRunAttemptRecord(
+            attempt_id="evalrun_002_attempt_001",
+            run_id="evalrun_002",
+            attempt_number=1,
+            lifecycle_status="CLAIMED",
+            started_at=None,
+            completed_at=None,
+            worker_id="worker-a",
+            latest_message="Attempt claimed.",
+            verdict=None,
+            failure_reason=None,
+        )
+    )
+
+    attempt = repository.get_attempt(attempt_id="evalrun_002_attempt_001")
+
+    assert attempt is not None
+    assert attempt.worker_id == "worker-a"

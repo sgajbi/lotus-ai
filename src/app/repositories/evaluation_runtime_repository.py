@@ -69,4 +69,3 @@ class EvaluationRuntimeRepository(Protocol):
 
     def save_case_result(self, record: EvaluationCaseResultRecord) -> None:
         """Persist one evaluation case result."""
-

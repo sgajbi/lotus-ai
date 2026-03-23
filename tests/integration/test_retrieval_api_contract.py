@@ -106,7 +106,10 @@ def test_retrieval_evidence_readiness_route(client: TestClient) -> None:
     assert body["items"][1]["status"] == "NOT_READY"
     assert body["approval_gate"]["domain_id"] == "retrieval_execution"
     assert body["approval_gate"]["evidence_state"] == "STAGED_ONLY"
-    assert body["approval_gate"]["latest_historical_baseline_run_id"] == "foundation_eval_2026_03_22_001"
+    assert (
+        body["approval_gate"]["latest_historical_baseline_run_id"]
+        == "foundation_eval_2026_03_22_001"
+    )
 
 
 def test_retrieval_governance_status_route(client: TestClient) -> None:

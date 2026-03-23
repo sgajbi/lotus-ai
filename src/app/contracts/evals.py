@@ -159,9 +159,7 @@ class EvaluationRunArtifactDescriptor(BaseModel):
     seam_coverage: list[EvaluationSeamCoverageDescriptor] = Field(
         description="Seam-oriented coverage associated with the exposed evaluation run."
     )
-    notes: str = Field(
-        description="Human-readable description of the exposed evaluation run."
-    )
+    notes: str = Field(description="Human-readable description of the exposed evaluation run.")
 
 
 class EvaluationRunCatalogResponse(BaseModel):
@@ -236,9 +234,7 @@ class EvaluationCaseResultDescriptor(BaseModel):
     attempt_id: str = Field(description="Evaluation attempt identifier associated with the case.")
     case_id: str = Field(description="Governed evaluation case identifier.")
     fixture_id: str = Field(description="Evaluation fixture family identifier for the case.")
-    outcome: EvaluationCaseOutcome = Field(
-        description="Persisted evaluation outcome for the case."
-    )
+    outcome: EvaluationCaseOutcome = Field(description="Persisted evaluation outcome for the case.")
     summary: str = Field(description="Human-readable explanation of the case outcome.")
     evidence_refs: list[str] = Field(
         description="Bounded evidence references supporting the recorded case outcome."
@@ -325,7 +321,9 @@ class EvaluationRunSubmissionRequest(BaseModel):
 
 
 class EvaluationRunSubmissionResponse(BaseModel):
-    service: str = Field(description="Service name emitting the evaluation run submission response.")
+    service: str = Field(
+        description="Service name emitting the evaluation run submission response."
+    )
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
     submission_status: EvaluationRunSubmissionStatus = Field(

@@ -326,7 +326,10 @@ def test_provider_evidence_readiness_route(client: TestClient) -> None:
     assert body["items"][6]["status"] == "FOUNDATION_STAGED"
     assert body["approval_gate"]["domain_id"] == "provider_execution"
     assert body["approval_gate"]["evidence_state"] == "STAGED_ONLY"
-    assert body["approval_gate"]["latest_historical_baseline_run_id"] == "foundation_eval_2026_03_22_001"
+    assert (
+        body["approval_gate"]["latest_historical_baseline_run_id"]
+        == "foundation_eval_2026_03_22_001"
+    )
 
 
 def test_provider_governance_status_route(client: TestClient) -> None:

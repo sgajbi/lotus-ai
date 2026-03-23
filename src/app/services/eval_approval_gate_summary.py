@@ -143,9 +143,7 @@ def _summarize_fixture_approval(
     manifest_version: str,
 ) -> _FixtureApprovalSummary:
     runs = [
-        run
-        for run in get_evaluation_runtime_store().list_runs()
-        if run.fixture_id == fixture_id
+        run for run in get_evaluation_runtime_store().list_runs() if run.fixture_id == fixture_id
     ]
     runs.sort(key=lambda item: item.submitted_at, reverse=True)
     latest_runtime_run = runs[0] if runs else None

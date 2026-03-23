@@ -36,4 +36,3 @@ def reset_evaluation_runtime_store_cache() -> None:
     global _sqlalchemy_repository
     _memory_repository = None
     _sqlalchemy_repository = None
-

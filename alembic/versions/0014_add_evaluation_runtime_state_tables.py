@@ -113,4 +113,3 @@ def downgrade() -> None:
     op.drop_index("ix_evaluation_runs_lifecycle_status", table_name="evaluation_runs")
     op.drop_index("ix_evaluation_runs_fixture_id", table_name="evaluation_runs")
     op.drop_table("evaluation_runs")
-

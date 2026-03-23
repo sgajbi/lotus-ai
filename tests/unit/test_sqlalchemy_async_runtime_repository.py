@@ -198,6 +198,7 @@ def test_sqlalchemy_async_runtime_repository_claims_next_runnable_job_once(
 
     claim = repository.claim_next_runnable_job(
         worker_id="worker-a",
+        job_types=("retrieval_indexing",),
         claimed_at="2026-03-23T00:01:00Z",
         heartbeat_at="2026-03-23T00:01:00Z",
         lease_expires_at="2026-03-23T00:06:00Z",
@@ -213,6 +214,7 @@ def test_sqlalchemy_async_runtime_repository_claims_next_runnable_job_once(
     assert (
         repository.claim_next_runnable_job(
             worker_id="worker-b",
+            job_types=("retrieval_indexing",),
             claimed_at="2026-03-23T00:02:00Z",
             heartbeat_at="2026-03-23T00:02:00Z",
             lease_expires_at="2026-03-23T00:07:00Z",
@@ -303,6 +305,7 @@ def test_sqlalchemy_async_runtime_repository_claim_returns_none_without_attempt(
     assert (
         repository.claim_next_runnable_job(
             worker_id="worker-a",
+            job_types=("retrieval_indexing",),
             claimed_at="2026-03-23T00:01:00Z",
             heartbeat_at="2026-03-23T00:01:00Z",
             lease_expires_at="2026-03-23T00:06:00Z",

@@ -73,4 +73,3 @@ class InMemoryEvaluationRuntimeRepository(EvaluationRuntimeRepository):
         ]
         results.append(deepcopy(record))
         self._case_results[record.run_id] = results
-

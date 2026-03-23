@@ -7,7 +7,9 @@ from app.repositories.evaluation_runtime_repository import (
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 
 
-def queue_next_evaluation_attempt(*, run_id: str, reason_message: str) -> EvaluationRunAttemptRecord:
+def queue_next_evaluation_attempt(
+    *, run_id: str, reason_message: str
+) -> EvaluationRunAttemptRecord:
     store = get_evaluation_runtime_store()
     run = _get_run_or_raise(run_id=run_id)
     attempts = store.list_attempts(run_id=run_id)

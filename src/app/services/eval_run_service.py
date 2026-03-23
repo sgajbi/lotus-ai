@@ -88,8 +88,7 @@ def build_evaluation_run_detail(*, run_id: str) -> EvaluationRunDetailResponse:
 
 def _list_evaluation_runs() -> list[EvaluationRunArtifactDescriptor]:
     runtime_runs = [
-        _map_runtime_evaluation_run(record)
-        for record in get_evaluation_runtime_store().list_runs()
+        _map_runtime_evaluation_run(record) for record in get_evaluation_runtime_store().list_runs()
     ]
     historical_runs = load_evaluation_run_artifacts()
     return sorted(runtime_runs + historical_runs, key=lambda run: run.recorded_at, reverse=True)

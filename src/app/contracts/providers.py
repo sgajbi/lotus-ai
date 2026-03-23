@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
 
+
 class ProviderCapability(str, Enum):
     TEXT_GENERATION = "TEXT_GENERATION"
     EMBEDDINGS = "EMBEDDINGS"

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from _pytest.monkeypatch import MonkeyPatch
+
 from app.repositories.evaluation_runtime_repository import (
     EvaluationCaseResultRecord,
     EvaluationRunAttemptRecord,
@@ -165,3 +167,43 @@ def test_sqlalchemy_evaluation_runtime_repository_replaces_attempt_and_case_resu
     assert len(results) == 1
     assert results[0].outcome == "PASS"
 
+
+def test_sqlalchemy_evaluation_runtime_repository_get_attempt_returns_persisted_attempt(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-eval-runtime.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyEvaluationRuntimeRepository(database_url)
+    repository.save_attempt(
+        EvaluationRunAttemptRecord(
+            attempt_id="evalrun_002_attempt_001",
+            run_id="evalrun_002",
+            attempt_number=1,
+            lifecycle_status="CLAIMED",
+            started_at=None,
+            completed_at=None,
+            worker_id="worker-a",
+            latest_message="Attempt claimed.",
+            verdict=None,
+            failure_reason=None,
+        )
+    )
+
+    attempt = repository.get_attempt(attempt_id="evalrun_002_attempt_001")
+
+    assert attempt is not None
+    assert attempt.worker_id == "worker-a"
+
+
+def test_sqlalchemy_evaluation_runtime_repository_ensure_sqlite_directory_skips_memory_and_non_sqlite(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    SqlAlchemyEvaluationRuntimeRepository("sqlite:///:memory:")
+    relative_path = tmp_path / "relative" / "lotus-ai-eval-runtime.db"
+    SqlAlchemyEvaluationRuntimeRepository(f"sqlite:///{relative_path}")
+    assert relative_path.parent.is_dir()
+    monkeypatch.setattr(
+        "app.repositories.sqlalchemy_evaluation_runtime_repository.create_engine",
+        lambda database_url, future=True: object(),
+    )
+    SqlAlchemyEvaluationRuntimeRepository("postgresql://user:pass@localhost/lotus")

@@ -138,7 +138,9 @@ class SqlAlchemyEvaluationRuntimeRepository(EvaluationRuntimeRepository):
             failure_reason=model.failure_reason,
         )
 
-    def _to_case_result_record(self, model: EvaluationCaseResultModel) -> EvaluationCaseResultRecord:
+    def _to_case_result_record(
+        self, model: EvaluationCaseResultModel
+    ) -> EvaluationCaseResultRecord:
         return EvaluationCaseResultRecord(
             case_result_id=model.case_result_id,
             run_id=model.run_id,
@@ -162,4 +164,3 @@ class SqlAlchemyEvaluationRuntimeRepository(EvaluationRuntimeRepository):
         if not path.is_absolute():
             path = Path.cwd() / path
         path.parent.mkdir(parents=True, exist_ok=True)
-
