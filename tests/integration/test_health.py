@@ -225,7 +225,7 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["async_runtime"]["enqueued_job_count"] == 0
     assert body["async_runtime"]["recorded_job_count"] == 2
     assert (
-        "retrieval indexing already running through the runtime-backed in-process worker path"
+        "retrieval indexing and evaluation execution already running through the runtime-backed in-process worker path"
         in body["async_runtime"]["message"]
     )
     assert body["async_governance"]["governance_ready"] is False

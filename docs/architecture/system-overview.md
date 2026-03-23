@@ -313,10 +313,10 @@ retrieval index jobs can now be submitted into the durable async backbone, execu
 stubbed worker lifecycle, and reflected back into retrieval job catalog/detail plus retrieval
 document/chunk index-status surfaces. Live retrieval search rollout remains a separate concern.
 
-Async evaluation and runbook surfaces now reflect that same runtime truth explicitly: staged
-evaluation coverage includes durable submission, lease-expiry recovery, and retrieval-indexing
-linkage, while the service runbook documents restart-survival and recovery expectations for the
-SQL-backed async runtime path.
+Async evaluation and runbook surfaces now reflect that same runtime truth explicitly: runtime-backed
+evaluation execution is active for the allowlisted fixture families, staged evaluation assets remain
+as governed continuity baselines, and the service runbook documents restart-survival plus recovery
+expectations for the SQL-backed async runtime path.
 
 Async runtime-backed jobs now also expose a narrow control-plane surface for retry, replay,
 requeue, and manual abandon actions. Those operator actions are recorded durably as async
