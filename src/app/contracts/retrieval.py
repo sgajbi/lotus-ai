@@ -4,6 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
 from app.contracts.runtime_readiness import RuntimeReadinessStatus
 
 
@@ -361,6 +362,9 @@ class RetrievalEvidenceReadinessResponse(BaseModel):
     )
     items: list[RetrievalEvidenceReadinessItem] = Field(
         description="Governed retrieval evidence-readiness items."
+    )
+    approval_gate: EvaluationApprovalGateSummaryDescriptor = Field(
+        description="Runtime-backed approval evidence summary for the retrieval rollout domain."
     )
 
 

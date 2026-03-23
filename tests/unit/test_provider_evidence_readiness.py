@@ -22,3 +22,5 @@ def test_provider_evidence_readiness_reports_foundation_evidence_gaps() -> None:
     assert readiness.items[5].status == "READY"
     assert readiness.items[6].status == "FOUNDATION_STAGED"
     assert readiness.items[7].status == "NOT_READY"
+    assert readiness.approval_gate.domain_id == "provider_execution"
+    assert readiness.approval_gate.evidence_state.value == "STAGED_ONLY"

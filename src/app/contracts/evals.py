@@ -41,6 +41,16 @@ class EvaluationRunVerdict(str, Enum):
     FAIL = "FAIL"
 
 
+class EvaluationApprovalEvidenceState(str, Enum):
+    NO_EVIDENCE = "NO_EVIDENCE"
+    STAGED_ONLY = "STAGED_ONLY"
+    RUNTIME_IN_PROGRESS = "RUNTIME_IN_PROGRESS"
+    RUNTIME_PARTIAL = "RUNTIME_PARTIAL"
+    RUNTIME_PASS = "RUNTIME_PASS"
+    RUNTIME_FAIL = "RUNTIME_FAIL"
+    RUNTIME_STALE = "RUNTIME_STALE"
+
+
 class EvaluationEvidenceCategoryDescriptor(BaseModel):
     category_id: str = Field(description="Stable execution evidence category identifier.")
     description: str = Field(description="Human-readable description of the evidence category.")
@@ -233,6 +243,69 @@ class EvaluationCaseResultDescriptor(BaseModel):
         description="Bounded evidence references supporting the recorded case outcome."
     )
     recorded_at: str = Field(description="UTC timestamp when the case outcome was recorded.")
+
+
+class EvaluationApprovalFixtureSummaryDescriptor(BaseModel):
+    fixture_id: str = Field(description="Evaluation fixture family identifier.")
+    latest_runtime_run_id: str | None = Field(
+        default=None,
+        description="Most recent runtime-backed evaluation run id for this fixture family, when one exists.",
+    )
+    latest_runtime_recorded_at: str | None = Field(
+        default=None,
+        description="Timestamp of the most recent runtime-backed evaluation run for this fixture family, when one exists.",
+    )
+    latest_runtime_status: EvaluationRunStatus | None = Field(
+        default=None,
+        description="Most recent runtime-backed lifecycle status for this fixture family, when one exists.",
+    )
+    latest_runtime_verdict: EvaluationRunVerdict | None = Field(
+        default=None,
+        description="Most recent runtime-backed verdict for this fixture family, when one exists.",
+    )
+    evidence_state: EvaluationApprovalEvidenceState = Field(
+        description="Current approval evidence posture for this specific fixture family."
+    )
+    notes: str = Field(
+        description="Human-readable explanation of the current approval evidence posture for the fixture family."
+    )
+
+
+class EvaluationApprovalGateSummaryDescriptor(BaseModel):
+    domain_id: str = Field(description="Stable rollout domain identifier.")
+    domain_label: str = Field(description="Human-readable rollout domain label.")
+    approval_ready: bool = Field(
+        description="Whether the rollout domain currently has sufficient runtime-backed evaluation evidence to satisfy approval posture."
+    )
+    evidence_state: EvaluationApprovalEvidenceState = Field(
+        description="Current overall approval evidence posture for the rollout domain."
+    )
+    required_fixture_count: int = Field(
+        description="Number of governed fixture families required for this rollout domain."
+    )
+    runtime_backed_fixture_count: int = Field(
+        description="Number of governed fixture families with current runtime-backed evaluation evidence."
+    )
+    latest_runtime_run_id: str | None = Field(
+        default=None,
+        description="Most recent runtime-backed evaluation run id across the rollout domain, when one exists.",
+    )
+    latest_runtime_recorded_at: str | None = Field(
+        default=None,
+        description="Timestamp of the most recent runtime-backed evaluation run across the rollout domain, when one exists.",
+    )
+    latest_historical_baseline_run_id: str | None = Field(
+        default=None,
+        description="Most recent staged historical baseline run covering the rollout domain, when one exists.",
+    )
+    fixture_summaries: list[EvaluationApprovalFixtureSummaryDescriptor] = Field(
+        default_factory=list,
+        description="Per-fixture approval evidence posture contributing to the rollout-domain summary.",
+    )
+    notes: list[str] = Field(
+        default_factory=list,
+        description="Human-readable explanation of the rollout-domain approval evidence posture.",
+    )
 
 
 class EvaluationRunSubmissionRequest(BaseModel):

@@ -5,6 +5,7 @@ from app.contracts.providers import (
     ProviderEvidenceReadinessItem,
     ProviderEvidenceReadinessResponse,
 )
+from app.services.eval_approval_gate_summary import build_provider_approval_gate_summary
 from app.services.governance_readiness import summarize_activation_items
 from app.services.provider_evidence_inventory import build_provider_evidence_inventory
 
@@ -24,6 +25,7 @@ _PROVIDER_RECORDED_BASELINE_FIXTURE_IDS = (
 
 def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
     inventory = build_provider_evidence_inventory()
+    approval_gate = build_provider_approval_gate_summary()
     policy_fixture_ready = _PROVIDER_POLICY_FIXTURE_IDS.issubset(inventory.staged_fixture_ids)
     runtime_fixture_ready = _PROVIDER_RUNTIME_FIXTURE_IDS.issubset(inventory.staged_fixture_ids)
     failure_fixture_ready = _PROVIDER_FAILURE_FIXTURE_IDS.issubset(inventory.staged_fixture_ids)
@@ -134,4 +136,5 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
         required_item_count=required_item_count,
         completed_required_item_count=completed_required_item_count,
         items=items,
+        approval_gate=approval_gate,
     )

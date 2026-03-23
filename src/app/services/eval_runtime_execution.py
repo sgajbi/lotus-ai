@@ -223,9 +223,9 @@ def _execute_fixture_case(
             ["service://platform/providers/policy"],
         )
 
-    task_id = str(case.input_payload.get("task_id", fixture_task_id))
-    response, failure_category = _execute_task_case(task_id=task_id, case=case)
     if fixture_id == "provider_runtime_examples":
+        task_id = str(case.input_payload.get("task_id", fixture_task_id))
+        response, failure_category = _execute_task_case(task_id=task_id, case=case)
         if case.expected_payload["expected_outcome"] == "SUCCESS":
             controls_present = (
                 response is not None
@@ -259,6 +259,8 @@ def _execute_fixture_case(
         )
 
     if fixture_id == "provider_failure_mode_examples":
+        task_id = str(case.input_payload.get("task_id", fixture_task_id))
+        response, failure_category = _execute_task_case(task_id=task_id, case=case)
         if case.expected_payload["expected_outcome"] == "TIMEOUT_GUARDRAIL":
             controls_present = (
                 response is not None
@@ -290,6 +292,7 @@ def _execute_fixture_case(
         )
 
     if fixture_id in {"provider_operations_examples", "provider_degradation_examples"}:
+        task_id = str(case.input_payload.get("task_id", fixture_task_id))
         if fixture_id == "provider_operations_examples" and case.expected_payload.get("budget_state"):
             budget_policy = build_provider_budget_policy()
             budget_match = budget_policy.budget_state.value == case.expected_payload["budget_state"]
@@ -394,7 +397,21 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
         if input_payload.get("provider_operations_store_mode") == "sqlalchemy" and settings.database_url:
             settings.provider_operations_store_mode = "sqlalchemy"
             reset_provider_operations_store_cache()
-        if settings.provider_mode == "openai":
+        live_execution_signals = any(
+            key in input_payload
+            for key in (
+                "request_limit",
+                "hard_budget_usd",
+                "tracked_spend_usd",
+                "recorded_spend_usd",
+                "degraded_failure_count_threshold",
+                "circuit_open_seconds",
+            )
+        )
+        if settings.provider_mode == "openai" and (
+            input_payload.get("rollout_state") in {"CANARY_ENABLED", "ROLLED_OUT"}
+            or live_execution_signals
+        ):
             if "rollout_state" not in input_payload:
                 settings.provider_rollout_state = "CANARY_ENABLED"
             settings.live_text_provider_id = "text.openai"
@@ -452,6 +469,14 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
             settings.live_text_circuit_open_seconds = int(
                 cast(int | str, input_payload["circuit_open_seconds"])
             )
+        elif any(
+            key in input_payload
+            for key in (
+                "degraded_failure_count_threshold",
+                "circuit_open_failure_count_threshold",
+            )
+        ):
+            settings.live_text_circuit_open_seconds = 60
         if "degraded_failure_count_threshold" in input_payload:
             failure_count = int(
                 cast(int | str, input_payload["degraded_failure_count_threshold"])

@@ -1,3 +1,6 @@
+from app.contracts.evals import EvaluationRunSubmissionRequest
+from app.services.eval_async_execution import run_next_evaluation_execution_job
+from app.services.eval_run_submission_service import submit_evaluation_run
 from app.services.retrieval_async_execution import run_next_retrieval_index_job
 from fastapi.testclient import TestClient
 
@@ -101,6 +104,9 @@ def test_retrieval_evidence_readiness_route(client: TestClient) -> None:
     assert body["completed_required_item_count"] == 0
     assert body["items"][0]["evidence_id"] == "retrieval_fixture_coverage_pack"
     assert body["items"][1]["status"] == "NOT_READY"
+    assert body["approval_gate"]["domain_id"] == "retrieval_execution"
+    assert body["approval_gate"]["evidence_state"] == "STAGED_ONLY"
+    assert body["approval_gate"]["latest_historical_baseline_run_id"] == "foundation_eval_2026_03_22_001"
 
 
 def test_retrieval_governance_status_route(client: TestClient) -> None:
@@ -114,7 +120,29 @@ def test_retrieval_governance_status_route(client: TestClient) -> None:
     assert body["activation_readiness"]["activation_ready"] is False
     assert body["runbook_readiness"]["runbook_ready"] is False
     assert body["evidence_readiness"]["evidence_ready"] is False
+    assert body["evidence_readiness"]["approval_gate"]["domain_id"] == "retrieval_execution"
     assert len(body["governance_summary"]) == 3
+
+
+def test_retrieval_evidence_readiness_route_prefers_runtime_backed_pass_evidence(
+    client: TestClient,
+) -> None:
+    submit_evaluation_run(
+        EvaluationRunSubmissionRequest(
+            fixture_id="retrieval_citation_examples",
+            caller_app="lotus-platform",
+            correlation_id="corr-retrieval-approval-001",
+            triggered_by="operator-a",
+        )
+    )
+    run_next_evaluation_execution_job(worker_id="worker-a")
+
+    response = client.get("/platform/retrieval/evidence-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["approval_gate"]["evidence_state"] == "RUNTIME_PASS"
+    assert body["approval_gate"]["approval_ready"] is True
 
 
 def test_retrieval_index_jobs_route(client: TestClient) -> None:

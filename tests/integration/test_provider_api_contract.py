@@ -17,6 +17,9 @@ from app.services.provider_operations_store import reset_provider_operations_sto
 from app.services.provider_quota_policy import enforce_provider_quota
 from app.services.provider_request_builder import build_provider_execution_request
 from app.services.task_execution_pipeline import validate_task_request
+from app.services.eval_async_execution import run_next_evaluation_execution_job
+from app.services.eval_run_submission_service import submit_evaluation_run
+from app.contracts.evals import EvaluationRunSubmissionRequest
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.unit.test_task_executor import _request
 
@@ -321,6 +324,9 @@ def test_provider_evidence_readiness_route(client: TestClient) -> None:
     assert body["items"][5]["evidence_id"] == "provider_regression_run_baseline"
     assert body["items"][5]["status"] == "READY"
     assert body["items"][6]["status"] == "FOUNDATION_STAGED"
+    assert body["approval_gate"]["domain_id"] == "provider_execution"
+    assert body["approval_gate"]["evidence_state"] == "STAGED_ONLY"
+    assert body["approval_gate"]["latest_historical_baseline_run_id"] == "foundation_eval_2026_03_22_001"
 
 
 def test_provider_governance_status_route(client: TestClient) -> None:
@@ -334,4 +340,26 @@ def test_provider_governance_status_route(client: TestClient) -> None:
     assert body["activation_readiness"]["activation_ready"] is False
     assert body["runbook_readiness"]["runbook_ready"] is False
     assert body["evidence_readiness"]["evidence_ready"] is False
+    assert body["evidence_readiness"]["approval_gate"]["domain_id"] == "provider_execution"
     assert len(body["governance_summary"]) == 3
+
+
+def test_provider_evidence_readiness_route_reports_partial_runtime_coverage(
+    client: TestClient,
+) -> None:
+    submit_evaluation_run(
+        EvaluationRunSubmissionRequest(
+            fixture_id="provider_policy_examples",
+            caller_app="lotus-platform",
+            correlation_id="corr-provider-approval-001",
+            triggered_by="operator-a",
+        )
+    )
+    run_next_evaluation_execution_job(worker_id="worker-a")
+
+    response = client.get("/platform/providers/evidence-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["approval_gate"]["evidence_state"] == "RUNTIME_PARTIAL"
+    assert body["approval_gate"]["approval_ready"] is False

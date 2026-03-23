@@ -148,6 +148,11 @@ Runtime-backed evaluation runs now move through persisted queued, running, compl
 states; attempt history is recorded durably; and per-case outcomes plus derived run verdicts are
 stored in the evaluation runtime store instead of being implied only by staged artifact files.
 
+RFC-0007 Slice 4 then feeds that same runtime-backed evaluation state into rollout governance.
+Provider and retrieval evidence-readiness surfaces now expose explicit approval-gate summaries
+that distinguish staged-only baselines, partial runtime coverage, runtime pass, runtime failure,
+and stale runtime evidence by governed fixture family.
+
 Retrieval services also use a dedicated inventory-summary helper now, so source-level and
 runtime-level document and chunk counts are derived in one place instead of being recomputed
 independently by retrieval status and job builders.
