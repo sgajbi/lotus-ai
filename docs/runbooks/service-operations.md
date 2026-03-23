@@ -38,6 +38,7 @@
 - Retrieval evidence readiness: /platform/retrieval/evidence-readiness
 - Retrieval governance status: /platform/retrieval/governance-status
 - Evaluation runtime status: /platform/evals/runtime-status
+- Evaluation run catalog: /platform/evals/runs
 - Safety runtime status: /platform/safety/runtime-status
 - Retrieval runtime status: /platform/retrieval/runtime-status
 
@@ -101,6 +102,7 @@ Current recovery expectations:
 4. duplicate runtime-backed retrieval-index submissions should be rejected while an active queued, claimed, or running job already owns the same caller and target
 5. operator retry, replay, requeue, and abandon actions should be applied through `/platform/async/control-plane-actions/apply` rather than ad hoc table edits
 6. dedicated queue-backed worker fleet procedures remain out of scope until a later rollout slice activates them
+7. runtime-backed evaluation runs should preserve queued, claimed, running, completed, failed, and abandoned attempt history across async replay and recovery actions
 
 Current governed control-action procedure:
 
@@ -109,6 +111,17 @@ Current governed control-action procedure:
 3. apply `POST /platform/async/control-plane-actions/apply` with explicit operator reason and approver metadata
 4. verify the resulting control-plane event is visible in both `/platform/async/control-plane-actions` and `/platform/async/jobs/{job_id}`
 5. confirm the resulting job status and attempt history match the intended retry, replay, requeue, or abandon action
+
+## Evaluation Approval Review
+
+Before treating retrieval or provider evaluation evidence as approval-ready:
+
+1. verify `GET /platform/evals/runtime-status`
+2. confirm the `approval_gates` block distinguishes `STAGED_ONLY`, `RUNTIME_PARTIAL`, `RUNTIME_PASS`, `RUNTIME_FAIL`, or `RUNTIME_STALE`
+3. inspect `GET /platform/evals/runs` to confirm the latest runtime-backed run is newer than historical staged baselines for the target rollout domain
+4. inspect `GET /platform/evals/runs/{run_id}` to confirm attempt history and case outcomes explain the verdict
+5. if replay or retry is required, apply the governed async control action first and then verify a new evaluation attempt appears instead of mutating prior case evidence in place
+6. treat `foundation_eval_*` run artifacts as historical baselines only; they do not satisfy current runtime-backed approval posture by themselves
 
 ## Provider Activation Governance
 

@@ -153,6 +153,11 @@ Provider and retrieval evidence-readiness surfaces now expose explicit approval-
 that distinguish staged-only baselines, partial runtime coverage, runtime pass, runtime failure,
 and stale runtime evidence by governed fixture family.
 
+RFC-0007 Slice 5 closes the runtime-convergence loop around those approval gates. Async replay,
+requeue, and lease-expiry recovery now preserve explicit evaluation attempt history rather than
+only async attempt history, and evaluation runtime status now exposes approval-gate posture
+directly so platform-level status and rollout review use the same evaluation truth model.
+
 Retrieval services also use a dedicated inventory-summary helper now, so source-level and
 runtime-level document and chunk counts are derived in one place instead of being recomputed
 independently by retrieval status and job builders.

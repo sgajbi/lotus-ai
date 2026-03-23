@@ -112,6 +112,9 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     assert body["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["latest_recorded_run_status"] == "RECORDED"
     assert body["evaluation_runner_active"] is True
+    assert body["approval_gates"][0]["domain_id"] == "retrieval_execution"
+    assert body["approval_gates"][1]["domain_id"] == "provider_execution"
+    assert body["approval_gates"][0]["evidence_state"] == "STAGED_ONLY"
 
 
 def test_evaluation_run_catalog_route(client: TestClient) -> None:

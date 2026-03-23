@@ -1,8 +1,10 @@
 from pathlib import Path
 
 from app.config import settings
+from app.contracts.async_runtime import AsyncControlActionRequest, AsyncControlActionType
 from app.contracts.async_runtime import AsyncJobSubmissionRequest
 from app.services.async_job_service import build_async_job_detail
+from app.services.async_runtime_control import apply_async_control_action
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_service import build_evaluation_run_detail
 from app.services.eval_run_submission_service import submit_evaluation_run
@@ -93,3 +95,38 @@ def test_run_next_evaluation_execution_job_survives_sql_store_reset(tmp_path: Pa
     assert len(run_detail.case_results) == 2
     assert all(case.outcome.value == "PASS" for case in run_detail.case_results)
     assert async_detail.job.status.value == "COMPLETED"
+
+
+def test_evaluation_replay_preserves_prior_case_history_and_creates_new_attempt() -> None:
+    submission = submit_evaluation_run(
+        EvaluationRunSubmissionRequest(
+            fixture_id="provider_policy_examples",
+            caller_app="lotus-platform",
+            correlation_id="corr-eval-replay-001",
+            triggered_by="operator-a",
+        )
+    )
+
+    run_next_evaluation_execution_job(worker_id="worker-a")
+    apply_async_control_action(
+        AsyncControlActionRequest(
+            job_id=submission.async_job_id or "",
+            action_type=AsyncControlActionType.REPLAY_TERMINAL_JOB,
+            requested_by="operator-a",
+            approved_by="approver-a",
+            reason="Replay runtime-backed evaluation after review.",
+        )
+    )
+    run_next_evaluation_execution_job(worker_id="worker-b")
+
+    run_detail = build_evaluation_run_detail(run_id=submission.run_id or "")
+    async_detail = build_async_job_detail(job_id=submission.async_job_id or "")
+
+    assert run_detail.run.status.value == "COMPLETED"
+    assert len(run_detail.attempts) == 2
+    assert run_detail.attempts[0].status.value == "COMPLETED"
+    assert run_detail.attempts[1].status.value == "COMPLETED"
+    assert len(run_detail.case_results) == 4
+    assert len({case.case_result_id for case in run_detail.case_results}) == 4
+    assert len({case.attempt_id for case in run_detail.case_results}) == 2
+    assert async_detail.attempts[-1].status == "COMPLETED"

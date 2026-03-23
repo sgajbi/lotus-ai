@@ -55,7 +55,7 @@
           "staged_case_count": 2
         }
       ],
-      "notes": "Baseline foundation-phase evaluation inventory snapshot recorded after durable async submission, lease-recovery, and retrieval-indexing linkage fixtures were staged alongside provider operations durability coverage."
+      "notes": "Historical foundation-phase baseline recorded after durable async submission, lease-recovery, and retrieval-indexing linkage fixtures were staged alongside provider operations durability coverage. This artifact remains a staged continuity record and does not satisfy current runtime-backed approval posture by itself."
     },
     {
       "run_id": "foundation_eval_2026_03_21_001",
@@ -106,7 +106,7 @@
           "staged_case_count": 0
         }
       ],
-      "notes": "Earlier foundation snapshot retained for lifecycle tracking before safety-policy evaluation fixtures were staged."
+      "notes": "Earlier historical foundation snapshot retained for lifecycle tracking before safety-policy evaluation fixtures were staged. This artifact remains a staged continuity record and does not satisfy current runtime-backed approval posture by itself."
     }
   ]
 }

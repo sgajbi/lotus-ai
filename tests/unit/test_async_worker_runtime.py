@@ -7,6 +7,8 @@ import pytest
 from app.config import settings
 from app.repositories.memory_async_runtime_repository import InMemoryAsyncRuntimeRepository
 from fastapi import HTTPException
+from app.services.eval_run_service import build_evaluation_run_detail
+from app.services.eval_run_submission_service import submit_evaluation_run
 from app.services.async_job_service import build_async_job_detail
 from app.services.async_runtime_store import (
     get_async_runtime_store,
@@ -20,6 +22,7 @@ from app.services.async_worker_runtime import (
     heartbeat_async_job,
     start_async_job,
 )
+from app.contracts.evals import EvaluationRunSubmissionRequest
 from app.contracts.async_runtime import AsyncJobSubmissionRequest
 from tests.support.migration_runner import upgrade_database_to_head
 
@@ -305,3 +308,37 @@ def test_async_worker_runtime_recovery_survives_sql_store_reset(
     assert detail.attempts[0].status == "ABANDONED"
     assert detail.attempts[0].failure_reason == "LEASE_EXPIRED"
     assert detail.attempts[1].status == "CLAIMED"
+
+
+def test_async_worker_runtime_recovery_updates_evaluation_attempt_history(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.async_worker_runtime._utcnow",
+        lambda: datetime(2026, 3, 23, 22, 0, tzinfo=UTC),
+    )
+    submission = submit_evaluation_run(
+        EvaluationRunSubmissionRequest(
+            fixture_id="provider_policy_examples",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-worker-eval-001",
+            triggered_by="operator-a",
+        )
+    )
+    claim_next_async_job(worker_id="worker-a")
+    start_async_job(job_id=submission.async_job_id or "", worker_id="worker-a")
+
+    monkeypatch.setattr(
+        "app.services.async_worker_runtime._utcnow",
+        lambda: datetime(2026, 3, 23, 22, 10, tzinfo=UTC),
+    )
+    recovered_claim = claim_next_async_job(worker_id="worker-b")
+
+    assert recovered_claim is not None
+    detail = build_evaluation_run_detail(run_id=submission.run_id or "")
+    assert detail.run.status.value == "QUEUED"
+    assert len(detail.attempts) == 2
+    assert detail.attempts[0].status.value == "ABANDONED"
+    assert detail.attempts[0].failure_reason == "LEASE_EXPIRED"
+    assert detail.attempts[1].status.value == "CLAIMED"
+    assert detail.attempts[1].worker_id == "worker-b"

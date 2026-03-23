@@ -259,9 +259,11 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["evaluation_runtime"]["seam_coverage"][1]["staged_fixture_count"] == 3
     assert body["evaluation_runtime"]["seam_coverage"][3]["staged_fixture_count"] == 5
     assert body["evaluation_runtime"]["seam_coverage"][3]["staged_case_count"] == 12
+    assert body["evaluation_runtime"]["approval_gates"][0]["domain_id"] == "retrieval_execution"
+    assert body["evaluation_runtime"]["approval_gates"][1]["domain_id"] == "provider_execution"
     assert body["evaluation_runtime"]["recorded_run_count"] == 2
     assert body["evaluation_runtime"]["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
-    assert body["evaluation_runtime"]["evaluation_runner_active"] is False
+    assert body["evaluation_runtime"]["evaluation_runner_active"] is True
     assert body["prompt_runtime"]["selection_mode"] == "STATIC_ACTIVE"
     assert body["prompt_runtime"]["active_prompt_count"] >= 7
     assert any(

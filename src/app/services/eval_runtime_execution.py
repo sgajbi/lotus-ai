@@ -154,7 +154,7 @@ def execute_runtime_backed_evaluation_run(*, run_id: str, worker_id: str) -> Eva
 def _get_active_attempt(*, run_id: str) -> EvaluationRunAttemptRecord | None:
     attempts = get_evaluation_runtime_store().list_attempts(run_id=run_id)
     for attempt in reversed(attempts):
-        if attempt.lifecycle_status in {"QUEUED", "SUBMITTED"}:
+        if attempt.lifecycle_status in {"QUEUED", "SUBMITTED", "CLAIMED"}:
             return attempt
     return None
 
@@ -173,7 +173,7 @@ def _evaluate_case(
             case=case,
         )
     return EvaluationCaseResultRecord(
-        case_result_id=f"{run.run_id}_{case.case_id}",
+        case_result_id=f"{attempt_id}_{case.case_id}",
         run_id=run.run_id,
         attempt_id=attempt_id,
         case_id=case.case_id,

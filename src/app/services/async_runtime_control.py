@@ -18,6 +18,10 @@ from app.repositories.async_runtime_repository import (
     AsyncRuntimeControlEventRecord,
     AsyncRuntimeJobRecord,
 )
+from app.services.eval_attempt_runtime import (
+    abandon_active_evaluation_attempt,
+    queue_next_evaluation_attempt,
+)
 from app.services.async_job_mapping import map_async_runtime_control_event
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.async_runtime_transitions import queue_next_async_attempt
@@ -78,18 +82,22 @@ def _apply_control_action(
     action_type = request.action_type
     if action_type == AsyncControlActionType.RETRY_FAILED_JOB:
         created_attempt = _retry_failed_job(job=job, reason=request.reason)
+        _sync_evaluation_retryable_action(job=job, reason=request.reason, prefix="Manual retry")
         resulting_status = AsyncJobStatus.QUEUED.value
         affected_attempt_id = created_attempt.attempt_id
     elif action_type == AsyncControlActionType.REPLAY_TERMINAL_JOB:
         created_attempt = _replay_terminal_job(job=job, reason=request.reason)
+        _sync_evaluation_retryable_action(job=job, reason=request.reason, prefix="Manual replay")
         resulting_status = AsyncJobStatus.QUEUED.value
         affected_attempt_id = created_attempt.attempt_id
     elif action_type == AsyncControlActionType.REQUEUE_ABANDONED_JOB:
         created_attempt = _requeue_abandoned_job(job=job, reason=request.reason)
+        _sync_evaluation_retryable_action(job=job, reason=request.reason, prefix="Manual requeue")
         resulting_status = AsyncJobStatus.QUEUED.value
         affected_attempt_id = created_attempt.attempt_id
     elif action_type == AsyncControlActionType.ABANDON_ACTIVE_JOB:
         affected_attempt_id = _abandon_active_job(job=job, reason=request.reason)
+        _sync_evaluation_abandon(job=job, reason=request.reason)
         resulting_status = AsyncJobStatus.ABANDONED.value
     else:
         raise RuntimeError("Unsupported async control action.")
@@ -211,3 +219,27 @@ def _abandon_active_job(*, job: AsyncRuntimeJobRecord, reason: str) -> str:
 
 def _utcnow() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _sync_evaluation_retryable_action(
+    *,
+    job: AsyncRuntimeJobRecord,
+    reason: str,
+    prefix: str,
+) -> None:
+    if job.related_evaluation_run_id is None:
+        return
+    queue_next_evaluation_attempt(
+        run_id=job.related_evaluation_run_id,
+        reason_message=f"{prefix} queued after operator action: {reason}",
+    )
+
+
+def _sync_evaluation_abandon(*, job: AsyncRuntimeJobRecord, reason: str) -> None:
+    if job.related_evaluation_run_id is None:
+        return
+    abandon_active_evaluation_attempt(
+        run_id=job.related_evaluation_run_id,
+        reason_message=f"Evaluation attempt manually abandoned: {reason}",
+        failure_reason="MANUAL_ABANDON",
+    )

@@ -14,6 +14,7 @@ class EvaluationRunStatus(str, Enum):
     RECORDED = "RECORDED"
     SUPERSEDED = "SUPERSEDED"
     QUEUED = "QUEUED"
+    CLAIMED = "CLAIMED"
     RUNNING = "RUNNING"
     FAILED = "FAILED"
     COMPLETED = "COMPLETED"
@@ -374,6 +375,9 @@ class EvaluationRuntimeStatusResponse(BaseModel):
     )
     seam_coverage: list[EvaluationSeamCoverageDescriptor] = Field(
         description="Staged evaluation coverage summarized by major lotus-ai platform seam."
+    )
+    approval_gates: list[EvaluationApprovalGateSummaryDescriptor] = Field(
+        description="Runtime-backed approval-gating posture for governed rollout domains."
     )
     recorded_run_count: int = Field(
         description="Number of evaluation runs currently exposed across runtime-backed and historical records."

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+from app.services.eval_attempt_runtime import fail_active_evaluation_attempt
 from app.services.async_worker_runtime import (
     claim_next_async_job_for_types,
     complete_async_job,
@@ -10,7 +10,6 @@ from app.services.async_worker_runtime import (
     start_async_job,
 )
 from app.services.eval_runtime_execution import execute_runtime_backed_evaluation_run
-from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 
 
 @dataclass(frozen=True)
@@ -50,22 +49,13 @@ def run_next_evaluation_execution_job(*, worker_id: str) -> EvaluationAsyncExecu
             failure_reason=type(exc).__name__,
             retryable=False,
         )
-        run = get_evaluation_runtime_store().get_run(run_id=claim.job.related_evaluation_run_id)
-        if run is not None:
-            get_evaluation_runtime_store().save_run(
-                EvaluationRunRecord(
-                    run_id=run.run_id,
-                    fixture_id=run.fixture_id,
-                    manifest_version=run.manifest_version,
-                    lifecycle_status="FAILED",
-                    triggered_by=run.triggered_by,
-                    submitted_at=run.submitted_at,
-                    async_job_id=run.async_job_id,
-                    latest_message=f"Runtime-backed evaluation execution failed with {type(exc).__name__}.",
-                    verdict=None,
-                    case_count=run.case_count,
-                )
-            )
+        fail_active_evaluation_attempt(
+            run_id=claim.job.related_evaluation_run_id,
+            reason_message=(
+                f"Runtime-backed evaluation execution failed with {type(exc).__name__}."
+            ),
+            failure_reason=type(exc).__name__,
+        )
         raise
 
     completion_message = (

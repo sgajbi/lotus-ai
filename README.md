@@ -100,6 +100,7 @@ The current execution posture is:
 - allowlisted evaluation fixture families can now be submitted into durable runtime-backed run state, while historical file-backed run artifacts remain visible only as labeled baseline records,
 - allowlisted evaluation fixture families can now also execute through the durable async worker path, with persisted run attempts, per-case outcomes, and derived pass/fail verdicts recorded in the evaluation runtime store,
 - provider and retrieval evidence-readiness surfaces now expose explicit approval-gate summaries derived from runtime-backed evaluation runs, so staged baselines cannot silently satisfy current rollout posture,
+- runtime-backed evaluation replay and async lease-recovery paths now preserve explicit evaluation attempt history and replay-safe case-result records instead of overwriting prior evidence,
 - evaluation inventory now also includes an explicit async-runtime seam, so durable submission, lease recovery, and retrieval-indexing linkage are represented in the staged eval baseline instead of only in runtime tests,
 - the first real file-backed fixture family now exists for `explain.v1`,
 - a second file-backed fixture family now exists for `summarize.v1`,
