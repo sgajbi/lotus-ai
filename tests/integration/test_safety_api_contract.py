@@ -20,4 +20,6 @@ def test_safety_runtime_status_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["safety_mode"] == "documented_only"
     assert body["runtime_redaction_active"] is False
+    assert body["runtime_redaction_disposition"] == "DOCUMENTED_ONLY"
     assert body["enforced_control_ids"] == ["response_labeling", "correlation_and_audit"]
+    assert body["supported_execution_dispositions"] == ["DOCUMENTED_ONLY"]

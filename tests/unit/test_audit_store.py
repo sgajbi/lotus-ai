@@ -3,6 +3,7 @@ from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDes
 from app.contracts.safety import RedactionPosture
 from app.contracts.tasks import OutputLabel, TaskCategory
 from app.repositories.memory_audit_repository import InMemoryAuditRepository
+from app.services.safety_runtime import build_safety_execution_outcome_from_record
 
 
 def test_in_memory_audit_store_save_and_get() -> None:
@@ -21,6 +22,12 @@ def test_in_memory_audit_store_save_and_get() -> None:
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
         enforced_safety_controls=["response_labeling", "correlation_and_audit"],
+        safety_outcome=build_safety_execution_outcome_from_record(
+            safety_mode="documented_only",
+            output_label=OutputLabel.EXPLANATION_ONLY,
+            redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
+            enforced_controls=["response_labeling", "correlation_and_audit"],
+        ),
         generated_at="2026-03-22T00:00:00Z",
         stubbed=True,
         context_summary="Explain rebalance outcome",
@@ -61,6 +68,12 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
         enforced_safety_controls=["response_labeling", "correlation_and_audit"],
+        safety_outcome=build_safety_execution_outcome_from_record(
+            safety_mode="documented_only",
+            output_label=OutputLabel.EXPLANATION_ONLY,
+            redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
+            enforced_controls=["response_labeling", "correlation_and_audit"],
+        ),
         generated_at="2026-03-22T00:00:00Z",
         stubbed=True,
         context_summary="Old record",

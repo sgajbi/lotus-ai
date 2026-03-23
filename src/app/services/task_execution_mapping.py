@@ -10,6 +10,7 @@ from app.contracts.tasks import (
     TaskExecutionStatus,
 )
 from app.services.execution_evidence import build_execution_evidence
+from app.services.safety_runtime import build_safety_execution_outcome_from_record
 from app.services.task_execution_models import ResolvedTaskExecution, TaskExecutionContext
 
 if TYPE_CHECKING:
@@ -71,6 +72,12 @@ def map_audit_record(
     context: TaskExecutionContext,
     response: TaskExecutionResponse,
 ) -> AuditRecordResponse:
+    safety_outcome = build_safety_execution_outcome_from_record(
+        safety_mode=response.audit.safety.safety_mode,
+        output_label=response.output_label,
+        redaction_posture=response.audit.safety.redaction_posture,
+        enforced_controls=response.audit.safety.enforced_controls,
+    )
     return AuditRecordResponse(
         request_id=response.audit.request_id,
         task_id=response.task_id,
@@ -85,6 +92,7 @@ def map_audit_record(
         safety_mode=response.audit.safety.safety_mode,
         redaction_posture=response.audit.safety.redaction_posture,
         enforced_safety_controls=response.audit.safety.enforced_controls,
+        safety_outcome=safety_outcome,
         generated_at=response.audit.generated_at,
         stubbed=response.audit.stubbed,
         context_summary=context.request.context.summary,

@@ -86,6 +86,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/safety/runtime-status"]["get"]["operationId"] == (
         "getSafetyRuntimeStatus"
     )
+    safety_runtime_schema = spec["components"]["schemas"]["SafetyRuntimeStatusResponse"]
+    assert "runtime_redaction_disposition" in safety_runtime_schema["properties"]
+    assert "supported_execution_dispositions" in safety_runtime_schema["properties"]
+    safety_outcome_schema = spec["components"]["schemas"]["SafetyExecutionOutcome"]
+    assert "disposition" in safety_outcome_schema["properties"]
+    assert "control_results" in safety_outcome_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"

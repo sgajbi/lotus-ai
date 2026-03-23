@@ -8,4 +8,9 @@ def test_safety_runtime_builds_execution_outcome_for_output_label() -> None:
     assert outcome.safety_mode == "documented_only"
     assert outcome.output_label == "EXPLANATION_ONLY"
     assert outcome.redaction_posture == "MINIMIZATION_REQUIRED"
+    assert outcome.disposition == "DOCUMENTED_ONLY"
+    assert outcome.runtime_redaction_active is False
     assert outcome.enforced_controls == ["response_labeling", "correlation_and_audit"]
+    assert outcome.control_results[0].control_id == "context_minimization"
+    assert outcome.control_results[-1].control_id == "runtime_redaction_engine"
+    assert "typed and reviewable" in outcome.decision_summary

@@ -48,10 +48,13 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
     assert response.audit.prompt_version == "foundation.explain.v1"
     assert response.audit.safety.safety_mode == "documented_only"
     assert response.audit.safety.redaction_posture == "MINIMIZATION_REQUIRED"
+    assert response.audit.safety.disposition == "DOCUMENTED_ONLY"
+    assert response.audit.safety.runtime_redaction_active is False
     assert response.audit.safety.enforced_controls == [
         "response_labeling",
         "correlation_and_audit",
     ]
+    assert response.audit.safety.control_results[-1].control_id == "runtime_redaction_engine"
     assert len(response.evidence.descriptors) == 5
     assert response.evidence.descriptors[0].evidence_type == "task_contract"
     assert response.evidence.descriptors[1].evidence_type == "prompt_selection"

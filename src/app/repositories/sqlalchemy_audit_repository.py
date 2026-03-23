@@ -11,6 +11,7 @@ from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.safety import RedactionPosture
 from app.contracts.tasks import OutputLabel, TaskCategory
 from app.db.models import AuditRecordModel
+from app.services.safety_runtime import build_safety_execution_outcome_from_record
 
 
 class SqlAlchemyAuditRepository:
@@ -86,11 +87,13 @@ class SqlAlchemyAuditRepository:
             return [self._to_contract(model) for model in models]
 
     def _to_contract(self, model: AuditRecordModel) -> AuditRecordResponse:
+        output_label = OutputLabel(model.output_label)
+        redaction_posture = RedactionPosture(model.redaction_posture)
         return AuditRecordResponse(
             request_id=model.request_id,
             task_id=model.task_id,
             category=TaskCategory(model.category),
-            output_label=OutputLabel(model.output_label),
+            output_label=output_label,
             caller_app=model.caller_app,
             correlation_id=model.correlation_id,
             requested_by=model.requested_by,
@@ -98,8 +101,14 @@ class SqlAlchemyAuditRepository:
             prompt_version=model.prompt_version,
             provider_mode=model.provider_mode,
             safety_mode=model.safety_mode,
-            redaction_posture=RedactionPosture(model.redaction_posture),
+            redaction_posture=redaction_posture,
             enforced_safety_controls=model.enforced_safety_controls,
+            safety_outcome=build_safety_execution_outcome_from_record(
+                safety_mode=model.safety_mode,
+                output_label=output_label,
+                redaction_posture=redaction_posture,
+                enforced_controls=model.enforced_safety_controls,
+            ),
             generated_at=model.generated_at,
             stubbed=model.stubbed,
             context_summary=model.context_summary,

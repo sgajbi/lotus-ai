@@ -30,6 +30,8 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["audit"]["prompt_version"] == "foundation.explain.v1"
     assert body["audit"]["safety"]["safety_mode"] == "documented_only"
     assert body["audit"]["safety"]["redaction_posture"] == "MINIMIZATION_REQUIRED"
+    assert body["audit"]["safety"]["disposition"] == "DOCUMENTED_ONLY"
+    assert body["audit"]["safety"]["runtime_redaction_active"] is False
     assert len(body["evidence"]["descriptors"]) == 5
     assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
     assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"
@@ -70,6 +72,8 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
         "response_labeling",
         "correlation_and_audit",
     ]
+    assert body["safety_outcome"]["disposition"] == "DOCUMENTED_ONLY"
+    assert body["safety_outcome"]["runtime_redaction_active"] is False
     assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
     assert body["structured_output"]["caller_app"] == "lotus-advise"
 
