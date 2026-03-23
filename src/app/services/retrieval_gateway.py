@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from app.config import settings
 from app.contracts.retrieval import (
+    RetrievalDocumentGovernanceResponse,
     RetrievalExecutionRequest,
     RetrievalExecutionResponse,
     RetrievalExecutionStage,
     RetrievalSearchHit,
     RetrievalStatus,
 )
+from app.retrieval.document_governance import build_retrieval_document_governance
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
 from app.retrieval.search_scoring import score_terms
 from app.services.retrieval_store import get_retrieval_repository
@@ -35,7 +37,17 @@ def execute_retrieval_search(request: RetrievalExecutionRequest) -> RetrievalExe
             message=(
                 "Retrieval search is not enabled yet. lotus-ai currently exposes governed "
                 "catalog and indexing contracts before live search is active."
-            ),
+                ),
+            )
+
+    document_governance = build_retrieval_document_governance()
+    if document_governance.searchable_document_count == 0:
+        return RetrievalExecutionResponse(
+            status=RetrievalStatus.REJECTED,
+            execution_stage=RetrievalExecutionStage.INDEXING_DISABLED,
+            vector_store=VECTOR_STORE_STRATEGY,
+            hits=[],
+            message=_build_live_search_unavailable_message(document_governance=document_governance),
         )
 
     live_hits = get_retrieval_repository().search_indexed_chunks(
@@ -56,6 +68,30 @@ def execute_retrieval_search(request: RetrievalExecutionRequest) -> RetrievalExe
                 "no matching hits."
             )
         ),
+    )
+
+
+def _build_live_search_unavailable_message(
+    *, document_governance: RetrievalDocumentGovernanceResponse
+) -> str:
+    searchable_document_count = document_governance.searchable_document_count
+    index_pending_document_count = document_governance.index_pending_document_count
+    blocked_document_count = document_governance.blocked_document_count
+    if searchable_document_count > 0:
+        return "Live retrieval search is available."
+    if index_pending_document_count > 0:
+        return (
+            "Live retrieval search is enabled but currently blocked because promoted corpus "
+            "indexing is still pending."
+        )
+    if blocked_document_count > 0:
+        return (
+            "Live retrieval search is enabled but currently blocked because the promoted corpus "
+            "is rolled back or blocked by source posture."
+        )
+    return (
+        "Live retrieval search is enabled but currently blocked because no promoted indexed corpus "
+        "content is registered."
     )
 
 

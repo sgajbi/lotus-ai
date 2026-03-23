@@ -130,6 +130,10 @@ Live-search eligibility is now exposed explicitly through:
 path is active, but it also explains whether that path currently has searchable promoted documents,
 is waiting on indexing, or has an empty live corpus because content was rolled back or blocked.
 
+Per-request live retrieval behavior follows the same distinction. If live retrieval is enabled but
+the searchable promoted corpus is unavailable, the search API now rejects the request explicitly
+instead of reporting it as a normal empty-result live search.
+
 `/platform/runtime-status` now embeds retrieval governance posture directly so operators can review
 retrieval rollout state from the same top-level runtime surface that already carries async and
 provider governance posture.

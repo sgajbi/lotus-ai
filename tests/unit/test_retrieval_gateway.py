@@ -39,6 +39,10 @@ def test_execute_retrieval_search_returns_live_hits_when_enabled() -> None:
             "app.services.retrieval_gateway.get_retrieval_repository",
             lambda: repository,
         )
+        monkeypatch.setattr(
+            "app.retrieval.document_governance.get_retrieval_repository",
+            lambda: repository,
+        )
         response = execute_retrieval_search(
             RetrievalExecutionRequest(
                 query="shared ai platform service",
@@ -56,6 +60,37 @@ def test_execute_retrieval_search_returns_live_hits_when_enabled() -> None:
     assert response.hits[0].document_id == "lotus-platform-rfc-0069"
     assert response.hits[0].chunk_id == "chunk_rfc_0069_0001"
     assert "Live retrieval search executed" in response.message
+
+    settings.retrieval_mode = "disabled"
+
+
+def test_execute_retrieval_search_rejects_live_requests_when_searchable_corpus_is_unavailable() -> None:
+    settings.retrieval_mode = "enabled"
+    repository = InMemoryRetrievalRepository()
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            "app.services.retrieval_gateway.get_retrieval_repository",
+            lambda: repository,
+        )
+        monkeypatch.setattr(
+            "app.retrieval.document_governance.get_retrieval_repository",
+            lambda: repository,
+        )
+        response = execute_retrieval_search(
+            RetrievalExecutionRequest(
+                query="shared ai platform service",
+                caller_app="lotus-workbench",
+                correlation_id="corr-ret-gw-3",
+                source_ids=["lotus-platform-rfcs"],
+                limit=5,
+            )
+        )
+
+    assert response.status == "REJECTED"
+    assert response.execution_stage == "INDEXING_DISABLED"
+    assert response.hits == []
+    assert "indexing is still pending" in response.message
 
     settings.retrieval_mode = "disabled"
 

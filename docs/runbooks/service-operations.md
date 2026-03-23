@@ -211,7 +211,7 @@ Current recovery expectations:
 1. promoted indexed documents remain searchable after repository or service restart when the SQL-backed retrieval store is active
 2. rollback from `INDEXED` back to `STAGED` removes those documents from live search after restart or repository reinitialization
 3. `/platform/retrieval/execution-status` must continue to report the live path truthfully even when the active searchable corpus is temporarily empty
-4. retrieval search requests may still execute through the live path during rollback posture, but they must return explicit empty-hit behavior rather than silently degrading into catalog-only semantics
+4. retrieval search requests must reject explicitly when live retrieval is enabled but the searchable promoted corpus is unavailable, rather than silently degrading into catalog-only semantics or pretending the request was a normal empty-result live search
 
 ## Incident First Checks
 

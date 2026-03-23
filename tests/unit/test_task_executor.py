@@ -241,6 +241,10 @@ def test_execute_task_routes_knowledge_search_through_live_retrieval(
         "app.services.retrieval_gateway.get_retrieval_repository",
         lambda: repository,
     )
+    monkeypatch.setattr(
+        "app.retrieval.document_governance.get_retrieval_repository",
+        lambda: repository,
+    )
 
     response = execute_task(
         TaskExecutionRequest(
@@ -265,6 +269,53 @@ def test_execute_task_routes_knowledge_search_through_live_retrieval(
     assert response.result.structured_output["catalog_only"] is False
     assert response.result.structured_output["execution_stage"] == "LIVE_SEARCH"
     assert response.result.structured_output["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
+
+
+def test_execute_task_rejects_live_knowledge_search_when_searchable_corpus_is_unavailable(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.retrieval_mode = "enabled"
+    repository = InMemoryRetrievalRepository()
+    monkeypatch.setattr(
+        "app.services.retrieval_service.get_retrieval_repository",
+        lambda: repository,
+    )
+    monkeypatch.setattr(
+        "app.services.retrieval_gateway.get_retrieval_repository",
+        lambda: repository,
+    )
+    monkeypatch.setattr(
+        "app.retrieval.document_governance.get_retrieval_repository",
+        lambda: repository,
+    )
+
+    try:
+        execute_task(
+            TaskExecutionRequest(
+                task_id="knowledge_search.v1",
+                input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+                caller=CallerMetadata(
+                    caller_app="lotus-manage", correlation_id="corr-ks-live-blocked-001"
+                ),
+                context=TaskContextEnvelope(
+                    summary="Search Lotus knowledge sources",
+                    payload={
+                        "query": "shared ai platform service",
+                        "source_ids": ["lotus-platform-rfcs"],
+                        "limit": 3,
+                    },
+                    source_refs=["lotus-manage:knowledge-search:live:blocked:001"],
+                ),
+                expected_output_label=OutputLabel.RETRIEVAL_ANSWER,
+            )
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 409
+        assert "indexing is still pending" in str(exc.detail)
+    else:
+        raise AssertionError("Expected HTTPException when live searchable corpus is unavailable")
 
 
 def test_execute_task_routes_allowlisted_task_through_live_provider(

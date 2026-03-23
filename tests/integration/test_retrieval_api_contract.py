@@ -340,7 +340,7 @@ def test_retrieval_search_route_returns_live_hits_when_enabled(client: TestClien
     assert body["hits"][0]["chunk_id"] == "chunk_rfc_0069_0001"
 
 
-def test_retrieval_search_route_reports_empty_live_corpus_after_rollback(client: TestClient) -> None:
+def test_retrieval_search_route_rejects_live_requests_after_rollback(client: TestClient) -> None:
     from app.config import settings
     from app.services.retrieval_store import get_retrieval_repository
 
@@ -365,12 +365,8 @@ def test_retrieval_search_route_reports_empty_live_corpus_after_rollback(client:
         },
     )
 
-    assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "READY"
-    assert body["execution_stage"] == "LIVE_SEARCH"
-    assert body["hits"] == []
-    assert "no matching hits" in body["message"]
+    assert response.status_code == 409
+    assert "indexing is still pending" in response.json()["detail"]
 
 
 def test_retrieval_governance_routes_reflect_indexed_searchable_documents(
