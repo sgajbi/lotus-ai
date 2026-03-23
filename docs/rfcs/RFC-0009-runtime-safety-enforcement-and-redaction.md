@@ -1,6 +1,6 @@
 # RFC-0009: Runtime Safety Enforcement and Redaction Controls
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -322,6 +322,24 @@ This RFC is complete when:
 4. runtime, evidence, runbook, and governance surfaces describe the same safety reality,
 5. documented-only safety posture can no longer masquerade as enforced protection,
 6. the platform is materially closer to enterprise-grade shared AI runtime safety.
+
+## Implementation Notes
+
+This RFC is implemented on `main`.
+
+Delivered scope:
+
+1. typed safety execution outcomes now distinguish documented-only, enforced pass-through, enforced redacted, blocked, and degraded execution posture,
+2. deterministic runtime safety enforcement now applies bounded minimization rules to structured outputs and result previews for the initial enforced output classes,
+3. blocked and degraded runtime safety outcomes now remain visible and aligned across task responses, audit records, and execution evidence,
+4. runtime-backed safety evaluation fixtures and approval-gate summaries now govern safety evidence posture rather than relying on staged policy-only continuity records,
+5. safety runbook readiness, safety governance status, and platform runtime status now converge on one explicit runtime, runbook, and evidence model,
+6. safety enforcement remains intentionally stateless, with durability living in persisted audit records, execution evidence, and runtime-backed evaluation runs rather than a separate mutable safety store.
+
+Follow-on work is intentionally left to later RFCs:
+
+1. broader prompt rollout and approval logic remains in RFC-0010,
+2. dedicated observability packs and named on-call approval remain broader operational maturity work rather than a blocker to the bounded runtime-safety slice delivered here.
 
 ## Approval Requested
 
