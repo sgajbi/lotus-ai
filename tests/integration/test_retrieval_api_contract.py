@@ -115,9 +115,7 @@ def test_retrieval_activation_readiness_route(client: TestClient) -> None:
     assert body["retrieval_mode"] == "disabled"
     assert body["embedding_provider_mode"] == "disabled"
     assert body["activation_ready"] is False
-    assert any(
-        "Retrieval mode is not enabled" in finding for finding in body["blocking_findings"]
-    )
+    assert any("Retrieval mode is not enabled" in finding for finding in body["blocking_findings"])
     assert len(body["activation_path"]) == 4
 
 

@@ -212,16 +212,21 @@ def _execute_fixture_case(
         retrieval_status = build_retrieval_execution_status()
         structured_output = response.result.structured_output
         checks = [
-            structured_output.get("execution_stage") == case.expected_payload.get("execution_stage"),
+            structured_output.get("execution_stage")
+            == case.expected_payload.get("execution_stage"),
             response.audit.provider_mode == case.expected_payload.get("provider_mode"),
         ]
         if case.expected_payload.get("must_preserve_citations"):
             checks.append(int(structured_output.get("citation_count", 0)) >= 1)
             checks.append(len(structured_output.get("citations", [])) >= 1)
         if case.expected_payload.get("answer_mode") is not None:
-            checks.append(structured_output.get("answer_mode") == case.expected_payload["answer_mode"])
+            checks.append(
+                structured_output.get("answer_mode") == case.expected_payload["answer_mode"]
+            )
         if case.expected_payload.get("catalog_only") is not None:
-            checks.append(structured_output.get("catalog_only") == case.expected_payload["catalog_only"])
+            checks.append(
+                structured_output.get("catalog_only") == case.expected_payload["catalog_only"]
+            )
         checks.append(retrieval_status.live_search_enabled is True)
         outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
         return (

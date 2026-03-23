@@ -47,6 +47,5 @@ def is_live_search_chunk_eligible(
 ) -> bool:
     document_eligibility = build_document_eligibility(source=source, document=document)
     return (
-        document_eligibility.search_enabled
-        and chunk.index_status == RetrievalIndexStatus.INDEXED
+        document_eligibility.search_enabled and chunk.index_status == RetrievalIndexStatus.INDEXED
     )

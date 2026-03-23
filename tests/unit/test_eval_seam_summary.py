@@ -28,7 +28,7 @@ def test_evaluation_seam_coverage_reports_staged_fixtures_by_platform_boundary()
 
     retrieval = seam_coverage[2]
     assert retrieval.staged_fixture_count == 1
-    assert retrieval.staged_case_count == 2
+    assert retrieval.staged_case_count == 3
     assert retrieval.fixture_ids == ["retrieval_citation_examples"]
 
     provider_execution = seam_coverage[3]

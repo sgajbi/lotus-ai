@@ -85,12 +85,16 @@ class RetrievalDocumentGovernanceDescriptor(BaseModel):
         description="Whether the document is currently eligible for live retrieval search."
     )
     chunk_count: int = Field(description="Current chunk count registered for the document.")
-    index_status: RetrievalIndexStatus = Field(description="Current indexing status for the document.")
+    index_status: RetrievalIndexStatus = Field(
+        description="Current indexing status for the document."
+    )
     notes: str = Field(description="Human-readable explanation of the document governance posture.")
 
 
 class RetrievalDocumentGovernanceResponse(BaseModel):
-    service: str = Field(description="Service name emitting the retrieval document governance view.")
+    service: str = Field(
+        description="Service name emitting the retrieval document governance view."
+    )
     retrieval_mode: str = Field(description="Current retrieval mode configured for lotus-ai.")
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     searchable_document_count: int = Field(

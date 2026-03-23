@@ -14,7 +14,9 @@ _MINIMUM_SUPPORT_SCORE = 0.75
 
 def execute_knowledge_answer(*, context: TaskExecutionContext) -> ProviderExecutionResponse:
     retrieval = execute_knowledge_retrieval(context=context)
-    is_catalog_only = retrieval.retrieval_response.execution_stage == RetrievalExecutionStage.CATALOG_ONLY
+    is_catalog_only = (
+        retrieval.retrieval_response.execution_stage == RetrievalExecutionStage.CATALOG_ONLY
+    )
     provider_id = "retrieval.answer" if is_catalog_only else "retrieval.live_answer"
     provider_mode = "catalog_answer" if is_catalog_only else "live_answer"
     hits = retrieval.retrieval_response.hits

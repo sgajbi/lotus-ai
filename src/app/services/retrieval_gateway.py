@@ -37,8 +37,8 @@ def execute_retrieval_search(request: RetrievalExecutionRequest) -> RetrievalExe
             message=(
                 "Retrieval search is not enabled yet. lotus-ai currently exposes governed "
                 "catalog and indexing contracts before live search is active."
-                ),
-            )
+            ),
+        )
 
     document_governance = build_retrieval_document_governance()
     if document_governance.searchable_document_count == 0:

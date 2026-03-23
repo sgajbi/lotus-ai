@@ -7,6 +7,7 @@ from app.contracts.retrieval import (
 )
 from app.retrieval.document_governance import build_retrieval_document_governance
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
+from app.services.runtime_readiness import get_retrieval_store_runtime_status
 
 
 def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
@@ -22,6 +23,22 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
             message=(
                 "Live retrieval search remains disabled, but runtime-backed retrieval indexing is "
                 "enabled for allowlisted async jobs."
+            ),
+        )
+
+    store_status = get_retrieval_store_runtime_status()
+    if store_status.status != "READY":
+        return RetrievalExecutionStatusResponse(
+            service=settings.service_name,
+            delivery_phase=settings.delivery_phase,
+            retrieval_mode=settings.retrieval_mode,
+            execution_stage=RetrievalExecutionStage.INDEXING_DISABLED,
+            vector_store=VECTOR_STORE_STRATEGY,
+            live_search_enabled=False,
+            live_indexing_enabled=True,
+            message=(
+                "Live retrieval search is configured but unavailable because the retrieval store "
+                f"is not ready: {store_status.detail}"
             ),
         )
 

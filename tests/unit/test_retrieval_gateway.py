@@ -64,7 +64,9 @@ def test_execute_retrieval_search_returns_live_hits_when_enabled() -> None:
     settings.retrieval_mode = "disabled"
 
 
-def test_execute_retrieval_search_rejects_live_requests_when_searchable_corpus_is_unavailable() -> None:
+def test_execute_retrieval_search_rejects_live_requests_when_searchable_corpus_is_unavailable() -> (
+    None
+):
     settings.retrieval_mode = "enabled"
     repository = InMemoryRetrievalRepository()
 

@@ -136,7 +136,10 @@ def test_execute_task_runs_bounded_knowledge_search() -> None:
     assert response.result.structured_output["citation_count"] >= 1
     assert response.result.structured_output["support_score"] >= 0.5
     assert response.result.structured_output["citations"][0]["source_id"] == "lotus-platform-rfcs"
-    assert response.result.structured_output["citations"][0]["document_id"] == "lotus-platform-rfc-0069"
+    assert (
+        response.result.structured_output["citations"][0]["document_id"]
+        == "lotus-platform-rfc-0069"
+    )
     assert response.result.structured_output["hits"][0]["source_id"] == "lotus-platform-rfcs"
 
 

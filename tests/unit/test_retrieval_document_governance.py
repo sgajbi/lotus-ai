@@ -23,8 +23,7 @@ def test_build_retrieval_document_governance_reflects_default_document_posture()
     )
 
 
-def test_build_retrieval_document_governance_marks_indexed_enabled_documents_searchable(
-) -> None:
+def test_build_retrieval_document_governance_marks_indexed_enabled_documents_searchable() -> None:
     from unittest.mock import patch
 
     repository = InMemoryRetrievalRepository()
@@ -33,7 +32,9 @@ def test_build_retrieval_document_governance_marks_indexed_enabled_documents_sea
         index_status="INDEXED",
     )
 
-    with patch("app.retrieval.document_governance.get_retrieval_repository", return_value=repository):
+    with patch(
+        "app.retrieval.document_governance.get_retrieval_repository", return_value=repository
+    ):
         response = build_retrieval_document_governance()
 
     assert response.searchable_document_count >= 2

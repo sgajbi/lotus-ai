@@ -5,19 +5,27 @@ from app.contracts.retrieval import RetrievalActivationReadinessResponse
 from app.retrieval.document_governance import build_retrieval_document_governance
 from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
 from app.services.retrieval_runbook_readiness import build_retrieval_runbook_readiness
+from app.services.runtime_readiness import get_retrieval_store_runtime_status
 
 
 def build_retrieval_activation_readiness() -> RetrievalActivationReadinessResponse:
-    document_governance = build_retrieval_document_governance()
     evidence_readiness = build_retrieval_evidence_readiness()
     runbook_readiness = build_retrieval_runbook_readiness()
+    store_status = get_retrieval_store_runtime_status()
+    document_governance = (
+        None if store_status.status != "READY" else build_retrieval_document_governance()
+    )
 
     blocking_findings: list[str] = []
     if settings.retrieval_mode != "enabled":
         blocking_findings.append(
             "Retrieval mode is not enabled, so the live indexed-search path is not in active rollout."
         )
-    if document_governance.searchable_document_count == 0:
+    if store_status.status != "READY":
+        blocking_findings.append(
+            f"Retrieval store readiness is blocking live search activation: {store_status.detail}"
+        )
+    elif document_governance is not None and document_governance.searchable_document_count == 0:
         if document_governance.index_pending_document_count > 0:
             blocking_findings.append(
                 "No promoted indexed documents are currently searchable because indexing is still pending for the governed corpus."
@@ -45,6 +53,8 @@ def build_retrieval_activation_readiness() -> RetrievalActivationReadinessRespon
 
     activation_ready = (
         settings.retrieval_mode == "enabled"
+        and store_status.status == "READY"
+        and document_governance is not None
         and document_governance.searchable_document_count > 0
         and evidence_readiness.evidence_ready
         and runbook_readiness.runbook_ready

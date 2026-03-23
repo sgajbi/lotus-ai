@@ -113,7 +113,9 @@ class SqlAlchemyRetrievalRepository:
                     )
                 )
 
-            ranked_hits.sort(key=lambda hit: (-hit.score, hit.source_id, hit.document_id, hit.chunk_id))
+            ranked_hits.sort(
+                key=lambda hit: (-hit.score, hit.source_id, hit.document_id, hit.chunk_id)
+            )
             return ranked_hits[:limit]
 
     def list_index_jobs(self) -> list[RetrievalIndexJobDescriptor]:
