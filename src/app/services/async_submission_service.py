@@ -37,13 +37,13 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
             delivery_phase=settings.delivery_phase,
             submission_status=AsyncSubmissionStatus.REJECTED,
             queue_mode=AsyncQueueMode.STUBBED,
-            worker_mode=AsyncWorkerMode.DOCUMENTED_ONLY,
+            worker_mode=AsyncWorkerMode.STUBBED,
             job_type=request.job_type,
             accepted=False,
             job_id=None,
             message=(
                 f"Async job type '{request.job_type}' remains staged-only in the current phase and "
-                "is not yet allowlisted for durable runtime-backed submission."
+                "is not yet allowlisted for durable runtime-backed submission and stubbed worker handling."
             ),
         )
     submitted_at = _utcnow().isoformat().replace("+00:00", "Z")
@@ -90,13 +90,14 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
         delivery_phase=settings.delivery_phase,
         submission_status=AsyncSubmissionStatus.ACCEPTED,
         queue_mode=AsyncQueueMode.STUBBED,
-        worker_mode=AsyncWorkerMode.DOCUMENTED_ONLY,
+        worker_mode=AsyncWorkerMode.STUBBED,
         job_type=request.job_type,
         accepted=True,
         job_id=job_id,
         message=(
             f"Async job type '{request.job_type}' is allowlisted for durable submission. The job "
-            "is recorded and queued, but no dedicated worker execution path is active yet."
+            "is recorded and queued, and can later move through stubbed worker claim and completion semantics. "
+            "No dedicated worker fleet is active yet."
         ),
     )
 

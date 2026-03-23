@@ -25,7 +25,7 @@ def test_submit_async_job_accepts_allowlisted_runtime_backed_job_type() -> None:
     assert response.accepted is True
     assert response.job_id is not None
     assert response.queue_mode == "STUBBED"
-    assert response.worker_mode == "DOCUMENTED_ONLY"
+    assert response.worker_mode == "STUBBED"
 
 
 def test_submit_async_job_persists_sql_backed_runtime_submission(tmp_path: Path) -> None:
@@ -66,6 +66,7 @@ def test_submit_async_job_rejects_documentation_only_job_type() -> None:
     assert response.accepted is False
     assert response.job_id is None
     assert response.queue_mode == "STUBBED"
+    assert response.worker_mode == "STUBBED"
 
 
 def test_submit_async_job_raises_not_found_for_unknown_job_type() -> None:

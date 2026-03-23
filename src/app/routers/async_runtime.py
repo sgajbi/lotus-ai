@@ -34,7 +34,7 @@ router = APIRouter(prefix="/platform/async", tags=["platform"])
     description=(
         "Returns the current queue and worker posture for lotus-ai async execution, including "
         "known async job types, whether durable submission is active for any allowlisted job "
-        "types, and whether dedicated background workers are active."
+        "types, and whether stubbed or dedicated background workers are active."
     ),
     responses={
         200: {"description": "Async runtime status returned successfully."},
@@ -70,7 +70,7 @@ async def get_async_queue_backend_catalog_route() -> AsyncQueueBackendCatalogRes
     summary="Get lotus-ai async worker execution catalog",
     description=(
         "Returns the governed worker execution strategies recognized by lotus-ai, including the "
-        "current foundation default and documented future worker rollout options."
+        "current stubbed worker default and documented future dedicated worker rollout options."
     ),
     responses={
         200: {"description": "Async worker execution catalog returned successfully."},
@@ -88,7 +88,7 @@ async def get_async_worker_execution_catalog_route() -> AsyncWorkerExecutionCata
     summary="Get lotus-ai async activation readiness",
     description=(
         "Returns whether lotus-ai async execution is currently ready for live activation, along "
-        "with the blocking findings and governed activation path for a future rollout."
+        "with the blocking findings and governed activation path beyond the current stubbed worker posture."
     ),
     responses={
         200: {"description": "Async activation readiness returned successfully."},

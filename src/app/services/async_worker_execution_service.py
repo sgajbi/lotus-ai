@@ -13,24 +13,24 @@ def list_async_worker_executions() -> list[AsyncWorkerExecutionDescriptor]:
             worker_id="none",
             enabled=False,
             execution_class="NO_WORKER_RUNTIME",
-            selection_state="ACTIVE_FOUNDATION_DEFAULT",
+            selection_state="DOCUMENTED_FOUNDATION_BASELINE",
             supports_horizontal_scaling=False,
             supports_job_isolation=False,
             notes=(
-                "Foundation default. lotus-ai exposes async contracts and artifacts without "
-                "running dedicated background workers."
+                "Historical foundation baseline before durable worker claim and lease semantics "
+                "were activated."
             ),
         ),
         AsyncWorkerExecutionDescriptor(
             worker_id="in_process_stub",
-            enabled=False,
+            enabled=True,
             execution_class="STUBBED_WORKER_RUNTIME",
-            selection_state="DOCUMENTED_FUTURE_OPTION",
+            selection_state="ACTIVE_SLICE_3_DEFAULT",
             supports_horizontal_scaling=False,
             supports_job_isolation=True,
             notes=(
-                "Documented future option for tightly controlled non-production validation where "
-                "worker semantics are exercised without deploying a full queue-backed fleet."
+                "Current controlled worker posture. lotus-ai now supports durable claim, lease, "
+                "heartbeat, and terminal-state transitions without activating a dedicated worker fleet."
             ),
         ),
         AsyncWorkerExecutionDescriptor(
@@ -54,7 +54,7 @@ def build_async_worker_execution_catalog() -> AsyncWorkerExecutionCatalogRespons
         service=settings.service_name,
         version=settings.service_version,
         delivery_phase=settings.delivery_phase,
-        active_worker_execution="none",
+        active_worker_execution="in_process_stub",
         worker_count=len(workers),
         workers=workers,
     )

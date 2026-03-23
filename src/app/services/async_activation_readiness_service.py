@@ -8,14 +8,12 @@ from app.services.async_runtime_status import build_async_runtime_status
 def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
     runtime = build_async_runtime_status()
     blocking_findings = [
-        "Dedicated worker execution remains disabled; submitted async jobs are durable but not yet claimable.",
-        "The active worker execution is 'none'; no worker lease, heartbeat, or completion runtime is active.",
+        "Dedicated queue-backed worker execution remains disabled; the current stubbed worker posture is durable but not yet horizontally isolated.",
         "Only a narrow allowlist of async job types is runtime-backed; the broader async surface remains staged.",
     ]
     activation_path = [
-        "Activate an isolated worker execution strategy with lease, heartbeat, and recovery semantics.",
+        "Activate an isolated queue-backed worker execution strategy on top of the durable claim, lease, and recovery model.",
         "Enable broader async job types through reviewed rollout slices with observability, safety, and supportability gates.",
-        "Validate end-to-end async behavior through governed runtime, evaluation, and deployment checks before activation.",
     ]
     return AsyncActivationReadinessResponse(
         service=settings.service_name,

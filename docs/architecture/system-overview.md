@@ -279,6 +279,11 @@ types can now be recorded into runtime-backed queue state and appear in the publ
 catalog/detail views as durable runtime records, while non-allowlisted job types remain explicitly
 staged and artifact-backed until worker execution slices arrive.
 
+The following slice activates stubbed worker lifecycle semantics on top of the same durable async
+runtime. Allowlisted runtime-backed jobs can now be claimed, heartbeated, completed, failed, and
+recovered after lease expiry while keeping attempt history and active lease state inspectable
+through the public job-detail surface.
+
 ### Providers
 
 - `src/app/providers/`

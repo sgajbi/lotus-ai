@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
+    AsyncRuntimeClaimRecord,
     AsyncRuntimeJobRecord,
     AsyncRuntimeLeaseRecord,
     AsyncRuntimeRepository,
@@ -47,6 +48,19 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
         attempts.append(deepcopy(record))
         self._attempts[record.job_id] = attempts
 
+    def get_attempt(self, *, attempt_id: str) -> AsyncRuntimeAttemptRecord | None:
+        for attempts in self._attempts.values():
+            for record in attempts:
+                if record.attempt_id == attempt_id:
+                    return deepcopy(record)
+        return None
+
+    def list_leases(self) -> list[AsyncRuntimeLeaseRecord]:
+        return [
+            deepcopy(self._leases_by_job[job_id])
+            for job_id in sorted(self._leases_by_job, key=lambda item: self._leases_by_job[item].claimed_at)
+        ]
+
     def get_active_lease(self, *, job_id: str) -> AsyncRuntimeLeaseRecord | None:
         record = self._leases_by_job.get(job_id)
         if record is None:
@@ -66,3 +80,72 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
             return 0
         self._leases_by_job.pop(job_id, None)
         return 1
+
+    def claim_next_runnable_job(
+        self,
+        *,
+        worker_id: str,
+        claimed_at: str,
+        heartbeat_at: str,
+        lease_expires_at: str,
+        latest_message: str,
+        attempt_message: str,
+    ) -> AsyncRuntimeClaimRecord | None:
+        for job_id in sorted(self._jobs, key=lambda item: self._jobs[item].submitted_at):
+            job = self._jobs[job_id]
+            if job.lifecycle_status != "QUEUED":
+                continue
+            if job_id in self._leases_by_job:
+                continue
+            attempts = sorted(
+                self._attempts.get(job_id, []),
+                key=lambda item: item.attempt_number,
+            )
+            if not attempts:
+                continue
+            current_attempt = attempts[-1]
+            claimed_attempt = AsyncRuntimeAttemptRecord(
+                attempt_id=current_attempt.attempt_id,
+                job_id=current_attempt.job_id,
+                attempt_number=current_attempt.attempt_number,
+                lifecycle_status="CLAIMED",
+                worker_id=worker_id,
+                claimed_at=claimed_at,
+                heartbeat_at=heartbeat_at,
+                started_at=current_attempt.started_at,
+                completed_at=current_attempt.completed_at,
+                failure_reason=current_attempt.failure_reason,
+                recorded_message=attempt_message,
+            )
+            claimed_job = AsyncRuntimeJobRecord(
+                job_id=job.job_id,
+                job_type=job.job_type,
+                lifecycle_status="CLAIMED",
+                submitted_at=job.submitted_at,
+                caller_app=job.caller_app,
+                correlation_id=job.correlation_id,
+                payload_summary=job.payload_summary,
+                execution_path=job.execution_path,
+                related_evaluation_run_id=job.related_evaluation_run_id,
+                latest_message=latest_message,
+                attempt_count=job.attempt_count,
+            )
+            lease_id = f"{job.job_id}_lease_{current_attempt.attempt_number:03d}"
+            lease = AsyncRuntimeLeaseRecord(
+                lease_id=lease_id,
+                job_id=job.job_id,
+                attempt_id=current_attempt.attempt_id,
+                worker_id=worker_id,
+                claimed_at=claimed_at,
+                heartbeat_at=heartbeat_at,
+                lease_expires_at=lease_expires_at,
+            )
+            self.save_attempt(claimed_attempt)
+            self.save_job(claimed_job)
+            self.save_lease(lease)
+            return AsyncRuntimeClaimRecord(
+                job=claimed_job,
+                attempt=claimed_attempt,
+                lease=lease,
+            )
+        return None

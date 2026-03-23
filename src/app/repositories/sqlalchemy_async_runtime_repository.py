@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from app.db.models import AsyncJobAttemptModel, AsyncJobModel, AsyncWorkerLeaseModel
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
+    AsyncRuntimeClaimRecord,
     AsyncRuntimeJobRecord,
     AsyncRuntimeLeaseRecord,
     AsyncRuntimeRepository,
@@ -80,6 +81,20 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
             session.merge(model)
             session.commit()
 
+    def get_attempt(self, *, attempt_id: str) -> AsyncRuntimeAttemptRecord | None:
+        with self._session_factory() as session:
+            model = session.get(AsyncJobAttemptModel, attempt_id)
+            if model is None:
+                return None
+            return self._to_attempt_record(model)
+
+    def list_leases(self) -> list[AsyncRuntimeLeaseRecord]:
+        with self._session_factory() as session:
+            models = session.scalars(
+                select(AsyncWorkerLeaseModel).order_by(AsyncWorkerLeaseModel.claimed_at)
+            ).all()
+            return [self._to_lease_record(model) for model in models]
+
     def get_active_lease(self, *, job_id: str) -> AsyncRuntimeLeaseRecord | None:
         with self._session_factory() as session:
             model = session.scalars(
@@ -110,6 +125,67 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
             )
             session.commit()
             return int(getattr(result, "rowcount", 0) or 0)
+
+    def claim_next_runnable_job(
+        self,
+        *,
+        worker_id: str,
+        claimed_at: str,
+        heartbeat_at: str,
+        lease_expires_at: str,
+        latest_message: str,
+        attempt_message: str,
+    ) -> AsyncRuntimeClaimRecord | None:
+        with self._session_factory() as session:
+            job_model = session.scalars(
+                select(AsyncJobModel)
+                .where(AsyncJobModel.lifecycle_status == "QUEUED")
+                .order_by(AsyncJobModel.submitted_at)
+            ).first()
+            if job_model is None:
+                return None
+
+            existing_lease = session.scalars(
+                select(AsyncWorkerLeaseModel).where(AsyncWorkerLeaseModel.job_id == job_model.job_id)
+            ).first()
+            if existing_lease is not None:
+                return None
+
+            attempt_model = session.scalars(
+                select(AsyncJobAttemptModel)
+                .where(AsyncJobAttemptModel.job_id == job_model.job_id)
+                .order_by(AsyncJobAttemptModel.attempt_number.desc())
+            ).first()
+            if attempt_model is None:
+                return None
+
+            job_model.lifecycle_status = "CLAIMED"
+            job_model.latest_message = latest_message
+            attempt_model.lifecycle_status = "CLAIMED"
+            attempt_model.worker_id = worker_id
+            attempt_model.claimed_at = claimed_at
+            attempt_model.heartbeat_at = heartbeat_at
+            attempt_model.recorded_message = attempt_message
+
+            lease_model = AsyncWorkerLeaseModel(
+                lease_id=f"{job_model.job_id}_lease_{attempt_model.attempt_number:03d}",
+                job_id=job_model.job_id,
+                attempt_id=attempt_model.attempt_id,
+                worker_id=worker_id,
+                claimed_at=claimed_at,
+                heartbeat_at=heartbeat_at,
+                lease_expires_at=lease_expires_at,
+            )
+            session.add(lease_model)
+            session.commit()
+            session.refresh(job_model)
+            session.refresh(attempt_model)
+            session.refresh(lease_model)
+            return AsyncRuntimeClaimRecord(
+                job=self._to_job_record(job_model),
+                attempt=self._to_attempt_record(attempt_model),
+                lease=self._to_lease_record(lease_model),
+            )
 
     def _to_job_record(self, model: AsyncJobModel) -> AsyncRuntimeJobRecord:
         return AsyncRuntimeJobRecord(

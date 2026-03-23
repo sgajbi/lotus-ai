@@ -45,6 +45,13 @@ class AsyncRuntimeLeaseRecord:
     lease_expires_at: str
 
 
+@dataclass(frozen=True)
+class AsyncRuntimeClaimRecord:
+    job: AsyncRuntimeJobRecord
+    attempt: AsyncRuntimeAttemptRecord
+    lease: AsyncRuntimeLeaseRecord
+
+
 class AsyncRuntimeRepository(Protocol):
     def list_jobs(self) -> list[AsyncRuntimeJobRecord]:
         """List all persisted async jobs."""
@@ -61,6 +68,12 @@ class AsyncRuntimeRepository(Protocol):
     def save_attempt(self, record: AsyncRuntimeAttemptRecord) -> None:
         """Persist one async job attempt."""
 
+    def get_attempt(self, *, attempt_id: str) -> AsyncRuntimeAttemptRecord | None:
+        """Fetch one persisted async job attempt."""
+
+    def list_leases(self) -> list[AsyncRuntimeLeaseRecord]:
+        """List all active async worker leases."""
+
     def get_active_lease(self, *, job_id: str) -> AsyncRuntimeLeaseRecord | None:
         """Fetch the current active lease for one async job if it exists."""
 
@@ -69,3 +82,15 @@ class AsyncRuntimeRepository(Protocol):
 
     def delete_lease(self, *, lease_id: str) -> int:
         """Delete one async worker lease and return the number of affected rows."""
+
+    def claim_next_runnable_job(
+        self,
+        *,
+        worker_id: str,
+        claimed_at: str,
+        heartbeat_at: str,
+        lease_expires_at: str,
+        latest_message: str,
+        attempt_message: str,
+    ) -> AsyncRuntimeClaimRecord | None:
+        """Atomically claim the next runnable async job if one exists."""

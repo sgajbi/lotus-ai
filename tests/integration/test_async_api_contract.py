@@ -1,3 +1,4 @@
+from app.services.async_worker_runtime import claim_next_async_job, complete_async_job, start_async_job
 from fastapi.testclient import TestClient
 
 
@@ -8,11 +9,11 @@ def test_async_runtime_status_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["queue_mode"] == "STUBBED"
-    assert body["worker_mode"] == "DOCUMENTED_ONLY"
+    assert body["worker_mode"] == "STUBBED"
     assert body["queue_backend"] == "service_database"
     assert body["supported_queue_backends"][0]["backend_id"] == "none"
     assert body["supported_queue_backends"][1]["backend_id"] == "service_database"
-    assert body["active_worker_execution"] == "none"
+    assert body["active_worker_execution"] == "in_process_stub"
     assert body["supported_worker_executions"][0]["worker_id"] == "none"
     assert body["supported_worker_executions"][2]["worker_id"] == "queue_backed_workers"
     assert body["active_worker_count"] == 0
@@ -42,10 +43,11 @@ def test_async_worker_execution_catalog_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["active_worker_execution"] == "none"
+    assert body["active_worker_execution"] == "in_process_stub"
     assert body["worker_count"] == 3
     assert body["workers"][0]["worker_id"] == "none"
     assert body["workers"][1]["worker_id"] == "in_process_stub"
+    assert body["workers"][1]["enabled"] is True
     assert body["workers"][2]["worker_id"] == "queue_backed_workers"
 
 
@@ -57,10 +59,10 @@ def test_async_activation_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["activation_ready"] is False
     assert body["queue_backend"] == "service_database"
-    assert body["worker_execution"] == "none"
+    assert body["worker_execution"] == "in_process_stub"
     assert body["supported_job_type_count"] == 3
-    assert len(body["blocking_findings"]) == 3
-    assert len(body["activation_path"]) == 3
+    assert len(body["blocking_findings"]) == 2
+    assert len(body["activation_path"]) == 2
 
 
 def test_async_runbook_readiness_route(client: TestClient) -> None:
@@ -114,6 +116,8 @@ def test_async_job_detail_route(client: TestClient) -> None:
     assert body["job"]["status"] == "STAGED"
     assert body["job"]["record_source"] == "STAGED_ARTIFACT"
     assert body["job"]["related_evaluation_run_id"] is None
+    assert body["attempts"] == []
+    assert body["active_lease"] is None
 
 
 def test_async_job_detail_route_returns_not_found_for_unknown_job(client: TestClient) -> None:
@@ -141,6 +145,7 @@ def test_async_job_submit_route_accepts_runtime_backed_submission(client: TestCl
     assert body["accepted"] is True
     assert body["job_id"] is not None
     assert body["queue_mode"] == "STUBBED"
+    assert body["worker_mode"] == "STUBBED"
 
     catalog_response = client.get("/platform/async/jobs")
     catalog_body = catalog_response.json()
@@ -149,6 +154,44 @@ def test_async_job_submit_route_accepts_runtime_backed_submission(client: TestCl
     assert catalog_body["queued_job_count"] == 1
     assert runtime_job["status"] == "QUEUED"
     assert runtime_job["record_source"] == "RUNTIME_STATE"
+
+
+def test_async_job_detail_route_exposes_runtime_attempt_and_lease_history(
+    client: TestClient,
+) -> None:
+    submit_response = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "retrieval_indexing",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-async-submit-claim-001",
+            "payload_summary": "Index newly approved RFC documents.",
+        },
+    )
+    job_id = submit_response.json()["job_id"]
+    claim_next_async_job(worker_id="worker-a")
+    start_async_job(job_id=job_id, worker_id="worker-a")
+
+    running_response = client.get(f"/platform/async/jobs/{job_id}")
+
+    assert running_response.status_code == 200
+    running_body = running_response.json()
+    assert running_body["job"]["status"] == "RUNNING"
+    assert running_body["attempts"][0]["status"] == "RUNNING"
+    assert running_body["attempts"][0]["worker_id"] == "worker-a"
+    assert running_body["active_lease"]["worker_id"] == "worker-a"
+
+    complete_async_job(
+        job_id=job_id,
+        worker_id="worker-a",
+        message="Retrieval indexing completed successfully.",
+    )
+    completed_response = client.get(f"/platform/async/jobs/{job_id}")
+    completed_body = completed_response.json()
+
+    assert completed_body["job"]["status"] == "COMPLETED"
+    assert completed_body["attempts"][0]["status"] == "COMPLETED"
+    assert completed_body["active_lease"] is None
 
 
 def test_async_job_submit_route_rejects_documentation_only_job_type(client: TestClient) -> None:
@@ -168,6 +211,7 @@ def test_async_job_submit_route_rejects_documentation_only_job_type(client: Test
     assert body["accepted"] is False
     assert body["job_id"] is None
     assert body["queue_mode"] == "STUBBED"
+    assert body["worker_mode"] == "STUBBED"
 
 
 def test_async_job_submit_route_returns_not_found_for_unknown_job_type(

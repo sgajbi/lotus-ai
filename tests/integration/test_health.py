@@ -212,11 +212,11 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["retrieval_store"]["mode"] == "memory"
     assert body["retrieval_store"]["status"] == "READY"
     assert body["async_runtime"]["queue_mode"] == "STUBBED"
-    assert body["async_runtime"]["worker_mode"] == "DOCUMENTED_ONLY"
+    assert body["async_runtime"]["worker_mode"] == "STUBBED"
     assert body["async_runtime"]["supported_queue_backends"][0]["backend_id"] == "none"
     assert body["async_runtime"]["supported_queue_backends"][1]["backend_id"] == "service_database"
     assert body["async_runtime"]["queue_backend"] == "service_database"
-    assert body["async_runtime"]["active_worker_execution"] == "none"
+    assert body["async_runtime"]["active_worker_execution"] == "in_process_stub"
     assert (
         body["async_runtime"]["supported_worker_executions"][2]["worker_id"]
         == "queue_backed_workers"
