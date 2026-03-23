@@ -52,6 +52,9 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.provider_operations.operations_state.value == "ROLLOUT_BLOCKED"
     assert status.retrieval_governance.blocking_area_count == 3
     assert status.prompt_governance.blocking_area_count == 3
+    assert status.prompt_runtime.rollout_mode.value == "GOVERNED_STATE_READ_ONLY"
+    assert status.prompt_runtime.candidate_prompt_count == 0
+    assert any(state.task_id == "explain.v1" for state in status.prompt_runtime.rollout_states)
     assert status.evaluation_runtime.manifest_version == "foundation.v1"
     assert status.evaluation_runtime.approval_gates[0].domain_id == "retrieval_execution"
     assert status.evaluation_runtime.approval_gates[1].domain_id == "provider_execution"

@@ -21,8 +21,9 @@ def build_prompt_governance_status() -> PromptGovernanceStatusResponse:
         runtime_mutation_enabled=False,
         promotion_write_api_enabled=False,
         promotion_path=(
-            "Prompt definitions are promoted through reviewed repository changes and "
-            "Alembic-managed persistence updates; runtime mutation APIs remain disabled."
+            "Prompt rollout state is now durable and explicit, but active promotion still remains "
+            "read-only until a governed live action surface is introduced; runtime mutation APIs "
+            "remain disabled."
         ),
         active_prompt_count=lifecycle_counts.active_prompt_count,
     )

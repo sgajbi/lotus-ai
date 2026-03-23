@@ -15,6 +15,16 @@ class PromptManagementMode(str, Enum):
     MIGRATION_MANAGED = "MIGRATION_MANAGED"
 
 
+class PromptRolloutRole(str, Enum):
+    ACTIVE = "ACTIVE"
+    CANDIDATE = "CANDIDATE"
+    PREVIOUS_ACTIVE = "PREVIOUS_ACTIVE"
+
+
+class PromptRolloutSelectionMode(str, Enum):
+    GOVERNED_STATE_READ_ONLY = "GOVERNED_STATE_READ_ONLY"
+
+
 class PromptDescriptor(BaseModel):
     task_id: str = Field(description="Stable task identifier associated with the prompt.")
     prompt_version: str = Field(description="Version of the prompt definition.")
@@ -73,6 +83,33 @@ class PromptRuntimeSelectionDescriptor(BaseModel):
     selection_reason: str = Field(
         description="Human-readable explanation of why this prompt is selected."
     )
+    rollout_role: PromptRolloutRole = Field(
+        description="Current rollout role associated with the prompt version."
+    )
+
+
+class PromptRolloutDescriptor(BaseModel):
+    task_id: str = Field(description="Stable task identifier associated with the rollout state.")
+    active_prompt_version: str = Field(
+        description="Prompt version currently selected for runtime use."
+    )
+    candidate_prompt_version: str | None = Field(
+        default=None,
+        description="Prompt version staged as a candidate for future promotion, if any.",
+    )
+    previous_active_prompt_version: str | None = Field(
+        default=None,
+        description="Prior active prompt version retained for reviewable rollback, if any.",
+    )
+    rollout_mode: PromptRolloutSelectionMode = Field(
+        description="How rollout state is currently governed for the task."
+    )
+    runtime_mutation_enabled: bool = Field(
+        description="Whether runtime mutation is currently enabled for this task rollout state."
+    )
+    selection_reason: str = Field(
+        description="Human-readable explanation of why the active prompt remains selected."
+    )
 
 
 class PromptRuntimeStatusResponse(BaseModel):
@@ -82,10 +119,17 @@ class PromptRuntimeStatusResponse(BaseModel):
     selection_mode: PromptSelectionMode = Field(
         description="How prompt definitions are selected for runtime use."
     )
+    rollout_mode: PromptRolloutSelectionMode = Field(
+        description="How durable prompt rollout state is currently managed."
+    )
     active_prompt_count: int = Field(description="Number of active prompt definitions.")
     retired_prompt_count: int = Field(description="Number of retired prompt definitions.")
+    candidate_prompt_count: int = Field(description="Number of candidate prompt definitions.")
     selections: list[PromptRuntimeSelectionDescriptor] = Field(
         description="Prompt definitions currently selected for runtime use."
+    )
+    rollout_states: list[PromptRolloutDescriptor] = Field(
+        description="Durable prompt rollout state visible to the current runtime."
     )
 
 

@@ -22,6 +22,7 @@ def test_prompt_governance_route(client: TestClient) -> None:
     assert body["management_mode"] == "SEEDED_MEMORY"
     assert body["runtime_mutation_enabled"] is False
     assert body["promotion_write_api_enabled"] is False
+    assert "durable and explicit" in body["promotion_path"]
     assert body["active_prompt_count"] >= 7
 
 
@@ -33,7 +34,11 @@ def test_prompt_runtime_status_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["prompt_store_mode"] == "memory"
     assert body["selection_mode"] == "STATIC_ACTIVE"
+    assert body["rollout_mode"] == "GOVERNED_STATE_READ_ONLY"
+    assert body["candidate_prompt_count"] == 0
     assert any(selection["task_id"] == "explain.v1" for selection in body["selections"])
+    assert body["selections"][0]["rollout_role"] == "ACTIVE"
+    assert any(state["task_id"] == "explain.v1" for state in body["rollout_states"])
 
 
 def test_prompt_activation_readiness_route(client: TestClient) -> None:

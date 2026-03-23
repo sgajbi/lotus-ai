@@ -108,6 +108,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"
     )
+    prompt_runtime_schema = spec["components"]["schemas"]["PromptRuntimeStatusResponse"]
+    assert "rollout_mode" in prompt_runtime_schema["properties"]
+    assert "candidate_prompt_count" in prompt_runtime_schema["properties"]
+    assert "rollout_states" in prompt_runtime_schema["properties"]
     assert spec["paths"]["/platform/tasks/runtime-status"]["get"]["operationId"] == (
         "getTaskRuntimeStatus"
     )

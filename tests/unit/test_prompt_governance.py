@@ -14,4 +14,5 @@ def test_prompt_governance_uses_memory_management_mode() -> None:
     assert status.management_mode == PromptManagementMode.SEEDED_MEMORY
     assert status.runtime_mutation_enabled is False
     assert status.promotion_write_api_enabled is False
+    assert "rollout state is now durable and explicit" in status.promotion_path
     assert status.active_prompt_count >= 7

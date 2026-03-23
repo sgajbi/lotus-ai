@@ -101,6 +101,7 @@ The current execution posture is:
 - prompt governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
 - platform runtime status now embeds prompt governance posture directly,
 - platform runtime status now summarizes prompt runtime posture directly,
+- prompt runtime selection now resolves through an explicit durable rollout-state seam, while live promotion and rollback actions remain disabled until later RFC-0010 slices,
 - task execution responses now include structured evidence about prompt, provider, safety, and retrieval posture,
 - evaluation catalog now exposes staged evidence categories and fixture families,
 - evaluation fixture family detail is now inspectable through a dedicated read-only endpoint,

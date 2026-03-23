@@ -3,6 +3,7 @@ from fastapi import HTTPException
 from app.contracts.prompts import PromptLifecycleStatus
 from app.services.prompt_runtime import (
     list_active_runtime_prompts,
+    list_prompt_rollout_descriptors,
     list_registered_prompts,
     resolve_runtime_prompt_or_raise,
     summarize_prompt_lifecycle_counts,
@@ -16,7 +17,8 @@ def test_resolve_runtime_prompt_or_raise_returns_active_prompt_selection() -> No
     assert resolved.prompt.prompt_version == "foundation.explain.v1"
     assert resolved.selection.task_id == "explain.v1"
     assert resolved.selection.selected_for_runtime is True
-    assert "Foundation-phase runtime selects" in resolved.selection.selection_reason
+    assert "durable prompt rollout state" in resolved.selection.selection_reason
+    assert resolved.selection.rollout_role.value == "ACTIVE"
 
 
 def test_list_active_runtime_prompts_matches_active_prompt_inventory() -> None:
@@ -36,7 +38,7 @@ def test_resolve_runtime_prompt_or_raise_rejects_unknown_prompt() -> None:
         resolve_runtime_prompt_or_raise("missing.v1")
     except HTTPException as exc:
         assert exc.status_code == 404
-        assert "No registered prompt definition" in str(exc.detail)
+        assert "No governed prompt rollout state" in str(exc.detail)
     else:
         raise AssertionError("Expected HTTPException for unknown prompt")
 
@@ -55,3 +57,12 @@ def test_summarize_prompt_lifecycle_counts_matches_registered_inventory() -> Non
         for prompt in registered_prompts
         if prompt.lifecycle_status == PromptLifecycleStatus.RETIRED
     )
+    assert counts.candidate_prompt_count == 0
+
+
+def test_list_prompt_rollout_descriptors_matches_runtime_inventory() -> None:
+    rollout_descriptors = list_prompt_rollout_descriptors()
+
+    assert any(descriptor.task_id == "explain.v1" for descriptor in rollout_descriptors)
+    assert all(descriptor.rollout_mode.value == "GOVERNED_STATE_READ_ONLY" for descriptor in rollout_descriptors)
+    assert all(descriptor.runtime_mutation_enabled is False for descriptor in rollout_descriptors)

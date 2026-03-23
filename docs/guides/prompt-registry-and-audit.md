@@ -16,11 +16,12 @@ The next platform requirement is traceability:
 
 Current implementation:
 
-1. repository abstraction for prompt definitions,
+1. repository abstraction for prompt definitions and rollout state,
 2. in-memory prompt registry for simple development,
 3. SQLAlchemy-backed prompt registry for durable storage,
 4. versioned prompt descriptors,
-5. one prompt descriptor per registered task.
+5. one active rollout-state record per registered task,
+6. reserved rollout-event history storage for later prompt control-plane actions.
 
 Current prompt fields:
 
@@ -43,11 +44,12 @@ Current durable path:
 The current enterprise posture is:
 
 1. prompt definitions can remain memory-backed for local development,
-2. durable prompt definitions are seeded and managed through Alembic revisions,
+2. durable prompt definitions and rollout state are seeded and managed through Alembic revisions,
 3. prompt-store mode is independent from audit and retrieval store mode,
 4. prompt definitions expose lifecycle and provenance metadata in every store mode,
-5. prompt promotion remains read-only at runtime,
-6. public prompt APIs do not change when the backing store changes.
+5. runtime prompt selection now resolves through explicit rollout state rather than assuming a single mutable active row,
+6. prompt promotion remains read-only at runtime,
+7. public prompt APIs do not change when the backing store changes.
 
 ## Prompt Governance
 
@@ -55,8 +57,9 @@ Current governance posture:
 
 1. runtime prompt mutation APIs are disabled,
 2. prompt promotion write APIs are disabled,
-3. prompt promotion happens through reviewed repository changes,
-4. SQL-backed prompt promotion is completed through Alembic-managed persistence updates,
+3. durable rollout state exists but remains read-only,
+4. prompt promotion happens through reviewed repository changes,
+5. SQL-backed prompt promotion is completed through Alembic-managed persistence updates,
 5. the current governance posture is visible through `GET /platform/prompts/governance`,
 6. the active runtime prompt selection set is visible through `GET /platform/prompts/runtime-status`,
 7. the current prompt activation-readiness posture is visible through `GET /platform/prompts/activation-readiness`,
