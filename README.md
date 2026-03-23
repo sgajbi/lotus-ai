@@ -87,6 +87,7 @@ The current execution posture is:
 - retrieval evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
 - retrieval governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
 - platform runtime status now embeds retrieval governance posture directly,
+- retrieval evidence readiness now uses a runtime-backed approval gate over governed retrieval evaluation runs, so staged baselines cannot silently satisfy live-search rollout posture,
 - prompts now expose runtime selection status in addition to governance posture,
 - prompt activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - prompt runbook readiness is now exposed through a dedicated operational-readiness endpoint,
@@ -137,6 +138,7 @@ The current execution posture is:
 - retrieval indexing is now the first runtime-backed async consumer, with concrete retrieval index jobs submitted into the durable async runtime and reflected back into retrieval job catalog/detail state,
 - async evaluation assets and runbook guidance now explicitly cover runtime-backed submission, lease-expiry recovery, and retrieval-indexing linkage, so the async control plane is no longer described as documentation-only where runtime truth already exists,
 - retrieval execution posture now distinguishes runtime-backed indexing from still-disabled live search, so indexing rollout no longer depends on staged-only retrieval job artifacts,
+- retrieval runtime-backed evaluation now covers live search, citation-backed answers, and conservative refusals, while reindex and rollback evidence still remain separate activation blockers,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

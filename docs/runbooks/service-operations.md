@@ -190,9 +190,10 @@ Before any future live-retrieval activation slice:
 4. inspect `GET /platform/retrieval/evidence-readiness` when evaluation, citation, or rollback evidence blockers need detail
 5. confirm the embedded `retrieval_governance` block in `GET /platform/runtime-status` matches the detailed retrieval governance view
 6. confirm retrieval indexing policy and execution status still reflect governed staged posture unless explicitly approved otherwise
-7. confirm reindex, replay, and retrieval observability procedures are documented and approved
-8. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
-9. only then proceed with any live-retrieval activation rollout review
+7. confirm the retrieval approval gate is backed by current runtime-produced live-search evidence rather than historical staged baselines alone
+8. confirm reindex, replay, rollback, and retrieval observability procedures are documented and approved
+9. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
+10. only then proceed with any live-retrieval activation rollout review
 
 ## Incident First Checks
 

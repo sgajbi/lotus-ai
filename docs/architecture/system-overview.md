@@ -153,6 +153,11 @@ Provider and retrieval evidence-readiness surfaces now expose explicit approval-
 that distinguish staged-only baselines, partial runtime coverage, runtime pass, runtime failure,
 and stale runtime evidence by governed fixture family.
 
+Retrieval approval posture is now backed by runtime-produced live-search evidence rather than
+only staged retrieval continuity fixtures. The governed retrieval evaluation family exercises
+live search, citation-bearing answer success, and conservative refusal behavior while keeping
+reindex and rollback evidence as separate remaining activation gates.
+
 RFC-0007 Slice 5 closes the runtime-convergence loop around those approval gates. Async replay,
 requeue, and lease-expiry recovery now preserve explicit evaluation attempt history rather than
 only async attempt history, and evaluation runtime status now exposes approval-gate posture
@@ -371,6 +376,10 @@ Current retrieval rollout posture includes:
 
 Retrieval governance now summarizes technical activation, runbook, and evidence readiness
 together.
+
+Retrieval evidence readiness now also carries an explicit approval-gate summary derived from
+runtime-backed evaluation runs. Historical staged baselines remain visible for continuity, but
+they no longer satisfy current live-retrieval approval posture by themselves.
 
 ### Routers
 

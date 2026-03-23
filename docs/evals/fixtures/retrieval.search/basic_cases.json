@@ -1,39 +1,79 @@
 {
-  "task_id": "retrieval.search.v1",
+  "task_id": "knowledge_search.v1",
   "fixture_family": "retrieval_citation_examples",
   "cases": [
     {
-      "case_id": "search_rfc_answer_requires_citation",
-      "summary": "Retrieval answers should preserve source provenance for RFC-backed questions.",
+      "case_id": "search_live_rfc_answer_preserves_citation",
+      "summary": "Live retrieval search should preserve source provenance for RFC-backed questions.",
       "input": {
-        "query": "What does RFC-0069 say about lotus-ai ownership?",
+        "task_id": "knowledge_search.v1",
+        "query": "shared ai platform service",
         "caller_app": "lotus-workbench",
         "correlation_id": "corr-ret-001",
+        "retrieval_mode": "enabled",
+        "index_sources": [
+          "lotus-platform-rfcs"
+        ],
         "source_filters": [
           "lotus-platform-rfcs"
         ]
       },
       "expected": {
-        "execution_stage": "SEARCH_DISABLED",
+        "execution_stage": "LIVE_SEARCH",
+        "provider_mode": "live_search",
+        "catalog_only": false,
         "must_preserve_citations": true,
-        "expected_outcome": "CONFLICT_UNTIL_ENABLED"
+        "expected_outcome": "LIVE_SEARCH_WITH_CITATIONS"
       }
     },
     {
-      "case_id": "search_insufficient_sources_refuses_cleanly",
-      "summary": "Retrieval should refuse cleanly when governed search is disabled or sources are insufficient.",
+      "case_id": "answer_live_support_returns_citation_backed",
+      "summary": "Live retrieval answer should stay citation-backed when indexed support is present.",
       "input": {
-        "query": "Summarize an unpublished policy memo",
+        "task_id": "knowledge_answer.v1",
+        "query": "shared ai platform service",
         "caller_app": "lotus-manage",
         "correlation_id": "corr-ret-002",
+        "retrieval_mode": "enabled",
+        "index_sources": [
+          "lotus-platform-rfcs"
+        ],
         "source_filters": [
           "lotus-platform-rfcs"
         ]
       },
       "expected": {
-        "execution_stage": "SEARCH_DISABLED",
-        "must_preserve_citations": false,
-        "expected_outcome": "REFUSAL_OR_CONFLICT"
+        "execution_stage": "LIVE_SEARCH",
+        "provider_mode": "live_answer",
+        "catalog_only": false,
+        "must_preserve_citations": true,
+        "answer_mode": "CITATION_BACKED",
+        "expected_outcome": "LIVE_ANSWER_CITATION_BACKED"
+      }
+    },
+    {
+      "case_id": "answer_live_low_support_refuses_cleanly",
+      "summary": "Live retrieval answer should still refuse cleanly when indexed support is weak.",
+      "input": {
+        "task_id": "knowledge_answer.v1",
+        "query": "shared migration standards",
+        "caller_app": "lotus-manage",
+        "correlation_id": "corr-ret-003",
+        "retrieval_mode": "enabled",
+        "index_sources": [
+          "lotus-platform-rfcs"
+        ],
+        "source_filters": [
+          "lotus-platform-rfcs"
+        ]
+      },
+      "expected": {
+        "execution_stage": "LIVE_SEARCH",
+        "provider_mode": "live_answer",
+        "catalog_only": false,
+        "must_preserve_citations": true,
+        "answer_mode": "REFUSED_INSUFFICIENT_SUPPORT",
+        "expected_outcome": "LIVE_ANSWER_REFUSAL"
       }
     }
   ]

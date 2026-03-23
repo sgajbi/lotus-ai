@@ -6,7 +6,7 @@
       "status": "RECORDED",
       "manifest_version": "foundation.v1",
       "staged_fixture_count": 11,
-      "staged_case_count": 25,
+      "staged_case_count": 26,
       "seam_coverage": [
         {
           "seam_id": "async_execution",
@@ -32,7 +32,7 @@
             "retrieval_citation_examples"
           ],
           "staged_fixture_count": 1,
-          "staged_case_count": 2
+          "staged_case_count": 3
         },
         {
           "seam_id": "provider_execution",
@@ -63,7 +63,7 @@
       "status": "SUPERSEDED",
       "manifest_version": "foundation.v1",
       "staged_fixture_count": 6,
-      "staged_case_count": 13,
+      "staged_case_count": 14,
       "seam_coverage": [
         {
           "seam_id": "async_execution",
@@ -89,7 +89,7 @@
             "retrieval_citation_examples"
           ],
           "staged_fixture_count": 1,
-          "staged_case_count": 2
+          "staged_case_count": 3
         },
         {
           "seam_id": "provider_execution",

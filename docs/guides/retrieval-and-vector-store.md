@@ -134,8 +134,12 @@ Current staged retrieval evaluation assets:
 
 1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/retrieval.search/basic_cases.json)
 
-These fixtures currently validate the governed pre-activation posture:
+These fixtures now validate runtime-backed live retrieval approval posture:
 
-1. citation expectations remain explicit for RFC-backed questions,
-2. refusal or conflict behavior is staged for insufficient or disabled retrieval paths,
-3. retrieval evaluation assets evolve under the same manifest and CI gate as the rest of the evaluation inventory.
+1. live search preserves provenance and citations for RFC-backed questions,
+2. `knowledge_answer.v1` returns citation-backed answers only when support is sufficient,
+3. low-support live retrieval paths refuse conservatively instead of overstating confidence,
+4. retrieval evaluation assets evolve under the same manifest and CI gate as the rest of the evaluation inventory.
+
+These runtime-backed fixtures do not close retrieval rollout on their own. Reindex, rollback,
+and corpus-recovery evidence are still tracked separately through retrieval evidence readiness.

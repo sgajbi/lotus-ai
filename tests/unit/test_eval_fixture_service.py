@@ -9,9 +9,9 @@ def test_evaluation_fixture_detail_returns_case_metadata_for_staged_fixture() ->
     assert detail.service == "lotus-ai"
     assert detail.manifest_version == "foundation.v1"
     assert detail.fixture.fixture_id == "retrieval_citation_examples"
-    assert detail.task_id == "retrieval.search.v1"
-    assert len(detail.cases) == 2
-    assert detail.cases[0].case_id == "search_rfc_answer_requires_citation"
+    assert detail.task_id == "knowledge_search.v1"
+    assert len(detail.cases) == 3
+    assert detail.cases[0].case_id == "search_live_rfc_answer_preserves_citation"
 
 
 def test_evaluation_fixture_detail_raises_not_found_for_unknown_fixture() -> None:
