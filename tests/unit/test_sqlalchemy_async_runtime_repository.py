@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from _pytest.monkeypatch import MonkeyPatch
+
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeControlEventRecord,
@@ -312,10 +314,14 @@ def test_sqlalchemy_async_runtime_repository_claim_returns_none_without_attempt(
 
 
 def test_sqlalchemy_async_runtime_repository_ensure_sqlite_directory_skips_memory_and_non_sqlite(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
     SqlAlchemyAsyncRuntimeRepository("sqlite:///:memory:")
     relative_path = tmp_path / "relative" / "lotus-ai-async-runtime.db"
     SqlAlchemyAsyncRuntimeRepository(f"sqlite:///{relative_path}")
     assert relative_path.parent.is_dir()
+    monkeypatch.setattr(
+        "app.repositories.sqlalchemy_async_runtime_repository.create_engine",
+        lambda database_url, future=True: object(),
+    )
     SqlAlchemyAsyncRuntimeRepository("postgresql://user:pass@localhost/lotus")
