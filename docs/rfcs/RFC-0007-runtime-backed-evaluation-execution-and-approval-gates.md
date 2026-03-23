@@ -1,6 +1,6 @@
 # RFC-0007: Runtime-Backed Evaluation Execution and Approval Gates
 
-- Status: Proposed
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -321,6 +321,26 @@ This RFC is complete when:
 6. stale or staged-only evidence cannot silently satisfy current approval posture,
 7. runbooks and governance assets reflect the runtime-backed evaluation model,
 8. the platform is materially closer to bank-grade rollout evidence and approval discipline.
+
+## Implementation Notes
+
+Implemented on `codex/rfc-runtime-eval-execution-gates`.
+
+Delivered outcomes:
+
+1. durable evaluation runtime state now exists for runs, attempts, and per-case outcomes,
+2. allowlisted evaluation families can be submitted and executed through the authoritative async backbone,
+3. evaluation run detail now exposes persisted attempt history and replay-safe case-result history,
+4. provider and retrieval governance surfaces now consume explicit runtime-backed approval-gate summaries instead of relying on staged baselines alone,
+5. async replay, requeue, abandon, and lease-expiry recovery now preserve matching evaluation attempt truth rather than updating only async job state,
+6. evaluation runtime status, runbooks, and historical baseline wording now describe staged continuity records versus current runtime-backed approval posture explicitly.
+
+The implemented result is:
+
+1. runtime-backed evaluation evidence is now durable, replayable, and reviewable through platform APIs,
+2. retrieval and provider rollout review can distinguish staged-only, partial runtime, passing runtime, failing runtime, and stale runtime evaluation posture,
+3. historical `foundation_eval_*` artifacts remain visible for continuity but no longer masquerade as current approval proof,
+4. the platform is materially closer to bank-grade rollout evidence and approval discipline than the artifact-only posture that existed before RFC-0007.
 
 ## Approval Requested
 

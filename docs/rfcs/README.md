@@ -6,4 +6,4 @@
 - `RFC-0004-provider-operations-hardening.md` - Implemented
 - `RFC-0005-durable-provider-operations-state.md` - Implemented
 - `RFC-0006-durable-async-execution-backbone.md` - Implemented
-- `RFC-0007-runtime-backed-evaluation-execution-and-approval-gates.md` - Proposed
+- `RFC-0007-runtime-backed-evaluation-execution-and-approval-gates.md` - Implemented
