@@ -5,6 +5,7 @@ from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.evals import EvaluationRunSubmissionRequest
 from app.contracts.providers import ProviderExecutionResponse
 from app.contracts.tasks import (
     CallerMetadata,
@@ -15,6 +16,8 @@ from app.contracts.tasks import (
 )
 from app.repositories.memory_retrieval_repository import InMemoryRetrievalRepository
 from app.contracts.prompts import PromptControlActionRequest, PromptControlActionType
+from app.services.eval_async_execution import run_next_evaluation_execution_job
+from app.services.eval_run_submission_service import submit_evaluation_run
 from app.services.prompt_rollout_control import apply_prompt_control_action
 from app.services.task_executor import execute_task
 
@@ -488,6 +491,7 @@ def test_execute_task_routes_allowlisted_task_through_live_provider(
 
 
 def test_execute_task_reflects_promoted_prompt_selection_in_audit_and_evidence() -> None:
+    _seed_prompt_approval_gate_pass()
     apply_prompt_control_action(
         PromptControlActionRequest(
             task_id="explain.v1",
@@ -520,3 +524,16 @@ def test_execute_task_reflects_promoted_prompt_selection_in_audit_and_evidence()
     assert prompt_evidence.attributes["prompt_version"] == "foundation.explain.v2"
     assert prompt_evidence.attributes["previous_active_prompt_version"] == "foundation.explain.v1"
     assert prompt_evidence.attributes["latest_control_event"] is not None
+
+
+def _seed_prompt_approval_gate_pass() -> None:
+    for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
+        submit_evaluation_run(
+            EvaluationRunSubmissionRequest(
+                fixture_id=fixture_id,
+                caller_app="lotus-platform",
+                correlation_id=f"corr-{fixture_id}",
+                triggered_by="operator-a",
+            )
+        )
+        run_next_evaluation_execution_job(worker_id="worker-a")

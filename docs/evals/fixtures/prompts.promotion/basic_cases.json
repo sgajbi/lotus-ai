@@ -1,0 +1,28 @@
+{
+  "fixture_family": "prompt_promotion_examples",
+  "task_id": "explain.v1",
+  "cases": [
+    {
+      "case_id": "prompt_promotion_updates_runtime_selection_trace",
+      "summary": "Prompt promotion updates runtime selection, audit lineage, and control history for explanation tasks.",
+      "input": {
+        "task_id": "explain.v1",
+        "caller_app": "lotus-ai",
+        "promote_request": {
+          "task_id": "explain.v1",
+          "candidate_prompt_version": "foundation.explain.v2",
+          "requested_by": "prompt-eval@lotus.test",
+          "approved_by": "prompt-approver@lotus.test",
+          "reason": "Evaluate governed prompt promotion runtime trace"
+        },
+        "status": "PENDING_REVIEW",
+        "approval_stage": "committee_review"
+      },
+      "expected": {
+        "prompt_version": "foundation.explain.v2",
+        "previous_active_prompt_version": "foundation.explain.v1",
+        "latest_action_type": "PROMOTE_CANDIDATE"
+      }
+    }
+  ]
+}

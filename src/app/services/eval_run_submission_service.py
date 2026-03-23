@@ -34,6 +34,8 @@ from app.services.async_runtime_store import get_async_runtime_store
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 
 RUNTIME_BACKED_EVALUATION_FIXTURE_IDS = {
+    "prompt_promotion_examples",
+    "prompt_rollback_examples",
     "retrieval_citation_examples",
     "provider_policy_examples",
     "provider_runtime_examples",

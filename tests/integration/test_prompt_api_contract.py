@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+
 
 def test_prompt_registry_routes(client: TestClient) -> None:
     list_response = client.get("/platform/prompts")
@@ -49,6 +51,38 @@ def test_prompt_control_routes(client: TestClient) -> None:
         "PROMOTE_CANDIDATE",
         "ROLLBACK_TO_PREVIOUS_ACTIVE",
     ]
+
+    blocked_promote_response = client.post(
+        "/platform/prompts/control-actions",
+        json={
+            "task_id": "explain.v1",
+            "action_type": "PROMOTE_CANDIDATE",
+            "candidate_prompt_version": "foundation.explain.v2",
+            "requested_by": "alice@lotus.test",
+            "approved_by": "bob@lotus.test",
+            "reason": "Attempt promotion without prompt approval evidence",
+        },
+    )
+    assert blocked_promote_response.status_code == 409
+    assert "RUNTIME_PASS" in blocked_promote_response.json()["detail"]
+
+    from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+
+    for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
+        get_evaluation_runtime_store().save_run(
+            EvaluationRunRecord(
+                run_id=f"runtime_prompt_gate_{fixture_id}",
+                fixture_id=fixture_id,
+                manifest_version="foundation.v1",
+                lifecycle_status="COMPLETED",
+                triggered_by="operator-a",
+                submitted_at="2026-03-23T12:00:00Z",
+                async_job_id=f"async_prompt_gate_{fixture_id}",
+                latest_message="Prompt rollout approval fixture passed.",
+                verdict="PASS",
+                case_count=1,
+            )
+        )
 
     promote_response = client.post(
         "/platform/prompts/control-actions",
@@ -128,9 +162,10 @@ def test_prompt_evidence_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["evidence_ready"] is False
     assert body["required_item_count"] == 4
-    assert body["completed_required_item_count"] == 0
+    assert body["completed_required_item_count"] == 2
     assert body["items"][0]["evidence_id"] == "prompt_fixture_coverage_pack"
-    assert body["items"][1]["status"] == "NOT_READY"
+    assert body["items"][1]["status"] == "FOUNDATION_STAGED"
+    assert body["approval_gate"]["domain_id"] == "prompt_rollout"
 
 
 def test_prompt_governance_status_route(client: TestClient) -> None:

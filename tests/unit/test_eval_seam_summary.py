@@ -7,6 +7,7 @@ def test_evaluation_seam_coverage_reports_staged_fixtures_by_platform_boundary()
     assert [item.seam_id for item in seam_coverage] == [
         "async_execution",
         "task_execution",
+        "prompt_rollout",
         "retrieval",
         "provider_execution",
         "safety_execution",
@@ -26,12 +27,20 @@ def test_evaluation_seam_coverage_reports_staged_fixtures_by_platform_boundary()
         "summarization_task_examples",
     ]
 
-    retrieval = seam_coverage[2]
+    prompt_rollout = seam_coverage[2]
+    assert prompt_rollout.staged_fixture_count == 2
+    assert prompt_rollout.staged_case_count == 2
+    assert prompt_rollout.fixture_ids == [
+        "prompt_promotion_examples",
+        "prompt_rollback_examples",
+    ]
+
+    retrieval = seam_coverage[3]
     assert retrieval.staged_fixture_count == 1
     assert retrieval.staged_case_count == 3
     assert retrieval.fixture_ids == ["retrieval_citation_examples"]
 
-    provider_execution = seam_coverage[3]
+    provider_execution = seam_coverage[4]
     assert provider_execution.staged_fixture_count == 5
     assert provider_execution.staged_case_count == 12
     assert provider_execution.fixture_ids == [
@@ -42,7 +51,7 @@ def test_evaluation_seam_coverage_reports_staged_fixtures_by_platform_boundary()
         "provider_degradation_examples",
     ]
 
-    safety_execution = seam_coverage[4]
+    safety_execution = seam_coverage[5]
     assert safety_execution.staged_fixture_count == 2
     assert safety_execution.staged_case_count == 6
     assert safety_execution.fixture_ids == [

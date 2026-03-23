@@ -140,6 +140,11 @@ surfaces. Task responses, execution evidence, and persisted audit records now pr
 selection trace plus latest control-event lineage instead of flattening prompt rollout context
 down to only a prompt-version string.
 
+RFC-0010 Slice 4 reuses the shared runtime-backed evaluation approval-gate model for prompt
+rollout. Prompt evidence readiness now reports staged-only versus runtime-pass/fail/stale posture
+through the same approval summary shape already used by provider, retrieval, and safety rollout,
+and prompt promotion is now blocked unless that prompt approval gate reports `RUNTIME_PASS`.
+
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.
 

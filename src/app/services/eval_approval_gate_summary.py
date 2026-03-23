@@ -28,6 +28,10 @@ _SAFETY_APPROVAL_FIXTURE_IDS = (
     "safety_policy_examples",
     "safety_runtime_examples",
 )
+_PROMPT_APPROVAL_FIXTURE_IDS = (
+    "prompt_promotion_examples",
+    "prompt_rollback_examples",
+)
 
 
 @dataclass(frozen=True)
@@ -59,6 +63,14 @@ def build_safety_approval_gate_summary() -> EvaluationApprovalGateSummaryDescrip
         domain_id="safety_enforcement",
         domain_label="Safety Enforcement",
         required_fixture_ids=_SAFETY_APPROVAL_FIXTURE_IDS,
+    )
+
+
+def build_prompt_approval_gate_summary() -> EvaluationApprovalGateSummaryDescriptor:
+    return _build_approval_gate_summary(
+        domain_id="prompt_rollout",
+        domain_label="Prompt Rollout",
+        required_fixture_ids=_PROMPT_APPROVAL_FIXTURE_IDS,
     )
 
 

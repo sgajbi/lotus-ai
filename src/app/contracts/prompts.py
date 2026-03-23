@@ -4,6 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
+
 
 class PromptLifecycleStatus(str, Enum):
     ACTIVE = "ACTIVE"
@@ -312,6 +314,9 @@ class PromptEvidenceReadinessResponse(BaseModel):
     )
     items: list[PromptEvidenceReadinessItem] = Field(
         description="Governed prompt evidence-readiness items."
+    )
+    approval_gate: EvaluationApprovalGateSummaryDescriptor = Field(
+        description="Runtime-backed approval evidence summary for the prompt rollout domain."
     )
 
 

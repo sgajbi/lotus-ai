@@ -69,7 +69,8 @@ Current governance posture:
 11. the current prompt operational-readiness posture is visible through `GET /platform/prompts/runbook-readiness`,
 12. the current prompt evidence-readiness posture is visible through `GET /platform/prompts/evidence-readiness`,
 13. the combined prompt rollout review posture is visible through `GET /platform/prompts/governance-status`,
-14. the combined prompt rollout review posture now includes technical, operational, and evidence readiness in one response.
+14. the combined prompt rollout review posture now includes technical, operational, and evidence readiness in one response,
+15. prompt promotion is blocked unless the runtime-backed prompt approval gate reports `RUNTIME_PASS`.
 
 ## Audit Store
 
@@ -150,7 +151,7 @@ The current enterprise posture is:
 
 Likely next evolution:
 
-1. prompt promotion and rollback workflow,
-2. tenant-aware prompt selection,
-3. richer prompt approval status and promotion-history metadata,
-4. richer audit records including safety-policy outcomes.
+1. tenant-aware prompt selection,
+2. richer prompt approval status and promotion-history metadata,
+3. richer audit records including safety-policy outcomes,
+4. production runbook and observability hardening for prompt rollout.

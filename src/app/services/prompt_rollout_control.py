@@ -17,6 +17,7 @@ from app.contracts.prompts import (
     PromptRolloutDescriptor,
     PromptRolloutSelectionMode,
 )
+from app.services.eval_approval_gate_summary import build_prompt_approval_gate_summary
 from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
 from app.services.prompt_store import get_prompt_repository
 
@@ -93,6 +94,15 @@ def _build_promote_transition(
     rollout_state: PromptRolloutStateRecord,
     request: PromptControlActionRequest,
 ) -> tuple[PromptRolloutStateRecord, list[PromptDescriptor], PromptRolloutEventRecord]:
+    approval_gate = build_prompt_approval_gate_summary()
+    if not approval_gate.approval_ready:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Prompt promotion is blocked until runtime-backed prompt approval evidence reaches "
+                f"RUNTIME_PASS. Current approval state: {approval_gate.evidence_state.value}."
+            ),
+        )
     if request.candidate_prompt_version is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

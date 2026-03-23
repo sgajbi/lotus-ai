@@ -122,6 +122,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "latest_control_event" in prompt_rollout_schema["properties"]
     prompt_governance_schema = spec["components"]["schemas"]["PromptGovernanceStatusResponse"]
     assert "control_history_endpoint" in prompt_governance_schema["properties"]
+    prompt_evidence_schema = spec["components"]["schemas"]["PromptEvidenceReadinessResponse"]
+    assert "approval_gate" in prompt_evidence_schema["properties"]
     task_audit_schema = spec["components"]["schemas"]["TaskAuditMetadata"]
     assert "prompt_selection" in task_audit_schema["properties"]
     audit_record_schema = spec["components"]["schemas"]["AuditRecordResponse"]

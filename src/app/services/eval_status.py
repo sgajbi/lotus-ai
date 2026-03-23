@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.contracts.evals import EvaluationRuntimeStatusResponse
 from app.services.eval_approval_gate_summary import (
+    build_prompt_approval_gate_summary,
     build_provider_approval_gate_summary,
     build_retrieval_approval_gate_summary,
     build_safety_approval_gate_summary,
@@ -19,6 +20,7 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
     run_catalog = build_evaluation_run_catalog()
     latest_run = run_catalog.runs[0] if run_catalog.runs else None
     approval_gates = [
+        build_prompt_approval_gate_summary(),
         build_retrieval_approval_gate_summary(),
         build_provider_approval_gate_summary(),
         build_safety_approval_gate_summary(),

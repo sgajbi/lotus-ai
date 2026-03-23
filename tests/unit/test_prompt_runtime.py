@@ -1,3 +1,4 @@
+from app.contracts.evals import EvaluationRunSubmissionRequest
 from fastapi import HTTPException
 
 from app.contracts.prompts import (
@@ -5,6 +6,8 @@ from app.contracts.prompts import (
     PromptControlActionType,
     PromptLifecycleStatus,
 )
+from app.services.eval_async_execution import run_next_evaluation_execution_job
+from app.services.eval_run_submission_service import submit_evaluation_run
 from app.services.prompt_rollout_control import apply_prompt_control_action
 from app.services.prompt_runtime import (
     build_prompt_selection_trace,
@@ -79,6 +82,7 @@ def test_list_prompt_rollout_descriptors_matches_runtime_inventory() -> None:
 
 
 def test_build_prompt_selection_trace_includes_latest_control_event_after_promotion() -> None:
+    _seed_prompt_approval_gate_pass()
     apply_prompt_control_action(
         PromptControlActionRequest(
             task_id="explain.v1",
@@ -96,3 +100,16 @@ def test_build_prompt_selection_trace_includes_latest_control_event_after_promot
     assert trace.previous_active_prompt_version == "foundation.explain.v1"
     assert trace.latest_control_event is not None
     assert trace.latest_control_event.action_type == PromptControlActionType.PROMOTE_CANDIDATE
+
+
+def _seed_prompt_approval_gate_pass() -> None:
+    for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
+        submit_evaluation_run(
+            EvaluationRunSubmissionRequest(
+                fixture_id=fixture_id,
+                caller_app="lotus-platform",
+                correlation_id=f"corr-{fixture_id}",
+                triggered_by="operator-a",
+            )
+        )
+        run_next_evaluation_execution_job(worker_id="worker-a")

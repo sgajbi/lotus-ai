@@ -61,6 +61,91 @@ def test_execute_fixture_case_reports_pass_for_live_retrieval_search_case() -> N
     ]
 
 
+def test_execute_fixture_case_reports_pass_for_prompt_promotion_case() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="prompt_promotion_updates_runtime_selection_trace",
+        summary="Prompt promotion should update runtime selection trace.",
+        input_payload={
+            "task_id": "explain.v1",
+            "caller_app": "lotus-ai",
+            "promote_request": {
+                "task_id": "explain.v1",
+                "candidate_prompt_version": "foundation.explain.v2",
+                "requested_by": "prompt-eval@lotus.test",
+                "approved_by": "prompt-approver@lotus.test",
+                "reason": "Evaluate prompt promotion runtime trace",
+            },
+            "status": "PENDING_REVIEW",
+            "approval_stage": "committee_review",
+        },
+        expected_payload={
+            "prompt_version": "foundation.explain.v2",
+            "previous_active_prompt_version": "foundation.explain.v1",
+            "latest_action_type": "PROMOTE_CANDIDATE",
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="prompt_promotion_examples",
+            fixture_task_id="explain.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "Prompt promotion preserved" in summary
+    assert evidence_refs == [
+        "service://platform/prompts/control-actions",
+        "service://ai/tasks/execute",
+    ]
+
+
+def test_execute_fixture_case_reports_pass_for_prompt_rollback_case() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="prompt_rollback_restores_previous_active_selection",
+        summary="Prompt rollback should restore previous active prompt.",
+        input_payload={
+            "task_id": "explain.v1",
+            "caller_app": "lotus-ai",
+            "promote_request": {
+                "task_id": "explain.v1",
+                "candidate_prompt_version": "foundation.explain.v2",
+                "requested_by": "prompt-eval@lotus.test",
+                "approved_by": "prompt-approver@lotus.test",
+                "reason": "Stage rollback evaluation by first promoting the candidate",
+            },
+            "rollback_request": {
+                "task_id": "explain.v1",
+                "requested_by": "prompt-eval@lotus.test",
+                "approved_by": "prompt-approver@lotus.test",
+                "reason": "Evaluate prompt rollback runtime trace",
+            },
+            "status": "BLOCKED",
+            "violations": 1,
+            "policy_name": "exposure_guard",
+        },
+        expected_payload={
+            "prompt_version": "foundation.explain.v1",
+            "candidate_prompt_version": "foundation.explain.v2",
+            "latest_action_type": "ROLLBACK_TO_PREVIOUS_ACTIVE",
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="prompt_rollback_examples",
+            fixture_task_id="explain.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "Prompt rollback restored" in summary
+    assert evidence_refs == [
+        "service://platform/prompts/control-actions",
+        "service://ai/tasks/execute",
+    ]
+
+
 def test_execute_fixture_case_reports_unknown_runtime_semantics_for_unmapped_fixture() -> None:
     summary, outcome, evidence_refs = _execute_fixture_case(
         fixture_id="unknown_fixture_family",
