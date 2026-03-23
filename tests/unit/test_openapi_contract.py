@@ -40,6 +40,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/capabilities"]["get"]["operationId"] == "getCapabilityCatalog"
     assert spec["paths"]["/platform/evals/catalog"]["get"]["operationId"] == "getEvaluationCatalog"
     assert spec["paths"]["/platform/evals/runs"]["get"]["operationId"] == "getEvaluationRunCatalog"
+    assert spec["paths"]["/platform/evals/runs/submit"]["post"]["operationId"] == (
+        "submitEvaluationRun"
+    )
     assert spec["paths"]["/platform/evals/fixtures/{fixture_id}"]["get"]["operationId"] == (
         "getEvaluationFixtureDetail"
     )

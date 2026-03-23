@@ -4,6 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
+
 
 class ProviderCapability(str, Enum):
     TEXT_GENERATION = "TEXT_GENERATION"
@@ -606,6 +608,9 @@ class ProviderEvidenceReadinessResponse(BaseModel):
     )
     items: list[ProviderEvidenceReadinessItem] = Field(
         description="Governed provider evidence-readiness items."
+    )
+    approval_gate: EvaluationApprovalGateSummaryDescriptor = Field(
+        description="Runtime-backed approval evidence summary for the provider rollout domain."
     )
 
 

@@ -1,6 +1,10 @@
+from unittest.mock import patch
+
 from app.repositories.async_runtime_repository import (
+    AsyncRuntimeClaimRecord,
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeJobRecord,
+    AsyncRuntimeLeaseRecord,
 )
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.async_job_service import build_async_job_detail
@@ -59,7 +63,7 @@ def test_run_next_retrieval_index_job_returns_none_when_no_jobs_are_claimed() ->
     assert run_next_retrieval_index_job(worker_id="worker-a") is None
 
 
-def test_run_next_retrieval_index_job_fails_unsupported_runtime_job_type() -> None:
+def test_run_next_retrieval_index_job_ignores_non_retrieval_job_types() -> None:
     store = get_async_runtime_store()
     store.save_job(
         AsyncRuntimeJobRecord(
@@ -97,5 +101,57 @@ def test_run_next_retrieval_index_job_fails_unsupported_runtime_job_type() -> No
 
     assert result is None
     detail = build_async_job_detail(job_id="async-job-unsupported")
-    assert detail.job.status.value == "FAILED"
-    assert detail.attempts[0].failure_reason == "UNSUPPORTED_ASYNC_JOB_TYPE"
+    assert detail.job.status.value == "QUEUED"
+    assert detail.attempts[0].failure_reason is None
+
+
+def test_run_next_retrieval_index_job_fails_claim_with_missing_target() -> None:
+    with (
+        patch(
+            "app.services.retrieval_async_execution.claim_next_async_job_for_types",
+            return_value=AsyncRuntimeClaimRecord(
+                job=AsyncRuntimeJobRecord(
+                    job_id="async-job-missing-target",
+                    job_type="retrieval_indexing",
+                    target_id=None,
+                    lifecycle_status="CLAIMED",
+                    submitted_at="2026-03-23T00:00:00Z",
+                    caller_app="lotus-platform",
+                    correlation_id="corr-ret-async-missing-target",
+                    payload_summary="Missing target.",
+                    execution_path="durable_runtime_worker_execution",
+                    related_evaluation_run_id=None,
+                    latest_message="Claimed.",
+                    attempt_count=1,
+                ),
+                attempt=AsyncRuntimeAttemptRecord(
+                    attempt_id="async-job-missing-target_attempt_001",
+                    job_id="async-job-missing-target",
+                    attempt_number=1,
+                    lifecycle_status="CLAIMED",
+                    worker_id="worker-a",
+                    claimed_at="2026-03-23T00:01:00Z",
+                    heartbeat_at="2026-03-23T00:01:00Z",
+                    started_at=None,
+                    completed_at=None,
+                    failure_reason=None,
+                    recorded_message="Claimed.",
+                ),
+                lease=AsyncRuntimeLeaseRecord(
+                    lease_id="lease-missing-target",
+                    job_id="async-job-missing-target",
+                    attempt_id="async-job-missing-target_attempt_001",
+                    worker_id="worker-a",
+                    claimed_at="2026-03-23T00:01:00Z",
+                    heartbeat_at="2026-03-23T00:01:00Z",
+                    lease_expires_at="2026-03-23T00:06:00Z",
+                ),
+            ),
+        ),
+        patch("app.services.retrieval_async_execution.fail_async_job") as fail_async_job,
+    ):
+        result = run_next_retrieval_index_job(worker_id="worker-a")
+
+    assert result is None
+    fail_async_job.assert_called_once()
+    assert fail_async_job.call_args.kwargs["failure_reason"] == "UNSUPPORTED_ASYNC_JOB_TYPE"

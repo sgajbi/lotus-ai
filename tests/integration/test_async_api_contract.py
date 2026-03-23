@@ -3,6 +3,7 @@ from app.services.async_worker_runtime import (
     complete_async_job,
     start_async_job,
 )
+from app.services.eval_async_execution import run_next_evaluation_execution_job
 from fastapi.testclient import TestClient
 
 
@@ -296,6 +297,7 @@ def test_async_job_submit_route_rejects_documentation_only_job_type(client: Test
         "/platform/async/jobs/submit",
         json={
             "job_type": "evaluation_execution",
+            "target_id": "provider_runtime_examples",
             "caller_app": "lotus-platform",
             "correlation_id": "corr-async-submit-001-eval",
             "payload_summary": "Run staged evaluation family.",
@@ -304,11 +306,37 @@ def test_async_job_submit_route_rejects_documentation_only_job_type(client: Test
 
     assert response.status_code == 200
     body = response.json()
-    assert body["submission_status"] == "REJECTED"
-    assert body["accepted"] is False
-    assert body["job_id"] is None
+    assert body["submission_status"] == "ACCEPTED"
+    assert body["accepted"] is True
+    assert body["job_id"] is not None
     assert body["queue_mode"] == "STUBBED"
     assert body["worker_mode"] == "STUBBED"
+
+
+def test_async_job_detail_route_exposes_runtime_backed_evaluation_execution(
+    client: TestClient,
+) -> None:
+    submission = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "evaluation_execution",
+            "target_id": "provider_policy_examples",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-async-submit-001-eval-run",
+            "payload_summary": "Run provider policy evaluation family.",
+        },
+    ).json()
+
+    run_next_evaluation_execution_job(worker_id="worker-a")
+
+    detail_response = client.get(f"/platform/async/jobs/{submission['job_id']}")
+
+    assert detail_response.status_code == 200
+    body = detail_response.json()
+    assert body["job"]["job_type"] == "evaluation_execution"
+    assert body["job"]["status"] == "COMPLETED"
+    assert body["job"]["related_evaluation_run_id"] is not None
+    assert body["attempts"][0]["status"] == "COMPLETED"
 
 
 def test_async_job_submit_route_rejects_missing_retrieval_target_id(client: TestClient) -> None:

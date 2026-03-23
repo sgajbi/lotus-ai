@@ -9,7 +9,7 @@ def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
     runtime = build_async_runtime_status()
     blocking_findings = [
         "Dedicated queue-backed worker execution remains disabled; the current durable in-process worker posture is reviewable but not yet horizontally isolated.",
-        "Only a narrow allowlist of async job types is runtime-backed today; broader async surfaces such as evaluation execution remain staged.",
+        "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
     ]
     activation_path = [
         "Activate an isolated queue-backed worker execution strategy on top of the durable submission, claim, lease, and recovery model.",

@@ -1,6 +1,8 @@
 from pathlib import Path
 
+import pytest
 from fastapi import HTTPException
+from unittest.mock import patch
 
 from app.contracts.async_runtime import AsyncJobSubmissionRequest
 from app.repositories.async_runtime_repository import (
@@ -113,6 +115,7 @@ def test_submit_async_job_rejects_documentation_only_job_type() -> None:
     response = submit_async_job(
         AsyncJobSubmissionRequest(
             job_type="evaluation_execution",
+            target_id="provider_runtime_examples",
             caller_app="lotus-platform",
             correlation_id="corr-async-001-eval",
             payload_summary="Run staged evaluation family.",
@@ -120,9 +123,9 @@ def test_submit_async_job_rejects_documentation_only_job_type() -> None:
     )
 
     assert response.service == "lotus-ai"
-    assert response.submission_status == "REJECTED"
-    assert response.accepted is False
-    assert response.job_id is None
+    assert response.submission_status == "ACCEPTED"
+    assert response.accepted is True
+    assert response.job_id is not None
     assert response.queue_mode == "STUBBED"
     assert response.worker_mode == "STUBBED"
 
@@ -144,10 +147,36 @@ def test_submit_async_job_raises_not_found_for_unknown_job_type() -> None:
         raise AssertionError("Expected async submission to raise HTTPException.")
 
 
+def test_submit_async_job_rejects_disabled_non_evaluation_job_type() -> None:
+    with patch("app.services.async_submission_service.get_async_job_type_descriptor") as descriptor:
+        descriptor.return_value = type(
+            "JobTypeDescriptor",
+            (),
+            {
+                "enabled": False,
+                "execution_path": "future_worker_queue",
+            },
+        )()
+        response = submit_async_job(
+            AsyncJobSubmissionRequest(
+                job_type="document_ingestion",
+                target_id="doc-001",
+                caller_app="lotus-platform",
+                correlation_id="corr-async-disabled-doc-ingestion",
+                payload_summary="Ingest large document.",
+            )
+        )
+
+    assert response.accepted is False
+    assert response.submission_status == "REJECTED"
+    assert "staged-only" in response.message
+
+
 def test_validate_async_job_target_ignores_non_retrieval_job_types() -> None:
     _validate_async_job_target(
         request=AsyncJobSubmissionRequest(
             job_type="evaluation_execution",
+            target_id="provider_runtime_examples",
             caller_app="lotus-platform",
             correlation_id="corr-async-ignore-target",
             payload_summary="Run evaluation family.",
@@ -195,6 +224,53 @@ def test_find_active_duplicate_submission_ignores_non_matching_runtime_jobs() ->
             target_id="retjob_lotus_platform_rfcs",
             caller_app="lotus-platform",
             correlation_id="corr-async-duplicate-ignore",
+            payload_summary="Fresh request.",
+        )
+    )
+
+    assert duplicate is None
+
+
+def test_submit_async_job_rejects_unknown_retrieval_target() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        submit_async_job(
+            AsyncJobSubmissionRequest(
+                job_type="retrieval_indexing",
+                target_id="missing_retrieval_job",
+                caller_app="lotus-platform",
+                correlation_id="corr-async-missing-retrieval-job",
+                payload_summary="Index missing retrieval target.",
+            )
+        )
+
+    assert exc_info.value.status_code == 404
+
+
+def test_find_active_duplicate_submission_ignores_same_target_for_different_caller() -> None:
+    store = get_async_runtime_store()
+    store.save_job(
+        AsyncRuntimeJobRecord(
+            job_id="async-job-duplicate-other-caller",
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            lifecycle_status="RUNNING",
+            submitted_at="2026-03-23T00:00:00Z",
+            caller_app="other-app",
+            correlation_id="corr-001",
+            payload_summary="Running job for different caller.",
+            execution_path="durable_runtime_worker_execution",
+            related_evaluation_run_id=None,
+            latest_message="Running.",
+            attempt_count=1,
+        )
+    )
+
+    duplicate = _find_active_duplicate_submission(
+        request=AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-different-caller",
             payload_summary="Fresh request.",
         )
     )

@@ -5,10 +5,12 @@ from app.contracts.retrieval import (
     RetrievalEvidenceReadinessItem,
     RetrievalEvidenceReadinessResponse,
 )
+from app.services.eval_approval_gate_summary import build_retrieval_approval_gate_summary
 from app.services.governance_readiness import summarize_activation_items
 
 
 def build_retrieval_evidence_readiness() -> RetrievalEvidenceReadinessResponse:
+    approval_gate = build_retrieval_approval_gate_summary()
     items = [
         RetrievalEvidenceReadinessItem(
             evidence_id="retrieval_fixture_coverage_pack",
@@ -55,4 +57,5 @@ def build_retrieval_evidence_readiness() -> RetrievalEvidenceReadinessResponse:
         required_item_count=required_item_count,
         completed_required_item_count=completed_required_item_count,
         items=items,
+        approval_gate=approval_gate,
     )

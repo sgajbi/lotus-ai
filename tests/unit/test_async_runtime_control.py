@@ -17,9 +17,12 @@ from app.services.async_runtime_store import (
     get_async_runtime_store,
     reset_async_runtime_store_cache,
 )
+from app.services.eval_run_submission_service import submit_evaluation_run
+from app.services.eval_run_service import build_evaluation_run_detail
 from app.services.async_submission_service import submit_async_job
 from app.services.async_worker_runtime import claim_next_async_job, fail_async_job, start_async_job
 from app.contracts.async_runtime import AsyncJobSubmissionRequest
+from app.contracts.evals import EvaluationRunSubmissionRequest
 from tests.support.migration_runner import upgrade_database_to_head
 
 
@@ -279,3 +282,34 @@ def test_async_control_action_rejects_missing_attempt_for_active_lease() -> None
         )
 
     assert exc_info.value.status_code == 409
+
+
+def test_async_control_action_abandon_updates_linked_evaluation_attempt() -> None:
+    response = submit_evaluation_run(
+        EvaluationRunSubmissionRequest(
+            fixture_id="provider_policy_examples",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-eval-abandon-001",
+            triggered_by="operator-a",
+        )
+    )
+    claim = claim_next_async_job(worker_id="worker-a")
+    assert claim is not None
+    start_async_job(job_id=response.async_job_id or "", worker_id="worker-a")
+
+    action = apply_async_control_action(
+        AsyncControlActionRequest(
+            job_id=response.async_job_id or "",
+            action_type=AsyncControlActionType.ABANDON_ACTIVE_JOB,
+            requested_by="operator-a",
+            approved_by="approver-a",
+            reason="Abandon linked evaluation.",
+        )
+    )
+
+    detail = build_evaluation_run_detail(run_id=response.run_id or "")
+
+    assert action.event.resulting_status == "ABANDONED"
+    assert detail.run.status.value == "ABANDONED"
+    assert detail.attempts[0].status.value == "ABANDONED"
+    assert detail.attempts[0].failure_reason == "MANUAL_ABANDON"

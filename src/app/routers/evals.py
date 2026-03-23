@@ -7,11 +7,14 @@ from app.contracts.evals import (
     EvaluationFixtureDetailResponse,
     EvaluationRunCatalogResponse,
     EvaluationRunDetailResponse,
+    EvaluationRunSubmissionRequest,
+    EvaluationRunSubmissionResponse,
     EvaluationRuntimeStatusResponse,
 )
 from app.services.eval_catalog import build_evaluation_catalog
 from app.services.eval_fixture_service import build_evaluation_fixture_detail
 from app.services.eval_run_service import build_evaluation_run_catalog, build_evaluation_run_detail
+from app.services.eval_run_submission_service import submit_evaluation_run
 from app.services.eval_status import build_evaluation_runtime_status
 
 router = APIRouter(prefix="/platform/evals", tags=["platform"])
@@ -57,10 +60,10 @@ async def get_evaluation_runtime_status_route() -> EvaluationRuntimeStatusRespon
     "/runs",
     response_model=EvaluationRunCatalogResponse,
     operation_id="getEvaluationRunCatalog",
-    summary="Get lotus-ai recorded evaluation run artifacts",
+    summary="Get lotus-ai evaluation runs",
     description=(
-        "Returns read-only recorded evaluation run artifacts that capture governed evaluation "
-        "inventory snapshots without requiring a live evaluation runner."
+        "Returns evaluation runs from historical staged artifacts and durable runtime-backed "
+        "submission state."
     ),
     responses={
         200: {"description": "Evaluation run catalog returned successfully."},
@@ -69,6 +72,30 @@ async def get_evaluation_runtime_status_route() -> EvaluationRuntimeStatusRespon
 )
 async def get_evaluation_run_catalog_route() -> EvaluationRunCatalogResponse:
     return build_evaluation_run_catalog()
+
+
+@router.post(
+    "/runs/submit",
+    response_model=EvaluationRunSubmissionResponse,
+    operation_id="submitEvaluationRun",
+    summary="Submit a runtime-backed evaluation run",
+    description=(
+        "Submits an allowlisted evaluation fixture family into durable runtime state and links it "
+        "to the async backbone without starting worker-backed case execution yet."
+    ),
+    responses={
+        200: {"description": "Evaluation run submission evaluated successfully."},
+        404: {"description": "Evaluation fixture family not found."},
+        409: {
+            "description": "Evaluation fixture family is not allowlisted for runtime-backed submission."
+        },
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def submit_evaluation_run_route(
+    request: EvaluationRunSubmissionRequest,
+) -> EvaluationRunSubmissionResponse:
+    return submit_evaluation_run(request)
 
 
 @router.get(
@@ -94,10 +121,10 @@ async def get_evaluation_fixture_detail_route(fixture_id: str) -> EvaluationFixt
     "/runs/{run_id}",
     response_model=EvaluationRunDetailResponse,
     operation_id="getEvaluationRunDetail",
-    summary="Get lotus-ai recorded evaluation run artifact detail",
+    summary="Get lotus-ai evaluation run detail",
     description=(
-        "Returns detail for a specific recorded evaluation run artifact, including seam-oriented "
-        "coverage captured at recording time."
+        "Returns detail for a specific evaluation run from historical staged artifacts or durable "
+        "runtime-backed submission state."
     ),
     responses={
         200: {"description": "Evaluation run artifact detail returned successfully."},

@@ -34,7 +34,8 @@ def build_async_runtime_status() -> AsyncRuntimeStatusResponse:
         supported_job_types=list_async_job_types(),
         message=(
             "Async submission, claim, lease, recovery, and terminal-state tracking are durable "
-            "for a narrow allowlist, with retrieval indexing already running through the runtime-backed "
-            "in-process worker path. Dedicated queue-backed worker fleet execution is still disabled."
+            "for a narrow allowlist, with retrieval indexing and evaluation execution already running "
+            "through the runtime-backed in-process worker path. Dedicated queue-backed worker fleet "
+            "execution is still disabled."
         ),
     )

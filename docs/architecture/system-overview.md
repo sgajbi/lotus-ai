@@ -133,6 +133,31 @@ filtering in separate builders.
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.
 
+RFC-0007 Slice 1 also adds an explicit evaluation-runtime repository and store seam plus
+migration-managed durable schema for evaluation runs, attempts, and per-case outcomes. Public
+evaluation APIs remain artifact-backed for now, but later runtime-backed execution slices no
+longer need to invent persistence ad hoc.
+
+RFC-0007 Slice 2 activates narrow runtime-backed evaluation submission on top of that seam.
+Allowlisted fixture families can now create authoritative durable run records linked to async
+jobs, and evaluation run catalog/detail views merge those runtime-backed records with clearly
+labeled historical artifact baselines.
+
+RFC-0007 Slice 3 activates worker-backed execution for that same narrow evaluation allowlist.
+Runtime-backed evaluation runs now move through persisted queued, running, completed, and failed
+states; attempt history is recorded durably; and per-case outcomes plus derived run verdicts are
+stored in the evaluation runtime store instead of being implied only by staged artifact files.
+
+RFC-0007 Slice 4 then feeds that same runtime-backed evaluation state into rollout governance.
+Provider and retrieval evidence-readiness surfaces now expose explicit approval-gate summaries
+that distinguish staged-only baselines, partial runtime coverage, runtime pass, runtime failure,
+and stale runtime evidence by governed fixture family.
+
+RFC-0007 Slice 5 closes the runtime-convergence loop around those approval gates. Async replay,
+requeue, and lease-expiry recovery now preserve explicit evaluation attempt history rather than
+only async attempt history, and evaluation runtime status now exposes approval-gate posture
+directly so platform-level status and rollout review use the same evaluation truth model.
+
 Retrieval services also use a dedicated inventory-summary helper now, so source-level and
 runtime-level document and chunk counts are derived in one place instead of being recomputed
 independently by retrieval status and job builders.
@@ -288,10 +313,10 @@ retrieval index jobs can now be submitted into the durable async backbone, execu
 stubbed worker lifecycle, and reflected back into retrieval job catalog/detail plus retrieval
 document/chunk index-status surfaces. Live retrieval search rollout remains a separate concern.
 
-Async evaluation and runbook surfaces now reflect that same runtime truth explicitly: staged
-evaluation coverage includes durable submission, lease-expiry recovery, and retrieval-indexing
-linkage, while the service runbook documents restart-survival and recovery expectations for the
-SQL-backed async runtime path.
+Async evaluation and runbook surfaces now reflect that same runtime truth explicitly: runtime-backed
+evaluation execution is active for the allowlisted fixture families, staged evaluation assets remain
+as governed continuity baselines, and the service runbook documents restart-survival plus recovery
+expectations for the SQL-backed async runtime path.
 
 Async runtime-backed jobs now also expose a narrow control-plane surface for retry, replay,
 requeue, and manual abandon actions. Those operator actions are recorded durably as async

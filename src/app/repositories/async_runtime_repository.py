@@ -102,6 +102,7 @@ class AsyncRuntimeRepository(Protocol):
         self,
         *,
         worker_id: str,
+        job_types: tuple[str, ...] | None,
         claimed_at: str,
         heartbeat_at: str,
         lease_expires_at: str,

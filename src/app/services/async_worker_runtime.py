@@ -11,6 +11,11 @@ from app.repositories.async_runtime_repository import (
     AsyncRuntimeJobRecord,
     AsyncRuntimeLeaseRecord,
 )
+from app.services.eval_attempt_runtime import (
+    abandon_active_evaluation_attempt,
+    claim_active_evaluation_attempt,
+    queue_next_evaluation_attempt,
+)
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.async_runtime_transitions import queue_next_async_attempt
 
@@ -25,10 +30,19 @@ class AsyncWorkerClaimResult:
 
 
 def claim_next_async_job(*, worker_id: str) -> AsyncWorkerClaimResult | None:
+    return claim_next_async_job_for_types(worker_id=worker_id, job_types=None)
+
+
+def claim_next_async_job_for_types(
+    *,
+    worker_id: str,
+    job_types: tuple[str, ...] | None,
+) -> AsyncWorkerClaimResult | None:
     now = _utcnow()
     recover_expired_async_jobs(now=now)
     claimed = get_async_runtime_store().claim_next_runnable_job(
         worker_id=worker_id,
+        job_types=job_types,
         claimed_at=_isoformat(now),
         heartbeat_at=_isoformat(now),
         lease_expires_at=_isoformat(now + timedelta(seconds=_LEASE_SECONDS)),
@@ -39,6 +53,14 @@ def claim_next_async_job(*, worker_id: str) -> AsyncWorkerClaimResult | None:
     )
     if claimed is None:
         return None
+    if claimed.job.related_evaluation_run_id is not None:
+        claim_active_evaluation_attempt(
+            run_id=claimed.job.related_evaluation_run_id,
+            worker_id=worker_id,
+            reason_message=(
+                f"Evaluation attempt claimed by worker '{worker_id}' and is waiting for explicit execution start."
+            ),
+        )
     return AsyncWorkerClaimResult(
         job=claimed.job,
         attempt=claimed.attempt,
@@ -256,6 +278,16 @@ def recover_expired_async_jobs(*, now: datetime | None = None) -> list[str]:
             job=job,
             reason_message="Retry queued after lease expiry recovery.",
         )
+        if job.related_evaluation_run_id is not None:
+            abandon_active_evaluation_attempt(
+                run_id=job.related_evaluation_run_id,
+                reason_message="Evaluation attempt abandoned after async lease expiry recovery.",
+                failure_reason="LEASE_EXPIRED",
+            )
+            queue_next_evaluation_attempt(
+                run_id=job.related_evaluation_run_id,
+                reason_message="Evaluation retry queued after async lease expiry recovery.",
+            )
         recovered_job_ids.append(job.job_id)
     return recovered_job_ids
 
