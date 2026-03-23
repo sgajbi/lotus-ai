@@ -4,6 +4,7 @@ from app.contracts.evals import EvaluationRuntimeStatusResponse
 from app.services.eval_approval_gate_summary import (
     build_provider_approval_gate_summary,
     build_retrieval_approval_gate_summary,
+    build_safety_approval_gate_summary,
 )
 from app.services.eval_catalog import build_evaluation_catalog
 from app.services.eval_inventory_summary import summarize_evaluation_inventory
@@ -20,6 +21,7 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
     approval_gates = [
         build_retrieval_approval_gate_summary(),
         build_provider_approval_gate_summary(),
+        build_safety_approval_gate_summary(),
     ]
     return EvaluationRuntimeStatusResponse(
         service=catalog.service,

@@ -4,6 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
+
 
 class SafetyControlStatus(str, Enum):
     DOCUMENTED = "DOCUMENTED"
@@ -88,6 +90,55 @@ class SafetyRuntimeStatusResponse(BaseModel):
         description="Safety execution dispositions the current runtime can truthfully emit."
     )
     task_policy_count: int = Field(description="Number of task-level safety policies exposed.")
+
+
+class SafetyEvidenceReadinessItem(BaseModel):
+    evidence_id: str = Field(description="Stable safety evidence-readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the evidence requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this evidence item must be complete before safety rollout is treated as governed."
+    )
+    notes: str = Field(description="Human-readable explanation of the evidence requirement.")
+
+
+class SafetyEvidenceReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the safety evidence readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    evidence_ready: bool = Field(
+        description="Whether safety evidence posture is currently sufficient for governed rollout."
+    )
+    required_item_count: int = Field(
+        description="Number of safety evidence items currently required for governed rollout."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required safety evidence items currently marked complete."
+    )
+    items: list[SafetyEvidenceReadinessItem] = Field(
+        description="Governed safety evidence-readiness items."
+    )
+    approval_gate: EvaluationApprovalGateSummaryDescriptor = Field(
+        description="Runtime-backed approval evidence summary for the safety rollout domain."
+    )
+
+
+class SafetyGovernanceStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the safety governance status view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    governance_ready: bool = Field(
+        description="Whether safety governance posture is currently sufficient for enforced rollout."
+    )
+    runtime_status: SafetyRuntimeStatusResponse = Field(
+        description="Current runtime safety enforcement posture."
+    )
+    evidence_readiness: SafetyEvidenceReadinessResponse = Field(
+        description="Evaluation and audit evidence-readiness summary for safety enforcement."
+    )
+    blocking_area_count: int = Field(
+        description="Number of top-level safety governance areas currently blocking rollout."
+    )
+    governance_summary: list[str] = Field(
+        description="Human-readable summary of the current safety governance posture."
+    )
 
 
 class SafetyExecutionOutcome(BaseModel):

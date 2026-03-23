@@ -3,6 +3,7 @@ from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from app.services.eval_approval_gate_summary import (
     build_provider_approval_gate_summary,
     build_retrieval_approval_gate_summary,
+    build_safety_approval_gate_summary,
 )
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_submission_service import submit_evaluation_run
@@ -135,3 +136,27 @@ def test_retrieval_approval_gate_reports_runtime_in_progress() -> None:
     assert summary.evidence_state.value == "RUNTIME_IN_PROGRESS"
     assert summary.approval_ready is False
     assert summary.fixture_summaries[0].evidence_state.value == "RUNTIME_IN_PROGRESS"
+
+
+def test_safety_approval_gate_reports_runtime_pass_when_required_fixtures_pass() -> None:
+    for fixture_id in (
+        "safety_policy_examples",
+        "safety_runtime_examples",
+    ):
+        submit_evaluation_run(
+            EvaluationRunSubmissionRequest(
+                fixture_id=fixture_id,
+                caller_app="lotus-platform",
+                correlation_id=f"corr-{fixture_id}",
+                triggered_by="operator-a",
+            )
+        )
+        run_next_evaluation_execution_job(worker_id="worker-a")
+
+    summary = build_safety_approval_gate_summary()
+
+    assert summary.domain_id == "safety_enforcement"
+    assert summary.evidence_state.value == "RUNTIME_PASS"
+    assert summary.approval_ready is True
+    assert summary.required_fixture_count == 2
+    assert summary.runtime_backed_fixture_count == 2

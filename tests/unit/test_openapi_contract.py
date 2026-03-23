@@ -86,6 +86,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/safety/runtime-status"]["get"]["operationId"] == (
         "getSafetyRuntimeStatus"
     )
+    assert spec["paths"]["/platform/safety/evidence-readiness"]["get"]["operationId"] == (
+        "getSafetyEvidenceReadiness"
+    )
+    assert spec["paths"]["/platform/safety/governance-status"]["get"]["operationId"] == (
+        "getSafetyGovernanceStatus"
+    )
     safety_runtime_schema = spec["components"]["schemas"]["SafetyRuntimeStatusResponse"]
     assert "runtime_redaction_disposition" in safety_runtime_schema["properties"]
     assert "supported_execution_dispositions" in safety_runtime_schema["properties"]

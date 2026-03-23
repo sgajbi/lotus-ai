@@ -525,9 +525,11 @@ Current rules:
 
 1. safety posture is visible through `/platform/safety/policy`,
 2. runtime safety status is visible through `/platform/safety/runtime-status`,
-3. response labeling and audit evidence are already enforced,
-4. task and audit contracts now carry typed safety execution outcomes, rejected-vs-completed execution status, and deterministic runtime minimization can be activated for bounded outputs through the safety mode setting,
-5. documented-only safety posture remains explicit when runtime enforcement is not active.
+3. safety evidence readiness is visible through `/platform/safety/evidence-readiness`,
+4. safety governance status is visible through `/platform/safety/governance-status`,
+5. response labeling and audit evidence are already enforced,
+6. task and audit contracts now carry typed safety execution outcomes, rejected-vs-completed execution status, and deterministic runtime minimization can be activated for bounded outputs through the safety mode setting,
+7. documented-only safety posture remains explicit when runtime enforcement is not active.
 
 ## Deployment Policy
 

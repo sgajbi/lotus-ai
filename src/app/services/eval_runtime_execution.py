@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from app.config import settings
 from app.contracts.evals import EvaluationCaseOutcome, EvaluationRunVerdict
 from app.contracts.providers import ProviderFailureCategory, ProviderQuotaScope
+from app.contracts.safety import SafetyExecutionOutcome
 from app.contracts.tasks import (
     CallerMetadata,
     OutputLabel,
@@ -43,6 +44,12 @@ from app.services.provider_operations_store import (
 from app.services.provider_quota_policy import reset_provider_quota_counters
 from app.services.retrieval_execution_status import build_retrieval_execution_status
 from app.services.retrieval_store import get_retrieval_repository, reset_retrieval_repository
+from app.services.safety_enforcement import (
+    apply_safety_enforcement,
+    resolve_safety_policy_for_output,
+)
+from app.services.safety_policy import build_safety_policy
+from app.services.safety_status import build_safety_runtime_status
 from app.services.task_executor import execute_task
 
 
@@ -372,6 +379,98 @@ def _execute_fixture_case(
             summary = "Provider operations posture did not match expected runtime evidence."
         return (summary, outcome, ["service://platform/providers/operations-status"])
 
+    if fixture_id == "safety_policy_examples":
+        if case.case_id == "explanation_task_requires_minimization":
+            safety_policy = build_safety_policy()
+            task_policy = next(
+                item
+                for item in safety_policy.task_policies
+                if item.task_id == case.input_payload["task_id"]
+            )
+            checks = [
+                task_policy.output_label == case.input_payload["output_label"],
+                task_policy.redaction_posture.value == case.expected_payload["redaction_posture"],
+                task_policy.response_labeling_required
+                == case.expected_payload["response_labeling_required"],
+                case.expected_payload["intended_use_note_contains"] in task_policy.intended_use_notes,
+            ]
+            outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
+            return (
+                (
+                    "Safety policy matched the expected output-label minimization posture."
+                    if outcome == EvaluationCaseOutcome.PASS
+                    else "Safety policy did not match the expected output-label minimization posture."
+                ),
+                outcome,
+                ["service://platform/safety/policy"],
+            )
+        runtime_status = build_safety_runtime_status()
+        checks = [
+            runtime_status.enforced_control_ids == case.expected_payload["enforced_control_ids"],
+            runtime_status.documented_only_control_ids
+            == case.expected_payload["documented_only_control_ids"],
+            runtime_status.runtime_redaction_active == case.expected_payload["runtime_redaction_active"],
+        ]
+        outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
+        return (
+            (
+                "Safety runtime status matched the expected enforced-versus-documented posture."
+                if outcome == EvaluationCaseOutcome.PASS
+                else "Safety runtime status did not match the expected enforced-versus-documented posture."
+            ),
+            outcome,
+            ["service://platform/safety/runtime-status"],
+        )
+
+    if fixture_id == "safety_runtime_examples":
+        if case.case_id in {
+            "runtime_safety_pass_through_for_draft_output",
+            "runtime_safety_redacts_explanation_output",
+        }:
+            response, _failure_category = _execute_task_case(
+                task_id=str(case.input_payload["task_id"]),
+                case=case,
+            )
+            if response is None:
+                return (
+                    "Safety runtime task execution failed unexpectedly.",
+                    EvaluationCaseOutcome.FAIL,
+                    ["service://ai/tasks/execute"],
+                )
+            checks = [
+                response.status.value == case.expected_payload["task_status"],
+                response.audit.safety.disposition.value == case.expected_payload["disposition"],
+                response.audit.safety.runtime_redaction_active
+                == case.expected_payload["runtime_redaction_active"],
+            ]
+            if case.expected_payload.get("caller_app_redacted") is True:
+                checks.append("caller_app" not in response.result.structured_output)
+            outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
+            return (
+                (
+                    "Task execution reflected the expected runtime safety outcome."
+                    if outcome == EvaluationCaseOutcome.PASS
+                    else "Task execution did not reflect the expected runtime safety outcome."
+                ),
+                outcome,
+                ["service://ai/tasks/execute", "service://platform/safety/runtime-status"],
+            )
+        safety_outcome, runtime_redaction_active = _execute_direct_safety_case(case=case)
+        checks = [
+            safety_outcome.disposition.value == case.expected_payload["disposition"],
+            runtime_redaction_active == case.expected_payload["runtime_redaction_active"],
+        ]
+        outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
+        return (
+            (
+                "Direct safety enforcement matched the expected blocked or degraded runtime behavior."
+                if outcome == EvaluationCaseOutcome.PASS
+                else "Direct safety enforcement did not match the expected blocked or degraded runtime behavior."
+            ),
+            outcome,
+            ["service://platform/safety/runtime-status", "service://ai/tasks/execute"],
+        )
+
     return (
         f"Fixture family '{fixture_id}' does not yet have runtime-backed execution semantics.",
         EvaluationCaseOutcome.FAIL,
@@ -414,7 +513,15 @@ def _build_task_payload(*, case: EvaluationFixtureRuntimeCase) -> dict[str, obje
     payload = {
         key: value
         for key, value in case.input_payload.items()
-        if key not in {"caller_app", "correlation_id", "task_id", "retrieval_mode", "index_sources"}
+        if key
+        not in {
+            "caller_app",
+            "correlation_id",
+            "task_id",
+            "retrieval_mode",
+            "index_sources",
+            "safety_mode",
+        }
     }
     if "source_filters" in payload and "source_ids" not in payload:
         payload["source_ids"] = payload.pop("source_filters")
@@ -445,6 +552,7 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
         "live_text_degradation_enforced": settings.live_text_degradation_enforced,
         "provider_operations_store_mode": settings.provider_operations_store_mode,
         "retrieval_mode": settings.retrieval_mode,
+        "safety_mode": settings.safety_mode,
     }
     try:
         reset_retrieval_repository()
@@ -453,6 +561,8 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
         reset_provider_degradation_state()
         if "retrieval_mode" in input_payload:
             settings.retrieval_mode = str(input_payload["retrieval_mode"])
+        if "safety_mode" in input_payload:
+            settings.safety_mode = str(input_payload["safety_mode"])
         indexed_sources = input_payload.get("index_sources", [])
         if isinstance(indexed_sources, list):
             repository = get_retrieval_repository()
@@ -583,3 +693,24 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
 
 def _utcnow_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _execute_direct_safety_case(
+    *, case: EvaluationFixtureRuntimeCase
+) -> tuple[SafetyExecutionOutcome, bool]:
+    from app.contracts.providers import ProviderExecutionResponse
+    from app.contracts.tasks import OutputLabel
+
+    provider_execution = ProviderExecutionResponse(
+        provider_id="text.stub",
+        provider_mode="stub",
+        stubbed=True,
+        message=str(case.input_payload["provider_message"]),
+        structured_output=cast(dict[str, object], case.input_payload["provider_structured_output"]),
+    )
+    policy = resolve_safety_policy_for_output(OutputLabel(case.input_payload["output_label"]))
+    _safe_execution, outcome = apply_safety_enforcement(
+        policy=policy,
+        provider_execution=provider_execution,
+    )
+    return outcome, outcome.runtime_redaction_active

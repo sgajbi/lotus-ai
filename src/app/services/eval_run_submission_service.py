@@ -40,6 +40,8 @@ RUNTIME_BACKED_EVALUATION_FIXTURE_IDS = {
     "provider_failure_mode_examples",
     "provider_operations_examples",
     "provider_degradation_examples",
+    "safety_policy_examples",
+    "safety_runtime_examples",
 }
 
 
