@@ -267,8 +267,8 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["evaluation_runtime"]["recorded_run_count"] == 2
     assert body["evaluation_runtime"]["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["evaluation_runtime"]["evaluation_runner_active"] is True
-    assert body["prompt_runtime"]["selection_mode"] == "STATIC_ACTIVE"
-    assert body["prompt_runtime"]["rollout_mode"] == "GOVERNED_STATE_READ_ONLY"
+    assert body["prompt_runtime"]["selection_mode"] == "ROLLOUT_STATE_ACTIVE"
+    assert body["prompt_runtime"]["rollout_mode"] == "GOVERNED_CONTROL_ACTIONS"
     assert body["prompt_runtime"]["active_prompt_count"] >= 7
     assert body["prompt_runtime"]["candidate_prompt_count"] == 0
     assert any(

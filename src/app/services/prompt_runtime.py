@@ -15,7 +15,7 @@ from app.services.prompt_store import get_prompt_repository
 from app.services.prompt_rollout_models import PromptRolloutStateRecord
 
 _FOUNDATION_SELECTION_REASON = (
-    "Runtime selection resolves through durable prompt rollout state, which currently remains read-only."
+    "Runtime selection resolves through durable prompt rollout state and explicit governed prompt control actions."
 )
 
 

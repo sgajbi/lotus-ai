@@ -25,5 +25,7 @@ def get_prompt_repository() -> PromptRepository:
 
 
 def reset_prompt_store_cache() -> None:
+    global _memory_prompt_repository
     global _sqlalchemy_prompt_repository
+    _memory_prompt_repository = InMemoryPromptRepository()
     _sqlalchemy_prompt_repository = None

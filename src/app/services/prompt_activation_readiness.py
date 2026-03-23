@@ -14,16 +14,16 @@ def build_prompt_activation_readiness() -> PromptActivationReadinessResponse:
         else PromptManagementMode.SEEDED_MEMORY
     )
     blocking_findings = [
-        "Runtime prompt mutation remains disabled in the current foundation phase.",
-        "Prompt promotion write APIs are not enabled for live rollout changes.",
-        "Prompt promotion is still governed through reviewed repository changes and migration-managed updates.",
-        "No governed live prompt approval and rollback workflow has been activated yet.",
+        "Runtime-backed evaluation evidence is not yet enforced as a hard prompt-promotion gate.",
+        "Prompt rollout runbook readiness remains incomplete for named approvers, rollback response, and incident handling.",
+        "Prompt evidence readiness remains incomplete for regression, audit-traceability, and rollback-proof review.",
+        "Prompt activation still requires end-to-end production hardening beyond the bounded control-plane actions now available.",
     ]
     activation_path = [
-        "Approve a governed prompt rollout model with explicit review, approval, and rollback controls.",
-        "Introduce a live promotion path that preserves provenance, auditability, and runtime safety constraints.",
-        "Enable prompt rollout changes through a reviewed slice with evaluation evidence and supportability gates.",
-        "Validate end-to-end prompt selection and rollback behavior before allowing live promotion changes.",
+        "Keep promote and rollback actions bounded to durable prompt candidates with explicit operator approval metadata.",
+        "Wire runtime-backed evaluation evidence into prompt promotion and rollback review.",
+        "Complete runbook, observability, and incident-response gates for production prompt changes.",
+        "Validate end-to-end prompt selection, rollback, and audit behavior before broad live activation.",
     ]
     return PromptActivationReadinessResponse(
         service=settings.service_name,

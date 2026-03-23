@@ -130,10 +130,10 @@ Prompt runtime services also own lifecycle counting now, so prompt governance an
 runtime status share the same lifecycle summary source instead of duplicating active-prompt
 filtering in separate builders.
 
-RFC-0010 Slice 1 also introduces an explicit durable prompt rollout-state seam. Prompt definitions
-are now version-addressable records and runtime selection resolves through a separate read-only
-rollout-state model, while live promotion and rollback actions remain disabled until later prompt
-rollout slices activate them.
+RFC-0010 Slices 1 and 2 introduce an explicit durable prompt rollout-state seam plus bounded
+control-plane actions. Prompt definitions are now version-addressable records, runtime selection
+resolves through explicit rollout state, and governed promote/rollback actions update that state
+through durable control history without permitting prompt-body editing through the API.
 
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.
@@ -513,9 +513,9 @@ Current rules:
 5. prompt runbook readiness is visible through `/platform/prompts/runbook-readiness`,
 6. prompt evidence readiness is visible through `/platform/prompts/evidence-readiness`,
 7. prompt governance status is visible through `/platform/prompts/governance-status`,
-8. runtime prompt mutation remains disabled in foundation phase,
-9. live prompt promotion remains repository-governed until a stronger activation model is introduced,
-10. runtime prompt selection now resolves through durable rollout state even though that state remains read-only in the current phase.
+8. prompt-body editing remains disabled in foundation phase,
+9. live prompt promotion and rollback now flow through explicit bounded control-plane actions,
+10. runtime prompt selection now resolves through durable rollout state and durable control history.
 
 `/platform/runtime-status` now embeds prompt governance posture directly so operators can review
 prompt rollout state from the same top-level runtime surface that already carries async, provider,

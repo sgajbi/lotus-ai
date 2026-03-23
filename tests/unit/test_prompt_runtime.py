@@ -17,7 +17,7 @@ def test_resolve_runtime_prompt_or_raise_returns_active_prompt_selection() -> No
     assert resolved.prompt.prompt_version == "foundation.explain.v1"
     assert resolved.selection.task_id == "explain.v1"
     assert resolved.selection.selected_for_runtime is True
-    assert "durable prompt rollout state" in resolved.selection.selection_reason
+    assert "governed prompt control actions" in resolved.selection.selection_reason
     assert resolved.selection.rollout_role.value == "ACTIVE"
 
 
@@ -64,5 +64,8 @@ def test_list_prompt_rollout_descriptors_matches_runtime_inventory() -> None:
     rollout_descriptors = list_prompt_rollout_descriptors()
 
     assert any(descriptor.task_id == "explain.v1" for descriptor in rollout_descriptors)
-    assert all(descriptor.rollout_mode.value == "GOVERNED_STATE_READ_ONLY" for descriptor in rollout_descriptors)
-    assert all(descriptor.runtime_mutation_enabled is False for descriptor in rollout_descriptors)
+    assert all(
+        descriptor.rollout_mode.value == "GOVERNED_CONTROL_ACTIONS"
+        for descriptor in rollout_descriptors
+    )
+    assert all(descriptor.runtime_mutation_enabled is True for descriptor in rollout_descriptors)

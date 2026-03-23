@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class PromptLifecycleStatus(str, Enum):
     ACTIVE = "ACTIVE"
+    CANDIDATE = "CANDIDATE"
     RETIRED = "RETIRED"
 
 
@@ -23,6 +24,7 @@ class PromptRolloutRole(str, Enum):
 
 class PromptRolloutSelectionMode(str, Enum):
     GOVERNED_STATE_READ_ONLY = "GOVERNED_STATE_READ_ONLY"
+    GOVERNED_CONTROL_ACTIONS = "GOVERNED_CONTROL_ACTIONS"
 
 
 class PromptDescriptor(BaseModel):
@@ -59,10 +61,90 @@ class PromptGovernanceStatusResponse(BaseModel):
         description="Approved path for promoting prompt definitions in the current phase."
     )
     active_prompt_count: int = Field(description="Number of currently active prompt definitions.")
+    control_history_endpoint: str = Field(
+        description="Inspectable endpoint exposing durable prompt control-plane history."
+    )
+
+
+class PromptControlActionType(str, Enum):
+    PROMOTE_CANDIDATE = "PROMOTE_CANDIDATE"
+    ROLLBACK_TO_PREVIOUS_ACTIVE = "ROLLBACK_TO_PREVIOUS_ACTIVE"
+
+
+class PromptControlEventDescriptor(BaseModel):
+    event_id: str = Field(description="Stable identifier for the prompt control-plane event.")
+    task_id: str = Field(description="Stable task identifier targeted by the action.")
+    action_type: PromptControlActionType = Field(
+        description="Governed control-plane action applied to the prompt rollout state."
+    )
+    requested_by: str = Field(description="Operator identity that requested the action.")
+    approved_by: str = Field(description="Operator identity that approved the action.")
+    reason: str = Field(description="Recorded operator reason for the action.")
+    prior_active_prompt_version: str | None = Field(
+        default=None,
+        description="Active prompt version before the control action ran.",
+    )
+    resulting_active_prompt_version: str | None = Field(
+        default=None,
+        description="Active prompt version after the control action completed.",
+    )
+    prior_candidate_prompt_version: str | None = Field(
+        default=None,
+        description="Candidate prompt version before the control action ran, if any.",
+    )
+    resulting_candidate_prompt_version: str | None = Field(
+        default=None,
+        description="Candidate prompt version after the control action completed, if any.",
+    )
+    recorded_at: str = Field(description="UTC timestamp when the control action was recorded.")
+
+
+class PromptControlActionRequest(BaseModel):
+    task_id: str = Field(description="Stable task identifier targeted by the control action.")
+    action_type: PromptControlActionType = Field(
+        description="Governed prompt control-plane action to apply."
+    )
+    candidate_prompt_version: str | None = Field(
+        default=None,
+        description="Candidate prompt version to promote. Required for promotion and omitted for rollback.",
+    )
+    requested_by: str = Field(description="Operator identity requesting the action.")
+    approved_by: str = Field(description="Operator identity approving the action.")
+    reason: str = Field(description="Human-readable operator reason for the change.")
+
+
+class PromptControlActionResponse(BaseModel):
+    service: str = Field(description="Service name emitting the prompt control response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    event: PromptControlEventDescriptor = Field(
+        description="Durable prompt control-plane event that was recorded."
+    )
+    rollout_state: PromptRolloutDescriptor = Field(
+        description="Resulting rollout state after the control action completed."
+    )
+    summary: list[str] = Field(
+        description="Human-readable summary of the prompt control action outcome."
+    )
+
+
+class PromptControlHistoryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the prompt control history view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    prompt_store_mode: str = Field(description="Configured prompt store mode for the runtime.")
+    supported_action_types: list[PromptControlActionType] = Field(
+        description="Governed prompt control-plane actions currently supported by the runtime."
+    )
+    latest_events: list[PromptControlEventDescriptor] = Field(
+        description="Most recent durable prompt control-plane events."
+    )
+    notes: list[str] = Field(
+        description="Operational notes explaining current prompt control-plane posture."
+    )
 
 
 class PromptSelectionMode(str, Enum):
     STATIC_ACTIVE = "STATIC_ACTIVE"
+    ROLLOUT_STATE_ACTIVE = "ROLLOUT_STATE_ACTIVE"
 
 
 class PromptRuntimeSelectionDescriptor(BaseModel):

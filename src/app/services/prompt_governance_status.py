@@ -18,7 +18,7 @@ def build_prompt_governance_status_summary() -> PromptGovernanceStatusSummaryRes
         evidence_readiness.evidence_ready,
     )
     governance_summary = [
-        "Prompt technical activation remains blocked in foundation phase until live promotion, approval, and rollback controls are explicitly rolled out.",
+        "Prompt technical activation remains blocked until runtime-backed evidence and production hardening are enforced on top of the bounded promote and rollback controls.",
         "Prompt operational runbook readiness remains incomplete until change approval, rollback response, and audit-evidence procedures are fully documented and approved.",
         "Prompt evidence readiness remains incomplete until regression baselines, audit traceability, and rollback-proof evidence are explicitly assembled.",
     ]

@@ -26,10 +26,11 @@ class InMemoryPromptRepository(PromptRepository):
                 active_prompt_version=prompt.prompt_version,
                 candidate_prompt_version=None,
                 previous_active_prompt_version=None,
-                rollout_mode=PromptRolloutSelectionMode.GOVERNED_STATE_READ_ONLY,
-                runtime_mutation_enabled=False,
+                rollout_mode=PromptRolloutSelectionMode.GOVERNED_CONTROL_ACTIONS,
+                runtime_mutation_enabled=True,
             )
             for prompt in prompts
+            if prompt.lifecycle_status == PromptLifecycleStatus.ACTIVE
         }
         self._rollout_events: list[PromptRolloutEventRecord] = []
 
@@ -80,3 +81,15 @@ class InMemoryPromptRepository(PromptRepository):
         ]
         events.sort(key=lambda event: event.recorded_at)
         return events
+
+    def save_prompt_rollout_transition(
+        self,
+        *,
+        rollout_state: PromptRolloutStateRecord,
+        updated_prompts: list[PromptDescriptor],
+        event: PromptRolloutEventRecord,
+    ) -> None:
+        self._rollout_states[rollout_state.task_id] = deepcopy(rollout_state)
+        for prompt in updated_prompts:
+            self._prompt_versions[(prompt.task_id, prompt.prompt_version)] = deepcopy(prompt)
+        self._rollout_events.append(deepcopy(event))

@@ -18,12 +18,12 @@ def build_prompt_governance_status() -> PromptGovernanceStatusResponse:
     return PromptGovernanceStatusResponse(
         prompt_store_mode=settings.prompt_store_mode,
         management_mode=management_mode,
-        runtime_mutation_enabled=False,
-        promotion_write_api_enabled=False,
+        runtime_mutation_enabled=True,
+        promotion_write_api_enabled=True,
         promotion_path=(
-            "Prompt rollout state is now durable and explicit, but active promotion still remains "
-            "read-only until a governed live action surface is introduced; runtime mutation APIs "
-            "remain disabled."
+            "Prompt rollout changes now flow through explicit governed promote and rollback actions "
+            "with durable history; prompt-body editing still remains repository-managed."
         ),
         active_prompt_count=lifecycle_counts.active_prompt_count,
+        control_history_endpoint="/platform/prompts/control-history",
     )

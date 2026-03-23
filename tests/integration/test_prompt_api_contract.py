@@ -5,7 +5,7 @@ def test_prompt_registry_routes(client: TestClient) -> None:
     list_response = client.get("/platform/prompts")
     assert list_response.status_code == 200
     assert any(prompt["task_id"] == "explain.v1" for prompt in list_response.json())
-    assert all(prompt["lifecycle_status"] == "ACTIVE" for prompt in list_response.json())
+    assert any(prompt["lifecycle_status"] == "CANDIDATE" for prompt in list_response.json())
 
     detail_response = client.get("/platform/prompts/explain.v1")
     assert detail_response.status_code == 200
@@ -20,9 +20,10 @@ def test_prompt_governance_route(client: TestClient) -> None:
     body = response.json()
     assert body["prompt_store_mode"] == "memory"
     assert body["management_mode"] == "SEEDED_MEMORY"
-    assert body["runtime_mutation_enabled"] is False
-    assert body["promotion_write_api_enabled"] is False
-    assert "durable and explicit" in body["promotion_path"]
+    assert body["runtime_mutation_enabled"] is True
+    assert body["promotion_write_api_enabled"] is True
+    assert body["control_history_endpoint"] == "/platform/prompts/control-history"
+    assert "governed promote and rollback actions" in body["promotion_path"]
     assert body["active_prompt_count"] >= 7
 
 
@@ -33,12 +34,52 @@ def test_prompt_runtime_status_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["prompt_store_mode"] == "memory"
-    assert body["selection_mode"] == "STATIC_ACTIVE"
-    assert body["rollout_mode"] == "GOVERNED_STATE_READ_ONLY"
+    assert body["selection_mode"] == "ROLLOUT_STATE_ACTIVE"
+    assert body["rollout_mode"] == "GOVERNED_CONTROL_ACTIONS"
     assert body["candidate_prompt_count"] == 0
     assert any(selection["task_id"] == "explain.v1" for selection in body["selections"])
     assert body["selections"][0]["rollout_role"] == "ACTIVE"
     assert any(state["task_id"] == "explain.v1" for state in body["rollout_states"])
+
+
+def test_prompt_control_routes(client: TestClient) -> None:
+    history_response = client.get("/platform/prompts/control-history")
+    assert history_response.status_code == 200
+    assert history_response.json()["supported_action_types"] == [
+        "PROMOTE_CANDIDATE",
+        "ROLLBACK_TO_PREVIOUS_ACTIVE",
+    ]
+
+    promote_response = client.post(
+        "/platform/prompts/control-actions",
+        json={
+            "task_id": "explain.v1",
+            "action_type": "PROMOTE_CANDIDATE",
+            "candidate_prompt_version": "foundation.explain.v2",
+            "requested_by": "alice@lotus.test",
+            "approved_by": "bob@lotus.test",
+            "reason": "Approve explanation candidate",
+        },
+    )
+    assert promote_response.status_code == 200
+    assert promote_response.json()["rollout_state"]["active_prompt_version"] == "foundation.explain.v2"
+
+    rollback_response = client.post(
+        "/platform/prompts/control-actions",
+        json={
+            "task_id": "explain.v1",
+            "action_type": "ROLLBACK_TO_PREVIOUS_ACTIVE",
+            "requested_by": "alice@lotus.test",
+            "approved_by": "bob@lotus.test",
+            "reason": "Restore known-good prompt",
+        },
+    )
+    assert rollback_response.status_code == 200
+    assert rollback_response.json()["rollout_state"]["active_prompt_version"] == "foundation.explain.v1"
+
+    task_history_response = client.get("/platform/prompts/control-history", params={"task_id": "explain.v1"})
+    assert task_history_response.status_code == 200
+    assert len(task_history_response.json()["latest_events"]) == 2
 
 
 def test_prompt_activation_readiness_route(client: TestClient) -> None:

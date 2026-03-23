@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.contracts.prompts import (
+    PromptControlActionType,
     PromptDescriptor,
     PromptRolloutSelectionMode,
 )
@@ -22,7 +23,7 @@ class PromptRolloutStateRecord:
 class PromptRolloutEventRecord:
     event_id: str
     task_id: str
-    action_type: str
+    action_type: PromptControlActionType
     requested_by: str
     approved_by: str
     reason: str

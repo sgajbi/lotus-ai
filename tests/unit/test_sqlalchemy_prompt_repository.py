@@ -1,11 +1,13 @@
 from pathlib import Path
 
 from app.contracts.prompts import (
+    PromptControlActionType,
     PromptLifecycleStatus,
     PromptManagementMode,
     PromptRolloutSelectionMode,
 )
 from app.repositories.sqlalchemy_prompt_repository import SqlAlchemyPromptRepository
+from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
 from tests.support.migration_runner import upgrade_database_to_head
 
 
@@ -28,8 +30,8 @@ def test_sqlalchemy_prompt_repository_returns_seeded_prompts(tmp_path: Path) -> 
     assert rollout_state is not None
     assert rollout_state.active_prompt_version == "foundation.explain.v1"
     assert rollout_state.candidate_prompt_version is None
-    assert rollout_state.rollout_mode == PromptRolloutSelectionMode.GOVERNED_STATE_READ_ONLY
-    assert rollout_state.runtime_mutation_enabled is False
+    assert rollout_state.rollout_mode == PromptRolloutSelectionMode.GOVERNED_CONTROL_ACTIONS
+    assert rollout_state.runtime_mutation_enabled is True
 
     rollout_events = repository.list_prompt_rollout_events("explain.v1")
     assert rollout_events == []
@@ -54,10 +56,66 @@ def test_sqlalchemy_prompt_repository_lists_prompt_versions_and_rollout_states(
     prompt_versions = repository.list_prompt_versions()
     rollout_states = repository.list_prompt_rollout_states()
 
-    assert len(prompt_versions) >= 7
+    assert len(prompt_versions) >= 9
     assert len(rollout_states) >= 7
     explain_state = next(state for state in rollout_states if state.task_id == "explain.v1")
     assert explain_state.active_prompt_version == "foundation.explain.v1"
+    assert any(
+        prompt.task_id == "explain.v1"
+        and prompt.prompt_version == "foundation.explain.v2"
+        and prompt.lifecycle_status == PromptLifecycleStatus.CANDIDATE
+        for prompt in prompt_versions
+    )
+
+
+def test_sqlalchemy_prompt_repository_saves_rollout_transition_and_event(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'prompt-registry.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyPromptRepository(database_url)
+
+    promoted_prompt = repository.get_prompt_version("explain.v1", "foundation.explain.v2")
+    retired_prompt = repository.get_prompt_version("explain.v1", "foundation.explain.v1")
+    assert promoted_prompt is not None
+    assert retired_prompt is not None
+
+    repository.save_prompt_rollout_transition(
+        rollout_state=PromptRolloutStateRecord(
+            task_id="explain.v1",
+            active_prompt_version="foundation.explain.v2",
+            candidate_prompt_version=None,
+            previous_active_prompt_version="foundation.explain.v1",
+            rollout_mode=PromptRolloutSelectionMode.GOVERNED_CONTROL_ACTIONS,
+            runtime_mutation_enabled=True,
+        ),
+        updated_prompts=[
+            retired_prompt.model_copy(update={"lifecycle_status": PromptLifecycleStatus.RETIRED}),
+            promoted_prompt.model_copy(update={"lifecycle_status": PromptLifecycleStatus.ACTIVE}),
+        ],
+        event=PromptRolloutEventRecord(
+            event_id="prompt_evt_test_promote",
+            task_id="explain.v1",
+            action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+            requested_by="alice@lotus.test",
+            approved_by="bob@lotus.test",
+            reason="Promote candidate",
+            prior_active_prompt_version="foundation.explain.v1",
+            resulting_active_prompt_version="foundation.explain.v2",
+            prior_candidate_prompt_version=None,
+            resulting_candidate_prompt_version=None,
+            recorded_at="2026-03-23T09:00:00Z",
+        ),
+    )
+
+    rollout_state = repository.get_prompt_rollout_state("explain.v1")
+    rollout_events = repository.list_prompt_rollout_events("explain.v1")
+    active_prompt = repository.get_prompt("explain.v1")
+
+    assert rollout_state is not None
+    assert rollout_state.active_prompt_version == "foundation.explain.v2"
+    assert rollout_state.previous_active_prompt_version == "foundation.explain.v1"
+    assert active_prompt is not None
+    assert active_prompt.prompt_version == "foundation.explain.v2"
+    assert rollout_events[-1].action_type == PromptControlActionType.PROMOTE_CANDIDATE
 
 
 def test_sqlalchemy_prompt_repository_creates_parent_directory_for_sqlite_file(

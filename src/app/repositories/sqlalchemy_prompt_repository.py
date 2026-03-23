@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app.contracts.prompts import (
+    PromptControlActionType,
     PromptDescriptor,
     PromptLifecycleStatus,
     PromptManagementMode,
@@ -93,6 +94,55 @@ class SqlAlchemyPromptRepository:
             events = session.scalars(statement).all()
             return [self._to_rollout_event(event) for event in events]
 
+    def save_prompt_rollout_transition(
+        self,
+        *,
+        rollout_state: PromptRolloutStateRecord,
+        updated_prompts: list[PromptDescriptor],
+        event: PromptRolloutEventRecord,
+    ) -> None:
+        with self._session_factory() as session:
+            for prompt in updated_prompts:
+                model = session.get(
+                    PromptDefinitionVersionModel,
+                    {"task_id": prompt.task_id, "prompt_version": prompt.prompt_version},
+                )
+                if model is None:
+                    raise RuntimeError(
+                        "Prompt rollout transition referenced a missing prompt definition version."
+                    )
+                model.lifecycle_status = prompt.lifecycle_status.value
+                model.management_mode = prompt.management_mode.value
+                model.source_reference = prompt.source_reference
+                model.system_instructions = prompt.system_instructions
+                model.output_contract_notes = prompt.output_contract_notes
+
+            state_model = session.get(PromptRolloutStateModel, rollout_state.task_id)
+            if state_model is None:
+                raise RuntimeError("Prompt rollout transition referenced a missing rollout state.")
+            state_model.active_prompt_version = rollout_state.active_prompt_version
+            state_model.candidate_prompt_version = rollout_state.candidate_prompt_version
+            state_model.previous_active_prompt_version = rollout_state.previous_active_prompt_version
+            state_model.rollout_mode = rollout_state.rollout_mode.value
+            state_model.runtime_mutation_enabled = rollout_state.runtime_mutation_enabled
+
+            session.add(
+                PromptRolloutEventModel(
+                    event_id=event.event_id,
+                    task_id=event.task_id,
+                    action_type=event.action_type.value,
+                    requested_by=event.requested_by,
+                    approved_by=event.approved_by,
+                    reason=event.reason,
+                    prior_active_prompt_version=event.prior_active_prompt_version,
+                    resulting_active_prompt_version=event.resulting_active_prompt_version,
+                    prior_candidate_prompt_version=event.prior_candidate_prompt_version,
+                    resulting_candidate_prompt_version=event.resulting_candidate_prompt_version,
+                    recorded_at=event.recorded_at,
+                )
+            )
+            session.commit()
+
     def _to_descriptor(
         self, model: PromptDefinitionModel | PromptDefinitionVersionModel
     ) -> PromptDescriptor:
@@ -121,7 +171,7 @@ class SqlAlchemyPromptRepository:
         return PromptRolloutEventRecord(
             event_id=model.event_id,
             task_id=model.task_id,
-            action_type=model.action_type,
+            action_type=PromptControlActionType(model.action_type),
             requested_by=model.requested_by,
             approved_by=model.approved_by,
             reason=model.reason,
