@@ -152,6 +152,7 @@ class AsyncJobModel(Base):
 
     job_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     job_type: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    target_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     lifecycle_status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     submitted_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     caller_app: Mapped[str] = mapped_column(String(128), nullable=False)

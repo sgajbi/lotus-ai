@@ -120,6 +120,7 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
             claimed_job = AsyncRuntimeJobRecord(
                 job_id=job.job_id,
                 job_type=job.job_type,
+                target_id=job.target_id,
                 lifecycle_status="CLAIMED",
                 submitted_at=job.submitted_at,
                 caller_app=job.caller_app,

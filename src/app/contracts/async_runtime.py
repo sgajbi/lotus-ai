@@ -88,6 +88,10 @@ class AsyncWorkerExecutionDescriptor(BaseModel):
 class AsyncJobArtifactDescriptor(BaseModel):
     job_id: str = Field(description="Stable async job artifact identifier.")
     job_type: str = Field(description="Stable async job type identifier.")
+    target_id: str | None = Field(
+        default=None,
+        description="Optional stable runtime target identifier associated with the async job.",
+    )
     status: AsyncJobStatus = Field(description="Lifecycle status for the async job artifact.")
     record_source: AsyncJobRecordSource = Field(
         default=AsyncJobRecordSource.STAGED_ARTIFACT,
@@ -178,6 +182,10 @@ class AsyncJobDetailResponse(BaseModel):
 
 class AsyncJobSubmissionRequest(BaseModel):
     job_type: str = Field(description="Stable async job type identifier requested by the caller.")
+    target_id: str | None = Field(
+        default=None,
+        description="Optional stable target identifier for job types that operate on a specific runtime record.",
+    )
     caller_app: str = Field(
         description="Calling Lotus application submitting the async job request."
     )
@@ -203,6 +211,10 @@ class AsyncJobSubmissionResponse(BaseModel):
         description="Worker mode that governed the submission decision."
     )
     job_type: str = Field(description="Stable async job type identifier evaluated for submission.")
+    target_id: str | None = Field(
+        default=None,
+        description="Stable target identifier when the accepted or evaluated async job maps to a concrete runtime record.",
+    )
     accepted: bool = Field(description="Whether the async submission was accepted.")
     job_id: str | None = Field(
         default=None, description="Assigned async job id when submission is accepted."

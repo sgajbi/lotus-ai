@@ -14,6 +14,7 @@ def test_submit_async_job_accepts_allowlisted_runtime_backed_job_type() -> None:
     response = submit_async_job(
         AsyncJobSubmissionRequest(
             job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
             caller_app="lotus-platform",
             correlation_id="corr-async-001",
             payload_summary="Index newly approved RFC documents.",
@@ -24,6 +25,7 @@ def test_submit_async_job_accepts_allowlisted_runtime_backed_job_type() -> None:
     assert response.submission_status == "ACCEPTED"
     assert response.accepted is True
     assert response.job_id is not None
+    assert response.target_id == "retjob_lotus_platform_rfcs"
     assert response.queue_mode == "STUBBED"
     assert response.worker_mode == "STUBBED"
 
@@ -36,6 +38,7 @@ def test_submit_async_job_persists_sql_backed_runtime_submission(tmp_path: Path)
     response = submit_async_job(
         AsyncJobSubmissionRequest(
             job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
             caller_app="lotus-platform",
             correlation_id="corr-async-001-sql",
             payload_summary="Index newly approved RFC documents.",
@@ -47,8 +50,26 @@ def test_submit_async_job_persists_sql_backed_runtime_submission(tmp_path: Path)
     runtime_job = next(job for job in catalog.jobs if job.job_id == response.job_id)
 
     assert response.accepted is True
+    assert runtime_job.target_id == "retjob_lotus_platform_rfcs"
     assert runtime_job.status == "QUEUED"
     assert runtime_job.record_source == "RUNTIME_STATE"
+
+
+def test_submit_async_job_rejects_missing_retrieval_target_id() -> None:
+    try:
+        submit_async_job(
+            AsyncJobSubmissionRequest(
+                job_type="retrieval_indexing",
+                caller_app="lotus-platform",
+                correlation_id="corr-async-001-missing-target",
+                payload_summary="Index newly approved RFC documents.",
+            )
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 409
+        assert "requires a concrete retrieval index job target_id" in str(exc.detail)
+    else:
+        raise AssertionError("Expected async submission to reject missing retrieval target_id.")
 
 
 def test_submit_async_job_rejects_documentation_only_job_type() -> None:

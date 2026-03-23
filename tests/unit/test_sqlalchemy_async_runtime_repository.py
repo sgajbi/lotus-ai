@@ -20,6 +20,7 @@ def test_sqlalchemy_async_runtime_repository_round_trip(tmp_path: Path) -> None:
         AsyncRuntimeJobRecord(
             job_id="async-job-001",
             job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
             lifecycle_status="SUBMITTED",
             submitted_at="2026-03-23T00:00:00Z",
             caller_app="lotus-ai",
@@ -164,6 +165,7 @@ def test_sqlalchemy_async_runtime_repository_claims_next_runnable_job_once(
         AsyncRuntimeJobRecord(
             job_id="async-job-001",
             job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
             lifecycle_status="QUEUED",
             submitted_at="2026-03-23T00:00:00Z",
             caller_app="lotus-ai",
@@ -202,6 +204,7 @@ def test_sqlalchemy_async_runtime_repository_claims_next_runnable_job_once(
 
     assert claim is not None
     assert claim.job.lifecycle_status == "CLAIMED"
+    assert claim.job.target_id == "retjob_lotus_platform_rfcs"
     assert claim.attempt.worker_id == "worker-a"
     assert claim.lease.worker_id == "worker-a"
     assert repository.claim_next_runnable_job(

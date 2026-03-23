@@ -18,6 +18,7 @@ def map_async_runtime_job(record: AsyncRuntimeJobRecord) -> AsyncJobArtifactDesc
     return AsyncJobArtifactDescriptor(
         job_id=record.job_id,
         job_type=record.job_type,
+        target_id=record.target_id,
         status=AsyncJobStatus(record.lifecycle_status),
         record_source=AsyncJobRecordSource.RUNTIME_STATE,
         submitted_at=record.submitted_at,

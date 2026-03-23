@@ -125,6 +125,8 @@ The current execution posture is:
 - async runtime now also has an explicit repository and store seam plus migration-managed durable schema for jobs, attempts, and worker leases, even though public async execution behavior remains foundation-phase only for now,
 - the active async queue backend is now the service database for durable submission state, while worker execution is currently available only through a stubbed in-process posture rather than a dedicated worker fleet,
 - async runtime now also supports stubbed worker claim, heartbeat, completion, failure, and lease-expiry recovery semantics for a narrow allowlist of runtime-backed job types,
+- retrieval indexing is now the first runtime-backed async consumer, with concrete retrieval index jobs submitted into the durable async runtime and reflected back into retrieval job catalog/detail state,
+- retrieval execution posture now distinguishes runtime-backed indexing from still-disabled live search, so indexing rollout no longer depends on staged-only retrieval job artifacts,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

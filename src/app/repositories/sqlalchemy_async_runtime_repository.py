@@ -40,6 +40,7 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
         model = AsyncJobModel(
             job_id=record.job_id,
             job_type=record.job_type,
+            target_id=record.target_id,
             lifecycle_status=record.lifecycle_status,
             submitted_at=record.submitted_at,
             caller_app=record.caller_app,
@@ -191,6 +192,7 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
         return AsyncRuntimeJobRecord(
             job_id=model.job_id,
             job_type=model.job_type,
+            target_id=model.target_id,
             lifecycle_status=model.lifecycle_status,
             submitted_at=model.submitted_at,
             caller_app=model.caller_app,

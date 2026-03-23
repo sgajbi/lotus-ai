@@ -20,6 +20,7 @@ def test_async_runtime_status_route(client: TestClient) -> None:
     assert body["enqueued_job_count"] == 0
     assert body["recorded_job_count"] == 2
     assert body["supported_job_types"][0]["enabled"] is True
+    assert body["supported_job_types"][0]["execution_path"] == "durable_runtime_worker_execution"
     assert any(job["job_type"] == "retrieval_indexing" for job in body["supported_job_types"])
 
 
@@ -102,6 +103,7 @@ def test_async_job_catalog_route(client: TestClient) -> None:
     assert body["jobs"][0]["job_id"] == "asyncjob_retrieval_indexing_001"
     assert body["jobs"][0]["status"] == "STAGED"
     assert body["jobs"][0]["record_source"] == "STAGED_ARTIFACT"
+    assert body["jobs"][0]["target_id"] is None
     assert body["jobs"][1]["status"] == "SUPERSEDED"
     assert body["jobs"][1]["related_evaluation_run_id"] == "foundation_eval_2026_03_21_001"
 
@@ -132,6 +134,7 @@ def test_async_job_submit_route_accepts_runtime_backed_submission(client: TestCl
         "/platform/async/jobs/submit",
         json={
             "job_type": "retrieval_indexing",
+            "target_id": "retjob_lotus_platform_rfcs",
             "caller_app": "lotus-platform",
             "correlation_id": "corr-async-submit-001",
             "payload_summary": "Index newly approved RFC documents.",
@@ -144,6 +147,7 @@ def test_async_job_submit_route_accepts_runtime_backed_submission(client: TestCl
     assert body["submission_status"] == "ACCEPTED"
     assert body["accepted"] is True
     assert body["job_id"] is not None
+    assert body["target_id"] == "retjob_lotus_platform_rfcs"
     assert body["queue_mode"] == "STUBBED"
     assert body["worker_mode"] == "STUBBED"
 
@@ -154,6 +158,7 @@ def test_async_job_submit_route_accepts_runtime_backed_submission(client: TestCl
     assert catalog_body["queued_job_count"] == 1
     assert runtime_job["status"] == "QUEUED"
     assert runtime_job["record_source"] == "RUNTIME_STATE"
+    assert runtime_job["target_id"] == "retjob_lotus_platform_rfcs"
 
 
 def test_async_job_detail_route_exposes_runtime_attempt_and_lease_history(
@@ -163,6 +168,7 @@ def test_async_job_detail_route_exposes_runtime_attempt_and_lease_history(
         "/platform/async/jobs/submit",
         json={
             "job_type": "retrieval_indexing",
+            "target_id": "retjob_lotus_platform_rfcs",
             "caller_app": "lotus-platform",
             "correlation_id": "corr-async-submit-claim-001",
             "payload_summary": "Index newly approved RFC documents.",
@@ -212,6 +218,21 @@ def test_async_job_submit_route_rejects_documentation_only_job_type(client: Test
     assert body["job_id"] is None
     assert body["queue_mode"] == "STUBBED"
     assert body["worker_mode"] == "STUBBED"
+
+
+def test_async_job_submit_route_rejects_missing_retrieval_target_id(client: TestClient) -> None:
+    response = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "retrieval_indexing",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-async-submit-missing-target",
+            "payload_summary": "Index newly approved RFC documents.",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "requires a concrete retrieval index job target_id" in response.json()["detail"]
 
 
 def test_async_job_submit_route_returns_not_found_for_unknown_job_type(

@@ -284,6 +284,11 @@ runtime. Allowlisted runtime-backed jobs can now be claimed, heartbeated, comple
 recovered after lease expiry while keeping attempt history and active lease state inspectable
 through the public job-detail surface.
 
+The first real consumer of that worker-backed async runtime is retrieval indexing. Concrete
+retrieval index jobs can now be submitted into the durable async backbone, executed through the
+stubbed worker lifecycle, and reflected back into retrieval job catalog/detail plus retrieval
+document/chunk index-status surfaces. Live retrieval search rollout remains a separate concern.
+
 ### Providers
 
 - `src/app/providers/`

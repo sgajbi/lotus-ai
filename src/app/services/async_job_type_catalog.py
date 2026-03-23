@@ -8,10 +8,10 @@ def list_async_job_types() -> list[AsyncJobTypeDescriptor]:
         AsyncJobTypeDescriptor(
             job_type="retrieval_indexing",
             enabled=True,
-            execution_path="durable_runtime_submission",
+            execution_path="durable_runtime_worker_execution",
             notes=(
-                "Retrieval indexing submissions now persist to durable async runtime state, "
-                "but no worker claim or completion path is active yet."
+                "Retrieval indexing now runs through durable async submission, claim, lease, and "
+                "completion semantics for explicit retrieval index job targets."
             ),
         ),
         AsyncJobTypeDescriptor(

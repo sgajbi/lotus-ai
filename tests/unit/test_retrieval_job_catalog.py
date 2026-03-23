@@ -4,6 +4,7 @@ from app.services.retrieval_catalog_service import (
     get_retrieval_job_detail_or_raise,
     get_retrieval_job_catalog,
 )
+from app.services.retrieval_async_execution import run_next_retrieval_index_job, submit_retrieval_index_job_async
 
 
 def test_get_retrieval_job_catalog_returns_known_jobs() -> None:
@@ -26,6 +27,21 @@ def test_get_retrieval_job_detail_returns_staged_steps() -> None:
 
     assert response.job.source_id == "lotus-platform-rfcs"
     assert any(step.step_id.endswith(".embedding_generation") for step in response.steps)
+
+
+def test_get_retrieval_job_catalog_overlays_runtime_backed_async_state() -> None:
+    submit_retrieval_index_job_async(
+        job_id="retjob_lotus_platform_rfcs",
+        caller_app="lotus-platform",
+        correlation_id="corr-ret-job-catalog-001",
+    )
+    run_next_retrieval_index_job(worker_id="worker-a")
+
+    response = get_retrieval_job_catalog()
+    runtime_job = next(job for job in response.jobs if job.job_id == "retjob_lotus_platform_rfcs")
+
+    assert runtime_job.status.value == "COMPLETED"
+    assert "Runtime-backed retrieval indexing completed successfully" in runtime_job.message
 
 
 def test_get_retrieval_indexing_policy_returns_pgvector_strategy() -> None:

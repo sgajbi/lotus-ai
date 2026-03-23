@@ -18,6 +18,7 @@ from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeJobRecord,
 )
+from app.services.retrieval_catalog_service import get_retrieval_job_detail_or_raise
 from app.services.async_job_type_catalog import get_async_job_type_descriptor
 from app.services.async_runtime_store import get_async_runtime_store
 
@@ -39,6 +40,7 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
             queue_mode=AsyncQueueMode.STUBBED,
             worker_mode=AsyncWorkerMode.STUBBED,
             job_type=request.job_type,
+            target_id=request.target_id,
             accepted=False,
             job_id=None,
             message=(
@@ -46,6 +48,7 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
                 "is not yet allowlisted for durable runtime-backed submission and stubbed worker handling."
             ),
         )
+    _validate_async_job_target(request=request)
     submitted_at = _utcnow().isoformat().replace("+00:00", "Z")
     job_id = f"asyncjob_{request.job_type}_{uuid4().hex[:12]}"
     attempt_id = f"{job_id}_attempt_001"
@@ -54,6 +57,7 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
         AsyncRuntimeJobRecord(
             job_id=job_id,
             job_type=request.job_type,
+            target_id=request.target_id,
             lifecycle_status=AsyncJobStatus.QUEUED.value,
             submitted_at=submitted_at,
             caller_app=request.caller_app,
@@ -92,6 +96,7 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
         queue_mode=AsyncQueueMode.STUBBED,
         worker_mode=AsyncWorkerMode.STUBBED,
         job_type=request.job_type,
+        target_id=request.target_id,
         accepted=True,
         job_id=job_id,
         message=(
@@ -104,3 +109,14 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+def _validate_async_job_target(*, request: AsyncJobSubmissionRequest) -> None:
+    if request.job_type != "retrieval_indexing":
+        return
+    if not request.target_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Async retrieval_indexing submission requires a concrete retrieval index job target_id.",
+        )
+    get_retrieval_job_detail_or_raise(request.target_id)

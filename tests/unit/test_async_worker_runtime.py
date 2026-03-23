@@ -24,6 +24,7 @@ def test_async_worker_runtime_claim_start_and_complete_flow(
     response = submit_async_job(
         AsyncJobSubmissionRequest(
             job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
             caller_app="lotus-platform",
             correlation_id="corr-async-worker-001",
             payload_summary="Refresh retrieval documents.",
@@ -67,6 +68,7 @@ def test_async_worker_runtime_retryable_failure_requeues_next_attempt(
     response = submit_async_job(
         AsyncJobSubmissionRequest(
             job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
             caller_app="lotus-platform",
             correlation_id="corr-async-worker-002",
             payload_summary="Refresh retrieval documents.",
@@ -105,6 +107,7 @@ def test_async_worker_runtime_recovers_expired_lease_on_next_claim(
     response = submit_async_job(
         AsyncJobSubmissionRequest(
             job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
             caller_app="lotus-platform",
             correlation_id="corr-async-worker-003",
             payload_summary="Refresh retrieval documents.",

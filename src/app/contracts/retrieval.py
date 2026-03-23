@@ -29,6 +29,10 @@ class RetrievalIndexStatus(str, Enum):
 class RetrievalJobStatus(str, Enum):
     PENDING = "PENDING"
     STAGED = "STAGED"
+    QUEUED = "QUEUED"
+    CLAIMED = "CLAIMED"
+    RUNNING = "RUNNING"
+    FAILED = "FAILED"
     COMPLETED = "COMPLETED"
 
 
@@ -158,6 +162,14 @@ class RetrievalIndexJobStepDescriptor(BaseModel):
     step_id: str = Field(description="Stable retrieval indexing step identifier.")
     name: str = Field(description="Human-readable retrieval indexing step name.")
     stage: RetrievalPipelineStage = Field(description="Current lifecycle stage for the step.")
+    runtime_status: str | None = Field(
+        default=None,
+        description="Optional runtime-backed async status for this retrieval indexing step.",
+    )
+    linked_async_job_id: str | None = Field(
+        default=None,
+        description="Optional linked async job identifier when the step is driven by the durable async runtime.",
+    )
     description: str = Field(description="Human-readable explanation of the step.")
 
 

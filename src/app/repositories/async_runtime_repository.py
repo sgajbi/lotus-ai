@@ -8,6 +8,7 @@ from typing import Protocol
 class AsyncRuntimeJobRecord:
     job_id: str
     job_type: str
+    target_id: str | None
     lifecycle_status: str
     submitted_at: str
     caller_app: str

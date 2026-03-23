@@ -79,6 +79,7 @@ def start_async_job(*, job_id: str, worker_id: str) -> None:
         AsyncRuntimeJobRecord(
             job_id=job.job_id,
             job_type=job.job_type,
+            target_id=job.target_id,
             lifecycle_status=AsyncJobStatus.RUNNING.value,
             submitted_at=job.submitted_at,
             caller_app=job.caller_app,
@@ -148,6 +149,7 @@ def complete_async_job(*, job_id: str, worker_id: str, message: str) -> None:
         AsyncRuntimeJobRecord(
             job_id=job.job_id,
             job_type=job.job_type,
+            target_id=job.target_id,
             lifecycle_status=AsyncJobStatus.COMPLETED.value,
             submitted_at=job.submitted_at,
             caller_app=job.caller_app,
@@ -199,6 +201,7 @@ def fail_async_job(
         AsyncRuntimeJobRecord(
             job_id=job.job_id,
             job_type=job.job_type,
+            target_id=job.target_id,
             lifecycle_status=AsyncJobStatus.FAILED.value,
             submitted_at=job.submitted_at,
             caller_app=job.caller_app,
@@ -277,6 +280,7 @@ def _queue_next_attempt(*, job: AsyncRuntimeJobRecord, reason_message: str) -> N
         AsyncRuntimeJobRecord(
             job_id=job.job_id,
             job_type=job.job_type,
+            target_id=job.target_id,
             lifecycle_status=AsyncJobStatus.QUEUED.value,
             submitted_at=job.submitted_at,
             caller_app=job.caller_app,
