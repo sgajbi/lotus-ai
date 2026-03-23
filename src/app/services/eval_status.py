@@ -24,11 +24,18 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
         staged_case_count=inventory_summary.staged_case_count,
         seam_coverage=seam_coverage,
         recorded_run_count=run_catalog.run_count,
+        runtime_backed_run_count=run_catalog.runtime_backed_run_count,
+        historical_run_count=run_catalog.historical_run_count,
         latest_recorded_run_id=run_catalog.latest_run_id,
         latest_recorded_run_status=latest_run.status if latest_run is not None else None,
         evaluation_runner_active=False,
         message=(
-            "Evaluation assets are cataloged and partially staged, but no live evaluation runner "
-            "is active in the foundation phase."
+            "Allowlisted evaluation families can now be submitted into durable runtime state, but "
+            "no worker-backed evaluation runner is active yet."
+            if run_catalog.runtime_backed_run_count > 0
+            else (
+                "Evaluation assets are cataloged and partially staged, but no live evaluation runner "
+                "is active in the foundation phase."
+            )
         ),
     )

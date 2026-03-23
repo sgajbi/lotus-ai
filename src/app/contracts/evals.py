@@ -13,6 +13,22 @@ class EvaluationAssetStatus(str, Enum):
 class EvaluationRunStatus(str, Enum):
     RECORDED = "RECORDED"
     SUPERSEDED = "SUPERSEDED"
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    FAILED = "FAILED"
+    COMPLETED = "COMPLETED"
+    ABANDONED = "ABANDONED"
+
+
+class EvaluationRunRecordSource(str, Enum):
+    STAGED_ARTIFACT = "STAGED_ARTIFACT"
+    RUNTIME_STATE = "RUNTIME_STATE"
+
+
+class EvaluationRunSubmissionStatus(str, Enum):
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    DUPLICATE_REJECTED = "DUPLICATE_REJECTED"
 
 
 class EvaluationEvidenceCategoryDescriptor(BaseModel):
@@ -88,24 +104,42 @@ class EvaluationSeamCoverageDescriptor(BaseModel):
 
 class EvaluationRunArtifactDescriptor(BaseModel):
     run_id: str = Field(description="Stable evaluation run artifact identifier.")
-    recorded_at: str = Field(description="UTC timestamp when the evaluation artifact was recorded.")
+    recorded_at: str = Field(
+        description="UTC timestamp when the evaluation run was recorded or submitted."
+    )
     status: EvaluationRunStatus = Field(
-        description="Lifecycle status for the recorded evaluation artifact."
+        description="Lifecycle status for the exposed evaluation run."
+    )
+    record_source: EvaluationRunRecordSource = Field(
+        default=EvaluationRunRecordSource.STAGED_ARTIFACT,
+        description="Whether the run comes from historical staged artifacts or durable runtime state.",
     )
     manifest_version: str = Field(
-        description="Evaluation fixture manifest version associated with the recorded artifact."
+        description="Evaluation fixture manifest version associated with the run."
+    )
+    fixture_id: str | None = Field(
+        default=None,
+        description="Fixture family identifier for runtime-backed evaluation runs when one exists.",
+    )
+    async_job_id: str | None = Field(
+        default=None,
+        description="Related async job identifier for runtime-backed evaluation runs when one exists.",
+    )
+    triggered_by: str | None = Field(
+        default=None,
+        description="Operator or system identity that triggered the runtime-backed evaluation run.",
     )
     staged_fixture_count: int = Field(
-        description="Number of staged fixture families represented in the recorded artifact."
+        description="Number of staged fixture families represented in the exposed run."
     )
     staged_case_count: int = Field(
-        description="Number of staged cases represented in the recorded artifact."
+        description="Number of staged cases represented in the exposed run."
     )
     seam_coverage: list[EvaluationSeamCoverageDescriptor] = Field(
-        description="Seam-oriented coverage captured in the recorded evaluation artifact."
+        description="Seam-oriented coverage associated with the exposed evaluation run."
     )
     notes: str = Field(
-        description="Human-readable description of the recorded evaluation artifact."
+        description="Human-readable description of the exposed evaluation run."
     )
 
 
@@ -113,18 +147,22 @@ class EvaluationRunCatalogResponse(BaseModel):
     service: str = Field(description="Service name emitting the evaluation run catalog.")
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
-    run_count: int = Field(
-        description="Number of recorded evaluation run artifacts currently exposed."
-    )
+    run_count: int = Field(description="Number of evaluation runs currently exposed.")
     latest_run_id: str | None = Field(
         default=None,
-        description="Most recent evaluation run artifact identifier when one exists.",
+        description="Most recent evaluation run identifier when one exists.",
+    )
+    runtime_backed_run_count: int = Field(
+        description="Number of durable runtime-backed evaluation runs currently exposed."
+    )
+    historical_run_count: int = Field(
+        description="Number of historical staged-artifact evaluation runs currently exposed."
     )
     status_counts: dict[EvaluationRunStatus, int] = Field(
-        description="Recorded evaluation run counts by lifecycle status."
+        description="Evaluation run counts by lifecycle status across runtime-backed and historical records."
     )
     runs: list[EvaluationRunArtifactDescriptor] = Field(
-        description="Recorded evaluation run artifacts available for inspection."
+        description="Evaluation runs available for inspection."
     )
 
 
@@ -133,8 +171,53 @@ class EvaluationRunDetailResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
     run: EvaluationRunArtifactDescriptor = Field(
-        description="Recorded evaluation run artifact detail."
+        description="Evaluation run detail from historical artifacts or durable runtime state."
     )
+
+
+class EvaluationRunSubmissionRequest(BaseModel):
+    fixture_id: str = Field(
+        description="Governed evaluation fixture family identifier requested for runtime-backed submission."
+    )
+    caller_app: str = Field(
+        description="Calling Lotus application requesting the evaluation run submission."
+    )
+    correlation_id: str = Field(
+        description="Caller-provided correlation identifier for the evaluation run request."
+    )
+    triggered_by: str = Field(
+        description="Operator or system identity triggering the evaluation run submission."
+    )
+
+
+class EvaluationRunSubmissionResponse(BaseModel):
+    service: str = Field(description="Service name emitting the evaluation run submission response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    submission_status: EvaluationRunSubmissionStatus = Field(
+        description="Submission outcome under the current evaluation runtime posture."
+    )
+    fixture_id: str = Field(
+        description="Governed evaluation fixture family identifier evaluated for submission."
+    )
+    accepted: bool = Field(description="Whether the evaluation run submission was accepted.")
+    run_id: str | None = Field(
+        default=None,
+        description="Assigned durable evaluation run identifier when submission is accepted.",
+    )
+    async_job_id: str | None = Field(
+        default=None,
+        description="Related async job identifier when submission is accepted.",
+    )
+    existing_run_id: str | None = Field(
+        default=None,
+        description="Existing active evaluation run identifier when a duplicate submission is rejected.",
+    )
+    existing_async_job_id: str | None = Field(
+        default=None,
+        description="Related async job identifier for the existing active evaluation run when duplicate submission is rejected.",
+    )
+    message: str = Field(description="Human-readable explanation of the submission outcome.")
 
 
 class EvaluationRuntimeStatusResponse(BaseModel):
@@ -160,15 +243,21 @@ class EvaluationRuntimeStatusResponse(BaseModel):
         description="Staged evaluation coverage summarized by major lotus-ai platform seam."
     )
     recorded_run_count: int = Field(
-        description="Number of recorded evaluation run artifacts currently exposed."
+        description="Number of evaluation runs currently exposed across runtime-backed and historical records."
+    )
+    runtime_backed_run_count: int = Field(
+        description="Number of durable runtime-backed evaluation runs currently exposed."
+    )
+    historical_run_count: int = Field(
+        description="Number of historical staged-artifact evaluation runs currently exposed."
     )
     latest_recorded_run_id: str | None = Field(
         default=None,
-        description="Most recent recorded evaluation run artifact identifier when one exists.",
+        description="Most recent evaluation run identifier when one exists.",
     )
     latest_recorded_run_status: EvaluationRunStatus | None = Field(
         default=None,
-        description="Lifecycle status for the most recent recorded evaluation run artifact.",
+        description="Lifecycle status for the most recent evaluation run.",
     )
     evaluation_runner_active: bool = Field(
         description="Whether a live evaluation runner is active in the current phase."

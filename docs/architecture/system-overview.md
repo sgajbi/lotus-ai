@@ -138,6 +138,11 @@ migration-managed durable schema for evaluation runs, attempts, and per-case out
 evaluation APIs remain artifact-backed for now, but later runtime-backed execution slices no
 longer need to invent persistence ad hoc.
 
+RFC-0007 Slice 2 activates narrow runtime-backed evaluation submission on top of that seam.
+Allowlisted fixture families can now create authoritative durable run records linked to async
+jobs, and evaluation run catalog/detail views merge those runtime-backed records with clearly
+labeled historical artifact baselines.
+
 Retrieval services also use a dedicated inventory-summary helper now, so source-level and
 runtime-level document and chunk counts are derived in one place instead of being recomputed
 independently by retrieval status and job builders.

@@ -16,11 +16,11 @@ def list_async_job_types() -> list[AsyncJobTypeDescriptor]:
         ),
         AsyncJobTypeDescriptor(
             job_type="evaluation_execution",
-            enabled=False,
-            execution_path="future_worker_queue",
+            enabled=True,
+            execution_path="durable_runtime_submission",
             notes=(
-                "Evaluation execution remains staged and artifact-backed until a later async "
-                "execution slice activates runtime-backed evaluation jobs."
+                "Evaluation execution now supports narrow runtime-backed submission for allowlisted "
+                "fixture families, while worker-backed case execution remains a later slice."
             ),
         ),
         AsyncJobTypeDescriptor(

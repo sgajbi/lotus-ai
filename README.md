@@ -97,6 +97,7 @@ The current execution posture is:
 - evaluation fixture family detail is now inspectable through a dedicated read-only endpoint,
 - platform runtime status now summarizes evaluation runtime posture too,
 - evaluation fixture inventory is now backed by a versioned in-repo manifest,
+- allowlisted evaluation fixture families can now be submitted into durable runtime-backed run state, while historical file-backed run artifacts remain visible only as labeled baseline records,
 - evaluation inventory now also includes an explicit async-runtime seam, so durable submission, lease recovery, and retrieval-indexing linkage are represented in the staged eval baseline instead of only in runtime tests,
 - the first real file-backed fixture family now exists for `explain.v1`,
 - a second file-backed fixture family now exists for `summarize.v1`,

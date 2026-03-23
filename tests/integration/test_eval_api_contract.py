@@ -105,6 +105,8 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     assert body["seam_coverage"][3]["staged_fixture_count"] == 5
     assert body["seam_coverage"][3]["staged_case_count"] == 12
     assert body["recorded_run_count"] == 2
+    assert body["runtime_backed_run_count"] == 0
+    assert body["historical_run_count"] == 2
     assert body["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["latest_recorded_run_status"] == "RECORDED"
     assert body["evaluation_runner_active"] is False
@@ -117,9 +119,12 @@ def test_evaluation_run_catalog_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["run_count"] == 2
+    assert body["runtime_backed_run_count"] == 0
+    assert body["historical_run_count"] == 2
     assert body["latest_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["status_counts"]["RECORDED"] == 1
     assert body["status_counts"]["SUPERSEDED"] == 1
+    assert body["runs"][0]["record_source"] == "STAGED_ARTIFACT"
     assert body["runs"][0]["staged_case_count"] == 25
     assert body["runs"][1]["status"] == "SUPERSEDED"
 
@@ -131,6 +136,7 @@ def test_evaluation_run_detail_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["run"]["run_id"] == "foundation_eval_2026_03_22_001"
+    assert body["run"]["record_source"] == "STAGED_ARTIFACT"
     assert body["run"]["seam_coverage"][0]["seam_id"] == "async_execution"
 
 
@@ -151,7 +157,53 @@ def test_evaluation_run_detail_route_returns_not_found_for_unknown_run(
     response = client.get("/platform/evals/runs/missing_run")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Evaluation run artifact 'missing_run' was not found."
+    assert response.json()["detail"] == "Evaluation run 'missing_run' was not found."
+
+
+def test_evaluation_run_submit_route_accepts_runtime_backed_allowlisted_fixture(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/platform/evals/runs/submit",
+        json={
+            "fixture_id": "retrieval_citation_examples",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-eval-submit-001",
+            "triggered_by": "operator-a",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["submission_status"] == "ACCEPTED"
+    assert body["accepted"] is True
+    assert body["run_id"] is not None
+    assert body["async_job_id"] is not None
+
+    catalog_response = client.get("/platform/evals/runs")
+    catalog_body = catalog_response.json()
+    runtime_run = next(run for run in catalog_body["runs"] if run["run_id"] == body["run_id"])
+
+    assert catalog_body["run_count"] == 3
+    assert catalog_body["runtime_backed_run_count"] == 1
+    assert runtime_run["record_source"] == "RUNTIME_STATE"
+    assert runtime_run["fixture_id"] == "retrieval_citation_examples"
+    assert runtime_run["status"] == "QUEUED"
+
+
+def test_evaluation_run_submit_route_rejects_staged_only_fixture(client: TestClient) -> None:
+    response = client.post(
+        "/platform/evals/runs/submit",
+        json={
+            "fixture_id": "explanation_task_examples",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-eval-submit-002",
+            "triggered_by": "operator-a",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "staged-only" in response.json()["detail"]
 
 
 def test_evaluation_fixture_detail_route(client: TestClient) -> None:

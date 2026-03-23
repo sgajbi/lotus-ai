@@ -113,6 +113,7 @@ def test_submit_async_job_rejects_documentation_only_job_type() -> None:
     response = submit_async_job(
         AsyncJobSubmissionRequest(
             job_type="evaluation_execution",
+            target_id="provider_runtime_examples",
             caller_app="lotus-platform",
             correlation_id="corr-async-001-eval",
             payload_summary="Run staged evaluation family.",
@@ -120,9 +121,9 @@ def test_submit_async_job_rejects_documentation_only_job_type() -> None:
     )
 
     assert response.service == "lotus-ai"
-    assert response.submission_status == "REJECTED"
-    assert response.accepted is False
-    assert response.job_id is None
+    assert response.submission_status == "ACCEPTED"
+    assert response.accepted is True
+    assert response.job_id is not None
     assert response.queue_mode == "STUBBED"
     assert response.worker_mode == "STUBBED"
 
@@ -148,6 +149,7 @@ def test_validate_async_job_target_ignores_non_retrieval_job_types() -> None:
     _validate_async_job_target(
         request=AsyncJobSubmissionRequest(
             job_type="evaluation_execution",
+            target_id="provider_runtime_examples",
             caller_app="lotus-platform",
             correlation_id="corr-async-ignore-target",
             payload_summary="Run evaluation family.",

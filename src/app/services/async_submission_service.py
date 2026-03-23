@@ -21,9 +21,12 @@ from app.repositories.async_runtime_repository import (
 from app.services.retrieval_catalog_service import get_retrieval_job_detail_or_raise
 from app.services.async_job_type_catalog import get_async_job_type_descriptor
 from app.services.async_runtime_store import get_async_runtime_store
+from app.services.eval_run_submission_service import submit_evaluation_execution_async_job
 
 
 def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionResponse:
+    if request.job_type == "evaluation_execution":
+        return submit_evaluation_execution_async_job(request)
     job_type = get_async_job_type_descriptor(job_type=request.job_type)
     if job_type is None:
         raise HTTPException(

@@ -296,6 +296,7 @@ def test_async_job_submit_route_rejects_documentation_only_job_type(client: Test
         "/platform/async/jobs/submit",
         json={
             "job_type": "evaluation_execution",
+            "target_id": "provider_runtime_examples",
             "caller_app": "lotus-platform",
             "correlation_id": "corr-async-submit-001-eval",
             "payload_summary": "Run staged evaluation family.",
@@ -304,9 +305,9 @@ def test_async_job_submit_route_rejects_documentation_only_job_type(client: Test
 
     assert response.status_code == 200
     body = response.json()
-    assert body["submission_status"] == "REJECTED"
-    assert body["accepted"] is False
-    assert body["job_id"] is None
+    assert body["submission_status"] == "ACCEPTED"
+    assert body["accepted"] is True
+    assert body["job_id"] is not None
     assert body["queue_mode"] == "STUBBED"
     assert body["worker_mode"] == "STUBBED"
 
