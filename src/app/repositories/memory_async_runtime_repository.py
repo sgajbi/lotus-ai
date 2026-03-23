@@ -5,6 +5,7 @@ from copy import deepcopy
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeClaimRecord,
+    AsyncRuntimeControlEventRecord,
     AsyncRuntimeJobRecord,
     AsyncRuntimeLeaseRecord,
     AsyncRuntimeRepository,
@@ -17,6 +18,7 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
         self._attempts: dict[str, list[AsyncRuntimeAttemptRecord]] = {}
         self._leases_by_job: dict[str, AsyncRuntimeLeaseRecord] = {}
         self._lease_id_to_job: dict[str, str] = {}
+        self._control_events: list[AsyncRuntimeControlEventRecord] = []
 
     def list_jobs(self) -> list[AsyncRuntimeJobRecord]:
         return [
@@ -150,3 +152,20 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
                 lease=lease,
             )
         return None
+
+    def list_control_events(
+        self, *, limit: int = 20, job_id: str | None = None
+    ) -> list[AsyncRuntimeControlEventRecord]:
+        filtered = [
+            deepcopy(record)
+            for record in self._control_events
+            if job_id is None or record.job_id == job_id
+        ]
+        filtered.sort(key=lambda item: item.recorded_at, reverse=True)
+        return filtered[: max(limit, 1)]
+
+    def save_control_event(self, record: AsyncRuntimeControlEventRecord) -> None:
+        self._control_events = [
+            existing for existing in self._control_events if existing.event_id != record.event_id
+        ]
+        self._control_events.append(deepcopy(record))

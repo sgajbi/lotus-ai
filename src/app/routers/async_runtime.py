@@ -4,6 +4,9 @@ from fastapi import APIRouter
 
 from app.contracts.async_runtime import (
     AsyncActivationReadinessResponse,
+    AsyncControlActionRequest,
+    AsyncControlActionResponse,
+    AsyncControlHistoryResponse,
     AsyncGovernanceStatusResponse,
     AsyncJobCatalogResponse,
     AsyncJobDetailResponse,
@@ -15,6 +18,10 @@ from app.contracts.async_runtime import (
     AsyncWorkerExecutionCatalogResponse,
 )
 from app.services.async_activation_readiness_service import build_async_activation_readiness
+from app.services.async_runtime_control import (
+    apply_async_control_action,
+    build_async_control_history,
+)
 from app.services.async_governance_status_service import build_async_governance_status
 from app.services.async_job_service import build_async_job_catalog, build_async_job_detail
 from app.services.async_queue_backend_service import build_async_queue_backend_catalog
@@ -136,6 +143,47 @@ async def get_async_governance_status_route() -> AsyncGovernanceStatusResponse:
 
 
 @router.get(
+    "/control-plane-actions",
+    response_model=AsyncControlHistoryResponse,
+    operation_id="getAsyncControlHistory",
+    summary="Get lotus-ai async control-plane history",
+    description=(
+        "Returns the recent governed async retry, replay, requeue, and abandon actions recorded "
+        "for runtime-backed async jobs."
+    ),
+    responses={
+        200: {"description": "Async control-plane history returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_async_control_history_route() -> AsyncControlHistoryResponse:
+    return build_async_control_history()
+
+
+@router.post(
+    "/control-plane-actions/apply",
+    response_model=AsyncControlActionResponse,
+    operation_id="applyAsyncControlAction",
+    summary="Apply a lotus-ai async control-plane action",
+    description=(
+        "Applies one governed async retry, replay, requeue, or abandon action and records "
+        "operator reason plus approval metadata for later review."
+    ),
+    responses={
+        200: {"description": "Async control-plane action applied successfully."},
+        404: {"description": "Async runtime job not found."},
+        409: {"description": "Async control action conflicts with the current job state."},
+        422: {"description": "Invalid async control action request."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def apply_async_control_action_route(
+    request: AsyncControlActionRequest,
+) -> AsyncControlActionResponse:
+    return apply_async_control_action(request)
+
+
+@router.get(
     "/jobs",
     response_model=AsyncJobCatalogResponse,
     operation_id="getAsyncJobCatalog",
@@ -179,8 +227,9 @@ async def get_async_job_detail_route(job_id: str) -> AsyncJobDetailResponse:
     summary="Submit a lotus-ai async job request",
     description=(
         "Validates an async job submission against the current async runtime posture. Allowlisted "
-        "job types are durably recorded in queue-backed runtime state, while staged-only job "
-        "types return an explicit rejected response until later worker-enabled slices activate."
+        "job types are durably recorded in queue-backed runtime state, staged-only job "
+        "types return an explicit rejected response, and duplicate active retrieval-index "
+        "submissions are rejected with the owning runtime job id."
     ),
     responses={
         200: {"description": "Async job submission evaluated successfully."},

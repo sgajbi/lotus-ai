@@ -2,6 +2,7 @@ from pathlib import Path
 
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
+    AsyncRuntimeControlEventRecord,
     AsyncRuntimeJobRecord,
     AsyncRuntimeLeaseRecord,
 )
@@ -215,3 +216,47 @@ def test_sqlalchemy_async_runtime_repository_claims_next_runnable_job_once(
         latest_message="Claimed by worker-b.",
         attempt_message="Attempt claimed by worker-b.",
     ) is None
+
+
+def test_sqlalchemy_async_runtime_repository_round_trips_control_events(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-async-runtime.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyAsyncRuntimeRepository(database_url)
+    repository.save_job(
+        AsyncRuntimeJobRecord(
+            job_id="async-job-001",
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            lifecycle_status="FAILED",
+            submitted_at="2026-03-23T00:00:00Z",
+            caller_app="lotus-ai",
+            correlation_id="corr-001",
+            payload_summary="Refresh retrieval source lotus-ai-architecture",
+            execution_path="durable_runtime_worker_execution",
+            related_evaluation_run_id=None,
+            latest_message="Job failed terminally.",
+            attempt_count=1,
+        )
+    )
+    repository.save_control_event(
+        AsyncRuntimeControlEventRecord(
+            event_id="event-001",
+            job_id="async-job-001",
+            action_type="RETRY_FAILED_JOB",
+            requested_by="operator-a",
+            approved_by="approver-a",
+            reason="Retry after review.",
+            prior_status="FAILED",
+            resulting_status="QUEUED",
+            affected_attempt_id="attempt-002",
+            recorded_at="2026-03-23T18:00:00Z",
+        )
+    )
+
+    events = repository.list_control_events()
+
+    assert len(events) == 1
+    assert events[0].action_type == "RETRY_FAILED_JOB"
+    assert events[0].affected_attempt_id == "attempt-002"

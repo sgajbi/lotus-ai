@@ -293,6 +293,11 @@ evaluation coverage includes durable submission, lease-expiry recovery, and retr
 linkage, while the service runbook documents restart-survival and recovery expectations for the
 SQL-backed async runtime path.
 
+Async runtime-backed jobs now also expose a narrow control-plane surface for retry, replay,
+requeue, and manual abandon actions. Those operator actions are recorded durably as async
+control events and appear back in job detail, which keeps recovery semantics reviewable instead
+of burying them in worker-side state transitions.
+
 ### Providers
 
 - `src/app/providers/`

@@ -5,10 +5,16 @@ from pathlib import Path
 from sqlalchemy import create_engine, delete, select
 from sqlalchemy.orm import sessionmaker
 
-from app.db.models import AsyncJobAttemptModel, AsyncJobModel, AsyncWorkerLeaseModel
+from app.db.models import (
+    AsyncControlEventModel,
+    AsyncJobAttemptModel,
+    AsyncJobModel,
+    AsyncWorkerLeaseModel,
+)
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeClaimRecord,
+    AsyncRuntimeControlEventRecord,
     AsyncRuntimeJobRecord,
     AsyncRuntimeLeaseRecord,
     AsyncRuntimeRepository,
@@ -188,6 +194,35 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
                 lease=self._to_lease_record(lease_model),
             )
 
+    def list_control_events(
+        self, *, limit: int = 20, job_id: str | None = None
+    ) -> list[AsyncRuntimeControlEventRecord]:
+        with self._session_factory() as session:
+            statement = select(AsyncControlEventModel)
+            if job_id is not None:
+                statement = statement.where(AsyncControlEventModel.job_id == job_id)
+            models = session.scalars(
+                statement.order_by(AsyncControlEventModel.recorded_at.desc()).limit(max(limit, 1))
+            ).all()
+            return [self._to_control_event_record(model) for model in models]
+
+    def save_control_event(self, record: AsyncRuntimeControlEventRecord) -> None:
+        model = AsyncControlEventModel(
+            event_id=record.event_id,
+            job_id=record.job_id,
+            action_type=record.action_type,
+            requested_by=record.requested_by,
+            approved_by=record.approved_by,
+            reason=record.reason,
+            prior_status=record.prior_status,
+            resulting_status=record.resulting_status,
+            affected_attempt_id=record.affected_attempt_id,
+            recorded_at=record.recorded_at,
+        )
+        with self._session_factory() as session:
+            session.merge(model)
+            session.commit()
+
     def _to_job_record(self, model: AsyncJobModel) -> AsyncRuntimeJobRecord:
         return AsyncRuntimeJobRecord(
             job_id=model.job_id,
@@ -228,6 +263,22 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
             claimed_at=model.claimed_at,
             heartbeat_at=model.heartbeat_at,
             lease_expires_at=model.lease_expires_at,
+        )
+
+    def _to_control_event_record(
+        self, model: AsyncControlEventModel
+    ) -> AsyncRuntimeControlEventRecord:
+        return AsyncRuntimeControlEventRecord(
+            event_id=model.event_id,
+            job_id=model.job_id,
+            action_type=model.action_type,
+            requested_by=model.requested_by,
+            approved_by=model.approved_by,
+            reason=model.reason,
+            prior_status=model.prior_status,
+            resulting_status=model.resulting_status,
+            affected_attempt_id=model.affected_attempt_id,
+            recorded_at=model.recorded_at,
         )
 
     def _ensure_sqlite_parent_directory(self) -> None:

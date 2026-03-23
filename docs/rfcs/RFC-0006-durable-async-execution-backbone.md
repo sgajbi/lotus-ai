@@ -293,13 +293,14 @@ Acceptance gate:
 3. retrieval runtime and job-detail views remain truthful under failure and retry,
 4. tests cover meaningful retrieval job execution behavior rather than shallow status assertions.
 
-### Slice 5: Runtime, Eval, and Runbook Convergence
+### Slice 5: Runtime, Eval, Runbook, and Control-Plane Convergence
 
 Outcome:
 
 1. async runtime summaries reflect the durable control plane,
 2. eval assets and run artifacts reflect live async behavior where appropriate,
-3. runbooks describe claim, retry, recovery, and replay against the durable state model.
+3. runbooks describe claim, retry, recovery, and replay against the durable state model,
+4. operator recovery and replay actions are exposed through a governed async control-plane surface.
 
 Acceptance gate:
 
@@ -308,7 +309,8 @@ Acceptance gate:
 3. restart-survival and worker-recovery scenarios are covered by meaningful tests,
 4. the service is materially closer to enterprise-grade background execution,
 5. job status and progress wording remains conservative and truthful under claim, retry, and recovery paths,
-6. documentation-backed async artifacts that remain after cutover are clearly labeled as staged or historical rather than live runtime truth.
+6. documentation-backed async artifacts that remain after cutover are clearly labeled as staged or historical rather than live runtime truth,
+7. duplicate runtime-backed submission semantics are explicit and surfaced through API behavior rather than remaining implicit in code.
 
 ## Risks
 

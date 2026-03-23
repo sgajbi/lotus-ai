@@ -1,6 +1,7 @@
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeJobRecord,
+    AsyncRuntimeControlEventRecord,
     AsyncRuntimeLeaseRecord,
 )
 from app.repositories.memory_async_runtime_repository import InMemoryAsyncRuntimeRepository
@@ -185,3 +186,27 @@ def test_memory_async_runtime_repository_claims_next_runnable_job_once() -> None
         latest_message="Claimed by worker-b.",
         attempt_message="Attempt claimed by worker-b.",
     ) is None
+
+
+def test_memory_async_runtime_repository_round_trips_control_events() -> None:
+    repository = InMemoryAsyncRuntimeRepository()
+    repository.save_control_event(
+        AsyncRuntimeControlEventRecord(
+            event_id="event-001",
+            job_id="async-job-001",
+            action_type="RETRY_FAILED_JOB",
+            requested_by="operator-a",
+            approved_by="approver-a",
+            reason="Retry after review.",
+            prior_status="FAILED",
+            resulting_status="QUEUED",
+            affected_attempt_id="attempt-002",
+            recorded_at="2026-03-23T18:00:00Z",
+        )
+    )
+
+    events = repository.list_control_events()
+
+    assert len(events) == 1
+    assert events[0].action_type == "RETRY_FAILED_JOB"
+    assert events[0].affected_attempt_id == "attempt-002"

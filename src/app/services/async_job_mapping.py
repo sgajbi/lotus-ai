@@ -3,12 +3,15 @@ from __future__ import annotations
 from app.contracts.async_runtime import (
     AsyncJobArtifactDescriptor,
     AsyncJobAttemptDescriptor,
+    AsyncControlEventDescriptor,
+    AsyncControlActionType,
     AsyncJobLeaseDescriptor,
     AsyncJobRecordSource,
     AsyncJobStatus,
 )
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
+    AsyncRuntimeControlEventRecord,
     AsyncRuntimeJobRecord,
     AsyncRuntimeLeaseRecord,
 )
@@ -52,4 +55,21 @@ def map_async_runtime_lease(record: AsyncRuntimeLeaseRecord) -> AsyncJobLeaseDes
         claimed_at=record.claimed_at,
         heartbeat_at=record.heartbeat_at,
         lease_expires_at=record.lease_expires_at,
+    )
+
+
+def map_async_runtime_control_event(
+    record: AsyncRuntimeControlEventRecord,
+) -> AsyncControlEventDescriptor:
+    return AsyncControlEventDescriptor(
+        event_id=record.event_id,
+        job_id=record.job_id,
+        action_type=AsyncControlActionType(record.action_type),
+        requested_by=record.requested_by,
+        approved_by=record.approved_by,
+        reason=record.reason,
+        prior_status=record.prior_status,
+        resulting_status=record.resulting_status,
+        affected_attempt_id=record.affected_attempt_id,
+        recorded_at=record.recorded_at,
     )

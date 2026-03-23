@@ -41,6 +41,7 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
             worker_mode=AsyncWorkerMode.STUBBED,
             job_type=request.job_type,
             target_id=request.target_id,
+            existing_job_id=None,
             accepted=False,
             job_id=None,
             message=(
@@ -49,6 +50,25 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
             ),
         )
     _validate_async_job_target(request=request)
+    duplicate_job = _find_active_duplicate_submission(request=request)
+    if duplicate_job is not None:
+        return AsyncJobSubmissionResponse(
+            service=settings.service_name,
+            version=settings.service_version,
+            delivery_phase=settings.delivery_phase,
+            submission_status=AsyncSubmissionStatus.DUPLICATE_REJECTED,
+            queue_mode=AsyncQueueMode.STUBBED,
+            worker_mode=AsyncWorkerMode.STUBBED,
+            job_type=request.job_type,
+            target_id=request.target_id,
+            existing_job_id=duplicate_job.job_id,
+            accepted=False,
+            job_id=None,
+            message=(
+                f"Duplicate async submission rejected because active job '{duplicate_job.job_id}' "
+                f"already owns {request.job_type} for target '{request.target_id}'."
+            ),
+        )
     submitted_at = _utcnow().isoformat().replace("+00:00", "Z")
     job_id = f"asyncjob_{request.job_type}_{uuid4().hex[:12]}"
     attempt_id = f"{job_id}_attempt_001"
@@ -97,6 +117,7 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
         worker_mode=AsyncWorkerMode.STUBBED,
         job_type=request.job_type,
         target_id=request.target_id,
+        existing_job_id=None,
         accepted=True,
         job_id=job_id,
         message=(
@@ -120,3 +141,26 @@ def _validate_async_job_target(*, request: AsyncJobSubmissionRequest) -> None:
             detail="Async retrieval_indexing submission requires a concrete retrieval index job target_id.",
         )
     get_retrieval_job_detail_or_raise(request.target_id)
+
+
+def _find_active_duplicate_submission(
+    *, request: AsyncJobSubmissionRequest
+) -> AsyncRuntimeJobRecord | None:
+    if request.job_type != "retrieval_indexing" or request.target_id is None:
+        return None
+    active_statuses = {
+        AsyncJobStatus.QUEUED.value,
+        AsyncJobStatus.CLAIMED.value,
+        AsyncJobStatus.RUNNING.value,
+    }
+    for record in reversed(get_async_runtime_store().list_jobs()):
+        if record.job_type != request.job_type:
+            continue
+        if record.target_id != request.target_id:
+            continue
+        if record.caller_app != request.caller_app:
+            continue
+        if record.lifecycle_status not in active_statuses:
+            continue
+        return record
+    return None

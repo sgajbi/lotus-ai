@@ -197,3 +197,18 @@ class AsyncWorkerLeaseModel(Base):
     lease_expires_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
     job: Mapped["AsyncJobModel"] = relationship(back_populates="leases")
+
+
+class AsyncControlEventModel(Base):
+    __tablename__ = "async_control_events"
+
+    event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    job_id: Mapped[str] = mapped_column(ForeignKey("async_jobs.job_id"), nullable=False, index=True)
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    requested_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    prior_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    resulting_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    affected_attempt_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

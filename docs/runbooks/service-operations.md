@@ -20,6 +20,7 @@
 - Async activation readiness: /platform/async/activation-readiness
 - Async runbook readiness: /platform/async/runbook-readiness
 - Async governance status: /platform/async/governance-status
+- Async control-plane history: /platform/async/control-plane-actions
 - Provider activation readiness: /platform/providers/activation-readiness
 - Provider quota policy: /platform/providers/quota-policy
 - Provider budget policy: /platform/providers/budget-policy
@@ -97,7 +98,17 @@ Current recovery expectations:
 1. queued, claimed, running, failed, completed, and abandoned posture must survive restart when the SQL-backed async-runtime store is active
 2. lease expiry should record an `ABANDONED` attempt and queue a new retryable attempt rather than mutating the prior attempt in place
 3. retrieval index jobs submitted through `POST /platform/retrieval/index-jobs/{job_id}/submit-async` should remain linked to their async runtime records after restart
-4. dedicated queue-backed worker fleet procedures remain out of scope until a later rollout slice activates them
+4. duplicate runtime-backed retrieval-index submissions should be rejected while an active queued, claimed, or running job already owns the same caller and target
+5. operator retry, replay, requeue, and abandon actions should be applied through `/platform/async/control-plane-actions/apply` rather than ad hoc table edits
+6. dedicated queue-backed worker fleet procedures remain out of scope until a later rollout slice activates them
+
+Current governed control-action procedure:
+
+1. inspect `/platform/async/control-plane-actions` to review recent async recovery and replay actions
+2. inspect `/platform/async/jobs/{job_id}` to confirm the current runtime attempt history, active lease posture, and existing control events
+3. apply `POST /platform/async/control-plane-actions/apply` with explicit operator reason and approver metadata
+4. verify the resulting control-plane event is visible in both `/platform/async/control-plane-actions` and `/platform/async/jobs/{job_id}`
+5. confirm the resulting job status and attempt history match the intended retry, replay, requeue, or abandon action
 
 ## Provider Activation Governance
 

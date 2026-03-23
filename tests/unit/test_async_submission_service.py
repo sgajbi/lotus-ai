@@ -55,6 +55,34 @@ def test_submit_async_job_persists_sql_backed_runtime_submission(tmp_path: Path)
     assert runtime_job.record_source == "RUNTIME_STATE"
 
 
+def test_submit_async_job_rejects_duplicate_active_runtime_submission() -> None:
+    first = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-duplicate-001",
+            payload_summary="Index newly approved RFC documents.",
+        )
+    )
+
+    duplicate = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-duplicate-002",
+            payload_summary="Index newly approved RFC documents again.",
+        )
+    )
+
+    assert first.accepted is True
+    assert duplicate.submission_status == "DUPLICATE_REJECTED"
+    assert duplicate.accepted is False
+    assert duplicate.job_id is None
+    assert duplicate.existing_job_id == first.job_id
+
+
 def test_submit_async_job_rejects_missing_retrieval_target_id() -> None:
     try:
         submit_async_job(

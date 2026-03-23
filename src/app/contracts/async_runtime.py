@@ -34,6 +34,14 @@ class AsyncJobRecordSource(str, Enum):
 class AsyncSubmissionStatus(str, Enum):
     ACCEPTED = "ACCEPTED"
     REJECTED = "REJECTED"
+    DUPLICATE_REJECTED = "DUPLICATE_REJECTED"
+
+
+class AsyncControlActionType(str, Enum):
+    RETRY_FAILED_JOB = "RETRY_FAILED_JOB"
+    REPLAY_TERMINAL_JOB = "REPLAY_TERMINAL_JOB"
+    REQUEUE_ABANDONED_JOB = "REQUEUE_ABANDONED_JOB"
+    ABANDON_ACTIVE_JOB = "ABANDON_ACTIVE_JOB"
 
 
 class AsyncJobTypeDescriptor(BaseModel):
@@ -153,6 +161,24 @@ class AsyncJobLeaseDescriptor(BaseModel):
     )
 
 
+class AsyncControlEventDescriptor(BaseModel):
+    event_id: str = Field(description="Stable identifier for the recorded async control action.")
+    job_id: str = Field(description="Async job identifier affected by the control action.")
+    action_type: AsyncControlActionType = Field(
+        description="Type of governed async control action that was recorded."
+    )
+    requested_by: str = Field(description="Operator or system identity requesting the action.")
+    approved_by: str = Field(description="Approver identity recorded for the action.")
+    reason: str = Field(description="Human-readable reason for the async control action.")
+    prior_status: str = Field(description="Async job status before the action was applied.")
+    resulting_status: str = Field(description="Async job status after the action was applied.")
+    affected_attempt_id: str | None = Field(
+        default=None,
+        description="Attempt identifier directly affected or created by the action, when applicable.",
+    )
+    recorded_at: str = Field(description="Timestamp when the action was recorded.")
+
+
 class AsyncJobCatalogResponse(BaseModel):
     service: str = Field(description="Service name emitting the async job catalog.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -177,6 +203,10 @@ class AsyncJobDetailResponse(BaseModel):
     active_lease: AsyncJobLeaseDescriptor | None = Field(
         default=None,
         description="Active worker lease detail for runtime-backed jobs when a lease is held.",
+    )
+    control_events: list[AsyncControlEventDescriptor] = Field(
+        default_factory=list,
+        description="Governed async control-plane history for runtime-backed jobs.",
     )
 
 
@@ -214,6 +244,10 @@ class AsyncJobSubmissionResponse(BaseModel):
     target_id: str | None = Field(
         default=None,
         description="Stable target identifier when the accepted or evaluated async job maps to a concrete runtime record.",
+    )
+    existing_job_id: str | None = Field(
+        default=None,
+        description="Existing active async job identifier when a duplicate submission is rejected explicitly.",
     )
     accepted: bool = Field(description="Whether the async submission was accepted.")
     job_id: str | None = Field(
@@ -346,4 +380,51 @@ class AsyncGovernanceStatusResponse(BaseModel):
     )
     governance_summary: list[str] = Field(
         description="Human-readable summary of the current async governance posture."
+    )
+
+
+class AsyncControlHistoryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the async control history view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    control_plane_store_mode: str = Field(
+        description="Configured async-runtime store mode backing async control-plane truth."
+    )
+    supported_action_types: list[AsyncControlActionType] = Field(
+        description="Supported governed async control action types."
+    )
+    latest_events: list[AsyncControlEventDescriptor] = Field(
+        default_factory=list,
+        description="Most recent recorded async control-plane actions.",
+    )
+    notes: list[str] = Field(
+        default_factory=list,
+        description="Human-readable notes describing duplicate, replay, retry, and recovery semantics.",
+    )
+
+
+class AsyncControlActionRequest(BaseModel):
+    job_id: str = Field(description="Async job identifier targeted by the control action.")
+    action_type: AsyncControlActionType = Field(description="Requested async control action.")
+    requested_by: str = Field(
+        min_length=1,
+        description="Operator or system identity requesting the async control action.",
+    )
+    approved_by: str = Field(
+        min_length=1,
+        description="Approver identity authorizing the async control action.",
+    )
+    reason: str = Field(min_length=1, description="Human-readable reason for the control action.")
+
+
+class AsyncControlActionResponse(BaseModel):
+    service: str = Field(description="Service name emitting the async control action response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    event: AsyncControlEventDescriptor = Field(
+        description="Recorded async control-plane event."
+    )
+    summary: list[str] = Field(
+        default_factory=list,
+        description="Human-readable summary of the applied async control action.",
     )

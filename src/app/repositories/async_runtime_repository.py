@@ -47,6 +47,20 @@ class AsyncRuntimeLeaseRecord:
 
 
 @dataclass(frozen=True)
+class AsyncRuntimeControlEventRecord:
+    event_id: str
+    job_id: str
+    action_type: str
+    requested_by: str
+    approved_by: str
+    reason: str
+    prior_status: str
+    resulting_status: str
+    affected_attempt_id: str | None
+    recorded_at: str
+
+
+@dataclass(frozen=True)
 class AsyncRuntimeClaimRecord:
     job: AsyncRuntimeJobRecord
     attempt: AsyncRuntimeAttemptRecord
@@ -95,3 +109,11 @@ class AsyncRuntimeRepository(Protocol):
         attempt_message: str,
     ) -> AsyncRuntimeClaimRecord | None:
         """Atomically claim the next runnable async job if one exists."""
+
+    def list_control_events(
+        self, *, limit: int = 20, job_id: str | None = None
+    ) -> list[AsyncRuntimeControlEventRecord]:
+        """List recent async control-plane events, optionally filtered by job."""
+
+    def save_control_event(self, record: AsyncRuntimeControlEventRecord) -> None:
+        """Persist one async control-plane event."""

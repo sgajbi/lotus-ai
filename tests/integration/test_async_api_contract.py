@@ -92,6 +92,15 @@ def test_async_governance_status_route(client: TestClient) -> None:
     assert len(body["governance_summary"]) == 2
 
 
+def test_async_control_history_route(client: TestClient) -> None:
+    response = client.get("/platform/async/control-plane-actions")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["supported_action_types"][0] == "RETRY_FAILED_JOB"
+
+
 def test_async_job_catalog_route(client: TestClient) -> None:
     response = client.get("/platform/async/jobs")
 
@@ -120,6 +129,7 @@ def test_async_job_detail_route(client: TestClient) -> None:
     assert body["job"]["related_evaluation_run_id"] is None
     assert body["attempts"] == []
     assert body["active_lease"] is None
+    assert body["control_events"] == []
 
 
 def test_async_job_detail_route_returns_not_found_for_unknown_job(client: TestClient) -> None:
@@ -148,6 +158,7 @@ def test_async_job_submit_route_accepts_runtime_backed_submission(client: TestCl
     assert body["accepted"] is True
     assert body["job_id"] is not None
     assert body["target_id"] == "retjob_lotus_platform_rfcs"
+    assert body["existing_job_id"] is None
     assert body["queue_mode"] == "STUBBED"
     assert body["worker_mode"] == "STUBBED"
 
@@ -198,6 +209,82 @@ def test_async_job_detail_route_exposes_runtime_attempt_and_lease_history(
     assert completed_body["job"]["status"] == "COMPLETED"
     assert completed_body["attempts"][0]["status"] == "COMPLETED"
     assert completed_body["active_lease"] is None
+
+
+def test_async_job_submit_route_rejects_duplicate_active_runtime_submission(
+    client: TestClient,
+) -> None:
+    first = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "retrieval_indexing",
+            "target_id": "retjob_lotus_platform_rfcs",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-async-submit-duplicate-001",
+            "payload_summary": "Index newly approved RFC documents.",
+        },
+    )
+
+    duplicate = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "retrieval_indexing",
+            "target_id": "retjob_lotus_platform_rfcs",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-async-submit-duplicate-002",
+            "payload_summary": "Index newly approved RFC documents again.",
+        },
+    )
+
+    assert first.status_code == 200
+    assert duplicate.status_code == 200
+    duplicate_body = duplicate.json()
+    assert duplicate_body["submission_status"] == "DUPLICATE_REJECTED"
+    assert duplicate_body["accepted"] is False
+    assert duplicate_body["existing_job_id"] == first.json()["job_id"]
+
+
+def test_async_control_action_route_records_manual_replay_event(client: TestClient) -> None:
+    submit_response = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "retrieval_indexing",
+            "target_id": "retjob_lotus_platform_rfcs",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-async-submit-replay-001",
+            "payload_summary": "Index newly approved RFC documents.",
+        },
+    )
+    job_id = submit_response.json()["job_id"]
+    claim_next_async_job(worker_id="worker-a")
+    start_async_job(job_id=job_id, worker_id="worker-a")
+    complete_async_job(
+        job_id=job_id,
+        worker_id="worker-a",
+        message="Retrieval indexing completed successfully.",
+    )
+
+    action_response = client.post(
+        "/platform/async/control-plane-actions/apply",
+        json={
+            "job_id": job_id,
+            "action_type": "REPLAY_TERMINAL_JOB",
+            "requested_by": "operator-a",
+            "approved_by": "approver-a",
+            "reason": "Replay completed job for verification.",
+        },
+    )
+
+    assert action_response.status_code == 200
+    action_body = action_response.json()
+    assert action_body["event"]["action_type"] == "REPLAY_TERMINAL_JOB"
+    assert action_body["event"]["prior_status"] == "COMPLETED"
+    assert action_body["event"]["resulting_status"] == "QUEUED"
+
+    detail_response = client.get(f"/platform/async/jobs/{job_id}")
+    detail_body = detail_response.json()
+    assert detail_body["job"]["status"] == "QUEUED"
+    assert detail_body["control_events"][0]["action_type"] == "REPLAY_TERMINAL_JOB"
 
 
 def test_async_job_submit_route_rejects_documentation_only_job_type(client: TestClient) -> None:

@@ -12,6 +12,7 @@ from app.repositories.async_runtime_repository import (
     AsyncRuntimeLeaseRecord,
 )
 from app.services.async_runtime_store import get_async_runtime_store
+from app.services.async_runtime_transitions import queue_next_async_attempt
 
 _LEASE_SECONDS = 300
 
@@ -192,7 +193,8 @@ def fail_async_job(
     )
     store.delete_lease(lease_id=lease.lease_id)
     if retryable:
-        _queue_next_attempt(
+        queue_next_async_attempt(
+            store=store,
             job=job,
             reason_message=f"Retry queued after failure reason '{failure_reason}'.",
         )
@@ -249,49 +251,13 @@ def recover_expired_async_jobs(*, now: datetime | None = None) -> list[str]:
             )
         )
         store.delete_lease(lease_id=lease.lease_id)
-        _queue_next_attempt(
+        queue_next_async_attempt(
+            store=store,
             job=job,
             reason_message="Retry queued after lease expiry recovery.",
         )
         recovered_job_ids.append(job.job_id)
     return recovered_job_ids
-
-
-def _queue_next_attempt(*, job: AsyncRuntimeJobRecord, reason_message: str) -> None:
-    store = get_async_runtime_store()
-    next_attempt_number = job.attempt_count + 1
-    next_attempt_id = f"{job.job_id}_attempt_{next_attempt_number:03d}"
-    store.save_attempt(
-        AsyncRuntimeAttemptRecord(
-            attempt_id=next_attempt_id,
-            job_id=job.job_id,
-            attempt_number=next_attempt_number,
-            lifecycle_status=AsyncJobStatus.QUEUED.value,
-            worker_id=None,
-            claimed_at=None,
-            heartbeat_at=None,
-            started_at=None,
-            completed_at=None,
-            failure_reason=None,
-            recorded_message=reason_message,
-        )
-    )
-    store.save_job(
-        AsyncRuntimeJobRecord(
-            job_id=job.job_id,
-            job_type=job.job_type,
-            target_id=job.target_id,
-            lifecycle_status=AsyncJobStatus.QUEUED.value,
-            submitted_at=job.submitted_at,
-            caller_app=job.caller_app,
-            correlation_id=job.correlation_id,
-            payload_summary=job.payload_summary,
-            execution_path=job.execution_path,
-            related_evaluation_run_id=job.related_evaluation_run_id,
-            latest_message=reason_message,
-            attempt_count=next_attempt_number,
-        )
-    )
 
 
 def _load_claimed_runtime_state(
