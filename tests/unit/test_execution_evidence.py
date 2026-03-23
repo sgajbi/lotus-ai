@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 from app.contracts.prompts import PromptDescriptor, PromptLifecycleStatus, PromptManagementMode
 from app.contracts.providers import (
     ProviderAdapterKind,
@@ -75,6 +77,13 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
     assert evidence.descriptors[2].attributes["retry_count"] == 0
     assert evidence.descriptors[2].attributes["max_output_tokens"] == 512
     assert evidence.descriptors[3].evidence_type == "safety_outcome"
+    assert evidence.descriptors[3].attributes["disposition"] == "DOCUMENTED_ONLY"
+    assert evidence.descriptors[3].attributes["runtime_redaction_active"] is False
+    assert evidence.descriptors[3].attributes["decision_summary"]
+    control_results = cast(
+        list[dict[str, Any]], evidence.descriptors[3].attributes["control_results"]
+    )
+    assert control_results[-1]["control_id"] == ("runtime_redaction_engine")
     assert evidence.descriptors[4].evidence_type == "retrieval_posture"
 
 

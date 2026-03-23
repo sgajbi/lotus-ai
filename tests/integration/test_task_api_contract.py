@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from _pytest.monkeypatch import MonkeyPatch
 
 
 def test_task_execute_contract(client: TestClient) -> None:
@@ -30,9 +31,51 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["audit"]["prompt_version"] == "foundation.explain.v1"
     assert body["audit"]["safety"]["safety_mode"] == "documented_only"
     assert body["audit"]["safety"]["redaction_posture"] == "MINIMIZATION_REQUIRED"
+    assert body["audit"]["safety"]["disposition"] == "DOCUMENTED_ONLY"
+    assert body["audit"]["safety"]["runtime_redaction_active"] is False
     assert len(body["evidence"]["descriptors"]) == 5
     assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
     assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"
+
+
+def test_task_execute_contract_enforces_runtime_redaction_when_enabled(client: TestClient) -> None:
+    from app.config import settings
+
+    settings.safety_mode = "runtime_enforced"
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-456-redacted",
+                "requested_by": "ops.user@lotus",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Explain rebalance outcome",
+                "payload": {"status": "BLOCKED", "violations": 2},
+                "source_refs": ["lotus-manage:run:reb_003"],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["audit"]["safety"]["safety_mode"] == "runtime_enforced"
+    assert body["audit"]["safety"]["disposition"] == "ENFORCED_REDACTED"
+    assert (
+        body["result"]["message"]
+        == "Stub execution completed for foundation-phase task explain.v1."
+    )
+    assert "caller_app" not in body["result"]["structured_output"]
+    assert "context_summary" not in body["result"]["structured_output"]
+    assert "source_refs" not in body["result"]["structured_output"]
+
+    settings.safety_mode = "documented_only"
 
 
 def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
@@ -59,6 +102,7 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
     audit_response = client.get(f"/ai/audit/{request_id}")
     assert audit_response.status_code == 200
     body = audit_response.json()
+    assert body["execution_status"] == "COMPLETED"
     assert body["caller_app"] == "lotus-advise"
     assert body["requested_by"] == "advisor.user@lotus"
     assert body["tenant_id"] == "tenant-us-002"
@@ -70,8 +114,72 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
         "response_labeling",
         "correlation_and_audit",
     ]
+    assert body["safety_outcome"]["disposition"] == "DOCUMENTED_ONLY"
+    assert body["safety_outcome"]["runtime_redaction_active"] is False
     assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
     assert body["structured_output"]["caller_app"] == "lotus-advise"
+
+
+def test_task_execute_contract_returns_rejected_result_when_runtime_safety_blocks_output(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+    from app.contracts.providers import ProviderExecutionResponse
+
+    settings.safety_mode = "runtime_enforced"
+    monkeypatch.setattr(
+        "app.services.task_execution_pipeline.execute_text_generation",
+        lambda _request: ProviderExecutionResponse(
+            provider_id="text.stub",
+            provider_mode="stub",
+            stubbed=True,
+            message="Unsafe raw payload.",
+            structured_output={"raw_context": {"account_number": "12345"}},
+        ),
+    )
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-456-blocked",
+                "requested_by": "ops.user@lotus",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Explain rebalance outcome",
+                "payload": {"status": "BLOCKED", "violations": 2},
+                "source_refs": ["lotus-manage:run:reb_004"],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["status"] == "REJECTED"
+    assert body["audit"]["safety"]["disposition"] == "BLOCKED"
+    assert body["result"]["structured_output"]["safety_blocked"] is True
+    safety_evidence = next(
+        descriptor
+        for descriptor in body["evidence"]["descriptors"]
+        if descriptor["evidence_type"] == "safety_outcome"
+    )
+    assert safety_evidence["attributes"]["disposition"] == "BLOCKED"
+
+    request_id = body["audit"]["request_id"]
+    audit_response = client.get(f"/ai/audit/{request_id}")
+    assert audit_response.status_code == 200
+    audit_body = audit_response.json()
+    assert audit_body["execution_status"] == "REJECTED"
+    assert audit_body["safety_outcome"]["disposition"] == "BLOCKED"
+    assert audit_body["evidence"]["descriptors"][3]["attributes"]["disposition"] == "BLOCKED"
+
+    settings.safety_mode = "documented_only"
 
 
 def test_audit_catalog_route_returns_filtered_records(client: TestClient) -> None:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.safety import RedactionPosture
 from app.contracts.tasks import (
     TaskAuditMetadata,
     TaskExecutionResponse,
@@ -26,10 +27,15 @@ def map_task_execution_response(
         capability=context.capability,
         prompt=context.prompt,
         provider_execution=resolved.provider_execution,
-        safety_outcome=context.safety_outcome,
+        safety_outcome=resolved.safety_outcome,
+    )
+    execution_status = (
+        TaskExecutionStatus.REJECTED
+        if resolved.safety_outcome.disposition.value == "BLOCKED"
+        else TaskExecutionStatus.COMPLETED
     )
     return TaskExecutionResponse(
-        status=TaskExecutionStatus.COMPLETED,
+        status=execution_status,
         task_id=context.capability.task_id,
         category=context.capability.category,
         output_label=context.capability.output_label,
@@ -47,7 +53,7 @@ def map_task_execution_response(
             output_label=context.capability.output_label,
             prompt_version=context.prompt.prompt_version,
             provider_mode=resolved.provider_execution.provider_mode,
-            safety=context.safety_outcome,
+            safety=resolved.safety_outcome,
             generated_at=context.generated_at,
             stubbed=resolved.provider_execution.stubbed,
         ),
@@ -59,11 +65,16 @@ def build_task_result_payload(
     context: TaskExecutionContext,
     resolved: ResolvedTaskExecution,
 ) -> dict[str, object]:
-    return {
+    payload = {
         **resolved.provider_execution.structured_output,
         "input_mode": context.request.input_mode,
-        "caller_app": context.request.caller.caller_app,
     }
+    if not (
+        resolved.safety_outcome.runtime_redaction_active
+        and resolved.safety_outcome.redaction_posture == RedactionPosture.MINIMIZATION_REQUIRED
+    ):
+        payload["caller_app"] = context.request.caller.caller_app
+    return payload
 
 
 def map_audit_record(
@@ -73,6 +84,7 @@ def map_audit_record(
 ) -> AuditRecordResponse:
     return AuditRecordResponse(
         request_id=response.audit.request_id,
+        execution_status=response.status,
         task_id=response.task_id,
         category=response.category,
         output_label=response.output_label,
@@ -85,6 +97,7 @@ def map_audit_record(
         safety_mode=response.audit.safety.safety_mode,
         redaction_posture=response.audit.safety.redaction_posture,
         enforced_safety_controls=response.audit.safety.enforced_controls,
+        safety_outcome=response.audit.safety,
         generated_at=response.audit.generated_at,
         stubbed=response.audit.stubbed,
         context_summary=context.request.context.summary,

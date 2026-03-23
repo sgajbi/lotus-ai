@@ -9,7 +9,7 @@ def test_evaluation_seam_coverage_reports_staged_fixtures_by_platform_boundary()
         "task_execution",
         "retrieval",
         "provider_execution",
-        "safety_policy",
+        "safety_execution",
     ]
 
     async_execution = seam_coverage[0]
@@ -40,4 +40,12 @@ def test_evaluation_seam_coverage_reports_staged_fixtures_by_platform_boundary()
         "provider_failure_mode_examples",
         "provider_operations_examples",
         "provider_degradation_examples",
+    ]
+
+    safety_execution = seam_coverage[4]
+    assert safety_execution.staged_fixture_count == 2
+    assert safety_execution.staged_case_count == 6
+    assert safety_execution.fixture_ids == [
+        "safety_policy_examples",
+        "safety_runtime_examples",
     ]

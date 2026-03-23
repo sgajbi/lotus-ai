@@ -113,3 +113,65 @@ def test_apply_case_configuration_supports_sqlalchemy_circuit_open_path(tmp_path
         assert settings.live_text_circuit_open_seconds == 30
 
     reset_provider_operations_store_cache()
+
+
+def test_execute_fixture_case_reports_pass_for_runtime_safety_redaction_case() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="runtime_safety_redacts_explanation_output",
+        summary="Runtime safety should redact explanation output.",
+        input_payload={
+            "task_id": "explain.v1",
+            "safety_mode": "runtime_enforced",
+        },
+        expected_payload={
+            "task_status": "COMPLETED",
+            "disposition": "ENFORCED_REDACTED",
+            "runtime_redaction_active": True,
+            "caller_app_redacted": True,
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="safety_runtime_examples",
+            fixture_task_id="safety.runtime.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "expected runtime safety outcome" in summary
+    assert evidence_refs == [
+        "service://ai/tasks/execute",
+        "service://platform/safety/runtime-status",
+    ]
+
+
+def test_execute_fixture_case_reports_pass_for_blocked_runtime_safety_case() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="runtime_safety_blocks_raw_context_echo",
+        summary="Runtime safety should block raw context echo.",
+        input_payload={
+            "safety_mode": "runtime_enforced",
+            "output_label": "EXPLANATION_ONLY",
+            "provider_message": "Unsafe raw payload.",
+            "provider_structured_output": {"raw_context": {"account_number": "12345"}},
+        },
+        expected_payload={
+            "disposition": "BLOCKED",
+            "runtime_redaction_active": True,
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="safety_runtime_examples",
+            fixture_task_id="safety.runtime.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "blocked or degraded runtime behavior" in summary
+    assert evidence_refs == [
+        "service://platform/safety/runtime-status",
+        "service://ai/tasks/execute",
+    ]

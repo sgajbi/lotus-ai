@@ -22,3 +22,4 @@ class TaskExecutionContext:
 class ResolvedTaskExecution:
     context: TaskExecutionContext
     provider_execution: ProviderExecutionResponse
+    safety_outcome: SafetyExecutionOutcome

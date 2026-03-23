@@ -92,6 +92,12 @@
       "status": "STAGED",
       "description": "Safety policy and runtime-posture evaluation examples.",
       "manifest_path": "docs/evals/fixtures/safety.policy/basic_cases.json"
+    },
+    {
+      "fixture_id": "safety_runtime_examples",
+      "status": "STAGED",
+      "description": "Deterministic runtime safety pass-through, redaction, blocked, and degraded evaluation examples.",
+      "manifest_path": "docs/evals/fixtures/safety.runtime/basic_cases.json"
     }
   ]
 }

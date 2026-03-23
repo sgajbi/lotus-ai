@@ -24,6 +24,10 @@ _PROVIDER_APPROVAL_FIXTURE_IDS = (
 )
 
 _RETRIEVAL_APPROVAL_FIXTURE_IDS = ("retrieval_citation_examples",)
+_SAFETY_APPROVAL_FIXTURE_IDS = (
+    "safety_policy_examples",
+    "safety_runtime_examples",
+)
 
 
 @dataclass(frozen=True)
@@ -47,6 +51,14 @@ def build_retrieval_approval_gate_summary() -> EvaluationApprovalGateSummaryDesc
         domain_id="retrieval_execution",
         domain_label="Retrieval Execution",
         required_fixture_ids=_RETRIEVAL_APPROVAL_FIXTURE_IDS,
+    )
+
+
+def build_safety_approval_gate_summary() -> EvaluationApprovalGateSummaryDescriptor:
+    return _build_approval_gate_summary(
+        domain_id="safety_enforcement",
+        domain_label="Safety Enforcement",
+        required_fixture_ids=_SAFETY_APPROVAL_FIXTURE_IDS,
     )
 
 

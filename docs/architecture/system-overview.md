@@ -225,8 +225,9 @@ That control plane now also exposes a dedicated reset-action history and bounded
 surface, so quota, budget, and degradation recovery can be reviewed as explicit operator actions
 with reason and approval metadata instead of relying on ad hoc table edits or service restarts.
 
-Audit persistence now also preserves task category, output label, and execution evidence, so
-downstream inspection of prior executions does not depend on replaying the original task call.
+Audit persistence now also preserves task category, output label, execution status, and execution
+evidence, so downstream inspection of prior executions does not depend on replaying the original
+task call.
 
 Audit persistence now also preserves optional caller identity fields such as `requested_by` and
 `tenant_id`, so support and review workflows retain the full caller traceability carried by the
@@ -524,8 +525,14 @@ Current rules:
 
 1. safety posture is visible through `/platform/safety/policy`,
 2. runtime safety status is visible through `/platform/safety/runtime-status`,
-3. response labeling and audit evidence are already enforced,
-4. redaction is currently documented at the task-policy level and will be hardened later.
+3. safety evidence readiness is visible through `/platform/safety/evidence-readiness`,
+4. safety runbook readiness is visible through `/platform/safety/runbook-readiness`,
+5. safety governance status is visible through `/platform/safety/governance-status`,
+5. response labeling and audit evidence are already enforced,
+6. task and audit contracts now carry typed safety execution outcomes, rejected-vs-completed execution status, and deterministic runtime minimization can be activated for bounded outputs through the safety mode setting,
+7. safety governance now summarizes runtime, runbook, and evidence readiness together and is embedded into `/platform/runtime-status`,
+8. runtime safety enforcement is intentionally stateless, so durability lives in persisted audit records, execution evidence, and runtime-backed evaluation runs rather than a separate safety state store,
+9. documented-only safety posture remains explicit when runtime enforcement is not active.
 
 ## Deployment Policy
 

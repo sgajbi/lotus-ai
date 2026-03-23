@@ -1,0 +1,67 @@
+{
+  "task_id": "safety.runtime.v1",
+  "fixture_family": "safety_runtime_examples",
+  "cases": [
+    {
+      "case_id": "runtime_safety_pass_through_for_draft_output",
+      "summary": "Runtime safety remains active but does not redact draft outputs that do not require minimization.",
+      "input": {
+        "task_id": "summarize.v1",
+        "safety_mode": "runtime_enforced"
+      },
+      "expected": {
+        "task_status": "COMPLETED",
+        "disposition": "ENFORCED_PASSTHROUGH",
+        "runtime_redaction_active": true
+      }
+    },
+    {
+      "case_id": "runtime_safety_redacts_explanation_output",
+      "summary": "Runtime safety deterministically redacts explanation output before task response and audit persistence.",
+      "input": {
+        "task_id": "explain.v1",
+        "safety_mode": "runtime_enforced"
+      },
+      "expected": {
+        "task_status": "COMPLETED",
+        "disposition": "ENFORCED_REDACTED",
+        "runtime_redaction_active": true,
+        "caller_app_redacted": true
+      }
+    },
+    {
+      "case_id": "runtime_safety_blocks_raw_context_echo",
+      "summary": "Runtime safety blocks unsupported raw context echo fields instead of returning unsafe output.",
+      "input": {
+        "safety_mode": "runtime_enforced",
+        "output_label": "EXPLANATION_ONLY",
+        "provider_message": "Unsafe raw payload.",
+        "provider_structured_output": {
+          "raw_context": {
+            "account_number": "12345"
+          }
+        }
+      },
+      "expected": {
+        "disposition": "BLOCKED",
+        "runtime_redaction_active": true
+      }
+    },
+    {
+      "case_id": "runtime_safety_degrades_when_preview_cannot_be_preserved",
+      "summary": "Runtime safety degrades to a generic fallback when the original preview cannot be preserved safely.",
+      "input": {
+        "safety_mode": "runtime_enforced",
+        "output_label": "EXPLANATION_ONLY",
+        "provider_message": " requested by lotus-manage",
+        "provider_structured_output": {
+          "context_summary": "Explain rebalance outcome"
+        }
+      },
+      "expected": {
+        "disposition": "DEGRADED",
+        "runtime_redaction_active": true
+      }
+    }
+  ]
+}

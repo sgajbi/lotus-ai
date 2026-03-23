@@ -1,6 +1,6 @@
 # RFC-0009: Runtime Safety Enforcement and Redaction Controls
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -100,6 +100,24 @@ The first production-capable safety runtime should:
 4. preserve reviewable operator and audit visibility into safety outcomes,
 5. keep all safety behavior bounded by existing task and contract semantics rather than introducing a broad generic policy system.
 
+## First Implementation Scope
+
+The first runtime-enforced safety release under this RFC is intentionally narrow.
+
+Included in scope:
+
+1. bounded Lotus task outputs only,
+2. deterministic treatment of structured output payloads and result previews,
+3. shared safety enforcement for both provider-backed and retrieval-backed task execution paths,
+4. typed blocked and degraded outcomes when required safety controls cannot be applied.
+
+Explicitly out of scope for this RFC:
+
+1. generic moderation of arbitrary free-form user text,
+2. model-generated or heuristic redaction behavior,
+3. prompt rollout or prompt mutation controls,
+4. broad caller-authorization policy beyond the existing bounded task/output contract model.
+
 ## State Model and Invariants
 
 This RFC establishes the following invariants:
@@ -110,6 +128,8 @@ This RFC establishes the following invariants:
 4. redaction decisions must be deterministic and reviewable,
 5. failure to apply required safety controls must block or conservatively degrade the affected execution path,
 6. retrieval-backed and provider-backed outputs must not diverge silently in safety posture when they share the same output-label contract.
+7. required safety enforcement must happen before task response mapping and audit persistence, so emitted payloads, audit records, and execution evidence describe the same post-safety result.
+8. documented-only posture must never be presented as runtime enforcement in policy, runtime status, audit, governance, or evaluation surfaces.
 
 ## Architecture Direction
 
@@ -122,7 +142,8 @@ Required behavior:
 1. control descriptors distinguish documented versus enforced behavior truthfully,
 2. task-level redaction posture maps to explicit runtime control decisions,
 3. policy remains bounded by task category and output label,
-4. runtime safety outcomes use typed control results rather than generic prose.
+4. runtime safety outcomes use typed control results rather than generic prose,
+5. safety policy resolution and safety enforcement execution remain separate seams so future control additions do not overload one helper.
 
 ### Runtime Redaction Engine
 
@@ -133,7 +154,8 @@ Required behavior:
 1. apply deterministic redaction/minimization to structured outputs and result previews,
 2. preserve non-sensitive provenance and audit usefulness where possible,
 3. keep behavior explainable from the policy and output-label model,
-4. avoid opaque or model-driven redaction logic.
+4. avoid opaque or model-driven redaction logic,
+5. treat inability to apply a required safety rule as a blocked or degraded runtime condition rather than silently returning unredacted data.
 
 ### Audit and Evidence Convergence
 
@@ -144,7 +166,8 @@ Required behavior:
 1. audit records preserve enforced safety-control ids and outcome details,
 2. task execution evidence distinguishes documented-only posture from runtime-enforced posture,
 3. operator summaries and governance surfaces can see whether redaction actually ran,
-4. safety failures and degraded behavior are reviewable after the fact.
+4. safety failures and degraded behavior are reviewable after the fact,
+5. request-level task responses, stored audit records, and evidence descriptors all reflect the same post-safety payload posture.
 
 ### Runbook and Approval Convergence
 
@@ -155,7 +178,8 @@ Required behavior:
 1. safety runbook readiness must cover activation, rollback, degraded behavior, and incident review,
 2. evidence readiness must include runtime-backed safety evaluation coverage,
 3. governance status must block rollout if safety enforcement is stale, partial, or failing,
-4. platform runtime status must summarize actual safety enforcement posture honestly.
+4. platform runtime status must summarize actual safety enforcement posture honestly,
+5. prompt rollout remains out of scope and must not be coupled into this RFC's activation path.
 
 ## Data and Operational Requirements
 
@@ -167,6 +191,8 @@ Required behavior:
 6. Redaction must preserve enough structure for operator review without leaking sensitive material.
 7. SQL-backed tests must prove safety outcomes and persistence paths.
 8. Rollback and degraded-mode procedures must be documented before activation is treated as ready.
+9. Public API contracts must prove the enforced-vs-documented safety distinction at the route level, not only in unit seams.
+10. Any state introduced for safety enforcement must either be restart-safe or be explicitly documented as stateless with durability provided by audit and evaluation evidence.
 
 ## Delivery Slices
 
@@ -183,7 +209,8 @@ Acceptance gate:
 1. contracts and service seams are explicit,
 2. unit tests cover policy-to-enforcement mapping,
 3. runtime status remains truthful about what is and is not active,
-4. no hidden redaction behavior is introduced.
+4. no hidden redaction behavior is introduced,
+5. task, audit, and OpenAPI contracts prove the broadened safety shape without changing emitted task payloads yet.
 
 ### Slice 2: Deterministic Redaction for Bounded Outputs
 
@@ -198,7 +225,8 @@ Acceptance gate:
 1. redaction runs on real task execution paths,
 2. result preview and audit payload handling remain consistent,
 3. meaningful tests cover safe pass-through, required redaction, and blocked/degraded cases,
-4. runtime status reports active redaction truthfully.
+4. runtime status reports active redaction truthfully,
+5. integration tests prove provider-backed and retrieval-backed tasks both traverse the same enforcement seam.
 
 ### Slice 3: Audit and Task-Evidence Convergence
 
@@ -213,7 +241,8 @@ Acceptance gate:
 1. audit evidence is explicit and reviewable,
 2. task execution summaries reflect real safety behavior,
 3. integration tests cover safety evidence in task and audit APIs,
-4. no silent mismatch exists between runtime behavior and persisted evidence.
+4. no silent mismatch exists between runtime behavior and persisted evidence,
+5. SQL-backed audit persistence proves enforced-redaction and blocked/degraded outcomes survive round-trip storage.
 
 ### Slice 4: Safety Evaluation and Governance Upgrade
 
@@ -228,7 +257,8 @@ Acceptance gate:
 1. evaluation execution covers enforced safety behavior,
 2. governance distinguishes staged-only, partial, pass, fail, and stale safety posture,
 3. operator-facing readiness and governance summaries are aligned,
-4. runtime-backed evidence becomes the source of truth for safety rollout review.
+4. runtime-backed evidence becomes the source of truth for safety rollout review,
+5. policy-only staged fixtures no longer masquerade as rollout-ready safety approval evidence.
 
 ### Slice 5: Runbook and Operational Hardening
 
@@ -243,7 +273,8 @@ Acceptance gate:
 1. runbooks match implementation reality,
 2. degraded and blocked safety posture is surfaced truthfully,
 3. SQL-backed tests prove persistence and restart behavior where relevant,
-4. the platform is materially closer to enterprise-grade runtime safety enforcement.
+4. the platform is materially closer to enterprise-grade runtime safety enforcement,
+5. the RFC explicitly documents whether safety enforcement is stateless or introduces restart-sensitive state.
 
 ## Risks
 
@@ -291,6 +322,24 @@ This RFC is complete when:
 4. runtime, evidence, runbook, and governance surfaces describe the same safety reality,
 5. documented-only safety posture can no longer masquerade as enforced protection,
 6. the platform is materially closer to enterprise-grade shared AI runtime safety.
+
+## Implementation Notes
+
+This RFC is implemented on `main`.
+
+Delivered scope:
+
+1. typed safety execution outcomes now distinguish documented-only, enforced pass-through, enforced redacted, blocked, and degraded execution posture,
+2. deterministic runtime safety enforcement now applies bounded minimization rules to structured outputs and result previews for the initial enforced output classes,
+3. blocked and degraded runtime safety outcomes now remain visible and aligned across task responses, audit records, and execution evidence,
+4. runtime-backed safety evaluation fixtures and approval-gate summaries now govern safety evidence posture rather than relying on staged policy-only continuity records,
+5. safety runbook readiness, safety governance status, and platform runtime status now converge on one explicit runtime, runbook, and evidence model,
+6. safety enforcement remains intentionally stateless, with durability living in persisted audit records, execution evidence, and runtime-backed evaluation runs rather than a separate mutable safety store.
+
+Follow-on work is intentionally left to later RFCs:
+
+1. broader prompt rollout and approval logic remains in RFC-0010,
+2. dedicated observability packs and named on-call approval remain broader operational maturity work rather than a blocker to the bounded runtime-safety slice delivered here.
 
 ## Approval Requested
 

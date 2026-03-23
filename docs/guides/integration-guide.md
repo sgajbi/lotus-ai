@@ -13,7 +13,10 @@ Before integrating a Lotus app with `lotus-ai`, upstream teams should inspect:
 7. `GET /platform/providers/operations-status` for one combined provider operations view across rollout, quota, budget, and degradation posture,
 8. `GET /platform/safety/policy` for task-level output-label and redaction posture,
 9. `GET /platform/safety/runtime-status` for current enforced-versus-documented safety controls,
-10. `GET /platform/retrieval/runtime-status` for retrieval-specific persistence and corpus posture when retrieval features are relevant.
+10. `GET /platform/safety/evidence-readiness` for runtime-backed safety approval posture,
+11. `GET /platform/safety/runbook-readiness` for operational safety rollout posture,
+12. `GET /platform/safety/governance-status` for the combined safety rollout view,
+13. `GET /platform/retrieval/runtime-status` for retrieval-specific persistence and corpus posture when retrieval features are relevant.
 
 This keeps downstream integration decisions grounded in actual runtime capability rather than assumptions.
 

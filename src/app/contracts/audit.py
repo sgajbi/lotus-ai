@@ -5,12 +5,15 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.contracts.evidence import ExecutionEvidenceBundle
-from app.contracts.safety import RedactionPosture
-from app.contracts.tasks import OutputLabel, TaskCategory
+from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
+from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 
 
 class AuditRecordResponse(BaseModel):
     request_id: str = Field(description="Generated task execution request identifier.")
+    execution_status: TaskExecutionStatus = Field(
+        description="Execution outcome recorded for the task request."
+    )
     task_id: str = Field(description="Task identifier evaluated for this execution.")
     category: TaskCategory = Field(description="Task category associated with the execution.")
     output_label: OutputLabel = Field(description="Output label emitted by the task execution.")
@@ -32,6 +35,9 @@ class AuditRecordResponse(BaseModel):
     )
     enforced_safety_controls: list[str] = Field(
         description="Stable identifiers for safety controls enforced for the execution."
+    )
+    safety_outcome: SafetyExecutionOutcome = Field(
+        description="Typed safety execution outcome associated with the audit record."
     )
     generated_at: str = Field(description="UTC timestamp when the record was created.")
     stubbed: bool = Field(description="Whether the execution result was stubbed.")

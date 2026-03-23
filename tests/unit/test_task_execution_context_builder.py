@@ -13,5 +13,7 @@ def test_build_task_execution_context_resolves_runtime_fields() -> None:
     assert context.prompt.prompt_version == "foundation.explain.v1"
     assert context.safety_outcome.safety_mode == "documented_only"
     assert context.safety_outcome.redaction_posture == "MINIMIZATION_REQUIRED"
+    assert context.safety_outcome.disposition == "DOCUMENTED_ONLY"
+    assert context.safety_outcome.runtime_redaction_active is False
     assert context.request_id.startswith("air_")
     assert context.generated_at.endswith("+00:00")

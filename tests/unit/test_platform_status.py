@@ -55,10 +55,17 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.evaluation_runtime.manifest_version == "foundation.v1"
     assert status.evaluation_runtime.approval_gates[0].domain_id == "retrieval_execution"
     assert status.evaluation_runtime.approval_gates[1].domain_id == "provider_execution"
+    assert status.evaluation_runtime.approval_gates[2].domain_id == "safety_enforcement"
     assert status.task_runtime.enabled_task_count >= 7
     assert status.task_runtime.retrieval_backed_task_count == 2
     assert status.task_runtime.tasks[0].task_id == "explain.v1"
     assert status.safety_runtime.runtime_redaction_active is False
+    assert status.safety_governance.governance_ready is False
+    assert status.safety_governance.blocking_area_count == 3
+    assert status.safety_governance.runbook_readiness.runbook_ready is False
+    assert (
+        status.safety_governance.evidence_readiness.approval_gate.domain_id == "safety_enforcement"
+    )
     assert status.startup_readiness_blocking is True
     assert status.startup_readiness_warnings == ["audit store: configuration required"]
 

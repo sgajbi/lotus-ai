@@ -5,8 +5,8 @@
       "recorded_at": "2026-03-22T09:00:00Z",
       "status": "RECORDED",
       "manifest_version": "foundation.v1",
-      "staged_fixture_count": 11,
-      "staged_case_count": 26,
+      "staged_fixture_count": 12,
+      "staged_case_count": 30,
       "seam_coverage": [
         {
           "seam_id": "async_execution",
@@ -47,15 +47,16 @@
           "staged_case_count": 12
         },
         {
-          "seam_id": "safety_policy",
+          "seam_id": "safety_execution",
           "fixture_ids": [
-            "safety_policy_examples"
+            "safety_policy_examples",
+            "safety_runtime_examples"
           ],
-          "staged_fixture_count": 1,
-          "staged_case_count": 2
+          "staged_fixture_count": 2,
+          "staged_case_count": 6
         }
       ],
-      "notes": "Historical foundation-phase baseline recorded after durable async submission, lease-recovery, and retrieval-indexing linkage fixtures were staged alongside provider operations durability coverage. This artifact remains a staged continuity record and does not satisfy current runtime-backed approval posture by itself."
+      "notes": "Historical foundation-phase baseline recorded after durable async submission, lease-recovery, retrieval-indexing linkage, and runtime safety fixture packs were staged alongside provider operations durability coverage. This artifact remains a staged continuity record and does not satisfy current runtime-backed approval posture by itself."
     },
     {
       "run_id": "foundation_eval_2026_03_21_001",

@@ -5,6 +5,10 @@ from app.services.audit_store import get_audit_store
 from app.services.knowledge_answer_execution import execute_knowledge_answer
 from app.services.knowledge_search_execution import execute_knowledge_search
 from app.services.provider_request_builder import build_provider_execution_request
+from app.services.safety_enforcement import (
+    apply_safety_enforcement,
+    resolve_safety_policy_for_output,
+)
 from app.services.task_execution_context_builder import build_task_execution_context
 from app.services.task_execution_mapping import map_audit_record, map_task_execution_response
 from app.services.provider_gateway import execute_text_generation
@@ -28,9 +32,14 @@ def resolve_task_execution(
         provider_execution = execute_text_generation(
             build_provider_execution_request(context=context)
         )
+    safe_provider_execution, safety_outcome = apply_safety_enforcement(
+        policy=resolve_safety_policy_for_output(context.capability.output_label),
+        provider_execution=provider_execution,
+    )
     return ResolvedTaskExecution(
         context=context,
-        provider_execution=provider_execution,
+        provider_execution=safe_provider_execution,
+        safety_outcome=safety_outcome,
     )
 
 

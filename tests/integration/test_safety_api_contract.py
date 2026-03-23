@@ -20,4 +20,41 @@ def test_safety_runtime_status_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["safety_mode"] == "documented_only"
     assert body["runtime_redaction_active"] is False
+    assert body["runtime_redaction_disposition"] == "DOCUMENTED_ONLY"
     assert body["enforced_control_ids"] == ["response_labeling", "correlation_and_audit"]
+    assert body["supported_execution_dispositions"] == ["DOCUMENTED_ONLY"]
+
+
+def test_safety_evidence_readiness_route(client: TestClient) -> None:
+    response = client.get("/platform/safety/evidence-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["evidence_ready"] is False
+    assert body["approval_gate"]["domain_id"] == "safety_enforcement"
+    assert body["approval_gate"]["evidence_state"] == "STAGED_ONLY"
+
+
+def test_safety_runbook_readiness_route(client: TestClient) -> None:
+    response = client.get("/platform/safety/runbook-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["runbook_ready"] is False
+    assert body["required_item_count"] == 4
+    assert body["completed_required_item_count"] == 3
+    assert body["items"][0]["runbook_id"] == "safety_operational_runbook"
+
+
+def test_safety_governance_status_route(client: TestClient) -> None:
+    response = client.get("/platform/safety/governance-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["governance_ready"] is False
+    assert body["runtime_status"]["runtime_redaction_active"] is False
+    assert body["runbook_readiness"]["runbook_ready"] is False
+    assert body["evidence_readiness"]["approval_gate"]["domain_id"] == "safety_enforcement"

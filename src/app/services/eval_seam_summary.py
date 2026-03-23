@@ -18,7 +18,10 @@ SEAM_FIXTURE_MAP: dict[str, list[str]] = {
         "provider_operations_examples",
         "provider_degradation_examples",
     ],
-    "safety_policy": ["safety_policy_examples"],
+    "safety_execution": [
+        "safety_policy_examples",
+        "safety_runtime_examples",
+    ],
 }
 
 

@@ -44,10 +44,19 @@ def build_safety_policy() -> SafetyPolicyResponse:
             ),
             SafetyControlDescriptor(
                 control_id="runtime_redaction_engine",
-                status=SafetyControlStatus.DOCUMENTED,
+                status=(
+                    SafetyControlStatus.ENFORCED
+                    if settings.safety_mode == "runtime_enforced"
+                    else SafetyControlStatus.DOCUMENTED
+                ),
                 description=(
-                    "Role-aware redaction remains documented but is not yet enforced in the "
-                    "foundation phase."
+                    "Deterministic runtime safety enforcement is active for bounded task outputs."
+                    if settings.safety_mode == "runtime_enforced"
+                    else (
+                        "Runtime safety outcomes are now typed and reviewable, but deterministic "
+                        "redaction remains documented-only and is not yet active in the current "
+                        "slice."
+                    )
                 ),
             ),
         ],
