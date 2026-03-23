@@ -13,3 +13,4 @@
 - `RFC-0011-dedicated-worker-fleet-and-managed-queue.md` - Draft
 - `RFC-0012-caller-identity-and-tenant-isolation-controls.md` - Draft
 - `RFC-0013-runtime-observability-and-incident-evidence.md` - Draft
+- `RFC-0014-governed-artifact-and-object-storage-backbone.md` - Draft
