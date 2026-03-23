@@ -25,7 +25,10 @@ def build_execution_evidence(
             _prompt_descriptor(prompt=prompt),
             _provider_descriptor(provider_execution=provider_execution),
             _safety_descriptor(safety_outcome=safety_outcome),
-            _retrieval_descriptor(retrieval_status=retrieval_status),
+            _retrieval_descriptor(
+                retrieval_status=retrieval_status,
+                provider_execution=provider_execution,
+            ),
         ]
     )
 
@@ -152,14 +155,29 @@ def _safety_descriptor(
 def _retrieval_descriptor(
     *,
     retrieval_status: RetrievalExecutionStatusResponse,
+    provider_execution: ProviderExecutionResponse,
 ) -> ExecutionEvidenceDescriptor:
+    retrieval_attributes: dict[str, object] = {
+        "retrieval_mode": retrieval_status.retrieval_mode,
+        "execution_stage": retrieval_status.execution_stage.value,
+        "live_search_enabled": retrieval_status.live_search_enabled,
+        "live_indexing_enabled": retrieval_status.live_indexing_enabled,
+    }
+    if provider_execution.provider_id.startswith("retrieval."):
+        structured_output = provider_execution.structured_output
+        retrieval_attributes.update(
+            {
+                "request_execution_stage": structured_output.get("execution_stage"),
+                "request_provider_id": provider_execution.provider_id,
+                "request_provider_mode": provider_execution.provider_mode,
+                "catalog_only": structured_output.get("catalog_only"),
+                "retrieval_status": structured_output.get("retrieval_status"),
+                "hit_count": structured_output.get("hit_count"),
+                "citation_count": structured_output.get("citation_count"),
+            }
+        )
     return ExecutionEvidenceDescriptor(
         evidence_type="retrieval_posture",
         summary="Execution captured the current retrieval execution posture for cross-cutting evidence.",
-        attributes={
-            "retrieval_mode": retrieval_status.retrieval_mode,
-            "execution_stage": retrieval_status.execution_stage.value,
-            "live_search_enabled": retrieval_status.live_search_enabled,
-            "live_indexing_enabled": retrieval_status.live_indexing_enabled,
-        },
+        attributes=retrieval_attributes,
     )

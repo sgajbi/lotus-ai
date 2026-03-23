@@ -50,7 +50,7 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
     assert (
         retrieval_fixture.manifest_path == "docs/evals/fixtures/retrieval.search/basic_cases.json"
     )
-    assert retrieval_fixture.case_count == 2
+    assert retrieval_fixture.case_count == 3
     provider_fixture = next(
         fixture
         for fixture in catalog.fixture_families

@@ -42,6 +42,7 @@ from app.services.provider_operations_store import (
 )
 from app.services.provider_quota_policy import reset_provider_quota_counters
 from app.services.retrieval_execution_status import build_retrieval_execution_status
+from app.services.retrieval_store import get_retrieval_repository, reset_retrieval_repository
 from app.services.task_executor import execute_task
 
 
@@ -200,22 +201,42 @@ def _execute_fixture_case(
     case: EvaluationFixtureRuntimeCase,
 ) -> tuple[str, EvaluationCaseOutcome, list[str]]:
     if fixture_id == "retrieval_citation_examples":
-        status = build_retrieval_execution_status()
-        search_disabled = not status.live_search_enabled
-        expected_disabled = case.expected_payload.get("execution_stage") == "SEARCH_DISABLED"
-        outcome = (
-            EvaluationCaseOutcome.PASS
-            if search_disabled and expected_disabled
-            else EvaluationCaseOutcome.FAIL
-        )
+        task_id = str(case.input_payload.get("task_id", fixture_task_id))
+        response, failure_category = _execute_task_case(task_id=task_id, case=case)
+        if response is None:
+            return (
+                f"Retrieval task execution failed unexpectedly with '{failure_category}'.",
+                EvaluationCaseOutcome.FAIL,
+                ["service://ai/tasks/execute"],
+            )
+        retrieval_status = build_retrieval_execution_status()
+        structured_output = response.result.structured_output
+        checks = [
+            structured_output.get("execution_stage")
+            == case.expected_payload.get("execution_stage"),
+            response.audit.provider_mode == case.expected_payload.get("provider_mode"),
+        ]
+        if case.expected_payload.get("must_preserve_citations"):
+            checks.append(int(structured_output.get("citation_count", 0)) >= 1)
+            checks.append(len(structured_output.get("citations", [])) >= 1)
+        if case.expected_payload.get("answer_mode") is not None:
+            checks.append(
+                structured_output.get("answer_mode") == case.expected_payload["answer_mode"]
+            )
+        if case.expected_payload.get("catalog_only") is not None:
+            checks.append(
+                structured_output.get("catalog_only") == case.expected_payload["catalog_only"]
+            )
+        checks.append(retrieval_status.live_search_enabled is True)
+        outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
         return (
             (
-                "Retrieval execution status matched the expected disabled-search posture."
+                "Live retrieval task execution matched expected execution stage, citation posture, and answer behavior."
                 if outcome == EvaluationCaseOutcome.PASS
-                else "Retrieval execution status did not match the expected disabled-search posture."
+                else "Live retrieval task execution did not match expected execution stage, citation posture, or answer behavior."
             ),
             outcome,
-            ["service://platform/retrieval/execution-status"],
+            ["service://ai/tasks/execute", "service://platform/retrieval/execution-status"],
         )
 
     if fixture_id == "provider_policy_examples":
@@ -374,7 +395,7 @@ def _execute_task_case(
                 ),
                 context=TaskContextEnvelope(
                     summary=case.summary,
-                    payload={"evaluation_case_id": case.case_id},
+                    payload=_build_task_payload(case=case),
                     source_refs=[],
                 ),
                 expected_output_label=(
@@ -387,6 +408,18 @@ def _execute_task_case(
         detail = str(exc.detail)
         failure_category = detail.split(":", 1)[0] if ":" in detail else detail
         return (None, failure_category)
+
+
+def _build_task_payload(*, case: EvaluationFixtureRuntimeCase) -> dict[str, object]:
+    payload = {
+        key: value
+        for key, value in case.input_payload.items()
+        if key not in {"caller_app", "correlation_id", "task_id", "retrieval_mode", "index_sources"}
+    }
+    if "source_filters" in payload and "source_ids" not in payload:
+        payload["source_ids"] = payload.pop("source_filters")
+    payload["evaluation_case_id"] = case.case_id
+    return payload
 
 
 @contextmanager
@@ -411,11 +444,24 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
         "live_text_output_cost_per_1k_tokens": settings.live_text_output_cost_per_1k_tokens,
         "live_text_degradation_enforced": settings.live_text_degradation_enforced,
         "provider_operations_store_mode": settings.provider_operations_store_mode,
+        "retrieval_mode": settings.retrieval_mode,
     }
     try:
+        reset_retrieval_repository()
         reset_provider_operations_store_cache()
         reset_provider_quota_counters()
         reset_provider_degradation_state()
+        if "retrieval_mode" in input_payload:
+            settings.retrieval_mode = str(input_payload["retrieval_mode"])
+        indexed_sources = input_payload.get("index_sources", [])
+        if isinstance(indexed_sources, list):
+            repository = get_retrieval_repository()
+            for source_id in indexed_sources:
+                if isinstance(source_id, str):
+                    repository.set_source_index_status(
+                        source_id=source_id,
+                        index_status="INDEXED",
+                    )
         if "configured_mode" in input_payload:
             settings.provider_mode = str(input_payload["configured_mode"])
         if "provider_mode" in input_payload:
@@ -529,6 +575,7 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
     finally:
         for key, value in original_values.items():
             setattr(settings, key, value)
+        reset_retrieval_repository()
         reset_provider_operations_store_cache()
         reset_provider_quota_counters()
         reset_provider_degradation_state()

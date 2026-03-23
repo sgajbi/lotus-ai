@@ -14,10 +14,11 @@ During foundation phase, supported tasks return deterministic stub results.
 
 Exception:
 
-1. `knowledge_search.v1` now returns bounded catalog-only retrieval hits from the enabled
-   staged-source subset instead of the generic text stub.
+1. `knowledge_search.v1` now returns bounded retrieval hits from the governed retrieval gateway
+   instead of the generic text stub, and reports whether the request used catalog-only fallback
+   or the live indexed-search path.
 2. `knowledge_answer.v1` now returns a conservative citation-carrying answer built from the
-   same bounded retrieval hits instead of the generic text stub.
+   same governed retrieval gateway instead of the generic text stub.
 3. low-support `knowledge_answer.v1` executions now return an explicit refusal message instead
    of overstating weak retrieval support.
 
@@ -91,6 +92,8 @@ Supported enabled tasks in foundation phase:
 3. the bounded retrieval hits used to assemble the answer
 4. `answer_mode` and `support_score` so callers can distinguish citation-backed answers from
    explicit low-support refusals
+5. `execution_stage`, `provider_mode`, and `catalog_only` so callers can distinguish catalog
+   fallback from live indexed retrieval
 
 ## Error Behavior
 

@@ -8,6 +8,8 @@ def build_citation_entries(hits: list[RetrievalSearchHit]) -> list[dict[str, obj
         {
             "rank": index + 1,
             "source_id": hit.source_id,
+            "document_id": hit.document_id,
+            "chunk_id": hit.chunk_id,
             "score": hit.score,
             "snippet": hit.snippet,
         }

@@ -11,32 +11,45 @@ from app.services.governance_readiness import summarize_activation_items
 
 def build_retrieval_evidence_readiness() -> RetrievalEvidenceReadinessResponse:
     approval_gate = build_retrieval_approval_gate_summary()
+    runtime_backed_live_evidence_present = approval_gate.runtime_backed_fixture_count > 0
     items = [
         RetrievalEvidenceReadinessItem(
             evidence_id="retrieval_fixture_coverage_pack",
-            status="FOUNDATION_STAGED",
+            status="READY" if runtime_backed_live_evidence_present else "FOUNDATION_STAGED",
             required_for_activation=True,
             notes=(
-                "Foundation-phase retrieval fixtures exist, but a retrieval-specific live "
-                "activation evidence pack is not yet approved."
+                "Runtime-backed retrieval fixtures now validate live retrieval behavior."
+                if runtime_backed_live_evidence_present
+                else (
+                    "Foundation-phase retrieval fixtures exist, but a retrieval-specific live "
+                    "activation evidence pack is not yet approved."
+                )
             ),
         ),
         RetrievalEvidenceReadinessItem(
             evidence_id="retrieval_regression_run_baseline",
-            status="NOT_READY",
+            status="READY" if runtime_backed_live_evidence_present else "NOT_READY",
             required_for_activation=True,
             notes=(
-                "A governed regression-run baseline proving retrieval search, citation, and "
-                "refusal behavior for rollout candidates is not yet recorded."
+                "A governed runtime-backed regression baseline now exists for live retrieval search behavior."
+                if runtime_backed_live_evidence_present
+                else (
+                    "A governed regression-run baseline proving retrieval search, citation, and "
+                    "refusal behavior for rollout candidates is not yet recorded."
+                )
             ),
         ),
         RetrievalEvidenceReadinessItem(
             evidence_id="retrieval_citation_traceability_pack",
-            status="NOT_READY",
+            status="READY" if runtime_backed_live_evidence_present else "NOT_READY",
             required_for_activation=True,
             notes=(
-                "Activation review evidence linking indexed sources, citations, and runtime "
-                "search traces is not yet assembled."
+                "Runtime-backed retrieval tasks now preserve live execution stage plus citation traceability evidence."
+                if runtime_backed_live_evidence_present
+                else (
+                    "Activation review evidence linking indexed sources, citations, and runtime "
+                    "search traces is not yet assembled."
+                )
             ),
         ),
         RetrievalEvidenceReadinessItem(
@@ -50,10 +63,11 @@ def build_retrieval_evidence_readiness() -> RetrievalEvidenceReadinessResponse:
         ),
     ]
     required_item_count, completed_required_item_count = summarize_activation_items(items)
+    evidence_ready = completed_required_item_count == required_item_count
     return RetrievalEvidenceReadinessResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,
-        evidence_ready=False,
+        evidence_ready=evidence_ready,
         required_item_count=required_item_count,
         completed_required_item_count=completed_required_item_count,
         items=items,

@@ -1,3 +1,7 @@
+from pytest import MonkeyPatch
+
+from app.config import settings
+from app.services.retrieval_store import get_retrieval_repository
 from app.services.retrieval_activation_readiness import build_retrieval_activation_readiness
 
 
@@ -8,5 +12,61 @@ def test_retrieval_activation_readiness_reports_foundation_blockers() -> None:
     assert readiness.retrieval_mode == "disabled"
     assert readiness.embedding_provider_mode == "disabled"
     assert readiness.activation_ready is False
-    assert len(readiness.blocking_findings) == 4
+    assert any(
+        "Retrieval mode is not enabled" in finding for finding in readiness.blocking_findings
+    )
+    assert any(
+        "runtime-backed live-search evidence exists" in finding
+        for finding in readiness.blocking_findings
+    )
     assert len(readiness.activation_path) == 4
+
+
+def test_retrieval_activation_readiness_reports_live_mode_with_remaining_governance_gaps() -> None:
+    settings.retrieval_mode = "enabled"
+    repository = get_retrieval_repository()
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+
+    readiness = build_retrieval_activation_readiness()
+
+    assert readiness.activation_ready is False
+    assert not any(
+        "No promoted indexed documents are currently searchable" in finding
+        for finding in readiness.blocking_findings
+    )
+    assert any(
+        "runbook readiness remains incomplete" in finding for finding in readiness.blocking_findings
+    )
+    assert any(
+        "Embedding provider execution is still disabled" in finding
+        for finding in readiness.blocking_findings
+    )
+
+
+def test_retrieval_activation_readiness_reports_unready_store_blocking(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.retrieval_mode = "enabled"
+
+    monkeypatch.setattr(
+        "app.services.retrieval_activation_readiness.get_retrieval_store_runtime_status",
+        lambda: type(
+            "StoreStatus",
+            (),
+            {
+                "status": "MIGRATION_REQUIRED",
+                "detail": "Configured database is reachable but missing required tables: retrieval_sources.",
+            },
+        )(),
+    )
+
+    readiness = build_retrieval_activation_readiness()
+
+    assert readiness.activation_ready is False
+    assert any(
+        "Retrieval store readiness is blocking live search activation" in finding
+        for finding in readiness.blocking_findings
+    )

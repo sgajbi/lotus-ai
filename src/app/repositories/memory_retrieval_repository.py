@@ -8,10 +8,13 @@ from app.contracts.retrieval import (
     RetrievalIndexJobDescriptor,
     RetrievalIndexStatus,
     RetrievalJobStatus,
+    RetrievalSearchHit,
     RetrievalSourceDescriptor,
     RetrievalSourceKind,
 )
 from app.repositories.retrieval_repository import RetrievalRepository
+from app.retrieval.search_eligibility import is_live_search_chunk_eligible
+from app.retrieval.search_scoring import score_terms
 
 
 class InMemoryRetrievalRepository(RetrievalRepository):
@@ -173,6 +176,43 @@ class InMemoryRetrievalRepository(RetrievalRepository):
 
     def list_chunks_for_document(self, document_id: str) -> list[RetrievalChunkDescriptor]:
         return deepcopy(self._chunks.get(document_id, []))
+
+    def search_indexed_chunks(
+        self, *, query: str, source_ids: list[str], limit: int
+    ) -> list[RetrievalSearchHit]:
+        allowed_source_ids = set(source_ids)
+        ranked_hits: list[RetrievalSearchHit] = []
+        for source in self._sources:
+            if not source.enabled:
+                continue
+            if allowed_source_ids and source.source_id not in allowed_source_ids:
+                continue
+            for document in self._documents.get(source.source_id, []):
+                for chunk in self._chunks.get(document.document_id, []):
+                    if not is_live_search_chunk_eligible(
+                        source=source,
+                        document=document,
+                        chunk=chunk,
+                    ):
+                        continue
+                    score = score_terms(
+                        query=query,
+                        searchable_text=f"{document.title} {chunk.preview}",
+                    )
+                    if score <= 0.0:
+                        continue
+                    ranked_hits.append(
+                        RetrievalSearchHit(
+                            source_id=chunk.source_id,
+                            document_id=chunk.document_id,
+                            chunk_id=chunk.chunk_id,
+                            score=score,
+                            snippet=chunk.preview,
+                        )
+                    )
+
+        ranked_hits.sort(key=lambda hit: (-hit.score, hit.source_id, hit.document_id, hit.chunk_id))
+        return [hit.model_copy(deep=True) for hit in ranked_hits[:limit]]
 
     def list_index_jobs(self) -> list[RetrievalIndexJobDescriptor]:
         jobs: list[RetrievalIndexJobDescriptor] = []

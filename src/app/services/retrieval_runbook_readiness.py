@@ -12,29 +12,29 @@ def build_retrieval_runbook_readiness() -> RetrievalRunbookReadinessResponse:
     items = [
         RetrievalRunbookReadinessItem(
             runbook_id="retrieval_operational_runbook",
-            status="FOUNDATION_DOCUMENTED",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Retrieval operating model is documented at a foundation level, but live search "
-                "and indexing activation steps are not yet finalized."
+                "The service runbook now documents live-search rollout review, runtime-backed "
+                "approval-gate checks, and operator-facing retrieval status surfaces."
             ),
         ),
         RetrievalRunbookReadinessItem(
             runbook_id="retrieval_oncall_and_escalation",
-            status="NOT_READY",
+            status="FOUNDATION_DOCUMENTED",
             required_for_activation=True,
             notes=(
-                "On-call ownership, retrieval incident triage, and escalation procedures for "
-                "live search and indexing must be defined before activation."
+                "Retrieval governance and operator review flow are documented, but named on-call "
+                "ownership and formal escalation rotation are still not approved."
             ),
         ),
         RetrievalRunbookReadinessItem(
             runbook_id="retrieval_reindex_and_replay_procedures",
-            status="NOT_READY",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Reindex, replay, failure recovery, and corpus refresh procedures are not yet "
-                "documented."
+                "The runbook now documents runtime-backed retrieval rollout plus reindex, replay, "
+                "rollback, and corpus-recovery expectations for the live-search path."
             ),
         ),
         RetrievalRunbookReadinessItem(
@@ -51,7 +51,7 @@ def build_retrieval_runbook_readiness() -> RetrievalRunbookReadinessResponse:
     return RetrievalRunbookReadinessResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,
-        runbook_ready=False,
+        runbook_ready=completed_required_item_count == required_item_count,
         required_item_count=required_item_count,
         completed_required_item_count=completed_required_item_count,
         items=items,

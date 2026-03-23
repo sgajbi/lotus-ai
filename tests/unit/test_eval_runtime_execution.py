@@ -28,6 +28,39 @@ def test_execute_fixture_case_reports_failure_for_provider_operations_state_mism
     assert evidence_refs == ["service://platform/providers/operations-status"]
 
 
+def test_execute_fixture_case_reports_pass_for_live_retrieval_search_case() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="retrieval_live_search_case",
+        summary="Live retrieval should preserve citations.",
+        input_payload={
+            "task_id": "knowledge_search.v1",
+            "query": "shared ai platform service",
+            "retrieval_mode": "enabled",
+            "index_sources": ["lotus-platform-rfcs"],
+            "source_filters": ["lotus-platform-rfcs"],
+        },
+        expected_payload={
+            "execution_stage": "LIVE_SEARCH",
+            "provider_mode": "live_search",
+            "catalog_only": False,
+            "must_preserve_citations": True,
+        },
+    )
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="retrieval_citation_examples",
+            fixture_task_id="knowledge_search.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "matched expected execution stage" in summary
+    assert evidence_refs == [
+        "service://ai/tasks/execute",
+        "service://platform/retrieval/execution-status",
+    ]
+
+
 def test_execute_fixture_case_reports_unknown_runtime_semantics_for_unmapped_fixture() -> None:
     summary, outcome, evidence_refs = _execute_fixture_case(
         fixture_id="unknown_fixture_family",

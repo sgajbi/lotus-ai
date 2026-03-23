@@ -43,7 +43,7 @@ def test_evaluation_catalog_route(client: TestClient) -> None:
     assert any(
         fixture["fixture_id"] == "retrieval_citation_examples"
         and fixture["manifest_path"] == "docs/evals/fixtures/retrieval.search/basic_cases.json"
-        and fixture["case_count"] == 2
+        and fixture["case_count"] == 3
         for fixture in body["fixture_families"]
     )
     assert any(
@@ -92,7 +92,7 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["manifest_version"] == "foundation.v1"
     assert body["evidence_category_count"] == 6
-    assert body["staged_case_count"] == 25
+    assert body["staged_case_count"] == 26
     assert [item["seam_id"] for item in body["seam_coverage"]] == [
         "async_execution",
         "task_execution",
@@ -130,7 +130,7 @@ def test_evaluation_run_catalog_route(client: TestClient) -> None:
     assert body["status_counts"]["RECORDED"] == 1
     assert body["status_counts"]["SUPERSEDED"] == 1
     assert body["runs"][0]["record_source"] == "STAGED_ARTIFACT"
-    assert body["runs"][0]["staged_case_count"] == 25
+    assert body["runs"][0]["staged_case_count"] == 26
     assert body["runs"][1]["status"] == "SUPERSEDED"
 
 
@@ -246,9 +246,9 @@ def test_evaluation_fixture_detail_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["manifest_version"] == "foundation.v1"
     assert body["fixture"]["fixture_id"] == "retrieval_citation_examples"
-    assert body["task_id"] == "retrieval.search.v1"
-    assert len(body["cases"]) == 2
-    assert body["cases"][0]["case_id"] == "search_rfc_answer_requires_citation"
+    assert body["task_id"] == "knowledge_search.v1"
+    assert len(body["cases"]) == 3
+    assert body["cases"][0]["case_id"] == "search_live_rfc_answer_preserves_citation"
 
 
 def test_evaluation_fixture_detail_route_returns_not_found_for_unknown_fixture(

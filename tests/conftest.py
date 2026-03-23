@@ -40,6 +40,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "live_text_degraded_failure_count_threshold": settings.live_text_degraded_failure_count_threshold,
         "live_text_circuit_open_failure_count_threshold": settings.live_text_circuit_open_failure_count_threshold,
         "live_text_circuit_open_seconds": settings.live_text_circuit_open_seconds,
+        "retrieval_mode": settings.retrieval_mode,
         "embedding_provider_mode": settings.embedding_provider_mode,
         "audit_store_mode": settings.audit_store_mode,
         "prompt_store_mode": settings.prompt_store_mode,

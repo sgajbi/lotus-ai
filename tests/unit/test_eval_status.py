@@ -10,7 +10,7 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.evidence_category_count == 6
     assert status.staged_fixture_count >= 11
     assert status.documented_fixture_count == 0
-    assert status.staged_case_count == 25
+    assert status.staged_case_count == 26
     assert [item.seam_id for item in status.seam_coverage] == [
         "async_execution",
         "task_execution",

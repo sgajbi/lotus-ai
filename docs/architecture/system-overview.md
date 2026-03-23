@@ -153,6 +153,11 @@ Provider and retrieval evidence-readiness surfaces now expose explicit approval-
 that distinguish staged-only baselines, partial runtime coverage, runtime pass, runtime failure,
 and stale runtime evidence by governed fixture family.
 
+Retrieval approval posture is now backed by runtime-produced live-search evidence rather than
+only staged retrieval continuity fixtures. The governed retrieval evaluation family exercises
+live search, citation-bearing answer success, and conservative refusal behavior while keeping
+reindex and rollback evidence as separate remaining activation gates.
+
 RFC-0007 Slice 5 closes the runtime-convergence loop around those approval gates. Async replay,
 requeue, and lease-expiry recovery now preserve explicit evaluation attempt history rather than
 only async attempt history, and evaluation runtime status now exposes approval-gate posture
@@ -231,17 +236,25 @@ Audit inspection also supports a bounded catalog view now, with explicit caller,
 tenant, task, category, and output-label filters plus limit controls, so operator and support
 workflows can inspect recent executions without relying only on direct request-id lookup.
 
-Retrieval execution now also supports a deterministic catalog-only path for enabled staged
-sources, so Lotus apps can get bounded preview hits from curated corpus metadata before live
-vector retrieval is activated.
+Retrieval execution now supports two governed paths through the same gateway: a deterministic
+catalog-only path for enabled staged sources when live retrieval is disabled, and a bounded
+repository-owned live indexed-search path when `retrieval_mode=enabled`.
+
+Retrieval execution status is now also corpus-aware. When live search is enabled, the operator
+surface distinguishes between searchable promoted corpus, index-pending corpus, and rolled-back
+or blocked corpus instead of reporting one generic live-search message for every state.
 
 The initial enabled subset is intentionally small: Lotus platform RFCs and lotus-ai
-architecture documents are searchable through the catalog-only path, while other staged
-sources remain disabled until they are explicitly promoted.
+architecture documents are searchable through the catalog-only path, while the live indexed
+path remains restricted to promoted indexed corpus content.
 
 Per-source rollout posture is also exposed through `/platform/retrieval/source-governance`, so
 registered, staged-only, and currently searchable corpus slices are reviewed through an explicit
 governance surface rather than inferred from raw source rows.
+
+Per-document rollout posture is also exposed through `/platform/retrieval/document-governance`, so
+live-search eligibility can be reviewed at document level instead of being inferred only from
+source flags plus index status.
 
 `knowledge_search.v1` now uses that same bounded retrieval path directly, so the task
 execution surface has a real governed knowledge-search capability instead of a generic
@@ -252,7 +265,11 @@ bounded retrieval path, with explicit citations preserved in the task result pay
 
 Low-support retrieval matches now produce an explicit conservative refusal mode for
 `knowledge_answer.v1` instead of a weak answer, which keeps the retrieval-backed task path
-more defensible under the current catalog-only execution model.
+defensible across both catalog-only and live indexed-search execution modes.
+
+Task runtime status and execution evidence now also distinguish whether a retrieval-backed
+task resolved through catalog-only fallback or the live indexed-search path, so operator
+review and persisted audit evidence do not have to infer that from generic provider metadata.
 
 Task runtime posture now also resolves through a dedicated execution-path helper so provider-backed
 and retrieval-backed task routing semantics are defined in one place instead of being encoded only
@@ -363,6 +380,14 @@ Current retrieval rollout posture includes:
 
 Retrieval governance now summarizes technical activation, runbook, and evidence readiness
 together.
+
+Retrieval evidence readiness now also carries an explicit approval-gate summary derived from
+runtime-backed evaluation runs. Historical staged baselines remain visible for continuity, but
+they no longer satisfy current live-retrieval approval posture by themselves.
+
+Retrieval runbook readiness is now partially complete rather than purely foundational: live-search
+rollout review plus replay, rollback, and corpus-recovery procedures are documented, while named
+on-call ownership and dedicated observability pack work remain explicit blockers.
 
 ### Routers
 

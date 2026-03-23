@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.config import settings
 from app.contracts.retrieval import (
+    RetrievalDocumentDescriptor,
     RetrievalIndexStatus,
     RetrievalSourceDescriptor,
     RetrievalSourceGovernanceDescriptor,
@@ -9,6 +10,7 @@ from app.contracts.retrieval import (
 )
 from app.retrieval.inventory_summary import summarize_retrieval_source_inventory
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
+from app.retrieval.search_eligibility import build_document_eligibility
 from app.services.retrieval_store import get_retrieval_repository
 
 
@@ -19,9 +21,12 @@ def build_retrieval_source_governance() -> RetrievalSourceGovernanceResponse:
         service=settings.service_name,
         retrieval_mode=settings.retrieval_mode,
         vector_store=VECTOR_STORE_STRATEGY,
-        enabled_source_count=sum(1 for source in governance_sources if source.search_enabled),
-        staged_only_source_count=sum(
-            1 for source in governance_sources if source.governance_status == "STAGED_ONLY"
+        searchable_source_count=sum(1 for source in governance_sources if source.search_enabled),
+        index_pending_source_count=sum(
+            1 for source in governance_sources if source.governance_status == "INDEX_PENDING"
+        ),
+        blocked_source_count=sum(
+            1 for source in governance_sources if source.governance_status == "BLOCKED_BY_SOURCE"
         ),
         empty_source_count=sum(
             1 for source in governance_sources if source.governance_status == "EMPTY"
@@ -33,17 +38,19 @@ def build_retrieval_source_governance() -> RetrievalSourceGovernanceResponse:
 def _build_source_governance_descriptor(
     *, source: RetrievalSourceDescriptor
 ) -> RetrievalSourceGovernanceDescriptor:
+    repository = get_retrieval_repository()
+    documents = repository.list_documents_for_source(source.source_id)
     inventory = summarize_retrieval_source_inventory(source.source_id)
     governance_status, notes = _derive_source_governance(
-        enabled=source.enabled,
-        document_count=inventory.document_count,
+        source=source,
+        documents=documents,
         index_status=inventory.index_status,
     )
     return RetrievalSourceGovernanceDescriptor(
         source_id=source.source_id,
         kind=source.kind,
         governance_status=governance_status,
-        search_enabled=source.enabled,
+        search_enabled=governance_status == "SEARCH_ENABLED",
         document_count=inventory.document_count,
         chunk_count=inventory.chunk_count,
         index_status=inventory.index_status,
@@ -52,24 +59,35 @@ def _build_source_governance_descriptor(
 
 
 def _derive_source_governance(
-    *, enabled: bool, document_count: int, index_status: RetrievalIndexStatus
+    *,
+    source: RetrievalSourceDescriptor,
+    documents: list[RetrievalDocumentDescriptor],
+    index_status: RetrievalIndexStatus,
 ) -> tuple[str, str]:
-    if enabled:
+    if any(
+        build_document_eligibility(source=source, document=document).search_enabled
+        for document in documents
+    ):
         return (
             "SEARCH_ENABLED",
-            "Approved for bounded catalog-only retrieval during foundation phase.",
+            "Source has at least one promoted indexed document eligible for live retrieval search.",
         )
-    if document_count == 0:
+    if not documents:
         return (
             "EMPTY",
             "Registered as an approved source class, but no staged documents are loaded yet.",
         )
+    if source.enabled and index_status == RetrievalIndexStatus.STAGED:
+        return (
+            "INDEX_PENDING",
+            "Source is enabled, but its staged documents are not fully indexed for live search yet.",
+        )
     if index_status == RetrievalIndexStatus.STAGED:
         return (
-            "STAGED_ONLY",
-            "Documents are staged but the source is not yet promoted into catalog-only retrieval.",
+            "BLOCKED_BY_SOURCE",
+            "Documents are present but remain blocked from live search because the source is not enabled.",
         )
     return (
         "REGISTERED_ONLY",
-        "Registered in the retrieval corpus, but not yet promoted into searchable foundation scope.",
+        "Registered in the retrieval corpus, but no document is currently eligible for live search.",
     )

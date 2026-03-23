@@ -160,6 +160,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/retrieval/source-governance"]["get"]["operationId"] == (
         "getRetrievalSourceGovernance"
     )
+    assert spec["paths"]["/platform/retrieval/document-governance"]["get"]["operationId"] == (
+        "getRetrievalDocumentGovernance"
+    )
     assert (
         spec["paths"]["/platform/retrieval/documents/{document_id}/chunks"]["get"]["operationId"]
         == "listRetrievalDocumentChunks"

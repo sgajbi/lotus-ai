@@ -11,7 +11,9 @@ from app.contracts.retrieval import (
 from app.repositories.memory_retrieval_repository import InMemoryRetrievalRepository
 from app.services.retrieval_catalog_service import (
     get_documents_for_source,
+    get_retrieval_document_governance,
     get_retrieval_index_status,
+    get_retrieval_source_governance,
     get_chunks_for_document,
 )
 
@@ -21,6 +23,20 @@ def test_get_retrieval_index_status_includes_known_sources() -> None:
 
     assert response.service == "lotus-ai"
     assert any(source.source_id == "lotus-platform-rfcs" for source in response.sources)
+
+
+def test_get_retrieval_source_governance_reflects_live_search_posture() -> None:
+    response = get_retrieval_source_governance()
+
+    assert response.searchable_source_count == 0
+    assert response.index_pending_source_count >= 2
+
+
+def test_get_retrieval_document_governance_reflects_document_search_posture() -> None:
+    response = get_retrieval_document_governance()
+
+    assert response.searchable_document_count == 0
+    assert any(document.document_id == "lotus-platform-rfc-0069" for document in response.documents)
 
 
 def test_get_retrieval_index_status_marks_sources_as_indexed_and_not_indexed() -> None:

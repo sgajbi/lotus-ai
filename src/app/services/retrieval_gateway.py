@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-import re
-from fastapi import HTTPException, status
-
 from app.config import settings
 from app.contracts.retrieval import (
-    RetrievalChunkDescriptor,
+    RetrievalDocumentGovernanceResponse,
     RetrievalExecutionRequest,
     RetrievalExecutionResponse,
     RetrievalExecutionStage,
     RetrievalSearchHit,
     RetrievalStatus,
 )
+from app.retrieval.document_governance import build_retrieval_document_governance
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
+from app.retrieval.search_scoring import score_terms
 from app.services.retrieval_store import get_retrieval_repository
 
 
@@ -41,12 +40,58 @@ def execute_retrieval_search(request: RetrievalExecutionRequest) -> RetrievalExe
             ),
         )
 
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail=(
-            "Retrieval execution mode is enabled in configuration but no live retrieval backend "
-            "is wired yet."
+    document_governance = build_retrieval_document_governance()
+    if document_governance.searchable_document_count == 0:
+        return RetrievalExecutionResponse(
+            status=RetrievalStatus.REJECTED,
+            execution_stage=RetrievalExecutionStage.INDEXING_DISABLED,
+            vector_store=VECTOR_STORE_STRATEGY,
+            hits=[],
+            message=_build_live_search_unavailable_message(document_governance=document_governance),
+        )
+
+    live_hits = get_retrieval_repository().search_indexed_chunks(
+        query=request.query,
+        source_ids=request.source_ids,
+        limit=request.limit,
+    )
+    return RetrievalExecutionResponse(
+        status=RetrievalStatus.READY,
+        execution_stage=RetrievalExecutionStage.LIVE_SEARCH,
+        vector_store=VECTOR_STORE_STRATEGY,
+        hits=live_hits,
+        message=(
+            "Live retrieval search executed over indexed promoted corpus content."
+            if live_hits
+            else (
+                "Live retrieval search executed over indexed promoted corpus content but returned "
+                "no matching hits."
+            )
         ),
+    )
+
+
+def _build_live_search_unavailable_message(
+    *, document_governance: RetrievalDocumentGovernanceResponse
+) -> str:
+    searchable_document_count = document_governance.searchable_document_count
+    index_pending_document_count = document_governance.index_pending_document_count
+    blocked_document_count = document_governance.blocked_document_count
+    if searchable_document_count > 0:
+        return "Live retrieval search is available."
+    if index_pending_document_count > 0:
+        return (
+            "Live retrieval search is enabled but currently blocked because promoted corpus "
+            "indexing is still pending."
+        )
+    if blocked_document_count > 0:
+        return (
+            "Live retrieval search is enabled but currently blocked because the promoted corpus "
+            "is rolled back or blocked by source posture."
+        )
+    return (
+        "Live retrieval search is enabled but currently blocked because no promoted indexed corpus "
+        "content is registered."
     )
 
 
@@ -61,51 +106,42 @@ def _build_catalog_only_hits(request: RetrievalExecutionRequest) -> list[Retriev
     if not enabled_sources:
         return []
 
-    query_terms = _tokenize(request.query)
-    if not query_terms:
-        return []
-
-    ranked_hits: list[tuple[float, str, str]] = []
+    ranked_hits: list[RetrievalSearchHit] = []
     for source in enabled_sources:
         for document in repository.list_documents_for_source(source.source_id):
             for chunk in repository.list_chunks_for_document(document.document_id):
-                score = _score_catalog_chunk(
-                    query_terms=query_terms,
-                    document_title=document.title,
-                    chunk=chunk,
+                score = score_terms(
+                    query=request.query,
+                    searchable_text=f"{document.title} {chunk.preview}",
                 )
                 if score <= 0.0:
                     continue
-                ranked_hits.append((score, chunk.source_id, chunk.preview))
+                ranked_hits.append(
+                    build_catalog_only_hit(
+                        source_id=chunk.source_id,
+                        document_id=chunk.document_id,
+                        chunk_id=chunk.chunk_id,
+                        snippet=chunk.preview,
+                        score=score,
+                    )
+                )
 
-    ranked_hits.sort(key=lambda item: (-item[0], item[1], item[2]))
-    return [
-        build_catalog_only_hit(source_id=source_id, snippet=snippet, score=score)
-        for score, source_id, snippet in ranked_hits[: request.limit]
-    ]
-
-
-def _score_catalog_chunk(
-    *,
-    query_terms: set[str],
-    document_title: str,
-    chunk: RetrievalChunkDescriptor,
-) -> float:
-    searchable_terms = _tokenize(f"{document_title} {chunk.preview}")
-    overlap_count = len(query_terms & searchable_terms)
-    if overlap_count == 0:
-        return 0.0
-    return overlap_count / len(query_terms)
-
-
-def _tokenize(value: str) -> set[str]:
-    return {token for token in re.findall(r"[a-z0-9]+", value.lower()) if token}
+    ranked_hits.sort(key=lambda hit: (-hit.score, hit.source_id, hit.document_id, hit.chunk_id))
+    return ranked_hits[: request.limit]
 
 
 def build_catalog_only_hit(
     *,
     source_id: str,
+    document_id: str,
+    chunk_id: str,
     snippet: str,
     score: float,
 ) -> RetrievalSearchHit:
-    return RetrievalSearchHit(source_id=source_id, score=score, snippet=snippet)
+    return RetrievalSearchHit(
+        source_id=source_id,
+        document_id=document_id,
+        chunk_id=chunk_id,
+        score=score,
+        snippet=snippet,
+    )

@@ -45,12 +45,14 @@ The current execution posture is:
 - audit records now preserve task category, output label, and execution evidence, so post-execution inspection remains useful without replaying the original task request,
 - audit records now also preserve optional caller identity fields such as `requested_by` and `tenant_id`, so operator review and downstream support flows retain full caller traceability instead of only app-level correlation metadata,
 - audit inspection now includes a bounded catalog endpoint with caller, requester, tenant, task, category, and output-label filters plus explicit limits, so downstream support and review flows can inspect recent executions without scanning by request id only,
-- retrieval search can now return deterministic catalog-only hits from enabled staged sources in foundation phase, which gives downstream apps bounded search utility before live vector retrieval is activated,
-- the initial enabled catalog-only retrieval subset is intentionally small: Lotus platform RFCs and lotus-ai architecture documents are searchable, while the rest of the staged corpus remains disabled,
+- retrieval search now supports a bounded live indexed-search path when `retrieval_mode=enabled`, while disabled mode still returns deterministic catalog-only hits from enabled staged sources,
+- the initial enabled catalog-only retrieval subset is intentionally small, and live retrieval now remains additionally constrained by document-level indexed eligibility rather than raw source enablement alone,
 - retrieval source governance is now exposed directly, so enabled versus staged-only corpus slices can be reviewed without reading repository fixtures or migrations,
-- `knowledge_search.v1` is now enabled as a bounded task and routes through that governed catalog-only retrieval path rather than the generic text stub,
-- `knowledge_answer.v1` is now enabled as a bounded, citation-carrying answer task built on the same governed catalog-only retrieval path,
+- retrieval document governance is now exposed directly, so live-search eligibility can be inspected at document level instead of inferred from source flags,
+- `knowledge_search.v1` is now enabled as a bounded task and routes through the same governed retrieval gateway, reporting live-search versus catalog-only posture explicitly,
+- `knowledge_answer.v1` is now enabled as a bounded, citation-carrying answer task built on the same governed retrieval gateway,
 - retrieval-backed tasks now emit explicit structured citations and `knowledge_answer.v1` refuses low-support answers instead of overstating weak retrieval matches,
+- retrieval-backed task runtime status and execution evidence now also distinguish live indexed retrieval from catalog-only fallback explicitly,
 - platform status now exposes a dedicated bounded task-runtime view so operators can distinguish stub-backed tasks from retrieval-backed tasks directly,
 - platform task APIs now also expose bounded execution-summary, evidence-summary, and retrieval-summary views built from persisted audit records, so real task usage, retrieval-answer quality, and source/refusal patterns can be measured instead of inferred,
 - the provider catalog now distinguishes the stub adapter from the allowlisted OpenAI live adapter seam, while live execution remains disabled by default unless rollout, credentials, and task allowlisting permit it,
@@ -85,6 +87,9 @@ The current execution posture is:
 - retrieval evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
 - retrieval governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
 - platform runtime status now embeds retrieval governance posture directly,
+- retrieval evidence readiness now uses a runtime-backed approval gate over governed retrieval evaluation runs, so staged baselines cannot silently satisfy live-search rollout posture,
+- retrieval execution status is now corpus-aware, so enabled live search reports whether searchable promoted documents currently exist or whether rollback or index-pending posture has emptied the live corpus,
+- retrieval runbook readiness now reflects documented rollout and rollback procedures separately from the still-missing observability and named on-call activation items,
 - prompts now expose runtime selection status in addition to governance posture,
 - prompt activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - prompt runbook readiness is now exposed through a dedicated operational-readiness endpoint,
@@ -135,6 +140,8 @@ The current execution posture is:
 - retrieval indexing is now the first runtime-backed async consumer, with concrete retrieval index jobs submitted into the durable async runtime and reflected back into retrieval job catalog/detail state,
 - async evaluation assets and runbook guidance now explicitly cover runtime-backed submission, lease-expiry recovery, and retrieval-indexing linkage, so the async control plane is no longer described as documentation-only where runtime truth already exists,
 - retrieval execution posture now distinguishes runtime-backed indexing from still-disabled live search, so indexing rollout no longer depends on staged-only retrieval job artifacts,
+- retrieval runtime-backed evaluation now covers live search, citation-backed answers, and conservative refusals, while reindex and rollback evidence still remain separate activation blockers,
+- SQL-backed retrieval tests now prove live-search eligibility survives repository restart and disappears cleanly after rollback from indexed back to staged corpus posture,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:
@@ -156,7 +163,7 @@ The current persistence posture is:
 
 The current retrieval-storage decision is:
 
-- no vector store is wired yet,
+- the first live retrieval path is now wired through the repository-owned indexed-search seam,
 - the planned first vector store is PostgreSQL with `pgvector`,
 - we are intentionally avoiding a separate vector database until scale or workload evidence justifies it.
 
@@ -166,7 +173,7 @@ The current retrieval posture is:
 - retrieval source discovery is exposed through the platform API,
 - provider posture discovery is exposed through the platform API,
 - runtime posture for retrieval and platform services is exposed through the platform API,
-- live retrieval search remains disabled until embeddings and vector indexing are wired.
+- live retrieval search is now available through the bounded indexed-search seam when `retrieval_mode=enabled`, while broader embedding-driven retrieval expansion remains future work.
 
 ## What lotus-ai Does
 

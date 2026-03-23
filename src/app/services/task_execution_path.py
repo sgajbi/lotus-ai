@@ -7,6 +7,7 @@ from app.contracts.providers import ProviderExecutionMode, ProviderRolloutState
 from app.contracts.tasks import CapabilityDescriptor
 from app.services.provider_live_execution_state import build_provider_live_execution_state
 from app.services.provider_rollout_posture import build_provider_rollout_posture
+from app.services.retrieval_execution_status import build_retrieval_execution_status
 
 
 @dataclass(frozen=True)
@@ -19,20 +20,41 @@ class TaskExecutionPathDescriptor:
 
 def build_task_execution_path(task: CapabilityDescriptor) -> TaskExecutionPathDescriptor:
     if task.task_id == "knowledge_search.v1":
+        return _build_retrieval_task_execution_path(task_id=task.task_id)
+    if task.task_id == "knowledge_answer.v1":
+        return _build_retrieval_task_execution_path(task_id=task.task_id)
+    return _build_provider_backed_task_execution_path(task=task)
+
+
+def _build_retrieval_task_execution_path(*, task_id: str) -> TaskExecutionPathDescriptor:
+    retrieval_status = build_retrieval_execution_status()
+    if task_id == "knowledge_search.v1":
+        if retrieval_status.live_search_enabled:
+            return TaskExecutionPathDescriptor(
+                execution_path="retrieval.live_search",
+                provider_mode="live_search",
+                stubbed=False,
+                notes="Bounded retrieval hits from the live indexed promoted corpus.",
+            )
         return TaskExecutionPathDescriptor(
             execution_path="retrieval.catalog_search",
             provider_mode="catalog_only",
             stubbed=False,
             notes="Bounded retrieval hits from enabled staged approved sources.",
         )
-    if task.task_id == "knowledge_answer.v1":
+    if retrieval_status.live_search_enabled:
         return TaskExecutionPathDescriptor(
-            execution_path="retrieval.catalog_answer",
-            provider_mode="catalog_answer",
+            execution_path="retrieval.live_answer",
+            provider_mode="live_answer",
             stubbed=False,
-            notes="Conservative citation-backed answer with explicit refusal on low-support retrieval.",
+            notes="Conservative citation-backed answer over the live indexed promoted corpus.",
         )
-    return _build_provider_backed_task_execution_path(task=task)
+    return TaskExecutionPathDescriptor(
+        execution_path="retrieval.catalog_answer",
+        provider_mode="catalog_answer",
+        stubbed=False,
+        notes="Conservative citation-backed answer with explicit refusal on low-support retrieval.",
+    )
 
 
 def _build_provider_backed_task_execution_path(

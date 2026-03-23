@@ -4,7 +4,8 @@ This guide records the current retrieval-storage direction for `lotus-ai`.
 
 ## Current State
 
-Right now, `lotus-ai` does not have a live vector store wired into runtime retrieval.
+Right now, `lotus-ai` has a bounded live indexed-search path wired through the retrieval
+repository seam, but it does not yet have broad embedding-driven vector retrieval execution.
 
 That is intentional. We are still building the retrieval layer in disciplined slices.
 
@@ -62,14 +63,14 @@ What exists today:
 3. staged chunks are visible per document,
 4. indexing jobs and indexing policy are exposed through API contracts,
 5. retrieval metadata is served through a repository seam rather than hard-coded module state,
-6. retrieval search now flows through an explicit execution gateway before any live backend is introduced,
+6. retrieval search now flows through an explicit execution gateway with bounded catalog-only and live indexed-search paths,
 7. retrieval execution status is exposed separately from retrieval catalog status.
 
 What does not exist yet:
 
 1. live embedding generation,
 2. runtime vector writes,
-3. production retrieval execution over indexed vectors.
+3. broader embedding-driven retrieval execution over indexed vectors.
 
 This split is deliberate. We want the retrieval contract, governance posture, and observability model to become stable before live indexing is enabled.
 
@@ -90,6 +91,10 @@ Current configuration modes:
 1. `LOTUS_AI_RETRIEVAL_STORE_MODE=memory` for the default seeded repository,
 2. `LOTUS_AI_RETRIEVAL_STORE_MODE=sqlalchemy` with `LOTUS_AI_DATABASE_URL` for Alembic-managed retrieval metadata.
 
+When the SQL-backed retrieval path is enabled, live-search eligibility is durable rather than
+process-local. Restart does not reset which promoted documents are searchable, and rollback from
+`INDEXED` back to `STAGED` removes those documents from live search after repository reinitialization.
+
 ## Retrieval API Surface
 
 The current retrieval API exposes:
@@ -106,14 +111,28 @@ The current retrieval API exposes:
 10. document inventory,
 11. chunk inventory.
 
-The search endpoint remains governed. In foundation phase it can now return bounded
-catalog-only hits from a small enabled staged-source subset, while live vector retrieval
-remains disabled.
+The search endpoint remains governed. In foundation phase it now supports:
+
+1. bounded catalog-only hits from a small enabled staged-source subset when live retrieval is disabled,
+2. bounded live indexed-search hits from promoted indexed corpus content when `retrieval_mode=enabled`.
 
 Current enabled catalog-only sources:
 
 1. `lotus-platform-rfcs`
 2. `lotus-ai-architecture`
+
+Live-search eligibility is now exposed explicitly through:
+
+1. `/platform/retrieval/source-governance` for source-level searchable versus blocked posture,
+2. `/platform/retrieval/document-governance` for document-level searchable, index-pending, and blocked posture.
+
+`/platform/retrieval/execution-status` is also corpus-aware now. It still reports whether the live
+path is active, but it also explains whether that path currently has searchable promoted documents,
+is waiting on indexing, or has an empty live corpus because content was rolled back or blocked.
+
+Per-request live retrieval behavior follows the same distinction. If live retrieval is enabled but
+the searchable promoted corpus is unavailable, the search API now rejects the request explicitly
+instead of reporting it as a normal empty-result live search.
 
 `/platform/runtime-status` now embeds retrieval governance posture directly so operators can review
 retrieval rollout state from the same top-level runtime surface that already carries async and
@@ -127,8 +146,12 @@ Current staged retrieval evaluation assets:
 
 1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/retrieval.search/basic_cases.json)
 
-These fixtures currently validate the governed pre-activation posture:
+These fixtures now validate runtime-backed live retrieval approval posture:
 
-1. citation expectations remain explicit for RFC-backed questions,
-2. refusal or conflict behavior is staged for insufficient or disabled retrieval paths,
-3. retrieval evaluation assets evolve under the same manifest and CI gate as the rest of the evaluation inventory.
+1. live search preserves provenance and citations for RFC-backed questions,
+2. `knowledge_answer.v1` returns citation-backed answers only when support is sufficient,
+3. low-support live retrieval paths refuse conservatively instead of overstating confidence,
+4. retrieval evaluation assets evolve under the same manifest and CI gate as the rest of the evaluation inventory.
+
+These runtime-backed fixtures do not close retrieval rollout on their own. Reindex, rollback,
+and corpus-recovery evidence are still tracked separately through retrieval evidence readiness.

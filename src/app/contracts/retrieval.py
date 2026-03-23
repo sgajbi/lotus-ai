@@ -63,10 +63,10 @@ class RetrievalSourceGovernanceDescriptor(BaseModel):
     source_id: str = Field(description="Stable retrieval source identifier.")
     kind: RetrievalSourceKind = Field(description="High-level source category.")
     governance_status: str = Field(
-        description="Derived governance posture for the source within the current catalog-only rollout."
+        description="Derived governance posture for the source within the current live-search rollout."
     )
     search_enabled: bool = Field(
-        description="Whether the source is currently allowed to participate in catalog-only retrieval."
+        description="Whether the source currently has any document eligible for live retrieval search."
     )
     document_count: int = Field(description="Number of staged documents currently registered.")
     chunk_count: int = Field(description="Number of staged chunks currently registered.")
@@ -74,15 +74,55 @@ class RetrievalSourceGovernanceDescriptor(BaseModel):
     notes: str = Field(description="Human-readable explanation of the source governance posture.")
 
 
+class RetrievalDocumentGovernanceDescriptor(BaseModel):
+    document_id: str = Field(description="Stable retrieval document identifier.")
+    source_id: str = Field(description="Retrieval source identifier for the document.")
+    title: str = Field(description="Human-readable document title.")
+    governance_status: str = Field(
+        description="Derived governance posture for the document within the current live-search rollout."
+    )
+    search_enabled: bool = Field(
+        description="Whether the document is currently eligible for live retrieval search."
+    )
+    chunk_count: int = Field(description="Current chunk count registered for the document.")
+    index_status: RetrievalIndexStatus = Field(
+        description="Current indexing status for the document."
+    )
+    notes: str = Field(description="Human-readable explanation of the document governance posture.")
+
+
+class RetrievalDocumentGovernanceResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the retrieval document governance view."
+    )
+    retrieval_mode: str = Field(description="Current retrieval mode configured for lotus-ai.")
+    vector_store: str = Field(description="Current or planned vector-store strategy label.")
+    searchable_document_count: int = Field(
+        description="Number of documents currently eligible for live retrieval search."
+    )
+    index_pending_document_count: int = Field(
+        description="Number of source-enabled documents still blocked on indexing."
+    )
+    blocked_document_count: int = Field(
+        description="Number of documents currently blocked from live search by source posture."
+    )
+    documents: list[RetrievalDocumentGovernanceDescriptor] = Field(
+        description="Per-document governance posture for the currently registered retrieval corpus."
+    )
+
+
 class RetrievalSourceGovernanceResponse(BaseModel):
     service: str = Field(description="Service name emitting the retrieval source governance view.")
     retrieval_mode: str = Field(description="Current retrieval mode configured for lotus-ai.")
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
-    enabled_source_count: int = Field(
-        description="Number of sources currently enabled for catalog-only retrieval."
+    searchable_source_count: int = Field(
+        description="Number of sources currently contributing at least one document to live retrieval search."
     )
-    staged_only_source_count: int = Field(
-        description="Number of sources staged but not currently enabled for retrieval."
+    index_pending_source_count: int = Field(
+        description="Number of source-enabled sources still blocked on indexing before live search."
+    )
+    blocked_source_count: int = Field(
+        description="Number of sources currently blocked from live search by source posture."
     )
     empty_source_count: int = Field(description="Number of sources with no staged documents yet.")
     sources: list[RetrievalSourceGovernanceDescriptor] = Field(
@@ -243,6 +283,8 @@ class RetrievalSearchRequest(BaseModel):
 
 class RetrievalSearchHit(BaseModel):
     source_id: str = Field(description="Retrieval source identifier that produced the hit.")
+    document_id: str = Field(description="Retrieval document identifier that produced the hit.")
+    chunk_id: str = Field(description="Retrieval chunk identifier that produced the hit.")
     score: float = Field(description="Relevance score associated with the hit.")
     snippet: str = Field(description="Short snippet preview for the hit.")
 
@@ -250,6 +292,9 @@ class RetrievalSearchHit(BaseModel):
 class RetrievalSearchResponse(BaseModel):
     status: RetrievalStatus = Field(description="Current retrieval execution status.")
     query: str = Field(description="Original caller query.")
+    execution_stage: "RetrievalExecutionStage" = Field(
+        description="Current retrieval execution stage applied to the request."
+    )
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     hits: list[RetrievalSearchHit] = Field(description="Retrieval hits returned by the search.")
     message: str = Field(description="Human-readable retrieval status message.")
@@ -257,6 +302,7 @@ class RetrievalSearchResponse(BaseModel):
 
 class RetrievalExecutionStage(str, Enum):
     CATALOG_ONLY = "CATALOG_ONLY"
+    LIVE_SEARCH = "LIVE_SEARCH"
     SEARCH_DISABLED = "SEARCH_DISABLED"
     INDEXING_DISABLED = "INDEXING_DISABLED"
 
