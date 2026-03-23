@@ -100,3 +100,5 @@ def test_evaluation_run_detail_returns_runtime_backed_run() -> None:
     assert detail.run.record_source == EvaluationRunRecordSource.RUNTIME_STATE
     assert detail.run.fixture_id == "provider_runtime_examples"
     assert detail.run.seam_coverage[0].seam_id == "provider_execution"
+    assert detail.attempts == []
+    assert detail.case_results == []

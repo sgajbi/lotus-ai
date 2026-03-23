@@ -25,10 +25,19 @@ class AsyncWorkerClaimResult:
 
 
 def claim_next_async_job(*, worker_id: str) -> AsyncWorkerClaimResult | None:
+    return claim_next_async_job_for_types(worker_id=worker_id, job_types=None)
+
+
+def claim_next_async_job_for_types(
+    *,
+    worker_id: str,
+    job_types: tuple[str, ...] | None,
+) -> AsyncWorkerClaimResult | None:
     now = _utcnow()
     recover_expired_async_jobs(now=now)
     claimed = get_async_runtime_store().claim_next_runnable_job(
         worker_id=worker_id,
+        job_types=job_types,
         claimed_at=_isoformat(now),
         heartbeat_at=_isoformat(now),
         lease_expires_at=_isoformat(now + timedelta(seconds=_LEASE_SECONDS)),

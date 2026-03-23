@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from app.services.eval_async_execution import run_next_evaluation_execution_job
+
 
 def test_evaluation_catalog_route(client: TestClient) -> None:
     response = client.get("/platform/evals/catalog")
@@ -109,7 +111,7 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     assert body["historical_run_count"] == 2
     assert body["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["latest_recorded_run_status"] == "RECORDED"
-    assert body["evaluation_runner_active"] is False
+    assert body["evaluation_runner_active"] is True
 
 
 def test_evaluation_run_catalog_route(client: TestClient) -> None:
@@ -189,6 +191,33 @@ def test_evaluation_run_submit_route_accepts_runtime_backed_allowlisted_fixture(
     assert runtime_run["record_source"] == "RUNTIME_STATE"
     assert runtime_run["fixture_id"] == "retrieval_citation_examples"
     assert runtime_run["status"] == "QUEUED"
+
+
+def test_evaluation_run_detail_route_exposes_runtime_attempt_and_case_history(
+    client: TestClient,
+) -> None:
+    submission = client.post(
+        "/platform/evals/runs/submit",
+        json={
+            "fixture_id": "provider_policy_examples",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-eval-submit-003",
+            "triggered_by": "operator-a",
+        },
+    ).json()
+
+    run_next_evaluation_execution_job(worker_id="worker-a")
+
+    detail_response = client.get(f"/platform/evals/runs/{submission['run_id']}")
+
+    assert detail_response.status_code == 200
+    body = detail_response.json()
+    assert body["run"]["record_source"] == "RUNTIME_STATE"
+    assert body["run"]["status"] == "COMPLETED"
+    assert body["attempts"][0]["status"] == "COMPLETED"
+    assert body["attempts"][0]["verdict"] == "PASS"
+    assert len(body["case_results"]) == 2
+    assert body["case_results"][0]["outcome"] == "PASS"
 
 
 def test_evaluation_run_submit_route_rejects_staged_only_fixture(client: TestClient) -> None:

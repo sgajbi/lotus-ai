@@ -39,6 +39,21 @@ class EvaluationFixtureFamily:
         self.cases = cases
 
 
+class EvaluationFixtureRuntimeCase:
+    def __init__(
+        self,
+        *,
+        case_id: str,
+        summary: str,
+        input_payload: dict[str, Any],
+        expected_payload: dict[str, Any],
+    ) -> None:
+        self.case_id = case_id
+        self.summary = summary
+        self.input_payload = input_payload
+        self.expected_payload = expected_payload
+
+
 class EvaluationFixtureManifestValidationError(ValueError):
     """Raised when the governed evaluation fixture manifest is malformed."""
 
@@ -87,6 +102,43 @@ def load_evaluation_fixture_family(*, fixture_id: str) -> EvaluationFixtureFamil
         manifest_path=fixture.manifest_path,
     )
     return EvaluationFixtureFamily(descriptor=fixture, task_id=task_id, cases=cases)
+
+
+def load_evaluation_fixture_runtime_cases(
+    *, fixture_id: str
+) -> tuple[str | None, list[EvaluationFixtureRuntimeCase]]:
+    repo_root = Path(__file__).resolve().parents[3]
+    manifest = load_evaluation_fixture_manifest()
+    fixture = next(
+        (fixture for fixture in manifest.fixture_families if fixture.fixture_id == fixture_id),
+        None,
+    )
+    if fixture is None:
+        raise EvaluationFixtureManifestValidationError(
+            f"Unknown evaluation fixture family '{fixture_id}'."
+        )
+    if fixture.manifest_path is None:
+        return (None, [])
+    fixture_path = repo_root / fixture.manifest_path
+    with fixture_path.open("r", encoding="utf-8") as fixture_file:
+        payload = json.load(fixture_file)
+    cases = payload.get("cases", [])
+    if not isinstance(cases, list):
+        raise EvaluationFixtureManifestValidationError(
+            f"Fixture manifest file has non-list cases payload: {fixture_path}"
+        )
+    return (
+        payload.get("task_id"),
+        [
+            EvaluationFixtureRuntimeCase(
+                case_id=case["case_id"],
+                summary=case["summary"],
+                input_payload=cast(dict[str, Any], case["input"]),
+                expected_payload=cast(dict[str, Any], case["expected"]),
+            )
+            for case in cases
+        ],
+    )
 
 
 def validate_evaluation_fixture_manifest(

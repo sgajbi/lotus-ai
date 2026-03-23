@@ -25,6 +25,8 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.seam_coverage[3].staged_fixture_count == 5
     assert status.seam_coverage[3].staged_case_count == 12
     assert status.recorded_run_count == 2
+    assert status.runtime_backed_run_count == 0
+    assert status.historical_run_count == 2
     assert status.latest_recorded_run_id == "foundation_eval_2026_03_22_001"
     assert status.latest_recorded_run_status == "RECORDED"
-    assert status.evaluation_runner_active is False
+    assert status.evaluation_runner_active is True

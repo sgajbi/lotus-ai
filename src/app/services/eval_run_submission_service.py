@@ -25,6 +25,7 @@ from app.repositories.async_runtime_repository import (
     AsyncRuntimeJobRecord,
 )
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+from app.repositories.evaluation_runtime_repository import EvaluationRunAttemptRecord
 from app.services.async_job_type_catalog import get_async_job_type_descriptor
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
@@ -63,7 +64,7 @@ def submit_evaluation_run(
             message=(
                 f"Evaluation fixture family '{request.fixture_id}' is allowlisted for durable "
                 "runtime-backed submission. The run is queued in evaluation runtime state and linked "
-                "to a durable async job. Worker execution remains a later slice."
+                "to a durable async job for worker-backed evaluation execution."
             ),
         )
     if submission["submission_status"] == EvaluationRunSubmissionStatus.DUPLICATE_REJECTED.value:
@@ -123,7 +124,8 @@ def submit_evaluation_execution_async_job(
             job_id=submission["async_job_id"],
             message=(
                 f"Evaluation fixture family '{fixture_id}' is allowlisted for durable runtime-backed "
-                "submission. The async job is linked to an authoritative evaluation run record."
+                "submission and worker-backed execution. The async job is linked to an authoritative "
+                "evaluation run record."
             ),
         )
     if submission["submission_status"] == EvaluationRunSubmissionStatus.DUPLICATE_REJECTED.value:
@@ -199,10 +201,24 @@ def _submit_runtime_backed_evaluation_run(
             async_job_id=async_job_id,
             latest_message=(
                 f"Evaluation fixture family '{fixture_id}' accepted into durable runtime state and "
-                "queued for later worker-backed execution."
+                "queued for worker-backed evaluation execution."
             ),
             verdict=None,
             case_count=len(fixture_family.cases),
+        )
+    )
+    get_evaluation_runtime_store().save_attempt(
+        EvaluationRunAttemptRecord(
+            attempt_id=f"{run_id}_attempt_001",
+            run_id=run_id,
+            attempt_number=1,
+            lifecycle_status=AsyncJobStatus.QUEUED.value,
+            started_at=None,
+            completed_at=None,
+            worker_id=None,
+            latest_message="Initial runtime-backed evaluation attempt queued.",
+            verdict=None,
+            failure_reason=None,
         )
     )
     get_async_runtime_store().save_job(

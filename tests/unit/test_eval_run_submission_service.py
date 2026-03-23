@@ -31,9 +31,12 @@ def test_submit_evaluation_run_accepts_allowlisted_fixture_family() -> None:
 
     catalog = build_evaluation_run_catalog()
     runtime_run = next(run for run in catalog.runs if run.run_id == response.run_id)
+    detail = build_evaluation_run_detail(run_id=response.run_id or "")
 
     assert runtime_run.record_source == "RUNTIME_STATE"
     assert runtime_run.fixture_id == "retrieval_citation_examples"
+    assert detail.attempts[0].status.value == "QUEUED"
+    assert detail.case_results == []
 
 
 def test_submit_evaluation_run_persists_sql_backed_runtime_submission(tmp_path: Path) -> None:

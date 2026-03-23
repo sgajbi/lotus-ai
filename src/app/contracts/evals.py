@@ -31,6 +31,16 @@ class EvaluationRunSubmissionStatus(str, Enum):
     DUPLICATE_REJECTED = "DUPLICATE_REJECTED"
 
 
+class EvaluationCaseOutcome(str, Enum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+
+
+class EvaluationRunVerdict(str, Enum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+
+
 class EvaluationEvidenceCategoryDescriptor(BaseModel):
     category_id: str = Field(description="Stable execution evidence category identifier.")
     description: str = Field(description="Human-readable description of the evidence category.")
@@ -173,6 +183,56 @@ class EvaluationRunDetailResponse(BaseModel):
     run: EvaluationRunArtifactDescriptor = Field(
         description="Evaluation run detail from historical artifacts or durable runtime state."
     )
+    attempts: list["EvaluationRunAttemptDescriptor"] = Field(
+        default_factory=list,
+        description="Persisted runtime-backed attempt history for the evaluation run.",
+    )
+    case_results: list["EvaluationCaseResultDescriptor"] = Field(
+        default_factory=list,
+        description="Persisted runtime-backed case outcomes for the evaluation run.",
+    )
+
+
+class EvaluationRunAttemptDescriptor(BaseModel):
+    attempt_id: str = Field(description="Stable evaluation run attempt identifier.")
+    attempt_number: int = Field(description="Monotonic attempt number for the evaluation run.")
+    status: EvaluationRunStatus = Field(description="Lifecycle status for the recorded attempt.")
+    started_at: str | None = Field(
+        default=None,
+        description="UTC timestamp when the attempt entered running execution.",
+    )
+    completed_at: str | None = Field(
+        default=None,
+        description="UTC timestamp when the attempt reached a terminal state.",
+    )
+    worker_id: str | None = Field(
+        default=None,
+        description="Worker identity that executed the attempt when one exists.",
+    )
+    message: str = Field(description="Human-readable attempt lifecycle message.")
+    verdict: EvaluationRunVerdict | None = Field(
+        default=None,
+        description="Attempt-level verdict derived from persisted case outcomes.",
+    )
+    failure_reason: str | None = Field(
+        default=None,
+        description="Terminal failure reason when the attempt does not complete successfully.",
+    )
+
+
+class EvaluationCaseResultDescriptor(BaseModel):
+    case_result_id: str = Field(description="Stable persisted evaluation case-result identifier.")
+    attempt_id: str = Field(description="Evaluation attempt identifier associated with the case.")
+    case_id: str = Field(description="Governed evaluation case identifier.")
+    fixture_id: str = Field(description="Evaluation fixture family identifier for the case.")
+    outcome: EvaluationCaseOutcome = Field(
+        description="Persisted evaluation outcome for the case."
+    )
+    summary: str = Field(description="Human-readable explanation of the case outcome.")
+    evidence_refs: list[str] = Field(
+        description="Bounded evidence references supporting the recorded case outcome."
+    )
+    recorded_at: str = Field(description="UTC timestamp when the case outcome was recorded.")
 
 
 class EvaluationRunSubmissionRequest(BaseModel):

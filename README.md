@@ -98,6 +98,7 @@ The current execution posture is:
 - platform runtime status now summarizes evaluation runtime posture too,
 - evaluation fixture inventory is now backed by a versioned in-repo manifest,
 - allowlisted evaluation fixture families can now be submitted into durable runtime-backed run state, while historical file-backed run artifacts remain visible only as labeled baseline records,
+- allowlisted evaluation fixture families can now also execute through the durable async worker path, with persisted run attempts, per-case outcomes, and derived pass/fail verdicts recorded in the evaluation runtime store,
 - evaluation inventory now also includes an explicit async-runtime seam, so durable submission, lease recovery, and retrieval-indexing linkage are represented in the staged eval baseline instead of only in runtime tests,
 - the first real file-backed fixture family now exists for `explain.v1`,
 - a second file-backed fixture family now exists for `summarize.v1`,
@@ -145,6 +146,7 @@ The current persistence posture is:
 - explicit provider-operations repository seams and migration-managed SQL tables now back durable quota, budget, and degradation state when the SQL-backed provider-operations path is enabled,
 - explicit async-runtime repository seams and migration-managed SQL tables now exist for jobs, attempts, and worker leases when the SQL-backed async-runtime path is enabled in later rollout slices,
 - explicit evaluation-runtime repository seams and migration-managed SQL tables now exist for runs, attempts, and per-case outcomes when the SQL-backed evaluation-runtime path is enabled in later rollout slices, while public evaluation APIs remain artifact-backed until runtime execution cutover happens,
+- evaluation runtime-backed run detail now exposes persisted attempts and case-level outcomes directly, while historical file-backed baseline runs remain clearly labeled as non-runtime records,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 - prompt promotion remains read-only at runtime and is governed through reviewed repository changes plus Alembic-managed persistence updates.
 - startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.

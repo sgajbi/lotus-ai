@@ -137,6 +137,7 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
         self,
         *,
         worker_id: str,
+        job_types: tuple[str, ...] | None,
         claimed_at: str,
         heartbeat_at: str,
         lease_expires_at: str,
@@ -144,11 +145,10 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
         attempt_message: str,
     ) -> AsyncRuntimeClaimRecord | None:
         with self._session_factory() as session:
-            job_model = session.scalars(
-                select(AsyncJobModel)
-                .where(AsyncJobModel.lifecycle_status == "QUEUED")
-                .order_by(AsyncJobModel.submitted_at)
-            ).first()
+            statement = select(AsyncJobModel).where(AsyncJobModel.lifecycle_status == "QUEUED")
+            if job_types is not None:
+                statement = statement.where(AsyncJobModel.job_type.in_(job_types))
+            job_model = session.scalars(statement.order_by(AsyncJobModel.submitted_at)).first()
             if job_model is None:
                 return None
 

@@ -89,6 +89,7 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
         self,
         *,
         worker_id: str,
+        job_types: tuple[str, ...] | None,
         claimed_at: str,
         heartbeat_at: str,
         lease_expires_at: str,
@@ -98,6 +99,8 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
         for job_id in sorted(self._jobs, key=lambda item: self._jobs[item].submitted_at):
             job = self._jobs[job_id]
             if job.lifecycle_status != "QUEUED":
+                continue
+            if job_types is not None and job.job_type not in job_types:
                 continue
             if job_id in self._leases_by_job:
                 continue

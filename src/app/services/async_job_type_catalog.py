@@ -17,10 +17,10 @@ def list_async_job_types() -> list[AsyncJobTypeDescriptor]:
         AsyncJobTypeDescriptor(
             job_type="evaluation_execution",
             enabled=True,
-            execution_path="durable_runtime_submission",
+            execution_path="durable_runtime_worker_execution",
             notes=(
-                "Evaluation execution now supports narrow runtime-backed submission for allowlisted "
-                "fixture families, while worker-backed case execution remains a later slice."
+                "Evaluation execution now supports narrow runtime-backed submission, worker claim, "
+                "case execution, and persisted verdict history for allowlisted fixture families."
             ),
         ),
         AsyncJobTypeDescriptor(

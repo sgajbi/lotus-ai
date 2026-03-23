@@ -5,15 +5,23 @@ from fastapi import HTTPException, status
 from app.config import settings
 from app.contracts.evals import (
     EvaluationRunArtifactDescriptor,
+    EvaluationCaseOutcome,
+    EvaluationCaseResultDescriptor,
     EvaluationRunRecordSource,
     EvaluationRunCatalogResponse,
     EvaluationRunDetailResponse,
+    EvaluationRunAttemptDescriptor,
+    EvaluationRunVerdict,
     EvaluationSeamCoverageDescriptor,
     EvaluationRunStatus,
 )
 from app.evals.fixture_manifest import load_evaluation_fixture_manifest
 from app.evals.run_registry import load_evaluation_run_artifacts
-from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+from app.repositories.evaluation_runtime_repository import (
+    EvaluationCaseResultRecord,
+    EvaluationRunAttemptRecord,
+    EvaluationRunRecord,
+)
 from app.services.eval_seam_summary import SEAM_FIXTURE_MAP
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 
@@ -59,6 +67,22 @@ def build_evaluation_run_detail(*, run_id: str) -> EvaluationRunDetailResponse:
         version=settings.service_version,
         delivery_phase=settings.delivery_phase,
         run=run,
+        attempts=(
+            []
+            if run.record_source != EvaluationRunRecordSource.RUNTIME_STATE
+            else [
+                _map_runtime_attempt(item)
+                for item in get_evaluation_runtime_store().list_attempts(run_id=run_id)
+            ]
+        ),
+        case_results=(
+            []
+            if run.record_source != EvaluationRunRecordSource.RUNTIME_STATE
+            else [
+                _map_runtime_case_result(item)
+                for item in get_evaluation_runtime_store().list_case_results(run_id=run_id)
+            ]
+        ),
     )
 
 
@@ -99,4 +123,31 @@ def _map_runtime_evaluation_run(record: EvaluationRunRecord) -> EvaluationRunArt
             )
         ],
         notes=record.latest_message,
+    )
+
+
+def _map_runtime_attempt(record: EvaluationRunAttemptRecord) -> EvaluationRunAttemptDescriptor:
+    return EvaluationRunAttemptDescriptor(
+        attempt_id=record.attempt_id,
+        attempt_number=record.attempt_number,
+        status=EvaluationRunStatus(record.lifecycle_status),
+        started_at=record.started_at,
+        completed_at=record.completed_at,
+        worker_id=record.worker_id,
+        message=record.latest_message,
+        verdict=None if record.verdict is None else EvaluationRunVerdict(record.verdict),
+        failure_reason=record.failure_reason,
+    )
+
+
+def _map_runtime_case_result(record: EvaluationCaseResultRecord) -> EvaluationCaseResultDescriptor:
+    return EvaluationCaseResultDescriptor(
+        case_result_id=record.case_result_id,
+        attempt_id=record.attempt_id,
+        case_id=record.case_id,
+        fixture_id=record.fixture_id,
+        outcome=EvaluationCaseOutcome(record.outcome),
+        summary=record.summary,
+        evidence_refs=record.evidence_refs,
+        recorded_at=record.recorded_at,
     )
