@@ -39,6 +39,34 @@ def test_task_execution_path_reports_retrieval_backed_answer() -> None:
     assert descriptor.stubbed is False
 
 
+def test_task_execution_path_reports_live_retrieval_backed_search_when_enabled() -> None:
+    settings.retrieval_mode = "enabled"
+
+    descriptor = build_task_execution_path(
+        _capability(
+            "knowledge_search.v1", TaskCategory.KNOWLEDGE_SEARCH, OutputLabel.RETRIEVAL_ANSWER
+        )
+    )
+
+    assert descriptor.execution_path == "retrieval.live_search"
+    assert descriptor.provider_mode == "live_search"
+    assert descriptor.stubbed is False
+
+
+def test_task_execution_path_reports_live_retrieval_backed_answer_when_enabled() -> None:
+    settings.retrieval_mode = "enabled"
+
+    descriptor = build_task_execution_path(
+        _capability(
+            "knowledge_answer.v1", TaskCategory.KNOWLEDGE_ANSWER, OutputLabel.RETRIEVAL_ANSWER
+        )
+    )
+
+    assert descriptor.execution_path == "retrieval.live_answer"
+    assert descriptor.provider_mode == "live_answer"
+    assert descriptor.stubbed is False
+
+
 def test_task_execution_path_reports_provider_stub_for_supported_foundation_modes() -> None:
     descriptor = build_task_execution_path(
         _capability("explain.v1", TaskCategory.EXPLAIN, OutputLabel.EXPLANATION_ONLY)

@@ -310,3 +310,56 @@ def test_task_execute_contract_refuses_low_support_knowledge_answer(client: Test
     assert body["result"]["structured_output"]["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT"
     assert body["result"]["structured_output"]["support_score"] < 0.75
     assert "Insufficient support" in body["result"]["message"]
+
+
+def test_task_execute_contract_reports_live_retrieval_search_truthfully(
+    client: TestClient,
+) -> None:
+    from app.config import settings
+    from app.services.retrieval_store import get_retrieval_repository
+
+    settings.retrieval_mode = "enabled"
+    repository = get_retrieval_repository()
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "knowledge_search.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-knowledge-live-1",
+                "requested_by": "ops.user@lotus",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Search Lotus knowledge sources",
+                "payload": {
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                "source_refs": ["lotus-manage:knowledge-search:live:001"],
+            },
+            "expected_output_label": "RETRIEVAL_ANSWER",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["audit"]["provider_mode"] == "live_search"
+    assert body["result"]["structured_output"]["provider_id"] == "retrieval.live_search"
+    assert body["result"]["structured_output"]["provider_mode"] == "live_search"
+    assert body["result"]["structured_output"]["execution_stage"] == "LIVE_SEARCH"
+    assert body["result"]["structured_output"]["catalog_only"] is False
+    retrieval_evidence = next(
+        descriptor
+        for descriptor in body["evidence"]["descriptors"]
+        if descriptor["evidence_type"] == "retrieval_posture"
+    )
+    assert retrieval_evidence["attributes"]["request_execution_stage"] == "LIVE_SEARCH"
+    assert retrieval_evidence["attributes"]["request_provider_mode"] == "live_search"

@@ -52,6 +52,7 @@ The current execution posture is:
 - `knowledge_search.v1` is now enabled as a bounded task and routes through the same governed retrieval gateway, reporting live-search versus catalog-only posture explicitly,
 - `knowledge_answer.v1` is now enabled as a bounded, citation-carrying answer task built on the same governed retrieval gateway,
 - retrieval-backed tasks now emit explicit structured citations and `knowledge_answer.v1` refuses low-support answers instead of overstating weak retrieval matches,
+- retrieval-backed task runtime status and execution evidence now also distinguish live indexed retrieval from catalog-only fallback explicitly,
 - platform status now exposes a dedicated bounded task-runtime view so operators can distinguish stub-backed tasks from retrieval-backed tasks directly,
 - platform task APIs now also expose bounded execution-summary, evidence-summary, and retrieval-summary views built from persisted audit records, so real task usage, retrieval-answer quality, and source/refusal patterns can be measured instead of inferred,
 - the provider catalog now distinguishes the stub adapter from the allowlisted OpenAI live adapter seam, while live execution remains disabled by default unless rollout, credentials, and task allowlisting permit it,

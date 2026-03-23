@@ -76,3 +76,63 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
     assert evidence.descriptors[2].attributes["max_output_tokens"] == 512
     assert evidence.descriptors[3].evidence_type == "safety_outcome"
     assert evidence.descriptors[4].evidence_type == "retrieval_posture"
+
+
+def test_build_execution_evidence_captures_live_retrieval_request_posture() -> None:
+    request = TaskExecutionRequest(
+        task_id="knowledge_search.v1",
+        input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+        caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ev-ret-1"),
+        context=TaskContextEnvelope(
+            summary="Search Lotus knowledge sources",
+            payload={"query": "shared ai platform service"},
+            source_refs=["lotus-manage:knowledge-search:001"],
+        ),
+    )
+    capability = CapabilityDescriptor(
+        task_id="knowledge_search.v1",
+        category=TaskCategory.KNOWLEDGE_SEARCH,
+        enabled=True,
+        output_label=OutputLabel.RETRIEVAL_ANSWER,
+        description="Search governed Lotus retrieval sources.",
+    )
+    prompt = PromptDescriptor(
+        task_id="knowledge_search.v1",
+        prompt_version="foundation.knowledge_search.v1",
+        prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.ACTIVE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
+        system_instructions="Search Lotus sources conservatively.",
+        output_contract_notes="Retrieval answer only.",
+    )
+    provider_execution = ProviderExecutionResponse(
+        provider_id="retrieval.live_search",
+        provider_mode="live_search",
+        stubbed=False,
+        message="Live retrieval search completed.",
+        structured_output={
+            "execution_stage": "LIVE_SEARCH",
+            "catalog_only": False,
+            "retrieval_status": "READY",
+            "hit_count": 2,
+            "citation_count": 2,
+        },
+    )
+    safety_outcome = build_safety_execution_outcome(OutputLabel.RETRIEVAL_ANSWER)
+
+    evidence = build_execution_evidence(
+        request=request,
+        capability=capability,
+        prompt=prompt,
+        provider_execution=provider_execution,
+        safety_outcome=safety_outcome,
+    )
+
+    retrieval_descriptor = evidence.descriptors[4]
+    assert retrieval_descriptor.evidence_type == "retrieval_posture"
+    assert retrieval_descriptor.attributes["request_execution_stage"] == "LIVE_SEARCH"
+    assert retrieval_descriptor.attributes["request_provider_id"] == "retrieval.live_search"
+    assert retrieval_descriptor.attributes["request_provider_mode"] == "live_search"
+    assert retrieval_descriptor.attributes["catalog_only"] is False
+    assert retrieval_descriptor.attributes["hit_count"] == 2

@@ -12,6 +12,15 @@ def test_task_runtime_status_reports_retrieval_and_stubbed_task_mix() -> None:
     assert any(task.execution_path == "provider.stub_text" for task in status.tasks)
 
 
+def test_task_runtime_status_reports_live_retrieval_paths_when_enabled() -> None:
+    settings.retrieval_mode = "enabled"
+
+    status = build_task_runtime_status()
+
+    assert any(task.execution_path == "retrieval.live_search" for task in status.tasks)
+    assert any(task.execution_path == "retrieval.live_answer" for task in status.tasks)
+
+
 def test_task_runtime_status_reports_blocked_provider_path_when_live_mode_is_still_blocked() -> (
     None
 ):

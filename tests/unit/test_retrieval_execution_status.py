@@ -12,15 +12,15 @@ def test_retrieval_execution_status_reports_disabled_live_execution() -> None:
     assert status.live_indexing_enabled is True
 
 
-def test_retrieval_execution_status_reports_enabled_without_live_backend() -> None:
+def test_retrieval_execution_status_reports_enabled_live_execution() -> None:
     settings.retrieval_mode = "enabled"
 
     status = build_retrieval_execution_status()
 
     assert status.retrieval_mode == "enabled"
-    assert status.execution_stage == "INDEXING_DISABLED"
-    assert status.live_search_enabled is False
+    assert status.execution_stage == "LIVE_SEARCH"
+    assert status.live_search_enabled is True
     assert status.live_indexing_enabled is True
-    assert "runtime-backed indexing is available" in status.message
+    assert "live indexed" in status.message or "live indexed search path" in status.message
 
     settings.retrieval_mode = "disabled"
