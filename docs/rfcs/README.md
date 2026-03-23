@@ -8,3 +8,4 @@
 - `RFC-0006-durable-async-execution-backbone.md` - Implemented
 - `RFC-0007-runtime-backed-evaluation-execution-and-approval-gates.md` - Implemented
 - `RFC-0008-governed-live-retrieval-activation.md` - Draft
+- `RFC-0009-runtime-safety-enforcement-and-redaction.md` - Draft
