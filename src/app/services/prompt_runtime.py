@@ -5,14 +5,19 @@ from dataclasses import dataclass
 from fastapi import HTTPException, status
 
 from app.contracts.prompts import (
+    PromptControlEventDescriptor,
     PromptDescriptor,
     PromptLifecycleStatus,
+    PromptSelectionTraceDescriptor,
     PromptRolloutDescriptor,
     PromptRolloutRole,
     PromptRuntimeSelectionDescriptor,
 )
+from app.services.prompt_rollout_models import (
+    PromptRolloutEventRecord,
+    PromptRolloutStateRecord,
+)
 from app.services.prompt_store import get_prompt_repository
-from app.services.prompt_rollout_models import PromptRolloutStateRecord
 
 _FOUNDATION_SELECTION_REASON = (
     "Runtime selection resolves through durable prompt rollout state and explicit governed prompt control actions."
@@ -76,6 +81,7 @@ def list_prompt_rollout_descriptors() -> list[PromptRolloutDescriptor]:
             rollout_mode=state.rollout_mode,
             runtime_mutation_enabled=state.runtime_mutation_enabled,
             selection_reason=_FOUNDATION_SELECTION_REASON,
+            latest_control_event=_build_latest_control_event_descriptor(state.task_id),
         )
         for state in list_prompt_rollout_states()
     ]
@@ -114,4 +120,47 @@ def resolve_runtime_prompt_or_raise(task_id: str) -> ResolvedRuntimePrompt:
             selection_reason=_FOUNDATION_SELECTION_REASON,
             rollout_role=PromptRolloutRole.ACTIVE,
         ),
+    )
+
+
+def build_prompt_selection_trace(task_id: str) -> PromptSelectionTraceDescriptor:
+    resolved = resolve_runtime_prompt_or_raise(task_id)
+    rollout_state = get_prompt_repository().get_prompt_rollout_state(task_id)
+    if rollout_state is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No governed prompt rollout state for task_id: {task_id}",
+        )
+    return PromptSelectionTraceDescriptor(
+        task_id=resolved.selection.task_id,
+        prompt_version=resolved.selection.prompt_version,
+        rollout_role=resolved.selection.rollout_role,
+        selection_reason=resolved.selection.selection_reason,
+        active_prompt_version=rollout_state.active_prompt_version,
+        candidate_prompt_version=rollout_state.candidate_prompt_version,
+        previous_active_prompt_version=rollout_state.previous_active_prompt_version,
+        latest_control_event=_build_latest_control_event_descriptor(task_id),
+    )
+
+
+def _build_latest_control_event_descriptor(task_id: str) -> PromptControlEventDescriptor | None:
+    events = get_prompt_repository().list_prompt_rollout_events(task_id=task_id)
+    if not events:
+        return None
+    return _map_control_event(events[-1])
+
+
+def _map_control_event(event: PromptRolloutEventRecord) -> PromptControlEventDescriptor:
+    return PromptControlEventDescriptor(
+        event_id=event.event_id,
+        task_id=event.task_id,
+        action_type=event.action_type,
+        requested_by=event.requested_by,
+        approved_by=event.approved_by,
+        reason=event.reason,
+        prior_active_prompt_version=event.prior_active_prompt_version,
+        resulting_active_prompt_version=event.resulting_active_prompt_version,
+        prior_candidate_prompt_version=event.prior_candidate_prompt_version,
+        resulting_candidate_prompt_version=event.resulting_candidate_prompt_version,
+        recorded_at=event.recorded_at,
     )

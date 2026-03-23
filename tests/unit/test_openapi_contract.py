@@ -118,8 +118,14 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "rollout_mode" in prompt_runtime_schema["properties"]
     assert "candidate_prompt_count" in prompt_runtime_schema["properties"]
     assert "rollout_states" in prompt_runtime_schema["properties"]
+    prompt_rollout_schema = spec["components"]["schemas"]["PromptRolloutDescriptor"]
+    assert "latest_control_event" in prompt_rollout_schema["properties"]
     prompt_governance_schema = spec["components"]["schemas"]["PromptGovernanceStatusResponse"]
     assert "control_history_endpoint" in prompt_governance_schema["properties"]
+    task_audit_schema = spec["components"]["schemas"]["TaskAuditMetadata"]
+    assert "prompt_selection" in task_audit_schema["properties"]
+    audit_record_schema = spec["components"]["schemas"]["AuditRecordResponse"]
+    assert "prompt_selection" in audit_record_schema["properties"]
     assert spec["paths"]["/platform/tasks/runtime-status"]["get"]["operationId"] == (
         "getTaskRuntimeStatus"
     )

@@ -14,6 +14,8 @@ from app.contracts.tasks import (
     TaskInputMode,
 )
 from app.repositories.memory_retrieval_repository import InMemoryRetrievalRepository
+from app.contracts.prompts import PromptControlActionRequest, PromptControlActionType
+from app.services.prompt_rollout_control import apply_prompt_control_action
 from app.services.task_executor import execute_task
 
 
@@ -47,6 +49,8 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
     assert response.result.structured_output["redaction_posture"] == "MINIMIZATION_REQUIRED"
     assert response.audit.stubbed is True
     assert response.audit.prompt_version == "foundation.explain.v1"
+    assert response.audit.prompt_selection.prompt_version == "foundation.explain.v1"
+    assert response.audit.prompt_selection.latest_control_event is None
     assert response.audit.safety.safety_mode == "documented_only"
     assert response.audit.safety.redaction_posture == "MINIMIZATION_REQUIRED"
     assert response.audit.safety.disposition == "DOCUMENTED_ONLY"
@@ -481,3 +485,38 @@ def test_execute_task_routes_allowlisted_task_through_live_provider(
     )
     assert provider_evidence.attributes["provider_id"] == "text.openai"
     assert provider_evidence.attributes["model_id"] == "gpt-5.4"
+
+
+def test_execute_task_reflects_promoted_prompt_selection_in_audit_and_evidence() -> None:
+    apply_prompt_control_action(
+        PromptControlActionRequest(
+            task_id="explain.v1",
+            action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+            candidate_prompt_version="foundation.explain.v2",
+            requested_by="alice@lotus.test",
+            approved_by="bob@lotus.test",
+            reason="Promote updated explanation prompt",
+        )
+    )
+
+    response = execute_task(
+        _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
+    )
+
+    prompt_evidence = next(
+        descriptor
+        for descriptor in response.evidence.descriptors
+        if descriptor.evidence_type == "prompt_selection"
+    )
+
+    assert response.audit.prompt_version == "foundation.explain.v2"
+    assert response.audit.prompt_selection.prompt_version == "foundation.explain.v2"
+    assert response.audit.prompt_selection.previous_active_prompt_version == "foundation.explain.v1"
+    assert response.audit.prompt_selection.latest_control_event is not None
+    assert (
+        response.audit.prompt_selection.latest_control_event.action_type.value
+        == "PROMOTE_CANDIDATE"
+    )
+    assert prompt_evidence.attributes["prompt_version"] == "foundation.explain.v2"
+    assert prompt_evidence.attributes["previous_active_prompt_version"] == "foundation.explain.v1"
+    assert prompt_evidence.attributes["latest_control_event"] is not None

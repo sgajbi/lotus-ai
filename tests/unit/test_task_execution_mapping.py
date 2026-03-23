@@ -17,6 +17,9 @@ def test_map_task_execution_response_preserves_runtime_context_fields() -> None:
     assert response.result.structured_output["input_mode"] == "STRUCTURED_CONTEXT"
     assert response.audit.request_id == context.request_id
     assert response.audit.prompt_version == "foundation.explain.v1"
+    assert response.audit.prompt_selection.prompt_version == "foundation.explain.v1"
+    assert response.audit.prompt_selection.active_prompt_version == "foundation.explain.v1"
+    assert response.audit.prompt_selection.latest_control_event is None
 
 
 def test_map_audit_record_preserves_sorted_context_keys() -> None:
@@ -36,6 +39,7 @@ def test_map_audit_record_preserves_sorted_context_keys() -> None:
     assert audit_record.tenant_id is None
     assert audit_record.context_keys == ["rule_count", "status"]
     assert audit_record.result_preview == response.result.message
+    assert audit_record.prompt_selection.prompt_version == "foundation.explain.v1"
     assert audit_record.evidence == response.evidence
 
 

@@ -135,6 +135,11 @@ control-plane actions. Prompt definitions are now version-addressable records, r
 resolves through explicit rollout state, and governed promote/rollback actions update that state
 through durable control history without permitting prompt-body editing through the API.
 
+RFC-0010 Slice 3 then carries that same prompt rollout truth into task execution and audit
+surfaces. Task responses, execution evidence, and persisted audit records now preserve prompt
+selection trace plus latest control-event lineage instead of flattening prompt rollout context
+down to only a prompt-version string.
+
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.
 

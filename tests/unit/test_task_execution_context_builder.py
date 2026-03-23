@@ -11,6 +11,9 @@ def test_build_task_execution_context_resolves_runtime_fields() -> None:
     assert context.request.task_id == "explain.v1"
     assert context.capability.task_id == "explain.v1"
     assert context.prompt.prompt_version == "foundation.explain.v1"
+    assert context.prompt_selection.prompt_version == "foundation.explain.v1"
+    assert context.prompt_selection.rollout_role.value == "ACTIVE"
+    assert context.prompt_selection.latest_control_event is None
     assert context.safety_outcome.safety_mode == "documented_only"
     assert context.safety_outcome.redaction_posture == "MINIMIZATION_REQUIRED"
     assert context.safety_outcome.disposition == "DOCUMENTED_ONLY"

@@ -15,3 +15,4 @@ def test_prompt_runtime_status_reports_active_runtime_selections() -> None:
     assert any(selection.task_id == "explain.v1" for selection in status.selections)
     assert all(selection.selected_for_runtime is True for selection in status.selections)
     assert any(state.task_id == "explain.v1" for state in status.rollout_states)
+    assert all(state.latest_control_event is None for state in status.rollout_states)

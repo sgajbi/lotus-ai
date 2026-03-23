@@ -67,7 +67,7 @@ def apply_prompt_control_action(request: PromptControlActionRequest) -> PromptCo
         service=settings.service_name,
         version=settings.service_version,
         event=_map_control_event(event),
-        rollout_state=_map_rollout_state(updated_state),
+        rollout_state=_map_rollout_state(updated_state, latest_control_event=event),
         summary=[
             f"Applied prompt action `{request.action_type.value}` for task `{request.task_id}`.",
             f"Active prompt is now `{updated_state.active_prompt_version}`.",
@@ -245,7 +245,11 @@ def _map_control_event(event: PromptRolloutEventRecord) -> PromptControlEventDes
     )
 
 
-def _map_rollout_state(state: PromptRolloutStateRecord) -> PromptRolloutDescriptor:
+def _map_rollout_state(
+    state: PromptRolloutStateRecord,
+    *,
+    latest_control_event: PromptRolloutEventRecord | None = None,
+) -> PromptRolloutDescriptor:
     return PromptRolloutDescriptor(
         task_id=state.task_id,
         active_prompt_version=state.active_prompt_version,
@@ -255,6 +259,11 @@ def _map_rollout_state(state: PromptRolloutStateRecord) -> PromptRolloutDescript
         runtime_mutation_enabled=state.runtime_mutation_enabled,
         selection_reason=(
             "Prompt rollout state is now updated only through explicit governed promote and rollback actions."
+        ),
+        latest_control_event=(
+            _map_control_event(latest_control_event)
+            if latest_control_event is not None
+            else None
         ),
     )
 

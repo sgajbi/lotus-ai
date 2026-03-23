@@ -170,6 +170,32 @@ class PromptRuntimeSelectionDescriptor(BaseModel):
     )
 
 
+class PromptSelectionTraceDescriptor(BaseModel):
+    task_id: str = Field(description="Stable task identifier associated with the prompt selection.")
+    prompt_version: str = Field(description="Prompt version selected for this execution or audit trace.")
+    rollout_role: PromptRolloutRole = Field(
+        description="Rollout role associated with the selected prompt version."
+    )
+    selection_reason: str = Field(
+        description="Human-readable explanation of why this prompt version was selected."
+    )
+    active_prompt_version: str = Field(
+        description="Currently active prompt version for the task at selection time."
+    )
+    candidate_prompt_version: str | None = Field(
+        default=None,
+        description="Candidate prompt version visible at selection time, if any.",
+    )
+    previous_active_prompt_version: str | None = Field(
+        default=None,
+        description="Prior active prompt version retained for rollback review at selection time, if any.",
+    )
+    latest_control_event: PromptControlEventDescriptor | None = Field(
+        default=None,
+        description="Most recent durable prompt control event known at selection time, if any.",
+    )
+
+
 class PromptRolloutDescriptor(BaseModel):
     task_id: str = Field(description="Stable task identifier associated with the rollout state.")
     active_prompt_version: str = Field(
@@ -191,6 +217,10 @@ class PromptRolloutDescriptor(BaseModel):
     )
     selection_reason: str = Field(
         description="Human-readable explanation of why the active prompt remains selected."
+    )
+    latest_control_event: PromptControlEventDescriptor | None = Field(
+        default=None,
+        description="Most recent durable prompt control event known for this rollout state, if any.",
     )
 
 

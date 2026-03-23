@@ -26,6 +26,7 @@ def map_task_execution_response(
         request=context.request,
         capability=context.capability,
         prompt=context.prompt,
+        prompt_selection=context.prompt_selection,
         provider_execution=resolved.provider_execution,
         safety_outcome=resolved.safety_outcome,
     )
@@ -52,6 +53,7 @@ def map_task_execution_response(
             task_id=context.capability.task_id,
             output_label=context.capability.output_label,
             prompt_version=context.prompt.prompt_version,
+            prompt_selection=context.prompt_selection,
             provider_mode=resolved.provider_execution.provider_mode,
             safety=resolved.safety_outcome,
             generated_at=context.generated_at,
@@ -93,6 +95,7 @@ def map_audit_record(
         requested_by=context.request.caller.requested_by,
         tenant_id=context.request.caller.tenant_id,
         prompt_version=response.audit.prompt_version,
+        prompt_selection=response.audit.prompt_selection,
         provider_mode=response.audit.provider_mode,
         safety_mode=response.audit.safety.safety_mode,
         redaction_posture=response.audit.safety.redaction_posture,

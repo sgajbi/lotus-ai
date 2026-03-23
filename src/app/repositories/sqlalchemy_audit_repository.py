@@ -8,6 +8,10 @@ from sqlalchemy.orm import sessionmaker
 
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle
+from app.contracts.prompts import (
+    PromptRolloutRole,
+    PromptSelectionTraceDescriptor,
+)
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.db.models import AuditRecordModel
@@ -33,6 +37,7 @@ class SqlAlchemyAuditRepository:
             requested_by=record.requested_by,
             tenant_id=record.tenant_id,
             prompt_version=record.prompt_version,
+            prompt_selection_payload=record.prompt_selection.model_dump(mode="json"),
             provider_mode=record.provider_mode,
             safety_mode=record.safety_mode,
             redaction_posture=record.redaction_posture.value,
@@ -112,6 +117,11 @@ class SqlAlchemyAuditRepository:
             requested_by=model.requested_by,
             tenant_id=model.tenant_id,
             prompt_version=model.prompt_version,
+            prompt_selection=(
+                PromptSelectionTraceDescriptor.model_validate(model.prompt_selection_payload)
+                if model.prompt_selection_payload is not None
+                else _build_legacy_prompt_selection(model)
+            ),
             provider_mode=model.provider_mode,
             safety_mode=model.safety_mode,
             redaction_posture=redaction_posture,
@@ -138,3 +148,19 @@ class SqlAlchemyAuditRepository:
         if not path.is_absolute():
             path = Path.cwd() / path
         path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _build_legacy_prompt_selection(model: AuditRecordModel) -> PromptSelectionTraceDescriptor:
+    return PromptSelectionTraceDescriptor(
+        task_id=model.task_id,
+        prompt_version=model.prompt_version,
+        rollout_role=PromptRolloutRole.ACTIVE,
+        selection_reason=(
+            "Legacy audit record preserved only the selected prompt version before prompt "
+            "rollout trace payloads were added."
+        ),
+        active_prompt_version=model.prompt_version,
+        candidate_prompt_version=None,
+        previous_active_prompt_version=None,
+        latest_control_event=None,
+    )

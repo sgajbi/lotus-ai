@@ -1,6 +1,12 @@
 from typing import Any, cast
 
-from app.contracts.prompts import PromptDescriptor, PromptLifecycleStatus, PromptManagementMode
+from app.contracts.prompts import (
+    PromptDescriptor,
+    PromptLifecycleStatus,
+    PromptManagementMode,
+    PromptRolloutRole,
+    PromptSelectionTraceDescriptor,
+)
 from app.contracts.providers import (
     ProviderAdapterKind,
     ProviderExecutionResponse,
@@ -46,6 +52,16 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
         system_instructions="Explain structured outputs conservatively.",
         output_contract_notes="Explanation only.",
     )
+    prompt_selection = PromptSelectionTraceDescriptor(
+        task_id="explain.v1",
+        prompt_version="foundation.explain.v1",
+        rollout_role=PromptRolloutRole.ACTIVE,
+        selection_reason="Runtime selection resolved through durable prompt rollout state.",
+        active_prompt_version="foundation.explain.v1",
+        candidate_prompt_version=None,
+        previous_active_prompt_version=None,
+        latest_control_event=None,
+    )
     provider_execution = ProviderExecutionResponse(
         provider_id="text.stub",
         provider_mode="disabled",
@@ -63,6 +79,7 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
         request=request,
         capability=capability,
         prompt=prompt,
+        prompt_selection=prompt_selection,
         provider_execution=provider_execution,
         safety_outcome=safety_outcome,
     )
@@ -70,6 +87,9 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
     assert len(evidence.descriptors) == 5
     assert evidence.descriptors[0].evidence_type == "task_contract"
     assert evidence.descriptors[1].evidence_type == "prompt_selection"
+    assert evidence.descriptors[1].attributes["rollout_role"] == "ACTIVE"
+    assert evidence.descriptors[1].attributes["active_prompt_version"] == "foundation.explain.v1"
+    assert evidence.descriptors[1].attributes["latest_control_event"] is None
     assert evidence.descriptors[2].evidence_type == "provider_resolution"
     assert evidence.descriptors[2].attributes["adapter_kind"] == "STUB"
     assert evidence.descriptors[2].attributes["degradation_status"] == "DOCUMENTED_ONLY"
@@ -115,6 +135,16 @@ def test_build_execution_evidence_captures_live_retrieval_request_posture() -> N
         system_instructions="Search Lotus sources conservatively.",
         output_contract_notes="Retrieval answer only.",
     )
+    prompt_selection = PromptSelectionTraceDescriptor(
+        task_id="knowledge_search.v1",
+        prompt_version="foundation.knowledge_search.v1",
+        rollout_role=PromptRolloutRole.ACTIVE,
+        selection_reason="Runtime selection resolved through durable prompt rollout state.",
+        active_prompt_version="foundation.knowledge_search.v1",
+        candidate_prompt_version=None,
+        previous_active_prompt_version=None,
+        latest_control_event=None,
+    )
     provider_execution = ProviderExecutionResponse(
         provider_id="retrieval.live_search",
         provider_mode="live_search",
@@ -134,6 +164,7 @@ def test_build_execution_evidence_captures_live_retrieval_request_posture() -> N
         request=request,
         capability=capability,
         prompt=prompt,
+        prompt_selection=prompt_selection,
         provider_execution=provider_execution,
         safety_outcome=safety_outcome,
     )

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
-from app.contracts.prompts import PromptDescriptor
+from app.contracts.prompts import PromptDescriptor, PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderExecutionResponse
 from app.contracts.retrieval import RetrievalExecutionStatusResponse
 from app.contracts.safety import SafetyExecutionOutcome
@@ -15,6 +15,7 @@ def build_execution_evidence(
     request: TaskExecutionRequest,
     capability: CapabilityDescriptor,
     prompt: PromptDescriptor,
+    prompt_selection: PromptSelectionTraceDescriptor,
     provider_execution: ProviderExecutionResponse,
     safety_outcome: SafetyExecutionOutcome,
 ) -> ExecutionEvidenceBundle:
@@ -22,7 +23,7 @@ def build_execution_evidence(
     return ExecutionEvidenceBundle(
         descriptors=[
             _task_descriptor(capability=capability, request=request),
-            _prompt_descriptor(prompt=prompt),
+            _prompt_descriptor(prompt=prompt, prompt_selection=prompt_selection),
             _provider_descriptor(provider_execution=provider_execution),
             _safety_descriptor(safety_outcome=safety_outcome),
             _retrieval_descriptor(
@@ -51,7 +52,11 @@ def _task_descriptor(
     )
 
 
-def _prompt_descriptor(*, prompt: PromptDescriptor) -> ExecutionEvidenceDescriptor:
+def _prompt_descriptor(
+    *,
+    prompt: PromptDescriptor,
+    prompt_selection: PromptSelectionTraceDescriptor,
+) -> ExecutionEvidenceDescriptor:
     return ExecutionEvidenceDescriptor(
         evidence_type="prompt_selection",
         summary="Execution resolved to the currently active prompt definition for the task.",
@@ -60,6 +65,15 @@ def _prompt_descriptor(*, prompt: PromptDescriptor) -> ExecutionEvidenceDescript
             "prompt_version": prompt.prompt_version,
             "management_mode": prompt.management_mode.value,
             "source_reference": prompt.source_reference,
+            "rollout_role": prompt_selection.rollout_role.value,
+            "active_prompt_version": prompt_selection.active_prompt_version,
+            "candidate_prompt_version": prompt_selection.candidate_prompt_version,
+            "previous_active_prompt_version": prompt_selection.previous_active_prompt_version,
+            "latest_control_event": (
+                prompt_selection.latest_control_event.model_dump(mode="json")
+                if prompt_selection.latest_control_event is not None
+                else None
+            ),
         },
     )
 

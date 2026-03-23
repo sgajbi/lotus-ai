@@ -63,6 +63,18 @@ def test_prompt_control_routes(client: TestClient) -> None:
     )
     assert promote_response.status_code == 200
     assert promote_response.json()["rollout_state"]["active_prompt_version"] == "foundation.explain.v2"
+    assert promote_response.json()["rollout_state"]["latest_control_event"]["action_type"] == (
+        "PROMOTE_CANDIDATE"
+    )
+
+    runtime_response = client.get("/platform/prompts/runtime-status")
+    assert runtime_response.status_code == 200
+    explain_state = next(
+        state
+        for state in runtime_response.json()["rollout_states"]
+        if state["task_id"] == "explain.v1"
+    )
+    assert explain_state["latest_control_event"]["action_type"] == "PROMOTE_CANDIDATE"
 
     rollback_response = client.post(
         "/platform/prompts/control-actions",

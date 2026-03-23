@@ -4,11 +4,25 @@ from sqlalchemy import text
 
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
+from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
 from app.contracts.safety import RedactionPosture, SafetyExecutionDisposition
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.repositories.sqlalchemy_audit_repository import SqlAlchemyAuditRepository
 from app.services.safety_runtime import build_safety_execution_outcome_from_record
 from tests.support.migration_runner import upgrade_database_to_head
+
+
+def _prompt_selection(prompt_version: str) -> PromptSelectionTraceDescriptor:
+    return PromptSelectionTraceDescriptor(
+        task_id="explain.v1",
+        prompt_version=prompt_version,
+        rollout_role=PromptRolloutRole.ACTIVE,
+        selection_reason="Runtime selection resolved through durable prompt rollout state.",
+        active_prompt_version=prompt_version,
+        candidate_prompt_version=None,
+        previous_active_prompt_version=None,
+        latest_control_event=None,
+    )
 
 
 def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
@@ -27,6 +41,7 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
         requested_by="ops.user@lotus",
         tenant_id="tenant-sg-001",
         prompt_version="foundation.explain.v1",
+        prompt_selection=_prompt_selection("foundation.explain.v1"),
         provider_mode="disabled",
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
@@ -59,6 +74,7 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
 
     loaded = repository.get("air_sql_1")
     assert loaded == record
+    assert loaded.prompt_selection.prompt_version == "foundation.explain.v1"
     assert repository.get("air_missing") is None
 
 
@@ -91,6 +107,7 @@ def test_sqlalchemy_audit_repository_list_filters_and_orders_latest_first(
         requested_by="ops.user@lotus",
         tenant_id="tenant-sg-001",
         prompt_version="foundation.explain.v1",
+        prompt_selection=_prompt_selection("foundation.explain.v1"),
         provider_mode="disabled",
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
@@ -184,6 +201,7 @@ def test_sqlalchemy_audit_repository_round_trips_exact_blocked_safety_outcome(
         requested_by="ops.user@lotus",
         tenant_id="tenant-sg-001",
         prompt_version="foundation.explain.v1",
+        prompt_selection=_prompt_selection("foundation.explain.v1"),
         provider_mode="stub",
         safety_mode="runtime_enforced",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
@@ -215,6 +233,7 @@ def test_sqlalchemy_audit_repository_round_trips_exact_blocked_safety_outcome(
 
     loaded = repository.get("air_sql_blocked")
     assert loaded == record
+    assert loaded.prompt_selection.prompt_version == "foundation.explain.v1"
 
 
 def test_sqlalchemy_audit_repository_falls_back_for_legacy_records_without_safety_payload(
@@ -309,3 +328,5 @@ def test_sqlalchemy_audit_repository_falls_back_for_legacy_records_without_safet
     assert loaded is not None
     assert loaded.execution_status == TaskExecutionStatus.COMPLETED
     assert loaded.safety_outcome.disposition == SafetyExecutionDisposition.DOCUMENTED_ONLY
+    assert loaded.prompt_selection.prompt_version == "foundation.explain.v1"
+    assert loaded.prompt_selection.latest_control_event is None

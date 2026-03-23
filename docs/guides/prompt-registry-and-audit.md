@@ -84,6 +84,10 @@ Current implementation:
 
 This gives us immediate traceability while keeping the persistence architecture clean.
 
+Audit records now also preserve prompt selection trace, including rollout role and latest durable
+prompt control event, so prompt promotion and rollback history can be reconstructed from the same
+runtime artifacts that already capture task, provider, safety, and retrieval posture.
+
 Current audit fields also include execution safety posture:
 
 1. `safety_mode`
