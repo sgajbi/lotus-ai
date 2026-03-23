@@ -274,6 +274,11 @@ for jobs, attempts, and worker leases. Public async endpoints still remain docum
 this stage, but the durable storage seam now exists so later slices can cut over without inventing
 runtime table creation or ad hoc persistence logic.
 
+The next slice activates a narrow durable-submission posture on top of that seam. Allowlisted job
+types can now be recorded into runtime-backed queue state and appear in the public async job
+catalog/detail views as durable runtime records, while non-allowlisted job types remain explicitly
+staged and artifact-backed until worker execution slices arrive.
+
 ### Providers
 
 - `src/app/providers/`

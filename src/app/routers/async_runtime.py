@@ -33,7 +33,8 @@ router = APIRouter(prefix="/platform/async", tags=["platform"])
     summary="Get lotus-ai async runtime status",
     description=(
         "Returns the current queue and worker posture for lotus-ai async execution, including "
-        "known async job types and whether live background execution is active."
+        "known async job types, whether durable submission is active for any allowlisted job "
+        "types, and whether dedicated background workers are active."
     ),
     responses={
         200: {"description": "Async runtime status returned successfully."},
@@ -51,7 +52,7 @@ async def get_async_runtime_status_route() -> AsyncRuntimeStatusResponse:
     summary="Get lotus-ai async queue backend catalog",
     description=(
         "Returns the governed queue backend strategies recognized by lotus-ai, including the "
-        "current foundation default and documented future backend options."
+        "current durable-submission backend and documented future worker-scalable backend options."
     ),
     responses={
         200: {"description": "Async queue backend catalog returned successfully."},
@@ -140,8 +141,8 @@ async def get_async_governance_status_route() -> AsyncGovernanceStatusResponse:
     operation_id="getAsyncJobCatalog",
     summary="Get lotus-ai async job artifact catalog",
     description=(
-        "Returns read-only seeded async job artifacts so the future worker path is inspectable "
-        "before live queue execution is enabled."
+        "Returns the current async job catalog, combining runtime-backed durable submissions with "
+        "staged artifact records that still document future worker-enabled paths."
     ),
     responses={
         200: {"description": "Async job artifact catalog returned successfully."},
@@ -158,8 +159,8 @@ async def get_async_job_catalog_route() -> AsyncJobCatalogResponse:
     operation_id="getAsyncJobDetail",
     summary="Get lotus-ai async job artifact detail",
     description=(
-        "Returns detail for a specific async job artifact, including current lifecycle state and "
-        "planned execution path."
+        "Returns detail for a specific async job record, whether it comes from durable runtime "
+        "state or a staged artifact describing a future worker-enabled path."
     ),
     responses={
         200: {"description": "Async job artifact detail returned successfully."},
@@ -177,9 +178,9 @@ async def get_async_job_detail_route(job_id: str) -> AsyncJobDetailResponse:
     operation_id="submitAsyncJob",
     summary="Submit a lotus-ai async job request",
     description=(
-        "Validates a future async job submission against the current async runtime posture. "
-        "During foundation phase, supported job types return an explicit rejected response so "
-        "callers can integrate against the contract before live queue execution is enabled."
+        "Validates an async job submission against the current async runtime posture. Allowlisted "
+        "job types are durably recorded in queue-backed runtime state, while staged-only job "
+        "types return an explicit rejected response until later worker-enabled slices activate."
     ),
     responses={
         200: {"description": "Async job submission evaluated successfully."},

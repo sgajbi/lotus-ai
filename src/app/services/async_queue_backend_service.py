@@ -13,12 +13,24 @@ def list_async_queue_backends() -> list[AsyncQueueBackendDescriptor]:
             backend_id="none",
             enabled=False,
             backend_class="NO_QUEUE",
-            selection_state="ACTIVE_FOUNDATION_DEFAULT",
+            selection_state="DOCUMENTED_FOUNDATION_BASELINE",
             supports_durable_queue=False,
             supports_worker_scaling=False,
             notes=(
-                "Foundation default. lotus-ai exposes async contracts and artifact history without "
-                "activating a live queue backend."
+                "Former foundation default before durable runtime-backed async submission was "
+                "introduced."
+            ),
+        ),
+        AsyncQueueBackendDescriptor(
+            backend_id="service_database",
+            enabled=True,
+            backend_class="SERVICE_DATABASE_QUEUE",
+            selection_state="ACTIVE_SLICE_2_DEFAULT",
+            supports_durable_queue=True,
+            supports_worker_scaling=False,
+            notes=(
+                "Current Slice 2 default. Async job submission persists to the service database, "
+                "but dedicated worker claim and scaling are not active yet."
             ),
         ),
         AsyncQueueBackendDescriptor(
@@ -54,7 +66,7 @@ def build_async_queue_backend_catalog() -> AsyncQueueBackendCatalogResponse:
         service=settings.service_name,
         version=settings.service_version,
         delivery_phase=settings.delivery_phase,
-        active_queue_backend="none",
+        active_queue_backend="service_database",
         backend_count=len(backends),
         backends=backends,
     )

@@ -16,8 +16,14 @@ class AsyncWorkerMode(str, Enum):
 
 
 class AsyncJobStatus(str, Enum):
+    STAGED = "STAGED"
     QUEUED = "QUEUED"
     SUPERSEDED = "SUPERSEDED"
+
+
+class AsyncJobRecordSource(str, Enum):
+    STAGED_ARTIFACT = "STAGED_ARTIFACT"
+    RUNTIME_STATE = "RUNTIME_STATE"
 
 
 class AsyncSubmissionStatus(str, Enum):
@@ -78,6 +84,10 @@ class AsyncJobArtifactDescriptor(BaseModel):
     job_id: str = Field(description="Stable async job artifact identifier.")
     job_type: str = Field(description="Stable async job type identifier.")
     status: AsyncJobStatus = Field(description="Lifecycle status for the async job artifact.")
+    record_source: AsyncJobRecordSource = Field(
+        default=AsyncJobRecordSource.STAGED_ARTIFACT,
+        description="Whether this async job record comes from staged governed artifacts or durable runtime state.",
+    )
     submitted_at: str = Field(description="UTC timestamp when the async job artifact was created.")
     caller_app: str = Field(description="Lotus caller associated with the async job artifact.")
     related_evaluation_run_id: str | None = Field(

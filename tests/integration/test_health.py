@@ -211,16 +211,18 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["audit_store"]["status"] == "READY"
     assert body["retrieval_store"]["mode"] == "memory"
     assert body["retrieval_store"]["status"] == "READY"
-    assert body["async_runtime"]["queue_mode"] == "DISABLED"
+    assert body["async_runtime"]["queue_mode"] == "STUBBED"
     assert body["async_runtime"]["worker_mode"] == "DOCUMENTED_ONLY"
     assert body["async_runtime"]["supported_queue_backends"][0]["backend_id"] == "none"
+    assert body["async_runtime"]["supported_queue_backends"][1]["backend_id"] == "service_database"
+    assert body["async_runtime"]["queue_backend"] == "service_database"
     assert body["async_runtime"]["active_worker_execution"] == "none"
     assert (
         body["async_runtime"]["supported_worker_executions"][2]["worker_id"]
         == "queue_backed_workers"
     )
     assert body["async_runtime"]["active_worker_count"] == 0
-    assert body["async_runtime"]["enqueued_job_count"] == 1
+    assert body["async_runtime"]["enqueued_job_count"] == 0
     assert body["async_runtime"]["recorded_job_count"] == 2
     assert body["async_governance"]["governance_ready"] is False
     assert body["async_governance"]["blocking_area_count"] == 2

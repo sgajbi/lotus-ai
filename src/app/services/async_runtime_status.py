@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from app.config import settings
 from app.contracts.async_runtime import (
-    AsyncJobTypeDescriptor,
     AsyncQueueMode,
     AsyncRuntimeStatusResponse,
     AsyncWorkerMode,
 )
 from app.services.async_job_service import build_async_job_catalog
+from app.services.async_job_type_catalog import list_async_job_types
 from app.services.async_queue_backend_service import list_async_queue_backends
 from app.services.async_worker_execution_service import list_async_worker_executions
 
@@ -20,46 +20,18 @@ def build_async_runtime_status() -> AsyncRuntimeStatusResponse:
         service=settings.service_name,
         version=settings.service_version,
         delivery_phase=settings.delivery_phase,
-        queue_mode=AsyncQueueMode.DISABLED,
+        queue_mode=AsyncQueueMode.STUBBED,
         worker_mode=AsyncWorkerMode.DOCUMENTED_ONLY,
-        queue_backend="none",
+        queue_backend="service_database",
         supported_queue_backends=queue_backends,
         active_worker_execution="none",
         supported_worker_executions=worker_executions,
         active_worker_count=0,
         enqueued_job_count=job_catalog.queued_job_count,
         recorded_job_count=job_catalog.job_count,
-        supported_job_types=[
-            AsyncJobTypeDescriptor(
-                job_type="retrieval_indexing",
-                enabled=False,
-                execution_path="future_worker_queue",
-                notes=(
-                    "Retrieval indexing is expected to move to worker-backed execution once live "
-                    "embedding and vector indexing are activated."
-                ),
-            ),
-            AsyncJobTypeDescriptor(
-                job_type="evaluation_execution",
-                enabled=False,
-                execution_path="future_worker_queue",
-                notes=(
-                    "Evaluation execution remains artifact-only in foundation phase and has not "
-                    "yet been activated as a live worker flow."
-                ),
-            ),
-            AsyncJobTypeDescriptor(
-                job_type="document_ingestion",
-                enabled=False,
-                execution_path="future_worker_queue",
-                notes=(
-                    "Large document ingestion is planned as an async worker path rather than a "
-                    "synchronous API responsibility."
-                ),
-            ),
-        ],
+        supported_job_types=list_async_job_types(),
         message=(
-            "Async runtime contracts are defined, but queue-backed execution remains disabled in "
-            "the foundation phase."
+            "Async submission and catalog state are now durable for allowlisted job types, but "
+            "dedicated worker execution is not active yet."
         ),
     )

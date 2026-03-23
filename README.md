@@ -118,8 +118,11 @@ The current execution posture is:
 - platform runtime status now embeds async governance posture directly,
 - seeded async job artifacts are now exposed and validated through dedicated contracts,
 - async job submission now has a governed request/response contract with explicit foundation-phase rejection behavior,
+- async job submission now accepts a narrow allowlist of durable runtime-backed job types while still rejecting staged-only job types explicitly,
+- async job catalog and detail views now merge durable runtime-backed submissions with staged artifact records so current and future async posture remain distinguishable,
 - async job artifacts can now reference related evaluation run artifacts for cross-seam traceability,
 - async runtime now also has an explicit repository and store seam plus migration-managed durable schema for jobs, attempts, and worker leases, even though public async execution behavior remains foundation-phase only for now,
+- the active async queue backend is now the service database for durable submission state, while worker execution remains documented-only until later rollout slices,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

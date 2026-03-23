@@ -3,7 +3,7 @@
     {
       "job_id": "asyncjob_retrieval_indexing_001",
       "job_type": "retrieval_indexing",
-      "status": "QUEUED",
+      "status": "STAGED",
       "submitted_at": "2026-03-22T10:15:00Z",
       "caller_app": "lotus-platform",
       "related_evaluation_run_id": null,
