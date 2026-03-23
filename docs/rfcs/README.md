@@ -12,3 +12,4 @@
 - `RFC-0010-governed-prompt-activation-and-rollback.md` - Draft
 - `RFC-0011-dedicated-worker-fleet-and-managed-queue.md` - Draft
 - `RFC-0012-caller-identity-and-tenant-isolation-controls.md` - Draft
+- `RFC-0013-runtime-observability-and-incident-evidence.md` - Draft
