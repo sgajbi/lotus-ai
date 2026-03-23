@@ -3,10 +3,19 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from app.contracts.async_runtime import AsyncJobSubmissionRequest
+from app.repositories.async_runtime_repository import (
+    AsyncRuntimeAttemptRecord,
+    AsyncRuntimeJobRecord,
+)
 from app.services.async_job_service import build_async_job_catalog
 from app.services.async_runtime_store import reset_async_runtime_store_cache
-from app.services.async_submission_service import submit_async_job
+from app.services.async_submission_service import (
+    _find_active_duplicate_submission,
+    _validate_async_job_target,
+    submit_async_job,
+)
 from app.config import settings
+from app.services.async_runtime_store import get_async_runtime_store
 from tests.support.migration_runner import upgrade_database_to_head
 
 
@@ -133,3 +142,61 @@ def test_submit_async_job_raises_not_found_for_unknown_job_type() -> None:
         assert exc.detail == "Unknown lotus-ai async job type: missing_job_type"
     else:
         raise AssertionError("Expected async submission to raise HTTPException.")
+
+
+def test_validate_async_job_target_ignores_non_retrieval_job_types() -> None:
+    _validate_async_job_target(
+        request=AsyncJobSubmissionRequest(
+            job_type="evaluation_execution",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-ignore-target",
+            payload_summary="Run evaluation family.",
+        )
+    )
+
+
+def test_find_active_duplicate_submission_ignores_non_matching_runtime_jobs() -> None:
+    store = get_async_runtime_store()
+    store.save_job(
+        AsyncRuntimeJobRecord(
+            job_id="async-job-001",
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_ai_architecture",
+            lifecycle_status="COMPLETED",
+            submitted_at="2026-03-23T00:00:00Z",
+            caller_app="other-app",
+            correlation_id="corr-001",
+            payload_summary="Completed job should not block duplicates.",
+            execution_path="durable_runtime_submission",
+            related_evaluation_run_id=None,
+            latest_message="Completed.",
+            attempt_count=1,
+        )
+    )
+    store.save_attempt(
+        AsyncRuntimeAttemptRecord(
+            attempt_id="attempt-001",
+            job_id="async-job-001",
+            attempt_number=1,
+            lifecycle_status="COMPLETED",
+            worker_id="worker-a",
+            claimed_at="2026-03-23T00:00:00Z",
+            heartbeat_at="2026-03-23T00:00:00Z",
+            started_at="2026-03-23T00:00:00Z",
+            completed_at="2026-03-23T00:01:00Z",
+            failure_reason=None,
+            recorded_message="Completed.",
+        )
+    )
+
+    duplicate = _find_active_duplicate_submission(
+        request=AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-duplicate-ignore",
+            payload_summary="Fresh request.",
+        )
+    )
+
+    assert duplicate is None

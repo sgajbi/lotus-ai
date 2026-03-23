@@ -2,10 +2,16 @@ from pathlib import Path
 from datetime import UTC, datetime
 
 from _pytest.monkeypatch import MonkeyPatch
+import pytest
 
 from app.config import settings
+from app.repositories.memory_async_runtime_repository import InMemoryAsyncRuntimeRepository
+from fastapi import HTTPException
 from app.services.async_job_service import build_async_job_detail
-from app.services.async_runtime_store import reset_async_runtime_store_cache
+from app.services.async_runtime_store import (
+    get_async_runtime_store,
+    reset_async_runtime_store_cache,
+)
 from app.services.async_submission_service import submit_async_job
 from app.services.async_worker_runtime import (
     claim_next_async_job,
@@ -139,6 +145,119 @@ def test_async_worker_runtime_recovers_expired_lease_on_next_claim(
     assert detail.attempts[0].status == "ABANDONED"
     assert detail.attempts[0].failure_reason == "LEASE_EXPIRED"
     assert detail.attempts[1].status == "CLAIMED"
+
+
+def test_async_worker_runtime_recovery_skips_jobs_without_leases(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.async_worker_runtime._utcnow",
+        lambda: datetime(2026, 3, 23, 18, 0, tzinfo=UTC),
+    )
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-worker-005",
+            payload_summary="Refresh retrieval documents.",
+        )
+    )
+    claim_next_async_job(worker_id="worker-a")
+    runtime_store = get_async_runtime_store()
+    assert isinstance(runtime_store, InMemoryAsyncRuntimeRepository)
+    runtime_store._leases_by_job.clear()
+
+    recovered = claim_next_async_job(worker_id="worker-b")
+
+    assert recovered is None
+    detail = build_async_job_detail(job_id=response.job_id or "")
+    assert detail.job.status.value == "CLAIMED"
+
+
+def test_async_worker_runtime_recovery_skips_jobs_when_active_attempt_is_missing(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.async_worker_runtime._utcnow",
+        lambda: datetime(2026, 3, 23, 19, 0, tzinfo=UTC),
+    )
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-worker-006",
+            payload_summary="Refresh retrieval documents.",
+        )
+    )
+    claim = claim_next_async_job(worker_id="worker-a")
+    assert claim is not None
+    runtime_store = get_async_runtime_store()
+    assert isinstance(runtime_store, InMemoryAsyncRuntimeRepository)
+    runtime_store._attempts[response.job_id or ""] = []
+
+    recovered = claim_next_async_job(worker_id="worker-b")
+
+    assert recovered is None
+
+
+def test_async_worker_runtime_raises_when_claimed_state_is_missing() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        start_async_job(job_id="missing-job", worker_id="worker-a")
+
+    assert "was not found in runtime state" in str(exc_info.value)
+
+
+def test_async_worker_runtime_raises_when_job_is_not_leased_by_worker(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.async_worker_runtime._utcnow",
+        lambda: datetime(2026, 3, 23, 20, 0, tzinfo=UTC),
+    )
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-worker-007",
+            payload_summary="Refresh retrieval documents.",
+        )
+    )
+    claim_next_async_job(worker_id="worker-a")
+
+    with pytest.raises(HTTPException) as exc_info:
+        start_async_job(job_id=response.job_id or "", worker_id="worker-b")
+
+    assert "is not actively leased by worker" in str(exc_info.value)
+
+
+def test_async_worker_runtime_raises_when_active_attempt_is_missing(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.async_worker_runtime._utcnow",
+        lambda: datetime(2026, 3, 23, 21, 0, tzinfo=UTC),
+    )
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-worker-008",
+            payload_summary="Refresh retrieval documents.",
+        )
+    )
+    claim_next_async_job(worker_id="worker-a")
+    runtime_store = get_async_runtime_store()
+    assert isinstance(runtime_store, InMemoryAsyncRuntimeRepository)
+    runtime_store._attempts[response.job_id or ""] = []
+
+    with pytest.raises(HTTPException) as exc_info:
+        start_async_job(job_id=response.job_id or "", worker_id="worker-a")
+
+    assert "Active runtime attempt" in str(exc_info.value)
 
 
 def test_async_worker_runtime_recovery_survives_sql_store_reset(

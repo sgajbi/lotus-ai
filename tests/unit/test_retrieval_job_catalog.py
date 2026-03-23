@@ -1,10 +1,16 @@
+import pytest
+from fastapi import HTTPException
+
 from app.services.retrieval_catalog_service import (
     get_chunks_for_document,
     get_retrieval_indexing_policy,
     get_retrieval_job_detail_or_raise,
     get_retrieval_job_catalog,
 )
-from app.services.retrieval_async_execution import run_next_retrieval_index_job, submit_retrieval_index_job_async
+from app.services.retrieval_async_execution import (
+    run_next_retrieval_index_job,
+    submit_retrieval_index_job_async,
+)
 
 
 def test_get_retrieval_job_catalog_returns_known_jobs() -> None:
@@ -49,3 +55,10 @@ def test_get_retrieval_indexing_policy_returns_pgvector_strategy() -> None:
 
     assert response.vector_store == "postgresql+pgvector"
     assert response.persistence_strategy == "postgresql+pgvector"
+
+
+def test_get_retrieval_job_detail_raises_for_unknown_job_id() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        get_retrieval_job_detail_or_raise("missing-job-id")
+
+    assert exc_info.value.status_code == 404

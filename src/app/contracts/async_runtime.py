@@ -421,9 +421,7 @@ class AsyncControlActionResponse(BaseModel):
     service: str = Field(description="Service name emitting the async control action response.")
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
-    event: AsyncControlEventDescriptor = Field(
-        description="Recorded async control-plane event."
-    )
+    event: AsyncControlEventDescriptor = Field(description="Recorded async control-plane event.")
     summary: list[str] = Field(
         default_factory=list,
         description="Human-readable summary of the applied async control action.",

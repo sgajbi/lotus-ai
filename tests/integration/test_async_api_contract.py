@@ -1,4 +1,8 @@
-from app.services.async_worker_runtime import claim_next_async_job, complete_async_job, start_async_job
+from app.services.async_worker_runtime import (
+    claim_next_async_job,
+    complete_async_job,
+    start_async_job,
+)
 from fastapi.testclient import TestClient
 
 

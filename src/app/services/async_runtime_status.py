@@ -17,9 +17,7 @@ def build_async_runtime_status() -> AsyncRuntimeStatusResponse:
     job_catalog = build_async_job_catalog()
     queue_backends = list_async_queue_backends()
     worker_executions = list_async_worker_executions()
-    active_lease_workers = {
-        lease.worker_id for lease in get_async_runtime_store().list_leases()
-    }
+    active_lease_workers = {lease.worker_id for lease in get_async_runtime_store().list_leases()}
     return AsyncRuntimeStatusResponse(
         service=settings.service_name,
         version=settings.service_version,

@@ -153,7 +153,9 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
                 return None
 
             existing_lease = session.scalars(
-                select(AsyncWorkerLeaseModel).where(AsyncWorkerLeaseModel.job_id == job_model.job_id)
+                select(AsyncWorkerLeaseModel).where(
+                    AsyncWorkerLeaseModel.job_id == job_model.job_id
+                )
             ).first()
             if existing_lease is not None:
                 return None

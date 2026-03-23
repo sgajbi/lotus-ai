@@ -113,7 +113,9 @@ def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
                             if runtime_job is not None
                             else RetrievalPipelineStage.STAGED
                         ),
-                        runtime_status=None if runtime_job is None else runtime_job.lifecycle_status,
+                        runtime_status=None
+                        if runtime_job is None
+                        else runtime_job.lifecycle_status,
                         linked_async_job_id=None if runtime_job is None else runtime_job.job_id,
                         description=(
                             "Runtime-backed retrieval indexing now executes through the durable async runtime for allowlisted jobs."
@@ -127,7 +129,9 @@ def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
                             if descriptor.status == RetrievalJobStatus.COMPLETED
                             else RetrievalPipelineStage.STAGED
                         ),
-                        runtime_status=None if runtime_job is None else runtime_job.lifecycle_status,
+                        runtime_status=None
+                        if runtime_job is None
+                        else runtime_job.lifecycle_status,
                         linked_async_job_id=None if runtime_job is None else runtime_job.job_id,
                         description=(
                             "Embedding generation remains deterministic and bounded for the current retrieval indexing runtime path."
@@ -141,7 +145,9 @@ def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
                             if descriptor.status == RetrievalJobStatus.COMPLETED
                             else RetrievalPipelineStage.STAGED
                         ),
-                        runtime_status=None if runtime_job is None else runtime_job.lifecycle_status,
+                        runtime_status=None
+                        if runtime_job is None
+                        else runtime_job.lifecycle_status,
                         linked_async_job_id=None if runtime_job is None else runtime_job.job_id,
                         description=(
                             "Durable vector persistence remains PostgreSQL with pgvector and now reflects runtime-backed retrieval indexing completion."

@@ -36,4 +36,7 @@ def list_async_job_types() -> list[AsyncJobTypeDescriptor]:
 
 
 def get_async_job_type_descriptor(*, job_type: str) -> AsyncJobTypeDescriptor | None:
-    return next((descriptor for descriptor in list_async_job_types() if descriptor.job_type == job_type), None)
+    return next(
+        (descriptor for descriptor in list_async_job_types() if descriptor.job_type == job_type),
+        None,
+    )

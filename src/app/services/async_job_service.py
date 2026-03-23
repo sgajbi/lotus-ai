@@ -20,7 +20,9 @@ from app.services.async_runtime_store import get_async_runtime_store
 
 
 def build_async_job_catalog() -> AsyncJobCatalogResponse:
-    runtime_jobs = [map_async_runtime_job(record) for record in get_async_runtime_store().list_jobs()]
+    runtime_jobs = [
+        map_async_runtime_job(record) for record in get_async_runtime_store().list_jobs()
+    ]
     staged_jobs = load_async_job_artifacts()
     jobs = sorted(runtime_jobs + staged_jobs, key=lambda job: job.submitted_at, reverse=True)
     queued_job_count = sum(1 for job in jobs if job.status == AsyncJobStatus.QUEUED)

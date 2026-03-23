@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from app.contracts.retrieval import RetrievalJobStatus
 from app.repositories.sqlalchemy_retrieval_repository import SqlAlchemyRetrievalRepository
 from tests.support.migration_runner import upgrade_database_to_head
 
@@ -44,3 +45,37 @@ def test_sqlalchemy_retrieval_repository_creates_parent_directory_for_sqlite_fil
     SqlAlchemyRetrievalRepository(database_url)
 
     assert db_path.parent.is_dir()
+
+
+def test_sqlalchemy_retrieval_repository_updates_jobs_and_index_status(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-retrieval.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyRetrievalRepository(database_url)
+
+    assert repository.list_source_ids()
+    assert repository.get_source("lotus-platform-rfcs") is not None
+    assert repository.get_document("lotus-platform-rfc-0069") is not None
+
+    existing_job = repository.get_index_job("retjob_lotus_platform_rfcs")
+    assert existing_job is not None
+    repository.save_index_job(
+        existing_job.model_copy(
+            update={
+                "status": RetrievalJobStatus.COMPLETED,
+                "message": "Runtime-backed retrieval indexing completed.",
+            }
+        )
+    )
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+
+    job = repository.get_index_job("retjob_lotus_platform_rfcs")
+    documents = repository.list_documents_for_source("lotus-platform-rfcs")
+    chunks = repository.list_chunks_for_document("lotus-platform-rfc-0069")
+
+    assert job is not None
+    assert job.status == "COMPLETED"
+    assert all(document.index_status == "INDEXED" for document in documents)
+    assert all(chunk.index_status == "INDEXED" for chunk in chunks)

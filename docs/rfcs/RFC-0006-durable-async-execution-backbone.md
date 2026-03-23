@@ -1,6 +1,6 @@
 # RFC-0006: Durable Async Execution Backbone
 
-- Status: Proposed
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -311,6 +311,18 @@ Acceptance gate:
 5. job status and progress wording remains conservative and truthful under claim, retry, and recovery paths,
 6. documentation-backed async artifacts that remain after cutover are clearly labeled as staged or historical rather than live runtime truth,
 7. duplicate runtime-backed submission semantics are explicit and surfaced through API behavior rather than remaining implicit in code.
+
+## Implementation Notes
+
+Implemented on `codex/rfc-runtime-eval-execution`.
+
+Delivered outcomes:
+
+1. durable async runtime state now exists for jobs, attempts, leases, and control-plane events,
+2. allowlisted async submission is runtime-backed and duplicate retrieval-index submissions are explicitly rejected,
+3. worker claim, heartbeat, completion, failure, lease-expiry recovery, and operator control actions are durable and reviewable,
+4. retrieval indexing is the first real async consumer and runtime/detail surfaces now reflect authoritative async state,
+5. eval, governance, and runbook assets now describe the durable async control plane truthfully.
 
 ## Risks
 

@@ -178,14 +178,17 @@ def test_memory_async_runtime_repository_claims_next_runnable_job_once() -> None
     assert claim.job.target_id == "retjob_lotus_platform_rfcs"
     assert claim.attempt.worker_id == "worker-a"
     assert claim.lease.worker_id == "worker-a"
-    assert repository.claim_next_runnable_job(
-        worker_id="worker-b",
-        claimed_at="2026-03-23T00:02:00Z",
-        heartbeat_at="2026-03-23T00:02:00Z",
-        lease_expires_at="2026-03-23T00:07:00Z",
-        latest_message="Claimed by worker-b.",
-        attempt_message="Attempt claimed by worker-b.",
-    ) is None
+    assert (
+        repository.claim_next_runnable_job(
+            worker_id="worker-b",
+            claimed_at="2026-03-23T00:02:00Z",
+            heartbeat_at="2026-03-23T00:02:00Z",
+            lease_expires_at="2026-03-23T00:07:00Z",
+            latest_message="Claimed by worker-b.",
+            attempt_message="Attempt claimed by worker-b.",
+        )
+        is None
+    )
 
 
 def test_memory_async_runtime_repository_round_trips_control_events() -> None:
@@ -210,3 +213,70 @@ def test_memory_async_runtime_repository_round_trips_control_events() -> None:
     assert len(events) == 1
     assert events[0].action_type == "RETRY_FAILED_JOB"
     assert events[0].affected_attempt_id == "attempt-002"
+
+
+def test_memory_async_runtime_repository_returns_none_for_unknown_attempt() -> None:
+    repository = InMemoryAsyncRuntimeRepository()
+
+    assert repository.get_attempt(attempt_id="missing-attempt") is None
+
+
+def test_memory_async_runtime_repository_replaces_job_mapping_for_reused_lease_id() -> None:
+    repository = InMemoryAsyncRuntimeRepository()
+    repository.save_lease(
+        AsyncRuntimeLeaseRecord(
+            lease_id="lease-001",
+            job_id="async-job-001",
+            attempt_id="attempt-001",
+            worker_id="worker-a",
+            claimed_at="2026-03-23T00:00:00Z",
+            heartbeat_at="2026-03-23T00:00:00Z",
+            lease_expires_at="2026-03-23T00:05:00Z",
+        )
+    )
+    repository.save_lease(
+        AsyncRuntimeLeaseRecord(
+            lease_id="lease-001",
+            job_id="async-job-002",
+            attempt_id="attempt-002",
+            worker_id="worker-b",
+            claimed_at="2026-03-23T00:01:00Z",
+            heartbeat_at="2026-03-23T00:01:00Z",
+            lease_expires_at="2026-03-23T00:06:00Z",
+        )
+    )
+
+    assert repository.get_active_lease(job_id="async-job-001") is None
+    assert repository.get_active_lease(job_id="async-job-002") is not None
+
+
+def test_memory_async_runtime_repository_claim_skips_queued_jobs_without_attempts() -> None:
+    repository = InMemoryAsyncRuntimeRepository()
+    repository.save_job(
+        AsyncRuntimeJobRecord(
+            job_id="async-job-001",
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            lifecycle_status="QUEUED",
+            submitted_at="2026-03-23T00:00:00Z",
+            caller_app="lotus-ai",
+            correlation_id="corr-001",
+            payload_summary="Refresh retrieval source lotus-ai-architecture",
+            execution_path="durable_runtime_submission",
+            related_evaluation_run_id=None,
+            latest_message="Queued without attempts.",
+            attempt_count=0,
+        )
+    )
+
+    assert (
+        repository.claim_next_runnable_job(
+            worker_id="worker-a",
+            claimed_at="2026-03-23T00:01:00Z",
+            heartbeat_at="2026-03-23T00:01:00Z",
+            lease_expires_at="2026-03-23T00:06:00Z",
+            latest_message="Claimed by worker-a.",
+            attempt_message="Attempt claimed by worker-a.",
+        )
+        is None
+    )

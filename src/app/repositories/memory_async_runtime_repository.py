@@ -60,7 +60,9 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
     def list_leases(self) -> list[AsyncRuntimeLeaseRecord]:
         return [
             deepcopy(self._leases_by_job[job_id])
-            for job_id in sorted(self._leases_by_job, key=lambda item: self._leases_by_job[item].claimed_at)
+            for job_id in sorted(
+                self._leases_by_job, key=lambda item: self._leases_by_job[item].claimed_at
+            )
         ]
 
     def get_active_lease(self, *, job_id: str) -> AsyncRuntimeLeaseRecord | None:

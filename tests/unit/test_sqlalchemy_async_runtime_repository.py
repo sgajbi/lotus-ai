@@ -208,14 +208,17 @@ def test_sqlalchemy_async_runtime_repository_claims_next_runnable_job_once(
     assert claim.job.target_id == "retjob_lotus_platform_rfcs"
     assert claim.attempt.worker_id == "worker-a"
     assert claim.lease.worker_id == "worker-a"
-    assert repository.claim_next_runnable_job(
-        worker_id="worker-b",
-        claimed_at="2026-03-23T00:02:00Z",
-        heartbeat_at="2026-03-23T00:02:00Z",
-        lease_expires_at="2026-03-23T00:07:00Z",
-        latest_message="Claimed by worker-b.",
-        attempt_message="Attempt claimed by worker-b.",
-    ) is None
+    assert (
+        repository.claim_next_runnable_job(
+            worker_id="worker-b",
+            claimed_at="2026-03-23T00:02:00Z",
+            heartbeat_at="2026-03-23T00:02:00Z",
+            lease_expires_at="2026-03-23T00:07:00Z",
+            latest_message="Claimed by worker-b.",
+            attempt_message="Attempt claimed by worker-b.",
+        )
+        is None
+    )
 
 
 def test_sqlalchemy_async_runtime_repository_round_trips_control_events(
@@ -260,3 +263,59 @@ def test_sqlalchemy_async_runtime_repository_round_trips_control_events(
     assert len(events) == 1
     assert events[0].action_type == "RETRY_FAILED_JOB"
     assert events[0].affected_attempt_id == "attempt-002"
+
+
+def test_sqlalchemy_async_runtime_repository_returns_none_for_unknown_attempt(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-async-runtime.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyAsyncRuntimeRepository(database_url)
+
+    assert repository.get_attempt(attempt_id="missing-attempt") is None
+
+
+def test_sqlalchemy_async_runtime_repository_claim_returns_none_without_attempt(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-async-runtime.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyAsyncRuntimeRepository(database_url)
+    repository.save_job(
+        AsyncRuntimeJobRecord(
+            job_id="async-job-001",
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            lifecycle_status="QUEUED",
+            submitted_at="2026-03-23T00:00:00Z",
+            caller_app="lotus-ai",
+            correlation_id="corr-001",
+            payload_summary="Refresh retrieval source lotus-ai-architecture",
+            execution_path="durable_runtime_submission",
+            related_evaluation_run_id=None,
+            latest_message="Queued without attempts.",
+            attempt_count=0,
+        )
+    )
+
+    assert (
+        repository.claim_next_runnable_job(
+            worker_id="worker-a",
+            claimed_at="2026-03-23T00:01:00Z",
+            heartbeat_at="2026-03-23T00:01:00Z",
+            lease_expires_at="2026-03-23T00:06:00Z",
+            latest_message="Claimed by worker-a.",
+            attempt_message="Attempt claimed by worker-a.",
+        )
+        is None
+    )
+
+
+def test_sqlalchemy_async_runtime_repository_ensure_sqlite_directory_skips_memory_and_non_sqlite(
+    tmp_path: Path,
+) -> None:
+    SqlAlchemyAsyncRuntimeRepository("sqlite:///:memory:")
+    relative_path = tmp_path / "relative" / "lotus-ai-async-runtime.db"
+    SqlAlchemyAsyncRuntimeRepository(f"sqlite:///{relative_path}")
+    assert relative_path.parent.is_dir()
+    SqlAlchemyAsyncRuntimeRepository("postgresql://user:pass@localhost/lotus")
