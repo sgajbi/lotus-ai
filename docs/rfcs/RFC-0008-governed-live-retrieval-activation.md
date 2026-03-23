@@ -1,6 +1,6 @@
 # RFC-0008: Governed Live Retrieval Activation
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -28,7 +28,7 @@ The platform now has:
 4. runtime-backed evaluation execution and approval-gate posture,
 5. explicit retrieval governance, evidence, and runbook surfaces.
 
-The main remaining runtime gap is that live retrieval search is still not wired:
+The main runtime gap at proposal time was that live retrieval search was still not wired:
 
 1. `retrieval_mode=enabled` still returns a `503` because no live search backend is connected,
 2. runtime-backed indexing produces durable state but not an actually usable live search path,
@@ -37,14 +37,14 @@ The main remaining runtime gap is that live retrieval search is still not wired:
 
 ## Problem Statement
 
-Today the retrieval layer has an asymmetry:
+At proposal time the retrieval layer had an asymmetry:
 
 1. indexing is runtime-backed and durable,
 2. governance and evaluation evidence are runtime-backed,
 3. source and document promotion posture are explicit,
 4. but live retrieval search itself is still disabled.
 
-Current code makes that gap explicit:
+At proposal time the code made that gap explicit:
 
 1. [retrieval_execution_status.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/retrieval_execution_status.py#L1) reports `live_search_enabled=False` even when retrieval mode is enabled,
 2. [retrieval_gateway.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/retrieval_gateway.py#L1) returns catalog-only hits when retrieval is disabled and a `503` when retrieval is enabled because no live backend is wired,
@@ -87,7 +87,7 @@ The retrieval foundation is already substantial:
 4. evaluation families already cover retrieval search and answer behavior,
 5. retrieval-backed tasks already exist for search and conservative answer assembly.
 
-But the final runtime hop is still missing:
+At proposal time the final runtime hop was still missing:
 
 1. indexed search is not the active retrieval path,
 2. live search remains disabled even when configuration enables retrieval mode,
@@ -97,8 +97,8 @@ The current retrieval direction is already constrained:
 
 1. vector-store strategy is explicitly `postgresql+pgvector`,
 2. embedding strategy is still `provider-disabled`,
-3. retrieval execution status explicitly reports that live search is not wired,
-4. activation readiness explicitly says live indexing, embedding, and search backend approval remain blocked.
+3. retrieval execution status explicitly reported that live search was not wired,
+4. activation readiness explicitly said live indexing, embedding, and search backend approval remained blocked.
 
 ## Decision
 
@@ -148,6 +148,27 @@ This RFC uses three distinct runtime postures and requires the service to report
    - it must not silently degrade into catalog-only behavior unless that downgrade is an explicitly modeled rollout behavior and is surfaced in the response.
 
 The implementation goal of this RFC is to eliminate the current invalid posture where configuration says retrieval is enabled but runtime still returns `503` because no live path exists.
+
+## Implementation Notes
+
+RFC-0008 is now implemented.
+
+What landed:
+
+1. retrieval mode `enabled` now uses the repository-owned live indexed-search path instead of returning a `503`,
+2. source and document governance now define live-search eligibility explicitly,
+3. `knowledge_search.v1` and `knowledge_answer.v1` now report live-search posture explicitly in task runtime and audit evidence,
+4. retrieval approval posture now depends on runtime-backed live-search evaluation evidence rather than staged baselines alone,
+5. retrieval execution, activation, and runbook surfaces now describe searchable, index-pending, and rollback-empty corpus posture truthfully,
+6. SQL-backed tests now prove restart-survival and rollback removal of searchable corpus eligibility.
+
+Remaining related work intentionally stays outside this RFC:
+
+1. broader runtime safety enforcement belongs to RFC-0009,
+2. prompt activation and rollback belong to RFC-0010,
+3. dedicated worker-fleet topology belongs to RFC-0011,
+4. embedding-provider expansion belongs to RFC-0018,
+5. governed document ingestion and corpus refresh belong to RFC-0019.
 
 ## Architecture Direction
 
