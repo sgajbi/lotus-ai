@@ -133,6 +133,11 @@ filtering in separate builders.
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.
 
+RFC-0007 Slice 1 also adds an explicit evaluation-runtime repository and store seam plus
+migration-managed durable schema for evaluation runs, attempts, and per-case outcomes. Public
+evaluation APIs remain artifact-backed for now, but later runtime-backed execution slices no
+longer need to invent persistence ad hoc.
+
 Retrieval services also use a dedicated inventory-summary helper now, so source-level and
 runtime-level document and chunk counts are derived in one place instead of being recomputed
 independently by retrieval status and job builders.

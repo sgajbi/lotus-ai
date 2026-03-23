@@ -212,3 +212,58 @@ class AsyncControlEventModel(Base):
     resulting_status: Mapped[str] = mapped_column(String(64), nullable=False)
     affected_attempt_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class EvaluationRunModel(Base):
+    __tablename__ = "evaluation_runs"
+
+    run_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    fixture_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    manifest_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    lifecycle_status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    triggered_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    submitted_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    async_job_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    latest_message: Mapped[str] = mapped_column(Text, nullable=False)
+    verdict: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    case_count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    attempts: Mapped[list["EvaluationRunAttemptModel"]] = relationship(back_populates="run")
+    case_results: Mapped[list["EvaluationCaseResultModel"]] = relationship(back_populates="run")
+
+
+class EvaluationRunAttemptModel(Base):
+    __tablename__ = "evaluation_run_attempts"
+
+    attempt_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("evaluation_runs.run_id"), nullable=False, index=True
+    )
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    lifecycle_status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    started_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    completed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    worker_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    latest_message: Mapped[str] = mapped_column(Text, nullable=False)
+    verdict: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    run: Mapped["EvaluationRunModel"] = relationship(back_populates="attempts")
+
+
+class EvaluationCaseResultModel(Base):
+    __tablename__ = "evaluation_case_results"
+
+    case_result_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("evaluation_runs.run_id"), nullable=False, index=True
+    )
+    attempt_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    case_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    fixture_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    outcome: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    run: Mapped["EvaluationRunModel"] = relationship(back_populates="case_results")

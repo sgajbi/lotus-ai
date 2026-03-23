@@ -143,6 +143,7 @@ The current persistence posture is:
 - explicit configuration to move between the two without changing API contracts,
 - explicit provider-operations repository seams and migration-managed SQL tables now back durable quota, budget, and degradation state when the SQL-backed provider-operations path is enabled,
 - explicit async-runtime repository seams and migration-managed SQL tables now exist for jobs, attempts, and worker leases when the SQL-backed async-runtime path is enabled in later rollout slices,
+- explicit evaluation-runtime repository seams and migration-managed SQL tables now exist for runs, attempts, and per-case outcomes when the SQL-backed evaluation-runtime path is enabled in later rollout slices, while public evaluation APIs remain artifact-backed until runtime execution cutover happens,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 - prompt promotion remains read-only at runtime and is governed through reviewed repository changes plus Alembic-managed persistence updates.
 - startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.

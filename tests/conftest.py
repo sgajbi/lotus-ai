@@ -7,6 +7,7 @@ import pytest
 from app.config import settings
 from app.services.audit_store import reset_audit_store_cache
 from app.services.async_runtime_store import reset_async_runtime_store_cache
+from app.services.evaluation_runtime_store import reset_evaluation_runtime_store_cache
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import reset_provider_budget_state
 from app.services.provider_degradation_state import reset_provider_degradation_state
@@ -45,6 +46,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "retrieval_store_mode": settings.retrieval_store_mode,
         "provider_operations_store_mode": settings.provider_operations_store_mode,
         "async_runtime_store_mode": settings.async_runtime_store_mode,
+        "evaluation_runtime_store_mode": settings.evaluation_runtime_store_mode,
         "startup_readiness_policy": settings.startup_readiness_policy,
         "readiness_probe_policy": settings.readiness_probe_policy,
         "database_url": settings.database_url,
@@ -62,3 +64,4 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_provider_quota_counters()
         reset_provider_operations_store_cache()
         reset_async_runtime_store_cache()
+        reset_evaluation_runtime_store_cache()
