@@ -17,3 +17,4 @@
 - `RFC-0015-controlled-deployment-split-into-runtime-retrieval-and-evals.md` - Draft
 - `RFC-0016-first-production-use-case-onboarding.md` - Draft
 - `RFC-0017-production-resilience-and-disaster-recovery.md` - Draft
+- `RFC-0018-governed-embeddings-and-provider-expansion.md` - Draft
