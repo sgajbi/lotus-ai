@@ -4,7 +4,8 @@ This guide records the current retrieval-storage direction for `lotus-ai`.
 
 ## Current State
 
-Right now, `lotus-ai` does not have a live vector store wired into runtime retrieval.
+Right now, `lotus-ai` has a bounded live indexed-search path wired through the retrieval
+repository seam, but it does not yet have broad embedding-driven vector retrieval execution.
 
 That is intentional. We are still building the retrieval layer in disciplined slices.
 
@@ -62,14 +63,14 @@ What exists today:
 3. staged chunks are visible per document,
 4. indexing jobs and indexing policy are exposed through API contracts,
 5. retrieval metadata is served through a repository seam rather than hard-coded module state,
-6. retrieval search now flows through an explicit execution gateway before any live backend is introduced,
+6. retrieval search now flows through an explicit execution gateway with bounded catalog-only and live indexed-search paths,
 7. retrieval execution status is exposed separately from retrieval catalog status.
 
 What does not exist yet:
 
 1. live embedding generation,
 2. runtime vector writes,
-3. production retrieval execution over indexed vectors.
+3. broader embedding-driven retrieval execution over indexed vectors.
 
 This split is deliberate. We want the retrieval contract, governance posture, and observability model to become stable before live indexing is enabled.
 
@@ -106,9 +107,10 @@ The current retrieval API exposes:
 10. document inventory,
 11. chunk inventory.
 
-The search endpoint remains governed. In foundation phase it can now return bounded
-catalog-only hits from a small enabled staged-source subset, while live vector retrieval
-remains disabled.
+The search endpoint remains governed. In foundation phase it now supports:
+
+1. bounded catalog-only hits from a small enabled staged-source subset when live retrieval is disabled,
+2. bounded live indexed-search hits from promoted indexed corpus content when `retrieval_mode=enabled`.
 
 Current enabled catalog-only sources:
 

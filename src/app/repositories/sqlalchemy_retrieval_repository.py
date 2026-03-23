@@ -11,6 +11,7 @@ from app.contracts.retrieval import (
     RetrievalIndexJobDescriptor,
     RetrievalIndexStatus,
     RetrievalJobStatus,
+    RetrievalSearchHit,
     RetrievalSourceDescriptor,
     RetrievalSourceKind,
 )
@@ -20,6 +21,7 @@ from app.db.models import (
     RetrievalIndexJobModel,
     RetrievalSourceModel,
 )
+from app.retrieval.search_scoring import score_terms
 
 
 class SqlAlchemyRetrievalRepository:
@@ -70,6 +72,49 @@ class SqlAlchemyRetrievalRepository:
                 .order_by(RetrievalChunkModel.chunk_order)
             ).all()
             return [self._to_chunk_descriptor(chunk) for chunk in chunks]
+
+    def search_indexed_chunks(
+        self, *, query: str, source_ids: list[str], limit: int
+    ) -> list[RetrievalSearchHit]:
+        with self._session_factory() as session:
+            statement = (
+                select(RetrievalChunkModel, RetrievalDocumentModel, RetrievalSourceModel)
+                .join(
+                    RetrievalDocumentModel,
+                    RetrievalDocumentModel.document_id == RetrievalChunkModel.document_id,
+                )
+                .join(
+                    RetrievalSourceModel,
+                    RetrievalSourceModel.source_id == RetrievalChunkModel.source_id,
+                )
+                .where(RetrievalSourceModel.enabled.is_(True))
+                .where(RetrievalDocumentModel.index_status == RetrievalIndexStatus.INDEXED.value)
+                .where(RetrievalChunkModel.index_status == RetrievalIndexStatus.INDEXED.value)
+            )
+            if source_ids:
+                statement = statement.where(RetrievalChunkModel.source_id.in_(source_ids))
+
+            rows = session.execute(statement).all()
+            ranked_hits: list[RetrievalSearchHit] = []
+            for chunk, document, _source in rows:
+                score = score_terms(
+                    query=query,
+                    searchable_text=f"{document.title} {chunk.preview}",
+                )
+                if score <= 0.0:
+                    continue
+                ranked_hits.append(
+                    RetrievalSearchHit(
+                        source_id=chunk.source_id,
+                        document_id=chunk.document_id,
+                        chunk_id=chunk.chunk_id,
+                        score=score,
+                        snippet=chunk.preview,
+                    )
+                )
+
+            ranked_hits.sort(key=lambda hit: (-hit.score, hit.source_id, hit.document_id, hit.chunk_id))
+            return ranked_hits[:limit]
 
     def list_index_jobs(self) -> list[RetrievalIndexJobDescriptor]:
         with self._session_factory() as session:

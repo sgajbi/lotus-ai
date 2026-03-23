@@ -231,13 +231,13 @@ Audit inspection also supports a bounded catalog view now, with explicit caller,
 tenant, task, category, and output-label filters plus limit controls, so operator and support
 workflows can inspect recent executions without relying only on direct request-id lookup.
 
-Retrieval execution now also supports a deterministic catalog-only path for enabled staged
-sources, so Lotus apps can get bounded preview hits from curated corpus metadata before live
-vector retrieval is activated.
+Retrieval execution now supports two governed paths through the same gateway: a deterministic
+catalog-only path for enabled staged sources when live retrieval is disabled, and a bounded
+repository-owned live indexed-search path when `retrieval_mode=enabled`.
 
 The initial enabled subset is intentionally small: Lotus platform RFCs and lotus-ai
-architecture documents are searchable through the catalog-only path, while other staged
-sources remain disabled until they are explicitly promoted.
+architecture documents are searchable through the catalog-only path, while the live indexed
+path remains restricted to promoted indexed corpus content.
 
 Per-source rollout posture is also exposed through `/platform/retrieval/source-governance`, so
 registered, staged-only, and currently searchable corpus slices are reviewed through an explicit
@@ -252,7 +252,7 @@ bounded retrieval path, with explicit citations preserved in the task result pay
 
 Low-support retrieval matches now produce an explicit conservative refusal mode for
 `knowledge_answer.v1` instead of a weak answer, which keeps the retrieval-backed task path
-more defensible under the current catalog-only execution model.
+defensible across both catalog-only and live indexed-search execution modes.
 
 Task runtime posture now also resolves through a dedicated execution-path helper so provider-backed
 and retrieval-backed task routing semantics are defined in one place instead of being encoded only

@@ -79,3 +79,24 @@ def test_sqlalchemy_retrieval_repository_updates_jobs_and_index_status(tmp_path:
     assert job.status == "COMPLETED"
     assert all(document.index_status == "INDEXED" for document in documents)
     assert all(chunk.index_status == "INDEXED" for chunk in chunks)
+
+
+def test_sqlalchemy_retrieval_repository_searches_indexed_chunks(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-retrieval.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyRetrievalRepository(database_url)
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+
+    hits = repository.search_indexed_chunks(
+        query="shared ai platform service",
+        source_ids=["lotus-platform-rfcs"],
+        limit=5,
+    )
+
+    assert hits
+    assert hits[0].source_id == "lotus-platform-rfcs"
+    assert hits[0].document_id == "lotus-platform-rfc-0069"
+    assert hits[0].chunk_id == "chunk_rfc_0069_0001"

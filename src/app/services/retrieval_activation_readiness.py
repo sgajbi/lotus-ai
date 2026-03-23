@@ -6,16 +6,16 @@ from app.contracts.retrieval import RetrievalActivationReadinessResponse
 
 def build_retrieval_activation_readiness() -> RetrievalActivationReadinessResponse:
     blocking_findings = [
-        "Live retrieval search remains disabled in the current foundation phase even though runtime-backed indexing is now available.",
-        "Embedding provider execution is not enabled for live retrieval indexing.",
-        "No governed live vector indexing and search backend has been approved for production execution.",
-        "Retrieval remains in partial rollout mode until search activation and broader rollout gates are completed.",
+        "Live retrieval search capability exists, but governed rollout remains incomplete.",
+        "Embedding provider execution is not enabled for broader live retrieval indexing growth.",
+        "Retrieval evaluation, runbook, and governance gates are not yet sufficient for full activation.",
+        "Retrieval remains in partial rollout mode until live-search rollout controls are completed.",
     ]
     activation_path = [
-        "Approve a governed live retrieval rollout with explicit vector indexing and search backend controls.",
-        "Enable embedding provider execution and retrieval execution through a reviewed rollout slice.",
-        "Complete retrieval-specific safety, provenance, and operational controls for live search and indexing.",
-        "Validate end-to-end retrieval behavior with evaluation evidence and runtime supportability checks before activation.",
+        "Approve the governed live retrieval rollout with explicit indexed-search controls.",
+        "Complete retrieval-specific safety, provenance, and operational controls for live search.",
+        "Validate end-to-end retrieval behavior with runtime-backed evaluation evidence.",
+        "Complete retrieval rollout and rollback supportability checks before broader activation.",
     ]
     return RetrievalActivationReadinessResponse(
         service=settings.service_name,

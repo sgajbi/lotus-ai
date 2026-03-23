@@ -12,6 +12,7 @@ from app.contracts.tasks import (
     TaskExecutionRequest,
     TaskInputMode,
 )
+from app.repositories.memory_retrieval_repository import InMemoryRetrievalRepository
 from app.services.task_executor import execute_task
 
 
@@ -127,12 +128,15 @@ def test_execute_task_runs_bounded_knowledge_search() -> None:
     assert response.audit.prompt_version == "foundation.knowledge_search.v1"
     assert response.audit.provider_mode == "catalog_only"
     assert response.result.structured_output["provider_id"] == "retrieval.catalog"
+    assert response.result.structured_output["provider_mode"] == "catalog_only"
     assert response.result.structured_output["catalog_only"] is True
+    assert response.result.structured_output["execution_stage"] == "CATALOG_ONLY"
     assert response.result.structured_output["query"] == "shared ai platform service"
     assert response.result.structured_output["hit_count"] >= 1
     assert response.result.structured_output["citation_count"] >= 1
     assert response.result.structured_output["support_score"] >= 0.5
     assert response.result.structured_output["citations"][0]["source_id"] == "lotus-platform-rfcs"
+    assert response.result.structured_output["citations"][0]["document_id"] == "lotus-platform-rfc-0069"
     assert response.result.structured_output["hits"][0]["source_id"] == "lotus-platform-rfcs"
 
 
@@ -185,11 +189,12 @@ def test_execute_task_runs_bounded_knowledge_answer() -> None:
     assert response.audit.provider_mode == "catalog_answer"
     assert response.result.structured_output["provider_id"] == "retrieval.answer"
     assert response.result.structured_output["catalog_only"] is True
+    assert response.result.structured_output["execution_stage"] == "CATALOG_ONLY"
     assert response.result.structured_output["hit_count"] >= 1
     assert response.result.structured_output["answer_mode"] == "CITATION_BACKED"
     assert response.result.structured_output["support_score"] >= 0.5
     assert response.result.structured_output["citations"][0]["source_id"] == "lotus-platform-rfcs"
-    assert "Sources: lotus-platform-rfcs" in response.result.message
+    assert "Sources: lotus-platform-rfcs:lotus-platform-rfc-0069" in response.result.message
 
 
 def test_execute_task_refuses_low_support_knowledge_answer() -> None:
@@ -215,6 +220,51 @@ def test_execute_task_refuses_low_support_knowledge_answer() -> None:
     assert response.result.structured_output["answer_mode"] == "REFUSED_INSUFFICIENT_SUPPORT"
     assert response.result.structured_output["support_score"] < 0.75
     assert "Insufficient support" in response.result.message
+
+
+def test_execute_task_routes_knowledge_search_through_live_retrieval(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.retrieval_mode = "enabled"
+    repository = InMemoryRetrievalRepository()
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+    monkeypatch.setattr(
+        "app.services.retrieval_service.get_retrieval_repository",
+        lambda: repository,
+    )
+    monkeypatch.setattr(
+        "app.services.retrieval_gateway.get_retrieval_repository",
+        lambda: repository,
+    )
+
+    response = execute_task(
+        TaskExecutionRequest(
+            task_id="knowledge_search.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ks-live-001"),
+            context=TaskContextEnvelope(
+                summary="Search Lotus knowledge sources",
+                payload={
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                source_refs=["lotus-manage:knowledge-search:live:001"],
+            ),
+            expected_output_label=OutputLabel.RETRIEVAL_ANSWER,
+        )
+    )
+
+    assert response.audit.provider_mode == "live_search"
+    assert response.result.structured_output["provider_id"] == "retrieval.live_search"
+    assert response.result.structured_output["catalog_only"] is False
+    assert response.result.structured_output["execution_stage"] == "LIVE_SEARCH"
+    assert response.result.structured_output["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
 
 
 def test_execute_task_routes_allowlisted_task_through_live_provider(

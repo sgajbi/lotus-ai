@@ -25,7 +25,9 @@ def test_search_sources_returns_catalog_only_hits_for_enabled_seeded_sources() -
     response = search_sources(request)
 
     assert response.status == RetrievalStatus.READY
+    assert response.execution_stage == RetrievalExecutionStage.CATALOG_ONLY
     assert response.hits[0].source_id == "lotus-platform-rfcs"
+    assert response.hits[0].document_id == "lotus-platform-rfc-0069"
     assert response.hits[0].score > 0.0
     assert "catalog-only hits" in response.message
 
@@ -74,6 +76,8 @@ def test_search_sources_returns_hits_for_enabled_source_subset() -> None:
         hits=[
             RetrievalSearchHit(
                 source_id="lotus-platform-rfcs",
+                document_id="lotus-platform-rfc-0069",
+                chunk_id="chunk_rfc_0069_0001",
                 score=0.98,
                 snippet="RFC-0069 defines lotus-ai as the shared AI platform service.",
             )
@@ -88,5 +92,6 @@ def test_search_sources_returns_hits_for_enabled_source_subset() -> None:
         response = search_sources(request)
 
     assert response.status == RetrievalStatus.READY
+    assert response.execution_stage == RetrievalExecutionStage.CATALOG_ONLY
     assert response.hits[0].source_id == "lotus-platform-rfcs"
     assert response.message == "Search completed."

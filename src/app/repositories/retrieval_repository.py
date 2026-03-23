@@ -6,6 +6,7 @@ from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
     RetrievalDocumentDescriptor,
     RetrievalIndexJobDescriptor,
+    RetrievalSearchHit,
     RetrievalSourceDescriptor,
 )
 
@@ -22,6 +23,10 @@ class RetrievalRepository(Protocol):
     def get_document(self, document_id: str) -> RetrievalDocumentDescriptor | None: ...
 
     def list_chunks_for_document(self, document_id: str) -> list[RetrievalChunkDescriptor]: ...
+
+    def search_indexed_chunks(
+        self, *, query: str, source_ids: list[str], limit: int
+    ) -> list[RetrievalSearchHit]: ...
 
     def list_index_jobs(self) -> list[RetrievalIndexJobDescriptor]: ...
 

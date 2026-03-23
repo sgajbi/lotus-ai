@@ -67,6 +67,22 @@ def test_retrieval_execution_status_route(client: TestClient) -> None:
     assert body["live_indexing_enabled"] is True
 
 
+def test_retrieval_execution_status_route_reports_live_search_when_enabled(
+    client: TestClient,
+) -> None:
+    from app.config import settings
+
+    settings.retrieval_mode = "enabled"
+
+    response = client.get("/platform/retrieval/execution-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["retrieval_mode"] == "enabled"
+    assert body["execution_stage"] == "LIVE_SEARCH"
+    assert body["live_search_enabled"] is True
+
+
 def test_retrieval_activation_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/retrieval/activation-readiness")
 
@@ -247,7 +263,9 @@ def test_retrieval_search_route_returns_catalog_only_hits_for_enabled_sources(
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "READY"
+    assert body["execution_stage"] == "CATALOG_ONLY"
     assert body["hits"][0]["source_id"] == "lotus-platform-rfcs"
+    assert body["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
     assert "catalog-only hits" in body["message"]
 
 
@@ -264,3 +282,33 @@ def test_retrieval_search_route_rejects_disabled_source_filter(client: TestClien
 
     assert response.status_code == 409
     assert "not enabled" in response.json()["detail"]
+
+
+def test_retrieval_search_route_returns_live_hits_when_enabled(client: TestClient) -> None:
+    from app.config import settings
+    from app.services.retrieval_store import get_retrieval_repository
+
+    settings.retrieval_mode = "enabled"
+    repository = get_retrieval_repository()
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+
+    response = client.post(
+        "/platform/retrieval/search",
+        json={
+            "query": "shared ai platform service",
+            "caller_app": "lotus-workbench",
+            "correlation_id": "corr-ret-live-1",
+            "source_ids": ["lotus-platform-rfcs"],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "READY"
+    assert body["execution_stage"] == "LIVE_SEARCH"
+    assert body["hits"][0]["source_id"] == "lotus-platform-rfcs"
+    assert body["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
+    assert body["hits"][0]["chunk_id"] == "chunk_rfc_0069_0001"

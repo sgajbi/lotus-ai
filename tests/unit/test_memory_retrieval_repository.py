@@ -80,3 +80,35 @@ def test_memory_retrieval_repository_updates_document_and_chunk_index_status() -
 
     assert all(document.index_status == "INDEXED" for document in documents)
     assert all(chunk.index_status == "INDEXED" for chunk in chunks)
+
+
+def test_memory_retrieval_repository_searches_only_indexed_enabled_chunks() -> None:
+    repository = InMemoryRetrievalRepository()
+
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+
+    hits = repository.search_indexed_chunks(
+        query="shared ai platform service",
+        source_ids=["lotus-platform-rfcs"],
+        limit=5,
+    )
+
+    assert hits
+    assert hits[0].source_id == "lotus-platform-rfcs"
+    assert hits[0].document_id == "lotus-platform-rfc-0069"
+    assert hits[0].chunk_id == "chunk_rfc_0069_0001"
+
+
+def test_memory_retrieval_repository_excludes_staged_chunks_from_live_search() -> None:
+    repository = InMemoryRetrievalRepository()
+
+    hits = repository.search_indexed_chunks(
+        query="shared ai platform service",
+        source_ids=["lotus-platform-rfcs"],
+        limit=5,
+    )
+
+    assert hits == []

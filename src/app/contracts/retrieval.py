@@ -243,6 +243,8 @@ class RetrievalSearchRequest(BaseModel):
 
 class RetrievalSearchHit(BaseModel):
     source_id: str = Field(description="Retrieval source identifier that produced the hit.")
+    document_id: str = Field(description="Retrieval document identifier that produced the hit.")
+    chunk_id: str = Field(description="Retrieval chunk identifier that produced the hit.")
     score: float = Field(description="Relevance score associated with the hit.")
     snippet: str = Field(description="Short snippet preview for the hit.")
 
@@ -250,6 +252,9 @@ class RetrievalSearchHit(BaseModel):
 class RetrievalSearchResponse(BaseModel):
     status: RetrievalStatus = Field(description="Current retrieval execution status.")
     query: str = Field(description="Original caller query.")
+    execution_stage: "RetrievalExecutionStage" = Field(
+        description="Current retrieval execution stage applied to the request."
+    )
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     hits: list[RetrievalSearchHit] = Field(description="Retrieval hits returned by the search.")
     message: str = Field(description="Human-readable retrieval status message.")
@@ -257,6 +262,7 @@ class RetrievalSearchResponse(BaseModel):
 
 class RetrievalExecutionStage(str, Enum):
     CATALOG_ONLY = "CATALOG_ONLY"
+    LIVE_SEARCH = "LIVE_SEARCH"
     SEARCH_DISABLED = "SEARCH_DISABLED"
     INDEXING_DISABLED = "INDEXING_DISABLED"
 
