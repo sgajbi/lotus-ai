@@ -37,6 +37,46 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"
 
 
+def test_task_execute_contract_enforces_runtime_redaction_when_enabled(client: TestClient) -> None:
+    from app.config import settings
+
+    settings.safety_mode = "runtime_enforced"
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-456-redacted",
+                "requested_by": "ops.user@lotus",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Explain rebalance outcome",
+                "payload": {"status": "BLOCKED", "violations": 2},
+                "source_refs": ["lotus-manage:run:reb_003"],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["audit"]["safety"]["safety_mode"] == "runtime_enforced"
+    assert body["audit"]["safety"]["disposition"] == "ENFORCED_REDACTED"
+    assert (
+        body["result"]["message"]
+        == "Stub execution completed for foundation-phase task explain.v1."
+    )
+    assert "caller_app" not in body["result"]["structured_output"]
+    assert "context_summary" not in body["result"]["structured_output"]
+    assert "source_refs" not in body["result"]["structured_output"]
+
+    settings.safety_mode = "documented_only"
+
+
 def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
     execute_response = client.post(
         "/ai/tasks/execute",

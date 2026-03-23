@@ -25,10 +25,23 @@ def build_safety_runtime_status() -> SafetyRuntimeStatusResponse:
         service=settings.service_name,
         version=settings.service_version,
         safety_mode=settings.safety_mode,
-        runtime_redaction_active=False,
-        runtime_redaction_disposition=SafetyExecutionDisposition.DOCUMENTED_ONLY,
+        runtime_redaction_active=settings.safety_mode == "runtime_enforced",
+        runtime_redaction_disposition=(
+            SafetyExecutionDisposition.ENFORCED_PASSTHROUGH
+            if settings.safety_mode == "runtime_enforced"
+            else SafetyExecutionDisposition.DOCUMENTED_ONLY
+        ),
         enforced_control_ids=enforced_control_ids,
         documented_only_control_ids=documented_only_control_ids,
-        supported_execution_dispositions=[SafetyExecutionDisposition.DOCUMENTED_ONLY],
+        supported_execution_dispositions=(
+            [
+                SafetyExecutionDisposition.ENFORCED_PASSTHROUGH,
+                SafetyExecutionDisposition.ENFORCED_REDACTED,
+                SafetyExecutionDisposition.BLOCKED,
+                SafetyExecutionDisposition.DEGRADED,
+            ]
+            if settings.safety_mode == "runtime_enforced"
+            else [SafetyExecutionDisposition.DOCUMENTED_ONLY]
+        ),
         task_policy_count=len(policy.task_policies),
     )

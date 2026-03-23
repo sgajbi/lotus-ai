@@ -23,10 +23,10 @@ def build_safety_execution_outcome_from_record(
     redaction_posture: RedactionPosture,
     enforced_controls: list[str],
 ) -> SafetyExecutionOutcome:
-    outcome = build_safety_execution_outcome(output_label)
+    policy = resolve_safety_policy_for_output(output_label)
+    outcome = resolve_safety_execution_outcome(policy, safety_mode=safety_mode)
     return outcome.model_copy(
         update={
-            "safety_mode": safety_mode,
             "redaction_posture": redaction_posture,
             "enforced_controls": list(enforced_controls),
         }

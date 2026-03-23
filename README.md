@@ -80,7 +80,7 @@ The current execution posture is:
 - platform runtime status now also embeds provider operations posture directly,
 - safety policy exposes task-level output-label and redaction posture,
 - task audit records now persist the applied safety posture for every execution,
-- runtime safety status now also exposes typed safety execution dispositions, so documented-only posture is separated from future enforced outcomes explicitly,
+- runtime safety status now also exposes typed safety execution dispositions, and deterministic runtime minimization can be activated for bounded outputs without changing the task or audit API shape,
 - retrieval now has an explicit execution seam and runtime execution-status surface,
 - retrieval activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - retrieval runbook readiness is now exposed through a dedicated operational-readiness endpoint,

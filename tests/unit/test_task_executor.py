@@ -60,6 +60,29 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
     assert response.evidence.descriptors[1].evidence_type == "prompt_selection"
 
 
+def test_execute_task_enforces_runtime_redaction_for_provider_backed_output() -> None:
+    from app.config import settings
+
+    settings.safety_mode = "runtime_enforced"
+
+    response = execute_task(
+        _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
+    )
+
+    assert response.audit.safety.safety_mode == "runtime_enforced"
+    assert response.audit.safety.disposition == "ENFORCED_REDACTED"
+    assert response.audit.safety.runtime_redaction_active is True
+    assert (
+        response.result.message == "Stub execution completed for foundation-phase task explain.v1."
+    )
+    assert "caller_app" not in response.result.structured_output
+    assert "context_summary" not in response.result.structured_output
+    assert "source_refs" not in response.result.structured_output
+    assert response.result.structured_output["context_keys"] == ["rule_count", "status"]
+
+    settings.safety_mode = "documented_only"
+
+
 def test_execute_task_rejects_unknown_task() -> None:
     try:
         execute_task(_request("unknown.v1"))
@@ -275,6 +298,58 @@ def test_execute_task_routes_knowledge_search_through_live_retrieval(
     assert response.result.structured_output["catalog_only"] is False
     assert response.result.structured_output["execution_stage"] == "LIVE_SEARCH"
     assert response.result.structured_output["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
+
+
+def test_execute_task_enforces_runtime_redaction_for_retrieval_backed_output(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.retrieval_mode = "enabled"
+    settings.safety_mode = "runtime_enforced"
+    repository = InMemoryRetrievalRepository()
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+    monkeypatch.setattr(
+        "app.services.retrieval_service.get_retrieval_repository",
+        lambda: repository,
+    )
+    monkeypatch.setattr(
+        "app.services.retrieval_gateway.get_retrieval_repository",
+        lambda: repository,
+    )
+    monkeypatch.setattr(
+        "app.retrieval.document_governance.get_retrieval_repository",
+        lambda: repository,
+    )
+
+    response = execute_task(
+        TaskExecutionRequest(
+            task_id="knowledge_search.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ks-safe-001"),
+            context=TaskContextEnvelope(
+                summary="Search Lotus knowledge sources",
+                payload={
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                source_refs=["lotus-manage:knowledge-search:safe:001"],
+            ),
+            expected_output_label=OutputLabel.RETRIEVAL_ANSWER,
+        )
+    )
+
+    assert response.audit.safety.safety_mode == "runtime_enforced"
+    assert response.audit.safety.runtime_redaction_active is True
+    assert "caller_app" not in response.result.structured_output
+    assert response.result.structured_output["citation_count"] >= 1
+    assert response.result.structured_output["hits"][0]["source_id"] == "lotus-platform-rfcs"
+
+    settings.safety_mode = "documented_only"
 
 
 def test_execute_task_rejects_live_knowledge_search_when_searchable_corpus_is_unavailable(
