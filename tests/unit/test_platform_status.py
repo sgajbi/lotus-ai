@@ -63,7 +63,9 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.safety_governance.governance_ready is False
     assert status.safety_governance.blocking_area_count == 3
     assert status.safety_governance.runbook_readiness.runbook_ready is False
-    assert status.safety_governance.evidence_readiness.approval_gate.domain_id == "safety_enforcement"
+    assert (
+        status.safety_governance.evidence_readiness.approval_gate.domain_id == "safety_enforcement"
+    )
     assert status.startup_readiness_blocking is True
     assert status.startup_readiness_warnings == ["audit store: configuration required"]
 

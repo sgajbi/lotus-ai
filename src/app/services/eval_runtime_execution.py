@@ -392,7 +392,8 @@ def _execute_fixture_case(
                 task_policy.redaction_posture.value == case.expected_payload["redaction_posture"],
                 task_policy.response_labeling_required
                 == case.expected_payload["response_labeling_required"],
-                case.expected_payload["intended_use_note_contains"] in task_policy.intended_use_notes,
+                case.expected_payload["intended_use_note_contains"]
+                in task_policy.intended_use_notes,
             ]
             outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
             return (
@@ -409,7 +410,8 @@ def _execute_fixture_case(
             runtime_status.enforced_control_ids == case.expected_payload["enforced_control_ids"],
             runtime_status.documented_only_control_ids
             == case.expected_payload["documented_only_control_ids"],
-            runtime_status.runtime_redaction_active == case.expected_payload["runtime_redaction_active"],
+            runtime_status.runtime_redaction_active
+            == case.expected_payload["runtime_redaction_active"],
         ]
         outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
         return (

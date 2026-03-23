@@ -81,7 +81,9 @@ def test_safety_enforcement_blocks_unsupported_raw_context_echo() -> None:
     assert outcome.disposition == "BLOCKED"
     assert outcome.runtime_redaction_active is True
     assert "unsupported raw context echo fields" in outcome.decision_summary
-    assert safe_execution.message == "Task output blocked by deterministic runtime safety enforcement."
+    assert (
+        safe_execution.message == "Task output blocked by deterministic runtime safety enforcement."
+    )
     assert safe_execution.structured_output["safety_blocked"] is True
 
     settings.safety_mode = "documented_only"

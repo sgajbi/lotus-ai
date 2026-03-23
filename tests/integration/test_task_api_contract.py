@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from _pytest.monkeypatch import MonkeyPatch
 
 
 def test_task_execute_contract(client: TestClient) -> None:
@@ -121,7 +122,7 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
 
 def test_task_execute_contract_returns_rejected_result_when_runtime_safety_blocks_output(
     client: TestClient,
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     from app.config import settings
     from app.contracts.providers import ProviderExecutionResponse
