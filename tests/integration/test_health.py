@@ -224,6 +224,10 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["async_runtime"]["active_worker_count"] == 0
     assert body["async_runtime"]["enqueued_job_count"] == 0
     assert body["async_runtime"]["recorded_job_count"] == 2
+    assert (
+        "retrieval indexing already running through the runtime-backed in-process worker path"
+        in body["async_runtime"]["message"]
+    )
     assert body["async_governance"]["governance_ready"] is False
     assert body["async_governance"]["blocking_area_count"] == 2
     assert body["async_governance"]["activation_readiness"]["activation_ready"] is False
@@ -248,12 +252,13 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["prompt_governance"]["runbook_readiness"]["runbook_ready"] is False
     assert body["prompt_governance"]["evidence_readiness"]["evidence_ready"] is False
     assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
-    assert body["evaluation_runtime"]["evidence_category_count"] == 5
-    assert body["evaluation_runtime"]["staged_case_count"] == 22
-    assert body["evaluation_runtime"]["seam_coverage"][0]["seam_id"] == "task_execution"
-    assert body["evaluation_runtime"]["seam_coverage"][0]["staged_fixture_count"] == 3
-    assert body["evaluation_runtime"]["seam_coverage"][2]["staged_fixture_count"] == 5
-    assert body["evaluation_runtime"]["seam_coverage"][2]["staged_case_count"] == 12
+    assert body["evaluation_runtime"]["evidence_category_count"] == 6
+    assert body["evaluation_runtime"]["staged_case_count"] == 25
+    assert body["evaluation_runtime"]["seam_coverage"][0]["seam_id"] == "async_execution"
+    assert body["evaluation_runtime"]["seam_coverage"][0]["staged_fixture_count"] == 1
+    assert body["evaluation_runtime"]["seam_coverage"][1]["staged_fixture_count"] == 3
+    assert body["evaluation_runtime"]["seam_coverage"][3]["staged_fixture_count"] == 5
+    assert body["evaluation_runtime"]["seam_coverage"][3]["staged_case_count"] == 12
     assert body["evaluation_runtime"]["recorded_run_count"] == 2
     assert body["evaluation_runtime"]["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["evaluation_runtime"]["evaluation_runner_active"] is False

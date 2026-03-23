@@ -25,12 +25,13 @@ def list_async_worker_executions() -> list[AsyncWorkerExecutionDescriptor]:
             worker_id="in_process_stub",
             enabled=True,
             execution_class="STUBBED_WORKER_RUNTIME",
-            selection_state="ACTIVE_SLICE_3_DEFAULT",
+            selection_state="ACTIVE_SLICE_4_DEFAULT",
             supports_horizontal_scaling=False,
             supports_job_isolation=True,
             notes=(
                 "Current controlled worker posture. lotus-ai now supports durable claim, lease, "
-                "heartbeat, and terminal-state transitions without activating a dedicated worker fleet."
+                "heartbeat, recovery, and terminal-state transitions for runtime-backed jobs "
+                "without activating a dedicated worker fleet."
             ),
         ),
         AsyncWorkerExecutionDescriptor(

@@ -8,6 +8,13 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
     assert catalog.delivery_phase == "foundation"
     assert catalog.manifest_version == "foundation.v1"
     assert any(category.category_id == "task_contract" for category in catalog.evidence_categories)
+    assert any(category.category_id == "async_runtime" for category in catalog.evidence_categories)
+    async_fixture = next(
+        fixture for fixture in catalog.fixture_families if fixture.fixture_id == "async_runtime_examples"
+    )
+    assert async_fixture.status == "STAGED"
+    assert async_fixture.manifest_path == "docs/evals/fixtures/async.runtime/basic_cases.json"
+    assert async_fixture.case_count == 3
     task_fixture = next(
         fixture
         for fixture in catalog.fixture_families

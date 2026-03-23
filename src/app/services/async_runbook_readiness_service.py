@@ -15,8 +15,8 @@ def build_async_runbook_readiness() -> AsyncRunbookReadinessResponse:
             status="FOUNDATION_DOCUMENTED",
             required_for_activation=True,
             notes=(
-                "The async operating model is documented at a foundation level, but live-worker "
-                "activation steps are not yet finalized."
+                "The current durable async operating model, including claim, lease, retry, and "
+                "recovery behavior for the in-process worker path, is documented at foundation level."
             ),
         ),
         AsyncRunbookReadinessItem(
@@ -30,11 +30,12 @@ def build_async_runbook_readiness() -> AsyncRunbookReadinessResponse:
         ),
         AsyncRunbookReadinessItem(
             runbook_id="async_capacity_and_replay_procedures",
-            status="NOT_READY",
+            status="FOUNDATION_DOCUMENTED",
             required_for_activation=True,
             notes=(
-                "Capacity management, backlog recovery, replay, and dead-letter handling "
-                "procedures are not yet documented."
+                "Current replay, lease-expiry recovery, and backlog handling procedures are "
+                "documented for the durable in-process worker path, but queue-backed fleet "
+                "capacity and dead-letter procedures are not yet activation-ready."
             ),
         ),
         AsyncRunbookReadinessItem(

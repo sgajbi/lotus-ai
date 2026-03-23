@@ -1,0 +1,51 @@
+{
+  "task_id": "async.runtime.v1",
+  "fixture_family": "async_runtime_examples",
+  "cases": [
+    {
+      "case_id": "retrieval_index_submission_creates_runtime_backed_job",
+      "summary": "Submitting a concrete retrieval index job should create an accepted runtime-backed async record with an explicit target id.",
+      "input": {
+        "job_type": "retrieval_indexing",
+        "target_id": "retjob_lotus_platform_rfcs",
+        "store_mode": "sqlalchemy"
+      },
+      "expected": {
+        "submission_status": "ACCEPTED",
+        "record_source": "RUNTIME_STATE",
+        "must_persist_target_id": true,
+        "expected_outcome": "DURABLE_RUNTIME_SUBMISSION"
+      }
+    },
+    {
+      "case_id": "lease_expiry_recovery_records_abandoned_attempt",
+      "summary": "A claimed retrieval indexing job should record an abandoned attempt and queue a new attempt when its durable lease expires.",
+      "input": {
+        "job_type": "retrieval_indexing",
+        "target_id": "retjob_lotus_platform_rfcs",
+        "worker_mode": "in_process_stub",
+        "lease_expiry": true
+      },
+      "expected": {
+        "recovery_status": "QUEUED",
+        "must_record_abandoned_attempt": true,
+        "must_survive_restart": true,
+        "expected_outcome": "LEASE_RECOVERY"
+      }
+    },
+    {
+      "case_id": "retrieval_job_detail_links_runtime_async_execution",
+      "summary": "A runtime-backed retrieval index job should expose linked async execution state rather than only staged artifact posture.",
+      "input": {
+        "job_type": "retrieval_indexing",
+        "target_id": "retjob_lotus_platform_rfcs",
+        "retrieval_job_detail": true
+      },
+      "expected": {
+        "must_expose_runtime_status": true,
+        "must_expose_linked_async_job_id": true,
+        "expected_outcome": "RETRIEVAL_ASYNC_LINKAGE"
+      }
+    }
+  ]
+}

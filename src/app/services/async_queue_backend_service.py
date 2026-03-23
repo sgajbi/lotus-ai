@@ -25,12 +25,13 @@ def list_async_queue_backends() -> list[AsyncQueueBackendDescriptor]:
             backend_id="service_database",
             enabled=True,
             backend_class="SERVICE_DATABASE_QUEUE",
-            selection_state="ACTIVE_SLICE_2_DEFAULT",
+            selection_state="ACTIVE_SLICE_4_DEFAULT",
             supports_durable_queue=True,
             supports_worker_scaling=False,
             notes=(
-                "Current Slice 2 default. Async job submission persists to the service database, "
-                "but dedicated worker claim and scaling are not active yet."
+                "Current durable async default. Async job submission, runtime state, and the "
+                "narrow in-process worker path are backed by the service database, while "
+                "dedicated queue-backed worker scaling remains disabled."
             ),
         ),
         AsyncQueueBackendDescriptor(

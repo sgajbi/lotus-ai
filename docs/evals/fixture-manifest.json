@@ -20,9 +20,19 @@
     {
       "category_id": "retrieval_posture",
       "description": "Current retrieval execution posture captured at task runtime."
+    },
+    {
+      "category_id": "async_runtime",
+      "description": "Durable async submission, worker recovery, and runtime-backed job-inspection evidence."
     }
   ],
   "fixture_families": [
+    {
+      "fixture_id": "async_runtime_examples",
+      "status": "STAGED",
+      "description": "Durable async runtime and worker-recovery evaluation examples.",
+      "manifest_path": "docs/evals/fixtures/async.runtime/basic_cases.json"
+    },
     {
       "fixture_id": "task_capability_contracts",
       "status": "STAGED",

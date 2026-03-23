@@ -13,7 +13,7 @@ def test_evaluation_run_catalog_reports_recorded_artifacts() -> None:
     assert catalog.status_counts[EvaluationRunStatus.RECORDED] == 1
     assert catalog.status_counts[EvaluationRunStatus.SUPERSEDED] == 1
     assert catalog.runs[0].manifest_version == "foundation.v1"
-    assert catalog.runs[0].staged_case_count == 22
+    assert catalog.runs[0].staged_case_count == 25
     assert catalog.runs[1].status == "SUPERSEDED"
 
 
@@ -22,7 +22,7 @@ def test_evaluation_run_detail_returns_requested_artifact() -> None:
 
     assert detail.service == "lotus-ai"
     assert detail.run.run_id == "foundation_eval_2026_03_22_001"
-    assert detail.run.seam_coverage[0].seam_id == "task_execution"
+    assert detail.run.seam_coverage[0].seam_id == "async_execution"
 
 
 def test_evaluation_run_detail_returns_superseded_artifact() -> None:

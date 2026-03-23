@@ -7,8 +7,8 @@
       "submitted_at": "2026-03-22T10:15:00Z",
       "caller_app": "lotus-platform",
       "related_evaluation_run_id": null,
-      "execution_path": "future_worker_queue",
-      "notes": "Seeded retrieval indexing async artifact showing the future queue-backed execution posture."
+      "execution_path": "staged_historical_artifact",
+      "notes": "Staged historical retrieval-indexing artifact retained for governance review after runtime-backed async indexing was activated for concrete retrieval job targets."
     },
     {
       "job_id": "asyncjob_evaluation_execution_001",
@@ -17,8 +17,8 @@
       "submitted_at": "2026-03-21T16:45:00Z",
       "caller_app": "lotus-ai",
       "related_evaluation_run_id": "foundation_eval_2026_03_21_001",
-      "execution_path": "future_worker_queue",
-      "notes": "Superseded seeded evaluation execution artifact retained to exercise async job lifecycle history."
+      "execution_path": "staged_historical_artifact",
+      "notes": "Superseded staged evaluation-execution artifact retained as historical async lifecycle evidence until evaluation execution becomes runtime-backed."
     }
   ]
 }

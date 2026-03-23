@@ -16,3 +16,4 @@ def test_async_runtime_status_reports_durable_submission_posture() -> None:
     assert status.supported_job_types[0].execution_path == "durable_runtime_worker_execution"
     assert status.enqueued_job_count == 0
     assert status.recorded_job_count == 2
+    assert "retrieval indexing already running through the runtime-backed in-process worker path" in status.message

@@ -5,9 +5,17 @@
       "recorded_at": "2026-03-22T09:00:00Z",
       "status": "RECORDED",
       "manifest_version": "foundation.v1",
-      "staged_fixture_count": 10,
-      "staged_case_count": 22,
+      "staged_fixture_count": 11,
+      "staged_case_count": 25,
       "seam_coverage": [
+        {
+          "seam_id": "async_execution",
+          "fixture_ids": [
+            "async_runtime_examples"
+          ],
+          "staged_fixture_count": 1,
+          "staged_case_count": 3
+        },
         {
           "seam_id": "task_execution",
           "fixture_ids": [
@@ -47,16 +55,24 @@
           "staged_case_count": 2
         }
       ],
-      "notes": "Baseline foundation-phase evaluation inventory snapshot recorded after provider operations and degradation evidence fixtures were expanded to cover durable restart-survival posture."
+      "notes": "Baseline foundation-phase evaluation inventory snapshot recorded after durable async submission, lease-recovery, and retrieval-indexing linkage fixtures were staged alongside provider operations durability coverage."
     },
     {
       "run_id": "foundation_eval_2026_03_21_001",
       "recorded_at": "2026-03-21T17:30:00Z",
       "status": "SUPERSEDED",
       "manifest_version": "foundation.v1",
-      "staged_fixture_count": 5,
-      "staged_case_count": 10,
+      "staged_fixture_count": 6,
+      "staged_case_count": 13,
       "seam_coverage": [
+        {
+          "seam_id": "async_execution",
+          "fixture_ids": [
+            "async_runtime_examples"
+          ],
+          "staged_fixture_count": 1,
+          "staged_case_count": 3
+        },
         {
           "seam_id": "task_execution",
           "fixture_ids": [
