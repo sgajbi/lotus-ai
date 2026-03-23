@@ -195,6 +195,24 @@ Before any future live-retrieval activation slice:
 9. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
 10. only then proceed with any live-retrieval activation rollout review
 
+## Durable Retrieval Recovery
+
+When `LOTUS_AI_RETRIEVAL_STORE_MODE=sqlalchemy`, searchable retrieval corpus state is durable rather than process-local.
+
+Operator rules:
+
+1. do not treat service restart as a retrieval index reset or corpus rollback
+2. review `/platform/retrieval/execution-status`, `/platform/retrieval/source-governance`, and `/platform/retrieval/document-governance` before assuming live-search posture has changed
+3. treat promoted indexed corpus state as authoritative durable metadata, not cache-like worker memory
+4. use governed reindex and rollback procedures instead of ad hoc table edits when searchable corpus posture must change
+
+Current recovery expectations:
+
+1. promoted indexed documents remain searchable after repository or service restart when the SQL-backed retrieval store is active
+2. rollback from `INDEXED` back to `STAGED` removes those documents from live search after restart or repository reinitialization
+3. `/platform/retrieval/execution-status` must continue to report the live path truthfully even when the active searchable corpus is temporarily empty
+4. retrieval search requests may still execute through the live path during rollback posture, but they must return explicit empty-hit behavior rather than silently degrading into catalog-only semantics
+
 ## Incident First Checks
 
 1. Check container logs for request failures and stack traces.

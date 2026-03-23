@@ -88,8 +88,13 @@ def test_retrieval_execution_status_route_reports_live_search_when_enabled(
     client: TestClient,
 ) -> None:
     from app.config import settings
+    from app.services.retrieval_store import get_retrieval_repository
 
     settings.retrieval_mode = "enabled"
+    get_retrieval_repository().set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
 
     response = client.get("/platform/retrieval/execution-status")
 
@@ -98,6 +103,7 @@ def test_retrieval_execution_status_route_reports_live_search_when_enabled(
     assert body["retrieval_mode"] == "enabled"
     assert body["execution_stage"] == "LIVE_SEARCH"
     assert body["live_search_enabled"] is True
+    assert "searchable promoted document" in body["message"]
 
 
 def test_retrieval_activation_readiness_route(client: TestClient) -> None:
@@ -109,7 +115,9 @@ def test_retrieval_activation_readiness_route(client: TestClient) -> None:
     assert body["retrieval_mode"] == "disabled"
     assert body["embedding_provider_mode"] == "disabled"
     assert body["activation_ready"] is False
-    assert len(body["blocking_findings"]) == 4
+    assert any(
+        "Retrieval mode is not enabled" in finding for finding in body["blocking_findings"]
+    )
     assert len(body["activation_path"]) == 4
 
 
@@ -121,9 +129,10 @@ def test_retrieval_runbook_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
     assert body["required_item_count"] == 4
-    assert body["completed_required_item_count"] == 0
+    assert body["completed_required_item_count"] == 2
     assert body["items"][0]["runbook_id"] == "retrieval_operational_runbook"
-    assert body["items"][1]["status"] == "NOT_READY"
+    assert body["items"][0]["status"] == "READY"
+    assert body["items"][2]["status"] == "READY"
 
 
 def test_retrieval_evidence_readiness_route(client: TestClient) -> None:
@@ -329,6 +338,39 @@ def test_retrieval_search_route_returns_live_hits_when_enabled(client: TestClien
     assert body["hits"][0]["source_id"] == "lotus-platform-rfcs"
     assert body["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
     assert body["hits"][0]["chunk_id"] == "chunk_rfc_0069_0001"
+
+
+def test_retrieval_search_route_reports_empty_live_corpus_after_rollback(client: TestClient) -> None:
+    from app.config import settings
+    from app.services.retrieval_store import get_retrieval_repository
+
+    settings.retrieval_mode = "enabled"
+    repository = get_retrieval_repository()
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="STAGED",
+    )
+
+    response = client.post(
+        "/platform/retrieval/search",
+        json={
+            "query": "shared ai platform service",
+            "caller_app": "lotus-workbench",
+            "correlation_id": "corr-ret-live-rollback-1",
+            "source_ids": ["lotus-platform-rfcs"],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "READY"
+    assert body["execution_stage"] == "LIVE_SEARCH"
+    assert body["hits"] == []
+    assert "no matching hits" in body["message"]
 
 
 def test_retrieval_governance_routes_reflect_indexed_searchable_documents(

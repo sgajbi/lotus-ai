@@ -91,6 +91,10 @@ Current configuration modes:
 1. `LOTUS_AI_RETRIEVAL_STORE_MODE=memory` for the default seeded repository,
 2. `LOTUS_AI_RETRIEVAL_STORE_MODE=sqlalchemy` with `LOTUS_AI_DATABASE_URL` for Alembic-managed retrieval metadata.
 
+When the SQL-backed retrieval path is enabled, live-search eligibility is durable rather than
+process-local. Restart does not reset which promoted documents are searchable, and rollback from
+`INDEXED` back to `STAGED` removes those documents from live search after repository reinitialization.
+
 ## Retrieval API Surface
 
 The current retrieval API exposes:
@@ -121,6 +125,10 @@ Live-search eligibility is now exposed explicitly through:
 
 1. `/platform/retrieval/source-governance` for source-level searchable versus blocked posture,
 2. `/platform/retrieval/document-governance` for document-level searchable, index-pending, and blocked posture.
+
+`/platform/retrieval/execution-status` is also corpus-aware now. It still reports whether the live
+path is active, but it also explains whether that path currently has searchable promoted documents,
+is waiting on indexing, or has an empty live corpus because content was rolled back or blocked.
 
 `/platform/runtime-status` now embeds retrieval governance posture directly so operators can review
 retrieval rollout state from the same top-level runtime surface that already carries async and

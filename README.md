@@ -88,6 +88,8 @@ The current execution posture is:
 - retrieval governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
 - platform runtime status now embeds retrieval governance posture directly,
 - retrieval evidence readiness now uses a runtime-backed approval gate over governed retrieval evaluation runs, so staged baselines cannot silently satisfy live-search rollout posture,
+- retrieval execution status is now corpus-aware, so enabled live search reports whether searchable promoted documents currently exist or whether rollback or index-pending posture has emptied the live corpus,
+- retrieval runbook readiness now reflects documented rollout and rollback procedures separately from the still-missing observability and named on-call activation items,
 - prompts now expose runtime selection status in addition to governance posture,
 - prompt activation readiness is now exposed through a dedicated rollout-readiness endpoint,
 - prompt runbook readiness is now exposed through a dedicated operational-readiness endpoint,
@@ -139,6 +141,7 @@ The current execution posture is:
 - async evaluation assets and runbook guidance now explicitly cover runtime-backed submission, lease-expiry recovery, and retrieval-indexing linkage, so the async control plane is no longer described as documentation-only where runtime truth already exists,
 - retrieval execution posture now distinguishes runtime-backed indexing from still-disabled live search, so indexing rollout no longer depends on staged-only retrieval job artifacts,
 - retrieval runtime-backed evaluation now covers live search, citation-backed answers, and conservative refusals, while reindex and rollback evidence still remain separate activation blockers,
+- SQL-backed retrieval tests now prove live-search eligibility survives repository restart and disappears cleanly after rollback from indexed back to staged corpus posture,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:

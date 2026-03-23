@@ -240,6 +240,10 @@ Retrieval execution now supports two governed paths through the same gateway: a 
 catalog-only path for enabled staged sources when live retrieval is disabled, and a bounded
 repository-owned live indexed-search path when `retrieval_mode=enabled`.
 
+Retrieval execution status is now also corpus-aware. When live search is enabled, the operator
+surface distinguishes between searchable promoted corpus, index-pending corpus, and rolled-back
+or blocked corpus instead of reporting one generic live-search message for every state.
+
 The initial enabled subset is intentionally small: Lotus platform RFCs and lotus-ai
 architecture documents are searchable through the catalog-only path, while the live indexed
 path remains restricted to promoted indexed corpus content.
@@ -380,6 +384,10 @@ together.
 Retrieval evidence readiness now also carries an explicit approval-gate summary derived from
 runtime-backed evaluation runs. Historical staged baselines remain visible for continuity, but
 they no longer satisfy current live-retrieval approval posture by themselves.
+
+Retrieval runbook readiness is now partially complete rather than purely foundational: live-search
+rollout review plus replay, rollback, and corpus-recovery procedures are documented, while named
+on-call ownership and dedicated observability pack work remain explicit blockers.
 
 ### Routers
 

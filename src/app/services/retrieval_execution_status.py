@@ -5,6 +5,7 @@ from app.contracts.retrieval import (
     RetrievalExecutionStage,
     RetrievalExecutionStatusResponse,
 )
+from app.retrieval.document_governance import build_retrieval_document_governance
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
 
 
@@ -24,6 +25,33 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
             ),
         )
 
+    document_governance = build_retrieval_document_governance()
+    searchable_document_count = document_governance.searchable_document_count
+    index_pending_document_count = document_governance.index_pending_document_count
+    blocked_document_count = document_governance.blocked_document_count
+    if searchable_document_count > 0:
+        message = (
+            "Retrieval mode is enabled and retrieval requests resolve through the live indexed "
+            f"search path over {searchable_document_count} searchable promoted document(s)."
+        )
+    elif index_pending_document_count > 0:
+        message = (
+            "Retrieval mode is enabled and the live indexed search path is active, but no "
+            "promoted indexed documents are currently searchable because indexing is still pending "
+            f"for {index_pending_document_count} document(s)."
+        )
+    elif blocked_document_count > 0:
+        message = (
+            "Retrieval mode is enabled and the live indexed search path is active, but no "
+            "documents are currently searchable because promoted corpus content has been rolled "
+            "back or remains blocked by source posture."
+        )
+    else:
+        message = (
+            "Retrieval mode is enabled and the live indexed search path is active, but no "
+            "searchable corpus content is currently registered."
+        )
+
     return RetrievalExecutionStatusResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,
@@ -32,8 +60,5 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
         vector_store=VECTOR_STORE_STRATEGY,
         live_search_enabled=True,
         live_indexing_enabled=True,
-        message=(
-            "Retrieval mode is enabled and retrieval requests resolve through the live indexed "
-            "search path."
-        ),
+        message=message,
     )

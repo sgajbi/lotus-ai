@@ -1,5 +1,6 @@
 from app.config import settings
 from app.services.retrieval_execution_status import build_retrieval_execution_status
+from app.services.retrieval_store import get_retrieval_repository
 
 
 def test_retrieval_execution_status_reports_disabled_live_execution() -> None:
@@ -14,6 +15,10 @@ def test_retrieval_execution_status_reports_disabled_live_execution() -> None:
 
 def test_retrieval_execution_status_reports_enabled_live_execution() -> None:
     settings.retrieval_mode = "enabled"
+    get_retrieval_repository().set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
 
     status = build_retrieval_execution_status()
 
@@ -21,6 +26,28 @@ def test_retrieval_execution_status_reports_enabled_live_execution() -> None:
     assert status.execution_stage == "LIVE_SEARCH"
     assert status.live_search_enabled is True
     assert status.live_indexing_enabled is True
-    assert "live indexed" in status.message or "live indexed search path" in status.message
+    assert "searchable promoted document" in status.message
+
+    settings.retrieval_mode = "disabled"
+
+
+def test_retrieval_execution_status_reports_no_searchable_corpus_after_rollback() -> None:
+    settings.retrieval_mode = "enabled"
+    repository = get_retrieval_repository()
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="STAGED",
+    )
+
+    status = build_retrieval_execution_status()
+
+    assert status.retrieval_mode == "enabled"
+    assert status.execution_stage == "LIVE_SEARCH"
+    assert status.live_search_enabled is True
+    assert "no promoted indexed documents are currently searchable" in status.message.lower()
 
     settings.retrieval_mode = "disabled"
