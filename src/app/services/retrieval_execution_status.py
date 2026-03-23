@@ -17,10 +17,10 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
             execution_stage=RetrievalExecutionStage.SEARCH_DISABLED,
             vector_store=VECTOR_STORE_STRATEGY,
             live_search_enabled=False,
-            live_indexing_enabled=False,
+            live_indexing_enabled=True,
             message=(
-                "Retrieval remains in catalog-and-indexing-contract mode; live search and "
-                "indexing execution are disabled."
+                "Live retrieval search remains disabled, but runtime-backed retrieval indexing is "
+                "enabled for allowlisted async jobs."
             ),
         )
 
@@ -31,9 +31,9 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
         execution_stage=RetrievalExecutionStage.INDEXING_DISABLED,
         vector_store=VECTOR_STORE_STRATEGY,
         live_search_enabled=False,
-        live_indexing_enabled=False,
+        live_indexing_enabled=True,
         message=(
-            "Retrieval mode is enabled in configuration, but no live retrieval execution backend "
-            "is wired yet."
+            "Retrieval mode is enabled in configuration, runtime-backed indexing is available, "
+            "but live retrieval search is not yet wired."
         ),
     )

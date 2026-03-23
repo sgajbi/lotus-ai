@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.repositories.async_runtime_repository import AsyncRuntimeJobRecord
 from app.contracts.retrieval import (
     RetrievalIndexJobCatalogResponse,
     RetrievalIndexJobDescriptor,
@@ -26,17 +27,19 @@ from app.retrieval.policy import (
 )
 from app.services.retrieval_store import get_retrieval_repository
 from app.services.runtime_readiness import get_retrieval_store_runtime_status
+from app.services.async_runtime_store import get_async_runtime_store
 
 
 def _build_job_descriptor(source_id: str) -> RetrievalIndexJobDescriptor:
     repository = get_retrieval_repository()
     job_id = f"retjob_{source_id.replace('-', '_')}"
     descriptor = repository.get_index_job(job_id)
+    runtime_job = _get_runtime_async_retrieval_job(job_id=job_id)
     if descriptor is not None:
-        return descriptor
+        return _overlay_runtime_status(descriptor=descriptor, runtime_job=runtime_job)
 
     inventory = summarize_retrieval_source_inventory(source_id)
-    return RetrievalIndexJobDescriptor(
+    descriptor = RetrievalIndexJobDescriptor(
         job_id=job_id,
         source_id=source_id,
         status=(
@@ -52,6 +55,7 @@ def _build_job_descriptor(source_id: str) -> RetrievalIndexJobDescriptor:
             else "Documents are staged for indexing, but vector indexing is not enabled yet."
         ),
     )
+    return _overlay_runtime_status(descriptor=descriptor, runtime_job=runtime_job)
 
 
 def build_retrieval_job_catalog() -> RetrievalIndexJobCatalogResponse:
@@ -70,6 +74,7 @@ def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
     for source_id in get_retrieval_repository().list_source_ids():
         descriptor = _build_job_descriptor(source_id)
         if descriptor.job_id == job_id:
+            runtime_job = _get_runtime_async_retrieval_job(job_id=job_id)
             return RetrievalIndexJobDetailResponse(
                 service=settings.service_name,
                 vector_store=VECTOR_STORE_STRATEGY,
@@ -80,6 +85,8 @@ def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
                         step_id=f"{job_id}.source_curation",
                         name="Source curation",
                         stage=RetrievalPipelineStage.STAGED,
+                        runtime_status=None,
+                        linked_async_job_id=None,
                         description=(
                             "Approved source inventory is explicitly curated before indexing is enabled."
                         ),
@@ -87,25 +94,63 @@ def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
                     RetrievalIndexJobStepDescriptor(
                         step_id=f"{job_id}.document_inventory",
                         name="Document inventory",
-                        stage=RetrievalPipelineStage.STAGED,
+                        stage=(
+                            RetrievalPipelineStage.ENABLED
+                            if descriptor.status == RetrievalJobStatus.COMPLETED
+                            else RetrievalPipelineStage.STAGED
+                        ),
+                        runtime_status=None,
+                        linked_async_job_id=None,
                         description=(
                             "Documents and staged chunk counts are visible through the retrieval catalog."
                         ),
                     ),
                     RetrievalIndexJobStepDescriptor(
+                        step_id=f"{job_id}.async_execution",
+                        name="Async retrieval execution",
+                        stage=(
+                            RetrievalPipelineStage.ENABLED
+                            if runtime_job is not None
+                            else RetrievalPipelineStage.STAGED
+                        ),
+                        runtime_status=None
+                        if runtime_job is None
+                        else runtime_job.lifecycle_status,
+                        linked_async_job_id=None if runtime_job is None else runtime_job.job_id,
+                        description=(
+                            "Runtime-backed retrieval indexing now executes through the durable async runtime for allowlisted jobs."
+                        ),
+                    ),
+                    RetrievalIndexJobStepDescriptor(
                         step_id=f"{job_id}.embedding_generation",
                         name="Embedding generation",
-                        stage=RetrievalPipelineStage.DOCUMENTED,
+                        stage=(
+                            RetrievalPipelineStage.ENABLED
+                            if descriptor.status == RetrievalJobStatus.COMPLETED
+                            else RetrievalPipelineStage.STAGED
+                        ),
+                        runtime_status=None
+                        if runtime_job is None
+                        else runtime_job.lifecycle_status,
+                        linked_async_job_id=None if runtime_job is None else runtime_job.job_id,
                         description=(
-                            "Embedding generation is designed but not yet enabled in runtime execution."
+                            "Embedding generation remains deterministic and bounded for the current retrieval indexing runtime path."
                         ),
                     ),
                     RetrievalIndexJobStepDescriptor(
                         step_id=f"{job_id}.vector_persistence",
                         name="Vector persistence",
-                        stage=RetrievalPipelineStage.DOCUMENTED,
+                        stage=(
+                            RetrievalPipelineStage.ENABLED
+                            if descriptor.status == RetrievalJobStatus.COMPLETED
+                            else RetrievalPipelineStage.STAGED
+                        ),
+                        runtime_status=None
+                        if runtime_job is None
+                        else runtime_job.lifecycle_status,
+                        linked_async_job_id=None if runtime_job is None else runtime_job.job_id,
                         description=(
-                            "Durable vector persistence will use PostgreSQL with pgvector when enabled."
+                            "Durable vector persistence remains PostgreSQL with pgvector and now reflects runtime-backed retrieval indexing completion."
                         ),
                     ),
                 ],
@@ -127,9 +172,9 @@ def build_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
         chunking_strategy=CHUNKING_STRATEGY,
         embedding_strategy=EMBEDDING_STRATEGY,
         persistence_strategy=PERSISTENCE_STRATEGY,
-        execution_stage=RetrievalPipelineStage.DOCUMENTED,
+        execution_stage=RetrievalPipelineStage.ENABLED,
         notes=[
-            "Indexing remains staged until retrieval execution and embedding generation are enabled.",
+            "Retrieval indexing can now run through the durable async runtime for allowlisted job targets.",
             "Approved source curation is required before any document enters the retrieval corpus.",
             "PostgreSQL with pgvector remains the first vector-store architecture for lotus-ai.",
         ],
@@ -160,4 +205,32 @@ def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
         document_count=inventory.document_count,
         chunk_count=inventory.chunk_count,
         index_job_count=inventory.index_job_count,
+    )
+
+
+def _get_runtime_async_retrieval_job(job_id: str) -> AsyncRuntimeJobRecord | None:
+    jobs = [
+        job
+        for job in get_async_runtime_store().list_jobs()
+        if job.job_type == "retrieval_indexing" and job.target_id == job_id
+    ]
+    if not jobs:
+        return None
+    return max(jobs, key=lambda item: item.submitted_at)
+
+
+def _overlay_runtime_status(
+    *,
+    descriptor: RetrievalIndexJobDescriptor,
+    runtime_job: AsyncRuntimeJobRecord | None,
+) -> RetrievalIndexJobDescriptor:
+    if runtime_job is None:
+        return descriptor
+    return RetrievalIndexJobDescriptor(
+        job_id=descriptor.job_id,
+        source_id=descriptor.source_id,
+        status=RetrievalJobStatus(runtime_job.lifecycle_status),
+        document_count=descriptor.document_count,
+        chunk_count=descriptor.chunk_count,
+        message=runtime_job.latest_message,
     )

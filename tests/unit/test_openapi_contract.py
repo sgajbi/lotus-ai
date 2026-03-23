@@ -25,6 +25,13 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/async/governance-status"]["get"]["operationId"] == (
         "getAsyncGovernanceStatus"
     )
+    assert spec["paths"]["/platform/async/control-plane-actions"]["get"]["operationId"] == (
+        "getAsyncControlHistory"
+    )
+    assert (
+        spec["paths"]["/platform/async/control-plane-actions/apply"]["post"]["operationId"]
+        == "applyAsyncControlAction"
+    )
     assert spec["paths"]["/platform/async/jobs"]["get"]["operationId"] == "getAsyncJobCatalog"
     assert spec["paths"]["/platform/async/jobs/{job_id}"]["get"]["operationId"] == (
         "getAsyncJobDetail"

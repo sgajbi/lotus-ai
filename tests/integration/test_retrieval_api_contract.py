@@ -1,3 +1,4 @@
+from app.services.retrieval_async_execution import run_next_retrieval_index_job
 from fastapi.testclient import TestClient
 
 
@@ -60,6 +61,7 @@ def test_retrieval_execution_status_route(client: TestClient) -> None:
     assert body["retrieval_mode"] == "disabled"
     assert body["execution_stage"] == "SEARCH_DISABLED"
     assert body["live_search_enabled"] is False
+    assert body["live_indexing_enabled"] is True
 
 
 def test_retrieval_activation_readiness_route(client: TestClient) -> None:
@@ -141,6 +143,41 @@ def test_retrieval_index_job_detail_route(client: TestClient) -> None:
     body = response.json()
     assert body["job"]["source_id"] == "lotus-platform-rfcs"
     assert any(step["step_id"].endswith(".embedding_generation") for step in body["steps"])
+
+
+def test_retrieval_index_job_submit_async_route(client: TestClient) -> None:
+    response = client.post(
+        "/platform/retrieval/index-jobs/retjob_lotus_platform_rfcs/submit-async",
+        params={
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-ret-submit-001",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["accepted"] is True
+    assert body["target_id"] == "retjob_lotus_platform_rfcs"
+
+
+def test_retrieval_index_job_detail_reflects_runtime_backed_completion(client: TestClient) -> None:
+    submit_response = client.post(
+        "/platform/retrieval/index-jobs/retjob_lotus_platform_rfcs/submit-async",
+        params={
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-ret-submit-002",
+        },
+    )
+    async_job_id = submit_response.json()["job_id"]
+    run_next_retrieval_index_job(worker_id="worker-a")
+
+    response = client.get("/platform/retrieval/index-jobs/retjob_lotus_platform_rfcs")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["job"]["status"] == "COMPLETED"
+    assert body["steps"][2]["runtime_status"] == "COMPLETED"
+    assert body["steps"][2]["linked_async_job_id"] == async_job_id
 
 
 def test_retrieval_documents_route(client: TestClient) -> None:

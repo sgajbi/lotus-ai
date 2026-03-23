@@ -6,10 +6,10 @@ from app.contracts.retrieval import RetrievalActivationReadinessResponse
 
 def build_retrieval_activation_readiness() -> RetrievalActivationReadinessResponse:
     blocking_findings = [
-        "Live retrieval search and indexing remain disabled in the current foundation phase.",
+        "Live retrieval search remains disabled in the current foundation phase even though runtime-backed indexing is now available.",
         "Embedding provider execution is not enabled for live retrieval indexing.",
         "No governed live vector indexing and search backend has been approved for production execution.",
-        "Retrieval remains in catalog-and-indexing-contract mode until rollout gates are completed.",
+        "Retrieval remains in partial rollout mode until search activation and broader rollout gates are completed.",
     ]
     activation_path = [
         "Approve a governed live retrieval rollout with explicit vector indexing and search backend controls.",

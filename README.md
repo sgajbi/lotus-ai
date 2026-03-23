@@ -97,6 +97,7 @@ The current execution posture is:
 - evaluation fixture family detail is now inspectable through a dedicated read-only endpoint,
 - platform runtime status now summarizes evaluation runtime posture too,
 - evaluation fixture inventory is now backed by a versioned in-repo manifest,
+- evaluation inventory now also includes an explicit async-runtime seam, so durable submission, lease recovery, and retrieval-indexing linkage are represented in the staged eval baseline instead of only in runtime tests,
 - the first real file-backed fixture family now exists for `explain.v1`,
 - a second file-backed fixture family now exists for `summarize.v1`,
 - retrieval citation and refusal examples are now staged as file-backed evaluation fixtures,
@@ -118,7 +119,18 @@ The current execution posture is:
 - platform runtime status now embeds async governance posture directly,
 - seeded async job artifacts are now exposed and validated through dedicated contracts,
 - async job submission now has a governed request/response contract with explicit foundation-phase rejection behavior,
+- async job submission now accepts a narrow allowlist of durable runtime-backed job types while still rejecting staged-only job types explicitly,
+- duplicate runtime-backed retrieval-index submissions are now rejected explicitly with the owning async job id, so duplicate client retries do not silently create ambiguous execution truth,
+- async job catalog and detail views now merge durable runtime-backed submissions with staged artifact records so current and future async posture remain distinguishable,
+- async runtime-backed job detail now exposes attempt history and active lease state so claim, retry, and recovery posture are inspectable instead of implicit,
+- async runtime now also exposes a governed control-plane history and action surface for retry, replay, requeue, and manual abandon, so operator recovery is explicit and reviewable instead of being implied by table edits,
 - async job artifacts can now reference related evaluation run artifacts for cross-seam traceability,
+- async runtime now also has an explicit repository and store seam plus migration-managed durable schema for jobs, attempts, and worker leases, even though public async execution behavior remains foundation-phase only for now,
+- the active async queue backend is now the service database for durable submission state, while worker execution is currently available only through a stubbed in-process posture rather than a dedicated worker fleet,
+- async runtime now also supports stubbed worker claim, heartbeat, completion, failure, and lease-expiry recovery semantics for a narrow allowlist of runtime-backed job types,
+- retrieval indexing is now the first runtime-backed async consumer, with concrete retrieval index jobs submitted into the durable async runtime and reflected back into retrieval job catalog/detail state,
+- async evaluation assets and runbook guidance now explicitly cover runtime-backed submission, lease-expiry recovery, and retrieval-indexing linkage, so the async control plane is no longer described as documentation-only where runtime truth already exists,
+- retrieval execution posture now distinguishes runtime-backed indexing from still-disabled live search, so indexing rollout no longer depends on staged-only retrieval job artifacts,
 - live model execution remains disabled until a governed provider rollout exists.
 
 The current persistence posture is:
@@ -130,6 +142,7 @@ The current persistence posture is:
 - in-memory retrieval metadata by default, with a SQLAlchemy-backed retrieval adapter available behind the same repository seam,
 - explicit configuration to move between the two without changing API contracts,
 - explicit provider-operations repository seams and migration-managed SQL tables now back durable quota, budget, and degradation state when the SQL-backed provider-operations path is enabled,
+- explicit async-runtime repository seams and migration-managed SQL tables now exist for jobs, attempts, and worker leases when the SQL-backed async-runtime path is enabled in later rollout slices,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 - prompt promotion remains read-only at runtime and is governed through reviewed repository changes plus Alembic-managed persistence updates.
 - startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.

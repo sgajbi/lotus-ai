@@ -8,16 +8,12 @@ from app.services.async_runtime_status import build_async_runtime_status
 def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
     runtime = build_async_runtime_status()
     blocking_findings = [
-        "Queue-backed execution remains disabled in the current foundation phase.",
-        "The active queue backend is 'none'; no live durable queue has been selected.",
-        "The active worker execution is 'none'; no dedicated worker runtime is active.",
-        "Supported async job types remain documented-only and are not enabled for live execution.",
+        "Dedicated queue-backed worker execution remains disabled; the current durable in-process worker posture is reviewable but not yet horizontally isolated.",
+        "Only a narrow allowlist of async job types is runtime-backed today; broader async surfaces such as evaluation execution remain staged.",
     ]
     activation_path = [
-        "Select and approve a governed durable queue backend for lotus-ai async execution.",
-        "Activate an isolated worker execution strategy with horizontal scaling and operational runbooks.",
-        "Enable async job types through a reviewed rollout slice with observability, safety, and supportability gates.",
-        "Validate end-to-end async behavior through governed runtime, evaluation, and deployment checks before activation.",
+        "Activate an isolated queue-backed worker execution strategy on top of the durable submission, claim, lease, and recovery model.",
+        "Enable broader async job types through reviewed rollout slices with observability, safety, replay, and supportability gates.",
     ]
     return AsyncActivationReadinessResponse(
         service=settings.service_name,

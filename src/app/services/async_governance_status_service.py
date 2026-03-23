@@ -15,8 +15,8 @@ def build_async_governance_status() -> AsyncGovernanceStatusResponse:
         runbook_readiness.runbook_ready,
     )
     governance_summary = [
-        "Async technical activation remains blocked in foundation phase until queue, worker, and job enablement posture are explicitly rolled out.",
-        "Async operational runbook readiness remains incomplete until on-call, replay, and observability procedures are fully documented and approved.",
+        "Async technical activation remains partially blocked in foundation phase: durable submission, worker claim, lease recovery, and retrieval-indexing execution are active for a narrow allowlist, but dedicated worker fleet rollout and broader job enablement are still gated.",
+        "Async operational runbook readiness remains incomplete until on-call, observability, and queue-backed recovery procedures are fully documented and approved.",
     ]
     return AsyncGovernanceStatusResponse(
         service=settings.service_name,

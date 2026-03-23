@@ -266,7 +266,37 @@ Owns:
 8. seeded async job artifact inspection,
 9. governed async job submission contracts,
 10. relationships between async job artifacts and evaluation history when applicable,
-11. the contract boundary for future worker-backed execution.
+11. the contract boundary for future worker-backed execution,
+12. the durable async-runtime repository and store seam that later worker-backed slices will cut over onto.
+
+The first RFC-0006 delivery slice added explicit migration-managed async-runtime persistence
+for jobs, attempts, and worker leases. That durable storage seam now underpins the later runtime
+cutover slices instead of leaving async state in documentation artifacts or ad hoc process memory.
+
+The next slice activates a narrow durable-submission posture on top of that seam. Allowlisted job
+types can now be recorded into runtime-backed queue state and appear in the public async job
+catalog/detail views as durable runtime records, while non-allowlisted job types remain explicitly
+staged or historical until their own runtime-backed rollout slices arrive.
+
+The following slice activates stubbed worker lifecycle semantics on top of the same durable async
+runtime. Allowlisted runtime-backed jobs can now be claimed, heartbeated, completed, failed, and
+recovered after lease expiry while keeping attempt history and active lease state inspectable
+through the public job-detail surface.
+
+The first real consumer of that worker-backed async runtime is retrieval indexing. Concrete
+retrieval index jobs can now be submitted into the durable async backbone, executed through the
+stubbed worker lifecycle, and reflected back into retrieval job catalog/detail plus retrieval
+document/chunk index-status surfaces. Live retrieval search rollout remains a separate concern.
+
+Async evaluation and runbook surfaces now reflect that same runtime truth explicitly: staged
+evaluation coverage includes durable submission, lease-expiry recovery, and retrieval-indexing
+linkage, while the service runbook documents restart-survival and recovery expectations for the
+SQL-backed async runtime path.
+
+Async runtime-backed jobs now also expose a narrow control-plane surface for retry, replay,
+requeue, and manual abandon actions. Those operator actions are recorded durably as async
+control events and appear back in job detail, which keeps recovery semantics reviewable instead
+of burying them in worker-side state transitions.
 
 ### Providers
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.contracts.async_runtime import AsyncJobSubmissionResponse
 from app.contracts.retrieval import (
     RetrievalActivationReadinessResponse,
     RetrievalChunkCatalogResponse,
@@ -36,6 +37,7 @@ from app.services.retrieval_evidence_readiness import build_retrieval_evidence_r
 from app.services.retrieval_execution_status import build_retrieval_execution_status
 from app.services.retrieval_governance_status import build_retrieval_governance_status
 from app.services.retrieval_runbook_readiness import build_retrieval_runbook_readiness
+from app.services.retrieval_async_execution import submit_retrieval_index_job_async
 from app.services.retrieval_service import search_sources
 
 router = APIRouter(prefix="/platform/retrieval", tags=["retrieval"])
@@ -227,8 +229,9 @@ async def get_retrieval_indexing_policy_route() -> RetrievalIndexingPolicyRespon
     operation_id="listRetrievalIndexJobs",
     summary="List retrieval indexing jobs",
     description=(
-        "Returns the currently known retrieval indexing jobs for the staged corpus. "
-        "This gives platform visibility into indexing readiness before live vector indexing is enabled."
+        "Returns the currently known retrieval indexing jobs for the retrieval corpus. "
+        "Runtime-backed async indexing state is reflected for allowlisted jobs, while the remaining "
+        "catalog still exposes staged rollout posture."
     ),
     responses={
         200: {"description": "Retrieval indexing jobs returned successfully."},
@@ -245,8 +248,8 @@ async def list_retrieval_index_jobs_route() -> RetrievalIndexJobCatalogResponse:
     operation_id="getRetrievalIndexJob",
     summary="Get retrieval indexing job detail",
     description=(
-        "Returns the detailed staged execution plan for a retrieval indexing job, including the "
-        "current lifecycle stage of each indexing step."
+        "Returns the retrieval indexing execution plan for a job, including runtime-backed async "
+        "execution posture when the job has been cut over to the durable async backbone."
     ),
     responses={
         200: {"description": "Retrieval indexing job detail returned successfully."},
@@ -256,6 +259,34 @@ async def list_retrieval_index_jobs_route() -> RetrievalIndexJobCatalogResponse:
 )
 async def get_retrieval_index_job_route(job_id: str) -> RetrievalIndexJobDetailResponse:
     return get_retrieval_job_detail_or_raise(job_id)
+
+
+@router.post(
+    "/index-jobs/{job_id}/submit-async",
+    response_model=AsyncJobSubmissionResponse,
+    operation_id="submitRetrievalIndexJobAsync",
+    summary="Submit a retrieval indexing job into the async runtime",
+    description=(
+        "Submits a concrete retrieval indexing job into the durable async runtime so indexing "
+        "can execute through the authoritative async backbone instead of only staged documentation."
+    ),
+    responses={
+        200: {"description": "Retrieval indexing async submission evaluated successfully."},
+        404: {"description": "Retrieval indexing job not found."},
+        409: {"description": "Retrieval indexing submission is not currently allowed."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def submit_retrieval_index_job_async_route(
+    job_id: str,
+    caller_app: str,
+    correlation_id: str,
+) -> AsyncJobSubmissionResponse:
+    return submit_retrieval_index_job_async(
+        job_id=job_id,
+        caller_app=caller_app,
+        correlation_id=correlation_id,
+    )
 
 
 @router.get(

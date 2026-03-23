@@ -20,6 +20,7 @@
 - Async activation readiness: /platform/async/activation-readiness
 - Async runbook readiness: /platform/async/runbook-readiness
 - Async governance status: /platform/async/governance-status
+- Async control-plane history: /platform/async/control-plane-actions
 - Provider activation readiness: /platform/providers/activation-readiness
 - Provider quota policy: /platform/providers/quota-policy
 - Provider budget policy: /platform/providers/budget-policy
@@ -70,15 +71,44 @@ CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup
 
 ## Async Activation Governance
 
-Before any future async activation slice:
+Before any broader async activation slice:
 
 1. verify `GET /platform/async/governance-status`
 2. inspect `GET /platform/async/activation-readiness` when technical blockers need detail
 3. inspect `GET /platform/async/runbook-readiness` when operational blockers need detail
 4. confirm the embedded `async_governance` block in `GET /platform/runtime-status` matches the detailed async governance view
 5. confirm queue backend and worker execution posture are still governed and explicitly selected
-6. confirm observability, replay, escalation, and incident procedures are documented and approved
-7. only then proceed with any activation rollout review
+6. confirm retrieval indexing remains the only runtime-backed async consumer unless a broader rollout slice has been explicitly approved
+7. confirm observability, replay, escalation, and incident procedures are documented and approved
+8. only then proceed with any activation rollout review
+
+## Durable Async Recovery
+
+When `LOTUS_AI_ASYNC_RUNTIME_STORE_MODE=sqlalchemy`, runtime-backed async job, attempt, and lease state are durable rather than process-local.
+
+Operator rules:
+
+1. do not treat a service restart as a queue, claim, or recovery reset for runtime-backed async jobs
+2. review `/platform/async/runtime-status`, `/platform/async/jobs`, and the relevant domain job-detail surface before assuming a claimed or failed job has cleared
+3. treat staged async artifacts as historical or staged reference records; they do not override runtime-backed job truth
+4. treat lease-expiry recovery as a durable control-plane transition that should be visible through async job attempt history rather than inferred from missing worker processes
+
+Current recovery expectations:
+
+1. queued, claimed, running, failed, completed, and abandoned posture must survive restart when the SQL-backed async-runtime store is active
+2. lease expiry should record an `ABANDONED` attempt and queue a new retryable attempt rather than mutating the prior attempt in place
+3. retrieval index jobs submitted through `POST /platform/retrieval/index-jobs/{job_id}/submit-async` should remain linked to their async runtime records after restart
+4. duplicate runtime-backed retrieval-index submissions should be rejected while an active queued, claimed, or running job already owns the same caller and target
+5. operator retry, replay, requeue, and abandon actions should be applied through `/platform/async/control-plane-actions/apply` rather than ad hoc table edits
+6. dedicated queue-backed worker fleet procedures remain out of scope until a later rollout slice activates them
+
+Current governed control-action procedure:
+
+1. inspect `/platform/async/control-plane-actions` to review recent async recovery and replay actions
+2. inspect `/platform/async/jobs/{job_id}` to confirm the current runtime attempt history, active lease posture, and existing control events
+3. apply `POST /platform/async/control-plane-actions/apply` with explicit operator reason and approver metadata
+4. verify the resulting control-plane event is visible in both `/platform/async/control-plane-actions` and `/platform/async/jobs/{job_id}`
+5. confirm the resulting job status and attempt history match the intended retry, replay, requeue, or abandon action
 
 ## Provider Activation Governance
 

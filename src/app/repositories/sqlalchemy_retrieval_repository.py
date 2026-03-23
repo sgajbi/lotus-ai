@@ -85,6 +85,31 @@ class SqlAlchemyRetrievalRepository:
                 return None
             return self._to_job_descriptor(session, job)
 
+    def save_index_job(self, descriptor: RetrievalIndexJobDescriptor) -> None:
+        model = RetrievalIndexJobModel(
+            job_id=descriptor.job_id,
+            source_id=descriptor.source_id,
+            status=descriptor.status.value,
+            message=descriptor.message,
+        )
+        with self._session_factory() as session:
+            session.merge(model)
+            session.commit()
+
+    def set_source_index_status(self, *, source_id: str, index_status: str) -> None:
+        with self._session_factory() as session:
+            documents = session.scalars(
+                select(RetrievalDocumentModel).where(RetrievalDocumentModel.source_id == source_id)
+            ).all()
+            for document in documents:
+                document.index_status = index_status
+            chunks = session.scalars(
+                select(RetrievalChunkModel).where(RetrievalChunkModel.source_id == source_id)
+            ).all()
+            for chunk in chunks:
+                chunk.index_status = index_status
+            session.commit()
+
     def _to_source_descriptor(self, model: RetrievalSourceModel) -> RetrievalSourceDescriptor:
         return RetrievalSourceDescriptor(
             source_id=model.source_id,

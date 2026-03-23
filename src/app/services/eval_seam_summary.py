@@ -4,6 +4,7 @@ from app.contracts.evals import EvaluationAssetStatus, EvaluationSeamCoverageDes
 from app.services.eval_catalog import build_evaluation_catalog
 
 SEAM_FIXTURE_MAP: dict[str, list[str]] = {
+    "async_execution": ["async_runtime_examples"],
     "task_execution": [
         "task_capability_contracts",
         "explanation_task_examples",

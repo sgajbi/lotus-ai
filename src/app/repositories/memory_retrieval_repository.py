@@ -176,6 +176,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
 
     def list_index_jobs(self) -> list[RetrievalIndexJobDescriptor]:
         jobs: list[RetrievalIndexJobDescriptor] = []
+        overrides = getattr(self, "_index_job_overrides", {})
         for source in self._sources:
             documents = self._documents.get(source.source_id, [])
             chunk_count = sum(
@@ -189,9 +190,13 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                 message = (
                     "Documents are staged for indexing, but vector indexing is not enabled yet."
                 )
+            job_id = f"retjob_{source.source_id.replace('-', '_')}"
+            if job_id in overrides:
+                jobs.append(deepcopy(overrides[job_id]))
+                continue
             jobs.append(
                 RetrievalIndexJobDescriptor(
-                    job_id=f"retjob_{source.source_id.replace('-', '_')}",
+                    job_id=job_id,
                     source_id=source.source_id,
                     status=status,
                     document_count=len(documents),
@@ -206,3 +211,52 @@ class InMemoryRetrievalRepository(RetrievalRepository):
             if job.job_id == job_id:
                 return job
         return None
+
+    def save_index_job(self, descriptor: RetrievalIndexJobDescriptor) -> None:
+        source_id = descriptor.source_id
+        for source in self._sources:
+            if source.source_id == source_id:
+                break
+        if source_id not in self._documents:
+            self._documents[source_id] = []
+
+        # Persist as source-derived descriptor by keeping message and status through document state plus this seed.
+        documents = self._documents.get(source_id, [])
+        chunk_count = sum(len(self._chunks.get(document.document_id, [])) for document in documents)
+        self._documents[source_id] = documents
+        self._index_job_overrides = getattr(self, "_index_job_overrides", {})
+        self._index_job_overrides[descriptor.job_id] = RetrievalIndexJobDescriptor(
+            job_id=descriptor.job_id,
+            source_id=source_id,
+            status=descriptor.status,
+            document_count=descriptor.document_count or len(documents),
+            chunk_count=descriptor.chunk_count or chunk_count,
+            message=descriptor.message,
+        )
+
+    def set_source_index_status(self, *, source_id: str, index_status: str) -> None:
+        new_documents: list[RetrievalDocumentDescriptor] = []
+        for document in self._documents.get(source_id, []):
+            new_documents.append(
+                RetrievalDocumentDescriptor(
+                    document_id=document.document_id,
+                    source_id=document.source_id,
+                    title=document.title,
+                    location=document.location,
+                    chunk_count=document.chunk_count,
+                    index_status=RetrievalIndexStatus(index_status),
+                )
+            )
+            self._chunks[document.document_id] = [
+                RetrievalChunkDescriptor(
+                    chunk_id=chunk.chunk_id,
+                    document_id=chunk.document_id,
+                    source_id=chunk.source_id,
+                    chunk_order=chunk.chunk_order,
+                    token_estimate=chunk.token_estimate,
+                    preview=chunk.preview,
+                    index_status=RetrievalIndexStatus(index_status),
+                )
+                for chunk in self._chunks.get(document.document_id, [])
+            ]
+        self._documents[source_id] = new_documents
