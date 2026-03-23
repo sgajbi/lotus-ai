@@ -132,7 +132,19 @@ def apply_safety_enforcement(
                 f"contained unsupported raw context echo fields: {', '.join(blocked_keys)}."
             ),
         )
-        raise RuntimeError(blocked_outcome.decision_summary)
+        return (
+            provider_execution.model_copy(
+                update={
+                    "message": "Task output blocked by deterministic runtime safety enforcement.",
+                    "structured_output": {
+                        "safety_blocked": True,
+                        "blocked_reason": blocked_outcome.decision_summary,
+                        "output_label": policy.output_label.value,
+                    },
+                }
+            ),
+            blocked_outcome,
+        )
 
     sanitized_output = {
         key: value

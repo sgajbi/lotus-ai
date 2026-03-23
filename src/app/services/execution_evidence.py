@@ -147,7 +147,18 @@ def _safety_descriptor(
             "safety_mode": safety_outcome.safety_mode,
             "output_label": safety_outcome.output_label,
             "redaction_posture": safety_outcome.redaction_posture.value,
+            "disposition": safety_outcome.disposition.value,
+            "runtime_redaction_active": safety_outcome.runtime_redaction_active,
             "enforced_controls": safety_outcome.enforced_controls,
+            "control_results": [
+                {
+                    "control_id": result.control_id,
+                    "execution_state": result.execution_state.value,
+                    "summary": result.summary,
+                }
+                for result in safety_outcome.control_results
+            ],
+            "decision_summary": safety_outcome.decision_summary,
         },
     )
 

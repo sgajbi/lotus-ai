@@ -1,9 +1,11 @@
 from pathlib import Path
 
+from sqlalchemy import text
+
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
-from app.contracts.safety import RedactionPosture
-from app.contracts.tasks import OutputLabel, TaskCategory
+from app.contracts.safety import RedactionPosture, SafetyExecutionDisposition
+from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.repositories.sqlalchemy_audit_repository import SqlAlchemyAuditRepository
 from app.services.safety_runtime import build_safety_execution_outcome_from_record
 from tests.support.migration_runner import upgrade_database_to_head
@@ -16,6 +18,7 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
 
     record = AuditRecordResponse(
         request_id="air_sql_1",
+        execution_status=TaskExecutionStatus.COMPLETED,
         task_id="explain.v1",
         category=TaskCategory.EXPLAIN,
         output_label=OutputLabel.EXPLANATION_ONLY,
@@ -79,6 +82,7 @@ def test_sqlalchemy_audit_repository_list_filters_and_orders_latest_first(
 
     old_record = AuditRecordResponse(
         request_id="air_sql_old",
+        execution_status=TaskExecutionStatus.COMPLETED,
         task_id="explain.v1",
         category=TaskCategory.EXPLAIN,
         output_label=OutputLabel.EXPLANATION_ONLY,
@@ -143,3 +147,165 @@ def test_sqlalchemy_audit_repository_list_filters_and_orders_latest_first(
     assert [record.request_id for record in draft_records] == ["air_sql_new"]
     assert [record.request_id for record in tenant_records] == ["air_sql_new"]
     assert [record.request_id for record in requester_records] == ["air_sql_new"]
+
+
+def test_sqlalchemy_audit_repository_round_trips_exact_blocked_safety_outcome(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-audit-blocked.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyAuditRepository(database_url)
+
+    blocked_outcome = build_safety_execution_outcome_from_record(
+        safety_mode="runtime_enforced",
+        output_label=OutputLabel.EXPLANATION_ONLY,
+        redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
+        enforced_controls=[
+            "response_labeling",
+            "correlation_and_audit",
+            "runtime_redaction_engine",
+        ],
+    ).model_copy(
+        update={
+            "disposition": SafetyExecutionDisposition.BLOCKED,
+            "runtime_redaction_active": True,
+            "decision_summary": "Blocked because unsupported raw context echo fields were returned.",
+        }
+    )
+
+    record = AuditRecordResponse(
+        request_id="air_sql_blocked",
+        execution_status=TaskExecutionStatus.REJECTED,
+        task_id="explain.v1",
+        category=TaskCategory.EXPLAIN,
+        output_label=OutputLabel.EXPLANATION_ONLY,
+        caller_app="lotus-manage",
+        correlation_id="corr-sql-blocked",
+        requested_by="ops.user@lotus",
+        tenant_id="tenant-sg-001",
+        prompt_version="foundation.explain.v1",
+        provider_mode="stub",
+        safety_mode="runtime_enforced",
+        redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
+        enforced_safety_controls=[
+            "response_labeling",
+            "correlation_and_audit",
+            "runtime_redaction_engine",
+        ],
+        safety_outcome=blocked_outcome,
+        generated_at="2026-03-23T00:00:00Z",
+        stubbed=True,
+        context_summary="Explain rebalance outcome",
+        context_keys=["status"],
+        source_refs=["lotus-manage:run:reb_sql_blocked"],
+        result_preview="Task output blocked by deterministic runtime safety enforcement.",
+        structured_output={"safety_blocked": True},
+        evidence=ExecutionEvidenceBundle(
+            descriptors=[
+                ExecutionEvidenceDescriptor(
+                    evidence_type="safety_outcome",
+                    summary="Blocked by runtime safety.",
+                    attributes={"disposition": "BLOCKED"},
+                )
+            ]
+        ),
+    )
+
+    repository.save(record)
+
+    loaded = repository.get("air_sql_blocked")
+    assert loaded == record
+
+
+def test_sqlalchemy_audit_repository_falls_back_for_legacy_records_without_safety_payload(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-audit-legacy.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyAuditRepository(database_url)
+
+    with repository._engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                INSERT INTO audit_records (
+                    request_id,
+                    execution_status,
+                    task_id,
+                    category,
+                    output_label,
+                    caller_app,
+                    correlation_id,
+                    requested_by,
+                    tenant_id,
+                    prompt_version,
+                    provider_mode,
+                    safety_mode,
+                    redaction_posture,
+                    enforced_safety_controls,
+                    generated_at,
+                    stubbed,
+                    context_summary,
+                    context_keys,
+                    source_refs,
+                    result_preview,
+                    structured_output,
+                    evidence,
+                    safety_outcome_payload
+                ) VALUES (
+                    :request_id,
+                    :execution_status,
+                    :task_id,
+                    :category,
+                    :output_label,
+                    :caller_app,
+                    :correlation_id,
+                    :requested_by,
+                    :tenant_id,
+                    :prompt_version,
+                    :provider_mode,
+                    :safety_mode,
+                    :redaction_posture,
+                    :enforced_safety_controls,
+                    :generated_at,
+                    :stubbed,
+                    :context_summary,
+                    :context_keys,
+                    :source_refs,
+                    :result_preview,
+                    :structured_output,
+                    :evidence,
+                    NULL
+                )
+                """
+            ),
+            {
+                "request_id": "air_sql_legacy",
+                "execution_status": "COMPLETED",
+                "task_id": "explain.v1",
+                "category": "explain",
+                "output_label": "EXPLANATION_ONLY",
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-legacy",
+                "requested_by": "ops.user@lotus",
+                "tenant_id": "tenant-sg-001",
+                "prompt_version": "foundation.explain.v1",
+                "provider_mode": "disabled",
+                "safety_mode": "documented_only",
+                "redaction_posture": "MINIMIZATION_REQUIRED",
+                "enforced_safety_controls": '["response_labeling","correlation_and_audit"]',
+                "generated_at": "2026-03-23T01:00:00Z",
+                "stubbed": True,
+                "context_summary": "Explain rebalance outcome",
+                "context_keys": '["status"]',
+                "source_refs": '["lotus-manage:run:reb_legacy"]',
+                "result_preview": "Stub execution completed.",
+                "structured_output": "{}",
+                "evidence": '{"descriptors":[]}',
+            },
+        )
+
+    loaded = repository.get("air_sql_legacy")
+    assert loaded is not None
+    assert loaded.execution_status == TaskExecutionStatus.COMPLETED
+    assert loaded.safety_outcome.disposition == SafetyExecutionDisposition.DOCUMENTED_ONLY

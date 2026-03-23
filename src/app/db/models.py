@@ -10,6 +10,7 @@ class AuditRecordModel(Base):
     __tablename__ = "audit_records"
 
     request_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    execution_status: Mapped[str] = mapped_column(String(32), nullable=False)
     task_id: Mapped[str] = mapped_column(String(128), nullable=False)
     category: Mapped[str] = mapped_column(String(64), nullable=False)
     output_label: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -22,6 +23,7 @@ class AuditRecordModel(Base):
     safety_mode: Mapped[str] = mapped_column(String(64), nullable=False)
     redaction_posture: Mapped[str] = mapped_column(String(64), nullable=False)
     enforced_safety_controls: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    safety_outcome_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     generated_at: Mapped[str] = mapped_column(String(64), nullable=False)
     stubbed: Mapped[bool] = mapped_column(Boolean, nullable=False)
     context_summary: Mapped[str] = mapped_column(Text, nullable=False)

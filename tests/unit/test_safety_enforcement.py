@@ -73,12 +73,16 @@ def test_safety_enforcement_blocks_unsupported_raw_context_echo() -> None:
         structured_output={"context_payload": {"account_number": "12345"}},
     )
 
-    try:
-        apply_safety_enforcement(policy=policy, provider_execution=provider_execution)
-    except RuntimeError as exc:
-        assert "unsupported raw context echo fields" in str(exc)
-    else:
-        raise AssertionError("Expected runtime safety enforcement to block raw context echo.")
+    safe_execution, outcome = apply_safety_enforcement(
+        policy=policy,
+        provider_execution=provider_execution,
+    )
+
+    assert outcome.disposition == "BLOCKED"
+    assert outcome.runtime_redaction_active is True
+    assert "unsupported raw context echo fields" in outcome.decision_summary
+    assert safe_execution.message == "Task output blocked by deterministic runtime safety enforcement."
+    assert safe_execution.structured_output["safety_blocked"] is True
 
     settings.safety_mode = "documented_only"
 

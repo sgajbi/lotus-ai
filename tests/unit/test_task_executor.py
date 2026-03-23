@@ -5,6 +5,7 @@ from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.providers import ProviderExecutionResponse
 from app.contracts.tasks import (
     CallerMetadata,
     OutputLabel,
@@ -122,6 +123,7 @@ def test_execute_task_persists_sorted_audit_context_keys(mocker: MockerFixture) 
     )
 
     audit_record = cast(AuditRecordResponse, audit_store.save.call_args.args[0])
+    assert audit_record.execution_status == "COMPLETED"
     assert audit_record.context_keys == ["alpha", "zeta"]
     assert audit_record.caller_app == "lotus-manage"
     assert audit_record.correlation_id == "corr-123"
@@ -348,6 +350,40 @@ def test_execute_task_enforces_runtime_redaction_for_retrieval_backed_output(
     assert "caller_app" not in response.result.structured_output
     assert response.result.structured_output["citation_count"] >= 1
     assert response.result.structured_output["hits"][0]["source_id"] == "lotus-platform-rfcs"
+
+    settings.safety_mode = "documented_only"
+
+
+def test_execute_task_returns_rejected_response_and_persists_audit_when_safety_blocks_output(
+    mocker: MockerFixture,
+) -> None:
+    from app.config import settings
+
+    settings.safety_mode = "runtime_enforced"
+    audit_store = mocker.Mock()
+    mocker.patch("app.services.task_execution_pipeline.get_audit_store", return_value=audit_store)
+    mocker.patch(
+        "app.services.task_execution_pipeline.execute_text_generation",
+        return_value=ProviderExecutionResponse(
+            provider_id="text.stub",
+            provider_mode="stub",
+            stubbed=True,
+            message="Unsafe raw payload.",
+            structured_output={"raw_context": {"account_number": "12345"}},
+        ),
+    )
+
+    response = execute_task(
+        _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
+    )
+
+    assert response.status == "REJECTED"
+    assert response.audit.safety.disposition == "BLOCKED"
+    assert response.result.structured_output["safety_blocked"] is True
+    audit_record = cast(AuditRecordResponse, audit_store.save.call_args.args[0])
+    assert audit_record.execution_status == "REJECTED"
+    assert audit_record.safety_outcome.disposition == "BLOCKED"
+    assert audit_record.evidence.descriptors[3].attributes["disposition"] == "BLOCKED"
 
     settings.safety_mode = "documented_only"
 

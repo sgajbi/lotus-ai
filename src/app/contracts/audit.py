@@ -6,11 +6,14 @@ from pydantic import BaseModel, Field
 
 from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
-from app.contracts.tasks import OutputLabel, TaskCategory
+from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 
 
 class AuditRecordResponse(BaseModel):
     request_id: str = Field(description="Generated task execution request identifier.")
+    execution_status: TaskExecutionStatus = Field(
+        description="Execution outcome recorded for the task request."
+    )
     task_id: str = Field(description="Task identifier evaluated for this execution.")
     category: TaskCategory = Field(description="Task category associated with the execution.")
     output_label: OutputLabel = Field(description="Output label emitted by the task execution.")

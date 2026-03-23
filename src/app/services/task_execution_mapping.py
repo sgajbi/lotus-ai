@@ -29,8 +29,13 @@ def map_task_execution_response(
         provider_execution=resolved.provider_execution,
         safety_outcome=resolved.safety_outcome,
     )
+    execution_status = (
+        TaskExecutionStatus.REJECTED
+        if resolved.safety_outcome.disposition.value == "BLOCKED"
+        else TaskExecutionStatus.COMPLETED
+    )
     return TaskExecutionResponse(
-        status=TaskExecutionStatus.COMPLETED,
+        status=execution_status,
         task_id=context.capability.task_id,
         category=context.capability.category,
         output_label=context.capability.output_label,
@@ -79,6 +84,7 @@ def map_audit_record(
 ) -> AuditRecordResponse:
     return AuditRecordResponse(
         request_id=response.audit.request_id,
+        execution_status=response.status,
         task_id=response.task_id,
         category=response.category,
         output_label=response.output_label,

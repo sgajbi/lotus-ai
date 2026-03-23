@@ -1,7 +1,7 @@
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.safety import RedactionPosture
-from app.contracts.tasks import OutputLabel, TaskCategory
+from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.repositories.memory_audit_repository import InMemoryAuditRepository
 from app.services.safety_runtime import build_safety_execution_outcome_from_record
 
@@ -10,6 +10,7 @@ def test_in_memory_audit_store_save_and_get() -> None:
     store = InMemoryAuditRepository()
     record = AuditRecordResponse(
         request_id="air_test",
+        execution_status=TaskExecutionStatus.COMPLETED,
         task_id="explain.v1",
         category=TaskCategory.EXPLAIN,
         output_label=OutputLabel.EXPLANATION_ONLY,
@@ -56,6 +57,7 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
     store = InMemoryAuditRepository()
     first = AuditRecordResponse(
         request_id="air_old",
+        execution_status=TaskExecutionStatus.COMPLETED,
         task_id="explain.v1",
         category=TaskCategory.EXPLAIN,
         output_label=OutputLabel.EXPLANATION_ONLY,

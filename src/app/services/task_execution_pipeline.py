@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from fastapi import HTTPException, status
-
 from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
 from app.services.audit_store import get_audit_store
 from app.services.knowledge_answer_execution import execute_knowledge_answer
@@ -34,16 +32,10 @@ def resolve_task_execution(
         provider_execution = execute_text_generation(
             build_provider_execution_request(context=context)
         )
-    try:
-        safe_provider_execution, safety_outcome = apply_safety_enforcement(
-            policy=resolve_safety_policy_for_output(context.capability.output_label),
-            provider_execution=provider_execution,
-        )
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+    safe_provider_execution, safety_outcome = apply_safety_enforcement(
+        policy=resolve_safety_policy_for_output(context.capability.output_label),
+        provider_execution=provider_execution,
+    )
     return ResolvedTaskExecution(
         context=context,
         provider_execution=safe_provider_execution,

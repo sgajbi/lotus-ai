@@ -225,8 +225,9 @@ That control plane now also exposes a dedicated reset-action history and bounded
 surface, so quota, budget, and degradation recovery can be reviewed as explicit operator actions
 with reason and approval metadata instead of relying on ad hoc table edits or service restarts.
 
-Audit persistence now also preserves task category, output label, and execution evidence, so
-downstream inspection of prior executions does not depend on replaying the original task call.
+Audit persistence now also preserves task category, output label, execution status, and execution
+evidence, so downstream inspection of prior executions does not depend on replaying the original
+task call.
 
 Audit persistence now also preserves optional caller identity fields such as `requested_by` and
 `tenant_id`, so support and review workflows retain the full caller traceability carried by the
@@ -525,7 +526,7 @@ Current rules:
 1. safety posture is visible through `/platform/safety/policy`,
 2. runtime safety status is visible through `/platform/safety/runtime-status`,
 3. response labeling and audit evidence are already enforced,
-4. task and audit contracts now carry typed safety execution outcomes and deterministic runtime minimization can be activated for bounded outputs through the safety mode setting,
+4. task and audit contracts now carry typed safety execution outcomes, rejected-vs-completed execution status, and deterministic runtime minimization can be activated for bounded outputs through the safety mode setting,
 5. documented-only safety posture remains explicit when runtime enforcement is not active.
 
 ## Deployment Policy

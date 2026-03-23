@@ -8,8 +8,8 @@ from sqlalchemy.orm import sessionmaker
 
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle
-from app.contracts.safety import RedactionPosture
-from app.contracts.tasks import OutputLabel, TaskCategory
+from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
+from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.db.models import AuditRecordModel
 from app.services.safety_runtime import build_safety_execution_outcome_from_record
 
@@ -24,6 +24,7 @@ class SqlAlchemyAuditRepository:
     def save(self, record: AuditRecordResponse) -> None:
         model = AuditRecordModel(
             request_id=record.request_id,
+            execution_status=record.execution_status.value,
             task_id=record.task_id,
             category=record.category.value,
             output_label=record.output_label.value,
@@ -36,6 +37,7 @@ class SqlAlchemyAuditRepository:
             safety_mode=record.safety_mode,
             redaction_posture=record.redaction_posture.value,
             enforced_safety_controls=record.enforced_safety_controls,
+            safety_outcome_payload=record.safety_outcome.model_dump(mode="json"),
             generated_at=record.generated_at,
             stubbed=record.stubbed,
             context_summary=record.context_summary,
@@ -89,8 +91,19 @@ class SqlAlchemyAuditRepository:
     def _to_contract(self, model: AuditRecordModel) -> AuditRecordResponse:
         output_label = OutputLabel(model.output_label)
         redaction_posture = RedactionPosture(model.redaction_posture)
+        safety_outcome = (
+            SafetyExecutionOutcome.model_validate(model.safety_outcome_payload)
+            if model.safety_outcome_payload is not None
+            else build_safety_execution_outcome_from_record(
+                safety_mode=model.safety_mode,
+                output_label=output_label,
+                redaction_posture=redaction_posture,
+                enforced_controls=model.enforced_safety_controls,
+            )
+        )
         return AuditRecordResponse(
             request_id=model.request_id,
+            execution_status=TaskExecutionStatus(model.execution_status),
             task_id=model.task_id,
             category=TaskCategory(model.category),
             output_label=output_label,
@@ -103,12 +116,7 @@ class SqlAlchemyAuditRepository:
             safety_mode=model.safety_mode,
             redaction_posture=redaction_posture,
             enforced_safety_controls=model.enforced_safety_controls,
-            safety_outcome=build_safety_execution_outcome_from_record(
-                safety_mode=model.safety_mode,
-                output_label=output_label,
-                redaction_posture=redaction_posture,
-                enforced_controls=model.enforced_safety_controls,
-            ),
+            safety_outcome=safety_outcome,
             generated_at=model.generated_at,
             stubbed=model.stubbed,
             context_summary=model.context_summary,
