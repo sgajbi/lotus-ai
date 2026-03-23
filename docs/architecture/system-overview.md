@@ -526,10 +526,13 @@ Current rules:
 1. safety posture is visible through `/platform/safety/policy`,
 2. runtime safety status is visible through `/platform/safety/runtime-status`,
 3. safety evidence readiness is visible through `/platform/safety/evidence-readiness`,
-4. safety governance status is visible through `/platform/safety/governance-status`,
+4. safety runbook readiness is visible through `/platform/safety/runbook-readiness`,
+5. safety governance status is visible through `/platform/safety/governance-status`,
 5. response labeling and audit evidence are already enforced,
 6. task and audit contracts now carry typed safety execution outcomes, rejected-vs-completed execution status, and deterministic runtime minimization can be activated for bounded outputs through the safety mode setting,
-7. documented-only safety posture remains explicit when runtime enforcement is not active.
+7. safety governance now summarizes runtime, runbook, and evidence readiness together and is embedded into `/platform/runtime-status`,
+8. runtime safety enforcement is intentionally stateless, so durability lives in persisted audit records, execution evidence, and runtime-backed evaluation runs rather than a separate safety state store,
+9. documented-only safety posture remains explicit when runtime enforcement is not active.
 
 ## Deployment Policy
 

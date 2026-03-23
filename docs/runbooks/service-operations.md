@@ -41,6 +41,7 @@
 - Evaluation run catalog: /platform/evals/runs
 - Safety runtime status: /platform/safety/runtime-status
 - Safety evidence readiness: /platform/safety/evidence-readiness
+- Safety runbook readiness: /platform/safety/runbook-readiness
 - Safety governance status: /platform/safety/governance-status
 - Retrieval runtime status: /platform/retrieval/runtime-status
 
@@ -68,8 +69,9 @@ Expected operator flow for SQL-backed stores:
 4. confirm prompt runtime selection in the embedded prompt runtime summary
 5. verify `GET /platform/safety/runtime-status`
 6. verify `GET /platform/safety/evidence-readiness` when runtime safety approval posture matters
-7. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
-8. only then proceed with rollout if readiness is `READY`
+7. verify `GET /platform/safety/governance-status` when runtime safety rollout posture matters
+8. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
+9. only then proceed with rollout if readiness is `READY`
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
 
@@ -131,11 +133,13 @@ Before treating retrieval or provider evaluation evidence as approval-ready:
 Before treating runtime safety enforcement as governed rollout posture:
 
 1. verify `GET /platform/safety/runtime-status`
-2. verify `GET /platform/safety/evidence-readiness`
-3. verify `GET /platform/safety/governance-status`
-4. confirm the safety approval gate distinguishes `STAGED_ONLY`, `RUNTIME_PARTIAL`, `RUNTIME_PASS`, `RUNTIME_FAIL`, and `RUNTIME_STALE`
-5. confirm task execution, audit records, and execution evidence still agree on blocked, degraded, redacted, and pass-through safety outcomes
-6. treat staged safety fixture packs and historical `foundation_eval_*` artifacts as continuity evidence only; they do not satisfy current runtime-backed safety approval posture by themselves
+2. verify `GET /platform/safety/runbook-readiness`
+3. verify `GET /platform/safety/evidence-readiness`
+4. verify `GET /platform/safety/governance-status`
+5. confirm the safety approval gate distinguishes `STAGED_ONLY`, `RUNTIME_PARTIAL`, `RUNTIME_PASS`, `RUNTIME_FAIL`, and `RUNTIME_STALE`
+6. confirm task execution, audit records, and execution evidence still agree on blocked, degraded, redacted, and pass-through safety outcomes
+7. treat runtime safety enforcement as stateless: persisted audit records, execution evidence, and runtime-backed evaluation runs are authoritative, not process-local reset behavior
+8. treat staged safety fixture packs and historical `foundation_eval_*` artifacts as continuity evidence only; they do not satisfy current runtime-backed safety approval posture by themselves
 
 ## Provider Activation Governance
 

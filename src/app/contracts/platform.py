@@ -16,7 +16,7 @@ from app.contracts.retrieval import RetrievalGovernanceStatusResponse
 from app.contracts.runtime_readiness import (
     StoreRuntimeStatusDescriptor,
 )
-from app.contracts.safety import SafetyRuntimeStatusResponse
+from app.contracts.safety import SafetyGovernanceStatusResponse, SafetyRuntimeStatusResponse
 from app.contracts.task_runtime import TaskRuntimeStatusResponse
 
 
@@ -60,6 +60,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     safety_runtime: SafetyRuntimeStatusResponse = Field(
         description="Current safety runtime posture for lotus-ai."
+    )
+    safety_governance: SafetyGovernanceStatusResponse = Field(
+        description="Current safety governance posture for lotus-ai."
     )
     audit_store: StoreRuntimeStatusDescriptor = Field(
         description="Current audit persistence runtime posture."

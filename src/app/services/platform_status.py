@@ -20,6 +20,7 @@ from app.services.runtime_readiness import (
     get_audit_store_runtime_status,
     get_retrieval_store_runtime_status,
 )
+from app.services.safety_governance_status import build_safety_governance_status
 from app.services.safety_status import build_safety_runtime_status
 from app.services.task_runtime_status import build_task_runtime_status
 
@@ -53,6 +54,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     audit_store = get_audit_store_runtime_status()
     retrieval_store = get_retrieval_store_runtime_status()
     safety_runtime = build_safety_runtime_status()
+    safety_governance = build_safety_governance_status()
     startup_state = _resolve_startup_readiness_state(app_state)
     return PlatformRuntimeStatusResponse(
         service=settings.service_name,
@@ -75,6 +77,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         prompt_runtime=prompt_runtime,
         task_runtime=task_runtime,
         safety_runtime=safety_runtime,
+        safety_governance=safety_governance,
         audit_store=audit_store,
         retrieval_store=retrieval_store,
         database_configured=audit_store.database_configured or retrieval_store.database_configured,

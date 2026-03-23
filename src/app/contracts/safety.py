@@ -121,6 +121,32 @@ class SafetyEvidenceReadinessResponse(BaseModel):
     )
 
 
+class SafetyRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(description="Stable safety runbook readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before safety rollout is treated as governed."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class SafetyRunbookReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the safety runbook readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    runbook_ready: bool = Field(
+        description="Whether safety operational runbook readiness is currently sufficient for governed rollout."
+    )
+    required_item_count: int = Field(
+        description="Number of safety runbook items currently required for governed rollout."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required safety runbook items currently marked complete."
+    )
+    items: list[SafetyRunbookReadinessItem] = Field(
+        description="Governed safety operational runbook readiness items."
+    )
+
+
 class SafetyGovernanceStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the safety governance status view.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -129,6 +155,9 @@ class SafetyGovernanceStatusResponse(BaseModel):
     )
     runtime_status: SafetyRuntimeStatusResponse = Field(
         description="Current runtime safety enforcement posture."
+    )
+    runbook_readiness: SafetyRunbookReadinessResponse = Field(
+        description="Operational runbook-readiness summary for safety runtime enforcement."
     )
     evidence_readiness: SafetyEvidenceReadinessResponse = Field(
         description="Evaluation and audit evidence-readiness summary for safety enforcement."
