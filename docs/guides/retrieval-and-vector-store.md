@@ -117,6 +117,11 @@ Current enabled catalog-only sources:
 1. `lotus-platform-rfcs`
 2. `lotus-ai-architecture`
 
+Live-search eligibility is now exposed explicitly through:
+
+1. `/platform/retrieval/source-governance` for source-level searchable versus blocked posture,
+2. `/platform/retrieval/document-governance` for document-level searchable, index-pending, and blocked posture.
+
 `/platform/runtime-status` now embeds retrieval governance posture directly so operators can review
 retrieval rollout state from the same top-level runtime surface that already carries async and
 provider governance posture.

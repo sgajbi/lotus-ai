@@ -7,6 +7,7 @@ from app.contracts.retrieval import (
     RetrievalActivationReadinessResponse,
     RetrievalChunkCatalogResponse,
     RetrievalDocumentCatalogResponse,
+    RetrievalDocumentGovernanceResponse,
     RetrievalEvidenceReadinessResponse,
     RetrievalIndexJobCatalogResponse,
     RetrievalIndexJobDetailResponse,
@@ -29,6 +30,7 @@ from app.services.retrieval_catalog_service import (
     get_retrieval_job_detail_or_raise,
     get_retrieval_job_catalog,
     get_documents_for_source,
+    get_retrieval_document_governance,
     get_retrieval_index_status,
     get_retrieval_source_governance,
 )
@@ -68,7 +70,7 @@ async def list_retrieval_sources_route() -> RetrievalSourceCatalogResponse:
     summary="Get retrieval source governance",
     description=(
         "Returns the derived governance posture for each registered retrieval source, "
-        "including whether the source is currently enabled for catalog-only retrieval or only staged."
+        "including whether the source currently contributes any document to live retrieval search."
     ),
     responses={
         200: {"description": "Retrieval source governance returned successfully."},
@@ -77,6 +79,24 @@ async def list_retrieval_sources_route() -> RetrievalSourceCatalogResponse:
 )
 async def get_retrieval_source_governance_route() -> RetrievalSourceGovernanceResponse:
     return get_retrieval_source_governance()
+
+
+@router.get(
+    "/document-governance",
+    response_model=RetrievalDocumentGovernanceResponse,
+    operation_id="getRetrievalDocumentGovernance",
+    summary="Get retrieval document governance",
+    description=(
+        "Returns the derived governance posture for each registered retrieval document, "
+        "including whether the document is currently eligible for live retrieval search."
+    ),
+    responses={
+        200: {"description": "Retrieval document governance returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_document_governance_route() -> RetrievalDocumentGovernanceResponse:
+    return get_retrieval_document_governance()
 
 
 @router.get(

@@ -13,6 +13,7 @@ from app.contracts.retrieval import (
     RetrievalSourceKind,
 )
 from app.repositories.retrieval_repository import RetrievalRepository
+from app.retrieval.search_eligibility import is_live_search_chunk_eligible
 from app.retrieval.search_scoring import score_terms
 
 
@@ -187,10 +188,12 @@ class InMemoryRetrievalRepository(RetrievalRepository):
             if allowed_source_ids and source.source_id not in allowed_source_ids:
                 continue
             for document in self._documents.get(source.source_id, []):
-                if document.index_status != RetrievalIndexStatus.INDEXED:
-                    continue
                 for chunk in self._chunks.get(document.document_id, []):
-                    if chunk.index_status != RetrievalIndexStatus.INDEXED:
+                    if not is_live_search_chunk_eligible(
+                        source=source,
+                        document=document,
+                        chunk=chunk,
+                    ):
                         continue
                     score = score_terms(
                         query=query,

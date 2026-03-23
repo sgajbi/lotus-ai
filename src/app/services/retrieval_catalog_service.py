@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from app.contracts.retrieval import (
     RetrievalChunkCatalogResponse,
     RetrievalDocumentCatalogResponse,
+    RetrievalDocumentGovernanceResponse,
     RetrievalIndexJobCatalogResponse,
     RetrievalIndexJobDetailResponse,
     RetrievalIndexStatusResponse,
@@ -12,6 +13,7 @@ from app.contracts.retrieval import (
     RetrievalSourceGovernanceResponse,
     RetrievalRuntimeStatusResponse,
 )
+from app.retrieval.document_governance import build_retrieval_document_governance
 from app.retrieval.document_registry import (
     build_retrieval_index_status,
     list_chunks_for_document,
@@ -69,3 +71,7 @@ def get_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
 
 def get_retrieval_source_governance() -> RetrievalSourceGovernanceResponse:
     return build_retrieval_source_governance()
+
+
+def get_retrieval_document_governance() -> RetrievalDocumentGovernanceResponse:
+    return build_retrieval_document_governance()

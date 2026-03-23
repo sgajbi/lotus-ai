@@ -243,6 +243,10 @@ Per-source rollout posture is also exposed through `/platform/retrieval/source-g
 registered, staged-only, and currently searchable corpus slices are reviewed through an explicit
 governance surface rather than inferred from raw source rows.
 
+Per-document rollout posture is also exposed through `/platform/retrieval/document-governance`, so
+live-search eligibility can be reviewed at document level instead of being inferred only from
+source flags plus index status.
+
 `knowledge_search.v1` now uses that same bounded retrieval path directly, so the task
 execution surface has a real governed knowledge-search capability instead of a generic
 placeholder for retrieval-class work.

@@ -21,17 +21,34 @@ def test_retrieval_source_governance_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["enabled_source_count"] >= 2
-    assert body["staged_only_source_count"] >= 1
+    assert body["searchable_source_count"] == 0
+    assert body["index_pending_source_count"] >= 2
+    assert body["blocked_source_count"] >= 1
     assert any(
         source["source_id"] == "lotus-platform-rfcs"
-        and source["governance_status"] == "SEARCH_ENABLED"
+        and source["governance_status"] == "INDEX_PENDING"
         for source in body["sources"]
     )
     assert any(
         source["source_id"] == "lotus-platform-standards"
-        and source["governance_status"] == "STAGED_ONLY"
+        and source["governance_status"] == "BLOCKED_BY_SOURCE"
         for source in body["sources"]
+    )
+
+
+def test_retrieval_document_governance_route(client: TestClient) -> None:
+    response = client.get("/platform/retrieval/document-governance")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["searchable_document_count"] == 0
+    assert body["index_pending_document_count"] >= 3
+    assert body["blocked_document_count"] >= 1
+    assert any(
+        document["document_id"] == "lotus-platform-rfc-0069"
+        and document["governance_status"] == "INDEX_PENDING"
+        for document in body["documents"]
     )
 
 
@@ -312,3 +329,38 @@ def test_retrieval_search_route_returns_live_hits_when_enabled(client: TestClien
     assert body["hits"][0]["source_id"] == "lotus-platform-rfcs"
     assert body["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
     assert body["hits"][0]["chunk_id"] == "chunk_rfc_0069_0001"
+
+
+def test_retrieval_governance_routes_reflect_indexed_searchable_documents(
+    client: TestClient,
+) -> None:
+    from app.services.retrieval_store import get_retrieval_repository
+
+    repository = get_retrieval_repository()
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+
+    source_response = client.get("/platform/retrieval/source-governance")
+    document_response = client.get("/platform/retrieval/document-governance")
+
+    assert source_response.status_code == 200
+    assert document_response.status_code == 200
+
+    source_body = source_response.json()
+    document_body = document_response.json()
+    assert source_body["searchable_source_count"] >= 1
+    assert any(
+        source["source_id"] == "lotus-platform-rfcs"
+        and source["governance_status"] == "SEARCH_ENABLED"
+        and source["search_enabled"] is True
+        for source in source_body["sources"]
+    )
+    assert document_body["searchable_document_count"] >= 2
+    assert any(
+        document["document_id"] == "lotus-platform-rfc-0069"
+        and document["governance_status"] == "SEARCH_ENABLED"
+        and document["search_enabled"] is True
+        for document in document_body["documents"]
+    )
