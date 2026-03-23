@@ -65,6 +65,7 @@ This creates a material limitation:
 3. Replacing task contracts or output-label policy through prompt changes.
 4. Allowing prompt mutation without review, approval, and evidence gates.
 5. Building a general-purpose prompt IDE inside `lotus-ai`.
+6. Expanding prompt rollout into generic content management unrelated to bounded task prompts.
 
 ## Current State
 
@@ -103,7 +104,10 @@ This RFC establishes the following invariants:
 3. prompt rollback must restore a prior known-good runtime selection explicitly,
 4. audit records must show the actual selected prompt version after activation or rollback,
 5. prompt approval posture must not claim readiness from staged-only evidence,
-6. prompt promotion must never silently bypass evaluation or approval requirements.
+6. prompt promotion must never silently bypass evaluation or approval requirements,
+7. prompt rollout state, approval posture, and rollback lineage must be stored separately from the prompt body itself,
+8. prompt control-plane actions must be explicit operator actions rather than implicit repository mutation or hidden runtime rewriting,
+9. prompt rollout must stay bounded to the existing task/output-label contract model and inherit RFC-0009 safety posture rather than weakening it.
 
 ## Architecture Direction
 
@@ -113,10 +117,11 @@ Add an explicit prompt rollout state model separate from prompt definition persi
 
 Required behavior:
 
-1. prompt definitions remain durable records,
-2. promotion state captures candidate, active, rolled-back, and retired posture,
-3. runtime selection resolves through the same authoritative state model,
-4. prior active prompt lineage remains reviewable for rollback.
+1. prompt definitions become versioned durable records rather than one mutable row per task,
+2. promotion state captures candidate, active, previous-active, and rolled-back posture separately from the prompt definition body,
+3. runtime selection resolves through one authoritative rollout-state model,
+4. prior active prompt lineage remains reviewable for rollback,
+5. repository-backed prompt storage must support both memory and SQL-backed parity for rollout-state behavior.
 
 ### Prompt Control-Plane Actions
 
@@ -127,7 +132,8 @@ Required behavior:
 1. promotion and rollback are explicit operator actions,
 2. actions carry requested-by, approved-by, reason, and timestamp metadata,
 3. rollback restores prior active posture explicitly rather than editing history in place,
-4. action history is inspectable through platform APIs.
+4. action history is inspectable through platform APIs,
+5. invalid transitions fail conservatively and leave prior active runtime selection unchanged.
 
 ### Evidence and Evaluation Convergence
 
@@ -138,7 +144,8 @@ Required behavior:
 1. prompt candidate approval depends on runtime-backed regression evidence,
 2. evidence surfaces distinguish staged-only from runtime-backed prompt evidence,
 3. stale or failing prompt evidence blocks activation,
-4. rollback evidence must prove restoration of prior runtime behavior.
+4. rollback evidence must prove restoration of prior runtime behavior,
+5. prompt rollout must reuse the existing RFC-0007 approval-gate model rather than inventing a prompt-specific parallel verdict system.
 
 ### Runtime and Audit Convergence
 
@@ -149,7 +156,8 @@ Required behavior:
 1. prompt runtime status reflects actual active and candidate posture,
 2. task execution continues to record the selected prompt version truthfully,
 3. audit views can explain prompt changes over time,
-4. platform runtime status can summarize prompt rollout posture without ambiguity.
+4. platform runtime status can summarize prompt rollout posture without ambiguity,
+5. no task response, audit record, or runtime summary may imply a candidate prompt is active before a governed promote action succeeds.
 
 ## Data and Operational Requirements
 
@@ -160,6 +168,8 @@ Required behavior:
 5. Rollback must fail conservatively if a prior known-good state is unavailable.
 6. SQL-backed tests must prove promotion and rollback behavior.
 7. Runbooks must define normal promotion, emergency rollback, and incident review procedures.
+8. Prompt rollout must remain deterministic across restart and SQL-backed store reinitialization.
+9. Public API contracts must prove candidate, active, and rollback posture explicitly at the route level.
 
 ## Delivery Slices
 
@@ -167,16 +177,17 @@ Required behavior:
 
 Outcome:
 
-1. prompt rollout state becomes explicit and durable,
-2. repository and service seams exist for activation-state management,
+1. prompt definitions and prompt rollout state become separate durable concepts,
+2. repository and service seams exist for versioned prompt records, rollout-state management, and action-history preparation,
 3. public activation behavior remains unchanged.
 
 Acceptance gate:
 
 1. schema is migration-managed,
-2. repository contracts are unit-tested,
+2. repository contracts are unit-tested in both memory and SQL-backed modes,
 3. runtime selection still resolves through one authoritative active prompt,
-4. existing prompt APIs remain truthful.
+4. existing prompt APIs remain truthful,
+5. Slice 1 does not yet claim live mutation or promotion support.
 
 ### Slice 2: Prompt Promotion and Rollback Action Surface
 
@@ -191,7 +202,8 @@ Acceptance gate:
 1. promotion and rollback are auditable,
 2. rollback restores prior active state explicitly,
 3. unauthorized or invalid transitions fail conservatively,
-4. integration tests cover control-plane behavior.
+4. integration tests cover control-plane behavior,
+5. operator actions remain bounded to governed prompt candidates rather than arbitrary prompt-body edits.
 
 ### Slice 3: Prompt Runtime and Audit Convergence
 
@@ -206,7 +218,8 @@ Acceptance gate:
 1. runtime, task, and audit surfaces agree,
 2. rollback history is visible,
 3. no silent drift exists between selection state and audit evidence,
-4. meaningful tests cover end-to-end prompt selection transitions.
+4. meaningful tests cover end-to-end prompt selection transitions,
+5. SQL-backed restart behavior preserves the same active selection and rollback lineage.
 
 ### Slice 4: Evaluation and Approval-Gate Upgrade
 
@@ -221,7 +234,8 @@ Acceptance gate:
 1. prompt evidence is runtime-backed,
 2. governance distinguishes staged-only, partial, pass, fail, and stale posture,
 3. prompt activation cannot bypass evidence gates,
-4. rollout truth materially improves.
+4. rollout truth materially improves,
+5. platform, prompt-governance, and prompt-evidence surfaces all report the same approval verdict.
 
 ### Slice 5: Runbook and Operational Hardening
 
@@ -236,7 +250,8 @@ Acceptance gate:
 1. runbooks match implementation reality,
 2. degraded or blocked prompt posture is visible,
 3. SQL-backed tests prove persistence and restart behavior,
-4. the platform is materially closer to enterprise-grade prompt governance.
+4. the platform is materially closer to enterprise-grade prompt governance,
+5. the RFC explicitly documents the final authoritative rollout-state and control-history model that replaced repository-only promotion.
 
 ## Risks
 
@@ -283,7 +298,8 @@ This RFC is complete when:
 3. runtime selection, task execution, and audit traces remain aligned,
 4. prompt approval posture is backed by runtime evaluation evidence,
 5. stale or staged-only evidence cannot silently satisfy live prompt activation,
-6. the platform is materially closer to enterprise-grade prompt governance and rollback discipline.
+6. the platform is materially closer to enterprise-grade prompt governance and rollback discipline,
+7. repository-only prompt activation is no longer the authoritative runtime control path.
 
 ## Approval Requested
 
