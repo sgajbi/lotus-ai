@@ -108,7 +108,7 @@ def build_resilience_restore_plan() -> ResilienceRestorePlanResponse:
     return ResilienceRestorePlanResponse(
         service=settings.service_name,
         version=settings.service_version,
-        delivery_stage=ResilienceDeliveryStage.ORDERED_RECOVERY_READY,
+        delivery_stage=ResilienceDeliveryStage.DRILL_VERIFIED,
         restore_step_count=len(restore_steps),
         restore_steps=restore_steps,
         restore_validation_summary=[
@@ -118,6 +118,6 @@ def build_resilience_restore_plan() -> ResilienceRestorePlanResponse:
         ],
         status_summary=[
             "RFC-0017 now defines an ordered restore plan for authoritative stores and critical dependencies.",
-            "This slice describes bounded restore ordering and validation criteria only; it does not add backup orchestration or drill evidence yet.",
+            "This slice keeps restore ordering bounded and explicit while adding separate drill-evidence and governance review surfaces.",
         ],
     )

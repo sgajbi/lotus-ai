@@ -119,6 +119,8 @@ Slice 1 delivers the first posture only. It must not imply ordered restore or dr
 
 Slice 2 delivers the second posture. It must define restore ordering and validation criteria, but it still must not imply drill-backed readiness yet.
 
+Slice 4 delivers the third posture. It adds drill-evidence, activation-readiness, runbook-readiness, and governance surfaces, but it still must not be mistaken for backup automation or full disaster-recovery orchestration.
+
 ## State Model and Invariants
 
 This RFC establishes the following invariants:
@@ -280,6 +282,14 @@ Acceptance gate:
 2. recovery evidence is current and reviewable,
 3. first-use-case onboarding can cite the resilience posture credibly,
 4. the platform is materially closer to enterprise-grade operational continuity.
+
+Delivered interfaces for this slice:
+
+1. `/platform/resilience/drill-evidence`
+2. `/platform/resilience/activation-readiness`
+3. `/platform/resilience/runbook-readiness`
+4. `/platform/resilience/governance-status`
+5. embedded `resilience_governance` block in `/platform/runtime-status`
 
 ## Risks
 

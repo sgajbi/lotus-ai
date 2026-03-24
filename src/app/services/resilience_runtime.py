@@ -106,7 +106,7 @@ def build_resilience_runtime_status() -> ResilienceRuntimeStatusResponse:
     return ResilienceRuntimeStatusResponse(
         service=settings.service_name,
         version=settings.service_version,
-        delivery_stage=ResilienceDeliveryStage.ORDERED_RECOVERY_READY,
+        delivery_stage=ResilienceDeliveryStage.DRILL_VERIFIED,
         recovery_state=recovery_state,
         posture=posture,
         dependency_count=len(dependencies),
@@ -136,7 +136,7 @@ def build_resilience_runtime_status() -> ResilienceRuntimeStatusResponse:
                     else "Critical continuity dependencies are running again, but at least one dependency still carries restored-with-findings posture that requires operator review."
                 )
             ),
-            "This slice now covers bounded restore ordering and validation guidance, but it still does not claim drill evidence or disaster-recovery automation.",
+            "This slice now adds bounded drill-evidence and resilience governance surfaces, but it still does not claim backup orchestration or disaster-recovery automation.",
         ],
     )
 

@@ -15,7 +15,14 @@ from app.contracts.production_baseline import (
     ProductionBaselineRunbookReadinessResponse,
     ProductionBaselineRuntimeStatusResponse,
 )
-from app.contracts.resilience import ResilienceRestorePlanResponse, ResilienceRuntimeStatusResponse
+from app.contracts.resilience import (
+    ResilienceActivationReadinessResponse,
+    ResilienceDrillEvidenceResponse,
+    ResilienceGovernanceStatusResponse,
+    ResilienceRestorePlanResponse,
+    ResilienceRunbookReadinessResponse,
+    ResilienceRuntimeStatusResponse,
+)
 from app.services.production_baseline_activation_readiness import (
     build_production_baseline_activation_readiness,
 )
@@ -35,7 +42,11 @@ from app.services.deployment_split_runbook_readiness import (
 from app.services.platform_status import build_platform_runtime_status
 from app.services.deployment_split_runtime import build_deployment_split_runtime_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
+from app.services.resilience_activation_readiness import build_resilience_activation_readiness
+from app.services.resilience_drill_evidence import build_resilience_drill_evidence
+from app.services.resilience_governance import build_resilience_governance_status
 from app.services.resilience_restore_plan import build_resilience_restore_plan
+from app.services.resilience_runbook_readiness import build_resilience_runbook_readiness
 from app.services.resilience_runtime import build_resilience_runtime_status
 
 router = APIRouter(prefix="/platform", tags=["platform"])
@@ -93,6 +104,78 @@ async def get_resilience_runtime_status_route() -> ResilienceRuntimeStatusRespon
 )
 async def get_resilience_restore_plan_route() -> ResilienceRestorePlanResponse:
     return build_resilience_restore_plan()
+
+
+@router.get(
+    "/resilience/drill-evidence",
+    response_model=ResilienceDrillEvidenceResponse,
+    operation_id="getResilienceDrillEvidence",
+    summary="Get RFC-0017 resilience drill evidence",
+    description=(
+        "Returns the current bounded resilience drill and recovery-proof evidence posture across "
+        "authoritative stores and critical dependencies."
+    ),
+    responses={
+        200: {"description": "Resilience drill evidence returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_resilience_drill_evidence_route() -> ResilienceDrillEvidenceResponse:
+    return build_resilience_drill_evidence()
+
+
+@router.get(
+    "/resilience/activation-readiness",
+    response_model=ResilienceActivationReadinessResponse,
+    operation_id="getResilienceActivationReadiness",
+    summary="Get RFC-0017 resilience activation readiness",
+    description=(
+        "Returns whether lotus-ai resilience posture is technically ready to be treated as an "
+        "active governed capability rather than only an inventoried or ordered-recovery surface."
+    ),
+    responses={
+        200: {"description": "Resilience activation readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_resilience_activation_readiness_route() -> ResilienceActivationReadinessResponse:
+    return build_resilience_activation_readiness()
+
+
+@router.get(
+    "/resilience/runbook-readiness",
+    response_model=ResilienceRunbookReadinessResponse,
+    operation_id="getResilienceRunbookReadiness",
+    summary="Get RFC-0017 resilience runbook readiness",
+    description=(
+        "Returns the current operator-runbook posture for restore ordering, queue and worker "
+        "recovery, provider and retrieval recovery review, and drill boundaries."
+    ),
+    responses={
+        200: {"description": "Resilience runbook readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_resilience_runbook_readiness_route() -> ResilienceRunbookReadinessResponse:
+    return build_resilience_runbook_readiness()
+
+
+@router.get(
+    "/resilience/governance-status",
+    response_model=ResilienceGovernanceStatusResponse,
+    operation_id="getResilienceGovernanceStatus",
+    summary="Get RFC-0017 resilience governance status",
+    description=(
+        "Returns the composed runtime, restore-plan, drill-evidence, activation-readiness, and "
+        "runbook-readiness posture for the current RFC-0017 resilience rollout."
+    ),
+    responses={
+        200: {"description": "Resilience governance status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_resilience_governance_status_route() -> ResilienceGovernanceStatusResponse:
+    return build_resilience_governance_status()
 
 
 @router.get(

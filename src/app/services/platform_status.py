@@ -29,6 +29,7 @@ from app.services.prompt_status import build_prompt_runtime_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
 from app.services.provider_governance_status import build_provider_governance_status
 from app.services.provider_operations_status import build_provider_operations_status
+from app.services.resilience_governance import build_resilience_governance_status
 from app.services.resilience_runtime import build_resilience_runtime_status
 from app.services.retrieval_governance_status import build_retrieval_governance_status
 from app.services.runtime_readiness import (
@@ -76,6 +77,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     first_use_case = build_first_use_case_runtime_status()
     first_use_case_governance = build_first_use_case_governance_status()
     resilience_runtime = build_resilience_runtime_status()
+    resilience_governance = build_resilience_governance_status()
     production_baseline = build_production_baseline_runtime_status(app_state)
     deployment_split = build_deployment_split_runtime_status(app_state)
     deployment_split_governance = build_deployment_split_governance_status(app_state)
@@ -120,6 +122,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         safety_runtime=safety_runtime,
         safety_governance=safety_governance,
         resilience_runtime=resilience_runtime,
+        resilience_governance=resilience_governance,
         production_baseline=production_baseline,
         deployment_split=deployment_split,
         deployment_split_governance=deployment_split_governance,

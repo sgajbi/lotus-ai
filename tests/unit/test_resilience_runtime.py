@@ -30,7 +30,7 @@ def test_resilience_runtime_defaults_to_local_or_demo_continuity() -> None:
 
     status = build_resilience_runtime_status()
 
-    assert status.delivery_stage is ResilienceDeliveryStage.ORDERED_RECOVERY_READY
+    assert status.delivery_stage is ResilienceDeliveryStage.DRILL_VERIFIED
     assert status.recovery_state is ResilienceRecoveryState.DEGRADED
     assert status.posture is ResiliencePosture.LOCAL_OR_DEMO_CONTINUITY
     assert status.authoritative_dependency_count >= 8
@@ -86,7 +86,7 @@ def test_resilience_runtime_reports_inventory_for_prod_shaped_sql_posture(
 
     status = build_resilience_runtime_status()
 
-    assert status.delivery_stage is ResilienceDeliveryStage.ORDERED_RECOVERY_READY
+    assert status.delivery_stage is ResilienceDeliveryStage.DRILL_VERIFIED
     assert status.recovery_state is ResilienceRecoveryState.DEGRADED
     assert status.posture is ResiliencePosture.PARTIAL_RUNTIME_DURABILITY
     assert status.restart_survivable_dependency_count >= 10

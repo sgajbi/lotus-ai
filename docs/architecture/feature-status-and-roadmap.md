@@ -190,7 +190,7 @@ The next RFCs already identified in the repo describe the expected sequence:
 Current status against that sequence:
 
 1. `RFC-0015` is implemented, including runtime, activation, runbook, and governance posture for unified versus split deployment stages.
-2. `RFC-0017` has started with a bounded resilience runtime inventory surface, an ordered restore-plan surface, and explicit degraded-versus-restored runtime posture for queue, worker, provider, retrieval, and artifact continuity dependencies, but drill evidence and resilience governance remain future slices.
+2. `RFC-0017` now exposes a bounded resilience runtime inventory surface, an ordered restore-plan surface, explicit degraded-versus-restored runtime posture for queue, worker, provider, retrieval, and artifact continuity dependencies, plus drill-evidence, activation, runbook, and governance surfaces.
 3. `RFC-0018` and `RFC-0019` remain roadmap items.
 
 Early RFC-0015 groundwork now exists as a bounded runtime surface:
@@ -213,7 +213,7 @@ The current preferred RFC-0016 target is:
 In practical feature terms, the roadmap is:
 
 1. build cleaner deployment topology on top of the now-explicit production baseline,
-2. improve resilience on top of that baseline, starting from the new runtime inventory surface and then adding ordered recovery, drill evidence, and governance,
+2. improve resilience on top of that baseline, using the new runtime, restore-plan, drill-evidence, and governance surfaces to harden actual recovery posture,
 3. expand retrieval and provider breadth,
 4. broaden corpus management.
 

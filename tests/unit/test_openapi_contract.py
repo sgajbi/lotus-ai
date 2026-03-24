@@ -13,6 +13,19 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/resilience/restore-plan"]["get"]["operationId"] == (
         "getResilienceRestorePlan"
     )
+    assert spec["paths"]["/platform/resilience/drill-evidence"]["get"]["operationId"] == (
+        "getResilienceDrillEvidence"
+    )
+    assert (
+        spec["paths"]["/platform/resilience/activation-readiness"]["get"]["operationId"]
+        == "getResilienceActivationReadiness"
+    )
+    assert spec["paths"]["/platform/resilience/runbook-readiness"]["get"]["operationId"] == (
+        "getResilienceRunbookReadiness"
+    )
+    assert spec["paths"]["/platform/resilience/governance-status"]["get"]["operationId"] == (
+        "getResilienceGovernanceStatus"
+    )
     assert spec["paths"]["/platform/deployment-split/runtime-status"]["get"]["operationId"] == (
         "getDeploymentSplitRuntimeStatus"
     )
@@ -279,6 +292,16 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     resilience_restore_plan_schema = spec["components"]["schemas"][
         "ResilienceRestorePlanResponse"
     ]
+    resilience_drill_schema = spec["components"]["schemas"]["ResilienceDrillEvidenceResponse"]
+    resilience_activation_schema = spec["components"]["schemas"][
+        "ResilienceActivationReadinessResponse"
+    ]
+    resilience_runbook_schema = spec["components"]["schemas"][
+        "ResilienceRunbookReadinessResponse"
+    ]
+    resilience_governance_schema = spec["components"]["schemas"][
+        "ResilienceGovernanceStatusResponse"
+    ]
     resilience_dependency_schema = spec["components"]["schemas"][
         "ResilienceDependencyDescriptor"
     ]
@@ -329,11 +352,18 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "recovery_findings" in resilience_runtime_schema["properties"]
     assert "restore_steps" in resilience_restore_plan_schema["properties"]
     assert "restore_validation_summary" in resilience_restore_plan_schema["properties"]
+    assert "items" in resilience_drill_schema["properties"]
+    assert "activation_ready" in resilience_activation_schema["properties"]
+    assert "items" in resilience_runbook_schema["properties"]
+    assert "runtime_status" in resilience_governance_schema["properties"]
+    assert "restore_plan" in resilience_governance_schema["properties"]
+    assert "drill_evidence" in resilience_governance_schema["properties"]
     assert "recovery_state" in resilience_dependency_schema["properties"]
     assert "recovery_findings" in resilience_dependency_schema["properties"]
     assert "artifact_runtime" in platform_runtime_schema["properties"]
     assert "artifact_governance" in platform_runtime_schema["properties"]
     assert "resilience_runtime" in platform_runtime_schema["properties"]
+    assert "resilience_governance" in platform_runtime_schema["properties"]
     assert "first_use_case" in platform_runtime_schema["properties"]
     assert "first_use_case_governance" in platform_runtime_schema["properties"]
     assert "deployment_split" in platform_runtime_schema["properties"]

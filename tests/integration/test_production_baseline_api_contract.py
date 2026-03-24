@@ -10,6 +10,7 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert "resilience_runtime" in body
+    assert "resilience_governance" in body
     assert "deployment_split" in body
     assert "production_baseline" in body
     assert "production_baseline_governance" in body
@@ -21,7 +22,7 @@ def test_resilience_runtime_status_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["delivery_stage"] == "ORDERED_RECOVERY_READY"
+    assert body["delivery_stage"] == "DRILL_VERIFIED"
     assert body["recovery_state"] == "DEGRADED"
     assert body["posture"] == "LOCAL_OR_DEMO_CONTINUITY"
     assert body["dependency_count"] >= 10
@@ -36,12 +37,41 @@ def test_resilience_restore_plan_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["delivery_stage"] == "ORDERED_RECOVERY_READY"
+    assert body["delivery_stage"] == "DRILL_VERIFIED"
     assert body["restore_step_count"] == 4
     assert body["restore_steps"][0]["step_id"] == "restore_authoritative_relational_metadata"
     assert body["restore_steps"][1]["requires_completed_steps"] == [
         "restore_authoritative_relational_metadata"
     ]
+
+
+def test_resilience_governance_routes(client: TestClient) -> None:
+    drill_response = client.get("/platform/resilience/drill-evidence")
+    activation_response = client.get("/platform/resilience/activation-readiness")
+    runbook_response = client.get("/platform/resilience/runbook-readiness")
+    governance_response = client.get("/platform/resilience/governance-status")
+
+    assert drill_response.status_code == 200
+    assert activation_response.status_code == 200
+    assert runbook_response.status_code == 200
+    assert governance_response.status_code == 200
+
+    drill_body = drill_response.json()
+    activation_body = activation_response.json()
+    runbook_body = runbook_response.json()
+    governance_body = governance_response.json()
+
+    assert drill_body["service"] == "lotus-ai"
+    assert "drill_evidence_ready" in drill_body
+    assert activation_body["delivery_stage"] == "DRILL_VERIFIED"
+    assert "activation_ready" in activation_body
+    assert runbook_body["runbook_ready"] is True
+    assert runbook_body["required_item_count"] >= 1
+    assert governance_body["runtime_status"]["service"] == "lotus-ai"
+    assert "restore_plan" in governance_body
+    assert "drill_evidence" in governance_body
+    assert "activation_readiness" in governance_body
+    assert "runbook_readiness" in governance_body
 
 
 def test_deployment_split_runtime_status_route(client: TestClient) -> None:

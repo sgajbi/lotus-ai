@@ -42,6 +42,13 @@ class ResilienceRecoveryState(str, Enum):
     RESTORED_WITH_FINDINGS = "RESTORED_WITH_FINDINGS"
 
 
+class ResilienceDrillEvidenceState(str, Enum):
+    READY = "READY"
+    PARTIAL = "PARTIAL"
+    FOUNDATION_STAGED = "FOUNDATION_STAGED"
+    NOT_READY = "NOT_READY"
+
+
 class ResilienceDependencyDescriptor(BaseModel):
     dependency_id: str = Field(description="Stable resilience inventory identifier.")
     kind: ResilienceDependencyKind = Field(
@@ -145,4 +152,109 @@ class ResilienceRestorePlanResponse(BaseModel):
     )
     status_summary: list[str] = Field(
         description="Operator-facing summary of what this restore plan does and does not claim."
+    )
+
+
+class ResilienceDrillEvidenceItem(BaseModel):
+    drill_id: str = Field(description="Stable resilience drill or recovery-proof identifier.")
+    status: ResilienceDrillEvidenceState = Field(
+        description="Current evidence posture for the drill or recovery proof."
+    )
+    required_for_activation: bool = Field(
+        description="Whether this evidence item is currently required before resilience governance can be treated as ready."
+    )
+    notes: str = Field(description="Human-readable explanation of the current evidence posture.")
+
+
+class ResilienceDrillEvidenceResponse(BaseModel):
+    service: str = Field(description="Service name emitting the resilience drill-evidence view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    drill_evidence_ready: bool = Field(
+        description="Whether current resilience drill and recovery-proof evidence is sufficient for governance readiness."
+    )
+    required_item_count: int = Field(
+        description="Number of drill-evidence items currently required for resilience governance."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required drill-evidence items currently marked ready."
+    )
+    items: list[ResilienceDrillEvidenceItem] = Field(
+        description="Governed resilience drill and recovery-proof evidence items."
+    )
+
+
+class ResilienceActivationReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the resilience activation-readiness view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_stage: ResilienceDeliveryStage = Field(
+        description="Current RFC-0017 delivery stage reflected in the resilience runtime."
+    )
+    recovery_state: ResilienceRecoveryState = Field(
+        description="Current top-level degraded-versus-restored runtime recovery state."
+    )
+    activation_ready: bool = Field(
+        description="Whether lotus-ai resilience posture is technically ready to be treated as an active governed capability."
+    )
+    blocking_findings: list[str] = Field(
+        description="Human-readable reasons why resilience posture is not yet technically activation-ready."
+    )
+    activation_path: list[str] = Field(
+        description="Governed high-level path required before resilience governance can be treated as active."
+    )
+
+
+class ResilienceRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(description="Stable resilience runbook readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before resilience governance can be treated as ready."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class ResilienceRunbookReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the resilience runbook-readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    runbook_ready: bool = Field(
+        description="Whether resilience operational runbook readiness is sufficient for governance review."
+    )
+    required_item_count: int = Field(
+        description="Number of resilience runbook items currently required."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required resilience runbook items currently marked complete."
+    )
+    items: list[ResilienceRunbookReadinessItem] = Field(
+        description="Governed resilience runbook readiness items."
+    )
+
+
+class ResilienceGovernanceStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the resilience governance view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    governance_ready: bool = Field(
+        description="Whether resilience runtime, restore, runbook, and drill-evidence posture are sufficient for governance review."
+    )
+    runtime_status: ResilienceRuntimeStatusResponse = Field(
+        description="Current resilience runtime posture."
+    )
+    restore_plan: ResilienceRestorePlanResponse = Field(
+        description="Current resilience restore-plan posture."
+    )
+    drill_evidence: ResilienceDrillEvidenceResponse = Field(
+        description="Current resilience drill and recovery-proof evidence posture."
+    )
+    activation_readiness: ResilienceActivationReadinessResponse = Field(
+        description="Technical activation-readiness summary for resilience posture."
+    )
+    runbook_readiness: ResilienceRunbookReadinessResponse = Field(
+        description="Operational runbook-readiness summary for resilience posture."
+    )
+    blocking_area_count: int = Field(
+        description="Number of top-level resilience governance areas currently blocking readiness."
+    )
+    governance_summary: list[str] = Field(
+        description="Human-readable summary of the current resilience governance posture."
     )

@@ -19,6 +19,10 @@
 - Platform runtime status: /platform/runtime-status
 - Resilience runtime status: /platform/resilience/runtime-status
 - Resilience restore plan: /platform/resilience/restore-plan
+- Resilience drill evidence: /platform/resilience/drill-evidence
+- Resilience activation readiness: /platform/resilience/activation-readiness
+- Resilience runbook readiness: /platform/resilience/runbook-readiness
+- Resilience governance status: /platform/resilience/governance-status
 - Deployment-split runtime status: /platform/deployment-split/runtime-status
 - Deployment-split activation readiness: /platform/deployment-split/activation-readiness
 - Deployment-split runbook readiness: /platform/deployment-split/runbook-readiness
@@ -101,17 +105,21 @@ Expected operator flow for SQL-backed stores:
 8. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
 9. only then proceed with rollout if readiness is `READY`
 
-## Resilience Inventory
+## Resilience Governance
 
-Before treating service continuity posture as anything stronger than bounded inventory truth:
+Before treating service continuity posture as anything stronger than bounded governed recovery truth:
 
 1. verify `GET /platform/resilience/runtime-status`
 2. inspect `GET /platform/resilience/restore-plan` to confirm restore ordering, validation criteria, and rollback boundaries before treating continuity as operator-ready
-3. confirm the embedded `resilience_runtime` block in `GET /platform/runtime-status` matches the detailed resilience view
-4. inspect `recovery_state`, `recovery_attention_dependency_count`, and dependency-level `recovery_findings` before treating a restart as a restored platform
-5. treat `LOCAL_OR_DEMO_CONTINUITY` as local or demo durability only, not as restart-safe production posture
-6. treat `PARTIAL_RUNTIME_DURABILITY` as evidence that some critical dependencies are durable while others still require external recovery or remain blocked
-7. do not infer backup automation, drill evidence, or resilience governance from this slice alone; those remain future RFC-0017 work
+3. inspect `GET /platform/resilience/drill-evidence` to confirm required recovery-proof evidence is current rather than only staged
+4. inspect `GET /platform/resilience/activation-readiness` when technical blockers need detail
+5. inspect `GET /platform/resilience/runbook-readiness` when operator-readiness blockers need detail
+6. inspect `GET /platform/resilience/governance-status` for the composed recovery view
+7. confirm the embedded `resilience_runtime` and `resilience_governance` blocks in `GET /platform/runtime-status` match the detailed resilience views
+8. inspect `recovery_state`, `recovery_attention_dependency_count`, and dependency-level `recovery_findings` before treating a restart as a restored platform
+9. treat `LOCAL_OR_DEMO_CONTINUITY` as local or demo durability only, not as restart-safe production posture
+10. treat `PARTIAL_RUNTIME_DURABILITY` as evidence that some critical dependencies are durable while others still require external recovery or remain blocked
+11. treat current drill-evidence posture as bounded platform proof only; it does not imply backup automation or full disaster-recovery orchestration
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
 
