@@ -29,6 +29,10 @@ from app.contracts.providers import (
     ProviderGovernanceStatusResponse,
     ProviderOperationsStatusResponse,
 )
+from app.contracts.resilience import (
+    ResilienceGovernanceStatusResponse,
+    ResilienceRuntimeStatusResponse,
+)
 from app.contracts.retrieval import RetrievalGovernanceStatusResponse
 from app.contracts.runtime_readiness import (
     StoreRuntimeStatusDescriptor,
@@ -111,6 +115,12 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     safety_governance: SafetyGovernanceStatusResponse = Field(
         description="Current safety governance posture for lotus-ai."
+    )
+    resilience_runtime: ResilienceRuntimeStatusResponse = Field(
+        description="Current RFC-0017 resilience inventory and runtime continuity posture for lotus-ai."
+    )
+    resilience_governance: ResilienceGovernanceStatusResponse = Field(
+        description="Current RFC-0017 resilience governance posture across runtime, restore, drill-evidence, activation, and runbook readiness."
     )
     production_baseline: ProductionBaselineRuntimeStatusResponse = Field(
         description="Current RFC-0020 production-baseline posture across major deployment dependencies."

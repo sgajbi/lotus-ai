@@ -136,6 +136,14 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.safety_governance.governance_ready is False
     assert status.safety_governance.blocking_area_count == 3
     assert status.safety_governance.runbook_readiness.runbook_ready is False
+    assert status.resilience_runtime.posture.value == "LOCAL_OR_DEMO_CONTINUITY"
+    assert status.resilience_runtime.delivery_stage.value == "DRILL_VERIFIED"
+    assert status.resilience_runtime.recovery_state.value == "DEGRADED"
+    assert status.resilience_runtime.authoritative_dependency_count >= 8
+    assert status.resilience_governance.governance_ready is False
+    assert status.resilience_governance.activation_readiness.activation_ready is False
+    assert status.resilience_governance.runbook_readiness.runbook_ready is True
+    assert status.resilience_governance.drill_evidence.drill_evidence_ready is False
     assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
     assert status.production_baseline.production_ready is False
     assert status.production_baseline.prod_shaped_local is False
@@ -171,6 +179,8 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
+    settings.retrieval_mode = "disabled"
+    settings.provider_mode = "disabled"
     upgrade_database_to_head(settings.database_url)
     reset_artifact_store_cache()
     queue = get_test_async_delivery_queue()
@@ -210,6 +220,9 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     assert status.deployment_split.effective_stage.value == "UNIFIED"
     assert status.deployment_split_governance.governance_ready is True
     assert status.evaluation_runtime.async_execution_route_mode.value == "UNIFIED_INTERNAL"
+    assert status.resilience_runtime.posture.value == "PARTIAL_RUNTIME_DURABILITY"
+    assert status.resilience_runtime.delivery_stage.value == "DRILL_VERIFIED"
+    assert status.resilience_runtime.recovery_state.value == "DEGRADED"
     assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
     assert status.production_baseline.prod_shaped_local is False
     assert status.production_baseline.production_ready is False

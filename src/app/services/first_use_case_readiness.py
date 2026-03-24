@@ -13,6 +13,7 @@ from app.services.eval_approval_gate_summary import build_first_use_case_approva
 from app.services.eval_catalog import build_evaluation_catalog
 from app.services.governance_readiness import summarize_activation_items
 from app.services.observability_governance import build_observability_governance_status
+from app.services.resilience_governance import build_resilience_governance_status
 from app.services.runtime_readiness import get_audit_store_runtime_status
 from app.services.safety_runtime import build_safety_execution_outcome
 
@@ -32,6 +33,7 @@ def build_first_use_case_readiness() -> FirstUseCaseReadinessResponse:
     access_control_governance = build_access_control_governance_status()
     artifact_runtime = build_artifact_runtime_status()
     observability_governance = build_observability_governance_status()
+    resilience_governance = build_resilience_governance_status()
 
     caller_policy_ready = (
         policy is not None
@@ -46,6 +48,7 @@ def build_first_use_case_readiness() -> FirstUseCaseReadinessResponse:
     audit_ready = settings.audit_store_mode == "sqlalchemy" and audit_store.status == "READY"
     access_control_ready = access_control_governance.governance_ready
     observability_ready = observability_governance.governance_ready
+    resilience_ready = resilience_governance.governance_ready
     artifact_ready = (
         artifact_runtime.metadata_store.status is RuntimeReadinessStatus.READY
         and artifact_runtime.object_store.status is RuntimeReadinessStatus.READY
@@ -126,6 +129,16 @@ def build_first_use_case_readiness() -> FirstUseCaseReadinessResponse:
             ),
         ),
         FirstUseCaseReadinessItem(
+            evidence_id="lotus_performance_resilience_governance",
+            status="READY" if resilience_ready else "NOT_READY",
+            required_for_activation=True,
+            notes=(
+                "Resilience governance is ready, so bounded first-use-case rollout can rely on explicit continuity, restore, and drill-evidence posture instead of implicit restart assumptions."
+                if resilience_ready
+                else "Limited rollout remains blocked until resilience governance is ready enough for lotus-performance onboarding to cite continuity posture credibly."
+            ),
+        ),
+        FirstUseCaseReadinessItem(
             evidence_id="lotus_performance_artifact_review_path",
             status="READY" if artifact_ready else "NOT_READY",
             required_for_activation=True,
@@ -154,7 +167,7 @@ def build_first_use_case_readiness() -> FirstUseCaseReadinessResponse:
                 "Lotus-performance first-use-case readiness is currently backed by runtime-produced evaluation evidence, bounded caller identity, explanation-only safety posture, and durable support review surfaces."
                 if readiness_ready
                 else (
-                    "Lotus-performance first-use-case readiness remains blocked until runtime-backed evidence, durable audit and caller posture, and bounded observability plus artifact review all reach the governed threshold for limited rollout."
+                    "Lotus-performance first-use-case readiness remains blocked until runtime-backed evidence, durable audit and caller posture, resilience governance, and bounded observability plus artifact review all reach the governed threshold for limited rollout."
                 )
             ),
             "This readiness surface is limited to bounded onboarding and limited-rollout evidence for lotus-performance analytics commentary; it does not imply broader downstream rollout by itself.",

@@ -171,10 +171,11 @@ Current state:
 
 1. the platform is ready enough for serious integration planning,
 2. first-use-case onboarding is now partially implemented through a bounded `lotus-performance` contract, limited-rollout readiness surface, runbook-readiness surface, composed governance view, and reusable onboarding template,
-3. a Dockerized live-provider demo path has now been proven technically,
-4. that same live demo also showed the current platform is still not at a truthful production-standard baseline because live success required demo-only posture and the governed first-use-case gate fell back to blocked.
-5. RFC-0020 runtime posture now distinguishes local or demo-capable from prod-shaped local by requiring both PostgreSQL-backed durable stores and the dedicated Redis-backed worker topology before the stack is treated as deployment-shaped.
-6. RFC-0020 now also exposes `/platform/production-baseline/runtime-status`, `/platform/production-baseline/activation-readiness`, `/platform/production-baseline/runbook-readiness`, and `/platform/production-baseline/governance-status` so operators can inspect go-live posture separately from demo success.
+3. first-use-case limited-rollout readiness now also depends on resilience governance so downstream onboarding does not overstate continuity posture,
+4. a Dockerized live-provider demo path has now been proven technically,
+5. that same live demo also showed the current platform is still not at a truthful production-standard baseline because live success required demo-only posture and the governed first-use-case gate fell back to blocked.
+6. RFC-0020 runtime posture now distinguishes local or demo-capable from prod-shaped local by requiring both PostgreSQL-backed durable stores and the dedicated Redis-backed worker topology before the stack is treated as deployment-shaped.
+7. RFC-0020 now also exposes `/platform/production-baseline/runtime-status`, `/platform/production-baseline/activation-readiness`, `/platform/production-baseline/runbook-readiness`, and `/platform/production-baseline/governance-status` so operators can inspect go-live posture separately from demo success.
 
 ## Roadmap
 
@@ -186,6 +187,12 @@ The next RFCs already identified in the repo describe the expected sequence:
 2. `RFC-0017` production resilience and disaster recovery
 3. `RFC-0018` governed embeddings and provider expansion
 4. `RFC-0019` governed document ingestion and corpus refresh
+
+Current status against that sequence:
+
+1. `RFC-0015` is implemented, including runtime, activation, runbook, and governance posture for unified versus split deployment stages.
+2. `RFC-0017` now exposes a bounded resilience runtime inventory surface, an ordered restore-plan surface, explicit degraded-versus-restored runtime posture for queue, worker, provider, retrieval, and artifact continuity dependencies, plus drill-evidence, activation, runbook, and governance surfaces.
+3. `RFC-0018` and `RFC-0019` remain roadmap items.
 
 Early RFC-0015 groundwork now exists as a bounded runtime surface:
 
@@ -207,7 +214,7 @@ The current preferred RFC-0016 target is:
 In practical feature terms, the roadmap is:
 
 1. build cleaner deployment topology on top of the now-explicit production baseline,
-2. improve resilience on top of that baseline,
+2. improve resilience on top of that baseline, using the new runtime, restore-plan, drill-evidence, and governance surfaces to harden actual recovery posture,
 3. expand retrieval and provider breadth,
 4. broaden corpus management.
 

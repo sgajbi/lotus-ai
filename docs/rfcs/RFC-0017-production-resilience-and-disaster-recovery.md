@@ -1,6 +1,6 @@
 # RFC-0017: Production Resilience and Disaster Recovery
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -8,6 +8,15 @@
 ## Summary
 
 `lotus-ai` should implement an explicit production resilience and disaster-recovery model so the platform can support real use cases without relying on implicit restart behavior, best-effort recovery, or architecture assumptions that are not yet governed.
+
+This RFC is bounded to platform-owned continuity truth:
+
+1. authoritative stores and critical dependencies,
+2. backup and restore posture descriptions,
+3. degraded versus restored runtime semantics,
+4. operator-visible recovery inventory, ordering, and evidence.
+
+It does not promise full infrastructure automation in one pass.
 
 The platform now has:
 
@@ -100,6 +109,18 @@ The first production-capable resilience posture should:
 4. define failover and rollback semantics where the platform already depends on durable runtime state,
 5. require verification through meaningful recovery and restore testing.
 
+The rollout posture for this RFC is intentionally staged:
+
+1. `INVENTORIED_ONLY`
+2. `ORDERED_RECOVERY_READY`
+3. `DRILL_VERIFIED`
+
+Slice 1 delivers the first posture only. It must not imply ordered restore or drill-backed readiness yet.
+
+Slice 2 delivers the second posture. It must define restore ordering and validation criteria, but it still must not imply drill-backed readiness yet.
+
+Slice 4 delivers the third posture. It adds drill-evidence, activation-readiness, runbook-readiness, and governance surfaces, but it still must not be mistaken for backup automation or full disaster-recovery orchestration.
+
 ## State Model and Invariants
 
 This RFC establishes the following invariants:
@@ -123,6 +144,18 @@ Required behavior:
 2. define backup and restore expectations per store,
 3. define how cross-store consistency is validated after restore,
 4. distinguish metadata restore from larger artifact/object restore where applicable.
+
+Authoritative stores in scope for the first pass are:
+
+1. audit
+2. prompt rollout
+3. retrieval metadata
+4. caller policy
+5. provider operations
+6. async runtime
+7. evaluation runtime
+8. artifact metadata
+9. artifact payload storage
 
 ### Queue, Worker, and Runtime Recovery
 
@@ -184,6 +217,17 @@ Acceptance gate:
 3. runtime/readiness surfaces stay truthful,
 4. no hidden continuity assumptions remain undocumented.
 
+Delivered interfaces for this slice:
+
+1. `/platform/resilience/runtime-status`
+2. embedded `resilience_runtime` block in `/platform/runtime-status`
+
+Explicit non-goals for this slice:
+
+1. no backup orchestration,
+2. no restore-plan endpoint yet,
+3. no drill evidence or resilience governance surface yet.
+
 ### Slice 2: Backup, Restore, and Recovery Ordering
 
 Outcome:
@@ -191,6 +235,11 @@ Outcome:
 1. backup and restore expectations exist for core stores,
 2. recovery ordering is explicit,
 3. restore success criteria are defined.
+
+Delivered interfaces for this slice:
+
+1. `/platform/resilience/restore-plan`
+2. `delivery_stage=ORDERED_RECOVERY_READY` in `/platform/resilience/runtime-status`
 
 Acceptance gate:
 
@@ -207,6 +256,11 @@ Outcome:
 2. recovery state is visible operationally,
 3. continuity behavior improves materially.
 
+Delivered interfaces for this slice:
+
+1. `recovery_state` plus dependency-level recovery findings in `/platform/resilience/runtime-status`
+2. embedded recovery-state summary in the `resilience_runtime` block of `/platform/runtime-status`
+
 Acceptance gate:
 
 1. degraded versus restored posture is explicit,
@@ -220,7 +274,7 @@ Outcome:
 
 1. resilience evidence becomes part of governance posture,
 2. recovery drills and restore proofs are reviewable,
-3. first-use-case rollout can depend on continuity evidence.
+3. first-use-case rollout can depend on continuity evidence and resilience governance rather than only local supportability signals.
 
 Acceptance gate:
 
@@ -228,6 +282,14 @@ Acceptance gate:
 2. recovery evidence is current and reviewable,
 3. first-use-case onboarding can cite the resilience posture credibly,
 4. the platform is materially closer to enterprise-grade operational continuity.
+
+Delivered interfaces for this slice:
+
+1. `/platform/resilience/drill-evidence`
+2. `/platform/resilience/activation-readiness`
+3. `/platform/resilience/runbook-readiness`
+4. `/platform/resilience/governance-status`
+5. embedded `resilience_governance` block in `/platform/runtime-status`
 
 ## Risks
 

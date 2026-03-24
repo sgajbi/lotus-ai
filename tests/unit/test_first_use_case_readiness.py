@@ -16,7 +16,7 @@ def test_first_use_case_readiness_reports_staged_only_without_runtime_eval_evide
     assert readiness.readiness_ready is False
     assert readiness.approval_gate.domain_id == "first_use_case_onboarding"
     assert readiness.approval_gate.evidence_state.value == "STAGED_ONLY"
-    assert readiness.required_item_count == 8
+    assert readiness.required_item_count == 9
     assert readiness.completed_required_item_count == 4
     assert readiness.items[0].status == "READY"
     assert readiness.items[1].status == "READY"
@@ -25,7 +25,8 @@ def test_first_use_case_readiness_reports_staged_only_without_runtime_eval_evide
     assert readiness.items[4].status == "NOT_READY"
     assert readiness.items[5].status == "NOT_READY"
     assert readiness.items[6].status == "NOT_READY"
-    assert readiness.items[7].status == "READY"
+    assert readiness.items[7].status == "NOT_READY"
+    assert readiness.items[8].status == "READY"
 
 
 def test_first_use_case_readiness_keeps_limited_rollout_blocked_without_durable_review_surfaces() -> (
@@ -49,7 +50,8 @@ def test_first_use_case_readiness_keeps_limited_rollout_blocked_without_durable_
     assert readiness.items[4].status == "NOT_READY"
     assert readiness.items[5].status == "NOT_READY"
     assert readiness.items[6].status == "NOT_READY"
-    assert readiness.items[7].status == "READY"
+    assert readiness.items[7].status == "NOT_READY"
+    assert readiness.items[8].status == "READY"
 
 
 def test_first_use_case_readiness_uses_sql_seeded_lotus_performance_policy(
@@ -80,5 +82,6 @@ def test_first_use_case_readiness_uses_sql_seeded_lotus_performance_policy(
     assert readiness.items[4].status == "READY"
     assert readiness.items[5].status == "READY"
     assert readiness.items[6].status == "READY"
-    assert readiness.items[7].status == "READY"
-    assert readiness.readiness_ready is True
+    assert readiness.items[7].status == "NOT_READY"
+    assert readiness.items[8].status == "READY"
+    assert readiness.readiness_ready is False
