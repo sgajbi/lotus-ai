@@ -2,6 +2,10 @@
 
 This roadmap is the canonical execution plan for `lotus-ai`.
 
+For the current implementation snapshot and near-term roadmap by feature area, read:
+
+- [feature-status-and-roadmap.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/feature-status-and-roadmap.md)
+
 The guiding principle is:
 
 build the minimum platform slice that is useful, well-governed, and easy to understand before expanding into more powerful AI behaviors.
