@@ -155,8 +155,15 @@ evaluation runtime evidence.
 
 RFC-0012 Slice 1 adds an explicit caller-policy registry seam alongside those other runtime
 control planes. Caller identity and bounded capability posture are now resolved through a
-dedicated access-control repository, with restart-safe SQL-backed storage available before
-broader request blocking is turned on in later slices.
+dedicated access-control repository, with restart-safe SQL-backed storage available for
+enforced request paths.
+
+RFC-0012 Slice 2 activates that registry on the data plane. `/ai/tasks/execute`, governed
+retrieval search, and the live-provider execution path now fail explicitly for unknown callers,
+disallowed tasks, disallowed retrieval sources, missing required tenant identity, and
+unauthorized live-provider use. Task responses, execution evidence, and persisted audit records
+all now carry the same typed authorization decision instead of leaving caller policy as a
+documentary-only operator surface.
 
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.

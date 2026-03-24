@@ -591,6 +591,10 @@ def _execute_task_case(
                 caller=CallerMetadata(
                     caller_app=case.input_payload.get("caller_app", "lotus-ai"),
                     correlation_id=case.input_payload.get("correlation_id", f"eval-{case.case_id}"),
+                    tenant_id=_default_eval_tenant_id(
+                        caller_app=str(case.input_payload.get("caller_app", "lotus-ai")),
+                        case_tenant_id=case.input_payload.get("tenant_id"),
+                    ),
                 ),
                 context=TaskContextEnvelope(
                     summary=case.summary,
@@ -617,6 +621,7 @@ def _build_task_payload(*, case: EvaluationFixtureRuntimeCase) -> dict[str, obje
         not in {
             "caller_app",
             "correlation_id",
+            "tenant_id",
             "task_id",
             "retrieval_mode",
             "index_sources",
@@ -629,6 +634,16 @@ def _build_task_payload(*, case: EvaluationFixtureRuntimeCase) -> dict[str, obje
         payload["source_ids"] = payload.pop("source_filters")
     payload["evaluation_case_id"] = case.case_id
     return payload
+
+
+def _default_eval_tenant_id(*, caller_app: str, case_tenant_id: object | None) -> str | None:
+    if isinstance(case_tenant_id, str) and case_tenant_id:
+        return case_tenant_id
+    if caller_app == "lotus-manage":
+        return "tenant-sg-001"
+    if caller_app == "lotus-advise":
+        return "tenant-us-002"
+    return None
 
 
 @contextmanager

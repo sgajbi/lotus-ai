@@ -14,7 +14,11 @@ def test_build_task_retrieval_execution_summary_tracks_sources_and_refusals() ->
         TaskExecutionRequest(
             task_id="knowledge_search.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-rsum-1"),
+            caller=CallerMetadata(
+                caller_app="lotus-manage",
+                correlation_id="corr-rsum-1",
+                tenant_id="tenant-sg-001",
+            ),
             context=TaskContextEnvelope(
                 summary="Search Lotus knowledge sources",
                 payload={
@@ -31,7 +35,11 @@ def test_build_task_retrieval_execution_summary_tracks_sources_and_refusals() ->
         TaskExecutionRequest(
             task_id="knowledge_answer.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-rsum-2"),
+            caller=CallerMetadata(
+                caller_app="lotus-manage",
+                correlation_id="corr-rsum-2",
+                tenant_id="tenant-sg-001",
+            ),
             context=TaskContextEnvelope(
                 summary="Answer from Lotus knowledge sources",
                 payload={
@@ -48,7 +56,11 @@ def test_build_task_retrieval_execution_summary_tracks_sources_and_refusals() ->
         TaskExecutionRequest(
             task_id="knowledge_answer.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-rsum-3"),
+            caller=CallerMetadata(
+                caller_app="lotus-manage",
+                correlation_id="corr-rsum-3",
+                tenant_id="tenant-sg-001",
+            ),
             context=TaskContextEnvelope(
                 summary="Answer from Lotus knowledge sources",
                 payload={

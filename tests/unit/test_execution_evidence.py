@@ -1,5 +1,11 @@
 from typing import Any, cast
 
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.prompts import (
     PromptDescriptor,
     PromptLifecycleStatus,
@@ -22,6 +28,21 @@ from app.contracts.tasks import (
 )
 from app.services.execution_evidence import build_execution_evidence
 from app.services.safety_runtime import build_safety_execution_outcome
+
+
+def _authorization_decision() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-manage",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.RESTRICTED,
+        task_id="explain.v1",
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id="tenant-sg-001",
+        summary="Caller is authorized for bounded task execution.",
+    )
 
 
 def test_build_execution_evidence_returns_expected_descriptors() -> None:
@@ -78,13 +99,14 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
     evidence = build_execution_evidence(
         request=request,
         capability=capability,
+        authorization=_authorization_decision(),
         prompt=prompt,
         prompt_selection=prompt_selection,
         provider_execution=provider_execution,
         safety_outcome=safety_outcome,
     )
 
-    assert len(evidence.descriptors) == 5
+    assert len(evidence.descriptors) == 6
     assert evidence.descriptors[0].evidence_type == "task_contract"
     assert evidence.descriptors[1].evidence_type == "prompt_selection"
     assert evidence.descriptors[1].attributes["rollout_role"] == "ACTIVE"
@@ -105,6 +127,9 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
     )
     assert control_results[-1]["control_id"] == ("runtime_redaction_engine")
     assert evidence.descriptors[4].evidence_type == "retrieval_posture"
+    assert evidence.descriptors[5].evidence_type == "access_control"
+    assert evidence.descriptors[5].attributes["outcome"] == "ALLOWED"
+    assert evidence.descriptors[5].attributes["tenant_policy_mode"] == "RESTRICTED"
 
 
 def test_build_execution_evidence_captures_live_retrieval_request_posture() -> None:
@@ -163,6 +188,13 @@ def test_build_execution_evidence_captures_live_retrieval_request_posture() -> N
     evidence = build_execution_evidence(
         request=request,
         capability=capability,
+        authorization=_authorization_decision().model_copy(
+            update={
+                "task_id": "knowledge_search.v1",
+                "requested_source_ids": ["lotus-platform-rfcs"],
+                "effective_source_ids": ["lotus-platform-rfcs"],
+            }
+        ),
         prompt=prompt,
         prompt_selection=prompt_selection,
         provider_execution=provider_execution,
@@ -176,3 +208,6 @@ def test_build_execution_evidence_captures_live_retrieval_request_posture() -> N
     assert retrieval_descriptor.attributes["request_provider_mode"] == "live_search"
     assert retrieval_descriptor.attributes["catalog_only"] is False
     assert retrieval_descriptor.attributes["hit_count"] == 2
+    access_control_descriptor = evidence.descriptors[5]
+    assert access_control_descriptor.evidence_type == "access_control"
+    assert access_control_descriptor.attributes["effective_source_ids"] == ["lotus-platform-rfcs"]

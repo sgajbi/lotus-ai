@@ -25,6 +25,7 @@ class AuditRecordModel(Base):
     redaction_posture: Mapped[str] = mapped_column(String(64), nullable=False)
     enforced_safety_controls: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     safety_outcome_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    authorization_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     generated_at: Mapped[str] = mapped_column(String(64), nullable=False)
     stubbed: Mapped[bool] = mapped_column(Boolean, nullable=False)
     context_summary: Mapped[str] = mapped_column(Text, nullable=False)

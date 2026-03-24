@@ -1,3 +1,9 @@
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
@@ -5,6 +11,21 @@ from app.contracts.safety import RedactionPosture
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.repositories.memory_audit_repository import InMemoryAuditRepository
 from app.services.safety_runtime import build_safety_execution_outcome_from_record
+
+
+def _authorization() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-manage",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.RESTRICTED,
+        task_id="explain.v1",
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id="tenant-sg-001",
+        summary="Caller is authorized for bounded task execution.",
+    )
 
 
 def test_in_memory_audit_store_save_and_get() -> None:
@@ -40,6 +61,7 @@ def test_in_memory_audit_store_save_and_get() -> None:
             redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
             enforced_controls=["response_labeling", "correlation_and_audit"],
         ),
+        authorization=_authorization(),
         generated_at="2026-03-22T00:00:00Z",
         stubbed=True,
         context_summary="Explain rebalance outcome",
@@ -97,6 +119,7 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
             redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
             enforced_controls=["response_labeling", "correlation_and_audit"],
         ),
+        authorization=_authorization(),
         generated_at="2026-03-22T00:00:00Z",
         stubbed=True,
         context_summary="Old record",

@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from pytest import MonkeyPatch
 from pytest_mock import MockerFixture
 
+from app.contracts.access_control import AuthorizationOutcome
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from app.contracts.providers import ProviderExecutionResponse
@@ -33,7 +34,11 @@ def _request(
     return TaskExecutionRequest(
         task_id=task_id,
         input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-        caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-123"),
+        caller=CallerMetadata(
+            caller_app="lotus-manage",
+            correlation_id="corr-123",
+            tenant_id="tenant-sg-001",
+        ),
         context=TaskContextEnvelope(
             summary="Explain rebalance outcome",
             payload={"status": "BLOCKED", "rule_count": 3},
@@ -68,9 +73,11 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
         "correlation_and_audit",
     ]
     assert response.audit.safety.control_results[-1].control_id == "runtime_redaction_engine"
-    assert len(response.evidence.descriptors) == 5
+    assert len(response.evidence.descriptors) == 6
     assert response.evidence.descriptors[0].evidence_type == "task_contract"
     assert response.evidence.descriptors[1].evidence_type == "prompt_selection"
+    assert response.audit.authorization.outcome == AuthorizationOutcome.ALLOWED
+    assert response.evidence.descriptors[5].evidence_type == "access_control"
 
 
 def test_execute_task_enforces_runtime_redaction_for_provider_backed_output() -> None:
@@ -116,6 +123,54 @@ def test_execute_task_rejects_output_label_mismatch() -> None:
         raise AssertionError("Expected HTTPException for output label mismatch")
 
 
+def test_execute_task_blocks_unknown_caller() -> None:
+    try:
+        execute_task(
+            TaskExecutionRequest(
+                task_id="explain.v1",
+                input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+                caller=CallerMetadata(caller_app="unknown-app", correlation_id="corr-unknown"),
+                context=TaskContextEnvelope(
+                    summary="Explain rebalance outcome",
+                    payload={"status": "BLOCKED"},
+                    source_refs=[],
+                ),
+                expected_output_label=OutputLabel.EXPLANATION_ONLY,
+            )
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 403
+        assert "not registered" in str(exc.detail)
+    else:
+        raise AssertionError("Expected HTTPException for unknown caller")
+
+
+def test_execute_task_blocks_restricted_tenant_mismatch() -> None:
+    try:
+        execute_task(
+            TaskExecutionRequest(
+                task_id="explain.v1",
+                input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+                caller=CallerMetadata(
+                    caller_app="lotus-manage",
+                    correlation_id="corr-tenant-mismatch",
+                    tenant_id="tenant-us-002",
+                ),
+                context=TaskContextEnvelope(
+                    summary="Explain rebalance outcome",
+                    payload={"status": "BLOCKED"},
+                    source_refs=[],
+                ),
+                expected_output_label=OutputLabel.EXPLANATION_ONLY,
+            )
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 403
+        assert "not authorized" in str(exc.detail)
+    else:
+        raise AssertionError("Expected HTTPException for tenant mismatch")
+
+
 def test_execute_task_persists_sorted_audit_context_keys(mocker: MockerFixture) -> None:
     audit_store = mocker.Mock()
     mocker.patch("app.services.task_execution_pipeline.get_audit_store", return_value=audit_store)
@@ -124,7 +179,11 @@ def test_execute_task_persists_sorted_audit_context_keys(mocker: MockerFixture) 
         TaskExecutionRequest(
             task_id="explain.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-123"),
+            caller=CallerMetadata(
+                caller_app="lotus-manage",
+                correlation_id="corr-123",
+                tenant_id="tenant-sg-001",
+            ),
             context=TaskContextEnvelope(
                 summary="Explain rebalance outcome",
                 payload={"zeta": 1, "alpha": 2},
@@ -140,6 +199,7 @@ def test_execute_task_persists_sorted_audit_context_keys(mocker: MockerFixture) 
     assert audit_record.caller_app == "lotus-manage"
     assert audit_record.correlation_id == "corr-123"
     assert audit_record.prompt_version == "foundation.explain.v1"
+    assert audit_record.authorization.outcome == AuthorizationOutcome.ALLOWED
 
 
 def test_execute_task_runs_bounded_knowledge_search() -> None:
@@ -147,7 +207,11 @@ def test_execute_task_runs_bounded_knowledge_search() -> None:
         TaskExecutionRequest(
             task_id="knowledge_search.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ks-123"),
+            caller=CallerMetadata(
+                caller_app="lotus-manage",
+                correlation_id="corr-ks-123",
+                tenant_id="tenant-sg-001",
+            ),
             context=TaskContextEnvelope(
                 summary="Search Lotus knowledge sources",
                 payload={
@@ -189,7 +253,11 @@ def test_execute_task_rejects_invalid_knowledge_search_payload() -> None:
             TaskExecutionRequest(
                 task_id="knowledge_search.v1",
                 input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-                caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ks-124"),
+                caller=CallerMetadata(
+                    caller_app="lotus-manage",
+                    correlation_id="corr-ks-124",
+                    tenant_id="tenant-sg-001",
+                ),
                 context=TaskContextEnvelope(
                     summary="Search Lotus knowledge sources",
                     payload={"query": "", "limit": 3},
@@ -205,12 +273,45 @@ def test_execute_task_rejects_invalid_knowledge_search_payload() -> None:
         raise AssertionError("Expected HTTPException for invalid knowledge-search payload")
 
 
+def test_execute_task_blocks_knowledge_search_for_unapproved_source() -> None:
+    try:
+        execute_task(
+            TaskExecutionRequest(
+                task_id="knowledge_search.v1",
+                input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+                caller=CallerMetadata(
+                    caller_app="lotus-workbench",
+                    correlation_id="corr-ks-unauthorized-source",
+                ),
+                context=TaskContextEnvelope(
+                    summary="Search Lotus knowledge sources",
+                    payload={
+                        "query": "shared ai platform service",
+                        "source_ids": ["lotus-platform-standards"],
+                        "limit": 3,
+                    },
+                    source_refs=[],
+                ),
+                expected_output_label=OutputLabel.RETRIEVAL_ANSWER,
+            )
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 403
+        assert "outside its approved policy scope" in str(exc.detail)
+    else:
+        raise AssertionError("Expected HTTPException for unauthorized retrieval source")
+
+
 def test_execute_task_runs_bounded_knowledge_answer() -> None:
     response = execute_task(
         TaskExecutionRequest(
             task_id="knowledge_answer.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ka-123"),
+            caller=CallerMetadata(
+                caller_app="lotus-manage",
+                correlation_id="corr-ka-123",
+                tenant_id="tenant-sg-001",
+            ),
             context=TaskContextEnvelope(
                 summary="Answer from Lotus knowledge sources",
                 payload={
@@ -245,7 +346,11 @@ def test_execute_task_refuses_low_support_knowledge_answer() -> None:
         TaskExecutionRequest(
             task_id="knowledge_answer.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ka-124"),
+            caller=CallerMetadata(
+                caller_app="lotus-manage",
+                correlation_id="corr-ka-124",
+                tenant_id="tenant-sg-001",
+            ),
             context=TaskContextEnvelope(
                 summary="Answer from Lotus knowledge sources",
                 payload={
@@ -293,7 +398,11 @@ def test_execute_task_routes_knowledge_search_through_live_retrieval(
         TaskExecutionRequest(
             task_id="knowledge_search.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ks-live-001"),
+            caller=CallerMetadata(
+                caller_app="lotus-manage",
+                correlation_id="corr-ks-live-001",
+                tenant_id="tenant-sg-001",
+            ),
             context=TaskContextEnvelope(
                 summary="Search Lotus knowledge sources",
                 payload={
@@ -343,7 +452,11 @@ def test_execute_task_enforces_runtime_redaction_for_retrieval_backed_output(
         TaskExecutionRequest(
             task_id="knowledge_search.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-ks-safe-001"),
+            caller=CallerMetadata(
+                caller_app="lotus-manage",
+                correlation_id="corr-ks-safe-001",
+                tenant_id="tenant-sg-001",
+            ),
             context=TaskContextEnvelope(
                 summary="Search Lotus knowledge sources",
                 payload={
@@ -426,7 +539,9 @@ def test_execute_task_rejects_live_knowledge_search_when_searchable_corpus_is_un
                 task_id="knowledge_search.v1",
                 input_mode=TaskInputMode.STRUCTURED_CONTEXT,
                 caller=CallerMetadata(
-                    caller_app="lotus-manage", correlation_id="corr-ks-live-blocked-001"
+                    caller_app="lotus-manage",
+                    correlation_id="corr-ks-live-blocked-001",
+                    tenant_id="tenant-sg-001",
                 ),
                 context=TaskContextEnvelope(
                     summary="Search Lotus knowledge sources",
@@ -493,6 +608,60 @@ def test_execute_task_routes_allowlisted_task_through_live_provider(
     )
     assert provider_evidence.attributes["provider_id"] == "text.openai"
     assert provider_evidence.attributes["model_id"] == "gpt-5.4"
+    access_control_evidence = next(
+        descriptor
+        for descriptor in response.evidence.descriptors
+        if descriptor.evidence_type == "access_control"
+    )
+    assert access_control_evidence.attributes["outcome"] == "ALLOWED"
+
+
+def test_execute_task_blocks_live_provider_for_caller_without_live_permission(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_input_cost_per_1k_tokens = 0.01
+    settings.live_text_output_cost_per_1k_tokens = 0.03
+    monkeypatch.setattr(
+        "app.providers.openai_live_text_provider._post_openai_response",
+        lambda **_: {
+            "id": "resp_live_unauthorized",
+            "model": "gpt-5.4",
+            "output_text": "Live explanation response.",
+            "usage": {"input_tokens": 120, "output_tokens": 30, "total_tokens": 150},
+        },
+    )
+
+    try:
+        execute_task(
+            TaskExecutionRequest(
+                task_id="explain.v1",
+                input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+                caller=CallerMetadata(
+                    caller_app="lotus-advise",
+                    correlation_id="corr-live-unauthorized",
+                    tenant_id="tenant-us-002",
+                ),
+                context=TaskContextEnvelope(
+                    summary="Explain advisory posture",
+                    payload={"status": "PENDING_REVIEW"},
+                    source_refs=[],
+                ),
+                expected_output_label=OutputLabel.EXPLANATION_ONLY,
+            )
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 403
+        assert "not authorized for live provider execution" in str(exc.detail)
+    else:
+        raise AssertionError("Expected HTTPException for unauthorized live provider access")
 
 
 def test_execute_task_reflects_promoted_prompt_selection_in_audit_and_evidence(

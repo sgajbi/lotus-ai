@@ -42,8 +42,10 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["audit"]["safety"]["redaction_posture"] == "MINIMIZATION_REQUIRED"
     assert body["audit"]["safety"]["disposition"] == "DOCUMENTED_ONLY"
     assert body["audit"]["safety"]["runtime_redaction_active"] is False
-    assert len(body["evidence"]["descriptors"]) == 5
+    assert body["audit"]["authorization"]["outcome"] == "ALLOWED"
+    assert len(body["evidence"]["descriptors"]) == 6
     assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
+    assert body["evidence"]["descriptors"][5]["evidence_type"] == "access_control"
     assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"
 
 
@@ -205,6 +207,7 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
     ]
     assert body["safety_outcome"]["disposition"] == "DOCUMENTED_ONLY"
     assert body["safety_outcome"]["runtime_redaction_active"] is False
+    assert body["authorization"]["outcome"] == "ALLOWED"
     assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
     assert body["structured_output"]["caller_app"] == "lotus-advise"
 
@@ -562,3 +565,100 @@ def test_task_execute_contract_reports_live_retrieval_search_truthfully(
     )
     assert retrieval_evidence["attributes"]["request_execution_stage"] == "LIVE_SEARCH"
     assert retrieval_evidence["attributes"]["request_provider_mode"] == "live_search"
+
+
+def test_task_execute_contract_blocks_unknown_caller(client: TestClient) -> None:
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "unknown-app",
+                "correlation_id": "corr-unknown",
+            },
+            "context": {
+                "summary": "Explain rebalance outcome",
+                "payload": {"status": "BLOCKED"},
+                "source_refs": [],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    assert response.status_code == 403
+    assert "not registered" in response.json()["detail"]
+
+
+def test_task_execute_contract_blocks_unauthorized_retrieval_source(client: TestClient) -> None:
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "knowledge_search.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-workbench",
+                "correlation_id": "corr-source-blocked",
+            },
+            "context": {
+                "summary": "Search Lotus knowledge sources",
+                "payload": {
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-standards"],
+                    "limit": 3,
+                },
+                "source_refs": [],
+            },
+            "expected_output_label": "RETRIEVAL_ANSWER",
+        },
+    )
+
+    assert response.status_code == 403
+    assert "approved policy scope" in response.json()["detail"]
+
+
+def test_task_execute_contract_blocks_live_provider_for_caller_without_live_permission(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_input_cost_per_1k_tokens = 0.01
+    settings.live_text_output_cost_per_1k_tokens = 0.03
+    monkeypatch.setattr(
+        "app.providers.openai_live_text_provider._post_openai_response",
+        lambda **_: {
+            "id": "resp_live_unauthorized",
+            "model": "gpt-5.4",
+            "output_text": "Live explanation response.",
+            "usage": {"input_tokens": 120, "output_tokens": 30, "total_tokens": 150},
+        },
+    )
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-advise",
+                "correlation_id": "corr-live-unauthorized",
+                "tenant_id": "tenant-us-002",
+            },
+            "context": {
+                "summary": "Explain advisory posture",
+                "payload": {"status": "PENDING_REVIEW"},
+                "source_refs": [],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    assert response.status_code == 403
+    assert "not authorized for live provider execution" in response.json()["detail"]

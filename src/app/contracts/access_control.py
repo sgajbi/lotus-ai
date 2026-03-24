@@ -24,6 +24,23 @@ class CallerLifecycleStatus(str, Enum):
     DISABLED = "DISABLED"
 
 
+class AuthorizationCapabilityType(str, Enum):
+    TASK_EXECUTION = "task_execution"
+    RETRIEVAL_EXECUTION = "retrieval_execution"
+    LIVE_PROVIDER_EXECUTION = "live_provider_execution"
+
+
+class AuthorizationOutcome(str, Enum):
+    ALLOWED = "ALLOWED"
+    BLOCKED_UNKNOWN_CALLER = "BLOCKED_UNKNOWN_CALLER"
+    BLOCKED_CALLER_DISABLED = "BLOCKED_CALLER_DISABLED"
+    BLOCKED_TASK_NOT_ALLOWED = "BLOCKED_TASK_NOT_ALLOWED"
+    BLOCKED_RETRIEVAL_SOURCE_NOT_ALLOWED = "BLOCKED_RETRIEVAL_SOURCE_NOT_ALLOWED"
+    BLOCKED_LIVE_PROVIDER_NOT_ALLOWED = "BLOCKED_LIVE_PROVIDER_NOT_ALLOWED"
+    BLOCKED_TENANT_REQUIRED = "BLOCKED_TENANT_REQUIRED"
+    BLOCKED_TENANT_NOT_ALLOWED = "BLOCKED_TENANT_NOT_ALLOWED"
+
+
 class CallerPolicyDescriptor(BaseModel):
     caller_app: str = Field(description="Recognized caller application identifier.")
     lifecycle_status: CallerLifecycleStatus = Field(
@@ -57,6 +74,37 @@ class CallerPolicyDescriptor(BaseModel):
         default_factory=list,
         description="Explicit tenant ids allowed for this caller when tenant policy is restricted.",
     )
+
+
+class AuthorizationDecision(BaseModel):
+    caller_app: str = Field(description="Caller application evaluated by the access-control layer.")
+    capability_type: AuthorizationCapabilityType = Field(
+        description="Capability class evaluated by the access-control layer."
+    )
+    outcome: AuthorizationOutcome = Field(
+        description="Typed access-control outcome recorded for the evaluated request."
+    )
+    allowed: bool = Field(description="Whether the evaluated request was authorized.")
+    tenant_policy_mode: TenantPolicyMode = Field(
+        description="Tenant restriction mode used while resolving this authorization decision."
+    )
+    task_id: str | None = Field(
+        default=None,
+        description="Task identifier evaluated for authorization when the capability is task execution.",
+    )
+    requested_source_ids: list[str] = Field(
+        default_factory=list,
+        description="Caller-requested retrieval source filters considered during authorization.",
+    )
+    effective_source_ids: list[str] = Field(
+        default_factory=list,
+        description="Retrieval source filters authorized for execution after policy resolution.",
+    )
+    tenant_id: str | None = Field(
+        default=None,
+        description="Tenant identity evaluated by the access-control layer when present.",
+    )
+    summary: str = Field(description="Human-readable explanation of the authorization outcome.")
 
 
 class CallerPolicyCatalogResponse(BaseModel):

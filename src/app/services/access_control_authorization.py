@@ -1,0 +1,291 @@
+from __future__ import annotations
+
+from fastapi import HTTPException, status
+
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    CallerLifecycleStatus,
+    TenantPolicyMode,
+)
+from app.services.caller_policy_store import get_caller_policy_repository
+
+
+def authorize_request(
+    *,
+    caller_app: str,
+    capability_type: AuthorizationCapabilityType,
+    tenant_id: str | None = None,
+    task_id: str | None = None,
+    source_ids: list[str] | None = None,
+) -> AuthorizationDecision:
+    requested_source_ids = list(source_ids or [])
+    policy = get_caller_policy_repository().get_policy(caller_app)
+    if policy is None:
+        return AuthorizationDecision(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            outcome=AuthorizationOutcome.BLOCKED_UNKNOWN_CALLER,
+            allowed=False,
+            tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            summary=(
+                f"Caller '{caller_app}' is not registered in the caller policy registry and is "
+                "blocked by default."
+            ),
+        )
+
+    if policy.lifecycle_status != CallerLifecycleStatus.ACTIVE:
+        return AuthorizationDecision(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            outcome=AuthorizationOutcome.BLOCKED_CALLER_DISABLED,
+            allowed=False,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            summary=(
+                f"Caller '{caller_app}' is registered but currently disabled for protected "
+                "lotus-ai execution paths."
+            ),
+        )
+
+    tenant_decision = _evaluate_tenant_policy(
+        caller_app=caller_app,
+        tenant_id=tenant_id,
+        capability_type=capability_type,
+        task_id=task_id,
+        requested_source_ids=requested_source_ids,
+        tenant_policy_mode=policy.tenant_policy_mode,
+        restricted_tenant_ids=policy.restricted_tenant_ids,
+    )
+    if tenant_decision is not None:
+        return tenant_decision
+
+    if capability_type == AuthorizationCapabilityType.TASK_EXECUTION:
+        if task_id not in policy.allowed_task_ids:
+            return AuthorizationDecision(
+                caller_app=caller_app,
+                capability_type=capability_type,
+                outcome=AuthorizationOutcome.BLOCKED_TASK_NOT_ALLOWED,
+                allowed=False,
+                tenant_policy_mode=policy.tenant_policy_mode,
+                task_id=task_id,
+                requested_source_ids=requested_source_ids,
+                tenant_id=tenant_id,
+                summary=(
+                    f"Caller '{caller_app}' is not authorized to execute task '{task_id}'."
+                ),
+            )
+        source_decision = _evaluate_retrieval_sources(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            allowed_source_ids=policy.allowed_retrieval_source_ids,
+            tenant_id=tenant_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+        )
+        if source_decision is not None:
+            return source_decision
+        effective_source_ids = (
+            requested_source_ids or list(policy.allowed_retrieval_source_ids)
+            if task_id in {"knowledge_search.v1", "knowledge_answer.v1"}
+            else []
+        )
+        return _allowed_decision(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            tenant_id=tenant_id,
+            task_id=task_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            requested_source_ids=requested_source_ids,
+            effective_source_ids=effective_source_ids,
+            summary=(
+                f"Caller '{caller_app}' is authorized for task '{task_id}' under the current "
+                "caller policy registry."
+            ),
+        )
+
+    if capability_type == AuthorizationCapabilityType.RETRIEVAL_EXECUTION:
+        source_decision = _evaluate_retrieval_sources(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            allowed_source_ids=policy.allowed_retrieval_source_ids,
+            tenant_id=tenant_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+        )
+        if source_decision is not None:
+            return source_decision
+        effective_source_ids = requested_source_ids or list(policy.allowed_retrieval_source_ids)
+        return _allowed_decision(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            tenant_id=tenant_id,
+            task_id=task_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            requested_source_ids=requested_source_ids,
+            effective_source_ids=effective_source_ids,
+            summary=(
+                f"Caller '{caller_app}' is authorized to search the approved retrieval corpus."
+            ),
+        )
+
+    if capability_type == AuthorizationCapabilityType.LIVE_PROVIDER_EXECUTION:
+        if not policy.allow_live_provider:
+            return AuthorizationDecision(
+                caller_app=caller_app,
+                capability_type=capability_type,
+                outcome=AuthorizationOutcome.BLOCKED_LIVE_PROVIDER_NOT_ALLOWED,
+                allowed=False,
+                tenant_policy_mode=policy.tenant_policy_mode,
+                task_id=task_id,
+                requested_source_ids=requested_source_ids,
+                tenant_id=tenant_id,
+                summary=(
+                    f"Caller '{caller_app}' is not authorized for live provider execution."
+                ),
+            )
+        return _allowed_decision(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            tenant_id=tenant_id,
+            task_id=task_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            requested_source_ids=requested_source_ids,
+            effective_source_ids=[],
+            summary=(
+                f"Caller '{caller_app}' is authorized for live provider execution under the "
+                "current caller policy registry."
+            ),
+        )
+
+    raise RuntimeError(f"Unsupported authorization capability type: {capability_type.value}")
+
+
+def require_authorized(decision: AuthorizationDecision) -> AuthorizationDecision:
+    if decision.allowed:
+        return decision
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=decision.summary)
+
+
+def _evaluate_tenant_policy(
+    *,
+    caller_app: str,
+    tenant_id: str | None,
+    capability_type: AuthorizationCapabilityType,
+    task_id: str | None,
+    requested_source_ids: list[str],
+    tenant_policy_mode: TenantPolicyMode,
+    restricted_tenant_ids: list[str],
+) -> AuthorizationDecision | None:
+    if tenant_policy_mode == TenantPolicyMode.OPTIONAL:
+        return None
+    if tenant_id is None:
+        return AuthorizationDecision(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            outcome=AuthorizationOutcome.BLOCKED_TENANT_REQUIRED,
+            allowed=False,
+            tenant_policy_mode=tenant_policy_mode,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=None,
+            summary=(
+                f"Caller '{caller_app}' must supply tenant_id under the current access-control "
+                "policy."
+            ),
+        )
+    if tenant_policy_mode == TenantPolicyMode.RESTRICTED and tenant_id not in restricted_tenant_ids:
+        return AuthorizationDecision(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            outcome=AuthorizationOutcome.BLOCKED_TENANT_NOT_ALLOWED,
+            allowed=False,
+            tenant_policy_mode=tenant_policy_mode,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            summary=(
+                f"Tenant '{tenant_id}' is not authorized for caller '{caller_app}' under the "
+                "current access-control policy."
+            ),
+        )
+    return None
+
+
+def _evaluate_retrieval_sources(
+    *,
+    caller_app: str,
+    capability_type: AuthorizationCapabilityType,
+    task_id: str | None,
+    requested_source_ids: list[str],
+    allowed_source_ids: list[str],
+    tenant_id: str | None,
+    tenant_policy_mode: TenantPolicyMode,
+) -> AuthorizationDecision | None:
+    allowed_source_id_set = set(allowed_source_ids)
+    if requested_source_ids:
+        if not set(requested_source_ids).issubset(allowed_source_id_set):
+            return AuthorizationDecision(
+                caller_app=caller_app,
+                capability_type=capability_type,
+                outcome=AuthorizationOutcome.BLOCKED_RETRIEVAL_SOURCE_NOT_ALLOWED,
+                allowed=False,
+                tenant_policy_mode=tenant_policy_mode,
+                task_id=task_id,
+                requested_source_ids=requested_source_ids,
+                tenant_id=tenant_id,
+                summary=(
+                    f"Caller '{caller_app}' requested retrieval sources outside its approved "
+                    "policy scope."
+                ),
+            )
+        return None
+    if not allowed_source_ids:
+        return AuthorizationDecision(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            outcome=AuthorizationOutcome.BLOCKED_RETRIEVAL_SOURCE_NOT_ALLOWED,
+            allowed=False,
+            tenant_policy_mode=tenant_policy_mode,
+            task_id=task_id,
+            requested_source_ids=[],
+            tenant_id=tenant_id,
+            summary=(
+                f"Caller '{caller_app}' has no approved retrieval sources under the current "
+                "access-control policy."
+            ),
+        )
+    return None
+
+
+def _allowed_decision(
+    *,
+    caller_app: str,
+    capability_type: AuthorizationCapabilityType,
+    tenant_id: str | None,
+    task_id: str | None,
+    tenant_policy_mode: TenantPolicyMode,
+    requested_source_ids: list[str],
+    effective_source_ids: list[str],
+    summary: str,
+) -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app=caller_app,
+        capability_type=capability_type,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=tenant_policy_mode,
+        task_id=task_id,
+        requested_source_ids=requested_source_ids,
+        effective_source_ids=effective_source_ids,
+        tenant_id=tenant_id,
+        summary=summary,
+    )

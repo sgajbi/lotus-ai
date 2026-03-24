@@ -25,30 +25,25 @@ def list_caller_policies() -> CallerPolicyCatalogResponse:
 
 def build_access_control_runtime_status() -> AccessControlRuntimeStatusResponse:
     policies = get_caller_policy_repository().list_policies()
-    enforcement_state = (
-        AccessControlEnforcementState.POLICY_RESOLUTION_READY
-        if settings.access_control_store_mode == "sqlalchemy"
-        else AccessControlEnforcementState.DOCUMENTARY_ONLY
-    )
     return AccessControlRuntimeStatusResponse(
         service=settings.service_name,
         version=settings.service_version,
         store_mode=settings.access_control_store_mode,
         store=get_access_control_store_runtime_status(),
-        enforcement_state=enforcement_state,
+        enforcement_state=AccessControlEnforcementState.ENFORCED,
         unknown_caller_policy=(
-            "Unknown callers resolve to an explicit deny policy, but protected request paths are not yet broadly enforced in Slice 1."
+            "Unknown callers are explicitly denied with HTTP 403 across protected data-plane request paths."
         ),
-        tenant_isolation_active=False,
+        tenant_isolation_active=True,
         policy_count=len(policies),
         protected_surface_count=_PROTECTED_SURFACE_COUNT,
         status_summary=[
-            "Caller registry and capability policy resolution are now explicit and durable through a dedicated access-control store seam.",
+            "Caller registry resolution and data-plane authorization enforcement are both active for task, retrieval, and live-provider execution paths.",
             (
-                "SQL-backed caller policy storage is active; policy resolution is restart-safe, but broad request blocking is intentionally deferred to later slices."
+                "SQL-backed caller policy storage is active, so enforced authorization decisions are restart-safe across protected data-plane request paths."
                 if settings.access_control_store_mode == "sqlalchemy"
-                else "Memory-backed caller policy storage is active for foundation posture; policy resolution is visible but not restart-safe."
+                else "Memory-backed caller policy storage is enforcing protected data-plane request paths, but that posture is not restart-safe and remains governance-blocked."
             ),
-            "Tenant restrictions are modeled in the registry, but tenant-bound request blocking is not active yet in Slice 1.",
+            "Tenant restrictions are now enforced where tenant identity is already part of the task and live-provider request contracts.",
         ],
     )

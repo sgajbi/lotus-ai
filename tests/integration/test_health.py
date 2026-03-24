@@ -32,6 +32,7 @@ def test_task_execution_summary_route(client: TestClient) -> None:
             "caller": {
                 "caller_app": "lotus-manage",
                 "correlation_id": "corr-summary-route-1",
+                "tenant_id": "tenant-sg-001",
             },
             "context": {
                 "summary": "Explain rebalance outcome",
@@ -49,6 +50,7 @@ def test_task_execution_summary_route(client: TestClient) -> None:
             "caller": {
                 "caller_app": "lotus-manage",
                 "correlation_id": "corr-summary-route-2",
+                "tenant_id": "tenant-sg-001",
             },
             "context": {
                 "summary": "Search Lotus knowledge sources",
@@ -85,6 +87,7 @@ def test_task_execution_evidence_summary_route(client: TestClient) -> None:
             "caller": {
                 "caller_app": "lotus-manage",
                 "correlation_id": "corr-evidence-route-1",
+                "tenant_id": "tenant-sg-001",
             },
             "context": {
                 "summary": "Answer from Lotus knowledge sources",
@@ -106,6 +109,7 @@ def test_task_execution_evidence_summary_route(client: TestClient) -> None:
             "caller": {
                 "caller_app": "lotus-manage",
                 "correlation_id": "corr-evidence-route-2",
+                "tenant_id": "tenant-sg-001",
             },
             "context": {
                 "summary": "Answer from Lotus knowledge sources",
@@ -145,6 +149,7 @@ def test_task_retrieval_execution_summary_route(client: TestClient) -> None:
             "caller": {
                 "caller_app": "lotus-manage",
                 "correlation_id": "corr-rsummary-route-1",
+                "tenant_id": "tenant-sg-001",
             },
             "context": {
                 "summary": "Search Lotus knowledge sources",
@@ -166,6 +171,7 @@ def test_task_retrieval_execution_summary_route(client: TestClient) -> None:
             "caller": {
                 "caller_app": "lotus-manage",
                 "correlation_id": "corr-rsummary-route-2",
+                "tenant_id": "tenant-sg-001",
             },
             "context": {
                 "summary": "Answer from Lotus knowledge sources",
@@ -213,8 +219,9 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["retrieval_store"]["status"] == "READY"
     assert body["access_control_store_mode"] == "memory"
     assert body["access_control_runtime"]["store_mode"] == "memory"
-    assert body["access_control_runtime"]["enforcement_state"] == "DOCUMENTARY_ONLY"
+    assert body["access_control_runtime"]["enforcement_state"] == "ENFORCED"
     assert body["access_control_runtime"]["policy_count"] >= 4
+    assert body["access_control_runtime"]["tenant_isolation_active"] is True
     assert body["access_control_governance"]["governance_ready"] is False
     assert body["access_control_governance"]["blocking_area_count"] == 1
     assert body["async_runtime"]["cutover_state"] == "in_process_only"

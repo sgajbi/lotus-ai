@@ -23,7 +23,7 @@ router = APIRouter(prefix="/platform/access-control", tags=["platform"])
     summary="Get access-control runtime status",
     description=(
         "Returns the current caller-registry and access-control runtime posture, including store "
-        "readiness and whether authorization remains documentary or is ready for broader enforcement."
+        "readiness and whether protected request paths are currently enforced through the caller policy registry."
     ),
     responses={
         200: {"description": "Access-control runtime status returned successfully."},
@@ -41,7 +41,7 @@ async def get_access_control_runtime_status_route() -> AccessControlRuntimeStatu
     summary="Get access-control governance status",
     description=(
         "Returns the current governance posture for caller identity and tenant isolation, including "
-        "whether the registry is durable enough for stronger enforcement."
+        "whether the registry is durable enough for enforced shared-service rollout."
     ),
     responses={
         200: {"description": "Access-control governance status returned successfully."},

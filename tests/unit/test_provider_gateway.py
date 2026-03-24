@@ -118,6 +118,28 @@ def test_execute_text_generation_rejects_live_provider_when_quota_is_exceeded() 
     monkeypatch.undo()
 
 
+def test_execute_text_generation_blocks_unauthorized_live_provider_caller() -> None:
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+
+    with pytest.raises(HTTPException) as exc_info:
+        execute_text_generation(
+            _request(
+                caller_app="lotus-advise",
+                tenant_id="tenant-us-002",
+            )
+        )
+
+    assert exc_info.value.status_code == 403
+    assert "not authorized for live provider execution" in str(exc_info.value.detail)
+
+    settings.provider_mode = "disabled"
+
+
 def test_execute_text_generation_rejects_live_provider_when_budget_is_exceeded() -> None:
     class _LiveAdapter:
         def execute(self, request: ProviderExecutionRequest) -> object:
