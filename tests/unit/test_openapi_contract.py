@@ -388,6 +388,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "owning_plane" in eval_runtime_schema["properties"]
     assert "submission_route_mode" in eval_runtime_schema["properties"]
     assert "async_execution_route_mode" in eval_runtime_schema["properties"]
+    assert "split_route_degraded" in eval_runtime_schema["properties"]
+    assert "split_route_findings" in eval_runtime_schema["properties"]
     assert spec["paths"]["/platform/retrieval/activation-readiness"]["get"]["operationId"] == (
         "getRetrievalActivationReadiness"
     )

@@ -5,7 +5,7 @@ from app.services.deployment_split_routing import (
     resolve_evaluation_async_route,
     resolve_evaluation_submission_route,
 )
-from app.services.deployment_split_shared import resolve_effective_deployment_split_stage
+from app.services.deployment_split_shared import resolve_deployment_split_posture
 from app.services.eval_approval_gate_summary import (
     build_first_use_case_approval_gate_summary,
     build_prompt_approval_gate_summary,
@@ -20,9 +20,15 @@ from app.services.eval_seam_summary import build_evaluation_seam_coverage
 
 
 def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
-    effective_stage, _ = resolve_effective_deployment_split_stage()
-    submission_route = resolve_evaluation_submission_route(effective_stage=effective_stage)
-    async_route = resolve_evaluation_async_route(effective_stage=effective_stage)
+    posture = resolve_deployment_split_posture()
+    submission_route = resolve_evaluation_submission_route(
+        effective_stage=posture.effective_stage,
+        degraded_findings=posture.eval_degraded_findings,
+    )
+    async_route = resolve_evaluation_async_route(
+        effective_stage=posture.effective_stage,
+        degraded_findings=posture.eval_degraded_findings,
+    )
     catalog = build_evaluation_catalog()
     inventory_summary = summarize_evaluation_inventory(catalog)
     seam_coverage = build_evaluation_seam_coverage()
@@ -56,6 +62,8 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
         submission_route_mode=submission_route.route_mode,
         async_execution_route_mode=async_route.route_mode,
         rollback_target_stage=async_route.rollback_target_stage,
+        split_route_degraded=async_route.degraded,
+        split_route_findings=async_route.degraded_findings,
         message=(
             "Allowlisted evaluation families now run through the durable async backbone with "
             "persisted attempts, replay-safe case-result history, and runtime-backed approval-gate "

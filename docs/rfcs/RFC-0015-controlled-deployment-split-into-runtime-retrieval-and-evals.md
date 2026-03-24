@@ -120,11 +120,11 @@ The current platform is more split-ready than it used to be, but still intention
 
 ### What Is Still Missing
 
-1. eval plane activation is not implemented yet,
-2. cross-plane governance and runbook hardening for fully active split posture is still incomplete,
-3. retrieval split is modeled internally, but the runtime plane still remains the only external front door,
-4. unified rollback remains the only supported rollback target,
-5. retrieval-and-evals split activation is still future work.
+1. cross-plane governance and runbook hardening for fully active split posture is still incomplete,
+2. retrieval-and-evals split remains an internal topology change while the runtime plane stays the only external front door,
+3. unified rollback remains the only supported rollback target,
+4. retrieval and eval split stages can both surface degraded posture, but Slice 5 still needs to converge operator guidance across those states,
+5. resilience and DR work remain explicitly separate under RFC-0017.
 
 ## Decision
 

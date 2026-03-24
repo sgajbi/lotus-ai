@@ -32,7 +32,7 @@ from app.services.deployment_split_routing import (
     resolve_evaluation_async_route,
     resolve_evaluation_submission_route,
 )
-from app.services.deployment_split_shared import resolve_effective_deployment_split_stage
+from app.services.deployment_split_shared import resolve_deployment_split_posture
 from app.services.async_runtime_posture import get_async_runtime_posture
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.async_submission_shared import publish_async_attempt_if_configured
@@ -56,8 +56,10 @@ RUNTIME_BACKED_EVALUATION_FIXTURE_IDS = {
 def submit_evaluation_run(
     request: EvaluationRunSubmissionRequest,
 ) -> EvaluationRunSubmissionResponse:
+    posture = resolve_deployment_split_posture()
     route = resolve_evaluation_submission_route(
-        effective_stage=resolve_effective_deployment_split_stage()[0]
+        effective_stage=posture.effective_stage,
+        degraded_findings=posture.eval_degraded_findings,
     )
     submission = _submit_runtime_backed_evaluation_run(
         fixture_id=request.fixture_id,
@@ -118,8 +120,10 @@ def submit_evaluation_run(
 def submit_evaluation_execution_async_job(
     request: AsyncJobSubmissionRequest,
 ) -> AsyncJobSubmissionResponse:
+    posture = resolve_deployment_split_posture()
     route = resolve_evaluation_async_route(
-        effective_stage=resolve_effective_deployment_split_stage()[0]
+        effective_stage=posture.effective_stage,
+        degraded_findings=posture.eval_degraded_findings,
     )
     fixture_id = _validate_evaluation_fixture_target(target_id=request.target_id)
     submission = _submit_runtime_backed_evaluation_run(
@@ -129,15 +133,15 @@ def submit_evaluation_execution_async_job(
         triggered_by=request.caller_app,
     )
     if submission["submission_status"] == EvaluationRunSubmissionStatus.ACCEPTED.value:
-        posture = get_async_runtime_posture()
+        async_posture = get_async_runtime_posture()
         return AsyncJobSubmissionResponse(
             service=settings.service_name,
             version=settings.service_version,
             delivery_phase=settings.delivery_phase,
             submission_status=AsyncSubmissionStatus.ACCEPTED,
-            cutover_state=posture.cutover_state,
-            queue_mode=posture.queue_mode,
-            worker_mode=posture.worker_mode,
+            cutover_state=async_posture.cutover_state,
+            queue_mode=async_posture.queue_mode,
+            worker_mode=async_posture.worker_mode,
             job_type=request.job_type,
             target_id=fixture_id,
             existing_job_id=None,
@@ -150,15 +154,15 @@ def submit_evaluation_execution_async_job(
             ),
         )
     if submission["submission_status"] == EvaluationRunSubmissionStatus.DUPLICATE_REJECTED.value:
-        posture = get_async_runtime_posture()
+        async_posture = get_async_runtime_posture()
         return AsyncJobSubmissionResponse(
             service=settings.service_name,
             version=settings.service_version,
             delivery_phase=settings.delivery_phase,
             submission_status=AsyncSubmissionStatus.DUPLICATE_REJECTED,
-            cutover_state=posture.cutover_state,
-            queue_mode=posture.queue_mode,
-            worker_mode=posture.worker_mode,
+            cutover_state=async_posture.cutover_state,
+            queue_mode=async_posture.queue_mode,
+            worker_mode=async_posture.worker_mode,
             job_type=request.job_type,
             target_id=fixture_id,
             existing_job_id=submission["async_job_id"],
@@ -169,15 +173,15 @@ def submit_evaluation_execution_async_job(
                 f"'{submission['run_id']}' already owns fixture family '{fixture_id}'. {route.detail}"
             ),
         )
-    posture = get_async_runtime_posture()
+    async_posture = get_async_runtime_posture()
     return AsyncJobSubmissionResponse(
         service=settings.service_name,
         version=settings.service_version,
         delivery_phase=settings.delivery_phase,
         submission_status=AsyncSubmissionStatus.REJECTED,
-        cutover_state=posture.cutover_state,
-        queue_mode=posture.queue_mode,
-        worker_mode=posture.worker_mode,
+        cutover_state=async_posture.cutover_state,
+        queue_mode=async_posture.queue_mode,
+        worker_mode=async_posture.worker_mode,
         job_type=request.job_type,
         target_id=fixture_id,
         existing_job_id=None,

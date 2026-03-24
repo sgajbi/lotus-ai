@@ -5,6 +5,7 @@ from threading import local
 
 from app.config import settings
 from app.contracts.deployment_split import DeploymentSplitStage
+from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
 from app.contracts.production_baseline import ProductionBaselineGovernanceStatusResponse
 from app.contracts.retrieval import RetrievalGovernanceStatusResponse
 
@@ -34,27 +35,38 @@ class DeploymentSplitPosture:
     configured_stage: DeploymentSplitStage
     effective_stage: DeploymentSplitStage
     blocking_findings: list[str]
-    degraded_findings: list[str]
+    retrieval_degraded_findings: list[str]
+    eval_degraded_findings: list[str]
 
 
 def _resolve_reentrant_split_posture(
     configured_stage: DeploymentSplitStage,
 ) -> DeploymentSplitPosture:
-    if configured_stage is DeploymentSplitStage.RETRIEVAL_AND_EVALS_SPLIT_ACTIVE:
-        return DeploymentSplitPosture(
-            configured_stage=configured_stage,
-            effective_stage=DeploymentSplitStage.RETRIEVAL_SPLIT_ACTIVE,
-            blocking_findings=[
-                "Eval plane activation is not yet implemented in the current RFC-0015 slice, so the configured stage is capped at retrieval-split active."
-            ],
-            degraded_findings=[],
-        )
     return DeploymentSplitPosture(
         configured_stage=configured_stage,
         effective_stage=configured_stage,
         blocking_findings=[],
-        degraded_findings=[],
+        retrieval_degraded_findings=[],
+        eval_degraded_findings=[],
     )
+
+
+def _build_eval_split_approval_gates() -> list[EvaluationApprovalGateSummaryDescriptor]:
+    from app.services.eval_approval_gate_summary import (
+        build_first_use_case_approval_gate_summary,
+        build_prompt_approval_gate_summary,
+        build_provider_approval_gate_summary,
+        build_retrieval_approval_gate_summary,
+        build_safety_approval_gate_summary,
+    )
+
+    return [
+        build_first_use_case_approval_gate_summary(),
+        build_prompt_approval_gate_summary(),
+        build_retrieval_approval_gate_summary(),
+        build_provider_approval_gate_summary(),
+        build_safety_approval_gate_summary(),
+    ]
 
 
 def resolve_configured_deployment_split_stage() -> DeploymentSplitStage:
@@ -77,7 +89,8 @@ def resolve_deployment_split_posture(
             configured_stage=configured_stage,
             effective_stage=DeploymentSplitStage.UNIFIED,
             blocking_findings=[],
-            degraded_findings=[],
+            retrieval_degraded_findings=[],
+            eval_degraded_findings=[],
         )
 
     if getattr(_POSTURE_RESOLUTION_STATE, "active", False):
@@ -94,7 +107,8 @@ def resolve_deployment_split_posture(
                     "RFC-0020 production-baseline governance is not yet ready, so the platform cannot be treated as split-ready.",
                     *production_baseline_governance.governance_summary,
                 ],
-                degraded_findings=[],
+                retrieval_degraded_findings=[],
+                eval_degraded_findings=[],
             )
 
         if configured_stage is DeploymentSplitStage.SPLIT_READY:
@@ -102,27 +116,12 @@ def resolve_deployment_split_posture(
                 configured_stage=configured_stage,
                 effective_stage=DeploymentSplitStage.SPLIT_READY,
                 blocking_findings=[],
-                degraded_findings=[],
+                retrieval_degraded_findings=[],
+                eval_degraded_findings=[],
             )
 
         retrieval_governance = _build_retrieval_governance_status(app_state)
-        if configured_stage is DeploymentSplitStage.RETRIEVAL_SPLIT_ACTIVE:
-            degraded_findings = (
-                []
-                if retrieval_governance.governance_ready
-                else [
-                    "Retrieval split activation remains configured, but retrieval governance is degraded and operators should consider rolling back to the unified stage.",
-                    *retrieval_governance.governance_summary,
-                ]
-            )
-            return DeploymentSplitPosture(
-                configured_stage=configured_stage,
-                effective_stage=DeploymentSplitStage.RETRIEVAL_SPLIT_ACTIVE,
-                blocking_findings=[],
-                degraded_findings=degraded_findings,
-            )
-
-        degraded_findings = (
+        retrieval_degraded_findings = (
             []
             if retrieval_governance.governance_ready
             else [
@@ -130,13 +129,33 @@ def resolve_deployment_split_posture(
                 *retrieval_governance.governance_summary,
             ]
         )
+        if configured_stage is DeploymentSplitStage.RETRIEVAL_SPLIT_ACTIVE:
+            return DeploymentSplitPosture(
+                configured_stage=configured_stage,
+                effective_stage=DeploymentSplitStage.RETRIEVAL_SPLIT_ACTIVE,
+                blocking_findings=[],
+                retrieval_degraded_findings=retrieval_degraded_findings,
+                eval_degraded_findings=[],
+            )
+
+        approval_gates = _build_eval_split_approval_gates()
+        eval_degraded_findings = [
+            "Eval split activation remains configured, but runtime-backed approval evidence is degraded across one or more governed rollout domains and operators should consider rolling back to the unified stage."
+        ]
+        eval_degraded_findings.extend(
+            f"{gate.domain_label} approval gate is currently '{gate.evidence_state.value}'."
+            for gate in approval_gates
+            if not gate.approval_ready
+        )
+        if len(eval_degraded_findings) == 1:
+            eval_degraded_findings = []
+
         return DeploymentSplitPosture(
             configured_stage=configured_stage,
-            effective_stage=DeploymentSplitStage.RETRIEVAL_SPLIT_ACTIVE,
-            blocking_findings=[
-                "Eval plane activation is not yet implemented in the current RFC-0015 slice, so the configured stage is capped at retrieval-split active."
-            ],
-            degraded_findings=degraded_findings,
+            effective_stage=DeploymentSplitStage.RETRIEVAL_AND_EVALS_SPLIT_ACTIVE,
+            blocking_findings=[],
+            retrieval_degraded_findings=retrieval_degraded_findings,
+            eval_degraded_findings=eval_degraded_findings,
         )
     finally:
         _POSTURE_RESOLUTION_STATE.active = False

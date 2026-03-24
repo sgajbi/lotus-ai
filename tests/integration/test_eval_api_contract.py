@@ -1,3 +1,6 @@
+from types import SimpleNamespace
+
+from _pytest.monkeypatch import MonkeyPatch
 from fastapi.testclient import TestClient
 
 from app.services.eval_async_execution import run_next_evaluation_execution_job
@@ -142,12 +145,59 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     assert body["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["latest_recorded_run_status"] == "RECORDED"
     assert body["evaluation_runner_active"] is True
+    assert body["submission_route_mode"] == "UNIFIED_INTERNAL"
+    assert body["async_execution_route_mode"] == "UNIFIED_INTERNAL"
+    assert body["split_route_degraded"] is False
     assert body["approval_gates"][0]["domain_id"] == "first_use_case_onboarding"
     assert body["approval_gates"][1]["domain_id"] == "prompt_rollout"
     assert body["approval_gates"][2]["domain_id"] == "retrieval_execution"
     assert body["approval_gates"][3]["domain_id"] == "provider_execution"
     assert body["approval_gates"][4]["domain_id"] == "safety_enforcement"
     assert body["approval_gates"][0]["evidence_state"] == "STAGED_ONLY"
+
+
+def test_evaluation_split_active_runtime_routes_are_reported_explicitly(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.deployment_split_stage = "retrieval_and_evals_split_active"
+    monkeypatch.setattr(
+        "app.services.deployment_split_shared._build_production_baseline_governance_status",
+        lambda app_state: SimpleNamespace(governance_ready=True, governance_summary=[]),
+    )
+    monkeypatch.setattr(
+        "app.services.deployment_split_shared._build_retrieval_governance_status",
+        lambda app_state: SimpleNamespace(governance_ready=True, governance_summary=[]),
+    )
+    monkeypatch.setattr(
+        "app.services.deployment_split_shared._build_eval_split_approval_gates",
+        lambda: [
+            SimpleNamespace(domain_label="Prompt Rollout", approval_ready=False, evidence_state=SimpleNamespace(value="RUNTIME_FAIL"))
+        ],
+    )
+
+    split_response = client.get("/platform/deployment-split/runtime-status")
+    eval_response = client.get("/platform/evals/runtime-status")
+
+    assert split_response.status_code == 200
+    assert eval_response.status_code == 200
+
+    split_body = split_response.json()
+    eval_body = eval_response.json()
+    assert split_body["effective_stage"] == "RETRIEVAL_AND_EVALS_SPLIT_ACTIVE"
+    assert split_body["degraded"] is True
+    assert any(
+        route["route_id"] == "evaluation_run_submission"
+        and route["route_mode"] == "PLANE_SPLIT_ACTIVE"
+        and route["owning_plane"] == "evals"
+        for route in split_body["routes"]
+    )
+    assert eval_body["owning_plane"] == "evals"
+    assert eval_body["submission_route_mode"] == "PLANE_SPLIT_ACTIVE"
+    assert eval_body["async_execution_route_mode"] == "PLANE_SPLIT_ACTIVE"
+    assert eval_body["split_route_degraded"] is True
 
 
 def test_evaluation_run_catalog_route(client: TestClient) -> None:
