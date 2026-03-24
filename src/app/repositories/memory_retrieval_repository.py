@@ -5,6 +5,11 @@ from copy import deepcopy
 from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
     RetrievalDocumentDescriptor,
+    RetrievalDocumentVersionDescriptor,
+    RetrievalDocumentVersionLifecycleStatus,
+    RetrievalIngestionAction,
+    RetrievalIngestionJobDescriptor,
+    RetrievalIngestionJobStatus,
     RetrievalIndexJobDescriptor,
     RetrievalIndexStatus,
     RetrievalJobStatus,
@@ -151,6 +156,121 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                 )
             ],
         }
+        self._document_versions: list[RetrievalDocumentVersionDescriptor] = [
+            RetrievalDocumentVersionDescriptor(
+                version_id="ver_lotus_platform_rfc_0068_2026_03_22",
+                document_id="lotus-platform-rfc-0068",
+                source_id="lotus-platform-rfcs",
+                title="RFC-0068 Centralized Shared Infrastructure Ownership and Migration",
+                location="lotus-platform/rfcs/RFC-0068-centralized-shared-infrastructure-ownership-and-migration.md",
+                lifecycle_status=RetrievalDocumentVersionLifecycleStatus.ACTIVE,
+                refresh_action=RetrievalIngestionAction.ONBOARD,
+                lineage_parent_version_id=None,
+                created_at="2026-03-22T09:00:00Z",
+                created_by="migration-seed",
+                notes="Seeded active retrieval document version for the approved RFC corpus.",
+            ),
+            RetrievalDocumentVersionDescriptor(
+                version_id="ver_lotus_platform_rfc_0069_2026_03_15",
+                document_id="lotus-platform-rfc-0069",
+                source_id="lotus-platform-rfcs",
+                title="RFC-0069 lotus-ai Shared AI Platform Service",
+                location="lotus-platform/rfcs/RFC-0069-lotus-ai-shared-ai-platform-service.md",
+                lifecycle_status=RetrievalDocumentVersionLifecycleStatus.SUPERSEDED,
+                refresh_action=RetrievalIngestionAction.ONBOARD,
+                lineage_parent_version_id=None,
+                created_at="2026-03-15T09:00:00Z",
+                created_by="migration-seed",
+                notes="Historical seed version retained to prove supersession lineage.",
+            ),
+            RetrievalDocumentVersionDescriptor(
+                version_id="ver_lotus_platform_rfc_0069_2026_03_22",
+                document_id="lotus-platform-rfc-0069",
+                source_id="lotus-platform-rfcs",
+                title="RFC-0069 lotus-ai Shared AI Platform Service",
+                location="lotus-platform/rfcs/RFC-0069-lotus-ai-shared-ai-platform-service.md",
+                lifecycle_status=RetrievalDocumentVersionLifecycleStatus.ACTIVE,
+                refresh_action=RetrievalIngestionAction.REFRESH,
+                lineage_parent_version_id="ver_lotus_platform_rfc_0069_2026_03_15",
+                created_at="2026-03-22T10:00:00Z",
+                created_by="migration-seed",
+                notes="Current approved version after a bounded corpus refresh.",
+            ),
+            RetrievalDocumentVersionDescriptor(
+                version_id="ver_lotus_platform_observability_standards_2026_03_21",
+                document_id="lotus-platform-observability-standards",
+                source_id="lotus-platform-standards",
+                title="Platform Observability Standards",
+                location="lotus-platform/Platform Observability Standards.md",
+                lifecycle_status=RetrievalDocumentVersionLifecycleStatus.WITHDRAWN,
+                refresh_action=RetrievalIngestionAction.WITHDRAW,
+                lineage_parent_version_id=None,
+                created_at="2026-03-21T08:30:00Z",
+                created_by="migration-seed",
+                notes="Withdrawn seed version kept visible for governance review.",
+            ),
+            RetrievalDocumentVersionDescriptor(
+                version_id="ver_lotus_ai_system_overview_2026_03_22",
+                document_id="lotus-ai-system-overview",
+                source_id="lotus-ai-architecture",
+                title="lotus-ai System Overview",
+                location="lotus-ai/docs/architecture/system-overview.md",
+                lifecycle_status=RetrievalDocumentVersionLifecycleStatus.ACTIVE,
+                refresh_action=RetrievalIngestionAction.ONBOARD,
+                lineage_parent_version_id=None,
+                created_at="2026-03-22T09:15:00Z",
+                created_by="migration-seed",
+                notes="Seeded active architecture document version.",
+            ),
+            RetrievalDocumentVersionDescriptor(
+                version_id="ver_lotus_ai_retrieval_vector_store_2026_03_22",
+                document_id="lotus-ai-retrieval-vector-store-guide",
+                source_id="lotus-ai-architecture",
+                title="lotus-ai Retrieval and Vector Store Guide",
+                location="lotus-ai/docs/guides/retrieval-and-vector-store.md",
+                lifecycle_status=RetrievalDocumentVersionLifecycleStatus.ACTIVE,
+                refresh_action=RetrievalIngestionAction.ONBOARD,
+                lineage_parent_version_id=None,
+                created_at="2026-03-22T09:30:00Z",
+                created_by="migration-seed",
+                notes="Seeded active retrieval strategy document version.",
+            ),
+        ]
+        self._ingestion_jobs: list[RetrievalIngestionJobDescriptor] = [
+            RetrievalIngestionJobDescriptor(
+                job_id="ingjob_lotus_platform_rfcs_refresh_0069",
+                source_id="lotus-platform-rfcs",
+                document_id="lotus-platform-rfc-0069",
+                target_version_id="ver_lotus_platform_rfc_0069_2026_03_22",
+                requested_action=RetrievalIngestionAction.REFRESH,
+                status=RetrievalIngestionJobStatus.STAGED,
+                requested_by="migration-seed",
+                requested_at="2026-03-22T10:00:00Z",
+                message="Refresh request is recorded durably, but live ingestion execution is not enabled yet.",
+            ),
+            RetrievalIngestionJobDescriptor(
+                job_id="ingjob_lotus_platform_standards_withdraw_obs",
+                source_id="lotus-platform-standards",
+                document_id="lotus-platform-observability-standards",
+                target_version_id="ver_lotus_platform_observability_standards_2026_03_21",
+                requested_action=RetrievalIngestionAction.WITHDRAW,
+                status=RetrievalIngestionJobStatus.RECORDED,
+                requested_by="migration-seed",
+                requested_at="2026-03-21T08:30:00Z",
+                message="Withdrawal posture is durably recorded for governance review.",
+            ),
+            RetrievalIngestionJobDescriptor(
+                job_id="ingjob_lotus_openapi_onboard_pending",
+                source_id="lotus-openapi-derived",
+                document_id=None,
+                target_version_id=None,
+                requested_action=RetrievalIngestionAction.ONBOARD,
+                status=RetrievalIngestionJobStatus.BLOCKED,
+                requested_by="migration-seed",
+                requested_at="2026-03-23T07:45:00Z",
+                message="OpenAPI-derived corpus onboarding remains blocked until approved runtime ingestion exists.",
+            ),
+        ]
 
     def list_sources(self) -> list[RetrievalSourceDescriptor]:
         return deepcopy(self._sources)
@@ -176,6 +296,32 @@ class InMemoryRetrievalRepository(RetrievalRepository):
 
     def list_chunks_for_document(self, document_id: str) -> list[RetrievalChunkDescriptor]:
         return deepcopy(self._chunks.get(document_id, []))
+
+    def list_document_versions(self) -> list[RetrievalDocumentVersionDescriptor]:
+        return sorted(
+            deepcopy(self._document_versions),
+            key=lambda version: (version.created_at, version.version_id),
+            reverse=True,
+        )
+
+    def save_document_version(self, descriptor: RetrievalDocumentVersionDescriptor) -> None:
+        self._document_versions = [
+            version for version in self._document_versions if version.version_id != descriptor.version_id
+        ]
+        self._document_versions.append(descriptor.model_copy(deep=True))
+
+    def list_ingestion_jobs(self) -> list[RetrievalIngestionJobDescriptor]:
+        return sorted(
+            deepcopy(self._ingestion_jobs),
+            key=lambda job: (job.requested_at, job.job_id),
+            reverse=True,
+        )
+
+    def save_ingestion_job(self, descriptor: RetrievalIngestionJobDescriptor) -> None:
+        self._ingestion_jobs = [
+            job for job in self._ingestion_jobs if job.job_id != descriptor.job_id
+        ]
+        self._ingestion_jobs.append(descriptor.model_copy(deep=True))
 
     def search_indexed_chunks(
         self, *, query: str, source_ids: list[str], limit: int

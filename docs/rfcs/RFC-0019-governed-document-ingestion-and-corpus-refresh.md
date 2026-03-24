@@ -91,6 +91,14 @@ The first production-capable ingestion backbone should:
 4. preserve artifact, audit, and approval evidence for corpus changes,
 5. keep indexing and live search behavior truthful during ingestion and refresh.
 
+This RFC is intentionally bounded:
+
+1. relational metadata remains authoritative for ingestion state, document lineage, approval posture, and operator review,
+2. object or artifact storage may carry larger payloads later, but it must not become the authoritative source of corpus truth,
+3. ingestion state, document-version lineage, and indexing state are separate models and must stay separately inspectable,
+4. this RFC does not create a generic file-management or end-user upload product,
+5. Slice 1 introduces durable ingestion state and truthful runtime inspection only; it does not yet claim live onboarding execution.
+
 ## State Model and Invariants
 
 This RFC establishes the following invariants:
@@ -101,6 +109,14 @@ This RFC establishes the following invariants:
 4. live retrieval must not silently serve stale or unapproved content,
 5. replay and recovery must preserve coherent corpus truth rather than mutate history invisibly,
 6. ingestion and indexing state must remain distinguishable but linked.
+
+Additional state-model rules:
+
+1. a retrieval document may have multiple recorded versions over time, but only explicitly governed active versions can represent current corpus truth,
+2. superseded and withdrawn document versions remain visible as historical state and must not be silently deleted,
+3. ingestion jobs describe requested corpus change actions; they do not replace document-version lineage,
+4. document lineage must support refresh and withdrawal review without requiring operators to infer history from chunk or index tables,
+5. existing staged retrieval catalog records remain valid during rollout and are linked forward into the ingestion lineage model rather than replaced wholesale.
 
 ## Architecture Direction
 
@@ -173,7 +189,8 @@ Acceptance gate:
 1. schema is migration-managed,
 2. repository/service seams are explicit,
 3. superseded and withdrawn posture are modeled,
-4. retrieval runtime stays truthful.
+4. retrieval runtime stays truthful,
+5. a bounded ingestion runtime surface proves the new durable model without overstating activation.
 
 ### Slice 2: Async Ingestion Execution and Recovery
 

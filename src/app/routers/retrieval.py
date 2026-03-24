@@ -12,6 +12,7 @@ from app.contracts.retrieval import (
     RetrievalIndexJobCatalogResponse,
     RetrievalIndexJobDetailResponse,
     RetrievalIndexStatusResponse,
+    RetrievalIngestionStatusResponse,
     RetrievalIndexingPolicyResponse,
     RetrievalExecutionStatusResponse,
     RetrievalGovernanceStatusResponse,
@@ -31,6 +32,7 @@ from app.services.retrieval_catalog_service import (
     get_retrieval_job_catalog,
     get_documents_for_source,
     get_retrieval_document_governance,
+    get_retrieval_ingestion_status,
     get_retrieval_index_status,
     get_retrieval_source_governance,
 )
@@ -133,6 +135,24 @@ async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
 )
 async def get_retrieval_runtime_status_route() -> RetrievalRuntimeStatusResponse:
     return get_retrieval_runtime_status()
+
+
+@router.get(
+    "/ingestion-status",
+    response_model=RetrievalIngestionStatusResponse,
+    operation_id="getRetrievalIngestionStatus",
+    summary="Get retrieval ingestion status",
+    description=(
+        "Returns the bounded governed corpus-ingestion posture for lotus-ai, including durable "
+        "document-version lineage and recorded ingestion requests without claiming live onboarding execution."
+    ),
+    responses={
+        200: {"description": "Retrieval ingestion status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_ingestion_status_route() -> RetrievalIngestionStatusResponse:
+    return get_retrieval_ingestion_status()
 
 
 @router.get(

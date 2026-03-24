@@ -449,6 +449,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/retrieval/runtime-status"]["get"]["operationId"] == (
         "getRetrievalRuntimeStatus"
     )
+    assert spec["paths"]["/platform/retrieval/ingestion-status"]["get"]["operationId"] == (
+        "getRetrievalIngestionStatus"
+    )
     assert spec["paths"]["/platform/retrieval/execution-status"]["get"]["operationId"] == (
         "getRetrievalExecutionStatus"
     )
@@ -475,6 +478,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/retrieval/governance-status"]["get"]["operationId"] == (
         "getRetrievalGovernanceStatus"
     )
+    retrieval_ingestion_schema = spec["components"]["schemas"]["RetrievalIngestionStatusResponse"]
+    assert "ingestion_delivery_stage" in retrieval_ingestion_schema["properties"]
+    assert "recent_document_versions" in retrieval_ingestion_schema["properties"]
+    assert "recent_ingestion_jobs" in retrieval_ingestion_schema["properties"]
     assert spec["paths"]["/platform/retrieval/indexing-policy"]["get"]["operationId"] == (
         "getRetrievalIndexingPolicy"
     )

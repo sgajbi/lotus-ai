@@ -20,7 +20,7 @@ If you want the shortest summary:
 1. RFC-0001 through RFC-0013 are implemented,
 2. bounded task execution, retrieval, safety, prompt rollout, async workers, runtime-backed evals, caller access control, and bounded observability are real,
 3. artifact storage now has a governed metadata and payload-store foundation, with eval, async, and observability artifact cutovers plus explicit lifecycle and governance surfaces,
-4. deployment split now has governed runtime and rollout surfaces, resilience now has bounded runtime, restore-plan, drill-evidence, activation, runbook, and governance surfaces for critical continuity dependencies, and RFC-0018 now exposes a governed live embedding path plus a bounded per-capability provider-expansion model while broader provider rollout and document ingestion remain follow-on work.
+4. deployment split now has governed runtime and rollout surfaces, resilience now has bounded runtime, restore-plan, drill-evidence, activation, runbook, and governance surfaces for critical continuity dependencies, RFC-0018 now exposes a governed live embedding path plus a bounded per-capability provider-expansion model, and RFC-0019 has started by adding durable ingestion-state and document-lineage foundations while live corpus onboarding remains follow-on work.
 5. first-use-case onboarding is implemented with a bounded `lotus-performance` contract, limited-rollout readiness, runbook, governance, reusable onboarding-template surfaces, and a captured end-to-end demo bundle, and that limited-rollout posture now also depends on explicit resilience governance rather than only local supportability signals, while active-production rollout remains explicitly deferred.
 
 ## Current Phase
@@ -205,6 +205,7 @@ The current retrieval-storage decision is:
 The current retrieval posture is:
 
 - approved retrieval sources are registered explicitly,
+- a bounded retrieval ingestion-status surface now exposes durable document-version lineage plus recorded corpus-change requests without overstating live onboarding execution,
 - retrieval source discovery is exposed through the platform API,
 - provider posture discovery is exposed through the platform API,
 - runtime posture for retrieval and platform services is exposed through the platform API,

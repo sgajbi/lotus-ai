@@ -8,6 +8,11 @@ from sqlalchemy.orm import Session
 from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
     RetrievalDocumentDescriptor,
+    RetrievalDocumentVersionDescriptor,
+    RetrievalDocumentVersionLifecycleStatus,
+    RetrievalIngestionAction,
+    RetrievalIngestionJobDescriptor,
+    RetrievalIngestionJobStatus,
     RetrievalIndexJobDescriptor,
     RetrievalIndexStatus,
     RetrievalJobStatus,
@@ -18,6 +23,8 @@ from app.contracts.retrieval import (
 from app.db.models import (
     RetrievalChunkModel,
     RetrievalDocumentModel,
+    RetrievalDocumentVersionModel,
+    RetrievalIngestionJobModel,
     RetrievalIndexJobModel,
     RetrievalSourceModel,
 )
@@ -72,6 +79,60 @@ class SqlAlchemyRetrievalRepository(SqlAlchemyRepositoryBase):
                 .order_by(RetrievalChunkModel.chunk_order)
             ).all()
             return [self._to_chunk_descriptor(chunk) for chunk in chunks]
+
+    def list_document_versions(self) -> list[RetrievalDocumentVersionDescriptor]:
+        with self._session_factory() as session:
+            versions = session.scalars(
+                select(RetrievalDocumentVersionModel).order_by(
+                    RetrievalDocumentVersionModel.created_at.desc(),
+                    RetrievalDocumentVersionModel.version_id.desc(),
+                )
+            ).all()
+            return [self._to_document_version_descriptor(version) for version in versions]
+
+    def save_document_version(self, descriptor: RetrievalDocumentVersionDescriptor) -> None:
+        model = RetrievalDocumentVersionModel(
+            version_id=descriptor.version_id,
+            document_id=descriptor.document_id,
+            source_id=descriptor.source_id,
+            lifecycle_status=descriptor.lifecycle_status.value,
+            refresh_action=descriptor.refresh_action.value,
+            lineage_parent_version_id=descriptor.lineage_parent_version_id,
+            title=descriptor.title,
+            location=descriptor.location,
+            created_at=descriptor.created_at,
+            created_by=descriptor.created_by,
+            notes=descriptor.notes,
+        )
+        with self._session_factory() as session:
+            session.merge(model)
+            session.commit()
+
+    def list_ingestion_jobs(self) -> list[RetrievalIngestionJobDescriptor]:
+        with self._session_factory() as session:
+            jobs = session.scalars(
+                select(RetrievalIngestionJobModel).order_by(
+                    RetrievalIngestionJobModel.requested_at.desc(),
+                    RetrievalIngestionJobModel.job_id.desc(),
+                )
+            ).all()
+            return [self._to_ingestion_job_descriptor(job) for job in jobs]
+
+    def save_ingestion_job(self, descriptor: RetrievalIngestionJobDescriptor) -> None:
+        model = RetrievalIngestionJobModel(
+            job_id=descriptor.job_id,
+            source_id=descriptor.source_id,
+            document_id=descriptor.document_id,
+            target_version_id=descriptor.target_version_id,
+            requested_action=descriptor.requested_action.value,
+            status=descriptor.status.value,
+            requested_by=descriptor.requested_by,
+            requested_at=descriptor.requested_at,
+            message=descriptor.message,
+        )
+        with self._session_factory() as session:
+            session.merge(model)
+            session.commit()
 
     def search_indexed_chunks(
         self, *, query: str, source_ids: list[str], limit: int
@@ -193,6 +254,38 @@ class SqlAlchemyRetrievalRepository(SqlAlchemyRepositoryBase):
             token_estimate=model.token_estimate,
             preview=model.preview,
             index_status=RetrievalIndexStatus(model.index_status),
+        )
+
+    def _to_document_version_descriptor(
+        self, model: RetrievalDocumentVersionModel
+    ) -> RetrievalDocumentVersionDescriptor:
+        return RetrievalDocumentVersionDescriptor(
+            version_id=model.version_id,
+            document_id=model.document_id,
+            source_id=model.source_id,
+            title=model.title,
+            location=model.location,
+            lifecycle_status=RetrievalDocumentVersionLifecycleStatus(model.lifecycle_status),
+            refresh_action=RetrievalIngestionAction(model.refresh_action),
+            lineage_parent_version_id=model.lineage_parent_version_id,
+            created_at=model.created_at,
+            created_by=model.created_by,
+            notes=model.notes,
+        )
+
+    def _to_ingestion_job_descriptor(
+        self, model: RetrievalIngestionJobModel
+    ) -> RetrievalIngestionJobDescriptor:
+        return RetrievalIngestionJobDescriptor(
+            job_id=model.job_id,
+            source_id=model.source_id,
+            document_id=model.document_id,
+            target_version_id=model.target_version_id,
+            requested_action=RetrievalIngestionAction(model.requested_action),
+            status=RetrievalIngestionJobStatus(model.status),
+            requested_by=model.requested_by,
+            requested_at=model.requested_at,
+            message=model.message,
         )
 
     def _to_job_descriptor(

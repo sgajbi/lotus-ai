@@ -76,6 +76,21 @@ def test_retrieval_runtime_status_route(client: TestClient) -> None:
     assert body["source_count"] >= 4
 
 
+def test_retrieval_ingestion_status_route(client: TestClient) -> None:
+    response = client.get("/platform/retrieval/ingestion-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["ingestion_delivery_stage"] == "DURABLE_STATE_READY"
+    assert body["live_ingestion_enabled"] is False
+    assert body["document_version_count"] >= 5
+    assert body["withdrawn_document_version_count"] >= 1
+    assert body["blocked_ingestion_job_count"] >= 1
+    assert body["recent_document_versions"]
+    assert body["recent_ingestion_jobs"]
+
+
 def test_retrieval_execution_status_route(client: TestClient) -> None:
     response = client.get("/platform/retrieval/execution-status")
 
