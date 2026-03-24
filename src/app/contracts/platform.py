@@ -17,7 +17,10 @@ from app.contracts.prompts import (
     PromptGovernanceStatusSummaryResponse,
     PromptRuntimeStatusResponse,
 )
-from app.contracts.production_baseline import ProductionBaselineRuntimeStatusResponse
+from app.contracts.production_baseline import (
+    ProductionBaselineGovernanceStatusResponse,
+    ProductionBaselineRuntimeStatusResponse,
+)
 from app.contracts.providers import (
     ProviderGovernanceStatusResponse,
     ProviderOperationsStatusResponse,
@@ -107,6 +110,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     production_baseline: ProductionBaselineRuntimeStatusResponse = Field(
         description="Current RFC-0020 production-baseline posture across major deployment dependencies."
+    )
+    production_baseline_governance: ProductionBaselineGovernanceStatusResponse = Field(
+        description="Current RFC-0020 production-baseline governance posture across runtime, activation, and runbook readiness."
     )
     audit_store: StoreRuntimeStatusDescriptor = Field(
         description="Current audit persistence runtime posture."
