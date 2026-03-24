@@ -106,10 +106,27 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.evaluation_runtime.approval_gates[2].domain_id == "retrieval_execution"
     assert status.evaluation_runtime.approval_gates[3].domain_id == "provider_execution"
     assert status.evaluation_runtime.approval_gates[4].domain_id == "safety_enforcement"
+    assert status.evaluation_runtime.approval_gates[5].domain_id == "analytics_commentary_pack"
+    assert status.evaluation_runtime.approval_gates[6].domain_id == "decision_explanation_pack"
     assert status.task_runtime.enabled_task_count >= 7
     assert status.task_runtime.retrieval_backed_task_count == 2
     assert status.task_runtime.tasks[0].task_id == "explain.v1"
+    assert status.capability_pack_count == 2
+    assert status.capability_pack_catalog.pack_count == 2
+    assert status.capability_pack_catalog.reusable_pack_count == 1
+    assert status.capability_pack_catalog.packs[0].pack_id == "analytics_commentary.pack.v1"
+    assert status.capability_pack_catalog.packs[0].maturity_stage.value == "REUSABLE"
+    assert status.capability_pack_catalog.packs[1].pack_id == "decision_explanation.pack.v1"
+    assert (
+        status.capability_pack_catalog.packs[0].quality_gate_domain_id
+        == "analytics_commentary_pack"
+    )
+    assert status.capability_pack_catalog.packs[0].quality_evidence_state.value == "STAGED_ONLY"
+    assert status.capability_pack_governance.ready_pack_count == 0
+    assert status.capability_pack_governance.blocking_pack_count == 2
     assert status.first_use_case.downstream_app == "lotus-performance"
+    assert status.first_use_case.capability_pack_id == "analytics_commentary.pack.v1"
+    assert status.first_use_case.capability_pack_family_id == "analytics_commentary"
     assert status.first_use_case.task_id == "explain.v1"
     assert status.first_use_case.contract_hardened is True
     assert status.first_use_case_governance.rollout_stage.value == "PRE_PROD_VALIDATION"

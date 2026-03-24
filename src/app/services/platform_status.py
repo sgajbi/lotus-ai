@@ -13,6 +13,10 @@ from app.retrieval.policy import VECTOR_STORE_STRATEGY
 from app.services.async_governance_status_service import build_async_governance_status
 from app.services.async_runtime_status import build_async_runtime_status
 from app.services.capability_catalog import build_capability_catalog
+from app.services.capability_pack_catalog import build_capability_pack_catalog
+from app.services.capability_pack_governance import (
+    build_capability_pack_catalog_governance_status,
+)
 from app.services.eval_status import build_evaluation_runtime_status
 from app.services.first_use_case_governance import build_first_use_case_governance_status
 from app.services.first_use_case_status import build_first_use_case_runtime_status
@@ -58,6 +62,8 @@ def _resolve_startup_readiness_state(app_state: object | None) -> StartupReadine
 
 def build_platform_runtime_status(app_state: object | None = None) -> PlatformRuntimeStatusResponse:
     capabilities = build_capability_catalog()
+    capability_packs = build_capability_pack_catalog()
+    capability_pack_governance = build_capability_pack_catalog_governance_status()
     prompts = list_registered_prompts()
     access_control_runtime = build_access_control_runtime_status()
     access_control_governance = build_access_control_governance_status()
@@ -118,6 +124,8 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         prompt_runtime=prompt_runtime,
         task_runtime=task_runtime,
         first_use_case=first_use_case,
+        capability_pack_catalog=capability_packs,
+        capability_pack_governance=capability_pack_governance,
         first_use_case_governance=first_use_case_governance,
         safety_runtime=safety_runtime,
         safety_governance=safety_governance,
@@ -136,6 +144,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         ),
         prompt_count=len(prompts),
         capability_count=len(capabilities.tasks),
+        capability_pack_count=capability_packs.pack_count,
         vector_store=VECTOR_STORE_STRATEGY,
         migration_contract_enforced=True,
         startup_readiness_blocking=startup_state.blocking,

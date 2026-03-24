@@ -37,6 +37,8 @@ _PROMPT_APPROVAL_FIXTURE_IDS = (
     "prompt_rollback_examples",
 )
 _FIRST_USE_CASE_APPROVAL_FIXTURE_IDS = ("lotus_performance_first_use_case_examples",)
+_ANALYTICS_COMMENTARY_PACK_APPROVAL_FIXTURE_IDS = ("capability_pack_analytics_commentary_examples",)
+_DECISION_EXPLANATION_PACK_APPROVAL_FIXTURE_IDS = ("capability_pack_decision_explanation_examples",)
 
 
 @dataclass(frozen=True)
@@ -84,6 +86,39 @@ def build_first_use_case_approval_gate_summary() -> EvaluationApprovalGateSummar
         domain_id="first_use_case_onboarding",
         domain_label="First Use-Case Onboarding",
         required_fixture_ids=_FIRST_USE_CASE_APPROVAL_FIXTURE_IDS,
+    )
+
+
+def build_analytics_commentary_pack_approval_gate_summary() -> (
+    EvaluationApprovalGateSummaryDescriptor
+):
+    return _build_approval_gate_summary(
+        domain_id="analytics_commentary_pack",
+        domain_label="Analytics Commentary Pack",
+        required_fixture_ids=_ANALYTICS_COMMENTARY_PACK_APPROVAL_FIXTURE_IDS,
+    )
+
+
+def build_decision_explanation_pack_approval_gate_summary() -> (
+    EvaluationApprovalGateSummaryDescriptor
+):
+    return _build_approval_gate_summary(
+        domain_id="decision_explanation_pack",
+        domain_label="Decision Explanation Pack",
+        required_fixture_ids=_DECISION_EXPLANATION_PACK_APPROVAL_FIXTURE_IDS,
+    )
+
+
+def build_named_approval_gate_summary(
+    *,
+    domain_id: str,
+    domain_label: str,
+    required_fixture_ids: tuple[str, ...],
+) -> EvaluationApprovalGateSummaryDescriptor:
+    return _build_approval_gate_summary(
+        domain_id=domain_id,
+        domain_label=domain_label,
+        required_fixture_ids=required_fixture_ids,
     )
 
 

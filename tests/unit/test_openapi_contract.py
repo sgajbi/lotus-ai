@@ -145,6 +145,45 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     )
     assert spec["paths"]["/platform/async/jobs/submit"]["post"]["operationId"] == ("submitAsyncJob")
     assert spec["paths"]["/platform/capabilities"]["get"]["operationId"] == "getCapabilityCatalog"
+    assert spec["paths"]["/platform/capability-packs"]["get"]["operationId"] == (
+        "getCapabilityPackCatalog"
+    )
+    assert spec["paths"]["/platform/capability-packs/{pack_id}"]["get"]["operationId"] == (
+        "getCapabilityPackDetail"
+    )
+    assert (
+        spec["paths"]["/platform/capability-packs/{pack_id}/adoption-template"]["get"][
+            "operationId"
+        ]
+        == "getCapabilityPackAdoptionTemplate"
+    )
+    assert (
+        spec["paths"]["/platform/capability-packs/{pack_id}/observability-summary"]["get"][
+            "operationId"
+        ]
+        == "getCapabilityPackObservabilitySummary"
+    )
+    assert (
+        spec["paths"]["/platform/capability-packs/{pack_id}/activation-readiness"]["get"][
+            "operationId"
+        ]
+        == "getCapabilityPackActivationReadiness"
+    )
+    assert (
+        spec["paths"]["/platform/capability-packs/{pack_id}/runbook-readiness"]["get"][
+            "operationId"
+        ]
+        == "getCapabilityPackRunbookReadiness"
+    )
+    assert (
+        spec["paths"]["/platform/capability-packs/{pack_id}/governance-status"]["get"][
+            "operationId"
+        ]
+        == "getCapabilityPackGovernanceStatus"
+    )
+    assert spec["paths"]["/platform/capability-packs/governance-status"]["get"]["operationId"] == (
+        "getCapabilityPackCatalogGovernanceStatus"
+    )
     assert (
         spec["paths"]["/platform/use-cases/first-production-use-case"]["get"]["operationId"]
         == "getFirstProductionUseCaseStatus"
@@ -283,6 +322,27 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "runtime_status" in artifact_governance_schema["properties"]
     assert "activation_readiness" in artifact_governance_schema["properties"]
     assert "runbook_readiness" in artifact_governance_schema["properties"]
+    capability_pack_catalog_schema = spec["components"]["schemas"]["CapabilityPackCatalogResponse"]
+    capability_pack_schema = spec["components"]["schemas"]["CapabilityPackDescriptor"]
+    capability_pack_detail_schema = spec["components"]["schemas"]["CapabilityPackDetailResponse"]
+    capability_pack_adoption_schema = spec["components"]["schemas"][
+        "CapabilityPackAdoptionTemplateResponse"
+    ]
+    capability_pack_observability_schema = spec["components"]["schemas"][
+        "CapabilityPackObservabilitySummaryResponse"
+    ]
+    capability_pack_activation_schema = spec["components"]["schemas"][
+        "CapabilityPackActivationReadinessResponse"
+    ]
+    capability_pack_runbook_schema = spec["components"]["schemas"][
+        "CapabilityPackRunbookReadinessResponse"
+    ]
+    capability_pack_governance_schema = spec["components"]["schemas"][
+        "CapabilityPackGovernanceStatusResponse"
+    ]
+    capability_pack_catalog_governance_schema = spec["components"]["schemas"][
+        "CapabilityPackCatalogGovernanceStatusResponse"
+    ]
     async_job_schema = spec["components"]["schemas"]["AsyncJobArtifactDescriptor"]
     assert "artifact_refs" in async_job_schema["properties"]
     evaluation_case_schema = spec["components"]["schemas"]["EvaluationCaseResultDescriptor"]
@@ -356,6 +416,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "recovery_findings" in resilience_dependency_schema["properties"]
     assert "artifact_runtime" in platform_runtime_schema["properties"]
     assert "artifact_governance" in platform_runtime_schema["properties"]
+    assert "capability_pack_catalog" in platform_runtime_schema["properties"]
+    assert "capability_pack_governance" in platform_runtime_schema["properties"]
+    assert "capability_pack_count" in platform_runtime_schema["properties"]
     assert "resilience_runtime" in platform_runtime_schema["properties"]
     assert "resilience_governance" in platform_runtime_schema["properties"]
     assert "first_use_case" in platform_runtime_schema["properties"]
@@ -365,6 +428,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "production_baseline" in platform_runtime_schema["properties"]
     assert "production_baseline_governance" in platform_runtime_schema["properties"]
     first_use_case_schema = spec["components"]["schemas"]["FirstUseCaseRuntimeStatusResponse"]
+    assert "capability_pack_id" in first_use_case_schema["properties"]
+    assert "capability_pack_family_id" in first_use_case_schema["properties"]
     assert "downstream_contract_fields" in first_use_case_schema["properties"]
     assert "ownership_boundaries" in first_use_case_schema["properties"]
     first_use_case_readiness_schema = spec["components"]["schemas"]["FirstUseCaseReadinessResponse"]
@@ -384,6 +449,27 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     onboarding_template_schema = spec["components"]["schemas"]["UseCaseOnboardingTemplateResponse"]
     assert "checklist" in onboarding_template_schema["properties"]
     assert "approval_criteria" in onboarding_template_schema["properties"]
+    assert "pack_count" in capability_pack_catalog_schema["properties"]
+    assert "packs" in capability_pack_catalog_schema["properties"]
+    assert "family_kind" in capability_pack_schema["properties"]
+    assert "maturity_stage" in capability_pack_schema["properties"]
+    assert "current_anchor_use_case_id" in capability_pack_schema["properties"]
+    assert "adoption_template_endpoint" in capability_pack_schema["properties"]
+    assert "quality_gate_domain_id" in capability_pack_schema["properties"]
+    assert "quality_gate_ready" in capability_pack_schema["properties"]
+    assert "quality_evidence_state" in capability_pack_schema["properties"]
+    assert "quality_expectations" in capability_pack_detail_schema["properties"]
+    assert "unsupported_input_behaviors" in capability_pack_detail_schema["properties"]
+    assert "approval_gate" in capability_pack_detail_schema["properties"]
+    assert "checklist" in capability_pack_adoption_schema["properties"]
+    assert "approval_criteria" in capability_pack_adoption_schema["properties"]
+    assert "observability_ready" in capability_pack_observability_schema["properties"]
+    assert "items" in capability_pack_activation_schema["properties"]
+    assert "items" in capability_pack_runbook_schema["properties"]
+    assert "activation_readiness" in capability_pack_governance_schema["properties"]
+    assert "observability" in capability_pack_governance_schema["properties"]
+    assert "pack_summaries" in capability_pack_catalog_governance_schema["properties"]
+    assert "based_on_capability_pack_id" in onboarding_template_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"

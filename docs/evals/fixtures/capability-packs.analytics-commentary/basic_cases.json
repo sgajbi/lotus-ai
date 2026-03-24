@@ -1,0 +1,67 @@
+{
+  "fixture_family": "capability_pack_analytics_commentary_examples",
+  "task_id": "explain.v1",
+  "cases": [
+    {
+      "case_id": "analytics_commentary_structured_facts_authorized",
+      "summary": "Analytics commentary remains explanation-only and grounded to caller-owned structured facts.",
+      "input": {
+        "task_id": "explain.v1",
+        "caller_app": "lotus-performance",
+        "tenant_id": "tenant-sg-001",
+        "analysis_scope": "monthly_contribution_change",
+        "period_window": {
+          "current_period": "2026-03",
+          "comparison_period": "2026-02"
+        },
+        "metric_deltas": [
+          {
+            "metric_id": "active_return_bps",
+            "delta_bps": 41
+          }
+        ],
+        "material_findings": [
+          "Sector selection in industrials drove most of the change."
+        ]
+      },
+      "expected": {
+        "output_label": "EXPLANATION_ONLY",
+        "authorization_outcome": "ALLOWED",
+        "caller_app": "lotus-performance",
+        "task_id": "explain.v1",
+        "safety_disposition": "DOCUMENTED_ONLY",
+        "caller_visible_in_payload": true,
+        "stubbed": true
+      }
+    },
+    {
+      "case_id": "analytics_commentary_runtime_safety_redaction",
+      "summary": "Analytics commentary runtime safety can redact caller-linked fields while preserving explanation-only output.",
+      "input": {
+        "task_id": "explain.v1",
+        "caller_app": "lotus-performance",
+        "tenant_id": "tenant-sg-001",
+        "safety_mode": "runtime_enforced",
+        "analysis_scope": "risk_budget_change",
+        "metric_deltas": [
+          {
+            "metric_id": "tracking_error_bps",
+            "delta_bps": -9
+          }
+        ],
+        "material_findings": [
+          "Tracking error narrowed after concentration caps were tightened."
+        ]
+      },
+      "expected": {
+        "output_label": "EXPLANATION_ONLY",
+        "authorization_outcome": "ALLOWED",
+        "caller_app": "lotus-performance",
+        "task_id": "explain.v1",
+        "safety_disposition": "ENFORCED_REDACTED",
+        "caller_visible_in_payload": false,
+        "stubbed": true
+      }
+    }
+  ]
+}

@@ -8,9 +8,9 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.delivery_phase == "foundation"
     assert status.manifest_version == "foundation.v1"
     assert status.evidence_category_count == 6
-    assert status.staged_fixture_count >= 17
+    assert status.staged_fixture_count >= 19
     assert status.documented_fixture_count == 0
-    assert status.staged_case_count == 38
+    assert status.staged_case_count == 42
     assert [item.seam_id for item in status.seam_coverage] == [
         "async_execution",
         "task_execution",
@@ -21,8 +21,8 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     ]
     assert status.seam_coverage[0].staged_fixture_count == 1
     assert status.seam_coverage[0].staged_case_count == 3
-    assert status.seam_coverage[1].staged_fixture_count == 4
-    assert status.seam_coverage[1].staged_case_count == 8
+    assert status.seam_coverage[1].staged_fixture_count == 6
+    assert status.seam_coverage[1].staged_case_count == 12
     assert status.seam_coverage[2].staged_fixture_count == 2
     assert status.seam_coverage[2].staged_case_count == 2
     assert status.seam_coverage[3].staged_fixture_count == 2
@@ -37,12 +37,16 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
         "retrieval_execution",
         "provider_execution",
         "safety_enforcement",
+        "analytics_commentary_pack",
+        "decision_explanation_pack",
     ]
     assert status.approval_gates[0].evidence_state.value == "STAGED_ONLY"
     assert status.approval_gates[1].evidence_state.value == "STAGED_ONLY"
     assert status.approval_gates[2].evidence_state.value == "STAGED_ONLY"
     assert status.approval_gates[3].evidence_state.value == "STAGED_ONLY"
     assert status.approval_gates[4].evidence_state.value == "STAGED_ONLY"
+    assert status.approval_gates[5].evidence_state.value == "STAGED_ONLY"
+    assert status.approval_gates[6].evidence_state.value == "STAGED_ONLY"
     assert status.recorded_run_count == 2
     assert status.runtime_backed_run_count == 0
     assert status.historical_run_count == 2

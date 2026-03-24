@@ -337,6 +337,83 @@ def test_execute_fixture_case_reports_pass_for_lotus_performance_first_use_case(
     ]
 
 
+def test_execute_fixture_case_reports_pass_for_analytics_commentary_pack() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="analytics_commentary_structured_facts_authorized",
+        summary="Analytics commentary should remain bounded and authorized.",
+        input_payload={
+            "task_id": "explain.v1",
+            "caller_app": "lotus-performance",
+            "tenant_id": "tenant-sg-001",
+            "analysis_scope": "monthly_contribution_change",
+            "metric_deltas": [{"metric_id": "active_return_bps", "delta_bps": 41}],
+            "material_findings": ["Industrials sector selection drove the change."],
+        },
+        expected_payload={
+            "output_label": "EXPLANATION_ONLY",
+            "authorization_outcome": "ALLOWED",
+            "caller_app": "lotus-performance",
+            "task_id": "explain.v1",
+            "safety_disposition": "DOCUMENTED_ONLY",
+            "caller_visible_in_payload": True,
+            "stubbed": True,
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="capability_pack_analytics_commentary_examples",
+            fixture_task_id="explain.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "Analytics commentary pack execution preserved" in summary
+    assert evidence_refs == [
+        "service://platform/capability-packs/analytics_commentary.pack.v1",
+        "service://ai/tasks/execute",
+    ]
+
+
+def test_execute_fixture_case_reports_pass_for_decision_explanation_pack() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="decision_explanation_blocker_state_authorized",
+        summary="Decision explanation should remain bounded and authorized.",
+        input_payload={
+            "task_id": "explain.v1",
+            "caller_app": "lotus-manage",
+            "tenant_id": "tenant-sg-001",
+            "decision_scope": "rebalance_submission",
+            "decision_state": "BLOCKED",
+            "blocker_reason": "Approval policy requires a missing compliance attestation.",
+            "required_next_step": "Upload the missing attestation before retry.",
+        },
+        expected_payload={
+            "output_label": "EXPLANATION_ONLY",
+            "authorization_outcome": "ALLOWED",
+            "caller_app": "lotus-manage",
+            "task_id": "explain.v1",
+            "safety_disposition": "DOCUMENTED_ONLY",
+            "caller_visible_in_payload": True,
+            "stubbed": True,
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="capability_pack_decision_explanation_examples",
+            fixture_task_id="explain.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "Decision explanation pack execution preserved" in summary
+    assert evidence_refs == [
+        "service://platform/capability-packs/decision_explanation.pack.v1",
+        "service://ai/tasks/execute",
+    ]
+
+
 def test_execute_fixture_case_reports_unknown_runtime_semantics_for_unmapped_fixture() -> None:
     summary, outcome, evidence_refs = _execute_fixture_case(
         fixture_id="unknown_fixture_family",

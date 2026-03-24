@@ -23,6 +23,21 @@ def test_platform_capabilities_contract(client: TestClient) -> None:
     assert any(task["task_id"] == "explain.v1" for task in body["tasks"])
 
 
+def test_platform_capability_pack_catalog_contract(client: TestClient) -> None:
+    response = client.get("/platform/capability-packs")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["phase"] == "foundation"
+    assert body["pack_count"] == 2
+    assert body["reusable_pack_count"] == 1
+    assert body["approved_pack_count"] == 0
+    assert body["packs"][0]["pack_id"] == "analytics_commentary.pack.v1"
+    assert body["packs"][0]["maturity_stage"] == "REUSABLE"
+    assert body["packs"][1]["pack_id"] == "decision_explanation.pack.v1"
+
+
 def test_first_production_use_case_contract(client: TestClient) -> None:
     response = client.get("/platform/use-cases/first-production-use-case")
 
@@ -293,11 +308,11 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["prompt_governance"]["evidence_readiness"]["evidence_ready"] is False
     assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
     assert body["evaluation_runtime"]["evidence_category_count"] == 6
-    assert body["evaluation_runtime"]["staged_case_count"] == 38
+    assert body["evaluation_runtime"]["staged_case_count"] == 42
     assert body["evaluation_runtime"]["seam_coverage"][0]["seam_id"] == "async_execution"
     assert body["evaluation_runtime"]["seam_coverage"][0]["staged_fixture_count"] == 1
-    assert body["evaluation_runtime"]["seam_coverage"][1]["staged_fixture_count"] == 4
-    assert body["evaluation_runtime"]["seam_coverage"][1]["staged_case_count"] == 8
+    assert body["evaluation_runtime"]["seam_coverage"][1]["staged_fixture_count"] == 6
+    assert body["evaluation_runtime"]["seam_coverage"][1]["staged_case_count"] == 12
     assert body["evaluation_runtime"]["seam_coverage"][2]["staged_fixture_count"] == 2
     assert body["evaluation_runtime"]["seam_coverage"][2]["staged_case_count"] == 2
     assert body["evaluation_runtime"]["seam_coverage"][3]["staged_fixture_count"] == 2
@@ -313,6 +328,12 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["evaluation_runtime"]["approval_gates"][2]["domain_id"] == "retrieval_execution"
     assert body["evaluation_runtime"]["approval_gates"][3]["domain_id"] == "provider_execution"
     assert body["evaluation_runtime"]["approval_gates"][4]["domain_id"] == "safety_enforcement"
+    assert (
+        body["evaluation_runtime"]["approval_gates"][5]["domain_id"] == "analytics_commentary_pack"
+    )
+    assert (
+        body["evaluation_runtime"]["approval_gates"][6]["domain_id"] == "decision_explanation_pack"
+    )
     assert body["evaluation_runtime"]["recorded_run_count"] == 2
     assert body["evaluation_runtime"]["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["evaluation_runtime"]["evaluation_runner_active"] is True
@@ -328,8 +349,22 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     )
     assert body["task_runtime"]["enabled_task_count"] >= 7
     assert body["task_runtime"]["retrieval_backed_task_count"] == 2
+    assert body["capability_pack_count"] == 2
+    assert body["capability_pack_catalog"]["pack_count"] == 2
+    assert body["capability_pack_catalog"]["reusable_pack_count"] == 1
+    assert body["capability_pack_catalog"]["packs"][0]["pack_id"] == "analytics_commentary.pack.v1"
+    assert body["capability_pack_catalog"]["packs"][0]["maturity_stage"] == "REUSABLE"
+    assert (
+        body["capability_pack_catalog"]["packs"][0]["quality_gate_domain_id"]
+        == "analytics_commentary_pack"
+    )
+    assert body["capability_pack_catalog"]["packs"][1]["pack_id"] == "decision_explanation.pack.v1"
+    assert body["capability_pack_governance"]["ready_pack_count"] == 0
+    assert body["capability_pack_governance"]["blocking_pack_count"] == 2
     assert body["first_use_case"]["use_case_id"] == "lotus_performance.analytics_commentary.v1"
     assert body["first_use_case"]["downstream_app"] == "lotus-performance"
+    assert body["first_use_case"]["capability_pack_id"] == "analytics_commentary.pack.v1"
+    assert body["first_use_case"]["capability_pack_family_id"] == "analytics_commentary"
     assert body["first_use_case"]["contract_hardened"] is True
     assert body["first_use_case_governance"]["rollout_stage"] == "PRE_PROD_VALIDATION"
     assert body["first_use_case_governance"]["operational_posture"] == "LIMITED_ROLLOUT_BLOCKED"

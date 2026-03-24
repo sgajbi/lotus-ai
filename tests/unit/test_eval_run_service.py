@@ -17,7 +17,7 @@ def test_evaluation_run_catalog_reports_recorded_artifacts() -> None:
     assert catalog.status_counts[EvaluationRunStatus.RECORDED] == 1
     assert catalog.status_counts[EvaluationRunStatus.SUPERSEDED] == 1
     assert catalog.runs[0].manifest_version == "foundation.v1"
-    assert catalog.runs[0].staged_case_count == 38
+    assert catalog.runs[0].staged_case_count == 42
     assert catalog.runs[1].status == "SUPERSEDED"
     assert catalog.runs[0].record_source == EvaluationRunRecordSource.STAGED_ARTIFACT
 

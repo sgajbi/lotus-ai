@@ -156,6 +156,9 @@ class UseCaseOnboardingTemplateResponse(BaseModel):
     based_on_use_case_id: str = Field(
         description="Implemented or active use case used as the template baseline."
     )
+    based_on_capability_pack_id: str = Field(
+        description="Capability-pack identifier used as the product baseline for the onboarding template."
+    )
     downstream_pattern: str = Field(
         description="Short description of the downstream integration shape this template covers."
     )
@@ -184,6 +187,12 @@ class FirstUseCaseRuntimeStatusResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     use_case_id: str = Field(description="Stable identifier for the selected first use case.")
     downstream_app: str = Field(description="Named downstream integration owner for the use case.")
+    capability_pack_id: str = Field(
+        description="App-facing capability-pack identifier currently anchoring this use case."
+    )
+    capability_pack_family_id: str = Field(
+        description="Capability-pack family currently anchoring this use case."
+    )
     task_id: str = Field(description="Bounded lotus-ai task used by the first use case.")
     task_category: TaskCategory = Field(
         description="Task category used by the first production-oriented use case."

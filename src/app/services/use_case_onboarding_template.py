@@ -14,6 +14,7 @@ def build_use_case_onboarding_template() -> UseCaseOnboardingTemplateResponse:
         version=settings.service_version,
         template_id="bounded_explanation_only_onboarding.v1",
         based_on_use_case_id="lotus_performance.analytics_commentary.v1",
+        based_on_capability_pack_id="analytics_commentary.pack.v1",
         downstream_pattern=(
             "Explanation-only commentary over caller-supplied structured domain facts, with the "
             "downstream app retaining business truth and final rendering."
@@ -99,6 +100,7 @@ def build_use_case_onboarding_template() -> UseCaseOnboardingTemplateResponse:
         ],
         status_summary=[
             "The first production-use-case onboarding work now yields a reusable bounded integration template for later Lotus apps.",
+            "The template is now explicitly anchored to analytics_commentary.pack.v1 so future commentary-family onboarding starts from a named product capability instead of only a single use case.",
             "This template is intentionally narrow: explanation-only, structured-input, caller-governed onboarding remains the default adoption pattern.",
         ],
     )

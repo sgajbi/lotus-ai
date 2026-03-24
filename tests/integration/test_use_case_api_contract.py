@@ -9,6 +9,8 @@ def test_first_production_use_case_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["use_case_id"] == "lotus_performance.analytics_commentary.v1"
     assert body["downstream_app"] == "lotus-performance"
+    assert body["capability_pack_id"] == "analytics_commentary.pack.v1"
+    assert body["capability_pack_family_id"] == "analytics_commentary"
     assert body["task_id"] == "explain.v1"
     assert body["output_label"] == "EXPLANATION_ONLY"
     assert body["contract_hardened"] is True
@@ -70,6 +72,7 @@ def test_use_case_onboarding_template_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["template_id"] == "bounded_explanation_only_onboarding.v1"
     assert body["based_on_use_case_id"] == "lotus_performance.analytics_commentary.v1"
+    assert body["based_on_capability_pack_id"] == "analytics_commentary.pack.v1"
     assert any(item["checklist_id"] == "contract_boundary_defined" for item in body["checklist"])
     assert any(
         item["criterion_id"] == "approval_governance_summary" for item in body["approval_criteria"]
