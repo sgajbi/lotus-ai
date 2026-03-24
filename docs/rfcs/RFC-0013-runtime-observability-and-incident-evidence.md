@@ -96,6 +96,7 @@ The first production-capable observability layer should:
 3. preserve caller- and capability-level breakdown where the underlying data supports it,
 4. remain grounded in actual runtime and durable state rather than synthetic status prose,
 5. support runbook-driven operations rather than replacing them.
+6. remain inside the service contract boundary for v1 rather than taking ownership of external dashboard or alert definitions.
 
 ## State Model and Invariants
 
@@ -107,6 +108,7 @@ This RFC establishes the following invariants:
 4. caller- and tenant-level operational breakdown must only appear where the underlying identity model supports it,
 5. observability must not silently weaken audit or safety boundaries,
 6. runtime status and observability summaries must not contradict each other.
+7. volatile runtime telemetry and durable incident evidence must remain separate in both contracts and implementation wording.
 
 ## Architecture Direction
 
@@ -131,7 +133,8 @@ Required behavior:
 1. supportability views can explain what failed, when, and in which domain,
 2. cross-domain incidents can be correlated through existing audit and correlation metadata,
 3. durable event and state models are reused where available,
-4. no hidden “dashboard-only” truth is introduced outside the platform contracts.
+4. no hidden “dashboard-only” truth is introduced outside the platform contracts,
+5. v1 in this RFC does not require repo-managed dashboard or alert definitions.
 
 ### Caller and Capability Breakdown
 
@@ -164,6 +167,7 @@ Required behavior:
 5. Observability data must not leak sensitive content that should remain redacted.
 6. SQL-backed tests must prove durable incident evidence behavior where applicable.
 7. Runbooks must define how operators use the observability layer during incident review.
+8. The RFC does not add a raw trace store, unbounded event retention, or arbitrary analytics query surface.
 
 ## Delivery Slices
 
@@ -179,8 +183,9 @@ Acceptance gate:
 
 1. telemetry contracts are typed and bounded,
 2. services derive from actual runtime data where available,
-3. unit tests cover healthy and degraded posture,
-4. runtime status remains consistent with the new observability layer.
+3. unit tests cover healthy, degraded, stale, and unavailable posture,
+4. runtime status remains consistent with the new observability layer,
+5. no repo-managed dashboard or alert pack is required for this slice.
 
 ### Slice 2: Provider, Retrieval, and Async Incident Summaries
 

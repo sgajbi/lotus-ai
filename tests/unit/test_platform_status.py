@@ -62,6 +62,9 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.access_control_governance.activation_readiness.activation_ready is False
     assert status.access_control_governance.runbook_readiness.runbook_ready is True
     assert status.access_control_governance.blocking_area_count == 1
+    assert status.observability_runtime.domain_count == 6
+    assert status.observability_runtime.unavailable_domain_count == 0
+    assert status.observability_runtime.incident_evidence_supported_domain_count >= 1
     assert status.async_runtime.cutover_state == "in_process_only"
     assert status.async_runtime.queue_mode == "DISABLED"
     assert status.async_runtime.queue_backend == "none"

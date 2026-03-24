@@ -228,6 +228,9 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["access_control_governance"]["activation_readiness"]["activation_ready"] is False
     assert body["access_control_governance"]["runbook_readiness"]["runbook_ready"] is True
     assert body["access_control_governance"]["blocking_area_count"] == 1
+    assert body["observability_runtime"]["domain_count"] == 6
+    assert body["observability_runtime"]["unavailable_domain_count"] == 0
+    assert body["observability_runtime"]["incident_evidence_supported_domain_count"] >= 1
     assert body["async_runtime"]["cutover_state"] == "in_process_only"
     assert body["async_runtime"]["queue_mode"] == "DISABLED"
     assert body["async_runtime"]["worker_mode"] == "IN_PROCESS_ONLY"
