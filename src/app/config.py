@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     async_worker_queue_poll_seconds: int = 5
     async_worker_drain_enabled: bool = False
     evaluation_runtime_store_mode: str = "memory"
+    artifact_store_mode: str = "memory"
+    artifact_object_store_mode: str = "memory"
+    artifact_object_store_root: str | None = None
     startup_readiness_policy: str = "warn"
     readiness_probe_policy: str = "observe"
     database_url: str | None = None

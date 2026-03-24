@@ -13,7 +13,8 @@ This document is the quickest way to understand what `lotus-ai` supports today, 
 5. runtime-backed evaluation and approval-gate evidence,
 6. durable async execution with dedicated worker and queue support,
 7. caller identity and tenant-aware authorization controls,
-8. audit, evidence, and operator-facing governance surfaces.
+8. audit, evidence, and operator-facing governance surfaces,
+9. governed artifact metadata and payload-store foundation.
 
 The service is no longer only a documentation skeleton. It has real runtime control planes and durable platform state. It is still in a foundation phase because some important production-support features are intentionally deferred.
 
@@ -149,6 +150,14 @@ Current state:
 3. provider, retrieval, async, evaluation, prompt, and safety incident summaries are now available through the observability API surface,
 4. bounded caller, tenant, and capability breakdowns are now available through the observability API surface,
 5. durable observability governance is now explicitly gated on SQL-backed audit and caller-policy stores rather than implied through prose.
+
+### Artifact Storage
+
+Current state:
+
+1. a governed artifact metadata model and payload-store seam now exist,
+2. relational metadata remains authoritative while payload bytes stay behind a bounded object-store interface,
+3. major runtime consumers have not been cut over yet.
 
 ### First Downstream Production Use Case
 

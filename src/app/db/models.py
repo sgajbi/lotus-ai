@@ -214,6 +214,27 @@ class CallerPolicyModel(Base):
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
+class ArtifactMetadataModel(Base):
+    __tablename__ = "artifact_metadata"
+
+    artifact_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    domain: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    artifact_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_object_kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_object_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    lifecycle_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    retention_posture: Mapped[str] = mapped_column(String(32), nullable=False)
+    media_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    checksum_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    storage_backend: Mapped[str] = mapped_column(String(32), nullable=False)
+    storage_reference: Mapped[str] = mapped_column(Text, nullable=False)
+    lineage_parent_artifact_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    superseded_by_artifact_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
 class AsyncJobModel(Base):
     __tablename__ = "async_jobs"
 

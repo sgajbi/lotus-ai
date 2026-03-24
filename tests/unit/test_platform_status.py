@@ -7,6 +7,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from app.config import settings
 from app.contracts.providers import ProviderFailureCategory
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+from app.services.artifact_store import reset_artifact_store_cache
 from app.services.async_delivery_queue import get_test_async_delivery_queue
 from app.services.platform_status import (
     _resolve_startup_readiness_state,
@@ -44,6 +45,11 @@ def test_resolve_startup_readiness_state_reads_blocking_and_findings() -> None:
 
 
 def test_build_platform_runtime_status_includes_startup_readiness_state() -> None:
+    settings.artifact_store_mode = "memory"
+    settings.artifact_object_store_mode = "memory"
+    settings.artifact_object_store_root = None
+    reset_artifact_store_cache()
+
     status = build_platform_runtime_status(
         SimpleNamespace(
             startup_readiness_blocking=True,
@@ -62,6 +68,11 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.access_control_governance.activation_readiness.activation_ready is False
     assert status.access_control_governance.runbook_readiness.runbook_ready is True
     assert status.access_control_governance.blocking_area_count == 1
+    assert status.artifact_store_mode == "memory"
+    assert status.artifact_object_store_mode == "memory"
+    assert status.artifact_runtime.metadata_store_mode == "memory"
+    assert status.artifact_runtime.object_store_mode == "memory"
+    assert status.artifact_runtime.artifact_count == 0
     assert status.observability_runtime.domain_count == 6
     assert status.observability_runtime.unavailable_domain_count == 0
     assert status.observability_runtime.incident_evidence_supported_domain_count >= 1
@@ -215,3 +226,21 @@ def test_build_platform_runtime_status_reflects_sql_backed_prompt_rollout_after_
     assert (
         explain_state.latest_control_event.action_type == PromptControlActionType.PROMOTE_CANDIDATE
     )
+
+
+def test_build_platform_runtime_status_reflects_artifact_runtime_posture(
+    tmp_path: Path,
+) -> None:
+    settings.artifact_store_mode = "sqlalchemy"
+    settings.artifact_object_store_mode = "filesystem"
+    settings.artifact_object_store_root = str(tmp_path / "objects")
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-platform-artifacts.db'}"
+    upgrade_database_to_head(settings.database_url)
+    reset_artifact_store_cache()
+
+    status = build_platform_runtime_status(None)
+
+    assert status.artifact_runtime.metadata_store_mode == "sqlalchemy"
+    assert status.artifact_runtime.object_store_mode == "filesystem"
+    assert status.artifact_runtime.metadata_store.status.value == "READY"
+    assert status.artifact_runtime.object_store.status.value == "READY"

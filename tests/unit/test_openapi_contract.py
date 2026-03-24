@@ -10,6 +10,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/observability/runtime-status"]["get"]["operationId"] == (
         "getObservabilityRuntimeStatus"
     )
+    assert spec["paths"]["/platform/artifacts/runtime-status"]["get"]["operationId"] == (
+        "getArtifactRuntimeStatus"
+    )
     assert spec["paths"]["/platform/observability/activation-readiness"]["get"]["operationId"] == (
         "getObservabilityActivationReadiness"
     )
@@ -178,6 +181,11 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "caller_apps" in breakdown_schema["properties"]
     assert "tenants" in breakdown_schema["properties"]
     assert "capabilities" in breakdown_schema["properties"]
+    artifact_runtime_schema = spec["components"]["schemas"]["ArtifactRuntimeStatusResponse"]
+    assert "metadata_store" in artifact_runtime_schema["properties"]
+    assert "object_store" in artifact_runtime_schema["properties"]
+    platform_runtime_schema = spec["components"]["schemas"]["PlatformRuntimeStatusResponse"]
+    assert "artifact_runtime" in platform_runtime_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"

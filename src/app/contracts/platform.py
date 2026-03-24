@@ -6,6 +6,7 @@ from app.contracts.access_control import (
     AccessControlGovernanceStatusResponse,
     AccessControlRuntimeStatusResponse,
 )
+from app.contracts.artifacts import ArtifactRuntimeStatusResponse
 from app.contracts.async_runtime import AsyncGovernanceStatusResponse, AsyncRuntimeStatusResponse
 from app.contracts.evals import EvaluationRuntimeStatusResponse
 from app.contracts.observability import (
@@ -40,8 +41,13 @@ class PlatformRuntimeStatusResponse(BaseModel):
     safety_mode: str = Field(description="Current safety policy mode.")
     prompt_store_mode: str = Field(description="Current prompt registry store mode.")
     access_control_store_mode: str = Field(description="Current caller policy store mode.")
+    artifact_store_mode: str = Field(description="Current artifact metadata store mode.")
+    artifact_object_store_mode: str = Field(description="Current artifact payload store mode.")
     async_runtime: AsyncRuntimeStatusResponse = Field(
         description="Current async execution posture for lotus-ai."
+    )
+    artifact_runtime: ArtifactRuntimeStatusResponse = Field(
+        description="Current governed artifact metadata and payload-store posture for lotus-ai."
     )
     access_control_runtime: AccessControlRuntimeStatusResponse = Field(
         description="Current caller identity and access-control runtime posture for lotus-ai."
