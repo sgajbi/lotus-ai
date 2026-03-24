@@ -1,0 +1,37 @@
+{
+  "task_id": "provider.embeddings.v1",
+  "fixture_family": "provider_embedding_examples",
+  "cases": [
+    {
+      "case_id": "live_embedding_mode_requires_complete_configuration",
+      "summary": "Live embedding mode should reject partial credential configuration before execution.",
+      "input": {
+        "embedding_provider_mode": "enabled",
+        "live_embedding_provider_id": "embeddings.openai",
+        "live_embedding_model_id": null,
+        "live_embedding_provider_api_key": "secret"
+      },
+      "expected": {
+        "failure_category": "INVALID_LIVE_CONFIGURATION",
+        "must_emit_structured_rejection": true,
+        "expected_outcome": "REJECTION"
+      }
+    },
+    {
+      "case_id": "live_embedding_execution_returns_vector_metadata",
+      "summary": "Live embedding execution should preserve provider identity and vector metadata when bounded rollout is configured.",
+      "input": {
+        "embedding_provider_mode": "enabled",
+        "live_embedding_provider_id": "embeddings.openai",
+        "live_embedding_model_id": "text-embedding-3-large",
+        "live_embedding_provider_api_key": "eval-secret"
+      },
+      "expected": {
+        "provider_id": "embeddings.openai",
+        "model_id": "text-embedding-3-large",
+        "adapter_kind": "OPENAI_EMBEDDINGS_LIVE",
+        "expected_outcome": "SUCCESS"
+      }
+    }
+  ]
+}

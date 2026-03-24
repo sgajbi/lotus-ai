@@ -21,9 +21,13 @@ _PROVIDER_APPROVAL_FIXTURE_IDS = (
     "provider_failure_mode_examples",
     "provider_operations_examples",
     "provider_degradation_examples",
+    "provider_embedding_examples",
 )
 
-_RETRIEVAL_APPROVAL_FIXTURE_IDS = ("retrieval_citation_examples",)
+_RETRIEVAL_APPROVAL_FIXTURE_IDS = (
+    "retrieval_citation_examples",
+    "retrieval_embedding_examples",
+)
 _SAFETY_APPROVAL_FIXTURE_IDS = (
     "safety_policy_examples",
     "safety_runtime_examples",

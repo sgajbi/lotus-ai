@@ -38,6 +38,14 @@ def build_retrieval_runbook_readiness() -> RetrievalRunbookReadinessResponse:
             ),
         ),
         RetrievalRunbookReadinessItem(
+            runbook_id="retrieval_embedding_dependency_review",
+            status="FOUNDATION_DOCUMENTED",
+            required_for_activation=True,
+            notes=(
+                "Retrieval indexing now documents how bounded live embedding posture is reviewed separately from broader retrieval go-live approval."
+            ),
+        ),
+        RetrievalRunbookReadinessItem(
             runbook_id="retrieval_observability_incident_views",
             status="READY",
             required_for_activation=True,

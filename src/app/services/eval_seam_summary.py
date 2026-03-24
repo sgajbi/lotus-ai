@@ -15,13 +15,17 @@ SEAM_FIXTURE_MAP: dict[str, list[str]] = {
         "prompt_promotion_examples",
         "prompt_rollback_examples",
     ],
-    "retrieval": ["retrieval_citation_examples"],
+    "retrieval": [
+        "retrieval_citation_examples",
+        "retrieval_embedding_examples",
+    ],
     "provider_execution": [
         "provider_policy_examples",
         "provider_runtime_examples",
         "provider_failure_mode_examples",
         "provider_operations_examples",
         "provider_degradation_examples",
+        "provider_embedding_examples",
     ],
     "safety_execution": [
         "safety_policy_examples",

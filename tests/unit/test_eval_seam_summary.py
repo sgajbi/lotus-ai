@@ -37,19 +37,23 @@ def test_evaluation_seam_coverage_reports_staged_fixtures_by_platform_boundary()
     ]
 
     retrieval = seam_coverage[3]
-    assert retrieval.staged_fixture_count == 1
-    assert retrieval.staged_case_count == 3
-    assert retrieval.fixture_ids == ["retrieval_citation_examples"]
+    assert retrieval.staged_fixture_count == 2
+    assert retrieval.staged_case_count == 5
+    assert retrieval.fixture_ids == [
+        "retrieval_citation_examples",
+        "retrieval_embedding_examples",
+    ]
 
     provider_execution = seam_coverage[4]
-    assert provider_execution.staged_fixture_count == 5
-    assert provider_execution.staged_case_count == 12
+    assert provider_execution.staged_fixture_count == 6
+    assert provider_execution.staged_case_count == 14
     assert provider_execution.fixture_ids == [
         "provider_policy_examples",
         "provider_runtime_examples",
         "provider_failure_mode_examples",
         "provider_operations_examples",
         "provider_degradation_examples",
+        "provider_embedding_examples",
     ]
 
     safety_execution = seam_coverage[5]

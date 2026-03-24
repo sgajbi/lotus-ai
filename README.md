@@ -208,7 +208,7 @@ The current retrieval posture is:
 - retrieval source discovery is exposed through the platform API,
 - provider posture discovery is exposed through the platform API,
 - runtime posture for retrieval and platform services is exposed through the platform API,
-- live retrieval search is now available through the bounded indexed-search seam when `retrieval_mode=enabled`, and retrieval indexing can now consume a governed live embedding path when configured, while broader retrieval/provider activation still remains gated behind later RFC-0018 evidence and governance slices.
+- live retrieval search is now available through the bounded indexed-search seam when `retrieval_mode=enabled`, retrieval indexing can now consume a governed live embedding path when configured, and provider/retrieval runbook plus evidence surfaces now reflect that dependency explicitly, while broader provider-expansion rollout still remains gated behind the final RFC-0018 governance slice.
 
 ## What lotus-ai Does
 

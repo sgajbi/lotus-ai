@@ -58,6 +58,14 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
             ),
         ),
         ProviderRunbookReadinessItem(
+            runbook_id="provider_embedding_rollout_and_recovery",
+            status="FOUNDATION_DOCUMENTED",
+            required_for_activation=True,
+            notes=(
+                "Bounded live embedding rollout and recovery expectations are now documented at a foundation level, but formal operator approval is still pending."
+            ),
+        ),
+        ProviderRunbookReadinessItem(
             runbook_id="provider_degradation_and_circuit_response",
             status="NOT_READY",
             required_for_activation=True,

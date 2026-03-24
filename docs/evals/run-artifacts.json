@@ -5,8 +5,8 @@
       "recorded_at": "2026-03-22T09:00:00Z",
       "status": "RECORDED",
       "manifest_version": "foundation.v1",
-      "staged_fixture_count": 15,
-      "staged_case_count": 34,
+      "staged_fixture_count": 17,
+      "staged_case_count": 38,
       "seam_coverage": [
         {
           "seam_id": "async_execution",
@@ -39,10 +39,11 @@
         {
           "seam_id": "retrieval",
           "fixture_ids": [
-            "retrieval_citation_examples"
+            "retrieval_citation_examples",
+            "retrieval_embedding_examples"
           ],
-          "staged_fixture_count": 1,
-          "staged_case_count": 3
+          "staged_fixture_count": 2,
+          "staged_case_count": 5
         },
         {
           "seam_id": "provider_execution",
@@ -51,10 +52,11 @@
             "provider_runtime_examples",
             "provider_failure_mode_examples",
             "provider_operations_examples",
-            "provider_degradation_examples"
+            "provider_degradation_examples",
+            "provider_embedding_examples"
           ],
-          "staged_fixture_count": 5,
-          "staged_case_count": 12
+          "staged_fixture_count": 6,
+          "staged_case_count": 14
         },
         {
           "seam_id": "safety_execution",

@@ -18,7 +18,7 @@ def build_provider_governance_status() -> ProviderGovernanceStatusResponse:
         evidence_readiness.evidence_ready,
     )
     governance_summary = [
-        "Provider technical activation remains blocked in foundation phase until allowlisted live execution modes and controls are explicitly rolled out.",
+        "Provider technical activation now includes bounded live embedding execution, but broader provider rollout remains blocked until both text and embedding control gates are explicitly approved together.",
         "Provider operational runbook readiness remains incomplete until escalation, spend-anomaly, and degradation-response procedures are fully documented and approved.",
         (
             "Provider evidence readiness now includes a runtime-backed approval gate summary derived "

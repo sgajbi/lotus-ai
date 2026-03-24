@@ -8,9 +8,9 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.delivery_phase == "foundation"
     assert status.manifest_version == "foundation.v1"
     assert status.evidence_category_count == 6
-    assert status.staged_fixture_count >= 15
+    assert status.staged_fixture_count >= 17
     assert status.documented_fixture_count == 0
-    assert status.staged_case_count == 34
+    assert status.staged_case_count == 38
     assert [item.seam_id for item in status.seam_coverage] == [
         "async_execution",
         "task_execution",
@@ -25,8 +25,10 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.seam_coverage[1].staged_case_count == 8
     assert status.seam_coverage[2].staged_fixture_count == 2
     assert status.seam_coverage[2].staged_case_count == 2
-    assert status.seam_coverage[4].staged_fixture_count == 5
-    assert status.seam_coverage[4].staged_case_count == 12
+    assert status.seam_coverage[3].staged_fixture_count == 2
+    assert status.seam_coverage[3].staged_case_count == 5
+    assert status.seam_coverage[4].staged_fixture_count == 6
+    assert status.seam_coverage[4].staged_case_count == 14
     assert status.seam_coverage[5].staged_fixture_count == 2
     assert status.seam_coverage[5].staged_case_count == 6
     assert [gate.domain_id for gate in status.approval_gates] == [

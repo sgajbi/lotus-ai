@@ -293,15 +293,17 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["prompt_governance"]["evidence_readiness"]["evidence_ready"] is False
     assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
     assert body["evaluation_runtime"]["evidence_category_count"] == 6
-    assert body["evaluation_runtime"]["staged_case_count"] == 34
+    assert body["evaluation_runtime"]["staged_case_count"] == 38
     assert body["evaluation_runtime"]["seam_coverage"][0]["seam_id"] == "async_execution"
     assert body["evaluation_runtime"]["seam_coverage"][0]["staged_fixture_count"] == 1
     assert body["evaluation_runtime"]["seam_coverage"][1]["staged_fixture_count"] == 4
     assert body["evaluation_runtime"]["seam_coverage"][1]["staged_case_count"] == 8
     assert body["evaluation_runtime"]["seam_coverage"][2]["staged_fixture_count"] == 2
     assert body["evaluation_runtime"]["seam_coverage"][2]["staged_case_count"] == 2
-    assert body["evaluation_runtime"]["seam_coverage"][4]["staged_fixture_count"] == 5
-    assert body["evaluation_runtime"]["seam_coverage"][4]["staged_case_count"] == 12
+    assert body["evaluation_runtime"]["seam_coverage"][3]["staged_fixture_count"] == 2
+    assert body["evaluation_runtime"]["seam_coverage"][3]["staged_case_count"] == 5
+    assert body["evaluation_runtime"]["seam_coverage"][4]["staged_fixture_count"] == 6
+    assert body["evaluation_runtime"]["seam_coverage"][4]["staged_case_count"] == 14
     assert body["evaluation_runtime"]["seam_coverage"][5]["staged_fixture_count"] == 2
     assert body["evaluation_runtime"]["seam_coverage"][5]["staged_case_count"] == 6
     assert body["evaluation_runtime"]["approval_gates"][0]["domain_id"] == (

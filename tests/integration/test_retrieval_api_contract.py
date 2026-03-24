@@ -174,11 +174,12 @@ def test_retrieval_runbook_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
-    assert body["required_item_count"] == 4
+    assert body["required_item_count"] == 5
     assert body["completed_required_item_count"] == 3
     assert body["items"][0]["runbook_id"] == "retrieval_operational_runbook"
     assert body["items"][0]["status"] == "READY"
     assert body["items"][2]["status"] == "READY"
+    assert body["items"][3]["runbook_id"] == "retrieval_embedding_dependency_review"
 
 
 def test_retrieval_evidence_readiness_route(client: TestClient) -> None:
@@ -188,10 +189,11 @@ def test_retrieval_evidence_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["evidence_ready"] is False
-    assert body["required_item_count"] == 4
+    assert body["required_item_count"] == 5
     assert body["completed_required_item_count"] == 0
     assert body["items"][0]["evidence_id"] == "retrieval_fixture_coverage_pack"
     assert body["items"][1]["status"] == "NOT_READY"
+    assert body["items"][3]["evidence_id"] == "retrieval_embedding_runtime_pack"
     assert body["approval_gate"]["domain_id"] == "retrieval_execution"
     assert body["approval_gate"]["evidence_state"] == "STAGED_ONLY"
     assert (
@@ -218,15 +220,16 @@ def test_retrieval_governance_status_route(client: TestClient) -> None:
 def test_retrieval_evidence_readiness_route_prefers_runtime_backed_pass_evidence(
     client: TestClient,
 ) -> None:
-    submit_evaluation_run(
-        EvaluationRunSubmissionRequest(
-            fixture_id="retrieval_citation_examples",
-            caller_app="lotus-platform",
-            correlation_id="corr-retrieval-approval-001",
-            triggered_by="operator-a",
+    for fixture_id in ("retrieval_citation_examples", "retrieval_embedding_examples"):
+        submit_evaluation_run(
+            EvaluationRunSubmissionRequest(
+                fixture_id=fixture_id,
+                caller_app="lotus-platform",
+                correlation_id=f"corr-{fixture_id}",
+                triggered_by="operator-a",
+            )
         )
-    )
-    run_next_evaluation_execution_job(worker_id="worker-a")
+        run_next_evaluation_execution_job(worker_id="worker-a")
 
     response = client.get("/platform/retrieval/evidence-readiness")
 
