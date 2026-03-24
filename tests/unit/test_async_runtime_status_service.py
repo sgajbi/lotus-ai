@@ -1,3 +1,4 @@
+from app.config import settings
 from app.services.async_runtime_status import build_async_runtime_status
 
 
@@ -18,3 +19,17 @@ def test_async_runtime_status_reports_durable_submission_posture() -> None:
     assert status.enqueued_job_count == 0
     assert status.recorded_job_count == 2
     assert "current cutover state exposes" in status.message
+
+
+def test_async_runtime_status_reports_dedicated_worker_cutover_truth() -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+
+    status = build_async_runtime_status()
+
+    assert status.cutover_state == "dedicated_workers_active"
+    assert status.queue_mode == "ACTIVE"
+    assert status.worker_mode == "DEDICATED"
+    assert status.queue_backend == "redis_queue"
+    assert status.active_worker_execution == "queue_backed_workers"

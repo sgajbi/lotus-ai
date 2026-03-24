@@ -111,6 +111,19 @@ class AsyncRuntimeRepository(Protocol):
     ) -> AsyncRuntimeClaimRecord | None:
         """Atomically claim the next runnable async job if one exists."""
 
+    def claim_runnable_job_by_id(
+        self,
+        *,
+        job_id: str,
+        worker_id: str,
+        claimed_at: str,
+        heartbeat_at: str,
+        lease_expires_at: str,
+        latest_message: str,
+        attempt_message: str,
+    ) -> AsyncRuntimeClaimRecord | None:
+        """Atomically claim one specific runnable async job if it is still claimable."""
+
     def list_control_events(
         self, *, limit: int = 20, job_id: str | None = None
     ) -> list[AsyncRuntimeControlEventRecord]:

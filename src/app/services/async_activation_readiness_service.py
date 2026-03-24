@@ -1,20 +1,38 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.contracts.async_runtime import AsyncCutoverState
 from app.contracts.async_runtime import AsyncActivationReadinessResponse
 from app.services.async_runtime_status import build_async_runtime_status
 
 
 def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
     runtime = build_async_runtime_status()
-    blocking_findings = [
-        "Dedicated queue-backed worker execution is not the active primary path yet; the current posture is still limited to durable in-process execution or queue-delivery shadow mode.",
-        "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
-    ]
-    activation_path = [
-        "Promote the Redis-backed managed queue from shadow delivery to the primary dedicated-worker path without changing the durable async state model.",
-        "Enable broader async job types through reviewed rollout slices with observability, safety, replay, and supportability gates.",
-    ]
+    if runtime.cutover_state == AsyncCutoverState.DEDICATED_WORKERS_ACTIVE:
+        blocking_findings = [
+            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
+        ]
+        activation_path = [
+            "Keep dedicated workers primary for the allowlisted job types while expanding reviewed async coverage through later rollout slices.",
+        ]
+    elif runtime.cutover_state == AsyncCutoverState.DEGRADED_FALLBACK:
+        blocking_findings = [
+            "Dedicated queue-backed worker execution is currently degraded; operator review must resolve the degraded fallback before activation can be considered stable.",
+            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
+        ]
+        activation_path = [
+            "Restore the Redis-backed managed queue and dedicated worker fleet as the primary path without changing the durable async state model.",
+            "Enable broader async job types through reviewed rollout slices with observability, safety, replay, and supportability gates.",
+        ]
+    else:
+        blocking_findings = [
+            "Dedicated queue-backed worker execution is not the active primary path yet; the current posture is still limited to durable in-process execution or queue-delivery shadow mode.",
+            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
+        ]
+        activation_path = [
+            "Promote the Redis-backed managed queue from shadow delivery to the primary dedicated-worker path without changing the durable async state model.",
+            "Enable broader async job types through reviewed rollout slices with observability, safety, replay, and supportability gates.",
+        ]
     return AsyncActivationReadinessResponse(
         service=settings.service_name,
         version=settings.service_version,

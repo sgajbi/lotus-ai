@@ -9,13 +9,17 @@ from app.services.async_delivery_queue import AsyncQueueDeliveryMessage, get_asy
 from app.services.async_runtime_posture import get_async_runtime_posture
 
 
-def queue_delivery_shadow_if_enabled(
+def publish_async_attempt_if_configured(
     *,
     job: AsyncRuntimeJobRecord,
     attempt: AsyncRuntimeAttemptRecord,
 ) -> bool:
     posture = get_async_runtime_posture()
-    if posture.cutover_state != AsyncCutoverState.QUEUE_DELIVERY_SHADOW:
+    if posture.cutover_state not in {
+        AsyncCutoverState.QUEUE_DELIVERY_SHADOW,
+        AsyncCutoverState.DEDICATED_WORKERS_ACTIVE,
+        AsyncCutoverState.DEGRADED_FALLBACK,
+    }:
         return False
     result = get_async_delivery_queue().enqueue(
         message=AsyncQueueDeliveryMessage(

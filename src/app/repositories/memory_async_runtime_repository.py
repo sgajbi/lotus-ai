@@ -158,6 +158,74 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
             )
         return None
 
+    def claim_runnable_job_by_id(
+        self,
+        *,
+        job_id: str,
+        worker_id: str,
+        claimed_at: str,
+        heartbeat_at: str,
+        lease_expires_at: str,
+        latest_message: str,
+        attempt_message: str,
+    ) -> AsyncRuntimeClaimRecord | None:
+        job = self._jobs.get(job_id)
+        if job is None or job.lifecycle_status != "QUEUED":
+            return None
+        if job_id in self._leases_by_job:
+            return None
+        attempts = sorted(
+            self._attempts.get(job_id, []),
+            key=lambda item: item.attempt_number,
+        )
+        if not attempts:
+            return None
+        current_attempt = attempts[-1]
+        claimed_attempt = AsyncRuntimeAttemptRecord(
+            attempt_id=current_attempt.attempt_id,
+            job_id=current_attempt.job_id,
+            attempt_number=current_attempt.attempt_number,
+            lifecycle_status="CLAIMED",
+            worker_id=worker_id,
+            claimed_at=claimed_at,
+            heartbeat_at=heartbeat_at,
+            started_at=current_attempt.started_at,
+            completed_at=current_attempt.completed_at,
+            failure_reason=current_attempt.failure_reason,
+            recorded_message=attempt_message,
+        )
+        claimed_job = AsyncRuntimeJobRecord(
+            job_id=job.job_id,
+            job_type=job.job_type,
+            target_id=job.target_id,
+            lifecycle_status="CLAIMED",
+            submitted_at=job.submitted_at,
+            caller_app=job.caller_app,
+            correlation_id=job.correlation_id,
+            payload_summary=job.payload_summary,
+            execution_path=job.execution_path,
+            related_evaluation_run_id=job.related_evaluation_run_id,
+            latest_message=latest_message,
+            attempt_count=job.attempt_count,
+        )
+        lease = AsyncRuntimeLeaseRecord(
+            lease_id=f"{job.job_id}_lease_{current_attempt.attempt_number:03d}",
+            job_id=job.job_id,
+            attempt_id=current_attempt.attempt_id,
+            worker_id=worker_id,
+            claimed_at=claimed_at,
+            heartbeat_at=heartbeat_at,
+            lease_expires_at=lease_expires_at,
+        )
+        self.save_attempt(claimed_attempt)
+        self.save_job(claimed_job)
+        self.save_lease(lease)
+        return AsyncRuntimeClaimRecord(
+            job=claimed_job,
+            attempt=claimed_attempt,
+            lease=lease,
+        )
+
     def list_control_events(
         self, *, limit: int = 20, job_id: str | None = None
     ) -> list[AsyncRuntimeControlEventRecord]:

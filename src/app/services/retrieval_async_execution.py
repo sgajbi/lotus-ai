@@ -10,6 +10,8 @@ from app.contracts.retrieval import (
 )
 from app.services.async_submission_service import submit_async_job
 from app.services.async_worker_runtime import (
+    AsyncWorkerClaimResult,
+    claim_async_job_by_id,
     claim_next_async_job_for_types,
     complete_async_job,
     fail_async_job,
@@ -54,6 +56,25 @@ def run_next_retrieval_index_job(*, worker_id: str) -> RetrievalAsyncExecutionRe
     )
     if claim is None:
         return None
+    return _execute_claimed_retrieval_index_job(claim=claim, worker_id=worker_id)
+
+
+def run_retrieval_index_job_by_id(
+    *,
+    async_job_id: str,
+    worker_id: str,
+) -> RetrievalAsyncExecutionResult | None:
+    claim = claim_async_job_by_id(job_id=async_job_id, worker_id=worker_id)
+    if claim is None:
+        return None
+    return _execute_claimed_retrieval_index_job(claim=claim, worker_id=worker_id)
+
+
+def _execute_claimed_retrieval_index_job(
+    *,
+    claim: AsyncWorkerClaimResult,
+    worker_id: str,
+) -> RetrievalAsyncExecutionResult | None:
     if claim.job.job_type != "retrieval_indexing" or claim.job.target_id is None:
         fail_async_job(
             job_id=claim.job.job_id,

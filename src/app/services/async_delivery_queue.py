@@ -32,6 +32,9 @@ class AsyncDeliveryQueue(Protocol):
     def enqueue(self, *, message: AsyncQueueDeliveryMessage) -> AsyncQueueEnqueueResult:
         """Publish one bounded async delivery message."""
 
+    def dequeue(self, *, timeout_seconds: int) -> AsyncQueueDeliveryMessage | None:
+        """Consume one bounded async delivery message when available."""
+
 
 class NoopAsyncDeliveryQueue:
     def enqueue(self, *, message: AsyncQueueDeliveryMessage) -> AsyncQueueEnqueueResult:
@@ -41,20 +44,32 @@ class NoopAsyncDeliveryQueue:
             duplicate_delivery=False,
         )
 
+    def dequeue(self, *, timeout_seconds: int) -> AsyncQueueDeliveryMessage | None:
+        return None
+
 
 class InMemoryAsyncDeliveryQueue:
     def __init__(self) -> None:
         self._messages_by_id: dict[str, AsyncQueueDeliveryMessage] = {}
+        self._delivery_order: list[str] = []
 
     def enqueue(self, *, message: AsyncQueueDeliveryMessage) -> AsyncQueueEnqueueResult:
         duplicate = message.delivery_id in self._messages_by_id
         if not duplicate:
             self._messages_by_id[message.delivery_id] = deepcopy(message)
+            self._delivery_order.append(message.delivery_id)
         return AsyncQueueEnqueueResult(
             backend_id="redis_queue",
             published=not duplicate,
             duplicate_delivery=duplicate,
         )
+
+    def dequeue(self, *, timeout_seconds: int) -> AsyncQueueDeliveryMessage | None:
+        if not self._delivery_order:
+            return None
+        delivery_id = self._delivery_order.pop(0)
+        message = self._messages_by_id.pop(delivery_id, None)
+        return None if message is None else deepcopy(message)
 
     def list_messages(self) -> list[AsyncQueueDeliveryMessage]:
         return [
@@ -85,6 +100,16 @@ class RedisAsyncDeliveryQueue:
             published=True,
             duplicate_delivery=False,
         )
+
+    def dequeue(self, *, timeout_seconds: int) -> AsyncQueueDeliveryMessage | None:
+        redis_module = importlib.import_module("redis")
+        client = redis_module.Redis.from_url(self._redis_url, decode_responses=True)
+        result = client.blpop(self._queue_name, timeout=timeout_seconds)
+        if result is None:
+            return None
+        _queue_name, payload = result
+        loaded = json.loads(payload)
+        return AsyncQueueDeliveryMessage(**loaded)
 
 
 _memory_queue: InMemoryAsyncDeliveryQueue | None = None

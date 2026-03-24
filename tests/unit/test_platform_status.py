@@ -83,6 +83,20 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.startup_readiness_warnings == ["audit store: configuration required"]
 
 
+def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover() -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+
+    status = build_platform_runtime_status(None)
+
+    assert status.async_runtime.cutover_state == "dedicated_workers_active"
+    assert status.async_runtime.queue_mode == "ACTIVE"
+    assert status.async_runtime.queue_backend == "redis_queue"
+    assert status.async_runtime.worker_mode == "DEDICATED"
+    assert status.async_runtime.active_worker_execution == "queue_backed_workers"
+
+
 def test_build_platform_runtime_status_reflects_durable_provider_operations_posture(
     tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:

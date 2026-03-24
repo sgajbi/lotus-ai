@@ -364,6 +364,11 @@ requeue, and manual abandon actions. Those operator actions are recorded durably
 control events and appear back in job detail, which keeps recovery semantics reviewable instead
 of burying them in worker-side state transitions.
 
+RFC-0011 Slice 2 then activates the dedicated worker entrypoint itself. Queue-backed delivery can
+now feed allowlisted retrieval-indexing and evaluation-execution jobs into a separate worker
+process, while claim, lease, start, completion, failure, replay, and requeue semantics remain
+anchored in the authoritative async repository rather than queue-owned state.
+
 ### Providers
 
 - `src/app/providers/`

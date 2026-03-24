@@ -30,7 +30,7 @@ from app.repositories.evaluation_runtime_repository import EvaluationRunAttemptR
 from app.services.async_job_type_catalog import get_async_job_type_descriptor
 from app.services.async_runtime_posture import get_async_runtime_posture
 from app.services.async_runtime_store import get_async_runtime_store
-from app.services.async_submission_shared import queue_delivery_shadow_if_enabled
+from app.services.async_submission_shared import publish_async_attempt_if_configured
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 
 RUNTIME_BACKED_EVALUATION_FIXTURE_IDS = {
@@ -263,7 +263,7 @@ def _submit_runtime_backed_evaluation_run(
     )
     get_async_runtime_store().save_job(job_record)
     get_async_runtime_store().save_attempt(attempt_record)
-    queue_delivery_shadow_if_enabled(job=job_record, attempt=attempt_record)
+    publish_async_attempt_if_configured(job=job_record, attempt=attempt_record)
     return {
         "submission_status": EvaluationRunSubmissionStatus.ACCEPTED.value,
         "run_id": run_id,

@@ -1,3 +1,4 @@
+from app.config import settings
 from app.services.async_queue_backend_service import build_async_queue_backend_catalog
 
 
@@ -16,3 +17,14 @@ def test_async_queue_backend_catalog_exposes_foundation_default_and_future_optio
     assert catalog.backends[1].supports_worker_scaling is True
     assert catalog.backends[2].backend_id == "kafka_orchestrated"
     assert catalog.backends[2].backend_class == "EVENT_STREAM_BRIDGE"
+
+
+def test_async_queue_backend_catalog_reports_redis_as_active_when_dedicated_cutover_enabled() -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+
+    catalog = build_async_queue_backend_catalog()
+
+    assert catalog.active_queue_backend == "redis_queue"
+    assert catalog.backends[1].enabled is True

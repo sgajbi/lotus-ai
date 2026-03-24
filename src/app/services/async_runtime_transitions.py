@@ -6,6 +6,7 @@ from app.repositories.async_runtime_repository import (
     AsyncRuntimeJobRecord,
     AsyncRuntimeRepository,
 )
+from app.services.async_submission_shared import publish_async_attempt_if_configured
 
 
 def queue_next_async_attempt(
@@ -46,4 +47,7 @@ def queue_next_async_attempt(
             attempt_count=next_attempt_number,
         )
     )
+    queued_job = store.get_job(job_id=job.job_id)
+    if queued_job is not None:
+        publish_async_attempt_if_configured(job=queued_job, attempt=attempt)
     return attempt

@@ -20,7 +20,7 @@ from app.services.retrieval_catalog_service import get_retrieval_job_detail_or_r
 from app.services.async_job_type_catalog import get_async_job_type_descriptor
 from app.services.async_runtime_posture import get_async_runtime_posture
 from app.services.async_runtime_store import get_async_runtime_store
-from app.services.async_submission_shared import queue_delivery_shadow_if_enabled
+from app.services.async_submission_shared import publish_async_attempt_if_configured
 from app.services.eval_run_submission_service import submit_evaluation_execution_async_job
 
 
@@ -109,7 +109,10 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
     )
     store.save_job(job_record)
     store.save_attempt(attempt_record)
-    shadow_published = queue_delivery_shadow_if_enabled(job=job_record, attempt=attempt_record)
+    delivery_published = publish_async_attempt_if_configured(
+        job=job_record,
+        attempt=attempt_record,
+    )
     posture = get_async_runtime_posture()
 
     return AsyncJobSubmissionResponse(
@@ -128,8 +131,8 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
         message=(
             f"Async job type '{request.job_type}' is allowlisted for durable submission. The job "
             + (
-                "was also published to the managed queue shadow path while in-process execution remains primary."
-                if shadow_published
+                "was also published to the managed queue path for dedicated worker execution."
+                if delivery_published
                 else "is recorded in the authoritative async state store while in-process execution remains primary."
             )
         ),

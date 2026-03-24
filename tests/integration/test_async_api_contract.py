@@ -3,6 +3,7 @@ from app.services.async_worker_runtime import (
     complete_async_job,
     start_async_job,
 )
+from app.config import settings
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from fastapi.testclient import TestClient
 
@@ -28,6 +29,22 @@ def test_async_runtime_status_route(client: TestClient) -> None:
     assert body["supported_job_types"][0]["enabled"] is True
     assert body["supported_job_types"][0]["execution_path"] == "durable_runtime_worker_execution"
     assert any(job["job_type"] == "retrieval_indexing" for job in body["supported_job_types"])
+
+
+def test_async_runtime_status_route_reports_dedicated_worker_cutover(client: TestClient) -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+
+    response = client.get("/platform/async/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["cutover_state"] == "dedicated_workers_active"
+    assert body["queue_mode"] == "ACTIVE"
+    assert body["worker_mode"] == "DEDICATED"
+    assert body["queue_backend"] == "redis_queue"
+    assert body["active_worker_execution"] == "queue_backed_workers"
 
 
 def test_async_queue_backend_catalog_route(client: TestClient) -> None:

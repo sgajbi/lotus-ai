@@ -29,6 +29,9 @@ def test_in_memory_async_delivery_queue_deduplicates_by_delivery_id() -> None:
     assert second.duplicate_delivery is True
     assert queue.list_messages()[0].job_id == "asyncjob_001"
     assert queue.list_messages()[0].attempt_id == "attempt-001"
+    dequeued = queue.dequeue(timeout_seconds=0)
+    assert dequeued is not None
+    assert dequeued.job_id == "asyncjob_001"
 
 
 def test_redis_async_delivery_queue_pushes_bounded_json_payload(monkeypatch) -> None:
