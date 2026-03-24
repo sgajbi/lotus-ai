@@ -231,6 +231,12 @@ Acceptance gate:
 3. tests cover multi-provider policy semantics,
 4. the platform is materially closer to a mature shared-provider layer.
 
+Implementation note:
+
+1. provider breadth is modeled through explicit per-capability slot limits rather than speculative runnable adapters,
+2. the current governed model allows one later additional provider slot for text generation and one for embeddings,
+3. any later provider still remains blocked from activation until it satisfies the same catalog, evaluation, runbook, quota, budget, degradation, and governance controls as the current live paths.
+
 ## Risks
 
 1. provider breadth could outpace governance maturity,

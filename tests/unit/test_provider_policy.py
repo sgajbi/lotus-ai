@@ -20,6 +20,8 @@ def test_provider_policy_reports_supported_modes_and_rejection_behavior() -> Non
         == ProviderCredentialStatus.NOT_CONFIGURED
     )
     assert len(response.policies) == 2
+    assert response.expansion_policy.bounded_expansion_enabled is True
+    assert response.expansion_policy.expansion_blocked is False
     text_policy = next(
         policy
         for policy in response.policies
@@ -48,9 +50,15 @@ def test_provider_policy_reports_openai_selection_when_live_mode_is_requested() 
         for policy in response.policies
         if policy.capability == ProviderCapability.TEXT_GENERATION
     )
+    text_rule = next(
+        rule
+        for rule in response.expansion_policy.capability_rules
+        if rule.capability == ProviderCapability.TEXT_GENERATION
+    )
     assert text_policy.selected_provider_id == "text.openai"
     assert text_policy.selected_adapter_kind == ProviderAdapterKind.OPENAI_LIVE
     assert text_policy.rejection_category == ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
+    assert text_rule.available_expansion_slots == 1
 
 
 def test_provider_policy_rejects_unknown_runtime_mode() -> None:

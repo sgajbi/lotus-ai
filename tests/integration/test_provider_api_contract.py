@@ -60,6 +60,9 @@ def test_provider_catalog_route(client: TestClient) -> None:
     assert body["runtime_execution_enabled"] is False
     assert body["text_generation_runtime_execution_enabled"] is False
     assert body["embedding_runtime_execution_enabled"] is False
+    assert body["expansion_policy"]["bounded_expansion_enabled"] is True
+    assert body["expansion_policy"]["expansion_blocked"] is False
+    assert len(body["expansion_policy"]["capability_rules"]) == 2
     assert any(provider["provider_id"] == "text.stub" for provider in body["providers"])
     assert any(
         provider["provider_id"] == "text.openai"
@@ -89,6 +92,7 @@ def test_provider_policy_route(client: TestClient) -> None:
     embedding_policy = next(
         policy for policy in body["policies"] if policy["capability"] == "EMBEDDINGS"
     )
+    assert body["expansion_policy"]["bounded_expansion_enabled"] is True
     assert text_policy["selected_adapter_kind"] == "STUB"
     assert text_policy["rejection_category"] == "UNSUPPORTED_MODE"
     assert text_policy["allowed_modes"] == ["disabled", "stub", "openai"]
@@ -203,6 +207,7 @@ def test_provider_operations_status_route(client: TestClient) -> None:
     assert body["quota_policy"]["quota_enforced"] is False
     assert body["budget_policy"]["budget_enforced"] is False
     assert body["degradation_status"]["status"] == "DOCUMENTED_ONLY"
+    assert body["expansion_policy"]["expansion_blocked"] is False
     assert len(body["summary"]) == 4
     assert "Current blocking or warning detail:" in body["summary"][-1]
 
@@ -388,6 +393,8 @@ def test_provider_governance_status_route(client: TestClient) -> None:
     assert body["activation_readiness"]["activation_ready"] is False
     assert body["runbook_readiness"]["runbook_ready"] is False
     assert body["evidence_readiness"]["evidence_ready"] is False
+    assert body["expansion_policy"]["bounded_expansion_enabled"] is True
+    assert body["expansion_policy"]["expansion_blocked"] is False
     assert body["evidence_readiness"]["approval_gate"]["domain_id"] == "provider_execution"
     assert len(body["governance_summary"]) == 3
 

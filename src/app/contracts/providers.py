@@ -203,6 +203,9 @@ class ProviderOperationsStatusResponse(BaseModel):
     degradation_status: ProviderDegradationStatusDescriptor = Field(
         description="Current live-provider degradation posture."
     )
+    expansion_policy: ProviderExpansionPolicyDescriptor = Field(
+        description="Bounded provider-expansion policy as it relates to current provider operations posture."
+    )
     blocking_reasons: list[str] = Field(
         default_factory=list,
         description="Human-readable reasons why provider operations are currently blocked or degraded.",
@@ -403,6 +406,50 @@ class ProviderDescriptor(BaseModel):
     notes: str = Field(description="Operational notes describing the current provider posture.")
 
 
+class ProviderExpansionRuleDescriptor(BaseModel):
+    capability: ProviderCapability = Field(
+        description="Provider capability governed by this bounded expansion rule."
+    )
+    registered_provider_ids: list[str] = Field(
+        description="Currently registered provider identifiers for this capability."
+    )
+    live_capable_provider_ids: list[str] = Field(
+        description="Registered provider identifiers that expose a non-stub live-capable adapter for this capability."
+    )
+    max_governed_provider_count: int = Field(
+        description="Maximum bounded provider count currently approved for this capability."
+    )
+    available_expansion_slots: int = Field(
+        description="Remaining bounded expansion slots available before this capability exceeds the approved provider-breadth model."
+    )
+    expansion_ready: bool = Field(
+        description="Whether this capability remains within the bounded provider-expansion policy."
+    )
+    requirements: list[str] = Field(
+        default_factory=list,
+        description="Explicit governance requirements that any additional provider must satisfy before activation."
+    )
+    notes: str = Field(
+        description="Human-readable explanation of the bounded provider-breadth posture for this capability."
+    )
+
+
+class ProviderExpansionPolicyDescriptor(BaseModel):
+    bounded_expansion_enabled: bool = Field(
+        description="Whether lotus-ai now exposes an explicit bounded provider-expansion model."
+    )
+    expansion_blocked: bool = Field(
+        description="Whether the current registered provider breadth violates or exhausts the bounded expansion policy."
+    )
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable findings describing the current bounded provider-expansion posture."
+    )
+    capability_rules: list[ProviderExpansionRuleDescriptor] = Field(
+        description="Capability-specific bounded provider expansion rules."
+    )
+
+
 class ProviderCatalogResponse(BaseModel):
     service: str = Field(description="Service name emitting the provider catalog.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -422,6 +469,9 @@ class ProviderCatalogResponse(BaseModel):
     )
     embedding_runtime_execution_enabled: bool = Field(
         description="Whether any embedding provider path is currently enabled for live execution."
+    )
+    expansion_policy: ProviderExpansionPolicyDescriptor = Field(
+        description="Bounded provider-expansion policy describing current provider breadth and future governed slots."
     )
     providers: list[ProviderDescriptor] = Field(
         description="Governed provider catalog exposed by lotus-ai."
@@ -461,6 +511,9 @@ class ProviderPolicyResponse(BaseModel):
     )
     embedding_configuration: ProviderConfigurationStatusDescriptor = Field(
         description="Current rollout and configuration posture for future live embedding-provider activation."
+    )
+    expansion_policy: ProviderExpansionPolicyDescriptor = Field(
+        description="Bounded provider-expansion policy describing how later providers are reviewed without widening execution semantics prematurely."
     )
     policies: list[ProviderPolicyDescriptor] = Field(
         description="Capability-specific provider execution policies."
@@ -704,6 +757,9 @@ class ProviderGovernanceStatusResponse(BaseModel):
     )
     evidence_readiness: ProviderEvidenceReadinessResponse = Field(
         description="Evaluation and audit evidence-readiness summary for provider execution."
+    )
+    expansion_policy: ProviderExpansionPolicyDescriptor = Field(
+        description="Bounded provider-expansion policy describing whether later provider breadth can be reviewed without weakening governance clarity."
     )
     blocking_area_count: int = Field(
         description="Number of top-level provider governance areas currently blocking activation."

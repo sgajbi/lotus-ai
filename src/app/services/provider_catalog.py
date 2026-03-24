@@ -9,6 +9,7 @@ from app.contracts.providers import (
 )
 from app.providers.registry import list_registered_provider_descriptors
 from app.services.embedding_live_execution_state import build_embedding_live_execution_state
+from app.services.provider_expansion_policy import build_provider_expansion_policy
 from app.services.provider_configuration_status import (
     build_embedding_configuration_status,
     build_text_generation_configuration_status,
@@ -21,6 +22,7 @@ def build_provider_catalog() -> ProviderCatalogResponse:
     embedding_live_execution_state = build_embedding_live_execution_state()
     text_generation_configuration = build_text_generation_configuration_status()
     embedding_configuration = build_embedding_configuration_status()
+    expansion_policy = build_provider_expansion_policy()
     providers = [
         ProviderDescriptor(
             provider_id=descriptor.provider_id,
@@ -65,5 +67,6 @@ def build_provider_catalog() -> ProviderCatalogResponse:
         or embedding_runtime_execution_enabled,
         text_generation_runtime_execution_enabled=text_generation_runtime_execution_enabled,
         embedding_runtime_execution_enabled=embedding_runtime_execution_enabled,
+        expansion_policy=expansion_policy,
         providers=providers,
     )

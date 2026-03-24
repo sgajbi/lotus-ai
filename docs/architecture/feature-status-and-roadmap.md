@@ -143,8 +143,9 @@ Current state:
 2. RFC-0018 now exposes embeddings as a first-class governed provider capability with a registered live path and typed configuration posture,
 3. retrieval indexing can now consume that bounded live embedding path when configured,
 4. provider and retrieval evidence/runbook surfaces now include dedicated embedding-runtime coverage rather than treating embeddings as a future-only dependency,
-5. broader document ingestion is still not yet implemented as a first-class governed feature,
-6. full retrieval/provider activation still remains blocked on the final RFC-0018 provider-expansion governance slice.
+5. provider catalog, policy, operations, and governance surfaces now also expose a bounded per-capability expansion-slot model so future provider breadth is explicit without implying activation,
+6. broader document ingestion is still not yet implemented as a first-class governed feature,
+7. full retrieval/provider activation still remains blocked on final RFC-0018 closure and governance review rather than hidden provider-breadth assumptions.
 
 ### Observability and Incident Evidence
 
@@ -197,7 +198,7 @@ Current status against that sequence:
 
 1. `RFC-0015` is implemented, including runtime, activation, runbook, and governance posture for unified versus split deployment stages.
 2. `RFC-0017` now exposes a bounded resilience runtime inventory surface, an ordered restore-plan surface, explicit degraded-versus-restored runtime posture for queue, worker, provider, retrieval, and artifact continuity dependencies, plus drill-evidence, activation, runbook, and governance surfaces.
-3. `RFC-0018` is now in active implementation with Slice 3 complete through embedding eval, evidence, and runbook convergence, while `RFC-0019` remains a roadmap item.
+3. `RFC-0018` is now in active implementation with Slice 4 complete through bounded provider-expansion modeling, while `RFC-0019` remains a roadmap item.
 
 Early RFC-0015 groundwork now exists as a bounded runtime surface:
 

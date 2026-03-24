@@ -13,6 +13,7 @@ from app.contracts.providers import (
 )
 from app.providers.registry import resolve_embedding_adapter, resolve_text_generation_adapter
 from app.services.embedding_live_execution_state import build_embedding_live_execution_state
+from app.services.provider_expansion_policy import build_provider_expansion_policy
 from app.services.provider_configuration_status import (
     build_embedding_configuration_status,
     build_text_generation_configuration_status,
@@ -38,6 +39,7 @@ def build_provider_policy() -> ProviderPolicyResponse:
         version=settings.service_version,
         text_generation_configuration=build_text_generation_configuration_status(),
         embedding_configuration=build_embedding_configuration_status(),
+        expansion_policy=build_provider_expansion_policy(),
         policies=[
             ProviderPolicyDescriptor(
                 capability=ProviderCapability.TEXT_GENERATION,

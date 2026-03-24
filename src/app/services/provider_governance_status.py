@@ -5,6 +5,7 @@ from app.contracts.providers import ProviderGovernanceStatusResponse
 from app.services.governance_readiness import summarize_governance_flags
 from app.services.provider_activation_readiness import build_provider_activation_readiness
 from app.services.provider_evidence_readiness import build_provider_evidence_readiness
+from app.services.provider_expansion_policy import build_provider_expansion_policy
 from app.services.provider_runbook_readiness import build_provider_runbook_readiness
 
 
@@ -12,6 +13,7 @@ def build_provider_governance_status() -> ProviderGovernanceStatusResponse:
     activation_readiness = build_provider_activation_readiness()
     runbook_readiness = build_provider_runbook_readiness()
     evidence_readiness = build_provider_evidence_readiness()
+    expansion_policy = build_provider_expansion_policy()
     governance_ready, blocking_area_count = summarize_governance_flags(
         activation_readiness.activation_ready,
         runbook_readiness.runbook_ready,
@@ -32,6 +34,7 @@ def build_provider_governance_status() -> ProviderGovernanceStatusResponse:
         activation_readiness=activation_readiness,
         runbook_readiness=runbook_readiness,
         evidence_readiness=evidence_readiness,
+        expansion_policy=expansion_policy,
         blocking_area_count=blocking_area_count,
         governance_summary=governance_summary,
     )

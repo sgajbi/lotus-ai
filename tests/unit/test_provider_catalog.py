@@ -28,6 +28,8 @@ def test_provider_catalog_exposes_documented_disabled_execution_posture() -> Non
     assert catalog.runtime_execution_enabled is False
     assert catalog.text_generation_runtime_execution_enabled is False
     assert catalog.embedding_runtime_execution_enabled is False
+    assert catalog.expansion_policy.bounded_expansion_enabled is True
+    assert catalog.expansion_policy.expansion_blocked is False
     assert any(provider.provider_id == "text.stub" for provider in catalog.providers)
     assert any(
         provider.provider_id == "text.openai"
@@ -65,6 +67,12 @@ def test_provider_catalog_marks_openai_provider_executable_when_rollout_allows_i
     assert catalog.runtime_execution_enabled is True
     assert catalog.text_generation_runtime_execution_enabled is True
     assert catalog.embedding_runtime_execution_enabled is False
+    text_rule = next(
+        rule
+        for rule in catalog.expansion_policy.capability_rules
+        if rule.capability == ProviderCapability.TEXT_GENERATION
+    )
+    assert text_rule.live_capable_provider_ids == ["text.openai"]
     assert openai_provider.enabled_for_execution is True
 
 
@@ -86,4 +94,10 @@ def test_provider_catalog_exposes_live_embedding_path_without_enabling_execution
     )
     assert openai_embedding_provider.runtime_mode == "enabled"
     assert catalog.embedding_runtime_execution_enabled is True
+    embedding_rule = next(
+        rule
+        for rule in catalog.expansion_policy.capability_rules
+        if rule.capability == ProviderCapability.EMBEDDINGS
+    )
+    assert embedding_rule.available_expansion_slots == 1
     assert openai_embedding_provider.enabled_for_execution is True
