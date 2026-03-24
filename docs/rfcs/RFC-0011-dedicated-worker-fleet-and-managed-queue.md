@@ -15,6 +15,8 @@ RFC-0008, RFC-0009, and RFC-0010 define the next runtime-critical domains that w
 
 The next infrastructure step after those control-plane RFCs is to complete the deployment shape already documented in the architecture.
 
+This RFC is specifically about operational execution topology, not about widening the async API surface. The durable async repository, job detail model, and control-plane contracts from RFC-0006 remain authoritative.
+
 ## Why This Is Next
 
 The platform now has:
@@ -56,6 +58,7 @@ This becomes more important as the platform activates:
 3. Preserve the existing durable async contracts, control actions, and job detail semantics.
 4. Keep operator/runtime/governance surfaces truthful during and after cutover.
 5. Improve queue isolation and noisy-neighbor control for expensive async workloads.
+6. Keep cutover bounded to the existing allowlisted async job types first.
 
 ## Non-Goals
 
@@ -64,6 +67,7 @@ This becomes more important as the platform activates:
 3. Building a generalized event platform beyond the bounded Lotus async workloads.
 4. Broad microservice decomposition beyond the worker/API separation needed here.
 5. Removing the service database as the durable source of async job truth.
+6. Introducing Kafka or a generalized event backbone in the first rollout.
 
 ## Current State
 
@@ -87,11 +91,18 @@ The missing piece is operational scaling:
 
 The first production-capable worker rollout should:
 
-1. use a managed queue backend for delivery and claim coordination,
+1. use Redis-backed managed queue delivery first, because that is already the documented short-lived coordination layer in the target deployment model,
 2. keep the service database as the source of durable async truth,
 3. allow API replicas to submit work without also being the primary worker runtime,
 4. expose clear runtime status about whether the system is using in-process or dedicated workers,
 5. preserve replay, requeue, abandon, and lease-recovery semantics through the same operator contracts.
+
+The rollout is bounded:
+
+1. Redis is the only managed queue backend activated by this RFC,
+2. Kafka remains a future option and stays out of scope,
+3. dedicated worker activation starts with the existing allowlisted retrieval-indexing and evaluation-execution job types,
+4. API replicas may keep an explicitly surfaced fallback path only during controlled cutover states, never as a silent hidden failover.
 
 ## State Model and Invariants
 
@@ -103,6 +114,31 @@ This RFC establishes the following invariants:
 4. worker claim, heartbeat, retry, replay, and abandon semantics must remain reviewable through the same public async surfaces,
 5. runtime status must distinguish in-process fallback from dedicated worker fleet activation truthfully,
 6. queue or worker degradation must fail conservatively and visibly rather than silently falling back to misleading execution posture.
+7. queue messages may reference durable job ids and bounded delivery metadata only; they must not carry mutable authoritative lifecycle state,
+8. duplicate queue delivery must be safe against the durable async repository without requiring exactly-once queue semantics,
+9. when dedicated worker mode is active, API replicas must not continue processing the same allowlisted job types unless runtime status explicitly reports a governed fallback posture,
+10. drain, replay, requeue, and abandon semantics must remain possible even if queue delivery is degraded.
+
+## Cutover Model
+
+RFC completion requires explicit runtime cutover states rather than an informal backend swap.
+
+Required operational states:
+
+1. `in_process_only`
+   Durable async repository is authoritative and in-process execution remains the only active worker path.
+2. `queue_delivery_shadow`
+   Managed queue delivery is wired and testable, but dedicated workers are not yet the active execution path.
+3. `dedicated_workers_active`
+   Allowlisted job types execute through dedicated workers and queue-backed delivery is the primary path.
+4. `degraded_fallback`
+   A governed, explicitly surfaced fallback state where queue-backed worker execution is unavailable and the system is running in a reduced posture.
+
+Rules:
+
+1. runtime status, readiness, governance, and runbooks must expose the current cutover state consistently,
+2. the system must not silently jump from `dedicated_workers_active` to in-process execution,
+3. degraded fallback is acceptable only if the status surfaces state it clearly and affected job guarantees remain conservative.
 
 ## Architecture Direction
 
@@ -116,6 +152,7 @@ Required behavior:
 2. queue delivery is idempotent against the existing async runtime repository,
 3. queue and database truth remain aligned,
 4. degraded queue behavior is visible through operator surfaces.
+5. queue enqueue, redelivery, acknowledgement, and dead-letter posture are bounded and documented.
 
 ### Dedicated Worker Fleet
 
@@ -127,6 +164,7 @@ Required behavior:
 2. retrieval and evaluation consumers keep using the same durable async control model,
 3. worker identity and lease behavior remain explicit,
 4. no hidden behavior depends on one API replica also acting as a worker.
+5. worker startup and drain behavior are explicit and reviewable.
 
 ### Runtime and Governance Convergence
 
@@ -159,6 +197,8 @@ Required behavior:
 5. SQL-backed and queue-backed integration tests must prove correctness.
 6. Runbooks must define queue outage, worker outage, replay, drain, and cutover procedures.
 7. Platform runtime status must summarize queue and worker posture honestly.
+8. Dedicated worker mode must be verifiably restart-safe for the allowlisted job types.
+9. Queue and worker metrics must be attributable by job type and worker identity.
 
 ## Delivery Slices
 
@@ -176,6 +216,9 @@ Acceptance gate:
 2. duplicate delivery is safe,
 3. runtime status remains truthful,
 4. service-database truth is preserved.
+5. Redis is the only queue backend activated or wired for live cutover in this RFC,
+6. tests prove that queue messages carry job references, not authoritative lifecycle state,
+7. API surfaces still report `in_process_only` or `queue_delivery_shadow` truthfully rather than overstating dedicated-worker activation.
 
 ### Slice 2: Dedicated Worker Runtime Activation
 
@@ -191,6 +234,9 @@ Acceptance gate:
 2. worker scaling no longer depends on API scaling,
 3. control actions still work,
 4. integration tests cover real worker-path behavior.
+5. API replicas are no longer the primary execution path for the allowlisted job types,
+6. runtime status exposes `dedicated_workers_active` truthfully,
+7. SQL-backed restart and lease recovery behavior still hold under the dedicated worker path.
 
 ### Slice 3: Queue and Worker Operational Hardening
 
@@ -206,6 +252,9 @@ Acceptance gate:
 2. failure recovery is testable and documented,
 3. queue isolation is reviewable,
 4. platform status materially improves for async operations.
+5. no-silent-fallback behavior is proven by tests,
+6. drain and replay procedures are supported by the control plane and operator docs,
+7. queue backlog, redelivery, and worker-unavailable states are observable through runtime or governance surfaces.
 
 ### Slice 4: Governance and Runbook Convergence
 
@@ -221,6 +270,8 @@ Acceptance gate:
 2. governance blocks incomplete worker rollout,
 3. runtime-backed evidence remains current,
 4. the deployment model is materially closer to the documented target architecture.
+5. readiness distinguishes `in_process_only`, `queue_delivery_shadow`, `dedicated_workers_active`, and `degraded_fallback`,
+6. RFC closure evidence includes meaningful SQL-backed and queue-backed tests rather than simulated status-only checks.
 
 ## Risks
 
@@ -263,10 +314,12 @@ Reason:
 This RFC is complete when:
 
 1. dedicated workers can execute allowlisted async workloads independently of API replicas,
-2. a managed queue backend is active without replacing the durable async truth model,
+2. a Redis-backed managed queue backend is active without replacing the durable async truth model,
 3. retrieval and evaluation async consumers continue to work through the same public contracts,
 4. runtime, readiness, governance, and runbook surfaces describe the new operational model honestly,
-5. the platform is materially closer to the documented bank-grade deployment shape.
+5. the platform is materially closer to the documented bank-grade deployment shape,
+6. no remaining in-process fallback for the allowlisted dedicated-worker job types is hidden from operator surfaces,
+7. the implementation is proven by meaningful queue-backed, worker-backed, and degraded-path tests.
 
 ## Approval Requested
 
