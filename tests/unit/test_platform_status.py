@@ -247,4 +247,4 @@ def test_build_platform_runtime_status_reflects_artifact_runtime_posture(
     assert status.artifact_runtime.object_store_mode == "filesystem"
     assert status.artifact_runtime.metadata_store.status.value == "READY"
     assert status.artifact_runtime.object_store.status.value == "READY"
-    assert status.artifact_governance.governance_ready is True
+    assert status.artifact_governance.governance_ready is False

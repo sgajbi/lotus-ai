@@ -20,7 +20,7 @@ def test_artifact_activation_readiness_blocks_memory_posture() -> None:
     assert any("not restart-safe" in finding for finding in readiness.blocking_findings)
 
 
-def test_artifact_activation_readiness_accepts_sql_and_filesystem_posture(
+def test_artifact_activation_readiness_blocks_filesystem_fallback_posture(
     tmp_path: Path,
 ) -> None:
     settings.artifact_store_mode = "sqlalchemy"
@@ -31,8 +31,8 @@ def test_artifact_activation_readiness_accepts_sql_and_filesystem_posture(
 
     readiness = build_artifact_activation_readiness()
 
-    assert readiness.activation_ready is True
-    assert readiness.blocking_findings == []
+    assert readiness.activation_ready is False
+    assert any("development fallback" in finding for finding in readiness.blocking_findings)
 
 
 def test_artifact_runbook_readiness_is_complete() -> None:

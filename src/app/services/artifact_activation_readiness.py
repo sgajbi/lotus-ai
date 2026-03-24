@@ -28,6 +28,10 @@ def build_artifact_activation_readiness() -> ArtifactActivationReadinessResponse
         blocking_findings.append(
             "Artifact consumer cutover is still too narrow for stronger governed rollout posture."
         )
+    if settings.artifact_object_store_mode == "filesystem":
+        blocking_findings.append(
+            "Filesystem artifact payload storage remains a clearly labeled local or development fallback, not a production object-store posture."
+        )
 
     return ArtifactActivationReadinessResponse(
         service=settings.service_name,

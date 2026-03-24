@@ -186,6 +186,7 @@ The current persistence posture is:
 - evaluation runtime-backed run detail now exposes persisted attempts and case-level outcomes directly, while historical file-backed baseline runs remain clearly labeled as non-runtime records,
 - runtime-backed async jobs and evaluation case results now persist artifact lineage through relational artifact ids, while payload bytes stay behind the governed object-store seam,
 - artifact storage now also exposes a bounded descriptor-first catalog plus activation, runbook, and governance views, so active, superseded, and archived posture are inspectable without exposing raw payload browsing,
+- artifact activation remains intentionally blocked when the payload store is only the filesystem-backed local or development fallback, so governance does not overstate production object-store readiness,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 - prompt rollout bodies remain repository-managed, while active selection can now move through explicit durable promote and rollback actions.
 - caller access-control policy can now also move through a dedicated memory or SQL-backed registry seam, with data-plane and control-plane request blocking active and durable SQL-backed full enforcement available when the access-control store uses SQLAlchemy.
