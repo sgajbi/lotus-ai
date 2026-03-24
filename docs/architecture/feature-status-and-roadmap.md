@@ -147,7 +147,8 @@ Current state:
 1. many runtime and governance endpoints exist,
 2. `/platform/observability/runtime-status` now provides a bounded in-service observability foundation over provider, retrieval, async, evaluation, prompt, and safety domains,
 3. provider, retrieval, async, evaluation, prompt, and safety incident summaries are now available through the observability API surface,
-4. richer breakdowns and runbook convergence are not yet complete.
+4. bounded caller, tenant, and capability breakdowns are now available through the observability API surface,
+5. runbook convergence is not yet complete.
 
 ### First Downstream Production Use Case
 

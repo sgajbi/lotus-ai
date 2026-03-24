@@ -68,3 +68,59 @@ def test_safety_observability_summary_route(client: TestClient) -> None:
     body = response.json()
     assert body["domain_id"] == "safety"
     assert body["incident_evidence_items"][0]["evidence_id"] == "safety_runtime_enforcement_state"
+
+
+def test_observability_breakdown_summary_route(client: TestClient) -> None:
+    client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "knowledge_answer.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-observe-breakdown-1",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Answer from Lotus knowledge sources",
+                "payload": {
+                    "query": "shared ai platform service",
+                    "source_ids": ["lotus-platform-rfcs"],
+                    "limit": 3,
+                },
+                "source_refs": [],
+            },
+            "expected_output_label": "RETRIEVAL_ANSWER",
+        },
+    )
+    client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-advise",
+                "correlation_id": "corr-observe-breakdown-2",
+                "tenant_id": "tenant-us-002",
+            },
+            "context": {
+                "summary": "Explain portfolio state",
+                "payload": {"status": "OK"},
+                "source_refs": [],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    response = client.get("/platform/observability/breakdowns", params={"limit": 50})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sampled_audit_record_limit"] == 50
+    assert body["sampled_audit_record_count"] >= 2
+    assert any(sample["caller_app"] == "lotus-manage" for sample in body["caller_apps"])
+    assert any(sample["tenant_id"] == "tenant-sg-001" for sample in body["tenants"])
+    assert any(
+        sample["capability_kind"] == "TASK" and sample["capability_id"] == "knowledge_answer.v1"
+        for sample in body["capabilities"]
+    )

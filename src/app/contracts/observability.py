@@ -102,6 +102,85 @@ class DomainIncidentSummaryResponse(BaseModel):
     )
 
 
+class ObservabilityCapabilityKind(str, Enum):
+    TASK = "TASK"
+    RETRIEVAL_SOURCE = "RETRIEVAL_SOURCE"
+    ASYNC_JOB_TYPE = "ASYNC_JOB_TYPE"
+
+
+class ObservabilityCallerBreakdownSample(BaseModel):
+    caller_app: str = Field(description="Caller application represented in the bounded sample.")
+    execution_count: int = Field(
+        description="Number of sampled task executions associated with the caller."
+    )
+    allowed_execution_count: int = Field(
+        description="Number of sampled task executions with an allowed authorization decision."
+    )
+    retrieval_execution_count: int = Field(
+        description="Number of sampled retrieval-backed task executions for the caller."
+    )
+    live_provider_execution_count: int = Field(
+        description="Number of sampled live-provider task executions for the caller."
+    )
+    async_job_count: int = Field(
+        description="Number of sampled async jobs associated with the caller."
+    )
+
+
+class ObservabilityTenantBreakdownSample(BaseModel):
+    tenant_id: str = Field(description="Tenant identifier represented in the bounded sample.")
+    execution_count: int = Field(
+        description="Number of sampled authorized task executions associated with the tenant."
+    )
+    caller_app_count: int = Field(
+        description="Number of distinct caller applications represented for the tenant."
+    )
+    capability_count: int = Field(
+        description="Number of distinct task capabilities represented for the tenant."
+    )
+
+
+class ObservabilityCapabilityBreakdownSample(BaseModel):
+    capability_kind: ObservabilityCapabilityKind = Field(
+        description="Kind of capability represented in the bounded sample."
+    )
+    capability_id: str = Field(
+        description="Stable task id, retrieval source id, or async job type represented in the sample."
+    )
+    observed_count: int = Field(
+        description="Number of sampled observations associated with the capability."
+    )
+
+
+class ObservabilityBreakdownSummaryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the observability breakdown summary.")
+    version: str = Field(description="Current lotus-ai service version.")
+    sampled_audit_record_limit: int = Field(
+        description="Maximum number of recent audit records included in the bounded breakdown sample."
+    )
+    sampled_audit_record_count: int = Field(
+        description="Number of recent audit records actually included in the bounded breakdown sample."
+    )
+    sampled_async_job_count: int = Field(
+        description="Number of async job records included in the bounded breakdown sample."
+    )
+    tenant_breakdown_policy: str = Field(
+        description="How tenant visibility is bounded by current authorization-aware observability rules."
+    )
+    caller_apps: list[ObservabilityCallerBreakdownSample] = Field(
+        description="Bounded caller-app breakdown across recent task executions and async jobs."
+    )
+    tenants: list[ObservabilityTenantBreakdownSample] = Field(
+        description="Bounded tenant breakdown derived only from authorized task executions carrying tenant identity."
+    )
+    capabilities: list[ObservabilityCapabilityBreakdownSample] = Field(
+        description="Bounded capability breakdown across tasks, retrieval sources, and async job types."
+    )
+    status_summary: list[str] = Field(
+        description="Short operator-facing summary of current caller, tenant, and capability breakdown coverage."
+    )
+
+
 class ObservabilityIncidentSummaryResponse(BaseModel):
     service: str = Field(description="Service name emitting the observability incident summary.")
     version: str = Field(description="Current lotus-ai service version.")

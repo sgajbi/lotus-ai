@@ -31,6 +31,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/observability/safety-summary"]["get"]["operationId"] == (
         "getSafetyObservabilitySummary"
     )
+    assert spec["paths"]["/platform/observability/breakdowns"]["get"]["operationId"] == (
+        "getObservabilityBreakdownSummary"
+    )
     assert spec["paths"]["/platform/access-control/runtime-status"]["get"]["operationId"] == (
         "getAccessControlRuntimeStatus"
     )
@@ -146,6 +149,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     domain_incident_schema = spec["components"]["schemas"]["DomainIncidentSummaryResponse"]
     assert "telemetry" in domain_incident_schema["properties"]
     assert "incident_evidence_items" in domain_incident_schema["properties"]
+    breakdown_schema = spec["components"]["schemas"]["ObservabilityBreakdownSummaryResponse"]
+    assert "caller_apps" in breakdown_schema["properties"]
+    assert "tenants" in breakdown_schema["properties"]
+    assert "capabilities" in breakdown_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"

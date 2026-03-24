@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.contracts.observability import (
+    ObservabilityBreakdownSummaryResponse,
     DomainIncidentSummaryResponse,
     ObservabilityIncidentSummaryResponse,
     ObservabilityRuntimeStatusResponse,
 )
+from app.services.observability_breakdowns import build_observability_breakdown_summary
 from app.services.observability_domain_summaries import (
     build_async_observability_bundle,
     build_evaluation_observability_bundle,
@@ -144,3 +146,23 @@ async def get_prompt_observability_summary_route() -> DomainIncidentSummaryRespo
 )
 async def get_safety_observability_summary_route() -> DomainIncidentSummaryResponse:
     return build_safety_observability_bundle().summary
+
+
+@router.get(
+    "/breakdowns",
+    response_model=ObservabilityBreakdownSummaryResponse,
+    operation_id="getObservabilityBreakdownSummary",
+    summary="Get observability caller, tenant, and capability breakdowns",
+    description=(
+        "Returns bounded caller-app, tenant, and capability breakdowns derived from recent audit records "
+        "and the current async job catalog."
+    ),
+    responses={
+        200: {"description": "Observability breakdown summary returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_observability_breakdown_summary_route(
+    limit: int = Query(default=100, ge=1, le=200)
+) -> ObservabilityBreakdownSummaryResponse:
+    return build_observability_breakdown_summary(limit=limit)

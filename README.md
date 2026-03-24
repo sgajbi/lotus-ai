@@ -18,7 +18,7 @@ If you want the shortest summary:
 1. RFC-0001 through RFC-0012 are implemented,
 2. bounded task execution, retrieval, safety, prompt rollout, async workers, runtime-backed evals, and caller access control are real,
 3. broader production observability, artifact storage, embeddings expansion, document ingestion, and first-use-case onboarding are still roadmap items.
-4. a bounded observability foundation is now available through `/platform/observability/runtime-status` and incident summaries for provider, retrieval, async, evaluation, prompt, and safety domains, but the broader observability rollout remains in progress.
+4. a bounded observability foundation is now available through `/platform/observability/runtime-status`, incident summaries for provider, retrieval, async, evaluation, prompt, and safety domains, and bounded caller/tenant/capability breakdowns, but the broader observability rollout remains in progress.
 
 ## Current Phase
 
