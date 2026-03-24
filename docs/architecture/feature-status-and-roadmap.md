@@ -186,6 +186,10 @@ The next RFCs already identified in the repo describe the expected sequence:
 6. `RFC-0018` governed embeddings and provider expansion
 7. `RFC-0019` governed document ingestion and corpus refresh
 
+The current preferred RFC-0016 target is:
+
+1. `lotus-performance` analytics commentary over caller-supplied structured performance facts.
+
 ### Why These Are Next
 
 In practical feature terms, the roadmap is:

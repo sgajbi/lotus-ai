@@ -27,6 +27,7 @@ from app.contracts.runtime_readiness import (
 )
 from app.contracts.safety import SafetyGovernanceStatusResponse, SafetyRuntimeStatusResponse
 from app.contracts.task_runtime import TaskRuntimeStatusResponse
+from app.contracts.use_cases import FirstUseCaseRuntimeStatusResponse
 
 
 class PlatformRuntimeStatusResponse(BaseModel):
@@ -87,6 +88,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     task_runtime: TaskRuntimeStatusResponse = Field(
         description="Current bounded task runtime posture for lotus-ai."
+    )
+    first_use_case: FirstUseCaseRuntimeStatusResponse = Field(
+        description="Current first production-oriented downstream use-case contract posture."
     )
     safety_runtime: SafetyRuntimeStatusResponse = Field(
         description="Current safety runtime posture for lotus-ai."

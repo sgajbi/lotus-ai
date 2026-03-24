@@ -84,6 +84,12 @@ The calling Lotus application owns the business context.
 
 ## Good Use Cases
 
+### Preferred first integration: lotus-performance
+
+1. Explain already computed performance deltas.
+2. Summarize material attribution or period-over-period changes.
+3. Keep outputs commentary-oriented and grounded in structured analytics owned by `lotus-performance`.
+
 ### lotus-manage
 
 1. Explain rebalance outcome.

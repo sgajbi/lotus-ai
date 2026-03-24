@@ -23,6 +23,16 @@ def test_platform_capabilities_contract(client: TestClient) -> None:
     assert any(task["task_id"] == "explain.v1" for task in body["tasks"])
 
 
+def test_first_production_use_case_contract(client: TestClient) -> None:
+    response = client.get("/platform/use-cases/first-production-use-case")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["downstream_app"] == "lotus-performance"
+    assert body["task_id"] == "explain.v1"
+    assert body["rollout_posture"] == "CONTRACT_DEFINED"
+
+
 def test_task_execution_summary_route(client: TestClient) -> None:
     client.post(
         "/ai/tasks/execute",
@@ -312,6 +322,9 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     )
     assert body["task_runtime"]["enabled_task_count"] >= 7
     assert body["task_runtime"]["retrieval_backed_task_count"] == 2
+    assert body["first_use_case"]["use_case_id"] == "lotus_performance.analytics_commentary.v1"
+    assert body["first_use_case"]["downstream_app"] == "lotus-performance"
+    assert body["first_use_case"]["contract_hardened"] is True
     assert any(
         task["task_id"] == "knowledge_search.v1" and task["stubbed"] is False
         for task in body["task_runtime"]["tasks"]

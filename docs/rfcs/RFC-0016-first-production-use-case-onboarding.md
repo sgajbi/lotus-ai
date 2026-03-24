@@ -28,8 +28,8 @@ The architecture and integration guidance have consistently pointed toward one p
 The current docs already identify the preferred first integration path:
 
 1. [README.md](C:/Users/Sandeep/projects/lotus-ai/README.md#L1) says cross-app adoption should start with one Lotus app integration,
-2. [integration-guide.md](C:/Users/Sandeep/projects/lotus-ai/docs/guides/integration-guide.md#L1) highlights `lotus-manage` explanation and support-oriented use cases,
-3. [phased-roadmap.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/phased-roadmap.md#L1) identifies `lotus-manage` explanation of rebalance outcomes as the preferred first integration.
+2. [integration-guide.md](C:/Users/Sandeep/projects/lotus-ai/docs/guides/integration-guide.md#L1) highlights `lotus-performance` analytics commentary as a strong bounded integration candidate,
+3. [phased-roadmap.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/phased-roadmap.md#L1) now identifies `lotus-performance` analytics commentary as the preferred first integration.
 
 Without a real first-use-case RFC:
 
@@ -75,15 +75,17 @@ This means:
 
 The preferred first production-oriented use case should be:
 
-1. `lotus-manage` explanation of rebalance outcome or blocker posture,
-2. with optional support-facing diagnostic summarization as a second bounded variant only if the primary path succeeds.
+1. `lotus-performance` explanation-oriented analytics commentary for already computed performance deltas, attribution shifts, or material period-over-period changes,
+2. with one bounded request shape centered on structured performance inputs that remain fully domain-owned by `lotus-performance`,
+3. and with broader narrative or support-oriented variants deferred until the first commentary path is proven.
 
 Why this is the right first use case:
 
 1. it is bounded and explanatory,
-2. it does not ask `lotus-ai` to become the source of truth for business execution,
+2. it does not ask `lotus-ai` to become the source of truth for portfolio analytics,
 3. the output can stay clearly labeled as `EXPLANATION_ONLY`,
-4. it exercises exactly the kind of supportability and operational narrative generation the platform is already designed for.
+4. the upstream app already owns the structured analytics inputs and final presentation semantics,
+5. it exercises exactly the kind of narrative transformation the platform is already designed for without crossing into domain decision-making.
 
 ## Decision
 
@@ -91,7 +93,7 @@ Why this is the right first use case:
 
 The first delivery should:
 
-1. use one bounded task shape,
+1. use one bounded commentary task shape,
 2. use one named downstream app as the integration owner,
 3. require runtime-backed evaluation and rollout review before activation,
 4. define support, rollback, and incident procedures before production exposure,
@@ -105,7 +107,8 @@ This RFC establishes the following invariants:
 2. `lotus-ai` output remains bounded by its task contract and output label,
 3. the first use case must be reviewable end to end through audit, evaluation, observability, and incident evidence,
 4. activation must be reversible,
-5. success must be measured through both runtime correctness and supportability, not only by “it responds.”
+5. success must be measured through both runtime correctness and supportability, not only by “it responds”,
+6. the first integration must stay explanation-oriented over precomputed analytics and must not infer or invent missing financial facts.
 
 ## Architecture Direction
 
@@ -118,7 +121,8 @@ Required behavior:
 1. request shape is minimal and domain-owned by the downstream app,
 2. task selection is bounded and explicit,
 3. output label and intended use are clear,
-4. downstream rendering and review semantics are defined.
+4. downstream rendering and review semantics are defined,
+5. commentary is grounded only in caller-supplied structured analytics fields rather than free-form portfolio data dumps.
 
 ### Rollout and Evaluation
 
@@ -129,7 +133,8 @@ Required behavior:
 1. dedicated evaluation fixtures exist for the use case,
 2. approval-gate evidence is current,
 3. rollout posture distinguishes pre-prod validation, limited rollout, and active production posture,
-4. rollback criteria are explicit.
+4. rollback criteria are explicit,
+5. commentary correctness is judged against structured analytics facts and conservative explanation behavior rather than stylistic preference alone.
 
 ### Operational Readiness
 
@@ -140,7 +145,8 @@ Required behavior:
 1. caller identity and authorization posture are defined for the downstream app,
 2. observability and incident evidence cover the actual use case path,
 3. audit and support workflows can inspect real executions,
-4. downstream and platform runbooks define shared ownership and escalation.
+4. downstream and platform runbooks define shared ownership and escalation,
+5. degraded behavior is explicit when commentary cannot be produced safely from incomplete or unsupported analytics inputs.
 
 ### Adoption Template
 
@@ -162,6 +168,7 @@ Required behavior:
 5. Rollback must be operationally realistic.
 6. Runbooks must define shared ownership between `lotus-ai` and the downstream app.
 7. Success criteria must include supportability and incident handling, not only output quality.
+8. The first implementation must use caller-supplied structured analytics facts only and must not depend on retrieval or live-provider breadth that is not already rollout-ready.
 
 ## Delivery Slices
 
@@ -178,7 +185,8 @@ Acceptance gate:
 1. the use case is narrow and safe,
 2. the contract is explicit,
 3. downstream and platform ownership are clear,
-4. no domain-authoritative behavior is delegated to `lotus-ai`.
+4. no domain-authoritative behavior is delegated to `lotus-ai`,
+5. the request shape is explicitly scoped to precomputed analytics commentary rather than generic performance storytelling.
 
 ### Slice 2: Runtime, Evaluation, and Safety Readiness for the Use Case
 
@@ -193,7 +201,8 @@ Acceptance gate:
 1. evaluation evidence is runtime-backed,
 2. safety and audit posture are explicit,
 3. blocked and degraded behavior are testable,
-4. the platform can explain why the use case is or is not rollout-ready.
+4. the platform can explain why the use case is or is not rollout-ready,
+5. caller identity, bounded input shape, and commentary outcome labels are all reviewable from persisted runtime truth.
 
 ### Slice 3: Limited Rollout and Operational Validation
 
@@ -208,7 +217,8 @@ Acceptance gate:
 1. limited rollout is observable and reviewable,
 2. rollback works,
 3. support paths are usable,
-4. incident evidence is sufficient.
+4. incident evidence is sufficient,
+5. downstream operators can distinguish unsupported analytics input from normal explanation variance.
 
 ### Slice 4: Adoption Template and Generalization
 
@@ -230,7 +240,8 @@ Acceptance gate:
 1. choosing too broad a first use case could overexpose weak spots,
 2. choosing too trivial a use case would fail to validate the platform meaningfully,
 3. weak shared ownership between the platform and downstream app could create support confusion,
-4. rushing rollout before evaluation and operational readiness would undermine trust.
+4. rushing rollout before evaluation and operational readiness would undermine trust,
+5. analytics commentary could drift into invented financial explanation if the input contract is not kept narrow and deterministic.
 
 ## Alternatives Considered
 
@@ -276,6 +287,6 @@ This RFC is complete when:
 Approve this RFC if the team agrees that:
 
 1. the next major milestone after the current platform RFC sequence is a real downstream use-case onboarding,
-2. `lotus-manage` explanation of rebalance outcome or blocker posture is the best first candidate,
+2. `lotus-performance` commentary over bounded structured analytics is the best first candidate,
 3. the use case should be governed through the same runtime, evaluation, safety, and observability controls as the rest of the platform,
 4. delivery should proceed in the slices defined above.

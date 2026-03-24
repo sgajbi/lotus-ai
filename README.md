@@ -12,6 +12,7 @@ If you are new to the repo, read these first:
 2. [Feature Status and Roadmap](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/feature-status-and-roadmap.md)
 3. [Phased Roadmap](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/phased-roadmap.md)
 4. [RFC Index](C:/Users/Sandeep/projects/lotus-ai/docs/rfcs/README.md)
+5. [lotus-performance First Use-Case Contract](C:/Users/Sandeep/projects/lotus-ai/docs/guides/lotus-performance-first-use-case.md)
 
 If you want the shortest summary:
 

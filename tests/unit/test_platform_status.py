@@ -106,6 +106,9 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.task_runtime.enabled_task_count >= 7
     assert status.task_runtime.retrieval_backed_task_count == 2
     assert status.task_runtime.tasks[0].task_id == "explain.v1"
+    assert status.first_use_case.downstream_app == "lotus-performance"
+    assert status.first_use_case.task_id == "explain.v1"
+    assert status.first_use_case.contract_hardened is True
     assert status.safety_runtime.runtime_redaction_active is False
     assert status.safety_governance.governance_ready is False
     assert status.safety_governance.blocking_area_count == 3
