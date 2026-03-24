@@ -22,6 +22,7 @@ def test_resilience_runtime_status_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["delivery_stage"] == "ORDERED_RECOVERY_READY"
+    assert body["recovery_state"] == "DEGRADED"
     assert body["posture"] == "LOCAL_OR_DEMO_CONTINUITY"
     assert body["dependency_count"] >= 10
     assert any(

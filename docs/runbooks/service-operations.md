@@ -108,9 +108,10 @@ Before treating service continuity posture as anything stronger than bounded inv
 1. verify `GET /platform/resilience/runtime-status`
 2. inspect `GET /platform/resilience/restore-plan` to confirm restore ordering, validation criteria, and rollback boundaries before treating continuity as operator-ready
 3. confirm the embedded `resilience_runtime` block in `GET /platform/runtime-status` matches the detailed resilience view
-4. treat `LOCAL_OR_DEMO_CONTINUITY` as local or demo durability only, not as restart-safe production posture
-5. treat `PARTIAL_RUNTIME_DURABILITY` as evidence that some critical dependencies are durable while others still require external recovery or remain blocked
-6. do not infer backup automation, drill evidence, or resilience governance from this slice alone; those remain future RFC-0017 work
+4. inspect `recovery_state`, `recovery_attention_dependency_count`, and dependency-level `recovery_findings` before treating a restart as a restored platform
+5. treat `LOCAL_OR_DEMO_CONTINUITY` as local or demo durability only, not as restart-safe production posture
+6. treat `PARTIAL_RUNTIME_DURABILITY` as evidence that some critical dependencies are durable while others still require external recovery or remain blocked
+7. do not infer backup automation, drill evidence, or resilience governance from this slice alone; those remain future RFC-0017 work
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
 

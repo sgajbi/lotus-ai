@@ -36,6 +36,12 @@ class ResilienceRestoreClassification(str, Enum):
     EXTERNAL_DEPENDENCY_VALIDATION = "EXTERNAL_DEPENDENCY_VALIDATION"
 
 
+class ResilienceRecoveryState(str, Enum):
+    STEADY = "STEADY"
+    DEGRADED = "DEGRADED"
+    RESTORED_WITH_FINDINGS = "RESTORED_WITH_FINDINGS"
+
+
 class ResilienceDependencyDescriptor(BaseModel):
     dependency_id: str = Field(description="Stable resilience inventory identifier.")
     kind: ResilienceDependencyKind = Field(
@@ -53,6 +59,13 @@ class ResilienceDependencyDescriptor(BaseModel):
     restart_survivable: bool = Field(
         description="Whether this dependency currently preserves platform truth across process restart."
     )
+    recovery_state: ResilienceRecoveryState = Field(
+        description="Current operator-facing degraded-versus-restored runtime posture for this dependency."
+    )
+    recovery_findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable recovery findings that explain degraded or restored-with-findings posture for this dependency.",
+    )
     detail: str = Field(description="Human-readable explanation of the current resilience posture.")
 
 
@@ -61,6 +74,9 @@ class ResilienceRuntimeStatusResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     delivery_stage: ResilienceDeliveryStage = Field(
         description="Current RFC-0017 delivery stage implemented in lotus-ai."
+    )
+    recovery_state: ResilienceRecoveryState = Field(
+        description="Current top-level degraded-versus-restored runtime posture across critical continuity dependencies."
     )
     posture: ResiliencePosture = Field(
         description="Current top-level resilience inventory posture for lotus-ai."
@@ -76,6 +92,12 @@ class ResilienceRuntimeStatusResponse(BaseModel):
     )
     dependencies: list[ResilienceDependencyDescriptor] = Field(
         description="Bounded resilience inventory covering authoritative stores and platform-critical dependencies."
+    )
+    recovery_attention_dependency_count: int = Field(
+        description="Number of dependencies currently reporting degraded or restored-with-findings runtime posture."
+    )
+    recovery_findings: list[str] = Field(
+        description="Top-level recovery findings requiring operator review before continuity can be treated as steady."
     )
     blocking_findings: list[str] = Field(
         description="Human-readable resilience findings showing where continuity still depends on fallback or external recovery assumptions."

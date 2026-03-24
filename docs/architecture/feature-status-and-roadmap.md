@@ -190,7 +190,7 @@ The next RFCs already identified in the repo describe the expected sequence:
 Current status against that sequence:
 
 1. `RFC-0015` is implemented, including runtime, activation, runbook, and governance posture for unified versus split deployment stages.
-2. `RFC-0017` has started with a bounded resilience runtime inventory surface plus an ordered restore-plan surface that enumerates authoritative stores, critical dependencies, restore ordering, and validation criteria, but drill evidence and resilience governance remain future slices.
+2. `RFC-0017` has started with a bounded resilience runtime inventory surface, an ordered restore-plan surface, and explicit degraded-versus-restored runtime posture for queue, worker, provider, retrieval, and artifact continuity dependencies, but drill evidence and resilience governance remain future slices.
 3. `RFC-0018` and `RFC-0019` remain roadmap items.
 
 Early RFC-0015 groundwork now exists as a bounded runtime surface:

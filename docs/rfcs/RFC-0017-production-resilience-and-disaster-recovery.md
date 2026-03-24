@@ -254,6 +254,11 @@ Outcome:
 2. recovery state is visible operationally,
 3. continuity behavior improves materially.
 
+Delivered interfaces for this slice:
+
+1. `recovery_state` plus dependency-level recovery findings in `/platform/resilience/runtime-status`
+2. embedded recovery-state summary in the `resilience_runtime` block of `/platform/runtime-status`
+
 Acceptance gate:
 
 1. degraded versus restored posture is explicit,
