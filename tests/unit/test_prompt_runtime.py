@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from fastapi import HTTPException
 
@@ -8,6 +11,10 @@ from app.contracts.prompts import (
 )
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_submission_service import submit_evaluation_run
+from app.services.evaluation_runtime_store import (
+    get_evaluation_runtime_store,
+    reset_evaluation_runtime_store_cache,
+)
 from app.services.prompt_rollout_control import apply_prompt_control_action
 from app.services.prompt_runtime import (
     build_prompt_selection_trace,
@@ -17,6 +24,9 @@ from app.services.prompt_runtime import (
     resolve_runtime_prompt_or_raise,
     summarize_prompt_lifecycle_counts,
 )
+from app.services.prompt_store import reset_prompt_store_cache
+from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.runtime_settings import override_runtime_settings
 
 
 def test_resolve_runtime_prompt_or_raise_returns_active_prompt_selection() -> None:
@@ -102,6 +112,93 @@ def test_build_prompt_selection_trace_includes_latest_control_event_after_promot
     assert trace.latest_control_event.action_type == PromptControlActionType.PROMOTE_CANDIDATE
 
 
+def test_prompt_runtime_selection_survives_sql_store_reinitialization(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'prompt-runtime-restart.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        prompt_store_mode="sqlalchemy",
+        evaluation_runtime_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        _seed_prompt_approval_gate_pass_sqlalchemy()
+        apply_prompt_control_action(
+            PromptControlActionRequest(
+                task_id="explain.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                candidate_prompt_version="foundation.explain.v2",
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Promote explanation prompt",
+            )
+        )
+
+        reset_prompt_store_cache()
+        reset_evaluation_runtime_store_cache()
+
+        trace = build_prompt_selection_trace("explain.v1")
+        rollout = next(
+            descriptor
+            for descriptor in list_prompt_rollout_descriptors()
+            if descriptor.task_id == "explain.v1"
+        )
+
+    assert trace.prompt_version == "foundation.explain.v2"
+    assert trace.previous_active_prompt_version == "foundation.explain.v1"
+    assert trace.latest_control_event is not None
+    assert trace.latest_control_event.action_type == PromptControlActionType.PROMOTE_CANDIDATE
+    assert rollout.active_prompt_version == "foundation.explain.v2"
+
+
+def test_prompt_runtime_rollback_lineage_survives_sql_store_reinitialization(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'prompt-runtime-rollback-restart.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        prompt_store_mode="sqlalchemy",
+        evaluation_runtime_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        _seed_prompt_approval_gate_pass_sqlalchemy()
+        apply_prompt_control_action(
+            PromptControlActionRequest(
+                task_id="explain.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                candidate_prompt_version="foundation.explain.v2",
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Promote explanation prompt",
+            )
+        )
+        apply_prompt_control_action(
+            PromptControlActionRequest(
+                task_id="explain.v1",
+                action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Restore known-good prompt",
+            )
+        )
+
+        reset_prompt_store_cache()
+        reset_evaluation_runtime_store_cache()
+
+        trace = build_prompt_selection_trace("explain.v1")
+        rollout = next(
+            descriptor
+            for descriptor in list_prompt_rollout_descriptors()
+            if descriptor.task_id == "explain.v1"
+        )
+
+    assert trace.prompt_version == "foundation.explain.v1"
+    assert trace.latest_control_event is not None
+    assert trace.latest_control_event.action_type == PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE
+    assert rollout.active_prompt_version == "foundation.explain.v1"
+    assert rollout.candidate_prompt_version == "foundation.explain.v2"
+    assert rollout.latest_control_event is not None
+    assert rollout.latest_control_event.action_type == PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE
+
+
 def _seed_prompt_approval_gate_pass() -> None:
     for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
         submit_evaluation_run(
@@ -113,3 +210,21 @@ def _seed_prompt_approval_gate_pass() -> None:
             )
         )
         run_next_evaluation_execution_job(worker_id="worker-a")
+
+
+def _seed_prompt_approval_gate_pass_sqlalchemy() -> None:
+    for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
+        get_evaluation_runtime_store().save_run(
+            EvaluationRunRecord(
+                run_id=f"runtime_prompt_sql_{fixture_id}",
+                fixture_id=fixture_id,
+                manifest_version="foundation.v1",
+                lifecycle_status="COMPLETED",
+                triggered_by="operator-a",
+                submitted_at="2026-03-24T09:00:00Z",
+                async_job_id=f"async_prompt_sql_{fixture_id}",
+                latest_message="Prompt rollout approval fixture passed.",
+                verdict="PASS",
+                case_count=1,
+            )
+        )

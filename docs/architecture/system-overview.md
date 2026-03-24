@@ -145,6 +145,12 @@ rollout. Prompt evidence readiness now reports staged-only versus runtime-pass/f
 through the same approval summary shape already used by provider, retrieval, and safety rollout,
 and prompt promotion is now blocked unless that prompt approval gate reports `RUNTIME_PASS`.
 
+RFC-0010 Slice 5 closes the operational loop around that rollout model. Prompt runbook readiness
+now documents governed promotion, rollback, incident review, and audit inspection procedures, and
+prompt activation readiness now distinguishes the remaining technical durability gate clearly:
+restart-safe live prompt activation requires SQL-backed prompt rollout state plus SQL-backed
+evaluation runtime evidence.
+
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.
 
@@ -530,7 +536,8 @@ Current rules:
 `/platform/runtime-status` now embeds prompt governance posture directly so operators can review
 prompt rollout state from the same top-level runtime surface that already carries async, provider,
 and retrieval governance posture. Prompt governance now summarizes technical activation, runbook,
-and evidence readiness together.
+and evidence readiness together, with runbook readiness complete and the remaining technical gate
+called out explicitly when prompt or evaluation state is not restart-safe.
 
 ## Safety Posture
 

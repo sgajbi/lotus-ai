@@ -137,7 +137,7 @@ def test_prompt_activation_readiness_route(client: TestClient) -> None:
     assert body["prompt_store_mode"] == "memory"
     assert body["management_mode"] == "SEEDED_MEMORY"
     assert body["activation_ready"] is False
-    assert len(body["blocking_findings"]) == 4
+    assert len(body["blocking_findings"]) == 1
     assert len(body["activation_path"]) == 4
 
 
@@ -147,11 +147,11 @@ def test_prompt_runbook_readiness_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["runbook_ready"] is False
+    assert body["runbook_ready"] is True
     assert body["required_item_count"] == 4
-    assert body["completed_required_item_count"] == 0
+    assert body["completed_required_item_count"] == 4
     assert body["items"][0]["runbook_id"] == "prompt_operational_runbook"
-    assert body["items"][1]["status"] == "NOT_READY"
+    assert body["items"][1]["status"] == "READY"
 
 
 def test_prompt_evidence_readiness_route(client: TestClient) -> None:
@@ -175,8 +175,8 @@ def test_prompt_governance_status_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["governance_ready"] is False
-    assert body["blocking_area_count"] == 3
+    assert body["blocking_area_count"] == 2
     assert body["activation_readiness"]["activation_ready"] is False
-    assert body["runbook_readiness"]["runbook_ready"] is False
+    assert body["runbook_readiness"]["runbook_ready"] is True
     assert body["evidence_readiness"]["evidence_ready"] is False
     assert len(body["governance_summary"]) == 3

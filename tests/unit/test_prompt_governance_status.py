@@ -6,9 +6,9 @@ def test_prompt_governance_status_reports_blocked_foundation_posture() -> None:
 
     assert status.service == "lotus-ai"
     assert status.governance_ready is False
-    assert status.blocking_area_count == 3
+    assert status.blocking_area_count == 2
     assert status.activation_readiness.activation_ready is False
-    assert status.runbook_readiness.runbook_ready is False
+    assert status.runbook_readiness.runbook_ready is True
     assert status.evidence_readiness.evidence_ready is False
     assert len(status.governance_summary) == 3
     assert status.evidence_readiness.approval_gate.domain_id == "prompt_rollout"

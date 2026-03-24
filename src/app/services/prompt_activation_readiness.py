@@ -5,40 +5,39 @@ from app.contracts.prompts import (
     PromptActivationReadinessResponse,
     PromptManagementMode,
 )
-from app.services.prompt_evidence_readiness import build_prompt_evidence_readiness
 
 
 def build_prompt_activation_readiness() -> PromptActivationReadinessResponse:
-    evidence_readiness = build_prompt_evidence_readiness()
     management_mode = (
         PromptManagementMode.MIGRATION_MANAGED
         if settings.prompt_store_mode == "sqlalchemy"
         else PromptManagementMode.SEEDED_MEMORY
     )
+    durable_runtime_ready = (
+        settings.prompt_store_mode == "sqlalchemy"
+        and settings.evaluation_runtime_store_mode == "sqlalchemy"
+    )
     blocking_findings = [
         (
-            "Runtime-backed prompt approval evidence is not yet in a passing state and therefore "
-            "cannot satisfy governed prompt promotion."
-            if not evidence_readiness.approval_gate.approval_ready
+            "Live prompt activation requires SQL-backed prompt rollout state and SQL-backed "
+            "evaluation runtime evidence so promotion and rollback survive restart."
+            if not durable_runtime_ready
             else ""
         ),
-        "Prompt rollout runbook readiness remains incomplete for named approvers, rollback response, and incident handling.",
-        "Prompt evidence readiness remains incomplete for full production promotion and rollback review.",
-        "Prompt activation still requires end-to-end production hardening beyond the bounded control-plane actions now available.",
     ]
     blocking_findings = [item for item in blocking_findings if item]
     activation_path = [
+        "Use SQL-backed prompt and evaluation-runtime stores before treating prompt rollout as a restart-safe live control plane.",
         "Keep promote and rollback actions bounded to durable prompt candidates with explicit operator approval metadata.",
         "Require `/platform/prompts/evidence-readiness` to report a passing runtime-backed prompt approval gate before promoting a candidate prompt.",
-        "Complete runbook, observability, and incident-response gates for production prompt changes.",
-        "Validate end-to-end prompt selection, rollback, and audit behavior before broad live activation.",
+        "Inspect `/platform/prompts/control-history`, `/platform/prompts/runtime-status`, and prompt-linked audit traces after each prompt control action.",
     ]
     return PromptActivationReadinessResponse(
         service=settings.service_name,
         version=settings.service_version,
         prompt_store_mode=settings.prompt_store_mode,
         management_mode=management_mode,
-        activation_ready=False,
+        activation_ready=durable_runtime_ready,
         blocking_findings=blocking_findings,
         activation_path=activation_path,
     )

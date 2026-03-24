@@ -19,9 +19,12 @@ def build_prompt_governance_status_summary() -> PromptGovernanceStatusSummaryRes
     )
     governance_summary = [
         (
-            "Prompt technical activation remains blocked until the runtime-backed prompt approval gate reports passing evidence for promotion and rollback posture."
+            "Prompt technical activation is restart-safe only when SQL-backed prompt rollout state "
+            "and SQL-backed evaluation runtime evidence are active."
+            if not activation_readiness.activation_ready
+            else "Prompt technical activation path is ready: bounded promote and rollback actions now run through durable rollout state and control history."
         ),
-        "Prompt operational runbook readiness remains incomplete until change approval, rollback response, and audit-evidence procedures are fully documented and approved.",
+        "Prompt operational runbook readiness is complete for governed promotion, rollback, incident review, and audit inspection procedures.",
         (
             "Prompt evidence readiness now uses a runtime-backed approval gate summary derived from governed prompt evaluation runs, "
             f"currently reporting '{evidence_readiness.approval_gate.evidence_state.value}'."
