@@ -317,7 +317,8 @@ The local security audit posture is also intentionally isolated:
 
 1. `make ci` runs dependency audit inside a temporary project-only virtual environment,
 2. this avoids false positives from unrelated machine-wide Python packages,
-3. the audit still fails on vulnerabilities in the actual `lotus-ai` dependency set.
+3. the audit still fails on vulnerabilities in the actual `lotus-ai` dependency set,
+4. temporary ignores must be explicit in `scripts/run_security_audit.py` and should only be used when no patched upstream release exists yet.
 
 ## Framework Stance
 
