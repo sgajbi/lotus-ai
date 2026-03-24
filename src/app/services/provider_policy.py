@@ -12,6 +12,7 @@ from app.contracts.providers import (
     ProviderPolicyResponse,
 )
 from app.providers.registry import resolve_embedding_adapter, resolve_text_generation_adapter
+from app.services.embedding_live_execution_state import build_embedding_live_execution_state
 from app.services.provider_configuration_status import (
     build_embedding_configuration_status,
     build_text_generation_configuration_status,
@@ -23,6 +24,7 @@ def build_provider_policy() -> ProviderPolicyResponse:
     selected_text_provider = _resolve_selected_text_provider()
     selected_embedding_provider = _resolve_selected_embedding_provider()
     live_execution_state = build_provider_live_execution_state()
+    embedding_live_execution_state = build_embedding_live_execution_state()
     if settings.provider_mode == ProviderExecutionMode.OPENAI.value:
         rejection_category = ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
     else:
@@ -64,7 +66,7 @@ def build_provider_policy() -> ProviderPolicyResponse:
                 ],
                 selected_provider_id=selected_embedding_provider[0],
                 selected_adapter_kind=selected_embedding_provider[1],
-                live_execution_enabled=False,
+                live_execution_enabled=embedding_live_execution_state.live_execution_enabled,
                 rejection_category=embedding_rejection_category,
                 rejection_behavior=(
                     "Reject unsupported embedding provider modes, incomplete live embedding "
@@ -88,6 +90,24 @@ def require_supported_text_generation_mode() -> ProviderExecutionMode:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
                 "Configured text-generation provider mode is not supported in the current phase: "
+                f"{configured_mode}"
+            ),
+        )
+    return supported_modes[configured_mode]
+
+
+def require_supported_embedding_mode() -> ProviderExecutionMode:
+    supported_modes = {
+        ProviderExecutionMode.DISABLED.value: ProviderExecutionMode.DISABLED,
+        ProviderExecutionMode.STUB.value: ProviderExecutionMode.STUB,
+        ProviderExecutionMode.ENABLED.value: ProviderExecutionMode.ENABLED,
+    }
+    configured_mode = settings.embedding_provider_mode
+    if configured_mode not in supported_modes:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Configured embedding provider mode is not supported in the current phase: "
                 f"{configured_mode}"
             ),
         )

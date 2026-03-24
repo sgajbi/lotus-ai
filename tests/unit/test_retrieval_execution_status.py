@@ -13,11 +13,16 @@ def test_retrieval_execution_status_reports_disabled_live_execution() -> None:
     assert status.execution_stage == "SEARCH_DISABLED"
     assert status.live_search_enabled is False
     assert status.live_indexing_enabled is True
+    assert status.embedding_execution_enabled is False
     assert status.split_route_degraded is False
 
 
 def test_retrieval_execution_status_reports_enabled_live_execution() -> None:
     settings.retrieval_mode = "enabled"
+    settings.embedding_provider_mode = "enabled"
+    settings.live_embedding_provider_id = "embeddings.openai"
+    settings.live_embedding_model_id = "text-embedding-3-large"
+    settings.live_embedding_provider_api_key = "secret"
     get_retrieval_repository().set_source_index_status(
         source_id="lotus-platform-rfcs",
         index_status="INDEXED",
@@ -29,6 +34,8 @@ def test_retrieval_execution_status_reports_enabled_live_execution() -> None:
     assert status.execution_stage == "LIVE_SEARCH"
     assert status.live_search_enabled is True
     assert status.live_indexing_enabled is True
+    assert status.embedding_execution_enabled is True
+    assert status.embedding_provider_id == "embeddings.openai"
     assert status.split_route_degraded is False
     assert "searchable promoted document" in status.message
 

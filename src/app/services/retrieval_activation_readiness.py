@@ -4,6 +4,7 @@ from app.config import settings
 from app.contracts.retrieval import RetrievalActivationReadinessResponse
 from app.retrieval.document_governance import build_retrieval_document_governance
 from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
+from app.services.retrieval_embedding_runtime import build_retrieval_embedding_runtime
 from app.services.retrieval_runbook_readiness import build_retrieval_runbook_readiness
 from app.services.runtime_readiness import get_retrieval_store_runtime_status
 
@@ -11,6 +12,7 @@ from app.services.runtime_readiness import get_retrieval_store_runtime_status
 def build_retrieval_activation_readiness() -> RetrievalActivationReadinessResponse:
     evidence_readiness = build_retrieval_evidence_readiness()
     runbook_readiness = build_retrieval_runbook_readiness()
+    embedding_runtime = build_retrieval_embedding_runtime()
     store_status = get_retrieval_store_runtime_status()
     document_governance = (
         None if store_status.status != "READY" else build_retrieval_document_governance()
@@ -46,9 +48,9 @@ def build_retrieval_activation_readiness() -> RetrievalActivationReadinessRespon
         blocking_findings.append(
             "Retrieval runbook readiness remains incomplete; formal on-call escalation posture is not yet approved."
         )
-    if settings.embedding_provider_mode != "enabled":
+    if not embedding_runtime.embedding_execution_enabled:
         blocking_findings.append(
-            "Embedding provider execution is still disabled for broader corpus growth beyond the current bounded live-search rollout."
+            "Embedding provider execution is not yet enabled for broader corpus growth beyond the current bounded live-search rollout."
         )
 
     activation_ready = (
@@ -56,6 +58,7 @@ def build_retrieval_activation_readiness() -> RetrievalActivationReadinessRespon
         and store_status.status == "READY"
         and document_governance is not None
         and document_governance.searchable_document_count > 0
+        and embedding_runtime.embedding_execution_enabled
         and evidence_readiness.evidence_ready
         and runbook_readiness.runbook_ready
     )
@@ -64,13 +67,14 @@ def build_retrieval_activation_readiness() -> RetrievalActivationReadinessRespon
         "Review `/platform/retrieval/execution-status`, `/platform/retrieval/source-governance`, and `/platform/retrieval/document-governance` to confirm the live path and searchable corpus posture agree.",
         "Validate runtime-backed retrieval approval evidence through `/platform/retrieval/evidence-readiness` and confirm current live-search runs, not historical staged baselines, are driving the approval gate.",
         "Verify retrieval rollout, replay, rollback, and recovery procedures through `/platform/retrieval/runbook-readiness` and the service operations runbook before broader activation.",
-        "Treat broader embedding-provider rollout as separate follow-on work after the bounded live-search path is fully governed.",
+        "Treat broader embedding-provider rollout as part of the RFC-0018 governed activation path and confirm embedding runtime posture before expanding corpus growth.",
     ]
     return RetrievalActivationReadinessResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,
         retrieval_mode=settings.retrieval_mode,
         embedding_provider_mode=settings.embedding_provider_mode,
+        embedding_execution_enabled=embedding_runtime.embedding_execution_enabled,
         activation_ready=activation_ready,
         blocking_findings=blocking_findings,
         activation_path=activation_path,

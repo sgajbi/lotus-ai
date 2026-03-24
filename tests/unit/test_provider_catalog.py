@@ -85,4 +85,5 @@ def test_provider_catalog_exposes_live_embedding_path_without_enabling_execution
         == ProviderCredentialStatus.CONFIGURED
     )
     assert openai_embedding_provider.runtime_mode == "enabled"
-    assert openai_embedding_provider.enabled_for_execution is False
+    assert catalog.embedding_runtime_execution_enabled is True
+    assert openai_embedding_provider.enabled_for_execution is True

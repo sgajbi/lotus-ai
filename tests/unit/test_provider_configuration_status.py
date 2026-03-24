@@ -20,7 +20,7 @@ def test_embedding_configuration_reports_live_path_defined_but_not_activated() -
 
     configuration = build_embedding_configuration_status()
 
-    assert configuration.rollout_state == ProviderRolloutState.ALLOWLISTED_DISABLED
+    assert configuration.rollout_state == ProviderRolloutState.CANARY_ENABLED
     assert configuration.credential_status == ProviderCredentialStatus.CONFIGURED
     assert configuration.configuration_valid is True
-    assert any("still blocked" in finding for finding in configuration.findings)
+    assert any("bounded rollout" in finding for finding in configuration.findings)

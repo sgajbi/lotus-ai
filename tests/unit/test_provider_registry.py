@@ -1,6 +1,7 @@
 import pytest
 
 from app.contracts.providers import (
+    EmbeddingExecutionRequest,
     ProviderAdapterKind,
     ProviderExecutionMode,
     ProviderFailureCategory,
@@ -63,3 +64,19 @@ def test_provider_registry_resolves_embedding_adapters_for_supported_modes() -> 
     assert disabled_adapter.descriptor.provider_id == "embeddings.stub"
     assert stub_adapter.descriptor.provider_id == "embeddings.stub"
     assert live_adapter.descriptor.provider_id == "embeddings.openai"
+
+
+def test_stub_embedding_provider_returns_bounded_vector() -> None:
+    adapter = resolve_embedding_adapter(ProviderExecutionMode.STUB)
+
+    response = adapter.embed(
+        EmbeddingExecutionRequest(
+            caller_app="lotus-platform",
+            corpus_id="lotus-platform-rfcs",
+            content="Shared AI platform service with governed retrieval indexing.",
+        )
+    )
+
+    assert response.provider_id == "embeddings.stub"
+    assert response.stubbed is True
+    assert response.vector_dimension == len(response.embedding)

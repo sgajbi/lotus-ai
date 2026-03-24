@@ -9,11 +9,13 @@ from app.retrieval.document_governance import build_retrieval_document_governanc
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
 from app.services.deployment_split_routing import resolve_retrieval_search_route
 from app.services.deployment_split_shared import resolve_deployment_split_posture
+from app.services.retrieval_embedding_runtime import build_retrieval_embedding_runtime
 from app.services.runtime_readiness import get_retrieval_store_runtime_status
 
 
 def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
     posture = resolve_deployment_split_posture()
+    embedding_runtime = build_retrieval_embedding_runtime()
     route = resolve_retrieval_search_route(
         effective_stage=posture.effective_stage,
         degraded_findings=posture.retrieval_degraded_findings,
@@ -27,6 +29,9 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
             vector_store=VECTOR_STORE_STRATEGY,
             live_search_enabled=False,
             live_indexing_enabled=True,
+            embedding_execution_enabled=embedding_runtime.embedding_execution_enabled,
+            embedding_provider_id=embedding_runtime.embedding_provider_id,
+            embedding_model_id=embedding_runtime.embedding_model_id,
             owning_plane=route.owning_plane,
             route_mode=route.route_mode,
             rollback_target_stage=route.rollback_target_stage,
@@ -48,6 +53,9 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
             vector_store=VECTOR_STORE_STRATEGY,
             live_search_enabled=False,
             live_indexing_enabled=True,
+            embedding_execution_enabled=embedding_runtime.embedding_execution_enabled,
+            embedding_provider_id=embedding_runtime.embedding_provider_id,
+            embedding_model_id=embedding_runtime.embedding_model_id,
             owning_plane=route.owning_plane,
             route_mode=route.route_mode,
             rollback_target_stage=route.rollback_target_stage,
@@ -94,6 +102,9 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
         vector_store=VECTOR_STORE_STRATEGY,
         live_search_enabled=True,
         live_indexing_enabled=True,
+        embedding_execution_enabled=embedding_runtime.embedding_execution_enabled,
+        embedding_provider_id=embedding_runtime.embedding_provider_id,
+        embedding_model_id=embedding_runtime.embedding_model_id,
         owning_plane=route.owning_plane,
         route_mode=route.route_mode,
         rollback_target_stage=route.rollback_target_stage,

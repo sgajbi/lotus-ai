@@ -124,7 +124,7 @@ def build_embedding_configuration_status() -> ProviderConfigurationStatusDescrip
             "Embedding provider remains on the stub path for contract validation and bounded retrieval preparation."
         )
     elif configured_mode == ProviderExecutionMode.ENABLED.value:
-        rollout_state = ProviderRolloutState.ALLOWLISTED_DISABLED
+        rollout_state = ProviderRolloutState.CANARY_ENABLED
         live_config_values = [
             configured_live_provider_id,
             configured_live_model_id,
@@ -151,7 +151,7 @@ def build_embedding_configuration_status() -> ProviderConfigurationStatusDescrip
                 "Live embedding credentials are partially populated and therefore invalid."
             )
         findings.append(
-            "Live embedding provider execution is defined but still blocked until later RFC-0018 slices complete retrieval, evidence, and governance activation."
+            "Live embedding provider execution is now configured for bounded rollout, but broader retrieval/provider governance still remains a separate approval concern."
         )
     else:
         rollout_state = ProviderRolloutState.DOCUMENTED_ONLY

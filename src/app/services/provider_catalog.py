@@ -8,6 +8,7 @@ from app.contracts.providers import (
     ProviderLifecycleStatus,
 )
 from app.providers.registry import list_registered_provider_descriptors
+from app.services.embedding_live_execution_state import build_embedding_live_execution_state
 from app.services.provider_configuration_status import (
     build_embedding_configuration_status,
     build_text_generation_configuration_status,
@@ -17,6 +18,7 @@ from app.services.provider_live_execution_state import build_provider_live_execu
 
 def build_provider_catalog() -> ProviderCatalogResponse:
     live_execution_state = build_provider_live_execution_state()
+    embedding_live_execution_state = build_embedding_live_execution_state()
     text_generation_configuration = build_text_generation_configuration_status()
     embedding_configuration = build_embedding_configuration_status()
     providers = [
@@ -30,7 +32,11 @@ def build_provider_catalog() -> ProviderCatalogResponse:
             enabled_for_execution=(
                 live_execution_state.live_execution_enabled
                 if descriptor.provider_id == "text.openai"
-                else descriptor.enabled_for_execution
+                else (
+                    embedding_live_execution_state.live_execution_enabled
+                    if descriptor.provider_id == "embeddings.openai"
+                    else descriptor.enabled_for_execution
+                )
             ),
             failure_category_on_use=descriptor.failure_category_on_use,
             source_reference=descriptor.source_reference,

@@ -20,7 +20,7 @@ If you want the shortest summary:
 1. RFC-0001 through RFC-0013 are implemented,
 2. bounded task execution, retrieval, safety, prompt rollout, async workers, runtime-backed evals, caller access control, and bounded observability are real,
 3. artifact storage now has a governed metadata and payload-store foundation, with eval, async, and observability artifact cutovers plus explicit lifecycle and governance surfaces,
-4. deployment split now has governed runtime and rollout surfaces, resilience now has bounded runtime, restore-plan, drill-evidence, activation, runbook, and governance surfaces for critical continuity dependencies, and RFC-0018 has started by defining a governed live embedding path without activating it yet, while broader document ingestion remains roadmap work.
+4. deployment split now has governed runtime and rollout surfaces, resilience now has bounded runtime, restore-plan, drill-evidence, activation, runbook, and governance surfaces for critical continuity dependencies, and RFC-0018 now exposes a governed live embedding path that retrieval indexing can consume in bounded rollout while broader retrieval/provider governance and document ingestion remain follow-on work.
 5. first-use-case onboarding is implemented with a bounded `lotus-performance` contract, limited-rollout readiness, runbook, governance, reusable onboarding-template surfaces, and a captured end-to-end demo bundle, and that limited-rollout posture now also depends on explicit resilience governance rather than only local supportability signals, while active-production rollout remains explicitly deferred.
 
 ## Current Phase
@@ -208,7 +208,7 @@ The current retrieval posture is:
 - retrieval source discovery is exposed through the platform API,
 - provider posture discovery is exposed through the platform API,
 - runtime posture for retrieval and platform services is exposed through the platform API,
-- live retrieval search is now available through the bounded indexed-search seam when `retrieval_mode=enabled`, while broader embedding-driven retrieval expansion remains blocked behind the later RFC-0018 activation slices.
+- live retrieval search is now available through the bounded indexed-search seam when `retrieval_mode=enabled`, and retrieval indexing can now consume a governed live embedding path when configured, while broader retrieval/provider activation still remains gated behind later RFC-0018 evidence and governance slices.
 
 ## What lotus-ai Does
 

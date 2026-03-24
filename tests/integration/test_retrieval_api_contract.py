@@ -86,6 +86,7 @@ def test_retrieval_execution_status_route(client: TestClient) -> None:
     assert body["execution_stage"] == "SEARCH_DISABLED"
     assert body["live_search_enabled"] is False
     assert body["live_indexing_enabled"] is True
+    assert body["embedding_execution_enabled"] is False
     assert body["route_mode"] == "UNIFIED_INTERNAL"
     assert body["split_route_degraded"] is False
 
@@ -160,6 +161,7 @@ def test_retrieval_activation_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["retrieval_mode"] == "disabled"
     assert body["embedding_provider_mode"] == "disabled"
+    assert body["embedding_execution_enabled"] is False
     assert body["activation_ready"] is False
     assert any("Retrieval mode is not enabled" in finding for finding in body["blocking_findings"])
     assert len(body["activation_path"]) == 4
@@ -251,6 +253,7 @@ def test_retrieval_indexing_policy_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["persistence_strategy"] == "postgresql+pgvector"
     assert body["retrieval_store_mode"] == "memory"
+    assert body["embedding_execution_enabled"] is False
 
 
 def test_retrieval_index_job_detail_route(client: TestClient) -> None:

@@ -96,6 +96,26 @@ def test_provider_policy_route(client: TestClient) -> None:
     assert embedding_policy["allowed_modes"] == ["disabled", "stub", "enabled"]
 
 
+def test_provider_policy_route_reports_live_embedding_execution_when_enabled(
+    client: TestClient,
+) -> None:
+    settings.embedding_provider_mode = "enabled"
+    settings.live_embedding_provider_id = "embeddings.openai"
+    settings.live_embedding_model_id = "text-embedding-3-large"
+    settings.live_embedding_provider_api_key = "secret"
+
+    response = client.get("/platform/providers/policy")
+
+    assert response.status_code == 200
+    body = response.json()
+    embedding_policy = next(
+        policy for policy in body["policies"] if policy["capability"] == "EMBEDDINGS"
+    )
+    assert body["embedding_configuration"]["rollout_state"] == "CANARY_ENABLED"
+    assert embedding_policy["selected_adapter_kind"] == "OPENAI_EMBEDDINGS_LIVE"
+    assert embedding_policy["live_execution_enabled"] is True
+
+
 def test_provider_quota_policy_route(client: TestClient) -> None:
     response = client.get("/platform/providers/quota-policy")
 

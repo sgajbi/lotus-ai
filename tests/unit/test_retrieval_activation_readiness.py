@@ -11,6 +11,7 @@ def test_retrieval_activation_readiness_reports_foundation_blockers() -> None:
     assert readiness.service == "lotus-ai"
     assert readiness.retrieval_mode == "disabled"
     assert readiness.embedding_provider_mode == "disabled"
+    assert readiness.embedding_execution_enabled is False
     assert readiness.activation_ready is False
     assert any(
         "Retrieval mode is not enabled" in finding for finding in readiness.blocking_findings
@@ -24,6 +25,10 @@ def test_retrieval_activation_readiness_reports_foundation_blockers() -> None:
 
 def test_retrieval_activation_readiness_reports_live_mode_with_remaining_governance_gaps() -> None:
     settings.retrieval_mode = "enabled"
+    settings.embedding_provider_mode = "enabled"
+    settings.live_embedding_provider_id = "embeddings.openai"
+    settings.live_embedding_model_id = "text-embedding-3-large"
+    settings.live_embedding_provider_api_key = "secret"
     repository = get_retrieval_repository()
     repository.set_source_index_status(
         source_id="lotus-platform-rfcs",
@@ -40,10 +45,7 @@ def test_retrieval_activation_readiness_reports_live_mode_with_remaining_governa
     assert any(
         "runbook readiness remains incomplete" in finding for finding in readiness.blocking_findings
     )
-    assert any(
-        "Embedding provider execution is still disabled" in finding
-        for finding in readiness.blocking_findings
-    )
+    assert readiness.embedding_execution_enabled is True
 
 
 def test_retrieval_activation_readiness_reports_unready_store_blocking(

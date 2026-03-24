@@ -55,6 +55,22 @@ def test_get_retrieval_indexing_policy_returns_pgvector_strategy() -> None:
 
     assert response.vector_store == "postgresql+pgvector"
     assert response.persistence_strategy == "postgresql+pgvector"
+    assert response.embedding_execution_enabled is False
+
+
+def test_get_retrieval_indexing_policy_reports_live_embedding_runtime() -> None:
+    from app.config import settings
+
+    settings.embedding_provider_mode = "enabled"
+    settings.live_embedding_provider_id = "embeddings.openai"
+    settings.live_embedding_model_id = "text-embedding-3-large"
+    settings.live_embedding_provider_api_key = "secret"
+
+    response = get_retrieval_indexing_policy()
+
+    assert response.embedding_execution_enabled is True
+    assert response.embedding_provider_id == "embeddings.openai"
+    assert response.embedding_strategy == "provider-live-openai"
 
 
 def test_get_retrieval_job_detail_raises_for_unknown_job_id() -> None:

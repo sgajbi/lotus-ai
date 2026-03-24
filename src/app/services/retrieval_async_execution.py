@@ -3,11 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.contracts.async_runtime import AsyncJobSubmissionRequest, AsyncJobSubmissionResponse
+from app.contracts.providers import EmbeddingExecutionRequest
 from app.contracts.retrieval import (
     RetrievalIndexJobDescriptor,
     RetrievalIndexStatus,
     RetrievalJobStatus,
 )
+from app.providers.base import ProviderExecutionError
 from app.services.async_submission_service import submit_async_job
 from app.services.async_worker_runtime import (
     AsyncWorkerClaimResult,
@@ -17,6 +19,7 @@ from app.services.async_worker_runtime import (
     fail_async_job,
     start_async_job,
 )
+from app.services.embedding_provider_gateway import execute_embedding_generation
 from app.services.retrieval_catalog_service import get_retrieval_job_detail_or_raise
 from app.services.retrieval_store import get_retrieval_repository
 
@@ -99,6 +102,24 @@ def _execute_claimed_retrieval_index_job(
             ),
         )
     )
+    try:
+        _run_embedding_generation_for_source(
+            source_id=retrieval_job.job.source_id,
+            caller_app=claim.job.caller_app,
+        )
+    except ProviderExecutionError as exc:
+        fail_async_job(
+            job_id=claim.job.job_id,
+            worker_id=worker_id,
+            failure_reason=exc.category.value,
+            retryable=False,
+        )
+        return RetrievalAsyncExecutionResult(
+            async_job_id=claim.job.job_id,
+            retrieval_job_id=retrieval_job.job.job_id,
+            source_id=retrieval_job.job.source_id,
+            terminal_status=RetrievalJobStatus.FAILED.value,
+        )
     repository.set_source_index_status(
         source_id=retrieval_job.job.source_id,
         index_status=RetrievalIndexStatus.INDEXED.value,
@@ -128,3 +149,27 @@ def _execute_claimed_retrieval_index_job(
         source_id=retrieval_job.job.source_id,
         terminal_status=RetrievalJobStatus.COMPLETED.value,
     )
+
+
+def _run_embedding_generation_for_source(*, source_id: str, caller_app: str) -> None:
+    repository = get_retrieval_repository()
+    documents = repository.list_documents_for_source(source_id)
+    for document in documents:
+        chunks = repository.list_chunks_for_document(document.document_id)
+        representative_text = " ".join(
+            [document.title, *(chunk.preview for chunk in chunks[:2])]
+        ).strip()
+        if not representative_text:
+            representative_text = document.title
+        execute_embedding_generation(
+            EmbeddingExecutionRequest(
+                caller_app=caller_app,
+                corpus_id=source_id,
+                content=representative_text,
+                metadata={
+                    "source_id": source_id,
+                    "document_id": document.document_id,
+                    "chunk_count": len(chunks),
+                },
+            )
+        )

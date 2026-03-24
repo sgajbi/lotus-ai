@@ -50,7 +50,7 @@ Important limitation:
 
 1. retrieval is live for the approved indexed corpus only,
 2. broader ingestion and corpus refresh are not implemented yet,
-3. embedding-provider expansion is now only at the `LIVE_PATH_DEFINED` posture and is still not activated for retrieval execution.
+3. embedding-provider expansion now has one bounded live path available for retrieval indexing, but broader retrieval/provider activation is still not approved.
 
 ### Prompt Governance
 
@@ -140,9 +140,10 @@ Practical meaning:
 Current state:
 
 1. retrieval works over the existing approved indexed corpus,
-2. RFC-0018 Slice 1 now exposes embeddings as a first-class governed provider capability with a registered live path and typed configuration posture,
-3. live embedding execution is still blocked pending later RFC-0018 retrieval, evidence, and governance slices,
-4. broader document ingestion is still not yet implemented as a first-class governed feature.
+2. RFC-0018 now exposes embeddings as a first-class governed provider capability with a registered live path and typed configuration posture,
+3. retrieval indexing can now consume that bounded live embedding path when configured,
+4. broader document ingestion is still not yet implemented as a first-class governed feature,
+5. full retrieval/provider activation still remains blocked on later evidence and governance slices.
 
 ### Observability and Incident Evidence
 
@@ -195,7 +196,7 @@ Current status against that sequence:
 
 1. `RFC-0015` is implemented, including runtime, activation, runbook, and governance posture for unified versus split deployment stages.
 2. `RFC-0017` now exposes a bounded resilience runtime inventory surface, an ordered restore-plan surface, explicit degraded-versus-restored runtime posture for queue, worker, provider, retrieval, and artifact continuity dependencies, plus drill-evidence, activation, runbook, and governance surfaces.
-3. `RFC-0018` is now in active implementation with Slice 1 complete at the contract and provider-surface layer, while `RFC-0019` remains a roadmap item.
+3. `RFC-0018` is now in active implementation with Slice 2 complete at the bounded live embedding execution layer, while `RFC-0019` remains a roadmap item.
 
 Early RFC-0015 groundwork now exists as a bounded runtime surface:
 

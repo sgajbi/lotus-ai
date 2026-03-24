@@ -59,6 +59,52 @@ def test_run_next_retrieval_index_job_completes_and_updates_retrieval_state() ->
     assert all(document.index_status.value == "INDEXED" for document in source_documents.documents)
 
 
+def test_run_next_retrieval_index_job_uses_live_embedding_path_when_enabled(
+    monkeypatch,
+) -> None:
+    from app.config import settings
+
+    settings.embedding_provider_mode = "enabled"
+    settings.live_embedding_provider_id = "embeddings.openai"
+    settings.live_embedding_model_id = "text-embedding-3-large"
+    settings.live_embedding_provider_api_key = "secret"
+
+    submit_retrieval_index_job_async(
+        job_id="retjob_lotus_platform_rfcs",
+        caller_app="lotus-platform",
+        correlation_id="corr-ret-async-live-001",
+    )
+
+    calls: list[str] = []
+
+    def _fake_execute_embedding_generation(request):
+        calls.append(request.content)
+        from app.contracts.providers import EmbeddingExecutionResponse, ProviderAdapterKind
+
+        return EmbeddingExecutionResponse(
+            provider_id="embeddings.openai",
+            provider_mode="enabled",
+            adapter_kind=ProviderAdapterKind.OPENAI_EMBEDDINGS_LIVE,
+            failure_category=None,
+            model_id="text-embedding-3-large",
+            stubbed=False,
+            vector_dimension=3,
+            embedding=[0.1, 0.2, 0.3],
+            message="ok",
+        )
+
+    monkeypatch.setattr(
+        "app.services.retrieval_async_execution.execute_embedding_generation",
+        _fake_execute_embedding_generation,
+    )
+
+    result = run_next_retrieval_index_job(worker_id="worker-a")
+
+    assert result is not None
+    assert result.terminal_status == "COMPLETED"
+    assert calls
+
+
 def test_run_next_retrieval_index_job_returns_none_when_no_jobs_are_claimed() -> None:
     assert run_next_retrieval_index_job(worker_id="worker-a") is None
 
