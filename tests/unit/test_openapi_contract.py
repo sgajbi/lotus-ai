@@ -10,6 +10,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/resilience/runtime-status"]["get"]["operationId"] == (
         "getResilienceRuntimeStatus"
     )
+    assert spec["paths"]["/platform/resilience/restore-plan"]["get"]["operationId"] == (
+        "getResilienceRestorePlan"
+    )
     assert spec["paths"]["/platform/deployment-split/runtime-status"]["get"]["operationId"] == (
         "getDeploymentSplitRuntimeStatus"
     )
@@ -273,6 +276,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "artifact_refs" in evaluation_case_schema["properties"]
     platform_runtime_schema = spec["components"]["schemas"]["PlatformRuntimeStatusResponse"]
     resilience_runtime_schema = spec["components"]["schemas"]["ResilienceRuntimeStatusResponse"]
+    resilience_restore_plan_schema = spec["components"]["schemas"][
+        "ResilienceRestorePlanResponse"
+    ]
     production_baseline_schema = spec["components"]["schemas"][
         "ProductionBaselineRuntimeStatusResponse"
     ]
@@ -312,8 +318,11 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "runtime_status" in production_baseline_governance_schema["properties"]
     assert "dependent_rollout_findings" in production_baseline_governance_schema["properties"]
     assert "posture" in resilience_runtime_schema["properties"]
+    assert "delivery_stage" in resilience_runtime_schema["properties"]
     assert "dependencies" in resilience_runtime_schema["properties"]
     assert "restart_survivable_dependency_count" in resilience_runtime_schema["properties"]
+    assert "restore_steps" in resilience_restore_plan_schema["properties"]
+    assert "restore_validation_summary" in resilience_restore_plan_schema["properties"]
     assert "artifact_runtime" in platform_runtime_schema["properties"]
     assert "artifact_governance" in platform_runtime_schema["properties"]
     assert "resilience_runtime" in platform_runtime_schema["properties"]

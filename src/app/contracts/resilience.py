@@ -11,6 +11,12 @@ class ResiliencePosture(str, Enum):
     INVENTORIED_PROD_SHAPED = "INVENTORIED_PROD_SHAPED"
 
 
+class ResilienceDeliveryStage(str, Enum):
+    INVENTORIED_ONLY = "INVENTORIED_ONLY"
+    ORDERED_RECOVERY_READY = "ORDERED_RECOVERY_READY"
+    DRILL_VERIFIED = "DRILL_VERIFIED"
+
+
 class ResilienceDependencyKind(str, Enum):
     AUTHORITATIVE_STORE = "AUTHORITATIVE_STORE"
     RUNTIME_DEPENDENCY = "RUNTIME_DEPENDENCY"
@@ -22,6 +28,12 @@ class ResilienceRecoveryClassification(str, Enum):
     DOCUMENTED_FALLBACK = "DOCUMENTED_FALLBACK"
     EXTERNAL_RECOVERY_REQUIRED = "EXTERNAL_RECOVERY_REQUIRED"
     BLOCKED = "BLOCKED"
+
+
+class ResilienceRestoreClassification(str, Enum):
+    PLATFORM_METADATA_RESTORE = "PLATFORM_METADATA_RESTORE"
+    PLATFORM_RUNTIME_RECONCILIATION = "PLATFORM_RUNTIME_RECONCILIATION"
+    EXTERNAL_DEPENDENCY_VALIDATION = "EXTERNAL_DEPENDENCY_VALIDATION"
 
 
 class ResilienceDependencyDescriptor(BaseModel):
@@ -47,6 +59,9 @@ class ResilienceDependencyDescriptor(BaseModel):
 class ResilienceRuntimeStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the resilience runtime status.")
     version: str = Field(description="Current lotus-ai service version.")
+    delivery_stage: ResilienceDeliveryStage = Field(
+        description="Current RFC-0017 delivery stage implemented in lotus-ai."
+    )
     posture: ResiliencePosture = Field(
         description="Current top-level resilience inventory posture for lotus-ai."
     )
@@ -67,4 +82,45 @@ class ResilienceRuntimeStatusResponse(BaseModel):
     )
     status_summary: list[str] = Field(
         description="Short operator-facing summary of the current resilience posture."
+    )
+
+
+class ResilienceRestoreStepDescriptor(BaseModel):
+    step_id: str = Field(description="Stable restore-plan step identifier.")
+    sequence: int = Field(description="1-based restore ordering position.")
+    classification: ResilienceRestoreClassification = Field(
+        description="Whether the step restores platform metadata, reconciles runtime state, or validates an external dependency."
+    )
+    dependency_ids: list[str] = Field(
+        description="Resilience dependency identifiers owned by this restore step."
+    )
+    requires_completed_steps: list[str] = Field(
+        description="Restore steps that must complete before this step should start."
+    )
+    restore_action_summary: str = Field(
+        description="Human-readable summary of the bounded restore or reconciliation action."
+    )
+    success_criteria: list[str] = Field(
+        description="Checks operators should use to treat this step as successfully restored."
+    )
+    rollback_boundary: str = Field(
+        description="Short explanation distinguishing restore of durable state from functional rollback at this step."
+    )
+
+
+class ResilienceRestorePlanResponse(BaseModel):
+    service: str = Field(description="Service name emitting the resilience restore plan.")
+    version: str = Field(description="Current lotus-ai service version.")
+    delivery_stage: ResilienceDeliveryStage = Field(
+        description="Current RFC-0017 delivery stage implemented in lotus-ai."
+    )
+    restore_step_count: int = Field(description="Number of ordered restore steps in the plan.")
+    restore_steps: list[ResilienceRestoreStepDescriptor] = Field(
+        description="Ordered restore and recovery descriptors for authoritative stores and critical dependencies."
+    )
+    restore_validation_summary: list[str] = Field(
+        description="High-level restore validation expectations that apply across the plan."
+    )
+    status_summary: list[str] = Field(
+        description="Operator-facing summary of what this restore plan does and does not claim."
     )

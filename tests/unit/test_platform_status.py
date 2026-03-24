@@ -137,6 +137,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.safety_governance.blocking_area_count == 3
     assert status.safety_governance.runbook_readiness.runbook_ready is False
     assert status.resilience_runtime.posture.value == "LOCAL_OR_DEMO_CONTINUITY"
+    assert status.resilience_runtime.delivery_stage.value == "ORDERED_RECOVERY_READY"
     assert status.resilience_runtime.authoritative_dependency_count >= 8
     assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
     assert status.production_baseline.production_ready is False
@@ -213,6 +214,7 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     assert status.deployment_split_governance.governance_ready is True
     assert status.evaluation_runtime.async_execution_route_mode.value == "UNIFIED_INTERNAL"
     assert status.resilience_runtime.posture.value == "PARTIAL_RUNTIME_DURABILITY"
+    assert status.resilience_runtime.delivery_stage.value == "ORDERED_RECOVERY_READY"
     assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
     assert status.production_baseline.prod_shaped_local is False
     assert status.production_baseline.production_ready is False

@@ -117,6 +117,8 @@ The rollout posture for this RFC is intentionally staged:
 
 Slice 1 delivers the first posture only. It must not imply ordered restore or drill-backed readiness yet.
 
+Slice 2 delivers the second posture. It must define restore ordering and validation criteria, but it still must not imply drill-backed readiness yet.
+
 ## State Model and Invariants
 
 This RFC establishes the following invariants:
@@ -231,6 +233,11 @@ Outcome:
 1. backup and restore expectations exist for core stores,
 2. recovery ordering is explicit,
 3. restore success criteria are defined.
+
+Delivered interfaces for this slice:
+
+1. `/platform/resilience/restore-plan`
+2. `delivery_stage=ORDERED_RECOVERY_READY` in `/platform/resilience/runtime-status`
 
 Acceptance gate:
 

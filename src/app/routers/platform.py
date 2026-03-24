@@ -15,7 +15,7 @@ from app.contracts.production_baseline import (
     ProductionBaselineRunbookReadinessResponse,
     ProductionBaselineRuntimeStatusResponse,
 )
-from app.contracts.resilience import ResilienceRuntimeStatusResponse
+from app.contracts.resilience import ResilienceRestorePlanResponse, ResilienceRuntimeStatusResponse
 from app.services.production_baseline_activation_readiness import (
     build_production_baseline_activation_readiness,
 )
@@ -35,6 +35,7 @@ from app.services.deployment_split_runbook_readiness import (
 from app.services.platform_status import build_platform_runtime_status
 from app.services.deployment_split_runtime import build_deployment_split_runtime_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
+from app.services.resilience_restore_plan import build_resilience_restore_plan
 from app.services.resilience_runtime import build_resilience_runtime_status
 
 router = APIRouter(prefix="/platform", tags=["platform"])
@@ -74,6 +75,24 @@ async def get_platform_runtime_status_route(request: Request) -> PlatformRuntime
 )
 async def get_resilience_runtime_status_route() -> ResilienceRuntimeStatusResponse:
     return build_resilience_runtime_status()
+
+
+@router.get(
+    "/resilience/restore-plan",
+    response_model=ResilienceRestorePlanResponse,
+    operation_id="getResilienceRestorePlan",
+    summary="Get RFC-0017 resilience restore plan",
+    description=(
+        "Returns the current bounded RFC-0017 restore ordering model across authoritative stores "
+        "and critical dependencies, including validation criteria and rollback boundaries."
+    ),
+    responses={
+        200: {"description": "Resilience restore plan returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_resilience_restore_plan_route() -> ResilienceRestorePlanResponse:
+    return build_resilience_restore_plan()
 
 
 @router.get(

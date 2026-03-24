@@ -21,11 +21,26 @@ def test_resilience_runtime_status_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
+    assert body["delivery_stage"] == "ORDERED_RECOVERY_READY"
     assert body["posture"] == "LOCAL_OR_DEMO_CONTINUITY"
     assert body["dependency_count"] >= 10
     assert any(
         dependency["dependency_id"] == "audit_store" for dependency in body["dependencies"]
     )
+
+
+def test_resilience_restore_plan_route(client: TestClient) -> None:
+    response = client.get("/platform/resilience/restore-plan")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["delivery_stage"] == "ORDERED_RECOVERY_READY"
+    assert body["restore_step_count"] == 4
+    assert body["restore_steps"][0]["step_id"] == "restore_authoritative_relational_metadata"
+    assert body["restore_steps"][1]["requires_completed_steps"] == [
+        "restore_authoritative_relational_metadata"
+    ]
 
 
 def test_deployment_split_runtime_status_route(client: TestClient) -> None:

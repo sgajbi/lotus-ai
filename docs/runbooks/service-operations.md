@@ -18,6 +18,7 @@
 - Metadata: /metadata
 - Platform runtime status: /platform/runtime-status
 - Resilience runtime status: /platform/resilience/runtime-status
+- Resilience restore plan: /platform/resilience/restore-plan
 - Deployment-split runtime status: /platform/deployment-split/runtime-status
 - Deployment-split activation readiness: /platform/deployment-split/activation-readiness
 - Deployment-split runbook readiness: /platform/deployment-split/runbook-readiness
@@ -105,10 +106,11 @@ Expected operator flow for SQL-backed stores:
 Before treating service continuity posture as anything stronger than bounded inventory truth:
 
 1. verify `GET /platform/resilience/runtime-status`
-2. confirm the embedded `resilience_runtime` block in `GET /platform/runtime-status` matches the detailed resilience view
-3. treat `LOCAL_OR_DEMO_CONTINUITY` as local or demo durability only, not as restart-safe production posture
-4. treat `PARTIAL_RUNTIME_DURABILITY` as evidence that some critical dependencies are durable while others still require external recovery or remain blocked
-5. do not infer restore ordering, backup automation, drill evidence, or resilience governance from this slice alone; those remain future RFC-0017 work
+2. inspect `GET /platform/resilience/restore-plan` to confirm restore ordering, validation criteria, and rollback boundaries before treating continuity as operator-ready
+3. confirm the embedded `resilience_runtime` block in `GET /platform/runtime-status` matches the detailed resilience view
+4. treat `LOCAL_OR_DEMO_CONTINUITY` as local or demo durability only, not as restart-safe production posture
+5. treat `PARTIAL_RUNTIME_DURABILITY` as evidence that some critical dependencies are durable while others still require external recovery or remain blocked
+6. do not infer backup automation, drill evidence, or resilience governance from this slice alone; those remain future RFC-0017 work
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
 

@@ -4,6 +4,7 @@ from _pytest.monkeypatch import MonkeyPatch
 
 from app.config import settings
 from app.contracts.resilience import (
+    ResilienceDeliveryStage,
     ResiliencePosture,
     ResilienceRecoveryClassification,
 )
@@ -28,6 +29,7 @@ def test_resilience_runtime_defaults_to_local_or_demo_continuity() -> None:
 
     status = build_resilience_runtime_status()
 
+    assert status.delivery_stage is ResilienceDeliveryStage.ORDERED_RECOVERY_READY
     assert status.posture is ResiliencePosture.LOCAL_OR_DEMO_CONTINUITY
     assert status.authoritative_dependency_count >= 8
     assert status.restart_survivable_dependency_count == 0
@@ -80,6 +82,7 @@ def test_resilience_runtime_reports_inventory_for_prod_shaped_sql_posture(
 
     status = build_resilience_runtime_status()
 
+    assert status.delivery_stage is ResilienceDeliveryStage.ORDERED_RECOVERY_READY
     assert status.posture is ResiliencePosture.PARTIAL_RUNTIME_DURABILITY
     assert status.restart_survivable_dependency_count >= 10
     assert any(

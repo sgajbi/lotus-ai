@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.config import settings
 from app.contracts.resilience import (
+    ResilienceDeliveryStage,
     ResilienceDependencyDescriptor,
     ResilienceDependencyKind,
     ResiliencePosture,
@@ -75,6 +76,7 @@ def build_resilience_runtime_status() -> ResilienceRuntimeStatusResponse:
     return ResilienceRuntimeStatusResponse(
         service=settings.service_name,
         version=settings.service_version,
+        delivery_stage=ResilienceDeliveryStage.ORDERED_RECOVERY_READY,
         posture=posture,
         dependency_count=len(dependencies),
         authoritative_dependency_count=authoritative_dependency_count,
@@ -89,10 +91,10 @@ def build_resilience_runtime_status() -> ResilienceRuntimeStatusResponse:
                 else (
                     "Most authoritative platform truth is now restart-survivable, but at least one critical dependency still relies on fallback or externally managed recovery."
                     if posture is ResiliencePosture.PARTIAL_RUNTIME_DURABILITY
-                    else "Authoritative stores and critical runtime dependencies are now inventoried in a prod-shaped posture, even though backup, restore ordering, and drill evidence remain future RFC-0017 work."
+                    else "Authoritative stores and critical runtime dependencies are now inventoried in a prod-shaped posture, and ordered restore guidance is available even though drill evidence remains future RFC-0017 work."
                 )
             ),
-            "This slice inventories continuity dependencies only; it does not yet claim restore ordering, drill evidence, or disaster-recovery automation.",
+            "This slice now covers bounded restore ordering and validation guidance, but it still does not claim drill evidence or disaster-recovery automation.",
         ],
     )
 
