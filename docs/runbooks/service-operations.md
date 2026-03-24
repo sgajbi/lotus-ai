@@ -17,6 +17,11 @@
 - General health: /health
 - Metadata: /metadata
 - Platform runtime status: /platform/runtime-status
+- Artifact runtime status: /platform/artifacts/runtime-status
+- Artifact catalog: /platform/artifacts
+- Artifact activation readiness: /platform/artifacts/activation-readiness
+- Artifact runbook readiness: /platform/artifacts/runbook-readiness
+- Artifact governance status: /platform/artifacts/governance-status
 - Observability runtime status: /platform/observability/runtime-status
 - Observability activation readiness: /platform/observability/activation-readiness
 - Observability runbook readiness: /platform/observability/runbook-readiness
@@ -83,6 +88,18 @@ Expected operator flow for SQL-backed stores:
 9. only then proceed with rollout if readiness is `READY`
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
+
+## Artifact Governance
+
+Before treating the artifact backbone as stronger governed rollout posture:
+
+1. verify `GET /platform/artifacts/runtime-status`
+2. inspect `GET /platform/artifacts` to confirm active, superseded, archived, and staged posture are explicitly visible through descriptors
+3. inspect `GET /platform/artifacts/activation-readiness` when technical blockers need detail
+4. inspect `GET /platform/artifacts/runbook-readiness` when operational blockers need detail
+5. inspect `GET /platform/artifacts/governance-status` for the composed governance view
+6. confirm the embedded `artifact_runtime` and `artifact_governance` blocks in `GET /platform/runtime-status` match the detailed artifact views
+7. treat artifact archive posture as a reviewable metadata transition rather than ad hoc payload deletion or raw filesystem cleanup
 
 ## Observability Governance
 

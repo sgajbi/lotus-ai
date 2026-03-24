@@ -13,6 +13,16 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/artifacts/runtime-status"]["get"]["operationId"] == (
         "getArtifactRuntimeStatus"
     )
+    assert spec["paths"]["/platform/artifacts"]["get"]["operationId"] == "getArtifactCatalog"
+    assert spec["paths"]["/platform/artifacts/activation-readiness"]["get"]["operationId"] == (
+        "getArtifactActivationReadiness"
+    )
+    assert spec["paths"]["/platform/artifacts/runbook-readiness"]["get"]["operationId"] == (
+        "getArtifactRunbookReadiness"
+    )
+    assert spec["paths"]["/platform/artifacts/governance-status"]["get"]["operationId"] == (
+        "getArtifactGovernanceStatus"
+    )
     assert spec["paths"]["/platform/observability/activation-readiness"]["get"]["operationId"] == (
         "getObservabilityActivationReadiness"
     )
@@ -186,12 +196,23 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     artifact_runtime_schema = spec["components"]["schemas"]["ArtifactRuntimeStatusResponse"]
     assert "metadata_store" in artifact_runtime_schema["properties"]
     assert "object_store" in artifact_runtime_schema["properties"]
+    artifact_catalog_schema = spec["components"]["schemas"]["ArtifactCatalogResponse"]
+    assert "artifacts" in artifact_catalog_schema["properties"]
+    artifact_activation_schema = spec["components"]["schemas"]["ArtifactActivationReadinessResponse"]
+    assert "activation_ready" in artifact_activation_schema["properties"]
+    artifact_runbook_schema = spec["components"]["schemas"]["ArtifactRunbookReadinessResponse"]
+    assert "items" in artifact_runbook_schema["properties"]
+    artifact_governance_schema = spec["components"]["schemas"]["ArtifactGovernanceStatusResponse"]
+    assert "runtime_status" in artifact_governance_schema["properties"]
+    assert "activation_readiness" in artifact_governance_schema["properties"]
+    assert "runbook_readiness" in artifact_governance_schema["properties"]
     async_job_schema = spec["components"]["schemas"]["AsyncJobArtifactDescriptor"]
     assert "artifact_refs" in async_job_schema["properties"]
     evaluation_case_schema = spec["components"]["schemas"]["EvaluationCaseResultDescriptor"]
     assert "artifact_refs" in evaluation_case_schema["properties"]
     platform_runtime_schema = spec["components"]["schemas"]["PlatformRuntimeStatusResponse"]
     assert "artifact_runtime" in platform_runtime_schema["properties"]
+    assert "artifact_governance" in platform_runtime_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"

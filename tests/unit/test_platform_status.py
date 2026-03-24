@@ -73,6 +73,9 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.artifact_runtime.metadata_store_mode == "memory"
     assert status.artifact_runtime.object_store_mode == "memory"
     assert status.artifact_runtime.artifact_count == 0
+    assert status.artifact_governance.governance_ready is False
+    assert status.artifact_governance.activation_readiness.activation_ready is False
+    assert status.artifact_governance.runbook_readiness.runbook_ready is True
     assert status.observability_runtime.domain_count == 6
     assert status.observability_runtime.unavailable_domain_count == 0
     assert status.observability_runtime.incident_evidence_supported_domain_count >= 1
@@ -244,3 +247,4 @@ def test_build_platform_runtime_status_reflects_artifact_runtime_posture(
     assert status.artifact_runtime.object_store_mode == "filesystem"
     assert status.artifact_runtime.metadata_store.status.value == "READY"
     assert status.artifact_runtime.object_store.status.value == "READY"
+    assert status.artifact_governance.governance_ready is True

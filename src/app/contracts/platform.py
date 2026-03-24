@@ -6,7 +6,7 @@ from app.contracts.access_control import (
     AccessControlGovernanceStatusResponse,
     AccessControlRuntimeStatusResponse,
 )
-from app.contracts.artifacts import ArtifactRuntimeStatusResponse
+from app.contracts.artifacts import ArtifactGovernanceStatusResponse, ArtifactRuntimeStatusResponse
 from app.contracts.async_runtime import AsyncGovernanceStatusResponse, AsyncRuntimeStatusResponse
 from app.contracts.evals import EvaluationRuntimeStatusResponse
 from app.contracts.observability import (
@@ -48,6 +48,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     artifact_runtime: ArtifactRuntimeStatusResponse = Field(
         description="Current governed artifact metadata and payload-store posture for lotus-ai."
+    )
+    artifact_governance: ArtifactGovernanceStatusResponse = Field(
+        description="Current governed artifact activation and runbook posture for lotus-ai."
     )
     access_control_runtime: AccessControlRuntimeStatusResponse = Field(
         description="Current caller identity and access-control runtime posture for lotus-ai."

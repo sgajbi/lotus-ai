@@ -17,7 +17,7 @@ If you want the shortest summary:
 
 1. RFC-0001 through RFC-0013 are implemented,
 2. bounded task execution, retrieval, safety, prompt rollout, async workers, runtime-backed evals, caller access control, and bounded observability are real,
-3. artifact storage now has a governed metadata and payload-store foundation, and evaluation plus async runtime now emit governed runtime artifact references,
+3. artifact storage now has a governed metadata and payload-store foundation, with eval, async, and observability artifact cutovers plus explicit lifecycle and governance surfaces,
 4. embeddings expansion, document ingestion, deployment split, resilience hardening, and first-use-case onboarding are still roadmap items.
 
 ## Current Phase
@@ -185,6 +185,7 @@ The current persistence posture is:
 - explicit evaluation-runtime repository seams and migration-managed SQL tables now exist for runs, attempts, and per-case outcomes when the SQL-backed evaluation-runtime path is enabled in later rollout slices, while public evaluation APIs remain artifact-backed until runtime execution cutover happens,
 - evaluation runtime-backed run detail now exposes persisted attempts and case-level outcomes directly, while historical file-backed baseline runs remain clearly labeled as non-runtime records,
 - runtime-backed async jobs and evaluation case results now persist artifact lineage through relational artifact ids, while payload bytes stay behind the governed object-store seam,
+- artifact storage now also exposes a bounded descriptor-first catalog plus activation, runbook, and governance views, so active, superseded, and archived posture are inspectable without exposing raw payload browsing,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 - prompt rollout bodies remain repository-managed, while active selection can now move through explicit durable promote and rollback actions.
 - caller access-control policy can now also move through a dedicated memory or SQL-backed registry seam, with data-plane and control-plane request blocking active and durable SQL-backed full enforcement available when the access-control store uses SQLAlchemy.

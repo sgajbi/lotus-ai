@@ -92,3 +92,90 @@ class ArtifactRuntimeStatusResponse(BaseModel):
     status_summary: list[str] = Field(
         description="Short operator-facing summary of the current artifact backbone posture."
     )
+
+
+class ArtifactCatalogResponse(BaseModel):
+    service: str = Field(description="Service name emitting the artifact catalog.")
+    version: str = Field(description="Current lotus-ai service version.")
+    artifact_count: int = Field(description="Number of artifact descriptors returned in this response.")
+    active_count: int = Field(description="Number of active runtime-generated artifacts in the response.")
+    superseded_count: int = Field(description="Number of superseded artifacts in the response.")
+    archived_count: int = Field(description="Number of archived artifacts in the response.")
+    historical_staged_count: int = Field(
+        description="Number of historical staged artifacts in the response."
+    )
+    artifacts: list[ArtifactDescriptor] = Field(
+        description="Bounded artifact descriptors available for operator inspection."
+    )
+    status_summary: list[str] = Field(
+        description="Short operator-facing summary of current artifact lifecycle posture."
+    )
+
+
+class ArtifactActivationReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the artifact activation-readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    activation_ready: bool = Field(
+        description="Whether the artifact backbone is ready for stronger governed rollout posture."
+    )
+    cutover_domain_count: int = Field(
+        description="Number of runtime domains currently emitting artifact-backed runtime outputs."
+    )
+    lifecycle_controls_ready: bool = Field(
+        description="Whether archive and supersession lifecycle controls are implemented."
+    )
+    blocking_findings: list[str] = Field(
+        description="Human-readable reasons why artifact rollout is not yet fully activation-ready."
+    )
+    activation_path: list[str] = Field(
+        description="Governed high-level path required before the artifact backbone is fully activatable."
+    )
+
+
+class ArtifactRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(description="Stable artifact runbook readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before stronger artifact activation."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class ArtifactRunbookReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the artifact runbook-readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    runbook_ready: bool = Field(
+        description="Whether artifact operational runbook readiness is sufficient for stronger rollout."
+    )
+    required_item_count: int = Field(
+        description="Number of runbook items currently required for stronger artifact rollout."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required runbook items currently marked complete."
+    )
+    items: list[ArtifactRunbookReadinessItem] = Field(
+        description="Governed artifact operational runbook readiness items."
+    )
+
+
+class ArtifactGovernanceStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the artifact governance status.")
+    version: str = Field(description="Current lotus-ai service version.")
+    governance_ready: bool = Field(
+        description="Whether artifact governance posture is ready for stronger rollout."
+    )
+    runtime_status: ArtifactRuntimeStatusResponse = Field(
+        description="Current runtime-backed artifact posture."
+    )
+    activation_readiness: ArtifactActivationReadinessResponse = Field(
+        description="Current activation-readiness posture for the artifact backbone."
+    )
+    runbook_readiness: ArtifactRunbookReadinessResponse = Field(
+        description="Current runbook-readiness posture for the artifact backbone."
+    )
+    blocking_area_count: int = Field(
+        description="Number of governance areas currently blocking stronger artifact posture."
+    )
+    governance_summary: list[str] = Field(
+        description="Short operator-facing summary of current artifact governance posture."
+    )

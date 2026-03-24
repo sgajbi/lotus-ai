@@ -161,7 +161,8 @@ Current state:
 3. evaluation runtime case results now emit governed artifact references for runtime-generated evidence bundles,
 4. async runtime jobs now emit governed artifact references for terminal completion and failure payloads,
 5. observability incident summaries now emit governed artifact references for bounded domain incident bundles,
-6. broader consumer cutovers for additional runtime domains are still roadmap work.
+6. artifact lifecycle posture is now inspectable through bounded catalog, activation, runbook, and governance surfaces,
+7. broader consumer cutovers for additional runtime domains are still roadmap work.
 
 ### First Downstream Production Use Case
 

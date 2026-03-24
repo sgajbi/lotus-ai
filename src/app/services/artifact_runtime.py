@@ -10,6 +10,7 @@ from app.services.artifact_store import get_artifact_repository
 from app.services.runtime_readiness import get_artifact_store_runtime_status
 
 SUPPORTED_ARTIFACT_DOMAINS = ["evaluation", "async", "observability", "retrieval", "prompt"]
+ACTIVE_ARTIFACT_DOMAINS = ["evaluation", "async", "observability"]
 
 
 def build_artifact_runtime_status() -> ArtifactRuntimeStatusResponse:
@@ -23,8 +24,7 @@ def build_artifact_runtime_status() -> ArtifactRuntimeStatusResponse:
             "a governed object-store seam."
         ),
         (
-            "No major domain consumer has been cut over yet; the current slice establishes the "
-            "shared metadata and payload-store foundation."
+            "Evaluation, async, and observability now emit governed runtime artifact refs while retrieval and prompt remain future consumers."
         ),
     ]
     if object_store.mode == "filesystem":
