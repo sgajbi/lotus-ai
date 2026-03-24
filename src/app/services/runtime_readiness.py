@@ -119,3 +119,27 @@ def get_access_control_store_runtime_status() -> StoreRuntimeStatusDescriptor:
         database_configured=bool(settings.database_url),
         detail="Configured access-control store mode is not supported by lotus-ai.",
     )
+
+
+def get_artifact_store_runtime_status() -> StoreRuntimeStatusDescriptor:
+    if settings.artifact_store_mode == "memory":
+        return StoreRuntimeStatusDescriptor(
+            mode="memory",
+            status=RuntimeReadinessStatus.READY,
+            database_configured=bool(settings.database_url),
+            detail="In-memory artifact metadata store is active for local or foundation-phase development.",
+        )
+    if settings.artifact_store_mode == "sqlalchemy":
+        status_value, detail = _probe_sql_tables(["artifact_metadata"])
+        return StoreRuntimeStatusDescriptor(
+            mode="sqlalchemy",
+            status=status_value,
+            database_configured=bool(settings.database_url),
+            detail=detail,
+        )
+    return StoreRuntimeStatusDescriptor(
+        mode=settings.artifact_store_mode,
+        status=RuntimeReadinessStatus.UNAVAILABLE,
+        database_configured=bool(settings.database_url),
+        detail="Configured artifact metadata store mode is not supported by lotus-ai.",
+    )

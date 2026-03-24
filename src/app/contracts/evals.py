@@ -4,6 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.artifacts import ArtifactDescriptor
+
 
 class EvaluationAssetStatus(str, Enum):
     DOCUMENTED = "DOCUMENTED"
@@ -238,6 +240,10 @@ class EvaluationCaseResultDescriptor(BaseModel):
     summary: str = Field(description="Human-readable explanation of the case outcome.")
     evidence_refs: list[str] = Field(
         description="Bounded evidence references supporting the recorded case outcome."
+    )
+    artifact_refs: list[ArtifactDescriptor] = Field(
+        default_factory=list,
+        description="Governed artifact descriptors attached to the persisted case outcome.",
     )
     recorded_at: str = Field(description="UTC timestamp when the case outcome was recorded.")
 

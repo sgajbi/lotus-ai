@@ -69,6 +69,7 @@ def test_async_worker_runtime_claim_start_and_complete_flow(
     assert len(detail.attempts) == 1
     assert detail.attempts[0].status == "COMPLETED"
     assert detail.attempts[0].worker_id == "worker-a"
+    assert len(detail.job.artifact_refs) == 1
 
 
 def test_async_worker_runtime_retryable_failure_requeues_next_attempt(
@@ -108,6 +109,7 @@ def test_async_worker_runtime_retryable_failure_requeues_next_attempt(
     assert detail.attempts[0].status == "FAILED"
     assert detail.attempts[0].failure_reason == "TRANSIENT_TIMEOUT"
     assert detail.attempts[1].status == "QUEUED"
+    assert detail.job.artifact_refs == []
 
 
 def test_async_worker_runtime_recovers_expired_lease_on_next_claim(

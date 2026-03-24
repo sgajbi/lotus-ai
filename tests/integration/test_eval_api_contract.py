@@ -246,6 +246,7 @@ def test_evaluation_run_detail_route_exposes_runtime_attempt_and_case_history(
     assert body["attempts"][0]["verdict"] == "PASS"
     assert len(body["case_results"]) == 2
     assert body["case_results"][0]["outcome"] == "PASS"
+    assert len(body["case_results"][0]["artifact_refs"]) == 1
 
 
 def test_evaluation_run_submit_route_rejects_staged_only_fixture(client: TestClient) -> None:

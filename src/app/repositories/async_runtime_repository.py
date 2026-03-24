@@ -20,6 +20,7 @@ class AsyncRuntimeJobRecord:
     related_evaluation_run_id: str | None
     latest_message: str
     attempt_count: int
+    artifact_ids: list[str]
 
 
 @dataclass(frozen=True)

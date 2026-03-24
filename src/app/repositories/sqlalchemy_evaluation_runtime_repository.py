@@ -104,6 +104,7 @@ class SqlAlchemyEvaluationRuntimeRepository(EvaluationRuntimeRepository):
             outcome=record.outcome,
             summary=record.summary,
             evidence_refs=record.evidence_refs,
+            artifact_ids=record.artifact_ids,
             recorded_at=record.recorded_at,
         )
         with self._session_factory() as session:
@@ -150,6 +151,7 @@ class SqlAlchemyEvaluationRuntimeRepository(EvaluationRuntimeRepository):
             outcome=model.outcome,
             summary=model.summary,
             evidence_refs=list(model.evidence_refs),
+            artifact_ids=list(model.artifact_ids),
             recorded_at=model.recorded_at,
         )
 

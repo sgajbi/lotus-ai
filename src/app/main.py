@@ -9,6 +9,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.config import settings
 from app.middleware.correlation import CorrelationIdMiddleware
 from app.routers.access_control import router as access_control_router
+from app.routers.artifacts import router as artifacts_router
 from app.routers.async_runtime import router as async_runtime_router
 from app.routers.audit import router as audit_router
 from app.routers.capabilities import router as capabilities_router
@@ -49,6 +50,7 @@ app = FastAPI(
 app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
 Instrumentator().instrument(app).expose(app)
 app.include_router(platform_router)
+app.include_router(artifacts_router)
 app.include_router(observability_router)
 app.include_router(access_control_router)
 app.include_router(async_runtime_router)
@@ -106,6 +108,8 @@ async def metadata() -> dict[str, str]:
         "roundingPolicyVersion": ROUNDING_POLICY_VERSION,
         "promptStoreMode": settings.prompt_store_mode,
         "accessControlStoreMode": settings.access_control_store_mode,
+        "artifactStoreMode": settings.artifact_store_mode,
+        "artifactObjectStoreMode": settings.artifact_object_store_mode,
         "auditStoreMode": settings.audit_store_mode,
         "retrievalStoreMode": settings.retrieval_store_mode,
         "startupReadinessPolicy": settings.startup_readiness_policy,
@@ -138,6 +142,8 @@ async def root() -> dict[str, object]:
         "safetyMode": settings.safety_mode,
         "promptStoreMode": settings.prompt_store_mode,
         "accessControlStoreMode": settings.access_control_store_mode,
+        "artifactStoreMode": settings.artifact_store_mode,
+        "artifactObjectStoreMode": settings.artifact_object_store_mode,
         "auditStoreMode": settings.audit_store_mode,
         "retrievalStoreMode": settings.retrieval_store_mode,
         "startupReadinessPolicy": settings.startup_readiness_policy,
@@ -145,6 +151,7 @@ async def root() -> dict[str, object]:
         "capabilityAreas": [
             "llm_gateway",
             "async_runtime",
+            "artifacts",
             "provider_catalog",
             "prompt_registry",
             "access_control",

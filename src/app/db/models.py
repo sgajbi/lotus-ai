@@ -214,6 +214,27 @@ class CallerPolicyModel(Base):
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
+class ArtifactMetadataModel(Base):
+    __tablename__ = "artifact_metadata"
+
+    artifact_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    domain: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    artifact_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_object_kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_object_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    lifecycle_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    retention_posture: Mapped[str] = mapped_column(String(32), nullable=False)
+    media_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    checksum_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    storage_backend: Mapped[str] = mapped_column(String(32), nullable=False)
+    storage_reference: Mapped[str] = mapped_column(Text, nullable=False)
+    lineage_parent_artifact_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    superseded_by_artifact_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
 class AsyncJobModel(Base):
     __tablename__ = "async_jobs"
 
@@ -229,6 +250,7 @@ class AsyncJobModel(Base):
     related_evaluation_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     latest_message: Mapped[str] = mapped_column(Text, nullable=False)
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    artifact_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
 
     attempts: Mapped[list["AsyncJobAttemptModel"]] = relationship(back_populates="job")
     leases: Mapped[list["AsyncWorkerLeaseModel"]] = relationship(back_populates="job")
@@ -332,6 +354,7 @@ class EvaluationCaseResultModel(Base):
     outcome: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     evidence_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    artifact_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
     run: Mapped["EvaluationRunModel"] = relationship(back_populates="case_results")

@@ -15,10 +15,10 @@ If you are new to the repo, read these first:
 
 If you want the shortest summary:
 
-1. RFC-0001 through RFC-0012 are implemented,
-2. bounded task execution, retrieval, safety, prompt rollout, async workers, runtime-backed evals, and caller access control are real,
-3. broader production observability, artifact storage, embeddings expansion, document ingestion, and first-use-case onboarding are still roadmap items.
-4. a bounded observability control plane is now available through runtime, incident-summary, activation-readiness, runbook-readiness, governance, and breakdown endpoints, with durable rollout still gated on SQL-backed audit and caller-policy stores.
+1. RFC-0001 through RFC-0013 are implemented,
+2. bounded task execution, retrieval, safety, prompt rollout, async workers, runtime-backed evals, caller access control, and bounded observability are real,
+3. artifact storage now has a governed metadata and payload-store foundation, with eval, async, and observability artifact cutovers plus explicit lifecycle and governance surfaces,
+4. embeddings expansion, document ingestion, deployment split, resilience hardening, and first-use-case onboarding are still roadmap items.
 
 ## Current Phase
 
@@ -128,7 +128,7 @@ The current execution posture is:
 - platform runtime status now summarizes evaluation runtime posture too,
 - evaluation fixture inventory is now backed by a versioned in-repo manifest,
 - allowlisted evaluation fixture families can now be submitted into durable runtime-backed run state, while historical file-backed run artifacts remain visible only as labeled baseline records,
-- allowlisted evaluation fixture families can now also execute through the durable async worker path, with persisted run attempts, per-case outcomes, and derived pass/fail verdicts recorded in the evaluation runtime store,
+- allowlisted evaluation fixture families can now also execute through the durable async worker path, with persisted run attempts, per-case outcomes, derived pass/fail verdicts, and governed case-result artifact references recorded in the evaluation runtime store,
 - provider and retrieval evidence-readiness surfaces now expose explicit approval-gate summaries derived from runtime-backed evaluation runs, so staged baselines cannot silently satisfy current rollout posture,
 - runtime-backed evaluation replay and async lease-recovery paths now preserve explicit evaluation attempt history and replay-safe case-result records instead of overwriting prior evidence,
 - evaluation inventory now also includes an explicit async-runtime seam, so durable submission, lease recovery, and retrieval-indexing linkage are represented in the staged eval baseline instead of only in runtime tests,
@@ -156,7 +156,8 @@ The current execution posture is:
 - async job submission now accepts a narrow allowlist of durable runtime-backed job types while still rejecting staged-only job types explicitly,
 - duplicate runtime-backed retrieval-index submissions are now rejected explicitly with the owning async job id, so duplicate client retries do not silently create ambiguous execution truth,
 - async job catalog and detail views now merge durable runtime-backed submissions with staged artifact records so current and future async posture remain distinguishable,
-- async runtime-backed job detail now exposes attempt history and active lease state so claim, retry, and recovery posture are inspectable instead of implicit,
+- async runtime-backed job detail now exposes attempt history, active lease state, and governed terminal artifact references so claim, retry, recovery, and terminal-output review posture are inspectable instead of implicit,
+- observability incident summaries now persist bounded domain incident bundles through the governed artifact backbone and expose only artifact descriptors on the API surface,
 - async runtime now also exposes a governed control-plane history and action surface for retry, replay, requeue, and manual abandon, so operator recovery is explicit and reviewable instead of being implied by table edits,
 - async job artifacts can now reference related evaluation run artifacts for cross-seam traceability,
 - async runtime now also has an explicit repository and store seam plus migration-managed durable schema for jobs, attempts, and worker leases, even though public async execution behavior remains foundation-phase only for now,
@@ -183,6 +184,9 @@ The current persistence posture is:
 - explicit async-runtime repository seams and migration-managed SQL tables now exist for jobs, attempts, and worker leases when the SQL-backed async-runtime path is enabled in later rollout slices,
 - explicit evaluation-runtime repository seams and migration-managed SQL tables now exist for runs, attempts, and per-case outcomes when the SQL-backed evaluation-runtime path is enabled in later rollout slices, while public evaluation APIs remain artifact-backed until runtime execution cutover happens,
 - evaluation runtime-backed run detail now exposes persisted attempts and case-level outcomes directly, while historical file-backed baseline runs remain clearly labeled as non-runtime records,
+- runtime-backed async jobs and evaluation case results now persist artifact lineage through relational artifact ids, while payload bytes stay behind the governed object-store seam,
+- artifact storage now also exposes a bounded descriptor-first catalog plus activation, runbook, and governance views, so active, superseded, and archived posture are inspectable without exposing raw payload browsing,
+- artifact activation remains intentionally blocked when the payload store is only the filesystem-backed local or development fallback, so governance does not overstate production object-store readiness,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 - prompt rollout bodies remain repository-managed, while active selection can now move through explicit durable promote and rollback actions.
 - caller access-control policy can now also move through a dedicated memory or SQL-backed registry seam, with data-plane and control-plane request blocking active and durable SQL-backed full enforcement available when the access-control store uses SQLAlchemy.

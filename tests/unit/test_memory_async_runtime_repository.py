@@ -45,6 +45,7 @@ def test_memory_async_runtime_repository_round_trip() -> None:
             related_evaluation_run_id=None,
             latest_message="Job submitted for future durable execution.",
             attempt_count=1,
+            artifact_ids=[],
         )
     )
     repository.save_attempt(
@@ -167,6 +168,7 @@ def test_memory_async_runtime_repository_claims_next_runnable_job_once() -> None
             related_evaluation_run_id=None,
             latest_message="Job queued for durable execution.",
             attempt_count=1,
+            artifact_ids=[],
         )
     )
     repository.save_attempt(
@@ -256,6 +258,7 @@ def test_memory_async_runtime_repository_claims_specific_runnable_job_by_id() ->
             related_evaluation_run_id="evalrun_001",
             latest_message="Queued for dedicated worker execution.",
             attempt_count=1,
+            artifact_ids=[],
         )
     )
     repository.save_attempt(
@@ -341,6 +344,7 @@ def test_memory_async_runtime_repository_claim_skips_queued_jobs_without_attempt
             related_evaluation_run_id=None,
             latest_message="Queued without attempts.",
             attempt_count=0,
+            artifact_ids=[],
         )
     )
 

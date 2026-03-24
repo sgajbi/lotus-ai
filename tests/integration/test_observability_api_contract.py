@@ -16,6 +16,7 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
         item["evidence_id"] == "safety_runtime_enforcement_state"
         for item in body["incident_evidence_items"]
     )
+    assert all(item["artifact_refs"] for item in body["incident_evidence_items"])
 
 
 def test_observability_governance_routes(client: TestClient) -> None:
@@ -53,6 +54,9 @@ def test_observability_incident_summary_route(client: TestClient) -> None:
     assert any(summary["domain_id"] == "evaluation" for summary in body["summaries"])
     assert any(summary["domain_id"] == "prompt" for summary in body["summaries"])
     assert any(summary["domain_id"] == "safety" for summary in body["summaries"])
+    assert all(
+        summary["incident_evidence_items"][0]["artifact_refs"] for summary in body["summaries"]
+    )
 
 
 def test_provider_observability_summary_route(client: TestClient) -> None:
@@ -63,6 +67,7 @@ def test_provider_observability_summary_route(client: TestClient) -> None:
     assert body["domain_id"] == "provider"
     assert body["telemetry"]["incident_evidence_supported"] is True
     assert body["incident_evidence_items"][0]["evidence_id"] == "provider_operations_incident_state"
+    assert len(body["incident_evidence_items"][0]["artifact_refs"]) == 1
 
 
 def test_evaluation_observability_summary_route(client: TestClient) -> None:
@@ -72,6 +77,7 @@ def test_evaluation_observability_summary_route(client: TestClient) -> None:
     body = response.json()
     assert body["domain_id"] == "evaluation"
     assert body["incident_evidence_items"][0]["evidence_id"] == "evaluation_approval_gate_state"
+    assert len(body["incident_evidence_items"][0]["artifact_refs"]) == 1
 
 
 def test_prompt_observability_summary_route(client: TestClient) -> None:
@@ -81,6 +87,7 @@ def test_prompt_observability_summary_route(client: TestClient) -> None:
     body = response.json()
     assert body["domain_id"] == "prompt"
     assert body["incident_evidence_items"][0]["evidence_id"] == "prompt_rollout_approval_state"
+    assert len(body["incident_evidence_items"][0]["artifact_refs"]) == 1
 
 
 def test_safety_observability_summary_route(client: TestClient) -> None:
@@ -90,6 +97,7 @@ def test_safety_observability_summary_route(client: TestClient) -> None:
     body = response.json()
     assert body["domain_id"] == "safety"
     assert body["incident_evidence_items"][0]["evidence_id"] == "safety_runtime_enforcement_state"
+    assert len(body["incident_evidence_items"][0]["artifact_refs"]) == 1
 
 
 def test_observability_breakdown_summary_route(client: TestClient) -> None:

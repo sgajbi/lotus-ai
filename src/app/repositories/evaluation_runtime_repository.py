@@ -42,6 +42,7 @@ class EvaluationCaseResultRecord:
     outcome: str
     summary: str
     evidence_refs: list[str]
+    artifact_ids: list[str]
     recorded_at: str
 
 

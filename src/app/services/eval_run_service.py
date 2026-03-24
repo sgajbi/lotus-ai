@@ -22,6 +22,7 @@ from app.repositories.evaluation_runtime_repository import (
     EvaluationRunAttemptRecord,
     EvaluationRunRecord,
 )
+from app.services.artifact_payloads import load_artifact_descriptors
 from app.services.eval_seam_summary import SEAM_FIXTURE_MAP
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 
@@ -148,5 +149,6 @@ def _map_runtime_case_result(record: EvaluationCaseResultRecord) -> EvaluationCa
         outcome=EvaluationCaseOutcome(record.outcome),
         summary=record.summary,
         evidence_refs=record.evidence_refs,
+        artifact_refs=load_artifact_descriptors(artifact_ids=record.artifact_ids),
         recorded_at=record.recorded_at,
     )

@@ -237,6 +237,7 @@ def test_find_active_duplicate_submission_ignores_non_matching_runtime_jobs() ->
             related_evaluation_run_id=None,
             latest_message="Completed.",
             attempt_count=1,
+            artifact_ids=[],
         )
     )
     store.save_attempt(
@@ -299,6 +300,7 @@ def test_find_active_duplicate_submission_ignores_same_target_for_different_call
             related_evaluation_run_id=None,
             latest_message="Running.",
             attempt_count=1,
+            artifact_ids=[],
         )
     )
 

@@ -9,6 +9,7 @@ from app.contracts.async_runtime import (
     AsyncJobRecordSource,
     AsyncJobStatus,
 )
+from app.services.artifact_payloads import load_artifact_descriptors
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeControlEventRecord,
@@ -28,6 +29,7 @@ def map_async_runtime_job(record: AsyncRuntimeJobRecord) -> AsyncJobArtifactDesc
         caller_app=record.caller_app,
         related_evaluation_run_id=record.related_evaluation_run_id,
         execution_path=record.execution_path,
+        artifact_refs=load_artifact_descriptors(artifact_ids=record.artifact_ids),
         notes=record.latest_message,
     )
 

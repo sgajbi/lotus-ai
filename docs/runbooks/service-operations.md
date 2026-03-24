@@ -17,6 +17,11 @@
 - General health: /health
 - Metadata: /metadata
 - Platform runtime status: /platform/runtime-status
+- Artifact runtime status: /platform/artifacts/runtime-status
+- Artifact catalog: /platform/artifacts
+- Artifact activation readiness: /platform/artifacts/activation-readiness
+- Artifact runbook readiness: /platform/artifacts/runbook-readiness
+- Artifact governance status: /platform/artifacts/governance-status
 - Observability runtime status: /platform/observability/runtime-status
 - Observability activation readiness: /platform/observability/activation-readiness
 - Observability runbook readiness: /platform/observability/runbook-readiness
@@ -84,6 +89,18 @@ Expected operator flow for SQL-backed stores:
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
 
+## Artifact Governance
+
+Before treating the artifact backbone as stronger governed rollout posture:
+
+1. verify `GET /platform/artifacts/runtime-status`
+2. inspect `GET /platform/artifacts` to confirm active, superseded, archived, and staged posture are explicitly visible through descriptors
+3. inspect `GET /platform/artifacts/activation-readiness` when technical blockers need detail
+4. inspect `GET /platform/artifacts/runbook-readiness` when operational blockers need detail
+5. inspect `GET /platform/artifacts/governance-status` for the composed governance view
+6. confirm the embedded `artifact_runtime` and `artifact_governance` blocks in `GET /platform/runtime-status` match the detailed artifact views
+7. treat artifact archive posture as a reviewable metadata transition rather than ad hoc payload deletion or raw filesystem cleanup
+
 ## Observability Governance
 
 Before treating the in-service observability layer as governed rollout posture:
@@ -95,7 +112,15 @@ Before treating the in-service observability layer as governed rollout posture:
 5. confirm the embedded `observability_runtime` and `observability_governance` blocks in `GET /platform/runtime-status` match the detailed observability views
 6. confirm `GET /platform/observability/incident-summary` covers provider, retrieval, async, evaluation, prompt, and safety domains without unavailable telemetry posture
 7. confirm `GET /platform/observability/breakdowns` still exposes bounded caller, tenant, and capability samples without leaking unauthorized tenant data
-8. treat SQL-backed audit and caller-policy stores as the activation gate for restart-safe observability governance
+8. confirm observability incident items now expose governed artifact descriptors rather than raw payloads or backend URLs
+9. treat SQL-backed audit and caller-policy stores as the activation gate for restart-safe observability governance
+
+Current incident-review expectations:
+
+1. use `GET /platform/observability/incident-summary` as the summary-first entrypoint for provider, retrieval, async, evaluation, prompt, and safety review
+2. inspect the `artifact_refs` attached to each incident-evidence item when bounded historical or diagnostic context is needed
+3. treat those artifact refs as governed snapshots of the domain incident bundle rather than as a raw export surface
+4. use the linked domain endpoints for deeper runtime and governance inspection instead of expecting observability routes to dump raw payloads inline
 
 ## Async Activation Governance
 

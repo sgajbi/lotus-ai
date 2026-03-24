@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import json
 from typing import Iterator, cast
 
 from fastapi import HTTPException
@@ -40,6 +41,7 @@ from app.repositories.evaluation_runtime_repository import (
     EvaluationRunRecord,
 )
 from app.services.eval_run_submission_service import RUNTIME_BACKED_EVALUATION_FIXTURE_IDS
+from app.services.artifact_payloads import persist_json_artifact
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
 from app.services.prompt_store import get_prompt_repository
@@ -202,8 +204,29 @@ def _evaluate_case(
             fixture_task_id=fixture_task_id,
             case=case,
         )
+    case_result_id = f"{attempt_id}_{case.case_id}"
+    artifact = persist_json_artifact(
+        domain="evaluation",
+        artifact_type="case_result_bundle",
+        source_object_kind="evaluation_case_result",
+        source_object_id=case_result_id,
+        created_at=_utcnow_iso(),
+        created_by="worker",
+        payload_json=json.dumps(
+            {
+                "run_id": run.run_id,
+                "attempt_id": attempt_id,
+                "case_id": case.case_id,
+                "fixture_id": run.fixture_id,
+                "outcome": outcome.value,
+                "summary": summary,
+                "evidence_refs": evidence_refs,
+            },
+            sort_keys=True,
+        ).encode("utf-8"),
+    )
     return EvaluationCaseResultRecord(
-        case_result_id=f"{attempt_id}_{case.case_id}",
+        case_result_id=case_result_id,
         run_id=run.run_id,
         attempt_id=attempt_id,
         case_id=case.case_id,
@@ -211,6 +234,7 @@ def _evaluate_case(
         outcome=outcome.value,
         summary=summary,
         evidence_refs=evidence_refs,
+        artifact_ids=[artifact.artifact_id],
         recorded_at=_utcnow_iso(),
     )
 

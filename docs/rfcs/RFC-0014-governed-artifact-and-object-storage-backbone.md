@@ -1,6 +1,6 @@
 # RFC-0014: Governed Artifact and Object Storage Backbone
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -70,6 +70,7 @@ This creates risk:
 3. Replacing relational metadata with blob-only storage.
 4. Opening unrestricted artifact browsing or download surfaces.
 5. Introducing object storage for tiny records that fit the current relational model cleanly.
+6. Owning external dashboard packs, arbitrary analytics, or a generic file-download product.
 
 ## Current State
 
@@ -102,7 +103,20 @@ This RFC establishes the following invariants:
 3. artifact references must be durable and reviewable,
 4. no runtime domain may bypass artifact governance with ad hoc file writes,
 5. artifact access must respect the shared-platform identity and authorization model,
-6. runtime and historical artifact posture must remain distinguishable.
+6. runtime and historical artifact posture must remain distinguishable,
+7. public contracts expose governed artifact descriptors, never raw backend URLs or storage-provider internals,
+8. dual-write or migration posture must be explicit and reviewable whenever a consumer is cut over.
+
+## Artifact Taxonomy
+
+The first implementation must use an explicit artifact taxonomy.
+
+Required behavior:
+
+1. artifact lifecycle distinguishes `historical_staged`, `runtime_generated`, `superseded`, and `archived`,
+2. artifact kinds remain bounded to governed platform domains such as evaluation evidence, async output, and incident bundle,
+3. lineage can relate one artifact to a source object and optionally to a superseded or replacement artifact,
+4. tiny records that fit relational contracts cleanly remain in relational state unless a governed consumer explicitly needs artifact storage.
 
 ## Architecture Direction
 
@@ -115,7 +129,8 @@ Required behavior:
 1. artifact id, domain, type, source object, lineage, retention posture, and storage reference are explicit,
 2. metadata can link to evaluation runs, async jobs, retrieval jobs, prompt rollbacks, or incident reviews,
 3. metadata remains queryable through bounded service seams,
-4. artifact state distinguishes staged historical, runtime-produced, superseded, and archived posture.
+4. artifact state distinguishes staged historical, runtime-produced, superseded, and archived posture,
+5. metadata includes content type, byte size, checksum, and creation context needed for reviewability.
 
 ### Object Storage Integration
 
@@ -126,7 +141,8 @@ Required behavior:
 1. storage providers are abstracted behind a governed repository/service boundary,
 2. payload upload and retrieval paths are explicit and reviewable,
 3. runtime workers can emit large artifacts without inventing new storage patterns,
-4. object references remain stable even if backing storage changes later.
+4. object references remain stable even if backing storage changes later,
+5. a local or filesystem-backed implementation may exist only as a clearly labeled development fallback and must not masquerade as production object storage.
 
 ### Domain Consumer Integration
 
@@ -137,7 +153,7 @@ Required behavior:
 1. evaluation runtime can store larger case-result or evidence bundles,
 2. async runtime can attach artifact references for larger job outputs,
 3. observability and incident-evidence flows can persist larger diagnostic bundles,
-4. retrieval or prompt control planes can persist approval and rollback evidence packs where needed.
+4. retrieval or prompt control planes may attach governed artifact descriptors later, but are not first-slice cutover requirements unless a consumer already needs large payload support.
 
 ### Access and Governance Convergence
 
@@ -159,6 +175,7 @@ Required behavior:
 5. SQL-backed and storage-backed tests must prove metadata and payload consistency.
 6. Runbooks must define artifact retention, cleanup, incident handling, and recovery procedures.
 7. Platform status and governance surfaces must describe artifact-storage posture truthfully.
+8. Runtime status must distinguish metadata-store durability from object-store durability.
 
 ## Delivery Slices
 
@@ -168,14 +185,16 @@ Outcome:
 
 1. artifact metadata schema exists,
 2. object-storage repository/service seam exists,
-3. no major runtime consumer cutover yet.
+3. runtime status exposes artifact metadata and object-store posture truthfully,
+4. no major runtime consumer cutover yet.
 
 Acceptance gate:
 
 1. metadata is migration-managed,
 2. repository contracts are explicit and tested,
 3. runtime status remains truthful,
-4. relational metadata remains authoritative.
+4. relational metadata remains authoritative,
+5. SQL-backed metadata persistence and storage-seam behavior are both covered by meaningful tests.
 
 ### Slice 2: Evaluation and Async Artifact Cutover
 
@@ -190,7 +209,8 @@ Acceptance gate:
 1. runtime-backed artifact references are durable,
 2. integration tests cover artifact creation and retrieval metadata,
 3. existing evaluation and async contracts remain stable,
-4. no ad hoc storage paths remain for those consumers.
+4. no ad hoc storage paths remain for those consumers,
+5. historical staged artifacts remain visible but cannot masquerade as runtime-generated artifact truth.
 
 ### Slice 3: Observability and Incident-Evidence Integration
 
@@ -205,7 +225,8 @@ Acceptance gate:
 1. incident evidence is storable and reviewable through the backbone,
 2. sensitive payload handling remains bounded,
 3. observability surfaces align with artifact references,
-4. runbooks can point to actual artifact workflows.
+4. runbooks can point to actual artifact workflows,
+5. observability remains summary-first and does not degrade into raw artifact dumping.
 
 ### Slice 4: Retention, Archival, and Governance Hardening
 
@@ -220,7 +241,8 @@ Acceptance gate:
 1. retention state is inspectable,
 2. archived versus active artifacts are explicit,
 3. governance and runbook surfaces match implementation reality,
-4. the platform is materially closer to production-grade evidence handling.
+4. the platform is materially closer to production-grade evidence handling,
+5. cleanup and archival behavior is explicit and reviewable rather than hidden in ad hoc filesystem cleanup.
 
 ## Risks
 
@@ -276,3 +298,22 @@ Approve this RFC if the team agrees that:
 2. relational metadata should remain authoritative while payloads can move to object storage,
 3. evaluation, async, and incident-evidence consumers should converge on one artifact model,
 4. delivery should proceed in the slices defined above.
+
+## Implementation Notes
+
+RFC-0014 is implemented.
+
+Delivered scope:
+
+1. governed artifact metadata and bounded payload-store seams,
+2. runtime artifact refs for evaluation case results and async terminal outputs,
+3. observability incident-bundle artifact integration,
+4. bounded artifact catalog plus activation, runbook, and governance surfaces,
+5. explicit lifecycle posture for active, superseded, archived, and historical staged artifacts.
+
+Important current posture:
+
+1. relational metadata remains authoritative,
+2. runtime consumers now emit artifact descriptors rather than raw payload paths,
+3. filesystem-backed payload storage remains a clearly labeled local or development fallback and does not satisfy full activation readiness,
+4. broader future consumer cutovers remain separate follow-on work rather than hidden scope inside this RFC.

@@ -5,6 +5,8 @@ from types import SimpleNamespace
 
 from app.config import settings
 from app.contracts.platform import PlatformRuntimeStatusResponse
+from app.services.artifact_runtime import build_artifact_runtime_status
+from app.services.artifact_governance import build_artifact_governance_status
 from app.services.access_control_governance import build_access_control_governance_status
 from app.services.access_control_runtime import build_access_control_runtime_status
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
@@ -21,6 +23,7 @@ from app.services.provider_governance_status import build_provider_governance_st
 from app.services.provider_operations_status import build_provider_operations_status
 from app.services.retrieval_governance_status import build_retrieval_governance_status
 from app.services.runtime_readiness import (
+    get_artifact_store_runtime_status,
     get_audit_store_runtime_status,
     get_retrieval_store_runtime_status,
 )
@@ -48,6 +51,8 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     prompts = list_registered_prompts()
     access_control_runtime = build_access_control_runtime_status()
     access_control_governance = build_access_control_governance_status()
+    artifact_runtime = build_artifact_runtime_status()
+    artifact_governance = build_artifact_governance_status()
     observability_runtime = build_observability_runtime_status()
     observability_governance = build_observability_governance_status()
     async_runtime = build_async_runtime_status()
@@ -60,6 +65,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     prompt_runtime = build_prompt_runtime_status()
     task_runtime = build_task_runtime_status()
     audit_store = get_audit_store_runtime_status()
+    artifact_store = get_artifact_store_runtime_status()
     retrieval_store = get_retrieval_store_runtime_status()
     safety_runtime = build_safety_runtime_status()
     safety_governance = build_safety_governance_status()
@@ -76,8 +82,12 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         safety_mode=settings.safety_mode,
         prompt_store_mode=settings.prompt_store_mode,
         access_control_store_mode=settings.access_control_store_mode,
+        artifact_store_mode=settings.artifact_store_mode,
+        artifact_object_store_mode=settings.artifact_object_store_mode,
         access_control_runtime=access_control_runtime,
         access_control_governance=access_control_governance,
+        artifact_runtime=artifact_runtime,
+        artifact_governance=artifact_governance,
         observability_runtime=observability_runtime,
         observability_governance=observability_governance,
         async_runtime=async_runtime,
@@ -93,7 +103,11 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         safety_governance=safety_governance,
         audit_store=audit_store,
         retrieval_store=retrieval_store,
-        database_configured=audit_store.database_configured or retrieval_store.database_configured,
+        database_configured=(
+            audit_store.database_configured
+            or retrieval_store.database_configured
+            or artifact_store.database_configured
+        ),
         prompt_count=len(prompts),
         capability_count=len(capabilities.tasks),
         vector_store=VECTOR_STORE_STRATEGY,
