@@ -1,6 +1,16 @@
 from fastapi.testclient import TestClient
 
 
+def test_platform_runtime_status_route(client: TestClient) -> None:
+    response = client.get("/platform/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert "production_baseline" in body
+    assert "production_baseline_governance" in body
+
+
 def test_production_baseline_runtime_status_route(client: TestClient) -> None:
     response = client.get("/platform/production-baseline/runtime-status")
 
@@ -11,8 +21,7 @@ def test_production_baseline_runtime_status_route(client: TestClient) -> None:
     assert body["production_ready"] is False
     assert body["dependency_count"] >= 6
     assert any(
-        dependency["dependency_id"] == "database_backend"
-        for dependency in body["dependencies"]
+        dependency["dependency_id"] == "database_backend" for dependency in body["dependencies"]
     )
 
 

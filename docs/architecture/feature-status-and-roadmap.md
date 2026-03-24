@@ -182,11 +182,10 @@ Current state:
 
 The next RFCs already identified in the repo describe the expected sequence:
 
-1. `RFC-0020` production-standard deployment baseline
-2. `RFC-0015` controlled deployment split into runtime, retrieval, and evals
-3. `RFC-0017` production resilience and disaster recovery
-4. `RFC-0018` governed embeddings and provider expansion
-5. `RFC-0019` governed document ingestion and corpus refresh
+1. `RFC-0015` controlled deployment split into runtime, retrieval, and evals
+2. `RFC-0017` production resilience and disaster recovery
+3. `RFC-0018` governed embeddings and provider expansion
+4. `RFC-0019` governed document ingestion and corpus refresh
 
 The current preferred RFC-0016 target is:
 
@@ -198,11 +197,10 @@ The current preferred RFC-0016 target is:
 
 In practical feature terms, the roadmap is:
 
-1. turn the current demo-capable stack into a truthful production-standard baseline,
-2. make deployment topology cleaner after that baseline exists,
-3. improve resilience on top of that baseline,
-4. expand retrieval and provider breadth,
-5. broaden corpus management.
+1. build cleaner deployment topology on top of the now-explicit production baseline,
+2. improve resilience on top of that baseline,
+3. expand retrieval and provider breadth,
+4. broaden corpus management.
 
 ## Recommended Reading Order
 
