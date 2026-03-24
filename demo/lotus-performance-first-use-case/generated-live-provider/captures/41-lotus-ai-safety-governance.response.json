@@ -1,0 +1,131 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "governance_ready":  false,
+    "runtime_status":  {
+                           "service":  "lotus-ai",
+                           "version":  "0.1.0",
+                           "safety_mode":  "documented_only",
+                           "runtime_redaction_active":  false,
+                           "runtime_redaction_disposition":  "DOCUMENTED_ONLY",
+                           "enforced_control_ids":  [
+                                                        "response_labeling",
+                                                        "correlation_and_audit"
+                                                    ],
+                           "documented_only_control_ids":  [
+                                                               "context_minimization",
+                                                               "runtime_redaction_engine"
+                                                           ],
+                           "supported_execution_dispositions":  [
+                                                                    "DOCUMENTED_ONLY"
+                                                                ],
+                           "task_policy_count":  7
+                       },
+    "runbook_readiness":  {
+                              "service":  "lotus-ai",
+                              "version":  "0.1.0",
+                              "runbook_ready":  false,
+                              "required_item_count":  4,
+                              "completed_required_item_count":  3,
+                              "items":  [
+                                            {
+                                                "runbook_id":  "safety_operational_runbook",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "The service runbook now documents runtime safety activation review, blocked and degraded execution handling, and the operator-facing status surfaces required to review safety rollout posture."
+                                            },
+                                            {
+                                                "runbook_id":  "safety_rollback_and_degraded_response",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "The runbook documents how operators review documented-only fallback, blocked execution, and degraded redaction failures without relying on ad hoc runtime state resets."
+                                            },
+                                            {
+                                                "runbook_id":  "safety_incident_review_and_audit_evidence",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Safety incident review posture is grounded in persisted audit records, execution evidence, and runtime-backed evaluation runs rather than process-local state."
+                                            },
+                                            {
+                                                "runbook_id":  "safety_oncall_and_observability_review",
+                                                "status":  "FOUNDATION_DOCUMENTED",
+                                                "required_for_activation":  true,
+                                                "notes":  "Safety rollout review flow and bounded observability endpoints are documented, but named on-call ownership for blocked, degraded, and redacted task outcomes remains to be approved."
+                                            }
+                                        ]
+                          },
+    "evidence_readiness":  {
+                               "service":  "lotus-ai",
+                               "version":  "0.1.0",
+                               "evidence_ready":  false,
+                               "required_item_count":  4,
+                               "completed_required_item_count":  3,
+                               "items":  [
+                                             {
+                                                 "evidence_id":  "safety_policy_fixture_pack",
+                                                 "status":  "READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Safety policy fixture coverage is staged and can be executed through the runtime-backed evaluation path."
+                                             },
+                                             {
+                                                 "evidence_id":  "safety_runtime_fixture_pack",
+                                                 "status":  "READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Safety runtime fixtures cover pass-through, redaction, blocked, and degraded enforcement behavior."
+                                             },
+                                             {
+                                                 "evidence_id":  "safety_runtime_approval_baseline",
+                                                 "status":  "FOUNDATION_STAGED",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Safety runtime fixture families are staged, but no runtime-backed safety evaluation run exists yet."
+                                             },
+                                             {
+                                                 "evidence_id":  "safety_audit_traceability_pack",
+                                                 "status":  "READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Task responses, audit records, and execution evidence now preserve exact runtime safety outcomes including blocked, degraded, and redacted behavior."
+                                             }
+                                         ],
+                               "approval_gate":  {
+                                                     "domain_id":  "safety_enforcement",
+                                                     "domain_label":  "Safety Enforcement",
+                                                     "approval_ready":  false,
+                                                     "evidence_state":  "STAGED_ONLY",
+                                                     "required_fixture_count":  2,
+                                                     "runtime_backed_fixture_count":  0,
+                                                     "latest_runtime_run_id":  null,
+                                                     "latest_runtime_recorded_at":  null,
+                                                     "latest_historical_baseline_run_id":  "foundation_eval_2026_03_22_001",
+                                                     "fixture_summaries":  [
+                                                                               {
+                                                                                   "fixture_id":  "safety_policy_examples",
+                                                                                   "latest_runtime_run_id":  null,
+                                                                                   "latest_runtime_recorded_at":  null,
+                                                                                   "latest_runtime_status":  null,
+                                                                                   "latest_runtime_verdict":  null,
+                                                                                   "evidence_state":  "STAGED_ONLY",
+                                                                                   "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                                               },
+                                                                               {
+                                                                                   "fixture_id":  "safety_runtime_examples",
+                                                                                   "latest_runtime_run_id":  null,
+                                                                                   "latest_runtime_recorded_at":  null,
+                                                                                   "latest_runtime_status":  null,
+                                                                                   "latest_runtime_verdict":  null,
+                                                                                   "evidence_state":  "STAGED_ONLY",
+                                                                                   "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                                               }
+                                                                           ],
+                                                     "notes":  [
+                                                                   "Safety Enforcement approval posture still relies on staged historical baseline \u0027foundation_eval_2026_03_22_001\u0027.",
+                                                                   "Historical artifacts remain visible for continuity, but they do not satisfy current runtime-backed approval requirements."
+                                                               ]
+                                                 }
+                           },
+    "blocking_area_count":  3,
+    "governance_summary":  [
+                               "Safety runtime enforcement is not yet active; documented-only posture remains explicit.",
+                               "Safety runbook readiness is grounded in documented activation, rollback, degraded-response, and audit-review procedures, but named on-call ownership remains incomplete.",
+                               "Safety evidence readiness now uses a runtime-backed approval gate summary derived from governed safety evaluation runs, currently reporting \u0027STAGED_ONLY\u0027."
+                           ]
+}

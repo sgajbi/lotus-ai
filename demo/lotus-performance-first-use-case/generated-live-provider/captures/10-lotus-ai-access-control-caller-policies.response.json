@@ -1,0 +1,112 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "store_mode":  "sqlalchemy",
+    "policy_count":  5,
+    "policies":  [
+                     {
+                         "caller_app":  "lotus-advise",
+                         "lifecycle_status":  "ACTIVE",
+                         "description":  "Advisory application integration with bounded task access.",
+                         "allowed_task_ids":  [
+                                                  "explain.v1",
+                                                  "summarize.v1",
+                                                  "knowledge_answer.v1"
+                                              ],
+                         "allowed_retrieval_source_ids":  [
+                                                              "lotus-platform-rfcs"
+                                                          ],
+                         "allow_live_provider":  false,
+                         "allow_async_control":  false,
+                         "allow_prompt_control":  false,
+                         "allow_provider_control":  false,
+                         "tenant_policy_mode":  "RESTRICTED",
+                         "restricted_tenant_ids":  [
+                                                       "tenant-us-002"
+                                                   ]
+                     },
+                     {
+                         "caller_app":  "lotus-manage",
+                         "lifecycle_status":  "ACTIVE",
+                         "description":  "Primary managed-app integration for bounded task execution.",
+                         "allowed_task_ids":  [
+                                                  "explain.v1",
+                                                  "summarize.v1",
+                                                  "generate_structured.v1",
+                                                  "knowledge_search.v1",
+                                                  "knowledge_answer.v1"
+                                              ],
+                         "allowed_retrieval_source_ids":  [
+                                                              "lotus-platform-rfcs",
+                                                              "lotus-ai-architecture"
+                                                          ],
+                         "allow_live_provider":  true,
+                         "allow_async_control":  false,
+                         "allow_prompt_control":  false,
+                         "allow_provider_control":  false,
+                         "tenant_policy_mode":  "RESTRICTED",
+                         "restricted_tenant_ids":  [
+                                                       "tenant-sg-001"
+                                                   ]
+                     },
+                     {
+                         "caller_app":  "lotus-performance",
+                         "lifecycle_status":  "ACTIVE",
+                         "description":  "First-production-use-case integration for explanation-only analytics commentary.",
+                         "allowed_task_ids":  [
+                                                  "explain.v1"
+                                              ],
+                         "allowed_retrieval_source_ids":  [
+
+                                                          ],
+                         "allow_live_provider":  true,
+                         "allow_async_control":  false,
+                         "allow_prompt_control":  false,
+                         "allow_provider_control":  false,
+                         "tenant_policy_mode":  "RESTRICTED",
+                         "restricted_tenant_ids":  [
+                                                       "tenant-sg-001"
+                                                   ]
+                     },
+                     {
+                         "caller_app":  "lotus-platform",
+                         "lifecycle_status":  "ACTIVE",
+                         "description":  "Platform operator and automation caller for governed control planes.",
+                         "allowed_task_ids":  [
+
+                                              ],
+                         "allowed_retrieval_source_ids":  [
+
+                                                          ],
+                         "allow_live_provider":  true,
+                         "allow_async_control":  true,
+                         "allow_prompt_control":  true,
+                         "allow_provider_control":  true,
+                         "tenant_policy_mode":  "OPTIONAL",
+                         "restricted_tenant_ids":  [
+
+                                                   ]
+                     },
+                     {
+                         "caller_app":  "lotus-workbench",
+                         "lifecycle_status":  "ACTIVE",
+                         "description":  "Workbench caller for bounded retrieval exploration.",
+                         "allowed_task_ids":  [
+                                                  "knowledge_search.v1",
+                                                  "knowledge_answer.v1"
+                                              ],
+                         "allowed_retrieval_source_ids":  [
+                                                              "lotus-platform-rfcs",
+                                                              "lotus-ai-architecture"
+                                                          ],
+                         "allow_live_provider":  false,
+                         "allow_async_control":  false,
+                         "allow_prompt_control":  false,
+                         "allow_provider_control":  false,
+                         "tenant_policy_mode":  "OPTIONAL",
+                         "restricted_tenant_ids":  [
+
+                                                   ]
+                     }
+                 ]
+}

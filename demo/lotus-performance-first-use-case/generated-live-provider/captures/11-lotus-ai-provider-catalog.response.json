@@ -1,0 +1,58 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "provider_mode":  "openai",
+    "embedding_provider_mode":  "disabled",
+    "text_generation_configuration":  {
+                                          "rollout_state":  "CANARY_ENABLED",
+                                          "configured_live_provider_id":  "text.openai",
+                                          "configured_live_model_id":  "gpt-5.4",
+                                          "allowlisted_task_ids":  [
+                                                                       "explain.v1"
+                                                                   ],
+                                          "credential_status":  "CONFIGURED",
+                                          "configuration_valid":  true,
+                                          "findings":  [
+                                                           "Provider rollout posture is internally consistent for the current foundation phase."
+                                                       ]
+                                      },
+    "runtime_execution_enabled":  true,
+    "providers":  [
+                      {
+                          "provider_id":  "text.stub",
+                          "display_name":  "Foundation Stub Text Provider",
+                          "capability":  "TEXT_GENERATION",
+                          "adapter_kind":  "STUB",
+                          "lifecycle_status":  "DOCUMENTED",
+                          "runtime_mode":  "stub",
+                          "enabled_for_execution":  false,
+                          "failure_category_on_use":  null,
+                          "source_reference":  "app.providers.stub_text_provider",
+                          "notes":  "Foundation-phase deterministic placeholder execution path used for contract validation and audit behavior."
+                      },
+                      {
+                          "provider_id":  "text.openai",
+                          "display_name":  "OpenAI Live Text Provider",
+                          "capability":  "TEXT_GENERATION",
+                          "adapter_kind":  "OPENAI_LIVE",
+                          "lifecycle_status":  "DOCUMENTED",
+                          "runtime_mode":  "openai",
+                          "enabled_for_execution":  true,
+                          "failure_category_on_use":  "LIVE_EXECUTION_NOT_ENABLED",
+                          "source_reference":  "docs/rfcs/RFC-0003-controlled-live-provider-backbone.md",
+                          "notes":  "Allowlisted OpenAI-backed live text-generation path. Runtime activation remains disabled by default until rollout, allowlist, and governance gates are satisfied."
+                      },
+                      {
+                          "provider_id":  "embeddings.stub",
+                          "display_name":  "Foundation Stub Embedding Provider",
+                          "capability":  "EMBEDDINGS",
+                          "adapter_kind":  "STUB",
+                          "lifecycle_status":  "DOCUMENTED",
+                          "runtime_mode":  "disabled",
+                          "enabled_for_execution":  false,
+                          "failure_category_on_use":  "LIVE_EXECUTION_NOT_ENABLED",
+                          "source_reference":  "docs/guides/retrieval-and-vector-store.md",
+                          "notes":  "Embedding execution remains disabled until governed retrieval indexing and provider controls are fully implemented."
+                      }
+                  ]
+}

@@ -43,94 +43,106 @@ def _probe_sql_tables(expected_tables: Iterable[str]) -> tuple[RuntimeReadinessS
 
 
 def get_audit_store_runtime_status() -> StoreRuntimeStatusDescriptor:
-    if settings.audit_store_mode == "memory":
-        return StoreRuntimeStatusDescriptor(
-            mode="memory",
-            status=RuntimeReadinessStatus.READY,
-            database_configured=bool(settings.database_url),
-            detail="In-memory audit store is active for local or foundation-phase execution.",
-        )
-    if settings.audit_store_mode == "sqlalchemy":
-        status_value, detail = _probe_sql_tables(["audit_records"])
-        return StoreRuntimeStatusDescriptor(
-            mode="sqlalchemy",
-            status=status_value,
-            database_configured=bool(settings.database_url),
-            detail=detail,
-        )
-    return StoreRuntimeStatusDescriptor(
-        mode=settings.audit_store_mode,
-        status=RuntimeReadinessStatus.UNAVAILABLE,
-        database_configured=bool(settings.database_url),
-        detail="Configured audit store mode is not supported by lotus-ai.",
+    return _build_store_runtime_status(
+        configured_mode=settings.audit_store_mode,
+        expected_tables=["audit_records"],
+        memory_detail="In-memory audit store is active for local or foundation-phase execution.",
+        unsupported_detail="Configured audit store mode is not supported by lotus-ai.",
     )
 
 
 def get_retrieval_store_runtime_status() -> StoreRuntimeStatusDescriptor:
-    if settings.retrieval_store_mode == "memory":
-        return StoreRuntimeStatusDescriptor(
-            mode="memory",
-            status=RuntimeReadinessStatus.READY,
-            database_configured=bool(settings.database_url),
-            detail="In-memory retrieval metadata store is active for seeded platform catalog behavior.",
-        )
-    if settings.retrieval_store_mode == "sqlalchemy":
-        status_value, detail = _probe_sql_tables(
-            [
-                "retrieval_sources",
-                "retrieval_documents",
-                "retrieval_chunks",
-                "retrieval_index_jobs",
-            ]
-        )
-        return StoreRuntimeStatusDescriptor(
-            mode="sqlalchemy",
-            status=status_value,
-            database_configured=bool(settings.database_url),
-            detail=detail,
-        )
-    return StoreRuntimeStatusDescriptor(
-        mode=settings.retrieval_store_mode,
-        status=RuntimeReadinessStatus.UNAVAILABLE,
-        database_configured=bool(settings.database_url),
-        detail="Configured retrieval store mode is not supported by lotus-ai.",
+    return _build_store_runtime_status(
+        configured_mode=settings.retrieval_store_mode,
+        expected_tables=[
+            "retrieval_sources",
+            "retrieval_documents",
+            "retrieval_chunks",
+            "retrieval_index_jobs",
+        ],
+        memory_detail="In-memory retrieval metadata store is active for seeded platform catalog behavior.",
+        unsupported_detail="Configured retrieval store mode is not supported by lotus-ai.",
     )
 
 
 def get_access_control_store_runtime_status() -> StoreRuntimeStatusDescriptor:
-    if settings.access_control_store_mode == "memory":
-        return StoreRuntimeStatusDescriptor(
-            mode="memory",
-            status=RuntimeReadinessStatus.READY,
-            database_configured=bool(settings.database_url),
-            detail="In-memory caller policy registry is active for foundation-phase access-control development.",
-        )
-    if settings.access_control_store_mode == "sqlalchemy":
-        status_value, detail = _probe_sql_tables(["caller_policies"])
-        return StoreRuntimeStatusDescriptor(
-            mode="sqlalchemy",
-            status=status_value,
-            database_configured=bool(settings.database_url),
-            detail=detail,
-        )
-    return StoreRuntimeStatusDescriptor(
-        mode=settings.access_control_store_mode,
-        status=RuntimeReadinessStatus.UNAVAILABLE,
-        database_configured=bool(settings.database_url),
-        detail="Configured access-control store mode is not supported by lotus-ai.",
+    return _build_store_runtime_status(
+        configured_mode=settings.access_control_store_mode,
+        expected_tables=["caller_policies"],
+        memory_detail="In-memory caller policy registry is active for foundation-phase access-control development.",
+        unsupported_detail="Configured access-control store mode is not supported by lotus-ai.",
     )
 
 
 def get_artifact_store_runtime_status() -> StoreRuntimeStatusDescriptor:
-    if settings.artifact_store_mode == "memory":
+    return _build_store_runtime_status(
+        configured_mode=settings.artifact_store_mode,
+        expected_tables=["artifact_metadata"],
+        memory_detail="In-memory artifact metadata store is active for local or foundation-phase development.",
+        unsupported_detail="Configured artifact metadata store mode is not supported by lotus-ai.",
+    )
+
+
+def get_prompt_store_runtime_status() -> StoreRuntimeStatusDescriptor:
+    return _build_store_runtime_status(
+        configured_mode=settings.prompt_store_mode,
+        expected_tables=[
+            "prompt_definitions",
+            "prompt_definition_versions",
+            "prompt_rollout_state",
+        ],
+        memory_detail="In-memory prompt registry is active for local or foundation-phase prompt selection.",
+        unsupported_detail="Configured prompt store mode is not supported by lotus-ai.",
+    )
+
+
+def get_provider_operations_store_runtime_status() -> StoreRuntimeStatusDescriptor:
+    return _build_store_runtime_status(
+        configured_mode=settings.provider_operations_store_mode,
+        expected_tables=["provider_operations_state", "provider_operations_events"],
+        memory_detail="In-memory provider-operations state is active for local or foundation-phase rollout work.",
+        unsupported_detail="Configured provider-operations store mode is not supported by lotus-ai.",
+    )
+
+
+def get_async_runtime_store_runtime_status() -> StoreRuntimeStatusDescriptor:
+    return _build_store_runtime_status(
+        configured_mode=settings.async_runtime_store_mode,
+        expected_tables=["async_jobs", "async_job_attempts", "async_control_events"],
+        memory_detail="In-memory async runtime state is active for local or foundation-phase async execution.",
+        unsupported_detail="Configured async runtime store mode is not supported by lotus-ai.",
+    )
+
+
+def get_evaluation_runtime_store_runtime_status() -> StoreRuntimeStatusDescriptor:
+    return _build_store_runtime_status(
+        configured_mode=settings.evaluation_runtime_store_mode,
+        expected_tables=[
+            "evaluation_runs",
+            "evaluation_run_attempts",
+            "evaluation_case_results",
+        ],
+        memory_detail="In-memory evaluation runtime state is active for local or foundation-phase runtime evidence.",
+        unsupported_detail="Configured evaluation runtime store mode is not supported by lotus-ai.",
+    )
+
+
+def _build_store_runtime_status(
+    *,
+    configured_mode: str,
+    expected_tables: list[str],
+    memory_detail: str,
+    unsupported_detail: str,
+) -> StoreRuntimeStatusDescriptor:
+    if configured_mode == "memory":
         return StoreRuntimeStatusDescriptor(
             mode="memory",
             status=RuntimeReadinessStatus.READY,
             database_configured=bool(settings.database_url),
-            detail="In-memory artifact metadata store is active for local or foundation-phase development.",
+            detail=memory_detail,
         )
-    if settings.artifact_store_mode == "sqlalchemy":
-        status_value, detail = _probe_sql_tables(["artifact_metadata"])
+    if configured_mode == "sqlalchemy":
+        status_value, detail = _probe_sql_tables(expected_tables)
         return StoreRuntimeStatusDescriptor(
             mode="sqlalchemy",
             status=status_value,
@@ -138,8 +150,8 @@ def get_artifact_store_runtime_status() -> StoreRuntimeStatusDescriptor:
             detail=detail,
         )
     return StoreRuntimeStatusDescriptor(
-        mode=settings.artifact_store_mode,
+        mode=configured_mode,
         status=RuntimeReadinessStatus.UNAVAILABLE,
         database_configured=bool(settings.database_url),
-        detail="Configured artifact metadata store mode is not supported by lotus-ai.",
+        detail=unsupported_detail,
     )

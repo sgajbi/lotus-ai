@@ -1,0 +1,128 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "governance_ready":  false,
+    "activation_readiness":  {
+                                 "service":  "lotus-ai",
+                                 "version":  "0.1.0",
+                                 "prompt_store_mode":  "sqlalchemy",
+                                 "management_mode":  "MIGRATION_MANAGED",
+                                 "activation_ready":  true,
+                                 "blocking_findings":  [
+
+                                                       ],
+                                 "activation_path":  [
+                                                         "Use SQL-backed prompt and evaluation-runtime stores before treating prompt rollout as a restart-safe live control plane.",
+                                                         "Keep promote and rollback actions bounded to durable prompt candidates with explicit operator approval metadata.",
+                                                         "Require `/platform/prompts/evidence-readiness` to report a passing runtime-backed prompt approval gate before promoting a candidate prompt.",
+                                                         "Inspect `/platform/prompts/control-history`, `/platform/prompts/runtime-status`, and prompt-linked audit traces after each prompt control action."
+                                                     ]
+                             },
+    "runbook_readiness":  {
+                              "service":  "lotus-ai",
+                              "version":  "0.1.0",
+                              "runbook_ready":  true,
+                              "required_item_count":  4,
+                              "completed_required_item_count":  4,
+                              "items":  [
+                                            {
+                                                "runbook_id":  "prompt_operational_runbook",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Prompt promotion, rollback, incident review, and audit-inspection procedures are documented in the service operations runbook."
+                                            },
+                                            {
+                                                "runbook_id":  "prompt_change_review_and_approval",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Governed prompt control actions require requested-by, approved-by, and operator reason metadata, and the review flow is now documented."
+                                            },
+                                            {
+                                                "runbook_id":  "prompt_rollback_and_incident_response",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Rollback, regression triage, and incident-response procedures for prompt rollout are documented and aligned with the control-plane action model."
+                                            },
+                                            {
+                                                "runbook_id":  "prompt_observability_and_evidence_pack",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Operators can inspect prompt rollout state, control history, approval evidence, platform runtime posture, and audit traces through documented platform endpoints."
+                                            }
+                                        ]
+                          },
+    "evidence_readiness":  {
+                               "service":  "lotus-ai",
+                               "version":  "0.1.0",
+                               "evidence_ready":  false,
+                               "required_item_count":  4,
+                               "completed_required_item_count":  2,
+                               "items":  [
+                                             {
+                                                 "evidence_id":  "prompt_fixture_coverage_pack",
+                                                 "status":  "READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Prompt promotion and rollback fixture families are staged for runtime-backed execution."
+                                             },
+                                             {
+                                                 "evidence_id":  "prompt_regression_run_baseline",
+                                                 "status":  "FOUNDATION_STAGED",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Prompt Rollout approval posture still relies on staged historical baseline \u0027foundation_eval_2026_03_22_001\u0027."
+                                             },
+                                             {
+                                                 "evidence_id":  "prompt_audit_traceability_pack",
+                                                 "status":  "READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Task responses, audit records, and execution evidence now preserve prompt selection lineage plus latest control-event history."
+                                             },
+                                             {
+                                                 "evidence_id":  "prompt_rollback_evidence_pack",
+                                                 "status":  "NOT_READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Rollback-proof evidence for reverting prompt changes and validating restored runtime behavior is not yet recorded."
+                                             }
+                                         ],
+                               "approval_gate":  {
+                                                     "domain_id":  "prompt_rollout",
+                                                     "domain_label":  "Prompt Rollout",
+                                                     "approval_ready":  false,
+                                                     "evidence_state":  "STAGED_ONLY",
+                                                     "required_fixture_count":  2,
+                                                     "runtime_backed_fixture_count":  0,
+                                                     "latest_runtime_run_id":  null,
+                                                     "latest_runtime_recorded_at":  null,
+                                                     "latest_historical_baseline_run_id":  "foundation_eval_2026_03_22_001",
+                                                     "fixture_summaries":  [
+                                                                               {
+                                                                                   "fixture_id":  "prompt_promotion_examples",
+                                                                                   "latest_runtime_run_id":  null,
+                                                                                   "latest_runtime_recorded_at":  null,
+                                                                                   "latest_runtime_status":  null,
+                                                                                   "latest_runtime_verdict":  null,
+                                                                                   "evidence_state":  "STAGED_ONLY",
+                                                                                   "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                                               },
+                                                                               {
+                                                                                   "fixture_id":  "prompt_rollback_examples",
+                                                                                   "latest_runtime_run_id":  null,
+                                                                                   "latest_runtime_recorded_at":  null,
+                                                                                   "latest_runtime_status":  null,
+                                                                                   "latest_runtime_verdict":  null,
+                                                                                   "evidence_state":  "STAGED_ONLY",
+                                                                                   "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                                               }
+                                                                           ],
+                                                     "notes":  [
+                                                                   "Prompt Rollout approval posture still relies on staged historical baseline \u0027foundation_eval_2026_03_22_001\u0027.",
+                                                                   "Historical artifacts remain visible for continuity, but they do not satisfy current runtime-backed approval requirements."
+                                                               ]
+                                                 }
+                           },
+    "blocking_area_count":  1,
+    "governance_summary":  [
+                               "Prompt technical activation path is ready: bounded promote and rollback actions now run through durable rollout state and control history.",
+                               "Prompt operational runbook readiness is complete for governed promotion, rollback, incident review, and audit inspection procedures.",
+                               "Prompt evidence readiness now uses a runtime-backed approval gate summary derived from governed prompt evaluation runs, currently reporting \u0027STAGED_ONLY\u0027."
+                           ]
+}

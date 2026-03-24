@@ -1,0 +1,215 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "governance_ready":  false,
+    "activation_readiness":  {
+                                 "service":  "lotus-ai",
+                                 "version":  "0.1.0",
+                                 "provider_mode":  "openai",
+                                 "embedding_provider_mode":  "disabled",
+                                 "text_generation_configuration":  {
+                                                                       "rollout_state":  "CANARY_ENABLED",
+                                                                       "configured_live_provider_id":  "text.openai",
+                                                                       "configured_live_model_id":  "gpt-5.4",
+                                                                       "allowlisted_task_ids":  [
+                                                                                                    "explain.v1"
+                                                                                                ],
+                                                                       "credential_status":  "CONFIGURED",
+                                                                       "configuration_valid":  true,
+                                                                       "findings":  [
+                                                                                        "Provider rollout posture is internally consistent for the current foundation phase."
+                                                                                    ]
+                                                                   },
+                                 "activation_ready":  true,
+                                 "blocking_findings":  [
+                                                           "Live-provider activation remains blocked until provider rollout, quota, budget, degradation, and governance controls all remain consistent together."
+                                                       ],
+                                 "activation_path":  [
+                                                         "Review `/platform/providers` and `/platform/providers/policy` to confirm the provider catalog, adapter kind, runtime mode, and selected execution path match the intended rollout posture.",
+                                                         "Review `/platform/providers/quota-policy` to confirm live-provider quota enforcement scope, matching order, and blocking posture before activation expands.",
+                                                         "Review `/platform/providers/budget-policy` to confirm live-provider spend posture, soft-limit signaling, and hard-budget blocking semantics before activation expands.",
+                                                         "Review `/platform/providers/operations-status` to confirm top-level rollout-versus-operations blocking posture in one operator-facing summary before activation expands.",
+                                                         "Review `/platform/providers/control-plane-actions` to confirm recent durable quota, budget, and degradation reset actions are explicit and reviewable before activation expands.",
+                                                         "Verify allowlisted rollout configuration and credential posture through `/platform/providers/activation-readiness` before any live mode is considered.",
+                                                         "Confirm provider evaluation and failure-mode evidence through `/platform/providers/evidence-readiness`.",
+                                                         "Confirm on-call, quota-handling, rollback, and provider incident-review readiness through `/platform/providers/runbook-readiness`.",
+                                                         "Approve activation only when `/platform/providers/governance-status` and the embedded `provider_governance` block in `/platform/runtime-status` both show the same ready-to-activate posture."
+                                                     ]
+                             },
+    "runbook_readiness":  {
+                              "service":  "lotus-ai",
+                              "version":  "0.1.0",
+                              "runbook_ready":  false,
+                              "required_item_count":  7,
+                              "completed_required_item_count":  1,
+                              "items":  [
+                                            {
+                                                "runbook_id":  "provider_operational_runbook",
+                                                "status":  "FOUNDATION_DOCUMENTED",
+                                                "required_for_activation":  true,
+                                                "notes":  "Provider operating model is documented at a foundation level, but live-provider activation steps are not yet finalized. Live-provider rollout is in canary posture. Provider-backed tasks can execute live only when runtime mode requests the live adapter and the task is allowlisted."
+                                            },
+                                            {
+                                                "runbook_id":  "provider_oncall_and_escalation",
+                                                "status":  "NOT_READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "On-call ownership, vendor escalation path, and incident triage playbooks for live provider execution must be defined before activation."
+                                            },
+                                            {
+                                                "runbook_id":  "provider_cost_and_rate_limit_controls",
+                                                "status":  "NOT_READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Runbooks for provider usage limits, rate-limit incidents, and cost-protection responses are not yet documented, including how operators review and reset durable quota state safely through the control-plane action surface."
+                                            },
+                                            {
+                                                "runbook_id":  "provider_spend_anomaly_response",
+                                                "status":  "NOT_READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Runbooks for soft-budget alerts, hard-budget blocks, and spend-anomaly escalation are not yet documented, including how durable spend posture is reviewed and recovered safely through the control-plane action surface."
+                                            },
+                                            {
+                                                "runbook_id":  "provider_incident_response_and_rollback",
+                                                "status":  "NOT_READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Provider incident response, rollback, and safe reversion procedures for live execution are not yet documented."
+                                            },
+                                            {
+                                                "runbook_id":  "provider_degradation_and_circuit_response",
+                                                "status":  "NOT_READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Runbooks for degraded-upstream operation, circuit-open response, cooldown review, and safe re-enable procedures are not yet documented, including durable circuit-state recovery through the control-plane action surface."
+                                            },
+                                            {
+                                                "runbook_id":  "provider_observability_incident_views",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Bounded provider observability and incident-evidence summaries are now exposed through `/platform/observability/provider-summary` and `/platform/observability/incident-summary`; external dashboards remain a deployment concern rather than an RFC-0013 activation gate."
+                                            }
+                                        ]
+                          },
+    "evidence_readiness":  {
+                               "service":  "lotus-ai",
+                               "version":  "0.1.0",
+                               "evidence_ready":  false,
+                               "required_item_count":  8,
+                               "completed_required_item_count":  6,
+                               "items":  [
+                                             {
+                                                 "evidence_id":  "provider_policy_fixture_pack",
+                                                 "status":  "READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Provider policy fixtures cover bounded mode selection and disabled live-provider rejection behavior."
+                                             },
+                                             {
+                                                 "evidence_id":  "provider_runtime_fixture_pack",
+                                                 "status":  "READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Provider runtime fixtures cover success-path control preservation and explicit live-provider rejection posture."
+                                             },
+                                             {
+                                                 "evidence_id":  "provider_failure_mode_fixture_pack",
+                                                 "status":  "READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Provider failure-mode fixtures cover timeout-budget evidence and explicit fallback-or-rejection behavior."
+                                             },
+                                             {
+                                                 "evidence_id":  "provider_operations_fixture_pack",
+                                                 "status":  "READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Provider operations fixtures cover quota-blocked, hard-budget-blocked, and durable budget restart-survival posture."
+                                             },
+                                             {
+                                                 "evidence_id":  "provider_degradation_fixture_pack",
+                                                 "status":  "READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Provider degradation fixtures cover degraded-upstream, circuit-open, and durable cooldown recovery posture."
+                                             },
+                                             {
+                                                 "evidence_id":  "provider_regression_run_baseline",
+                                                 "status":  "READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "A recorded evaluation run proves provider policy, runtime, failure-mode, and durable provider-operations coverage in \u0027foundation_eval_2026_03_22_001\u0027."
+                                             },
+                                             {
+                                                 "evidence_id":  "provider_audit_traceability_pack",
+                                                 "status":  "FOUNDATION_STAGED",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Provider-resolution evidence is emitted in foundation phase, but a live-provider audit traceability pack linking credentials, cost, quota, budget, and degradation review is not yet approved."
+                                             },
+                                             {
+                                                 "evidence_id":  "provider_failover_and_rollback_evidence_pack",
+                                                 "status":  "NOT_READY",
+                                                 "required_for_activation":  true,
+                                                 "notes":  "Failover, rollback, and provider-incident recovery evidence proving safe reversion behavior is not yet documented."
+                                             }
+                                         ],
+                               "approval_gate":  {
+                                                     "domain_id":  "provider_execution",
+                                                     "domain_label":  "Provider Execution",
+                                                     "approval_ready":  false,
+                                                     "evidence_state":  "STAGED_ONLY",
+                                                     "required_fixture_count":  5,
+                                                     "runtime_backed_fixture_count":  0,
+                                                     "latest_runtime_run_id":  null,
+                                                     "latest_runtime_recorded_at":  null,
+                                                     "latest_historical_baseline_run_id":  "foundation_eval_2026_03_22_001",
+                                                     "fixture_summaries":  [
+                                                                               {
+                                                                                   "fixture_id":  "provider_policy_examples",
+                                                                                   "latest_runtime_run_id":  null,
+                                                                                   "latest_runtime_recorded_at":  null,
+                                                                                   "latest_runtime_status":  null,
+                                                                                   "latest_runtime_verdict":  null,
+                                                                                   "evidence_state":  "STAGED_ONLY",
+                                                                                   "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                                               },
+                                                                               {
+                                                                                   "fixture_id":  "provider_runtime_examples",
+                                                                                   "latest_runtime_run_id":  null,
+                                                                                   "latest_runtime_recorded_at":  null,
+                                                                                   "latest_runtime_status":  null,
+                                                                                   "latest_runtime_verdict":  null,
+                                                                                   "evidence_state":  "STAGED_ONLY",
+                                                                                   "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                                               },
+                                                                               {
+                                                                                   "fixture_id":  "provider_failure_mode_examples",
+                                                                                   "latest_runtime_run_id":  null,
+                                                                                   "latest_runtime_recorded_at":  null,
+                                                                                   "latest_runtime_status":  null,
+                                                                                   "latest_runtime_verdict":  null,
+                                                                                   "evidence_state":  "STAGED_ONLY",
+                                                                                   "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                                               },
+                                                                               {
+                                                                                   "fixture_id":  "provider_operations_examples",
+                                                                                   "latest_runtime_run_id":  null,
+                                                                                   "latest_runtime_recorded_at":  null,
+                                                                                   "latest_runtime_status":  null,
+                                                                                   "latest_runtime_verdict":  null,
+                                                                                   "evidence_state":  "STAGED_ONLY",
+                                                                                   "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                                               },
+                                                                               {
+                                                                                   "fixture_id":  "provider_degradation_examples",
+                                                                                   "latest_runtime_run_id":  null,
+                                                                                   "latest_runtime_recorded_at":  null,
+                                                                                   "latest_runtime_status":  null,
+                                                                                   "latest_runtime_verdict":  null,
+                                                                                   "evidence_state":  "STAGED_ONLY",
+                                                                                   "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                                               }
+                                                                           ],
+                                                     "notes":  [
+                                                                   "Provider Execution approval posture still relies on staged historical baseline \u0027foundation_eval_2026_03_22_001\u0027.",
+                                                                   "Historical artifacts remain visible for continuity, but they do not satisfy current runtime-backed approval requirements."
+                                                               ]
+                                                 }
+                           },
+    "blocking_area_count":  2,
+    "governance_summary":  [
+                               "Provider technical activation remains blocked in foundation phase until allowlisted live execution modes and controls are explicitly rolled out.",
+                               "Provider operational runbook readiness remains incomplete until escalation, spend-anomaly, and degradation-response procedures are fully documented and approved.",
+                               "Provider evidence readiness now includes a runtime-backed approval gate summary derived from governed provider evaluation runs, currently reporting \u0027STAGED_ONLY\u0027."
+                           ]
+}

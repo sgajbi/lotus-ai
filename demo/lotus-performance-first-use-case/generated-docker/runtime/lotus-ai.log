@@ -1,0 +1,100 @@
+lotus-ai-1  | INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+lotus-ai-1  | INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+lotus-ai-1  | INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+lotus-ai-1  | INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade  -> 0001_create_audit_records_table
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade  -> 0001_create_audit_records_table
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0001_create_audit_records_table -> 0002_create_retrieval_metadata_tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0001_create_audit_records_table -> 0002_create_retrieval_metadata_tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0002_create_retrieval_metadata_tables -> 0003_create_prompt_definitions_table
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0002_create_retrieval_metadata_tables -> 0003_create_prompt_definitions_table
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0003_create_prompt_definitions_table -> 0004_add_prompt_governance_metadata
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0003_create_prompt_definitions_table -> 0004_add_prompt_governance_metadata
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0004_add_prompt_governance_metadata -> 0005_add_audit_safety_metadata
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0004_add_prompt_governance_metadata -> 0005_add_audit_safety_metadata
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0005_add_audit_safety_metadata -> 0006_add_audit_execution_context_fields, add audit execution context fields
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0005_add_audit_safety_metadata -> 0006_add_audit_execution_context_fields, add audit execution context fields
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0006_add_audit_execution_context_fields -> 0007_add_audit_caller_identity_fields, add audit caller identity fields
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0006_add_audit_execution_context_fields -> 0007_add_audit_caller_identity_fields, add audit caller identity fields
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0007_add_audit_caller_identity_fields -> 0008_enable_catalog_only_retrieval_sources, enable catalog-only retrieval sources
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0007_add_audit_caller_identity_fields -> 0008_enable_catalog_only_retrieval_sources, enable catalog-only retrieval sources
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0008_enable_catalog_only_retrieval_sources -> 0009_add_provider_operations_state_tables, add provider operations state tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0008_enable_catalog_only_retrieval_sources -> 0009_add_provider_operations_state_tables, add provider operations state tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0009_add_provider_operations_state_tables -> 0010_add_provider_operations_events, add provider operations events
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0009_add_provider_operations_state_tables -> 0010_add_provider_operations_events, add provider operations events
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0010_add_provider_operations_events -> 0011_add_async_runtime_state_tables, add async runtime state tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0010_add_provider_operations_events -> 0011_add_async_runtime_state_tables, add async runtime state tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0011_add_async_runtime_state_tables -> 0012_add_async_job_target_id, add async job target id
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0011_add_async_runtime_state_tables -> 0012_add_async_job_target_id, add async job target id
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0012_add_async_job_target_id -> 0013_add_async_control_events, add async control events
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0012_add_async_job_target_id -> 0013_add_async_control_events, add async control events
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0013_add_async_control_events -> 0014_add_evaluation_runtime_state_tables, add evaluation runtime state tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0013_add_async_control_events -> 0014_add_evaluation_runtime_state_tables, add evaluation runtime state tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0014_add_evaluation_runtime_state_tables -> 0015_add_audit_execution_outcome_payload, add audit execution outcome payload
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0014_add_evaluation_runtime_state_tables -> 0015_add_audit_execution_outcome_payload, add audit execution outcome payload
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0015_add_audit_execution_outcome_payload -> 0016_add_prompt_rollout_state_tables, add prompt rollout state tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0015_add_audit_execution_outcome_payload -> 0016_add_prompt_rollout_state_tables, add prompt rollout state tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0016_add_prompt_rollout_state_tables -> 0017_seed_prompt_rollout_candidates, seed prompt rollout candidates
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0016_add_prompt_rollout_state_tables -> 0017_seed_prompt_rollout_candidates, seed prompt rollout candidates
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0017_seed_prompt_rollout_candidates -> 0018_add_audit_prompt_selection_payload, add audit prompt selection payload
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0017_seed_prompt_rollout_candidates -> 0018_add_audit_prompt_selection_payload, add audit prompt selection payload
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0018_add_audit_prompt_selection_payload -> 0019_add_caller_policy_tables, add caller policy tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0018_add_audit_prompt_selection_payload -> 0019_add_caller_policy_tables, add caller policy tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0019_add_caller_policy_tables -> 0020_add_audit_authorization_payload, add audit authorization payload
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0019_add_caller_policy_tables -> 0020_add_audit_authorization_payload, add audit authorization payload
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0020_add_audit_authorization_payload -> 0021_add_control_event_authorization_payloads, add control event authorization payloads
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0020_add_audit_authorization_payload -> 0021_add_control_event_authorization_payloads, add control event authorization payloads
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0021_add_control_event_authorization_payloads -> 0022_add_artifact_metadata_tables, add artifact metadata tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0021_add_control_event_authorization_payloads -> 0022_add_artifact_metadata_tables, add artifact metadata tables
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0022_add_artifact_metadata_tables -> 0023_add_runtime_artifact_refs, add runtime artifact refs
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0022_add_artifact_metadata_tables -> 0023_add_runtime_artifact_refs, add runtime artifact refs
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0023_add_runtime_artifact_refs -> 0024_seed_lotus_performance_caller_policy, seed lotus-performance caller policy
+lotus-ai-1  | INFO  [alembic.runtime.migration] Running upgrade 0023_add_runtime_artifact_refs -> 0024_seed_lotus_performance_caller_policy, seed lotus-performance caller policy
+lotus-ai-1  | INFO:     Started server process [8]
+lotus-ai-1  | INFO:     Waiting for application startup.
+lotus-ai-1  | INFO:     Application startup complete.
+lotus-ai-1  | INFO:     Uvicorn running on http://0.0.0.0:8140 (Press CTRL+C to quit)
+lotus-ai-1  | INFO:     127.0.0.1:38800 - "GET /health/ready HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /health/ready HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /health HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /health/ready HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET / HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /metadata HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/runtime-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/capabilities HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/tasks/runtime-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/access-control/runtime-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/access-control/caller-policies HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/providers HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/retrieval/sources HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/safety/policy HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/prompts/runtime-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/async/runtime-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/artifacts/runtime-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/observability/runtime-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/evals/runtime-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/use-cases/first-production-use-case HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/use-cases/first-production-use-case/readiness HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/use-cases/first-production-use-case/runbook-readiness HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/use-cases/first-production-use-case/governance-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/use-cases/onboarding-template HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "POST /ai/tasks/execute HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /ai/audit/air_8c0c193a0dc74e0694bd77bca814212e HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /ai/audit?caller_app=lotus-performance&limit=20 HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/tasks/execution-summary?limit=20 HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/tasks/evidence-summary?limit=20 HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/observability/incident-summary HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/observability/breakdowns?limit=20 HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/access-control/governance-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/artifacts/governance-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/observability/governance-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/providers/governance-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/retrieval/governance-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/safety/governance-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/prompts/governance-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/async/governance-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "POST /platform/evals/runs/submit HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/evals/runs/evalrun_b9a0a39ce18e HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/use-cases/first-production-use-case/readiness HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/use-cases/first-production-use-case/governance-status HTTP/1.1" 200 OK
+lotus-ai-1  | INFO:     172.19.0.1:59586 - "GET /platform/evals/runs HTTP/1.1" 200 OK

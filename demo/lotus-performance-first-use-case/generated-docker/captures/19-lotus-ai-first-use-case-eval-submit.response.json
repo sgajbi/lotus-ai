@@ -1,0 +1,13 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "delivery_phase":  "foundation",
+    "submission_status":  "ACCEPTED",
+    "fixture_id":  "lotus_performance_first_use_case_examples",
+    "accepted":  true,
+    "run_id":  "evalrun_b9a0a39ce18e",
+    "async_job_id":  "asyncjob_evaluation_execution_3621482544a8",
+    "existing_run_id":  null,
+    "existing_async_job_id":  null,
+    "message":  "Evaluation fixture family \u0027lotus_performance_first_use_case_examples\u0027 is allowlisted for durable runtime-backed submission. The run is queued in evaluation runtime state and linked to a durable async job for the governed async execution path."
+}

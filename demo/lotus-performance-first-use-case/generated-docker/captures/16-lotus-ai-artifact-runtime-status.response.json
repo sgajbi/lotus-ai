@@ -1,0 +1,31 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "metadata_store_mode":  "sqlalchemy",
+    "object_store_mode":  "memory",
+    "metadata_store":  {
+                           "mode":  "sqlalchemy",
+                           "status":  "READY",
+                           "database_configured":  true,
+                           "detail":  "Configured database is reachable and required tables are present."
+                       },
+    "object_store":  {
+                         "mode":  "memory",
+                         "status":  "READY",
+                         "root_configured":  false,
+                         "durable":  false,
+                         "detail":  "In-memory artifact object store is active for local or foundation-phase development."
+                     },
+    "artifact_count":  6,
+    "supported_domains":  [
+                              "evaluation",
+                              "async",
+                              "observability",
+                              "retrieval",
+                              "prompt"
+                          ],
+    "status_summary":  [
+                           "Artifact metadata remains relationally authoritative while payload bytes stay behind a governed object-store seam.",
+                           "Evaluation, async, and observability now emit governed runtime artifact refs while retrieval and prompt remain future consumers."
+                       ]
+}

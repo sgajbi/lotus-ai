@@ -1,0 +1,31 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "phase":  "foundation",
+    "providerMode":  "openai",
+    "retrievalMode":  "disabled",
+    "embeddingProviderMode":  "disabled",
+    "safetyMode":  "documented_only",
+    "promptStoreMode":  "sqlalchemy",
+    "accessControlStoreMode":  "sqlalchemy",
+    "artifactStoreMode":  "sqlalchemy",
+    "artifactObjectStoreMode":  "filesystem",
+    "auditStoreMode":  "sqlalchemy",
+    "retrievalStoreMode":  "sqlalchemy",
+    "startupReadinessPolicy":  "warn",
+    "readinessProbePolicy":  "observe",
+    "capabilityAreas":  [
+                            "llm_gateway",
+                            "async_runtime",
+                            "artifacts",
+                            "provider_catalog",
+                            "prompt_registry",
+                            "access_control",
+                            "retrieval",
+                            "safety",
+                            "task_runtime",
+                            "evals",
+                            "task_apis",
+                            "platform_runtime_status"
+                        ]
+}

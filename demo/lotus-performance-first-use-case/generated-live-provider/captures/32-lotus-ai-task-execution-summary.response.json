@@ -1,0 +1,21 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "sampled_record_limit":  20,
+    "sampled_record_count":  1,
+    "stubbed_execution_count":  0,
+    "non_stubbed_execution_count":  1,
+    "latest_generated_at":  "2026-03-24T11:45:40.420956+00:00",
+    "categories":  [
+                       {
+                           "category":  "explain",
+                           "execution_count":  1
+                       }
+                   ],
+    "provider_modes":  [
+                           {
+                               "provider_mode":  "openai",
+                               "execution_count":  1
+                           }
+                       ]
+}

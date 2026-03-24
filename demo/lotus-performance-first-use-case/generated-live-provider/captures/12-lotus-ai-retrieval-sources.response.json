@@ -1,0 +1,31 @@
+{
+    "service":  "lotus-ai",
+    "retrieval_mode":  "disabled",
+    "vector_store":  "postgresql+pgvector",
+    "sources":  [
+                    {
+                        "source_id":  "lotus-ai-architecture",
+                        "kind":  "ARCHITECTURE",
+                        "enabled":  true,
+                        "description":  "lotus-ai architecture, guides, and service-local design documentation."
+                    },
+                    {
+                        "source_id":  "lotus-openapi-derived",
+                        "kind":  "OPENAPI",
+                        "enabled":  false,
+                        "description":  "OpenAPI-derived documentation and approved schema references."
+                    },
+                    {
+                        "source_id":  "lotus-platform-rfcs",
+                        "kind":  "RFC",
+                        "enabled":  true,
+                        "description":  "Approved Lotus platform RFC documents."
+                    },
+                    {
+                        "source_id":  "lotus-platform-standards",
+                        "kind":  "STANDARD",
+                        "enabled":  false,
+                        "description":  "Approved Lotus standards and governance documents."
+                    }
+                ]
+}

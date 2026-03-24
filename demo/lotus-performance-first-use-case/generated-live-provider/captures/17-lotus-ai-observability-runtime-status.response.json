@@ -1,0 +1,315 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "posture":  "DEGRADED",
+    "freshness":  "CURRENT",
+    "domain_count":  6,
+    "healthy_domain_count":  3,
+    "degraded_domain_count":  3,
+    "unavailable_domain_count":  0,
+    "incident_evidence_supported_domain_count":  6,
+    "domains":  [
+                    {
+                        "domain_id":  "provider",
+                        "posture":  "HEALTHY",
+                        "freshness":  "CURRENT",
+                        "telemetry_sources":  [
+                                                  "provider_operations_status",
+                                                  "correlation_middleware",
+                                                  "prometheus"
+                                              ],
+                        "incident_evidence_supported":  true,
+                        "incident_signal_count":  0,
+                        "breakdown_support":  {
+                                                  "caller_app_supported":  true,
+                                                  "tenant_supported":  true,
+                                                  "capability_supported":  true
+                                              },
+                        "status_summary":  [
+                                               "Provider operations currently report `NORMAL` posture.",
+                                               "Provider incident summaries are grounded in runtime provider operations state rather than runbook-only prose."
+                                           ]
+                    },
+                    {
+                        "domain_id":  "retrieval",
+                        "posture":  "DEGRADED",
+                        "freshness":  "CURRENT",
+                        "telemetry_sources":  [
+                                                  "retrieval_execution_status",
+                                                  "retrieval_activation_readiness",
+                                                  "correlation_middleware",
+                                                  "prometheus"
+                                              ],
+                        "incident_evidence_supported":  true,
+                        "incident_signal_count":  5,
+                        "breakdown_support":  {
+                                                  "caller_app_supported":  true,
+                                                  "tenant_supported":  true,
+                                                  "capability_supported":  true
+                                              },
+                        "status_summary":  [
+                                               "Live retrieval search remains disabled, but runtime-backed retrieval indexing is enabled for allowlisted async jobs.",
+                                               "Retrieval incident summaries are grounded in searchable-corpus, evidence, and activation state."
+                                           ]
+                    },
+                    {
+                        "domain_id":  "async",
+                        "posture":  "HEALTHY",
+                        "freshness":  "CURRENT",
+                        "telemetry_sources":  [
+                                                  "async_runtime_status",
+                                                  "async_delivery_queue",
+                                                  "prometheus"
+                                              ],
+                        "incident_evidence_supported":  true,
+                        "incident_signal_count":  0,
+                        "breakdown_support":  {
+                                                  "caller_app_supported":  true,
+                                                  "tenant_supported":  false,
+                                                  "capability_supported":  true
+                                              },
+                        "status_summary":  [
+                                               "Async job truth remains durable in the service database for the allowlisted job types. The current cutover state exposes whether managed queue delivery is disabled, running in shadow mode, serving a dedicated worker fleet, or operating in an explicit degraded fallback.",
+                                               "Async incident summaries are grounded in queue backlog, worker identity, and degraded-fallback state."
+                                           ]
+                    },
+                    {
+                        "domain_id":  "evaluation",
+                        "posture":  "DEGRADED",
+                        "freshness":  "CURRENT",
+                        "telemetry_sources":  [
+                                                  "evaluation_runtime_status",
+                                                  "evaluation_runtime_store"
+                                              ],
+                        "incident_evidence_supported":  true,
+                        "incident_signal_count":  5,
+                        "breakdown_support":  {
+                                                  "caller_app_supported":  true,
+                                                  "tenant_supported":  false,
+                                                  "capability_supported":  true
+                                              },
+                        "status_summary":  [
+                                               "Allowlisted evaluation families now run through the durable async backbone with persisted attempts, replay-safe case-result history, and runtime-backed approval-gate summaries.",
+                                               "Evaluation incident summaries are grounded in runtime-backed approval-gate and run history."
+                                           ]
+                    },
+                    {
+                        "domain_id":  "prompt",
+                        "posture":  "HEALTHY",
+                        "freshness":  "CURRENT",
+                        "telemetry_sources":  [
+                                                  "prompt_runtime_status",
+                                                  "prompt_governance_status",
+                                                  "prompt_control_history"
+                                              ],
+                        "incident_evidence_supported":  true,
+                        "incident_signal_count":  1,
+                        "breakdown_support":  {
+                                                  "caller_app_supported":  true,
+                                                  "tenant_supported":  false,
+                                                  "capability_supported":  true
+                                              },
+                        "status_summary":  [
+                                               "Prompt observability now reuses rollout state, control history, and approval evidence posture.",
+                                               "Prompt incident summaries are grounded in blocked activation findings and rollback-ready durable control history."
+                                           ]
+                    },
+                    {
+                        "domain_id":  "safety",
+                        "posture":  "DEGRADED",
+                        "freshness":  "CURRENT",
+                        "telemetry_sources":  [
+                                                  "safety_runtime_status",
+                                                  "safety_governance_status",
+                                                  "audit_repository",
+                                                  "execution_evidence"
+                                              ],
+                        "incident_evidence_supported":  true,
+                        "incident_signal_count":  3,
+                        "breakdown_support":  {
+                                                  "caller_app_supported":  true,
+                                                  "tenant_supported":  true,
+                                                  "capability_supported":  true
+                                              },
+                        "status_summary":  [
+                                               "Safety observability reuses runtime enforcement posture, audit-backed evidence, and governed approval readiness.",
+                                               "Safety incident summaries are grounded in blocked, degraded, and documented-only enforcement posture rather than policy prose alone."
+                                           ]
+                    }
+                ],
+    "incident_evidence_items":  [
+                                    {
+                                        "domain_id":  "provider",
+                                        "evidence_id":  "provider_operations_incident_state",
+                                        "posture":  "HEALTHY",
+                                        "freshness":  "CURRENT",
+                                        "durable":  true,
+                                        "artifact_refs":  [
+                                                              {
+                                                                  "artifact_id":  "artifact_observability_80eda8e7374e42f2",
+                                                                  "domain":  "observability",
+                                                                  "artifact_type":  "incident_bundle",
+                                                                  "source_object_kind":  "observability_domain_summary",
+                                                                  "source_object_id":  "provider",
+                                                                  "lifecycle_status":  "runtime_generated",
+                                                                  "retention_posture":  "retained_for_review",
+                                                                  "media_type":  "application/json",
+                                                                  "byte_size":  1118,
+                                                                  "checksum_sha256":  "2f1cc0253897be3892f1d935602120681861b30306638073bd34a89cf7e15b5a",
+                                                                  "storage_backend":  "filesystem",
+                                                                  "storage_reference":  "filesystem://observability/observability_domain_summary/provider/artifact_observability_80eda8e7374e42f2.json",
+                                                                  "lineage_parent_artifact_id":  null,
+                                                                  "superseded_by_artifact_id":  null,
+                                                                  "created_at":  "2026-03-24T11:45:39.342575Z",
+                                                                  "created_by":  "observability_runtime"
+                                                              }
+                                                          ],
+                                        "summary":  "Provider operations state captures rollout, quota, budget, and degradation findings for current incident review."
+                                    },
+                                    {
+                                        "domain_id":  "retrieval",
+                                        "evidence_id":  "retrieval_live_search_activation_state",
+                                        "posture":  "DEGRADED",
+                                        "freshness":  "CURRENT",
+                                        "durable":  true,
+                                        "artifact_refs":  [
+                                                              {
+                                                                  "artifact_id":  "artifact_observability_23f306b799eb4c27",
+                                                                  "domain":  "observability",
+                                                                  "artifact_type":  "incident_bundle",
+                                                                  "source_object_kind":  "observability_domain_summary",
+                                                                  "source_object_id":  "retrieval",
+                                                                  "lifecycle_status":  "runtime_generated",
+                                                                  "retention_posture":  "retained_for_review",
+                                                                  "media_type":  "application/json",
+                                                                  "byte_size":  1343,
+                                                                  "checksum_sha256":  "4625467f7441a27f86f123599dc393d2703e11e357f9af9b2c7d7d4c1409c4bf",
+                                                                  "storage_backend":  "filesystem",
+                                                                  "storage_reference":  "filesystem://observability/observability_domain_summary/retrieval/artifact_observability_23f306b799eb4c27.json",
+                                                                  "lineage_parent_artifact_id":  null,
+                                                                  "superseded_by_artifact_id":  null,
+                                                                  "created_at":  "2026-03-24T11:45:39.370095Z",
+                                                                  "created_by":  "observability_runtime"
+                                                              }
+                                                          ],
+                                        "summary":  "Retrieval activation state captures searchable corpus, reindex, rollback, and evidence blockers for current incident review."
+                                    },
+                                    {
+                                        "domain_id":  "async",
+                                        "evidence_id":  "async_worker_fleet_state",
+                                        "posture":  "HEALTHY",
+                                        "freshness":  "CURRENT",
+                                        "durable":  true,
+                                        "artifact_refs":  [
+                                                              {
+                                                                  "artifact_id":  "artifact_observability_545804a216b043f8",
+                                                                  "domain":  "observability",
+                                                                  "artifact_type":  "incident_bundle",
+                                                                  "source_object_kind":  "observability_domain_summary",
+                                                                  "source_object_id":  "async",
+                                                                  "lifecycle_status":  "runtime_generated",
+                                                                  "retention_posture":  "retained_for_review",
+                                                                  "media_type":  "application/json",
+                                                                  "byte_size":  1530,
+                                                                  "checksum_sha256":  "1d87315af0db24927ea9ac46d547a17b03c722d8493dbfec7c491491b4852eff",
+                                                                  "storage_backend":  "filesystem",
+                                                                  "storage_reference":  "filesystem://observability/observability_domain_summary/async/artifact_observability_545804a216b043f8.json",
+                                                                  "lineage_parent_artifact_id":  null,
+                                                                  "superseded_by_artifact_id":  null,
+                                                                  "created_at":  "2026-03-24T11:45:39.432026Z",
+                                                                  "created_by":  "observability_runtime"
+                                                              }
+                                                          ],
+                                        "summary":  "Async worker-fleet state captures queue backlog, worker visibility, drain mode, and explicit degraded fallback."
+                                    },
+                                    {
+                                        "domain_id":  "evaluation",
+                                        "evidence_id":  "evaluation_approval_gate_state",
+                                        "posture":  "DEGRADED",
+                                        "freshness":  "CURRENT",
+                                        "durable":  true,
+                                        "artifact_refs":  [
+                                                              {
+                                                                  "artifact_id":  "artifact_observability_a52b4aa9d4f54e35",
+                                                                  "domain":  "observability",
+                                                                  "artifact_type":  "incident_bundle",
+                                                                  "source_object_kind":  "observability_domain_summary",
+                                                                  "source_object_id":  "evaluation",
+                                                                  "lifecycle_status":  "runtime_generated",
+                                                                  "retention_posture":  "retained_for_review",
+                                                                  "media_type":  "application/json",
+                                                                  "byte_size":  1389,
+                                                                  "checksum_sha256":  "8db991943d67106d5cda0f3fa95952b8c793b127c03def96c2ce8342da438201",
+                                                                  "storage_backend":  "filesystem",
+                                                                  "storage_reference":  "filesystem://observability/observability_domain_summary/evaluation/artifact_observability_a52b4aa9d4f54e35.json",
+                                                                  "lineage_parent_artifact_id":  null,
+                                                                  "superseded_by_artifact_id":  null,
+                                                                  "created_at":  "2026-03-24T11:45:39.452004Z",
+                                                                  "created_by":  "observability_runtime"
+                                                              }
+                                                          ],
+                                        "summary":  "Evaluation runtime status captures approval-gate freshness, partial evidence, and failing runtime verdict posture."
+                                    },
+                                    {
+                                        "domain_id":  "prompt",
+                                        "evidence_id":  "prompt_rollout_approval_state",
+                                        "posture":  "HEALTHY",
+                                        "freshness":  "CURRENT",
+                                        "durable":  true,
+                                        "artifact_refs":  [
+                                                              {
+                                                                  "artifact_id":  "artifact_observability_b0e2f7fd51ab488c",
+                                                                  "domain":  "observability",
+                                                                  "artifact_type":  "incident_bundle",
+                                                                  "source_object_kind":  "observability_domain_summary",
+                                                                  "source_object_id":  "prompt",
+                                                                  "lifecycle_status":  "runtime_generated",
+                                                                  "retention_posture":  "retained_for_review",
+                                                                  "media_type":  "application/json",
+                                                                  "byte_size":  1273,
+                                                                  "checksum_sha256":  "482e4d22ed1b92a97ad7543c3eee9194ca1140a7f0ad93325d53cd6ff8a404f9",
+                                                                  "storage_backend":  "filesystem",
+                                                                  "storage_reference":  "filesystem://observability/observability_domain_summary/prompt/artifact_observability_b0e2f7fd51ab488c.json",
+                                                                  "lineage_parent_artifact_id":  null,
+                                                                  "superseded_by_artifact_id":  null,
+                                                                  "created_at":  "2026-03-24T11:45:39.479309Z",
+                                                                  "created_by":  "observability_runtime"
+                                                              }
+                                                          ],
+                                        "summary":  "Prompt rollout incident evidence captures blocked promotions, rollback lineage, and runtime-backed approval-gate posture."
+                                    },
+                                    {
+                                        "domain_id":  "safety",
+                                        "evidence_id":  "safety_runtime_enforcement_state",
+                                        "posture":  "DEGRADED",
+                                        "freshness":  "CURRENT",
+                                        "durable":  true,
+                                        "artifact_refs":  [
+                                                              {
+                                                                  "artifact_id":  "artifact_observability_53ebf73e522c499c",
+                                                                  "domain":  "observability",
+                                                                  "artifact_type":  "incident_bundle",
+                                                                  "source_object_kind":  "observability_domain_summary",
+                                                                  "source_object_id":  "safety",
+                                                                  "lifecycle_status":  "runtime_generated",
+                                                                  "retention_posture":  "retained_for_review",
+                                                                  "media_type":  "application/json",
+                                                                  "byte_size":  1373,
+                                                                  "checksum_sha256":  "3935385860a2bd02b974893ffd6ff412e8c38054f0ec8cf13d567d0a0d71d394",
+                                                                  "storage_backend":  "filesystem",
+                                                                  "storage_reference":  "filesystem://observability/observability_domain_summary/safety/artifact_observability_53ebf73e522c499c.json",
+                                                                  "lineage_parent_artifact_id":  null,
+                                                                  "superseded_by_artifact_id":  null,
+                                                                  "created_at":  "2026-03-24T11:45:39.495826Z",
+                                                                  "created_by":  "observability_runtime"
+                                                              }
+                                                          ],
+                                        "summary":  "Safety incident evidence captures runtime enforcement disposition plus durable audit and execution-evidence traceability."
+                                    }
+                                ],
+    "status_summary":  [
+                           "Observability runtime currently summarizes 6 governed domains through bounded in-service contracts.",
+                           "3 domain(s) currently report degraded observability posture because the underlying governed runtime or evidence state is degraded.",
+                           "6 domain(s) already expose bounded incident evidence."
+                       ]
+}

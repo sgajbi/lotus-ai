@@ -1,0 +1,56 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "phase":  "foundation",
+    "tasks":  [
+                  {
+                      "task_id":  "explain.v1",
+                      "category":  "explain",
+                      "enabled":  true,
+                      "output_label":  "EXPLANATION_ONLY",
+                      "description":  "Explain structured Lotus domain outputs in plain English."
+                  },
+                  {
+                      "task_id":  "summarize.v1",
+                      "category":  "summarize",
+                      "enabled":  true,
+                      "output_label":  "DRAFT",
+                      "description":  "Summarize structured inputs into concise, governed narrative output."
+                  },
+                  {
+                      "task_id":  "classify.v1",
+                      "category":  "classify",
+                      "enabled":  true,
+                      "output_label":  "CLASSIFICATION",
+                      "description":  "Classify structured content into bounded output categories."
+                  },
+                  {
+                      "task_id":  "extract.v1",
+                      "category":  "extract",
+                      "enabled":  true,
+                      "output_label":  "DRAFT",
+                      "description":  "Extract structured fields from caller-provided content."
+                  },
+                  {
+                      "task_id":  "generate_structured.v1",
+                      "category":  "generate_structured",
+                      "enabled":  true,
+                      "output_label":  "DRAFT",
+                      "description":  "Generate schema-bound structured output from curated context."
+                  },
+                  {
+                      "task_id":  "knowledge_search.v1",
+                      "category":  "knowledge_search",
+                      "enabled":  true,
+                      "output_label":  "RETRIEVAL_ANSWER",
+                      "description":  "Search approved Lotus knowledge sources with source attribution."
+                  },
+                  {
+                      "task_id":  "knowledge_answer.v1",
+                      "category":  "knowledge_answer",
+                      "enabled":  true,
+                      "output_label":  "RETRIEVAL_ANSWER",
+                      "description":  "Answer questions from approved Lotus knowledge sources with citations."
+                  }
+              ]
+}

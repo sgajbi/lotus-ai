@@ -1,0 +1,32 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "metadata_store_mode":  "sqlalchemy",
+    "object_store_mode":  "filesystem",
+    "metadata_store":  {
+                           "mode":  "sqlalchemy",
+                           "status":  "READY",
+                           "database_configured":  true,
+                           "detail":  "Configured database is reachable and required tables are present."
+                       },
+    "object_store":  {
+                         "mode":  "filesystem",
+                         "status":  "READY",
+                         "root_configured":  true,
+                         "durable":  true,
+                         "detail":  "Filesystem-backed artifact payload storage is configured behind the governed object-store seam."
+                     },
+    "artifact_count":  6,
+    "supported_domains":  [
+                              "evaluation",
+                              "async",
+                              "observability",
+                              "retrieval",
+                              "prompt"
+                          ],
+    "status_summary":  [
+                           "Artifact metadata remains relationally authoritative while payload bytes stay behind a governed object-store seam.",
+                           "Evaluation, async, and observability now emit governed runtime artifact refs while retrieval and prompt remain future consumers.",
+                           "Filesystem payload storage is active as a clearly labeled local or development fallback, not a production object-store posture."
+                       ]
+}
