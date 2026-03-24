@@ -151,11 +151,12 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     settings.evaluation_runtime_store_mode = "sqlalchemy"
     settings.artifact_store_mode = "sqlalchemy"
     settings.artifact_object_store_mode = "filesystem"
-    settings.artifact_object_store_root = "/data/object-store"
+    settings.artifact_object_store_root = str(tmp_path / "object-store")
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
     upgrade_database_to_head(settings.database_url)
+    reset_artifact_store_cache()
     queue = get_test_async_delivery_queue()
     ready_store = StoreRuntimeStatusDescriptor(
         mode="sqlalchemy",
