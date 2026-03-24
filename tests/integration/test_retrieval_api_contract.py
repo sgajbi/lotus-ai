@@ -132,7 +132,9 @@ def test_retrieval_ingestion_job_submit_async_route(client: TestClient) -> None:
     assert body["target_id"] == "ingjob_lotus_platform_rfcs_refresh_0069"
 
 
-def test_retrieval_ingestion_job_detail_reflects_runtime_backed_completion(client: TestClient) -> None:
+def test_retrieval_ingestion_job_detail_reflects_runtime_backed_completion(
+    client: TestClient,
+) -> None:
     submit_response = client.post(
         "/platform/retrieval/ingestion-jobs/ingjob_lotus_platform_rfcs_refresh_0069/submit-async",
         params={

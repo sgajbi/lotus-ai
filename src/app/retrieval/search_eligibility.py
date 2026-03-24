@@ -57,7 +57,10 @@ def build_document_eligibility(
             RetrievalIngestionJobStatus.RUNNING,
         }
     )
-    if latest_version is not None and latest_version.lifecycle_status == RetrievalDocumentVersionLifecycleStatus.WITHDRAWN:
+    if (
+        latest_version is not None
+        and latest_version.lifecycle_status == RetrievalDocumentVersionLifecycleStatus.WITHDRAWN
+    ):
         return RetrievalDocumentEligibility(
             governance_status="WITHDRAWN",
             search_enabled=False,

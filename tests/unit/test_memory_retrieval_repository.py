@@ -35,6 +35,7 @@ def test_memory_retrieval_repository_returns_none_or_empty_for_unknown_records()
     assert repository.get_source("missing-source") is None
     assert repository.get_document("missing-document") is None
     assert repository.get_index_job("missing-job") is None
+    assert repository.get_ingestion_job("missing-job") is None
     assert repository.list_documents_for_source("missing-source") == []
     assert repository.list_chunks_for_document("missing-document") == []
 
@@ -101,7 +102,9 @@ def test_memory_retrieval_repository_updates_document_and_chunk_index_status() -
     assert all(chunk.index_status == "INDEXED" for chunk in chunks)
 
 
-def test_memory_retrieval_repository_persists_document_version_and_ingestion_job_overrides() -> None:
+def test_memory_retrieval_repository_persists_document_version_and_ingestion_job_overrides() -> (
+    None
+):
     repository = InMemoryRetrievalRepository()
 
     repository.save_document_version(
@@ -165,6 +168,22 @@ def test_memory_retrieval_repository_excludes_staged_chunks_from_live_search() -
 
     hits = repository.search_indexed_chunks(
         query="shared ai platform service",
+        source_ids=["lotus-platform-rfcs"],
+        limit=5,
+    )
+
+    assert hits == []
+
+
+def test_memory_retrieval_repository_returns_no_hits_for_unmatched_indexed_query() -> None:
+    repository = InMemoryRetrievalRepository()
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+
+    hits = repository.search_indexed_chunks(
+        query="zzzxqv unmatched phrase",
         source_ids=["lotus-platform-rfcs"],
         limit=5,
     )

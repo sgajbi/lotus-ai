@@ -83,7 +83,9 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
         )
         for job in jobs[:10]
     ]
-    artifact_backed_job_count = sum(1 for job in jobs if load_retrieval_ingestion_artifact_refs(job_id=job.job_id))
+    artifact_backed_job_count = sum(
+        1 for job in jobs if load_retrieval_ingestion_artifact_refs(job_id=job.job_id)
+    )
 
     findings = [
         "Durable ingestion job and document-version state is now present for governed corpus lineage review.",

@@ -12,9 +12,12 @@ def build_retrieval_governance_status() -> RetrievalGovernanceStatusResponse:
     activation_readiness = build_retrieval_activation_readiness()
     runbook_readiness = build_retrieval_runbook_readiness()
     evidence_readiness = build_retrieval_evidence_readiness()
-    corpus_change_review_ready = (
-        any(item.runbook_id == "retrieval_corpus_change_review" and item.status == "READY" for item in runbook_readiness.items)
-        and any(item.evidence_id == "retrieval_corpus_change_evidence_pack" and item.status == "READY" for item in evidence_readiness.items)
+    corpus_change_review_ready = any(
+        item.runbook_id == "retrieval_corpus_change_review" and item.status == "READY"
+        for item in runbook_readiness.items
+    ) and any(
+        item.evidence_id == "retrieval_corpus_change_evidence_pack" and item.status == "READY"
+        for item in evidence_readiness.items
     )
     governance_ready, blocking_area_count = summarize_governance_flags(
         activation_readiness.activation_ready,

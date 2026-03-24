@@ -188,7 +188,8 @@ class SqlAlchemyRetrievalRepository(SqlAlchemyRepositoryBase):
                     document=document_descriptor,
                     chunk=chunk_descriptor,
                     document_versions=[
-                        self._to_document_version_descriptor(version) for version in document_versions
+                        self._to_document_version_descriptor(version)
+                        for version in document_versions
                     ],
                     ingestion_jobs=[
                         self._to_ingestion_job_descriptor(job) for job in ingestion_jobs

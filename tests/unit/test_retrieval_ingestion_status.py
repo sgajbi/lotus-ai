@@ -1,3 +1,5 @@
+from _pytest.monkeypatch import MonkeyPatch
+
 from app.config import settings
 from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.services.retrieval_ingestion_status import build_retrieval_ingestion_status
@@ -23,7 +25,7 @@ def test_retrieval_ingestion_status_reports_durable_lineage_state() -> None:
 
 
 def test_retrieval_ingestion_status_reports_catalog_only_when_store_is_unavailable(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         "app.services.retrieval_ingestion_status.get_retrieval_store_runtime_status",
@@ -67,7 +69,7 @@ def test_retrieval_ingestion_status_reports_artifact_backed_runtime_diagnostics(
 
 
 def test_retrieval_ingestion_status_degrades_when_artifact_review_path_is_not_ready(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         "app.services.retrieval_ingestion_status.build_artifact_runtime_status",
@@ -92,4 +94,48 @@ def test_retrieval_ingestion_status_degrades_when_artifact_review_path_is_not_re
     status = build_retrieval_ingestion_status()
 
     assert status.ingestion_delivery_stage == "RUNTIME_CONVERGED"
-    assert any("artifact-backed corpus-change diagnostics" in finding for finding in status.runtime_findings)
+    assert any(
+        "artifact-backed corpus-change diagnostics" in finding
+        for finding in status.runtime_findings
+    )
+
+
+def test_retrieval_ingestion_status_reports_durable_state_when_async_execution_is_disabled(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.retrieval_ingestion_status.get_async_job_type_descriptor",
+        lambda job_type: None,
+    )
+
+    status = build_retrieval_ingestion_status()
+
+    assert status.ingestion_delivery_stage == "DURABLE_STATE_READY"
+    assert any(
+        "Live ingestion execution remains disabled" in finding
+        for finding in status.runtime_findings
+    )
+
+
+def test_retrieval_ingestion_status_reports_failed_terminal_jobs() -> None:
+    from app.services.async_submission_service import submit_async_job
+    from app.contracts.async_runtime import AsyncJobSubmissionRequest
+    from app.services.retrieval_ingestion_async_execution import (
+        run_next_retrieval_ingestion_job,
+    )
+
+    submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="document_ingestion",
+            target_id="ingjob_lotus_openapi_onboard_pending",
+            caller_app="lotus-platform",
+            correlation_id="corr-ret-ingestion-status-failed-001",
+            payload_summary="failed ingestion status review",
+        )
+    )
+    run_next_retrieval_ingestion_job(worker_id="worker-a")
+
+    status = build_retrieval_ingestion_status()
+
+    assert status.failed_ingestion_job_count >= 1
+    assert any("failed terminal posture" in finding for finding in status.runtime_findings)

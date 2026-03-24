@@ -178,7 +178,10 @@ def _validate_async_job_target(*, request: AsyncJobSubmissionRequest) -> None:
 def _find_active_duplicate_submission(
     *, request: AsyncJobSubmissionRequest
 ) -> AsyncRuntimeJobRecord | None:
-    if request.job_type not in {"retrieval_indexing", "document_ingestion"} or request.target_id is None:
+    if (
+        request.job_type not in {"retrieval_indexing", "document_ingestion"}
+        or request.target_id is None
+    ):
         return None
     active_statuses = {
         AsyncJobStatus.QUEUED.value,

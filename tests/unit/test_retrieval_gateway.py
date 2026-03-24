@@ -1,113 +1,128 @@
-import pytest
-
 from app.config import settings
-from app.contracts.retrieval import RetrievalExecutionRequest
+from app.contracts.retrieval import (
+    RetrievalDocumentGovernanceResponse,
+    RetrievalExecutionRequest,
+)
 from app.repositories.memory_retrieval_repository import InMemoryRetrievalRepository
-from app.services.retrieval_gateway import build_catalog_only_hit, execute_retrieval_search
+from app.services.retrieval_gateway import (
+    _build_catalog_only_hits,
+    _build_live_search_unavailable_message,
+    execute_retrieval_search,
+)
 
 
-def test_execute_retrieval_search_returns_catalog_only_hits_when_disabled() -> None:
-    response = execute_retrieval_search(
-        RetrievalExecutionRequest(
-            query="shared ai platform service",
-            caller_app="lotus-workbench",
-            correlation_id="corr-ret-gw-1",
-            source_ids=[],
-            limit=5,
-        )
+def test_build_catalog_only_hits_returns_empty_when_no_sources_are_enabled() -> None:
+    repository = InMemoryRetrievalRepository()
+    request = RetrievalExecutionRequest(
+        query="shared ai platform service",
+        caller_app="lotus-workbench",
+        correlation_id="corr-ret-gateway-no-source",
+        source_ids=["lotus-platform-standards"],
     )
 
-    assert response.status == "READY"
-    assert response.execution_stage == "CATALOG_ONLY"
-    assert response.vector_store == "postgresql+pgvector"
-    assert response.hits
-    assert response.hits[0].source_id in {"lotus-platform-rfcs", "lotus-ai-architecture"}
-    assert response.hits[0].document_id
-    assert response.hits[0].chunk_id
+    hits = _build_catalog_only_hits(request, repository=repository)
+
+    assert hits == []
 
 
-def test_execute_retrieval_search_returns_live_hits_when_enabled() -> None:
+def test_execute_retrieval_search_returns_live_ready_with_no_matching_hits() -> None:
     settings.retrieval_mode = "enabled"
     repository = InMemoryRetrievalRepository()
     repository.set_source_index_status(
         source_id="lotus-platform-rfcs",
         index_status="INDEXED",
     )
-
-    with pytest.MonkeyPatch.context() as monkeypatch:
-        monkeypatch.setattr(
-            "app.services.retrieval_gateway.get_retrieval_repository",
-            lambda: repository,
-        )
-        monkeypatch.setattr(
-            "app.retrieval.document_governance.get_retrieval_repository",
-            lambda: repository,
-        )
-        response = execute_retrieval_search(
-            RetrievalExecutionRequest(
-                query="shared ai platform service",
-                caller_app="lotus-workbench",
-                correlation_id="corr-ret-gw-2",
-                source_ids=["lotus-platform-rfcs"],
-                limit=5,
-            )
-        )
-
-    assert response.status == "READY"
-    assert response.execution_stage == "LIVE_SEARCH"
-    assert response.hits
-    assert response.hits[0].source_id == "lotus-platform-rfcs"
-    assert response.hits[0].document_id == "lotus-platform-rfc-0069"
-    assert response.hits[0].chunk_id == "chunk_rfc_0069_0001"
-    assert "Live retrieval search executed" in response.message
-
-    settings.retrieval_mode = "disabled"
-
-
-def test_execute_retrieval_search_rejects_live_requests_when_searchable_corpus_is_unavailable() -> (
-    None
-):
-    settings.retrieval_mode = "enabled"
-    repository = InMemoryRetrievalRepository()
-
-    with pytest.MonkeyPatch.context() as monkeypatch:
-        monkeypatch.setattr(
-            "app.services.retrieval_gateway.get_retrieval_repository",
-            lambda: repository,
-        )
-        monkeypatch.setattr(
-            "app.retrieval.document_governance.get_retrieval_repository",
-            lambda: repository,
-        )
-        response = execute_retrieval_search(
-            RetrievalExecutionRequest(
-                query="shared ai platform service",
-                caller_app="lotus-workbench",
-                correlation_id="corr-ret-gw-3",
-                source_ids=["lotus-platform-rfcs"],
-                limit=5,
-            )
-        )
-
-    assert response.status == "REJECTED"
-    assert response.execution_stage == "INDEXING_DISABLED"
-    assert response.hits == []
-    assert "indexing is still pending" in response.message
-
-    settings.retrieval_mode = "disabled"
-
-
-def test_build_catalog_only_hit_returns_zero_scored_catalog_hit() -> None:
-    hit = build_catalog_only_hit(
-        source_id="lotus-platform-rfcs",
-        document_id="lotus-platform-rfc-0069",
-        chunk_id="chunk_rfc_0069_0001",
-        snippet="RFC-0069 introduces lotus-ai.",
-        score=0.0,
+    request = RetrievalExecutionRequest(
+        query="zzzxqv unmatched phrase",
+        caller_app="lotus-workbench",
+        correlation_id="corr-ret-gateway-no-hit",
+        source_ids=["lotus-platform-rfcs"],
     )
 
-    assert hit.source_id == "lotus-platform-rfcs"
-    assert hit.document_id == "lotus-platform-rfc-0069"
-    assert hit.chunk_id == "chunk_rfc_0069_0001"
-    assert hit.score == 0.0
-    assert "lotus-ai" in hit.snippet
+    try:
+        from unittest.mock import patch
+
+        with patch(
+            "app.services.retrieval_gateway.get_retrieval_repository", return_value=repository
+        ):
+            response = execute_retrieval_search(request)
+    finally:
+        settings.retrieval_mode = "disabled"
+
+    assert response.execution_stage == "LIVE_SEARCH"
+    assert response.hits == []
+    assert "returned no matching hits" in response.message
+
+
+def test_build_live_search_unavailable_message_covers_remaining_blocker_shapes() -> None:
+    assert (
+        _build_live_search_unavailable_message(
+            document_governance=RetrievalDocumentGovernanceResponse(
+                service="lotus-ai",
+                retrieval_mode="enabled",
+                vector_store="postgresql+pgvector",
+                searchable_document_count=1,
+                index_pending_document_count=0,
+                blocked_document_count=0,
+                refresh_pending_document_count=0,
+                withdrawn_document_count=0,
+                documents=[],
+            )
+        )
+        == "Live retrieval search is available."
+    )
+    assert "corpus refresh work is still in flight" in _build_live_search_unavailable_message(
+        document_governance=RetrievalDocumentGovernanceResponse(
+            service="lotus-ai",
+            retrieval_mode="enabled",
+            vector_store="postgresql+pgvector",
+            searchable_document_count=0,
+            index_pending_document_count=0,
+            blocked_document_count=0,
+            refresh_pending_document_count=1,
+            withdrawn_document_count=0,
+            documents=[],
+        )
+    )
+    assert "latest governed corpus lineage is withdrawn" in _build_live_search_unavailable_message(
+        document_governance=RetrievalDocumentGovernanceResponse(
+            service="lotus-ai",
+            retrieval_mode="enabled",
+            vector_store="postgresql+pgvector",
+            searchable_document_count=0,
+            index_pending_document_count=0,
+            blocked_document_count=0,
+            refresh_pending_document_count=0,
+            withdrawn_document_count=1,
+            documents=[],
+        )
+    )
+    assert "rolled back or blocked by source posture" in _build_live_search_unavailable_message(
+        document_governance=RetrievalDocumentGovernanceResponse(
+            service="lotus-ai",
+            retrieval_mode="enabled",
+            vector_store="postgresql+pgvector",
+            searchable_document_count=0,
+            index_pending_document_count=0,
+            blocked_document_count=1,
+            refresh_pending_document_count=0,
+            withdrawn_document_count=0,
+            documents=[],
+        )
+    )
+    assert (
+        "no promoted indexed corpus content is registered"
+        in _build_live_search_unavailable_message(
+            document_governance=RetrievalDocumentGovernanceResponse(
+                service="lotus-ai",
+                retrieval_mode="enabled",
+                vector_store="postgresql+pgvector",
+                searchable_document_count=0,
+                index_pending_document_count=0,
+                blocked_document_count=0,
+                refresh_pending_document_count=0,
+                withdrawn_document_count=0,
+                documents=[],
+            )
+        )
+    )

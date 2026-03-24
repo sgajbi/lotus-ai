@@ -198,7 +198,7 @@ Current status against that sequence:
 
 1. `RFC-0015` is implemented, including runtime, activation, runbook, and governance posture for unified versus split deployment stages.
 2. `RFC-0017` now exposes a bounded resilience runtime inventory surface, an ordered restore-plan surface, explicit degraded-versus-restored runtime posture for queue, worker, provider, retrieval, and artifact continuity dependencies, plus drill-evidence, activation, runbook, and governance surfaces.
-3. `RFC-0018` is implemented, and `RFC-0019` is now in active implementation with durable ingestion-state, document-lineage, bounded async ingestion execution, artifact-backed ingestion diagnostics, and retrieval runtime/governance convergence in place.
+3. `RFC-0018` and `RFC-0019` are implemented, so the platform now has governed live embeddings, bounded provider expansion, durable ingestion-state, document-lineage, bounded async ingestion execution, artifact-backed ingestion diagnostics, and retrieval runtime/governance convergence in place.
 
 Early RFC-0015 groundwork now exists as a bounded runtime surface:
 

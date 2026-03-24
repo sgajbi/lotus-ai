@@ -1,6 +1,6 @@
 # RFC-0019: Governed Document Ingestion and Corpus Refresh
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers

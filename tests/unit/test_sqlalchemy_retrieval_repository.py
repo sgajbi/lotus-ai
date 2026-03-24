@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from _pytest.monkeypatch import MonkeyPatch
+
 from app.contracts.retrieval import (
     RetrievalDocumentVersionDescriptor,
     RetrievalDocumentVersionLifecycleStatus,
@@ -43,6 +45,7 @@ def test_sqlalchemy_retrieval_repository_returns_none_for_unknown_records(
     assert repository.get_source("missing-source") is None
     assert repository.get_document("missing-document") is None
     assert repository.get_index_job("missing-job") is None
+    assert repository.get_ingestion_job("missing-job") is None
     assert repository.list_documents_for_source("missing-source") == []
     assert repository.list_chunks_for_document("missing-document") == []
 
@@ -56,6 +59,26 @@ def test_sqlalchemy_retrieval_repository_creates_parent_directory_for_sqlite_fil
     SqlAlchemyRetrievalRepository(database_url)
 
     assert db_path.parent.is_dir()
+
+
+def test_sqlalchemy_retrieval_repository_leaves_memory_sqlite_without_directory_work(
+    tmp_path: Path,
+) -> None:
+    repository = SqlAlchemyRetrievalRepository("sqlite:///:memory:")
+
+    assert repository is not None
+
+
+def test_sqlalchemy_retrieval_repository_handles_relative_sqlite_path(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    relative_db = Path("tmp") / "nested" / "lotus-ai-relative.db"
+    monkeypatch.chdir(tmp_path)
+
+    SqlAlchemyRetrievalRepository(f"sqlite:///{relative_db}")
+
+    assert (tmp_path / "tmp" / "nested").is_dir()
 
 
 def test_sqlalchemy_retrieval_repository_updates_jobs_and_index_status(tmp_path: Path) -> None:
@@ -197,3 +220,23 @@ def test_sqlalchemy_retrieval_repository_preserves_live_search_state_across_rest
     )
 
     assert rolled_back_hits == []
+
+
+def test_sqlalchemy_retrieval_repository_returns_no_hits_for_unmatched_indexed_query(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-retrieval.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyRetrievalRepository(database_url)
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+
+    hits = repository.search_indexed_chunks(
+        query="zzzxqv unmatched phrase",
+        source_ids=["lotus-platform-rfcs"],
+        limit=5,
+    )
+
+    assert hits == []

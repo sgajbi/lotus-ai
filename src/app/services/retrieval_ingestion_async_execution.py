@@ -184,9 +184,7 @@ def _execute_claimed_retrieval_ingestion_job(
             f"Follow-on retrieval indexing async job '{follow_on_submission.job_id}' was queued."
         )
     elif follow_on_submission.existing_job_id is not None:
-        follow_on_message = (
-            f"Follow-on retrieval indexing reused active async job '{follow_on_submission.existing_job_id}'."
-        )
+        follow_on_message = f"Follow-on retrieval indexing reused active async job '{follow_on_submission.existing_job_id}'."
     else:
         follow_on_message = follow_on_submission.message
 

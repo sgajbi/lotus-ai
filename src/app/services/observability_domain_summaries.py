@@ -167,7 +167,7 @@ def build_retrieval_observability_bundle() -> ObservabilityDomainBundle:
             durable=settings.retrieval_store_mode == "sqlalchemy"
             and store_status.status == "READY",
             summary="Retrieval ingestion status captures corpus-change execution, artifact-backed diagnostics, and refresh or withdrawal posture for incident review.",
-        )
+        ),
     ]
     return ObservabilityDomainBundle(
         summary=_attach_incident_bundle_artifact(

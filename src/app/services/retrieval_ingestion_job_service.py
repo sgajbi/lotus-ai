@@ -19,8 +19,7 @@ from app.services.retrieval_store import get_retrieval_repository
 
 def build_retrieval_ingestion_job_catalog() -> RetrievalIngestionJobCatalogResponse:
     jobs = [
-        _overlay_runtime_status(job)
-        for job in get_retrieval_repository().list_ingestion_jobs()
+        _overlay_runtime_status(job) for job in get_retrieval_repository().list_ingestion_jobs()
     ]
     return RetrievalIngestionJobCatalogResponse(
         service=settings.service_name,

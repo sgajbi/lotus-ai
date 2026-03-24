@@ -147,7 +147,9 @@ def test_retrieval_execution_status_reports_empty_registered_corpus(
     assert "no searchable corpus content is currently registered" in status.message
 
 
-def test_retrieval_execution_status_reports_refresh_pending_corpus(monkeypatch: MonkeyPatch) -> None:
+def test_retrieval_execution_status_reports_refresh_pending_corpus(
+    monkeypatch: MonkeyPatch,
+) -> None:
     settings.retrieval_mode = "enabled"
     monkeypatch.setattr(
         "app.services.retrieval_execution_status.build_retrieval_document_governance",

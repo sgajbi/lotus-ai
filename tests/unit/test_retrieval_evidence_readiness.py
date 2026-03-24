@@ -1,8 +1,10 @@
+from _pytest.monkeypatch import MonkeyPatch
+
+from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_submission_service import submit_evaluation_run
-from app.contracts.runtime_readiness import RuntimeReadinessStatus
 
 
 def test_retrieval_evidence_readiness_reports_foundation_evidence_gaps() -> None:
@@ -59,7 +61,7 @@ def test_retrieval_evidence_readiness_reports_corpus_change_artifact_pack_when_a
 
 
 def test_retrieval_evidence_readiness_blocks_corpus_change_pack_when_artifact_review_path_is_not_ready(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     from app.services.retrieval_ingestion_async_execution import (
         run_next_retrieval_ingestion_job,
@@ -96,3 +98,21 @@ def test_retrieval_evidence_readiness_blocks_corpus_change_pack_when_artifact_re
 
     assert readiness.items[5].status == "NOT_READY"
     assert "artifact backbone is operational" in readiness.items[5].notes
+
+
+def test_retrieval_evidence_readiness_handles_unready_retrieval_store(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.retrieval_evidence_readiness.get_retrieval_store_runtime_status",
+        lambda: type(
+            "StoreStatus",
+            (),
+            {"status": RuntimeReadinessStatus.UNAVAILABLE},
+        )(),
+    )
+
+    readiness = build_retrieval_evidence_readiness()
+
+    assert readiness.items[5].status == "NOT_READY"
+    assert "active retrieval store" in readiness.items[5].notes

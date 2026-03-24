@@ -15,6 +15,8 @@ from app.services.async_worker_fleet import (
 )
 from app.services.eval_run_service import build_evaluation_run_detail
 from app.services.eval_run_submission_service import submit_evaluation_run
+from app.services.retrieval_catalog_service import get_retrieval_ingestion_job_detail_or_raise
+from app.services.retrieval_ingestion_async_execution import submit_retrieval_ingestion_job_async
 from app.services.retrieval_async_execution import submit_retrieval_index_job_async
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from tests.support.migration_runner import upgrade_database_to_head
@@ -232,6 +234,42 @@ def test_process_next_async_delivery_marks_unknown_job_type_unhandled(
     assert result is not None
     assert result.handled is False
     assert result.terminal_status is None
+
+
+def test_process_next_async_delivery_executes_document_ingestion_job_in_dedicated_mode(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr(
+        "app.services.async_submission_shared.get_async_delivery_queue",
+        lambda: queue,
+    )
+    monkeypatch.setattr(
+        "app.services.async_worker_fleet.get_async_delivery_queue",
+        lambda: queue,
+    )
+
+    submission = submit_retrieval_ingestion_job_async(
+        job_id="ingjob_lotus_platform_rfcs_refresh_0069",
+        caller_app="lotus-platform",
+        correlation_id="corr-worker-fleet-ingestion-001",
+    )
+
+    result = process_next_async_delivery(worker_id="worker-a", timeout_seconds=0)
+    detail = build_async_job_detail(job_id=submission.job_id or "")
+    ingestion_detail = get_retrieval_ingestion_job_detail_or_raise(
+        "ingjob_lotus_platform_rfcs_refresh_0069"
+    )
+
+    assert result is not None
+    assert result.job_type == "document_ingestion"
+    assert result.handled is True
+    assert result.terminal_status == "COMPLETED"
+    assert detail.job.status.value == "COMPLETED"
+    assert ingestion_detail.job.status.value == "COMPLETED"
 
 
 def test_run_dedicated_worker_loop_respects_max_cycles_when_idle(

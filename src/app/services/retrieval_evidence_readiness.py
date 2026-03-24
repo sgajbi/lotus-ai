@@ -11,6 +11,7 @@ from app.services.eval_approval_gate_summary import build_retrieval_approval_gat
 from app.services.governance_readiness import summarize_activation_items
 from app.services.retrieval_ingestion_artifacts import load_retrieval_ingestion_artifact_refs
 from app.services.retrieval_store import get_retrieval_repository
+from app.services.runtime_readiness import get_retrieval_store_runtime_status
 
 
 def build_retrieval_evidence_readiness() -> RetrievalEvidenceReadinessResponse:
@@ -22,9 +23,16 @@ def build_retrieval_evidence_readiness() -> RetrievalEvidenceReadinessResponse:
         and artifact_runtime.object_store.status is RuntimeReadinessStatus.READY
         and "retrieval" in ACTIVE_ARTIFACT_DOMAINS
     )
-    corpus_change_evidence_present = artifact_review_ready and any(
-        load_retrieval_ingestion_artifact_refs(job_id=job.job_id)
-        for job in get_retrieval_repository().list_ingestion_jobs()
+    retrieval_store_ready = (
+        get_retrieval_store_runtime_status().status is RuntimeReadinessStatus.READY
+    )
+    corpus_change_evidence_present = (
+        artifact_review_ready
+        and retrieval_store_ready
+        and any(
+            load_retrieval_ingestion_artifact_refs(job_id=job.job_id)
+            for job in get_retrieval_repository().list_ingestion_jobs()
+        )
     )
     items = [
         RetrievalEvidenceReadinessItem(
@@ -95,10 +103,14 @@ def build_retrieval_evidence_readiness() -> RetrievalEvidenceReadinessResponse:
                 "Runtime-backed corpus-change evidence now includes artifact-backed ingestion diagnostics plus search-eligibility convergence review."
                 if corpus_change_evidence_present
                 else (
-                    "Runtime-backed corpus-change evidence remains blocked until the governed artifact backbone is operational for retrieval and bounded ingestion diagnostics have been recorded."
-                    if not artifact_review_ready
+                    "Runtime-backed corpus-change evidence remains blocked until durable retrieval ingestion state is readable through the active retrieval store."
+                    if not retrieval_store_ready
                     else (
-                    "Runtime-backed evidence covering document refresh, withdrawal, and search-eligibility convergence is not yet assembled."
+                        "Runtime-backed corpus-change evidence remains blocked until the governed artifact backbone is operational for retrieval and bounded ingestion diagnostics have been recorded."
+                        if not artifact_review_ready
+                        else (
+                            "Runtime-backed evidence covering document refresh, withdrawal, and search-eligibility convergence is not yet assembled."
+                        )
                     )
                 )
             ),

@@ -132,7 +132,9 @@ def test_retrieval_activation_readiness_reports_no_registered_live_corpus(
     )
 
 
-def test_retrieval_activation_readiness_reports_refresh_pending_corpus(monkeypatch: MonkeyPatch) -> None:
+def test_retrieval_activation_readiness_reports_refresh_pending_corpus(
+    monkeypatch: MonkeyPatch,
+) -> None:
     settings.retrieval_mode = "enabled"
     monkeypatch.setattr(
         "app.services.retrieval_activation_readiness.build_retrieval_document_governance",
@@ -152,4 +154,6 @@ def test_retrieval_activation_readiness_reports_refresh_pending_corpus(monkeypat
     readiness = build_retrieval_activation_readiness()
 
     assert readiness.activation_ready is False
-    assert any("refresh work is still in flight" in finding for finding in readiness.blocking_findings)
+    assert any(
+        "refresh work is still in flight" in finding for finding in readiness.blocking_findings
+    )

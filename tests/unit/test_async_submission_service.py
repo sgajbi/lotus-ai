@@ -183,6 +183,32 @@ def test_submit_async_job_raises_not_found_for_unknown_job_type() -> None:
         raise AssertionError("Expected async submission to raise HTTPException.")
 
 
+def test_submit_async_job_rejects_disabled_job_type_via_catalog_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.async_submission_service.get_async_job_type_descriptor",
+        lambda job_type: type(
+            "JobType",
+            (),
+            {"job_type": job_type, "enabled": False, "execution_path": "staged_only"},
+        )(),
+    )
+
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="document_ingestion",
+            target_id="ingjob_lotus_platform_rfcs_refresh_0069",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-disabled-override",
+            payload_summary="Disabled override.",
+        )
+    )
+
+    assert response.submission_status == "REJECTED"
+    assert response.accepted is False
+
+
 def test_submit_async_job_accepts_document_ingestion_job_type() -> None:
     response = submit_async_job(
         AsyncJobSubmissionRequest(
@@ -301,6 +327,20 @@ def test_find_active_duplicate_submission_ignores_same_target_for_different_call
             caller_app="lotus-platform",
             correlation_id="corr-async-different-caller",
             payload_summary="Fresh request.",
+        )
+    )
+
+    assert duplicate is None
+
+
+def test_find_active_duplicate_submission_ignores_non_retrieval_job_types() -> None:
+    duplicate = _find_active_duplicate_submission(
+        request=AsyncJobSubmissionRequest(
+            job_type="report_export",
+            target_id=None,
+            caller_app="lotus-platform",
+            correlation_id="corr-async-non-retrieval",
+            payload_summary="No retrieval semantics.",
         )
     )
 

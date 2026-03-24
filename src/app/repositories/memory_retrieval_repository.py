@@ -306,7 +306,9 @@ class InMemoryRetrievalRepository(RetrievalRepository):
 
     def save_document_version(self, descriptor: RetrievalDocumentVersionDescriptor) -> None:
         self._document_versions = [
-            version for version in self._document_versions if version.version_id != descriptor.version_id
+            version
+            for version in self._document_versions
+            if version.version_id != descriptor.version_id
         ]
         self._document_versions.append(descriptor.model_copy(deep=True))
 
@@ -353,9 +355,7 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                         ingestion_jobs=[
                             job
                             for job in self._ingestion_jobs
-                            if (
-                                job.document_id is None and job.source_id == source.source_id
-                            )
+                            if (job.document_id is None and job.source_id == source.source_id)
                             or job.document_id == document.document_id
                         ],
                     ):
