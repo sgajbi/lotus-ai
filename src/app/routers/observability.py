@@ -9,8 +9,11 @@ from app.contracts.observability import (
 )
 from app.services.observability_domain_summaries import (
     build_async_observability_bundle,
+    build_evaluation_observability_bundle,
+    build_prompt_observability_bundle,
     build_provider_observability_bundle,
     build_retrieval_observability_bundle,
+    build_safety_observability_bundle,
 )
 from app.services.observability_incident_summary import build_observability_incident_summary
 from app.services.observability_runtime import build_observability_runtime_status
@@ -96,3 +99,48 @@ async def get_retrieval_observability_summary_route() -> DomainIncidentSummaryRe
 )
 async def get_async_observability_summary_route() -> DomainIncidentSummaryResponse:
     return build_async_observability_bundle().summary
+
+
+@router.get(
+    "/evaluation-summary",
+    response_model=DomainIncidentSummaryResponse,
+    operation_id="getEvaluationObservabilitySummary",
+    summary="Get evaluation observability summary",
+    description="Returns the bounded evaluation-domain observability and incident-evidence summary.",
+    responses={
+        200: {"description": "Evaluation observability summary returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_evaluation_observability_summary_route() -> DomainIncidentSummaryResponse:
+    return build_evaluation_observability_bundle().summary
+
+
+@router.get(
+    "/prompt-summary",
+    response_model=DomainIncidentSummaryResponse,
+    operation_id="getPromptObservabilitySummary",
+    summary="Get prompt observability summary",
+    description="Returns the bounded prompt-domain observability and incident-evidence summary.",
+    responses={
+        200: {"description": "Prompt observability summary returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_prompt_observability_summary_route() -> DomainIncidentSummaryResponse:
+    return build_prompt_observability_bundle().summary
+
+
+@router.get(
+    "/safety-summary",
+    response_model=DomainIncidentSummaryResponse,
+    operation_id="getSafetyObservabilitySummary",
+    summary="Get safety observability summary",
+    description="Returns the bounded safety-domain observability and incident-evidence summary.",
+    responses={
+        200: {"description": "Safety observability summary returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_safety_observability_summary_route() -> DomainIncidentSummaryResponse:
+    return build_safety_observability_bundle().summary

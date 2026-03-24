@@ -5,11 +5,11 @@ from app.contracts.observability import (
     ObservabilityIncidentSummaryResponse,
     ObservabilityPosture,
 )
-from app.services.observability_domain_summaries import build_slice_two_observability_bundles
+from app.services.observability_domain_summaries import build_current_observability_bundles
 
 
 def build_observability_incident_summary() -> ObservabilityIncidentSummaryResponse:
-    bundles = build_slice_two_observability_bundles()
+    bundles = build_current_observability_bundles()
     summaries = [bundle.summary for bundle in bundles]
     degraded_domain_count = sum(
         1
@@ -23,11 +23,11 @@ def build_observability_incident_summary() -> ObservabilityIncidentSummaryRespon
         degraded_domain_count=degraded_domain_count,
         summaries=summaries,
         status_summary=[
-            "Incident summary currently covers provider, retrieval, and async domains with bounded runtime-backed evidence.",
+            "Incident summary currently covers provider, retrieval, async, evaluation, prompt, and safety domains with bounded runtime-backed evidence.",
             (
                 f"{degraded_domain_count} domain(s) currently expose degraded operational posture."
                 if degraded_domain_count
-                else "Current provider, retrieval, and async domains are not exposing degraded posture."
+                else "Current observability domains are not exposing degraded posture."
             ),
         ],
     )

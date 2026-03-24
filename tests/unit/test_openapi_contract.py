@@ -22,6 +22,15 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/observability/async-summary"]["get"]["operationId"] == (
         "getAsyncObservabilitySummary"
     )
+    assert spec["paths"]["/platform/observability/evaluation-summary"]["get"]["operationId"] == (
+        "getEvaluationObservabilitySummary"
+    )
+    assert spec["paths"]["/platform/observability/prompt-summary"]["get"]["operationId"] == (
+        "getPromptObservabilitySummary"
+    )
+    assert spec["paths"]["/platform/observability/safety-summary"]["get"]["operationId"] == (
+        "getSafetyObservabilitySummary"
+    )
     assert spec["paths"]["/platform/access-control/runtime-status"]["get"]["operationId"] == (
         "getAccessControlRuntimeStatus"
     )

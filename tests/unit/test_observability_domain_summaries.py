@@ -2,8 +2,11 @@ from pathlib import Path
 
 from app.services.observability_domain_summaries import (
     build_async_observability_bundle,
+    build_evaluation_observability_bundle,
+    build_prompt_observability_bundle,
     build_provider_observability_bundle,
     build_retrieval_observability_bundle,
+    build_safety_observability_bundle,
 )
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
@@ -46,3 +49,27 @@ def test_async_observability_bundle_surfaces_degraded_fallback() -> None:
     assert bundle.summary.domain_id == "async"
     assert bundle.summary.telemetry.posture == "DEGRADED"
     assert bundle.summary.incident_evidence_items[0].posture == "DEGRADED"
+
+
+def test_evaluation_observability_bundle_surfaces_runtime_approval_evidence() -> None:
+    bundle = build_evaluation_observability_bundle()
+
+    assert bundle.summary.domain_id == "evaluation"
+    assert bundle.summary.telemetry.incident_evidence_supported is True
+    assert bundle.summary.incident_evidence_items[0].evidence_id == "evaluation_approval_gate_state"
+
+
+def test_prompt_observability_bundle_surfaces_blocked_activation_path() -> None:
+    bundle = build_prompt_observability_bundle()
+
+    assert bundle.summary.domain_id == "prompt"
+    assert bundle.summary.telemetry.incident_evidence_supported is True
+    assert bundle.summary.incident_evidence_items[0].evidence_id == "prompt_rollout_approval_state"
+
+
+def test_safety_observability_bundle_surfaces_runtime_enforcement_state() -> None:
+    bundle = build_safety_observability_bundle()
+
+    assert bundle.summary.domain_id == "safety"
+    assert bundle.summary.telemetry.incident_evidence_supported is True
+    assert bundle.summary.incident_evidence_items[0].evidence_id == "safety_runtime_enforcement_state"
