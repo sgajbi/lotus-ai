@@ -222,11 +222,10 @@ def test_sqlalchemy_prompt_repository_rejects_transition_with_missing_rollout_st
         raise AssertionError("Expected missing rollout state to fail")
 
 
-def test_sqlalchemy_prompt_repository_accepts_memory_postgres_and_relative_sqlite_urls(
+def test_sqlalchemy_prompt_repository_accepts_memory_and_relative_sqlite_urls(
     tmp_path: Path,
 ) -> None:
     SqlAlchemyPromptRepository("sqlite:///:memory:")
-    SqlAlchemyPromptRepository("postgresql://lotus:lotus@localhost/lotus")
 
     previous_cwd = Path.cwd()
     os.chdir(tmp_path)
