@@ -8,8 +8,9 @@ Its role is to provide:
 2. retrieval,
 3. prompt governance,
 4. safety,
-5. auditability,
-6. reusable AI task execution.
+5. caller identity and access control,
+6. auditability,
+7. reusable AI task execution.
 
 The other Lotus applications remain responsible for:
 
@@ -60,7 +61,8 @@ Owns:
 1. orchestration logic behind routers,
 2. capability catalog assembly,
 3. prompt and provider orchestration,
-4. task execution pipeline stages for validation, resolution, response assembly, and audit persistence.
+4. task execution pipeline stages for validation, resolution, response assembly, and audit persistence,
+5. caller access-control policy resolution and platform-facing posture summaries.
 
 The API-facing service layer should remain stateless so multiple replicas can serve the same
 contracts without hidden node-local behavior.
@@ -150,6 +152,11 @@ now documents governed promotion, rollback, incident review, and audit inspectio
 prompt activation readiness now distinguishes the remaining technical durability gate clearly:
 restart-safe live prompt activation requires SQL-backed prompt rollout state plus SQL-backed
 evaluation runtime evidence.
+
+RFC-0012 Slice 1 adds an explicit caller-policy registry seam alongside those other runtime
+control planes. Caller identity and bounded capability posture are now resolved through a
+dedicated access-control repository, with restart-safe SQL-backed storage available before
+broader request blocking is turned on in later slices.
 
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.

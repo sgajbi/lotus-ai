@@ -194,6 +194,23 @@ class ProviderOperationsEventModel(Base):
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
+class CallerPolicyModel(Base):
+    __tablename__ = "caller_policies"
+
+    caller_app: Mapped[str] = mapped_column(String(128), primary_key=True)
+    lifecycle_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    allowed_task_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    allowed_retrieval_source_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    allow_live_provider: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    allow_async_control: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    allow_prompt_control: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    allow_provider_control: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    tenant_policy_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    restricted_tenant_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
 class AsyncJobModel(Base):
     __tablename__ = "async_jobs"
 

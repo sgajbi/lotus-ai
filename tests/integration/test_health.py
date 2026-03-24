@@ -211,6 +211,12 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["audit_store"]["status"] == "READY"
     assert body["retrieval_store"]["mode"] == "memory"
     assert body["retrieval_store"]["status"] == "READY"
+    assert body["access_control_store_mode"] == "memory"
+    assert body["access_control_runtime"]["store_mode"] == "memory"
+    assert body["access_control_runtime"]["enforcement_state"] == "DOCUMENTARY_ONLY"
+    assert body["access_control_runtime"]["policy_count"] >= 4
+    assert body["access_control_governance"]["governance_ready"] is False
+    assert body["access_control_governance"]["blocking_area_count"] == 1
     assert body["async_runtime"]["cutover_state"] == "in_process_only"
     assert body["async_runtime"]["queue_mode"] == "DISABLED"
     assert body["async_runtime"]["worker_mode"] == "IN_PROCESS_ONLY"
@@ -316,5 +322,6 @@ def test_service_metadata_exposes_store_modes(client: TestClient) -> None:
     assert body["auditStoreMode"] == "memory"
     assert body["promptStoreMode"] == "memory"
     assert body["retrievalStoreMode"] == "memory"
+    assert body["accessControlStoreMode"] == "memory"
     assert body["startupReadinessPolicy"] == "warn"
     assert body["readinessProbePolicy"] == "observe"

@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from app.contracts.access_control import (
+    AccessControlGovernanceStatusResponse,
+    AccessControlRuntimeStatusResponse,
+)
 from app.contracts.async_runtime import AsyncGovernanceStatusResponse, AsyncRuntimeStatusResponse
 from app.contracts.evals import EvaluationRuntimeStatusResponse
 from app.contracts.prompts import (
@@ -31,8 +35,15 @@ class PlatformRuntimeStatusResponse(BaseModel):
     embedding_provider_mode: str = Field(description="Current embedding provider mode.")
     safety_mode: str = Field(description="Current safety policy mode.")
     prompt_store_mode: str = Field(description="Current prompt registry store mode.")
+    access_control_store_mode: str = Field(description="Current caller policy store mode.")
     async_runtime: AsyncRuntimeStatusResponse = Field(
         description="Current async execution posture for lotus-ai."
+    )
+    access_control_runtime: AccessControlRuntimeStatusResponse = Field(
+        description="Current caller identity and access-control runtime posture for lotus-ai."
+    )
+    access_control_governance: AccessControlGovernanceStatusResponse = Field(
+        description="Current caller identity and access-control governance posture for lotus-ai."
     )
     async_governance: AsyncGovernanceStatusResponse = Field(
         description="Current async governance posture for lotus-ai."

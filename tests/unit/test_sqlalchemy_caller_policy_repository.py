@@ -1,0 +1,41 @@
+from pathlib import Path
+
+from app.repositories.sqlalchemy_caller_policy_repository import SqlAlchemyCallerPolicyRepository
+from tests.support.migration_runner import upgrade_database_to_head
+
+
+def test_sqlalchemy_caller_policy_repository_lists_seeded_policies(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'caller-policy-repository.db'}"
+    upgrade_database_to_head(database_url)
+
+    repository = SqlAlchemyCallerPolicyRepository(database_url)
+    policies = repository.list_policies()
+
+    assert len(policies) >= 4
+    assert any(policy.caller_app == "lotus-platform" for policy in policies)
+
+
+def test_sqlalchemy_caller_policy_repository_survives_reopen(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'caller-policy-repository-reopen.db'}"
+    upgrade_database_to_head(database_url)
+
+    first_repository = SqlAlchemyCallerPolicyRepository(database_url)
+    first_policy = first_repository.get_policy("lotus-manage")
+    second_repository = SqlAlchemyCallerPolicyRepository(database_url)
+    second_policy = second_repository.get_policy("lotus-manage")
+
+    assert first_policy is not None
+    assert second_policy is not None
+    assert first_policy.allowed_task_ids == second_policy.allowed_task_ids
+    assert second_policy.restricted_tenant_ids == ["tenant-sg-001"]
+
+
+def test_sqlalchemy_caller_policy_repository_returns_none_for_unknown_caller(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'caller-policy-repository-missing.db'}"
+    upgrade_database_to_head(database_url)
+
+    repository = SqlAlchemyCallerPolicyRepository(database_url)
+
+    assert repository.get_policy("unknown-app") is None

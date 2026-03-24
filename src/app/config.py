@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     audit_store_mode: str = "memory"
     prompt_store_mode: str = "memory"
     retrieval_store_mode: str = "memory"
+    access_control_store_mode: str = "memory"
     provider_operations_store_mode: str = "memory"
     async_runtime_store_mode: str = "memory"
     async_cutover_state: str = "in_process_only"

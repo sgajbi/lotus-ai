@@ -52,6 +52,11 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     )
 
     assert status.service == "lotus-ai"
+    assert status.access_control_store_mode == "memory"
+    assert status.access_control_runtime.enforcement_state.value == "DOCUMENTARY_ONLY"
+    assert status.access_control_runtime.policy_count >= 4
+    assert status.access_control_governance.governance_ready is False
+    assert status.access_control_governance.blocking_area_count == 1
     assert status.async_runtime.cutover_state == "in_process_only"
     assert status.async_runtime.queue_mode == "DISABLED"
     assert status.async_runtime.queue_backend == "none"

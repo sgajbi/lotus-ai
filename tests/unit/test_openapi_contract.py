@@ -7,6 +7,15 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/runtime-status"]["get"]["operationId"] == (
         "getPlatformRuntimeStatus"
     )
+    assert spec["paths"]["/platform/access-control/runtime-status"]["get"]["operationId"] == (
+        "getAccessControlRuntimeStatus"
+    )
+    assert spec["paths"]["/platform/access-control/governance-status"]["get"]["operationId"] == (
+        "getAccessControlGovernanceStatus"
+    )
+    assert spec["paths"]["/platform/access-control/caller-policies"]["get"]["operationId"] == (
+        "listCallerPolicies"
+    )
     assert spec["paths"]["/platform/async/runtime-status"]["get"]["operationId"] == (
         "getAsyncRuntimeStatus"
     )

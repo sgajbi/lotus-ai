@@ -95,3 +95,27 @@ def get_retrieval_store_runtime_status() -> StoreRuntimeStatusDescriptor:
         database_configured=bool(settings.database_url),
         detail="Configured retrieval store mode is not supported by lotus-ai.",
     )
+
+
+def get_access_control_store_runtime_status() -> StoreRuntimeStatusDescriptor:
+    if settings.access_control_store_mode == "memory":
+        return StoreRuntimeStatusDescriptor(
+            mode="memory",
+            status=RuntimeReadinessStatus.READY,
+            database_configured=bool(settings.database_url),
+            detail="In-memory caller policy registry is active for foundation-phase access-control development.",
+        )
+    if settings.access_control_store_mode == "sqlalchemy":
+        status_value, detail = _probe_sql_tables(["caller_policies"])
+        return StoreRuntimeStatusDescriptor(
+            mode="sqlalchemy",
+            status=status_value,
+            database_configured=bool(settings.database_url),
+            detail=detail,
+        )
+    return StoreRuntimeStatusDescriptor(
+        mode=settings.access_control_store_mode,
+        status=RuntimeReadinessStatus.UNAVAILABLE,
+        database_configured=bool(settings.database_url),
+        detail="Configured access-control store mode is not supported by lotus-ai.",
+    )
