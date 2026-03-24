@@ -1,6 +1,6 @@
 # RFC-0011: Dedicated Worker Fleet and Managed Queue Execution
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -320,6 +320,23 @@ This RFC is complete when:
 5. the platform is materially closer to the documented bank-grade deployment shape,
 6. no remaining in-process fallback for the allowlisted dedicated-worker job types is hidden from operator surfaces,
 7. the implementation is proven by meaningful queue-backed, worker-backed, and degraded-path tests.
+
+## Implementation Notes
+
+Implemented in four slices:
+
+1. managed queue backend seam and explicit async cutover-state model,
+2. dedicated worker activation for retrieval-indexing and evaluation-execution jobs,
+3. queue and worker operational hardening with backlog, redelivery, drain, and degraded-state visibility,
+4. governance and runbook convergence across async runtime, readiness, platform, and operator surfaces.
+
+Current authoritative posture:
+
+1. the service database remains the authoritative async job state model,
+2. Redis queue messages carry bounded delivery references only and do not own lifecycle truth,
+3. allowlisted retrieval-indexing and evaluation-execution jobs now execute through dedicated workers when `cutover_state=dedicated_workers_active`,
+4. drain mode and degraded fallback are explicit operator-visible postures rather than hidden in-process failover,
+5. async runtime, activation, governance, and runbook surfaces now distinguish all four cutover states and reflect the queue-backed worker model consistently.
 
 ## Approval Requested
 

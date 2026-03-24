@@ -93,7 +93,9 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
     queue = get_test_async_delivery_queue()
-    monkeypatch.setattr("app.services.async_operational_state.get_async_delivery_queue", lambda: queue)
+    monkeypatch.setattr(
+        "app.services.async_operational_state.get_async_delivery_queue", lambda: queue
+    )
 
     status = build_platform_runtime_status(None)
 

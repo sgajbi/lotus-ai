@@ -19,7 +19,9 @@ def test_async_queue_backend_catalog_exposes_foundation_default_and_future_optio
     assert catalog.backends[2].backend_class == "EVENT_STREAM_BRIDGE"
 
 
-def test_async_queue_backend_catalog_reports_redis_as_active_when_dedicated_cutover_enabled() -> None:
+def test_async_queue_backend_catalog_reports_redis_as_active_when_dedicated_cutover_enabled() -> (
+    None
+):
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"

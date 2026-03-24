@@ -4,7 +4,10 @@ from dataclasses import dataclass
 
 from app.config import settings
 from app.contracts.async_runtime import AsyncCutoverState
-from app.services.async_delivery_queue import AsyncQueueObservabilitySnapshot, get_async_delivery_queue
+from app.services.async_delivery_queue import (
+    AsyncQueueObservabilitySnapshot,
+    get_async_delivery_queue,
+)
 from app.services.async_runtime_posture import get_async_runtime_posture
 from app.services.async_runtime_store import get_async_runtime_store
 

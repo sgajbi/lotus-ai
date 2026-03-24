@@ -1,7 +1,10 @@
 from _pytest.monkeypatch import MonkeyPatch
 
 from app.config import settings
-from app.services.async_delivery_queue import AsyncQueueDeliveryMessage, get_test_async_delivery_queue
+from app.services.async_delivery_queue import (
+    AsyncQueueDeliveryMessage,
+    get_test_async_delivery_queue,
+)
 from app.services.async_governance_status_service import build_async_governance_status
 
 
@@ -35,7 +38,9 @@ def test_async_governance_status_reports_dedicated_worker_cutover_truth(
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
     queue = get_test_async_delivery_queue()
-    monkeypatch.setattr("app.services.async_operational_state.get_async_delivery_queue", lambda: queue)
+    monkeypatch.setattr(
+        "app.services.async_operational_state.get_async_delivery_queue", lambda: queue
+    )
 
     status = build_async_governance_status()
 
@@ -62,7 +67,9 @@ def test_async_governance_status_reports_worker_unavailable_degraded_summary(
             submitted_at="2026-03-24T00:00:00Z",
         )
     )
-    monkeypatch.setattr("app.services.async_operational_state.get_async_delivery_queue", lambda: queue)
+    monkeypatch.setattr(
+        "app.services.async_operational_state.get_async_delivery_queue", lambda: queue
+    )
 
     status = build_async_governance_status()
 

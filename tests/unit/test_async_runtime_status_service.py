@@ -1,7 +1,10 @@
 from _pytest.monkeypatch import MonkeyPatch
 
 from app.config import settings
-from app.services.async_delivery_queue import AsyncQueueDeliveryMessage, get_test_async_delivery_queue
+from app.services.async_delivery_queue import (
+    AsyncQueueDeliveryMessage,
+    get_test_async_delivery_queue,
+)
 from app.services.async_runtime_status import build_async_runtime_status
 
 
@@ -37,7 +40,9 @@ def test_async_runtime_status_reports_dedicated_worker_cutover_truth(
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
     queue = get_test_async_delivery_queue()
-    monkeypatch.setattr("app.services.async_operational_state.get_async_delivery_queue", lambda: queue)
+    monkeypatch.setattr(
+        "app.services.async_operational_state.get_async_delivery_queue", lambda: queue
+    )
 
     status = build_async_runtime_status()
 
@@ -69,7 +74,9 @@ def test_async_runtime_status_reports_backlog_without_active_workers_as_degraded
             submitted_at="2026-03-24T00:00:00Z",
         )
     )
-    monkeypatch.setattr("app.services.async_operational_state.get_async_delivery_queue", lambda: queue)
+    monkeypatch.setattr(
+        "app.services.async_operational_state.get_async_delivery_queue", lambda: queue
+    )
 
     status = build_async_runtime_status()
 

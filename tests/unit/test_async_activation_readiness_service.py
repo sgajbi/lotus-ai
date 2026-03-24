@@ -1,7 +1,10 @@
 from _pytest.monkeypatch import MonkeyPatch
 
 from app.config import settings
-from app.services.async_delivery_queue import AsyncQueueDeliveryMessage, get_test_async_delivery_queue
+from app.services.async_delivery_queue import (
+    AsyncQueueDeliveryMessage,
+    get_test_async_delivery_queue,
+)
 from app.services.async_activation_readiness_service import build_async_activation_readiness
 
 
@@ -15,7 +18,10 @@ def test_async_activation_readiness_reports_foundation_blockers() -> None:
     assert readiness.worker_execution == "in_process_stub"
     assert readiness.supported_job_type_count == 3
     assert len(readiness.blocking_findings) == 2
-    assert "queue-backed worker execution is not the active primary path yet" in readiness.blocking_findings[0]
+    assert (
+        "queue-backed worker execution is not the active primary path yet"
+        in readiness.blocking_findings[0]
+    )
     assert "evaluation execution are active" in readiness.blocking_findings[1]
     assert len(readiness.activation_path) == 2
 
@@ -40,7 +46,9 @@ def test_async_activation_readiness_reports_dedicated_worker_cutover_truth(
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
     queue = get_test_async_delivery_queue()
-    monkeypatch.setattr("app.services.async_operational_state.get_async_delivery_queue", lambda: queue)
+    monkeypatch.setattr(
+        "app.services.async_operational_state.get_async_delivery_queue", lambda: queue
+    )
 
     readiness = build_async_activation_readiness()
 
@@ -70,7 +78,9 @@ def test_async_activation_readiness_reports_drain_mode_as_blocking(
             submitted_at="2026-03-24T00:00:00Z",
         )
     )
-    monkeypatch.setattr("app.services.async_operational_state.get_async_delivery_queue", lambda: queue)
+    monkeypatch.setattr(
+        "app.services.async_operational_state.get_async_delivery_queue", lambda: queue
+    )
 
     readiness = build_async_activation_readiness()
 

@@ -1,3 +1,4 @@
+from _pytest.monkeypatch import MonkeyPatch
 from app.services.async_worker_runtime import (
     claim_next_async_job,
     complete_async_job,
@@ -39,13 +40,15 @@ def test_async_runtime_status_route(client: TestClient) -> None:
 
 
 def test_async_runtime_status_route_reports_dedicated_worker_cutover(
-    client: TestClient, monkeypatch
+    client: TestClient, monkeypatch: MonkeyPatch
 ) -> None:
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
     queue = get_test_async_delivery_queue()
-    monkeypatch.setattr("app.services.async_operational_state.get_async_delivery_queue", lambda: queue)
+    monkeypatch.setattr(
+        "app.services.async_operational_state.get_async_delivery_queue", lambda: queue
+    )
 
     response = client.get("/platform/async/runtime-status")
 

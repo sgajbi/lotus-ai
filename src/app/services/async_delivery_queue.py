@@ -123,10 +123,7 @@ class InMemoryAsyncDeliveryQueue:
         )
 
     def list_messages(self) -> list[AsyncQueueDeliveryMessage]:
-        return [
-            deepcopy(self._messages_by_id[key])
-            for key in sorted(self._messages_by_id)
-        ]
+        return [deepcopy(self._messages_by_id[key]) for key in sorted(self._messages_by_id)]
 
 
 class RedisAsyncDeliveryQueue:
