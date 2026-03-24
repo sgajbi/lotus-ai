@@ -277,6 +277,7 @@ def test_async_job_detail_route_exposes_runtime_attempt_and_lease_history(
     assert completed_body["job"]["status"] == "COMPLETED"
     assert completed_body["attempts"][0]["status"] == "COMPLETED"
     assert completed_body["active_lease"] is None
+    assert len(completed_body["job"]["artifact_refs"]) == 1
 
 
 def test_async_job_submit_route_rejects_duplicate_active_runtime_submission(
@@ -431,6 +432,7 @@ def test_async_job_detail_route_exposes_runtime_backed_evaluation_execution(
     assert body["job"]["status"] == "COMPLETED"
     assert body["job"]["related_evaluation_run_id"] is not None
     assert body["attempts"][0]["status"] == "COMPLETED"
+    assert len(body["job"]["artifact_refs"]) == 1
 
 
 def test_async_job_submit_route_rejects_missing_retrieval_target_id(client: TestClient) -> None:

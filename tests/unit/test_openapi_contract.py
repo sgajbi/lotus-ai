@@ -184,6 +184,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     artifact_runtime_schema = spec["components"]["schemas"]["ArtifactRuntimeStatusResponse"]
     assert "metadata_store" in artifact_runtime_schema["properties"]
     assert "object_store" in artifact_runtime_schema["properties"]
+    async_job_schema = spec["components"]["schemas"]["AsyncJobArtifactDescriptor"]
+    assert "artifact_refs" in async_job_schema["properties"]
+    evaluation_case_schema = spec["components"]["schemas"]["EvaluationCaseResultDescriptor"]
+    assert "artifact_refs" in evaluation_case_schema["properties"]
     platform_runtime_schema = spec["components"]["schemas"]["PlatformRuntimeStatusResponse"]
     assert "artifact_runtime" in platform_runtime_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"

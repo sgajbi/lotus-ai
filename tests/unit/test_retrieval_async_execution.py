@@ -79,6 +79,7 @@ def test_run_next_retrieval_index_job_ignores_non_retrieval_job_types() -> None:
             related_evaluation_run_id=None,
             latest_message="Queued unsupported job.",
             attempt_count=1,
+            artifact_ids=[],
         )
     )
     store.save_attempt(
@@ -123,6 +124,7 @@ def test_run_next_retrieval_index_job_fails_claim_with_missing_target() -> None:
                     related_evaluation_run_id=None,
                     latest_message="Claimed.",
                     attempt_count=1,
+                    artifact_ids=[],
                 ),
                 attempt=AsyncRuntimeAttemptRecord(
                     attempt_id="async-job-missing-target_attempt_001",

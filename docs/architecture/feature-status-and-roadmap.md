@@ -157,7 +157,9 @@ Current state:
 
 1. a governed artifact metadata model and payload-store seam now exist,
 2. relational metadata remains authoritative while payload bytes stay behind a bounded object-store interface,
-3. major runtime consumers have not been cut over yet.
+3. evaluation runtime case results now emit governed artifact references for runtime-generated evidence bundles,
+4. async runtime jobs now emit governed artifact references for terminal completion and failure payloads,
+5. broader consumer cutovers such as observability bundles and additional runtime domains are still roadmap work.
 
 ### First Downstream Production Use Case
 

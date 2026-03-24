@@ -137,6 +137,7 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
                 related_evaluation_run_id=job.related_evaluation_run_id,
                 latest_message=latest_message,
                 attempt_count=job.attempt_count,
+                artifact_ids=job.artifact_ids,
             )
             lease_id = f"{job.job_id}_lease_{current_attempt.attempt_number:03d}"
             lease = AsyncRuntimeLeaseRecord(
@@ -207,6 +208,7 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
             related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=latest_message,
             attempt_count=job.attempt_count,
+            artifact_ids=job.artifact_ids,
         )
         lease = AsyncRuntimeLeaseRecord(
             lease_id=f"{job.job_id}_lease_{current_attempt.attempt_number:03d}",

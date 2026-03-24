@@ -45,6 +45,7 @@ def queue_next_async_attempt(
             related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=reason_message,
             attempt_count=next_attempt_number,
+            artifact_ids=job.artifact_ids,
         )
     )
     queued_job = store.get_job(job_id=job.job_id)

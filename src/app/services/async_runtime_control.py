@@ -224,6 +224,7 @@ def _abandon_active_job(*, job: AsyncRuntimeJobRecord, reason: str) -> str:
             related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=f"Job manually abandoned: {reason}",
             attempt_count=job.attempt_count,
+            artifact_ids=job.artifact_ids,
         )
     )
     return attempt.attempt_id

@@ -250,6 +250,7 @@ class AsyncJobModel(Base):
     related_evaluation_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     latest_message: Mapped[str] = mapped_column(Text, nullable=False)
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    artifact_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
 
     attempts: Mapped[list["AsyncJobAttemptModel"]] = relationship(back_populates="job")
     leases: Mapped[list["AsyncWorkerLeaseModel"]] = relationship(back_populates="job")
@@ -353,6 +354,7 @@ class EvaluationCaseResultModel(Base):
     outcome: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     evidence_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    artifact_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
     run: Mapped["EvaluationRunModel"] = relationship(back_populates="case_results")

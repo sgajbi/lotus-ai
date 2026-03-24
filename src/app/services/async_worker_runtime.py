@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import json
 
 from fastapi import HTTPException, status
 
@@ -16,6 +17,7 @@ from app.services.eval_attempt_runtime import (
     claim_active_evaluation_attempt,
     queue_next_evaluation_attempt,
 )
+from app.services.artifact_payloads import persist_json_artifact
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.async_runtime_transitions import queue_next_async_attempt
 
@@ -143,6 +145,7 @@ def start_async_job(*, job_id: str, worker_id: str) -> None:
             related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=f"Job is running under worker '{worker_id}'.",
             attempt_count=job.attempt_count,
+            artifact_ids=job.artifact_ids,
         )
     )
 
@@ -199,6 +202,26 @@ def complete_async_job(*, job_id: str, worker_id: str, message: str) -> None:
         )
     )
     store.delete_lease(lease_id=lease.lease_id)
+    completion_artifact = persist_json_artifact(
+        domain="async",
+        artifact_type="job_terminal_output",
+        source_object_kind="async_job",
+        source_object_id=job.job_id,
+        created_at=_isoformat(now),
+        created_by=worker_id,
+        payload_json=json.dumps(
+            {
+                "job_id": job.job_id,
+                "attempt_id": attempt.attempt_id,
+                "job_type": job.job_type,
+                "target_id": job.target_id,
+                "status": AsyncJobStatus.COMPLETED.value,
+                "message": message,
+                "related_evaluation_run_id": job.related_evaluation_run_id,
+            },
+            sort_keys=True,
+        ).encode("utf-8"),
+    )
     store.save_job(
         AsyncRuntimeJobRecord(
             job_id=job.job_id,
@@ -213,6 +236,7 @@ def complete_async_job(*, job_id: str, worker_id: str, message: str) -> None:
             related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=message,
             attempt_count=job.attempt_count,
+            artifact_ids=[*job.artifact_ids, completion_artifact.artifact_id],
         )
     )
 
@@ -252,6 +276,26 @@ def fail_async_job(
             reason_message=f"Retry queued after failure reason '{failure_reason}'.",
         )
         return
+    failure_artifact = persist_json_artifact(
+        domain="async",
+        artifact_type="job_terminal_output",
+        source_object_kind="async_job",
+        source_object_id=job.job_id,
+        created_at=_isoformat(now),
+        created_by=worker_id,
+        payload_json=json.dumps(
+            {
+                "job_id": job.job_id,
+                "attempt_id": attempt.attempt_id,
+                "job_type": job.job_type,
+                "target_id": job.target_id,
+                "status": AsyncJobStatus.FAILED.value,
+                "failure_reason": failure_reason,
+                "related_evaluation_run_id": job.related_evaluation_run_id,
+            },
+            sort_keys=True,
+        ).encode("utf-8"),
+    )
     store.save_job(
         AsyncRuntimeJobRecord(
             job_id=job.job_id,
@@ -266,6 +310,7 @@ def fail_async_job(
             related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=f"Job failed terminally with reason '{failure_reason}'.",
             attempt_count=job.attempt_count,
+            artifact_ids=[*job.artifact_ids, failure_artifact.artifact_id],
         )
     )
 

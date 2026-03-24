@@ -247,6 +247,7 @@ def _submit_runtime_backed_evaluation_run(
         related_evaluation_run_id=run_id,
         latest_message=f"Evaluation execution job linked to runtime-backed run '{run_id}' is queued.",
         attempt_count=1,
+        artifact_ids=[],
     )
     attempt_record = AsyncRuntimeAttemptRecord(
         attempt_id=f"{async_job_id}_attempt_001",

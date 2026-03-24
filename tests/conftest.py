@@ -9,6 +9,7 @@ from app.services.audit_store import reset_audit_store_cache
 from app.services.caller_policy_store import reset_caller_policy_store_cache
 from app.services.async_delivery_queue import reset_async_delivery_queue_cache
 from app.services.async_runtime_store import reset_async_runtime_store_cache
+from app.services.artifact_store import reset_artifact_store_cache
 from app.services.evaluation_runtime_store import reset_evaluation_runtime_store_cache
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import reset_provider_budget_state
@@ -58,6 +59,9 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "async_worker_queue_poll_seconds": settings.async_worker_queue_poll_seconds,
         "async_worker_drain_enabled": settings.async_worker_drain_enabled,
         "evaluation_runtime_store_mode": settings.evaluation_runtime_store_mode,
+        "artifact_store_mode": settings.artifact_store_mode,
+        "artifact_object_store_mode": settings.artifact_object_store_mode,
+        "artifact_object_store_root": settings.artifact_object_store_root,
         "startup_readiness_policy": settings.startup_readiness_policy,
         "readiness_probe_policy": settings.readiness_probe_policy,
         "database_url": settings.database_url,
@@ -78,3 +82,4 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_async_delivery_queue_cache()
         reset_async_runtime_store_cache()
         reset_evaluation_runtime_store_cache()
+        reset_artifact_store_cache()

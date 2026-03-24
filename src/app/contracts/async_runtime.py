@@ -5,6 +5,7 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from app.contracts.access_control import AuthorizationDecision
+from app.contracts.artifacts import ArtifactDescriptor
 
 
 class AsyncQueueMode(str, Enum):
@@ -124,6 +125,10 @@ class AsyncJobArtifactDescriptor(BaseModel):
     )
     execution_path: str = Field(
         description="Current execution path assigned to the async job artifact."
+    )
+    artifact_refs: list[ArtifactDescriptor] = Field(
+        default_factory=list,
+        description="Governed artifact descriptors attached to the runtime-backed async job.",
     )
     notes: str = Field(description="Human-readable description of the async job artifact.")
 

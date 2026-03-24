@@ -61,7 +61,9 @@ def test_run_next_evaluation_execution_job_persists_attempts_case_results_and_ve
     assert run_detail.attempts[0].verdict.value == "PASS"
     assert len(run_detail.case_results) == 2
     assert all(case.outcome.value == "PASS" for case in run_detail.case_results)
+    assert all(len(case.artifact_refs) == 1 for case in run_detail.case_results)
     assert async_detail.job.status.value == "COMPLETED"
+    assert len(async_detail.job.artifact_refs) == 1
 
 
 def test_run_next_evaluation_execution_job_returns_none_when_no_jobs_are_available() -> None:
@@ -113,6 +115,8 @@ def test_run_next_evaluation_execution_job_survives_sql_store_reset(tmp_path: Pa
     assert len(run_detail.case_results) == 2
     assert all(case.outcome.value == "PASS" for case in run_detail.case_results)
     assert async_detail.job.status.value == "COMPLETED"
+    assert all(len(case.artifact_refs) == 1 for case in run_detail.case_results)
+    assert len(async_detail.job.artifact_refs) == 1
 
 
 def test_evaluation_replay_preserves_prior_case_history_and_creates_new_attempt() -> None:
@@ -149,6 +153,8 @@ def test_evaluation_replay_preserves_prior_case_history_and_creates_new_attempt(
     assert len({case.case_result_id for case in run_detail.case_results}) == 4
     assert len({case.attempt_id for case in run_detail.case_results}) == 2
     assert async_detail.attempts[-1].status == "COMPLETED"
+    assert all(len(case.artifact_refs) == 1 for case in run_detail.case_results)
+    assert len(async_detail.job.artifact_refs) == 2
 
 
 def test_run_next_evaluation_execution_job_marks_async_and_eval_attempt_failed_on_exception() -> (
@@ -182,6 +188,7 @@ def test_run_next_evaluation_execution_job_marks_async_and_eval_attempt_failed_o
     assert run_detail.attempts[0].failure_reason == "RuntimeError"
     assert async_detail.job.status.value == "FAILED"
     assert async_detail.attempts[-1].failure_reason == "RuntimeError"
+    assert len(async_detail.job.artifact_refs) == 1
 
 
 def test_execute_runtime_backed_evaluation_run_rejects_missing_run() -> None:
@@ -272,6 +279,7 @@ def test_run_next_evaluation_execution_job_fails_unsupported_claim() -> None:
                     related_evaluation_run_id=None,
                     latest_message="Claimed.",
                     attempt_count=1,
+                    artifact_ids=[],
                 ),
                 attempt=AsyncAttemptRecord(
                     attempt_id="async-job-unsupported-eval_attempt_001",

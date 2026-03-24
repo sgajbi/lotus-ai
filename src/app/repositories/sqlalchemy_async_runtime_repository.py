@@ -62,6 +62,7 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
             related_evaluation_run_id=record.related_evaluation_run_id,
             latest_message=record.latest_message,
             attempt_count=record.attempt_count,
+            artifact_ids=record.artifact_ids,
         )
         with self._session_factory() as session:
             session.merge(model)
@@ -306,6 +307,7 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
             related_evaluation_run_id=model.related_evaluation_run_id,
             latest_message=model.latest_message,
             attempt_count=model.attempt_count,
+            artifact_ids=list(model.artifact_ids),
         )
 
     def _to_attempt_record(self, model: AsyncJobAttemptModel) -> AsyncRuntimeAttemptRecord:
