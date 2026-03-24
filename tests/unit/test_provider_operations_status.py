@@ -135,6 +135,20 @@ def test_provider_operations_status_reports_invalid_budget_configuration() -> No
     assert any("rate-card values" in reason for reason in status.blocking_reasons)
 
 
+def test_provider_operations_summary_mentions_local_secret_go_live_block() -> None:
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.secret_source_mode = "local_or_unspecified"
+
+    status = build_provider_operations_status()
+
+    assert any("production go-live remains blocked" in line for line in status.summary)
+
+
 def test_provider_operations_status_does_not_globally_block_for_task_scoped_quota_exhaustion() -> (
     None
 ):

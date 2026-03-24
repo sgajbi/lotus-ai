@@ -13,6 +13,7 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert "resilience_governance" in body
     assert "deployment_split" in body
     assert "production_baseline" in body
+    assert "production_go_live" in body
     assert "production_baseline_governance" in body
 
 

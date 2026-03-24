@@ -131,6 +131,10 @@ Before treating any environment as the accepted RFC-0020 production baseline:
 2. inspect `GET /platform/production-baseline/activation-readiness` when technical blockers need detail
 3. inspect `GET /platform/production-baseline/runbook-readiness` when operator-readiness blockers need detail
 4. inspect `GET /platform/production-baseline/governance-status` for the composed go-live view
+5. inspect `GET /platform/production-go-live/runtime-status` to distinguish technically running, production-capable, platform-production-approved, and downstream approval posture
+6. inspect `GET /platform/production-go-live/activation-readiness` and `GET /platform/production-go-live/governance-status` before treating live-provider success as approved production traffic
+7. when live-provider production review falls below expectations, treat `provider_rollout_state=ALLOWLISTED_DISABLED` as the bounded freeze and rollback target rather than tearing down the wider platform
+8. inspect `GET /platform/production-go-live/use-case-approval` to distinguish first-use-case limited-rollout readiness from active-production approval before exposing the downstream path to real production traffic
 5. confirm the embedded `production_baseline` and `production_baseline_governance` blocks in `GET /platform/runtime-status` match the detailed production-baseline views
 6. treat PostgreSQL-backed durable stores plus Redis and dedicated workers as the minimum prod-shaped local boundary, not as full production readiness
 7. keep local env-file secret handling and filesystem or memory-backed artifact payload storage classified as non-production even if Docker bring-up and live-provider execution both succeed

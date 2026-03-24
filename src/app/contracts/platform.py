@@ -29,6 +29,10 @@ from app.contracts.production_baseline import (
     ProductionBaselineGovernanceStatusResponse,
     ProductionBaselineRuntimeStatusResponse,
 )
+from app.contracts.production_go_live import (
+    ProductionGoLiveGovernanceStatusResponse,
+    ProductionGoLiveRuntimeStatusResponse,
+)
 from app.contracts.providers import (
     ProviderGovernanceStatusResponse,
     ProviderOperationsStatusResponse,
@@ -143,6 +147,12 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     production_baseline_governance: ProductionBaselineGovernanceStatusResponse = Field(
         description="Current RFC-0020 production-baseline governance posture across runtime, activation, and runbook readiness."
+    )
+    production_go_live: ProductionGoLiveRuntimeStatusResponse = Field(
+        description="Current RFC-0022 production go-live runtime posture across platform approval and downstream use-case approval states."
+    )
+    production_go_live_governance: ProductionGoLiveGovernanceStatusResponse = Field(
+        description="Current RFC-0022 production go-live governance posture across runtime, activation, and runbook readiness."
     )
     audit_store: StoreRuntimeStatusDescriptor = Field(
         description="Current audit persistence runtime posture."

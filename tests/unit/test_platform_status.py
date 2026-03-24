@@ -164,6 +164,25 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
     assert status.production_baseline.production_ready is False
     assert status.production_baseline.prod_shaped_local is False
+    assert status.production_go_live.platform_state.value == "TECHNICALLY_RUNNING"
+    assert status.production_go_live.use_case_state.value == "PRE_PROD_VALIDATION"
+    assert status.production_go_live.platform_production_approved is False
+    assert status.production_go_live.use_case_production_approved is False
+    assert status.production_go_live.provider_freeze_state.value == "NOT_APPLICABLE"
+    assert status.production_go_live.provider_rollback_state.value == "NOT_APPLICABLE"
+    assert any(
+        domain.domain_id == "managed_object_storage"
+        and domain.review_surface == "/platform/artifacts/governance-status"
+        for domain in status.production_go_live.approval_domains
+    )
+    assert status.production_go_live_governance.governance_ready is False
+    assert status.production_go_live_governance.activation_readiness.activation_ready is False
+    assert status.production_go_live_governance.runbook_readiness.runbook_ready is False
+    assert status.production_go_live_governance.use_case_approval.approval_state.value == (
+        "PRE_PROD_VALIDATION"
+    )
+    assert status.production_go_live_governance.use_case_approval.active_production_ready is False
+    assert status.production_go_live_governance.go_live_decision == "BLOCKED"
     assert status.production_baseline_governance.governance_ready is False
     assert status.production_baseline_governance.activation_readiness.activation_ready is False
     assert status.production_baseline_governance.runbook_readiness.runbook_ready is True

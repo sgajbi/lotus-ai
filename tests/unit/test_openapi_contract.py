@@ -56,6 +56,25 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         spec["paths"]["/platform/production-baseline/governance-status"]["get"]["operationId"]
         == "getProductionBaselineGovernanceStatus"
     )
+    assert spec["paths"]["/platform/production-go-live/runtime-status"]["get"]["operationId"] == (
+        "getProductionGoLiveRuntimeStatus"
+    )
+    assert (
+        spec["paths"]["/platform/production-go-live/activation-readiness"]["get"]["operationId"]
+        == "getProductionGoLiveActivationReadiness"
+    )
+    assert (
+        spec["paths"]["/platform/production-go-live/runbook-readiness"]["get"]["operationId"]
+        == "getProductionGoLiveRunbookReadiness"
+    )
+    assert (
+        spec["paths"]["/platform/production-go-live/use-case-approval"]["get"]["operationId"]
+        == "getProductionGoLiveUseCaseApproval"
+    )
+    assert (
+        spec["paths"]["/platform/production-go-live/governance-status"]["get"]["operationId"]
+        == "getProductionGoLiveGovernanceStatus"
+    )
     assert spec["paths"]["/platform/observability/runtime-status"]["get"]["operationId"] == (
         "getObservabilityRuntimeStatus"
     )
@@ -362,6 +381,21 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     production_baseline_schema = spec["components"]["schemas"][
         "ProductionBaselineRuntimeStatusResponse"
     ]
+    production_go_live_schema = spec["components"]["schemas"][
+        "ProductionGoLiveRuntimeStatusResponse"
+    ]
+    production_go_live_activation_schema = spec["components"]["schemas"][
+        "ProductionGoLiveActivationReadinessResponse"
+    ]
+    production_go_live_runbook_schema = spec["components"]["schemas"][
+        "ProductionGoLiveRunbookReadinessResponse"
+    ]
+    production_go_live_governance_schema = spec["components"]["schemas"][
+        "ProductionGoLiveGovernanceStatusResponse"
+    ]
+    production_go_live_use_case_schema = spec["components"]["schemas"][
+        "ProductionGoLiveUseCaseApprovalResponse"
+    ]
     deployment_split_schema = spec["components"]["schemas"]["DeploymentSplitRuntimeStatusResponse"]
     deployment_split_activation_schema = spec["components"]["schemas"][
         "DeploymentSplitActivationReadinessResponse"
@@ -392,6 +426,21 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "runtime_status" in deployment_split_governance_schema["properties"]
     assert "observability_governance_ready" in deployment_split_governance_schema["properties"]
     assert "posture" in production_baseline_schema["properties"]
+    assert "platform_state" in production_go_live_schema["properties"]
+    assert "use_case_state" in production_go_live_schema["properties"]
+    assert "approval_domains" in production_go_live_schema["properties"]
+    assert "provider_freeze_state" in production_go_live_schema["properties"]
+    assert "provider_rollback_state" in production_go_live_schema["properties"]
+    assert "activation_ready" in production_go_live_activation_schema["properties"]
+    assert "items" in production_go_live_runbook_schema["properties"]
+    assert "go_live_checklist" in production_go_live_runbook_schema["properties"]
+    assert "approval_state" in production_go_live_use_case_schema["properties"]
+    assert "active_production_ready" in production_go_live_use_case_schema["properties"]
+    assert "runtime_status" in production_go_live_governance_schema["properties"]
+    assert "activation_readiness" in production_go_live_governance_schema["properties"]
+    assert "runbook_readiness" in production_go_live_governance_schema["properties"]
+    assert "use_case_approval" in production_go_live_governance_schema["properties"]
+    assert "go_live_decision" in production_go_live_governance_schema["properties"]
     assert "dependencies" in production_baseline_schema["properties"]
     assert "activation_ready" in production_baseline_activation_schema["properties"]
     assert "items" in production_baseline_runbook_schema["properties"]
@@ -426,6 +475,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "deployment_split" in platform_runtime_schema["properties"]
     assert "deployment_split_governance" in platform_runtime_schema["properties"]
     assert "production_baseline" in platform_runtime_schema["properties"]
+    assert "production_go_live" in platform_runtime_schema["properties"]
+    assert "production_go_live_governance" in platform_runtime_schema["properties"]
     assert "production_baseline_governance" in platform_runtime_schema["properties"]
     first_use_case_schema = spec["components"]["schemas"]["FirstUseCaseRuntimeStatusResponse"]
     assert "capability_pack_id" in first_use_case_schema["properties"]

@@ -1,6 +1,6 @@
 # RFC-0022: Production Go-Live Approval and Managed Infrastructure
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-25
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -142,6 +142,14 @@ The go-live model must explicitly cover:
 4. downstream use-case production approval,
 5. production rollback and freeze posture.
 
+The Slice 1 boundary for this RFC is intentionally narrow:
+
+1. add production go-live approval contracts,
+2. expose one dedicated runtime-status surface above RFC-0020,
+3. model managed secrets and managed object storage as explicit approval domains,
+4. separate platform approval state from downstream use-case approval state,
+5. do not yet add freeze controls, operator actions, or final active-production approvals.
+
 ## Production Approval Model
 
 This RFC establishes four distinct approval states.
@@ -272,7 +280,8 @@ Acceptance gate:
 
 1. one production-approval runtime surface exists,
 2. secret and object-storage posture are explicit,
-3. platform and downstream approval states are not conflated.
+3. platform and downstream approval states are not conflated,
+4. Slice 1 remains status-only and does not prematurely introduce freeze or rollback controls.
 
 ### Slice 2: Managed Secret and Object-Storage Enforcement
 
@@ -293,27 +302,27 @@ Acceptance gate:
 Outcome:
 
 1. live-provider technical enablement is cleanly separated from production approval,
-2. freeze and rollback semantics exist for provider go-live posture,
+2. freeze and rollback semantics are explicitly inspectable for provider go-live posture,
 3. production traffic approval is reviewable and reversible.
 
 Acceptance gate:
 
 1. live-provider success cannot overstate production approval,
 2. freeze and rollback posture are explicit,
-3. provider operations and governance align on production truth.
+3. provider operations, activation-readiness, and governance align on production truth.
 
 ### Slice 4: Downstream Use-Case Production Approval
 
 Outcome:
 
 1. downstream limited rollout and active production posture are clearly separated,
-2. named use-case production approval exists,
+2. named use-case production approval exists through a dedicated production go-live surface,
 3. shared ownership and rollback posture are explicit.
 
 Acceptance gate:
 
 1. a downstream use case can be production-blocked while the platform remains production-capable,
-2. active-production approval is inspectable,
+2. active-production approval is inspectable without relying on the older limited-rollout-only governance surface,
 3. runbook, governance, and evidence posture converge.
 
 This slice is intentionally about approval of named use cases, not broad multi-app rollout governance.
