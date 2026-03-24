@@ -174,7 +174,11 @@ def test_evaluation_split_active_runtime_routes_are_reported_explicitly(
     monkeypatch.setattr(
         "app.services.deployment_split_shared._build_eval_split_approval_gates",
         lambda: [
-            SimpleNamespace(domain_label="Prompt Rollout", approval_ready=False, evidence_state=SimpleNamespace(value="RUNTIME_FAIL"))
+            SimpleNamespace(
+                domain_label="Prompt Rollout",
+                approval_ready=False,
+                evidence_state=SimpleNamespace(value="RUNTIME_FAIL"),
+            )
         ],
     )
 

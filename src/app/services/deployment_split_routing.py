@@ -136,11 +136,9 @@ def _resolve_route(
             degraded=degraded,
             degraded_findings=degraded_findings,
             detail=(
-                (
-                    f"{split_plane.value.capitalize()} plane routing is active for this flow, but the plane is currently degraded; operators should roll back to the unified stage if the degraded posture persists."
-                    if degraded
-                    else f"{split_plane.value.capitalize()} plane routing is active for this flow; operators should roll back to the unified stage if split-plane execution degrades."
-                )
+                f"{split_plane.value.capitalize()} plane routing is active for this flow, but the plane is currently degraded; operators should roll back to the unified stage if the degraded posture persists."
+                if degraded
+                else f"{split_plane.value.capitalize()} plane routing is active for this flow; operators should roll back to the unified stage if split-plane execution degrades."
             ),
         )
     if split_ready_active:

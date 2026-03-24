@@ -110,9 +110,7 @@ async def get_deployment_split_activation_readiness_route(
         500: {"description": "Unexpected server error."},
     },
 )
-async def get_deployment_split_runbook_readiness_route() -> (
-    DeploymentSplitRunbookReadinessResponse
-):
+async def get_deployment_split_runbook_readiness_route() -> DeploymentSplitRunbookReadinessResponse:
     return build_deployment_split_runbook_readiness()
 
 

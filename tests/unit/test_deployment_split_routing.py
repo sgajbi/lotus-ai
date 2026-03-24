@@ -73,7 +73,9 @@ def test_build_split_route_descriptors_marks_retrieval_routes_degraded_when_gove
     routes = build_split_route_descriptors(None)
 
     assert routes[0].degraded is True
-    assert routes[0].degraded_findings[0].startswith("Retrieval split activation remains configured")
+    assert (
+        routes[0].degraded_findings[0].startswith("Retrieval split activation remains configured")
+    )
     assert routes[1].degraded is True
     assert routes[2].degraded is False
 
@@ -93,7 +95,11 @@ def test_build_split_route_descriptors_reports_eval_plane_active_when_enabled(
     monkeypatch.setattr(
         "app.services.deployment_split_shared._build_eval_split_approval_gates",
         lambda: [
-            SimpleNamespace(domain_label="Provider Execution", approval_ready=True, evidence_state=SimpleNamespace(value="RUNTIME_PASS"))
+            SimpleNamespace(
+                domain_label="Provider Execution",
+                approval_ready=True,
+                evidence_state=SimpleNamespace(value="RUNTIME_PASS"),
+            )
         ],
     )
 
@@ -121,7 +127,11 @@ def test_build_split_route_descriptors_marks_eval_routes_degraded_when_approval_
     monkeypatch.setattr(
         "app.services.deployment_split_shared._build_eval_split_approval_gates",
         lambda: [
-            SimpleNamespace(domain_label="Provider Execution", approval_ready=False, evidence_state=SimpleNamespace(value="RUNTIME_FAIL"))
+            SimpleNamespace(
+                domain_label="Provider Execution",
+                approval_ready=False,
+                evidence_state=SimpleNamespace(value="RUNTIME_FAIL"),
+            )
         ],
     )
 

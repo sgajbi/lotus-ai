@@ -65,7 +65,9 @@ def test_deployment_split_activation_readiness_reports_stage_mismatch_as_blockin
 
     assert readiness.activation_ready is False
     assert readiness.split_active is False
-    assert "RFC-0020 production-baseline governance is not yet ready." in readiness.blocking_findings
+    assert (
+        "RFC-0020 production-baseline governance is not yet ready." in readiness.blocking_findings
+    )
 
 
 def test_deployment_split_runbook_readiness_is_ready() -> None:

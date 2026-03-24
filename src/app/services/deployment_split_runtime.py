@@ -68,9 +68,7 @@ def build_deployment_split_runtime_status(
         planes=planes,
         routes=routes,
         blocking_findings=posture.blocking_findings,
-        degraded=bool(
-            posture.retrieval_degraded_findings or posture.eval_degraded_findings
-        ),
+        degraded=bool(posture.retrieval_degraded_findings or posture.eval_degraded_findings),
         degraded_findings=[
             *posture.retrieval_degraded_findings,
             *posture.eval_degraded_findings,

@@ -108,7 +108,11 @@ def test_evaluation_runtime_status_reports_active_eval_plane_route(
     monkeypatch.setattr(
         "app.services.deployment_split_shared._build_eval_split_approval_gates",
         lambda: [
-            SimpleNamespace(domain_label="First Use-Case Onboarding", approval_ready=True, evidence_state=SimpleNamespace(value="RUNTIME_PASS"))
+            SimpleNamespace(
+                domain_label="First Use-Case Onboarding",
+                approval_ready=True,
+                evidence_state=SimpleNamespace(value="RUNTIME_PASS"),
+            )
         ],
     )
 
@@ -136,7 +140,11 @@ def test_evaluation_runtime_status_reports_degraded_active_eval_plane_route(
     monkeypatch.setattr(
         "app.services.deployment_split_shared._build_eval_split_approval_gates",
         lambda: [
-            SimpleNamespace(domain_label="First Use-Case Onboarding", approval_ready=False, evidence_state=SimpleNamespace(value="RUNTIME_FAIL"))
+            SimpleNamespace(
+                domain_label="First Use-Case Onboarding",
+                approval_ready=False,
+                evidence_state=SimpleNamespace(value="RUNTIME_FAIL"),
+            )
         ],
     )
 

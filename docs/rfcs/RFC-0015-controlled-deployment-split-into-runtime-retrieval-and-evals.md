@@ -1,6 +1,6 @@
 # RFC-0015: Controlled Deployment Split Into Runtime, Retrieval, and Evals
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-24
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers

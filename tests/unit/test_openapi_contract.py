@@ -11,9 +11,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         "getDeploymentSplitRuntimeStatus"
     )
     assert (
-        spec["paths"]["/platform/deployment-split/activation-readiness"]["get"][
-            "operationId"
-        ]
+        spec["paths"]["/platform/deployment-split/activation-readiness"]["get"]["operationId"]
         == "getDeploymentSplitActivationReadiness"
     )
     assert (
@@ -274,9 +272,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     production_baseline_schema = spec["components"]["schemas"][
         "ProductionBaselineRuntimeStatusResponse"
     ]
-    deployment_split_schema = spec["components"]["schemas"][
-        "DeploymentSplitRuntimeStatusResponse"
-    ]
+    deployment_split_schema = spec["components"]["schemas"]["DeploymentSplitRuntimeStatusResponse"]
     deployment_split_activation_schema = spec["components"]["schemas"][
         "DeploymentSplitActivationReadinessResponse"
     ]

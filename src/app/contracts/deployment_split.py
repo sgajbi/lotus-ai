@@ -78,7 +78,9 @@ class DeploymentSplitRuntimeStatusResponse(BaseModel):
     split_ready: bool = Field(
         description="Whether the current runtime posture is at least split-ready, even if no plane cutover is active yet."
     )
-    plane_count: int = Field(description="Number of governed deployment planes described by this RFC.")
+    plane_count: int = Field(
+        description="Number of governed deployment planes described by this RFC."
+    )
     separate_plane_count: int = Field(
         description="Number of planes currently described as independently deployed rather than unified."
     )
@@ -137,7 +139,9 @@ class DeploymentSplitActivationReadinessResponse(BaseModel):
 
 
 class DeploymentSplitRunbookReadinessItem(BaseModel):
-    runbook_id: str = Field(description="Stable deployment-split runbook readiness item identifier.")
+    runbook_id: str = Field(
+        description="Stable deployment-split runbook readiness item identifier."
+    )
     status: str = Field(description="Current readiness posture for the runbook requirement.")
     required_for_activation: bool = Field(
         description="Whether this runbook item must be complete before the current deployment-split stage can be treated as activatable."
@@ -165,7 +169,9 @@ class DeploymentSplitRunbookReadinessResponse(BaseModel):
 
 
 class DeploymentSplitGovernanceStatusResponse(BaseModel):
-    service: str = Field(description="Service name emitting the deployment-split governance status.")
+    service: str = Field(
+        description="Service name emitting the deployment-split governance status."
+    )
     version: str = Field(description="Current lotus-ai service version.")
     governance_ready: bool = Field(
         description="Whether deployment-split governance is ready for the configured stage."
