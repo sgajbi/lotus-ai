@@ -58,6 +58,10 @@
 - Safety runbook readiness: /platform/safety/runbook-readiness
 - Safety governance status: /platform/safety/governance-status
 - Retrieval runtime status: /platform/retrieval/runtime-status
+- First production use-case contract: /platform/use-cases/first-production-use-case
+- First production use-case readiness: /platform/use-cases/first-production-use-case/readiness
+- First production use-case runbook readiness: /platform/use-cases/first-production-use-case/runbook-readiness
+- First production use-case governance status: /platform/use-cases/first-production-use-case/governance-status
 
 ## Startup Readiness Policy
 
@@ -332,3 +336,22 @@ Current recovery expectations:
 1. Check container logs for request failures and stack traces.
 2. Verify /health/ready and metrics endpoint.
 3. Run local parity check (make ci) before hotfix PR.
+
+## First Use-Case Governance
+
+Before treating `lotus-performance` analytics commentary as limited governed rollout posture:
+
+1. verify `GET /platform/use-cases/first-production-use-case`
+2. inspect `GET /platform/use-cases/first-production-use-case/readiness` when runtime-backed evidence, audit durability, or bounded incident-review blockers need detail
+3. inspect `GET /platform/use-cases/first-production-use-case/runbook-readiness` when shared ownership, rollback, support, or unsupported-input triage posture needs detail
+4. inspect `GET /platform/use-cases/first-production-use-case/governance-status` for the composed limited-rollout view
+5. confirm the embedded `first_use_case` and `first_use_case_governance` blocks in `GET /platform/runtime-status` match the detailed use-case views
+6. confirm `GET /platform/evals/runtime-status` still reports the `first_use_case_onboarding` approval gate truthfully
+7. confirm `GET /platform/observability/incident-summary` and any attached artifact descriptors remain available for bounded incident review of the first use case
+8. only then proceed with any limited downstream rollout review
+
+Current rollback and support expectations:
+
+1. if first-use-case governance becomes blocked, treat downstream activation as blocked rather than treating commentary variance as a normal runtime fluctuation
+2. inspect `/ai/audit`, `/platform/observability/incident-summary`, and attached artifact descriptors before re-enabling downstream exposure
+3. treat incomplete or unsupported analytics input shape as a distinct support path owned jointly by lotus-performance and lotus-ai, not as a prompt-tuning issue alone

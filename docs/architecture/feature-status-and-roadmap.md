@@ -170,7 +170,7 @@ Current state:
 Current state:
 
 1. the platform is ready enough for serious integration planning,
-2. first-use-case onboarding is now partially implemented through a bounded `lotus-performance` contract and readiness surface, but rollout is not yet closed.
+2. first-use-case onboarding is now partially implemented through a bounded `lotus-performance` contract, limited-rollout readiness surface, runbook-readiness surface, and composed governance view, but rollout is not yet closed.
 
 ## Roadmap
 
@@ -189,7 +189,7 @@ The next RFCs already identified in the repo describe the expected sequence:
 The current preferred RFC-0016 target is:
 
 1. `lotus-performance` analytics commentary over caller-supplied structured performance facts.
-2. runtime readiness is now inspectable through `/platform/use-cases/first-production-use-case` and `/platform/use-cases/first-production-use-case/readiness`.
+2. runtime and rollout posture are now inspectable through `/platform/use-cases/first-production-use-case`, `/platform/use-cases/first-production-use-case/readiness`, `/platform/use-cases/first-production-use-case/runbook-readiness`, and `/platform/use-cases/first-production-use-case/governance-status`.
 
 ### Why These Are Next
 

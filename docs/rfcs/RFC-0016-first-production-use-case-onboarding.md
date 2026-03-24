@@ -142,6 +142,12 @@ Current implemented posture for this slice:
 2. `lotus_performance_first_use_case_examples` is the dedicated runtime-backed evaluation family for this onboarding path,
 3. `/platform/use-cases/first-production-use-case/readiness` exposes the caller, safety, and approval-gate posture without overstating broader downstream rollout.
 
+Current implemented posture for the next slice:
+
+1. `/platform/use-cases/first-production-use-case/readiness` now also carries the bounded limited-rollout technical gates for audit, observability, and artifact review,
+2. `/platform/use-cases/first-production-use-case/runbook-readiness` now exposes the operator support, rollback, unsupported-input triage, and shared-ownership posture,
+3. `/platform/use-cases/first-production-use-case/governance-status` now combines those bounded runtime and runbook views into one limited-rollout review surface.
+
 ### Operational Readiness
 
 The first use case is where platform promises become operational obligations.

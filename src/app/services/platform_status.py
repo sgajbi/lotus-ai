@@ -14,6 +14,7 @@ from app.services.async_governance_status_service import build_async_governance_
 from app.services.async_runtime_status import build_async_runtime_status
 from app.services.capability_catalog import build_capability_catalog
 from app.services.eval_status import build_evaluation_runtime_status
+from app.services.first_use_case_governance import build_first_use_case_governance_status
 from app.services.first_use_case_status import build_first_use_case_runtime_status
 from app.services.observability_governance import build_observability_governance_status
 from app.services.observability_runtime import build_observability_runtime_status
@@ -66,6 +67,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     prompt_runtime = build_prompt_runtime_status()
     task_runtime = build_task_runtime_status()
     first_use_case = build_first_use_case_runtime_status()
+    first_use_case_governance = build_first_use_case_governance_status()
     audit_store = get_audit_store_runtime_status()
     artifact_store = get_artifact_store_runtime_status()
     retrieval_store = get_retrieval_store_runtime_status()
@@ -102,6 +104,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         prompt_runtime=prompt_runtime,
         task_runtime=task_runtime,
         first_use_case=first_use_case,
+        first_use_case_governance=first_use_case_governance,
         safety_runtime=safety_runtime,
         safety_governance=safety_governance,
         audit_store=audit_store,

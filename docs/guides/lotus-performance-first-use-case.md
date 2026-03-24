@@ -32,13 +32,32 @@ Use these runtime surfaces to review onboarding readiness without overstating do
 
 1. `GET /platform/use-cases/first-production-use-case`
 2. `GET /platform/use-cases/first-production-use-case/readiness`
-3. `GET /platform/evals/runtime-status`
+3. `GET /platform/use-cases/first-production-use-case/runbook-readiness`
+4. `GET /platform/use-cases/first-production-use-case/governance-status`
+5. `GET /platform/evals/runtime-status`
 
-The readiness view is currently bounded to:
+The bounded rollout review is currently grounded in:
 
 1. explicit caller-policy registration for `lotus-performance`,
 2. explanation-only safety posture for `EXPLANATION_ONLY` output,
-3. a dedicated runtime-backed evaluation family for the first use case.
+3. a dedicated runtime-backed evaluation family for the first use case,
+4. SQL-backed audit review for restart-safe support inspection,
+5. observability and bounded incident-evidence review,
+6. descriptor-first artifact review for bounded incident bundles.
+
+## Rollout and Rollback Posture
+
+Limited rollout should be treated as governed only when:
+
+1. `/platform/use-cases/first-production-use-case/readiness` is ready,
+2. `/platform/use-cases/first-production-use-case/runbook-readiness` is ready,
+3. `/platform/use-cases/first-production-use-case/governance-status` reports `LIMITED_ROLLOUT_READY`.
+
+Rollback posture is intentionally simple:
+
+1. if first-use-case governance becomes blocked, downstream exposure should be treated as blocked,
+2. unsupported or incomplete analytics inputs should be handled as a support and rollback review path, not normal explanation variance,
+3. audit, observability incident summaries, and attached artifact descriptors are the primary review surfaces for that path.
 
 ## Ownership
 

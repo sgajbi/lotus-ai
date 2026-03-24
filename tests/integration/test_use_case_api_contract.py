@@ -29,3 +29,32 @@ def test_first_production_use_case_readiness_route(client: TestClient) -> None:
     assert body["approval_gate"]["domain_id"] == "first_use_case_onboarding"
     assert body["approval_gate"]["evidence_state"] == "STAGED_ONLY"
     assert any(item["evidence_id"] == "lotus_performance_caller_policy" for item in body["items"])
+    assert any(
+        item["evidence_id"] == "lotus_performance_durable_audit_review" for item in body["items"]
+    )
+
+
+def test_first_production_use_case_runbook_readiness_route(client: TestClient) -> None:
+    response = client.get("/platform/use-cases/first-production-use-case/runbook-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["use_case_id"] == "lotus_performance.analytics_commentary.v1"
+    assert body["downstream_app"] == "lotus-performance"
+    assert body["runbook_ready"] is True
+    assert any(item["runbook_id"] == "lotus_performance_shared_ownership" for item in body["items"])
+
+
+def test_first_production_use_case_governance_status_route(client: TestClient) -> None:
+    response = client.get("/platform/use-cases/first-production-use-case/governance-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["use_case_id"] == "lotus_performance.analytics_commentary.v1"
+    assert body["downstream_app"] == "lotus-performance"
+    assert body["operational_posture"] == "LIMITED_ROLLOUT_BLOCKED"
+    assert body["governance_ready"] is False
+    assert body["readiness"]["approval_gate"]["domain_id"] == "first_use_case_onboarding"
+    assert body["runbook_readiness"]["runbook_ready"] is True

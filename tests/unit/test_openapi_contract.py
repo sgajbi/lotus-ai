@@ -106,6 +106,18 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         ]
         == "getFirstProductionUseCaseReadiness"
     )
+    assert (
+        spec["paths"]["/platform/use-cases/first-production-use-case/runbook-readiness"]["get"][
+            "operationId"
+        ]
+        == "getFirstProductionUseCaseRunbookReadiness"
+    )
+    assert (
+        spec["paths"]["/platform/use-cases/first-production-use-case/governance-status"]["get"][
+            "operationId"
+        ]
+        == "getFirstProductionUseCaseGovernanceStatus"
+    )
     assert spec["paths"]["/platform/evals/catalog"]["get"]["operationId"] == "getEvaluationCatalog"
     assert spec["paths"]["/platform/evals/runs"]["get"]["operationId"] == "getEvaluationRunCatalog"
     assert spec["paths"]["/platform/evals/runs/submit"]["post"]["operationId"] == (
@@ -226,12 +238,22 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "artifact_runtime" in platform_runtime_schema["properties"]
     assert "artifact_governance" in platform_runtime_schema["properties"]
     assert "first_use_case" in platform_runtime_schema["properties"]
+    assert "first_use_case_governance" in platform_runtime_schema["properties"]
     first_use_case_schema = spec["components"]["schemas"]["FirstUseCaseRuntimeStatusResponse"]
     assert "downstream_contract_fields" in first_use_case_schema["properties"]
     assert "ownership_boundaries" in first_use_case_schema["properties"]
     first_use_case_readiness_schema = spec["components"]["schemas"]["FirstUseCaseReadinessResponse"]
     assert "approval_gate" in first_use_case_readiness_schema["properties"]
     assert "items" in first_use_case_readiness_schema["properties"]
+    first_use_case_runbook_schema = spec["components"]["schemas"][
+        "FirstUseCaseRunbookReadinessResponse"
+    ]
+    assert "items" in first_use_case_runbook_schema["properties"]
+    first_use_case_governance_schema = spec["components"]["schemas"][
+        "FirstUseCaseGovernanceStatusResponse"
+    ]
+    assert "readiness" in first_use_case_governance_schema["properties"]
+    assert "runbook_readiness" in first_use_case_governance_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"

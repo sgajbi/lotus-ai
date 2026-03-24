@@ -56,7 +56,7 @@ def build_first_use_case_runtime_status() -> FirstUseCaseRuntimeStatusResponse:
         dependency_summary=[
             "Caller identity and task authorization must allow lotus-performance to execute explain.v1.",
             "Prompt, safety, audit, observability, and artifact surfaces remain the governed runtime backbone for the use case.",
-            "Use-case readiness is tracked separately through /platform/use-cases/first-production-use-case/readiness so contract definition stays distinct from rollout evidence.",
+            "Use-case readiness is tracked separately through /platform/use-cases/first-production-use-case/readiness, while limited-rollout governance is tracked through the paired runbook and governance endpoints.",
             "The first contract intentionally avoids retrieval dependency and does not require broader live-provider rollout to be considered defined.",
         ],
         non_goals=[
@@ -67,6 +67,6 @@ def build_first_use_case_runtime_status() -> FirstUseCaseRuntimeStatusResponse:
         status_summary=[
             "The first production-oriented onboarding target is lotus-performance analytics commentary over caller-supplied structured facts.",
             "The request contract is intentionally narrow and explanation-only so rollout can be reviewed without delegating domain truth to lotus-ai.",
-            "This runtime surface defines the contract and ownership boundary only; it does not claim rollout readiness, and runtime-backed onboarding evidence is tracked separately.",
+            "This runtime surface defines the contract and ownership boundary only; it does not claim rollout readiness, and runtime-backed onboarding plus limited-rollout governance are tracked separately.",
         ],
     )

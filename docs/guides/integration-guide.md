@@ -90,6 +90,7 @@ The calling Lotus application owns the business context.
 2. Summarize material attribution or period-over-period changes.
 3. Keep outputs commentary-oriented and grounded in structured analytics owned by `lotus-performance`.
 4. Review `GET /platform/use-cases/first-production-use-case/readiness` before treating the integration as ready for limited governed onboarding.
+5. Review `GET /platform/use-cases/first-production-use-case/governance-status` before treating the integration as ready for limited governed rollout.
 
 ### lotus-manage
 

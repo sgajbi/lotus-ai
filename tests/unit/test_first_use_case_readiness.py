@@ -16,15 +16,19 @@ def test_first_use_case_readiness_reports_staged_only_without_runtime_eval_evide
     assert readiness.readiness_ready is False
     assert readiness.approval_gate.domain_id == "first_use_case_onboarding"
     assert readiness.approval_gate.evidence_state.value == "STAGED_ONLY"
-    assert readiness.required_item_count == 4
-    assert readiness.completed_required_item_count == 3
+    assert readiness.required_item_count == 8
+    assert readiness.completed_required_item_count == 4
     assert readiness.items[0].status == "READY"
     assert readiness.items[1].status == "READY"
     assert readiness.items[2].status == "FOUNDATION_STAGED"
     assert readiness.items[3].status == "READY"
+    assert readiness.items[4].status == "NOT_READY"
+    assert readiness.items[5].status == "NOT_READY"
+    assert readiness.items[6].status == "NOT_READY"
+    assert readiness.items[7].status == "READY"
 
 
-def test_first_use_case_readiness_reports_runtime_pass_after_governed_eval_runs() -> None:
+def test_first_use_case_readiness_keeps_limited_rollout_blocked_without_durable_review_surfaces() -> None:
     submit_evaluation_run(
         EvaluationRunSubmissionRequest(
             fixture_id="lotus_performance_first_use_case_examples",
@@ -37,10 +41,13 @@ def test_first_use_case_readiness_reports_runtime_pass_after_governed_eval_runs(
 
     readiness = build_first_use_case_readiness()
 
-    assert readiness.readiness_ready is True
-    assert readiness.completed_required_item_count == readiness.required_item_count
+    assert readiness.readiness_ready is False
     assert readiness.approval_gate.evidence_state.value == "RUNTIME_PASS"
     assert readiness.items[2].status == "READY"
+    assert readiness.items[4].status == "NOT_READY"
+    assert readiness.items[5].status == "NOT_READY"
+    assert readiness.items[6].status == "NOT_READY"
+    assert readiness.items[7].status == "READY"
 
 
 def test_first_use_case_readiness_uses_sql_seeded_lotus_performance_policy(
@@ -50,8 +57,26 @@ def test_first_use_case_readiness_uses_sql_seeded_lotus_performance_policy(
     upgrade_database_to_head(database_url)
 
     with override_runtime_settings(
-        access_control_store_mode="sqlalchemy", database_url=database_url
+        access_control_store_mode="sqlalchemy",
+        audit_store_mode="sqlalchemy",
+        artifact_store_mode="sqlalchemy",
+        artifact_object_store_mode="memory",
+        database_url=database_url,
     ):
+        submit_evaluation_run(
+            EvaluationRunSubmissionRequest(
+                fixture_id="lotus_performance_first_use_case_examples",
+                caller_app="lotus-platform",
+                correlation_id="corr-first-use-case-002",
+                triggered_by="operator-a",
+            )
+        )
+        run_next_evaluation_execution_job(worker_id="worker-a")
         readiness = build_first_use_case_readiness()
 
     assert readiness.items[0].status == "READY"
+    assert readiness.items[4].status == "READY"
+    assert readiness.items[5].status == "READY"
+    assert readiness.items[6].status == "READY"
+    assert readiness.items[7].status == "READY"
+    assert readiness.readiness_ready is True

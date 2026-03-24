@@ -2,8 +2,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.contracts.use_cases import FirstUseCaseReadinessResponse, FirstUseCaseRuntimeStatusResponse
+from app.contracts.use_cases import (
+    FirstUseCaseGovernanceStatusResponse,
+    FirstUseCaseReadinessResponse,
+    FirstUseCaseRunbookReadinessResponse,
+    FirstUseCaseRuntimeStatusResponse,
+)
+from app.services.first_use_case_governance import build_first_use_case_governance_status
 from app.services.first_use_case_readiness import build_first_use_case_readiness
+from app.services.first_use_case_runbook_readiness import build_first_use_case_runbook_readiness
 from app.services.first_use_case_status import build_first_use_case_runtime_status
 
 router = APIRouter(prefix="/platform/use-cases", tags=["platform"])
@@ -43,3 +50,39 @@ async def get_first_production_use_case_status_route() -> FirstUseCaseRuntimeSta
 )
 async def get_first_production_use_case_readiness_route() -> FirstUseCaseReadinessResponse:
     return build_first_use_case_readiness()
+
+
+@router.get(
+    "/first-production-use-case/runbook-readiness",
+    response_model=FirstUseCaseRunbookReadinessResponse,
+    operation_id="getFirstProductionUseCaseRunbookReadiness",
+    summary="Get lotus-ai first production use-case runbook readiness",
+    description=(
+        "Returns the bounded operational runbook readiness posture for the selected first "
+        "production-oriented use case, including shared ownership, rollback, and support review paths."
+    ),
+    responses={
+        200: {"description": "First production use-case runbook readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_first_production_use_case_runbook_readiness_route() -> FirstUseCaseRunbookReadinessResponse:
+    return build_first_use_case_runbook_readiness()
+
+
+@router.get(
+    "/first-production-use-case/governance-status",
+    response_model=FirstUseCaseGovernanceStatusResponse,
+    operation_id="getFirstProductionUseCaseGovernanceStatus",
+    summary="Get lotus-ai first production use-case governance status",
+    description=(
+        "Returns the composed governance posture for the selected first production-oriented use "
+        "case, combining bounded readiness and operational runbook review for limited rollout."
+    ),
+    responses={
+        200: {"description": "First production use-case governance status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_first_production_use_case_governance_status_route() -> FirstUseCaseGovernanceStatusResponse:
+    return build_first_use_case_governance_status()

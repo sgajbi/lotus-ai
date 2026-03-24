@@ -110,6 +110,10 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.first_use_case.downstream_app == "lotus-performance"
     assert status.first_use_case.task_id == "explain.v1"
     assert status.first_use_case.contract_hardened is True
+    assert status.first_use_case_governance.operational_posture.value == "LIMITED_ROLLOUT_BLOCKED"
+    assert status.first_use_case_governance.governance_ready is False
+    assert status.first_use_case_governance.readiness.readiness_ready is False
+    assert status.first_use_case_governance.runbook_readiness.runbook_ready is True
     assert status.safety_runtime.runtime_redaction_active is False
     assert status.safety_governance.governance_ready is False
     assert status.safety_governance.blocking_area_count == 3

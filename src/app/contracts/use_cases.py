@@ -12,6 +12,12 @@ class FirstUseCaseRolloutPosture(str, Enum):
     CONTRACT_DEFINED = "CONTRACT_DEFINED"
 
 
+class FirstUseCaseOperationalPosture(str, Enum):
+    CONTRACT_DEFINED = "CONTRACT_DEFINED"
+    LIMITED_ROLLOUT_BLOCKED = "LIMITED_ROLLOUT_BLOCKED"
+    LIMITED_ROLLOUT_READY = "LIMITED_ROLLOUT_READY"
+
+
 class FirstUseCaseOwnershipBoundary(BaseModel):
     owner: str = Field(description="Owning system or team for the boundary.")
     responsibility: str = Field(description="Bounded responsibility assigned to the owner.")
@@ -53,6 +59,61 @@ class FirstUseCaseReadinessResponse(BaseModel):
     )
     status_summary: list[str] = Field(
         description="Human-readable summary of the current first-use-case readiness posture."
+    )
+
+
+class FirstUseCaseRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(description="Stable first-use-case runbook readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before limited rollout."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class FirstUseCaseRunbookReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the first-use-case runbook readiness view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    use_case_id: str = Field(description="Stable identifier for the selected first use case.")
+    downstream_app: str = Field(description="Named downstream integration owner for the use case.")
+    runbook_ready: bool = Field(
+        description="Whether limited-rollout operational runbook readiness is sufficient for the first use case."
+    )
+    required_item_count: int = Field(
+        description="Number of runbook items currently required before limited rollout."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required runbook items currently marked complete."
+    )
+    items: list[FirstUseCaseRunbookReadinessItem] = Field(
+        description="Governed runbook readiness items for the first production use case."
+    )
+
+
+class FirstUseCaseGovernanceStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the first-use-case governance status.")
+    version: str = Field(description="Current lotus-ai service version.")
+    use_case_id: str = Field(description="Stable identifier for the selected first use case.")
+    downstream_app: str = Field(description="Named downstream integration owner for the use case.")
+    operational_posture: FirstUseCaseOperationalPosture = Field(
+        description="Current bounded rollout posture for the first production use case."
+    )
+    governance_ready: bool = Field(
+        description="Whether the first use case is ready for limited governed rollout."
+    )
+    readiness: FirstUseCaseReadinessResponse = Field(
+        description="Current technical and runtime-backed readiness posture for the first use case."
+    )
+    runbook_readiness: FirstUseCaseRunbookReadinessResponse = Field(
+        description="Current operational runbook readiness posture for the first use case."
+    )
+    blocking_area_count: int = Field(
+        description="Number of governance areas currently blocking limited rollout."
+    )
+    governance_summary: list[str] = Field(
+        description="Short operator-facing summary of the current first-use-case governance posture."
     )
 
 
