@@ -3,8 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from sqlalchemy import select
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
@@ -21,15 +19,15 @@ from app.contracts.prompts import (
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.db.models import AuditRecordModel
+from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
 from app.services.safety_runtime import build_safety_execution_outcome_from_record
 
 
-class SqlAlchemyAuditRepository:
+class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
     def __init__(self, database_url: str) -> None:
         self._database_url = database_url
         self._ensure_sqlite_parent_directory()
-        self._engine = create_engine(database_url, future=True)
-        self._session_factory = sessionmaker(bind=self._engine, autoflush=False, future=True)
+        self._configure_sqlalchemy(database_url)
 
     def save(self, record: AuditRecordResponse) -> None:
         model = AuditRecordModel(

@@ -406,7 +406,7 @@ def test_sqlalchemy_async_runtime_repository_ensure_sqlite_directory_skips_memor
     SqlAlchemyAsyncRuntimeRepository(f"sqlite:///{relative_path}")
     assert relative_path.parent.is_dir()
     monkeypatch.setattr(
-        "app.repositories.sqlalchemy_async_runtime_repository.create_engine",
+        "app.repositories.sqlalchemy_repository_base.create_engine",
         lambda database_url, future=True: object(),
     )
     SqlAlchemyAsyncRuntimeRepository("postgresql://user:pass@localhost/lotus")

@@ -2,20 +2,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
 
 from app.contracts.artifacts import ArtifactLifecycleStatus, ArtifactStorageBackend
 from app.db.models import ArtifactMetadataModel
 from app.repositories.artifact_repository import ArtifactRecord, ArtifactRepository
+from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
 
 
-class SqlAlchemyArtifactRepository(ArtifactRepository):
+class SqlAlchemyArtifactRepository(SqlAlchemyRepositoryBase, ArtifactRepository):
     def __init__(self, database_url: str) -> None:
         self._database_url = database_url
         self._ensure_sqlite_parent_directory()
-        self._engine = create_engine(database_url, future=True)
-        self._session_factory = sessionmaker(bind=self._engine, autoflush=False, future=True)
+        self._configure_sqlalchemy(database_url)
 
     def list_artifacts(self) -> list[ArtifactRecord]:
         with self._session_factory() as session:

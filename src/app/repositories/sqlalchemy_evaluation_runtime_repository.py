@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
 
 from app.db.models import EvaluationCaseResultModel, EvaluationRunAttemptModel, EvaluationRunModel
 from app.repositories.evaluation_runtime_repository import (
@@ -12,14 +11,14 @@ from app.repositories.evaluation_runtime_repository import (
     EvaluationRunRecord,
     EvaluationRuntimeRepository,
 )
+from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
 
 
-class SqlAlchemyEvaluationRuntimeRepository(EvaluationRuntimeRepository):
+class SqlAlchemyEvaluationRuntimeRepository(SqlAlchemyRepositoryBase, EvaluationRuntimeRepository):
     def __init__(self, database_url: str) -> None:
         self._database_url = database_url
         self._ensure_sqlite_parent_directory()
-        self._engine = create_engine(database_url, future=True)
-        self._session_factory = sessionmaker(bind=self._engine, autoflush=False, future=True)
+        self._configure_sqlalchemy(database_url)
 
     def list_runs(self) -> list[EvaluationRunRecord]:
         with self._session_factory() as session:

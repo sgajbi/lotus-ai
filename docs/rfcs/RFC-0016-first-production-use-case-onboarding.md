@@ -1,6 +1,6 @@
 # RFC-0016: First Production Use-Case Onboarding
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers

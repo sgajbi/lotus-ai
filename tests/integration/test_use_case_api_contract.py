@@ -72,6 +72,5 @@ def test_use_case_onboarding_template_route(client: TestClient) -> None:
     assert body["based_on_use_case_id"] == "lotus_performance.analytics_commentary.v1"
     assert any(item["checklist_id"] == "contract_boundary_defined" for item in body["checklist"])
     assert any(
-        item["criterion_id"] == "approval_governance_summary"
-        for item in body["approval_criteria"]
+        item["criterion_id"] == "approval_governance_summary" for item in body["approval_criteria"]
     )

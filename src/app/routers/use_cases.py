@@ -68,7 +68,9 @@ async def get_first_production_use_case_readiness_route() -> FirstUseCaseReadine
         500: {"description": "Unexpected server error."},
     },
 )
-async def get_first_production_use_case_runbook_readiness_route() -> FirstUseCaseRunbookReadinessResponse:
+async def get_first_production_use_case_runbook_readiness_route() -> (
+    FirstUseCaseRunbookReadinessResponse
+):
     return build_first_use_case_runbook_readiness()
 
 
@@ -86,7 +88,9 @@ async def get_first_production_use_case_runbook_readiness_route() -> FirstUseCas
         500: {"description": "Unexpected server error."},
     },
 )
-async def get_first_production_use_case_governance_status_route() -> FirstUseCaseGovernanceStatusResponse:
+async def get_first_production_use_case_governance_status_route() -> (
+    FirstUseCaseGovernanceStatusResponse
+):
     return build_first_use_case_governance_status()
 
 

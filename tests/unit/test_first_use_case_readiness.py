@@ -28,7 +28,9 @@ def test_first_use_case_readiness_reports_staged_only_without_runtime_eval_evide
     assert readiness.items[7].status == "READY"
 
 
-def test_first_use_case_readiness_keeps_limited_rollout_blocked_without_durable_review_surfaces() -> None:
+def test_first_use_case_readiness_keeps_limited_rollout_blocked_without_durable_review_surfaces() -> (
+    None
+):
     submit_evaluation_run(
         EvaluationRunSubmissionRequest(
             fixture_id="lotus_performance_first_use_case_examples",

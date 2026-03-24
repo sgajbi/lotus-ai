@@ -1,0 +1,1 @@
+EvaluationAsyncExecutionResult(async_job_id='asyncjob_evaluation_execution_de3233ea58b6', evaluation_run_id='evalrun_a5e159de5fb6', verdict='PASS', case_result_count=2)

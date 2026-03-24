@@ -132,7 +132,9 @@ class FirstUseCaseGovernanceStatusResponse(BaseModel):
 class UseCaseOnboardingChecklistItem(BaseModel):
     checklist_id: str = Field(description="Stable onboarding checklist item identifier.")
     phase: str = Field(description="Rollout or onboarding phase where this checklist item applies.")
-    required: bool = Field(description="Whether the checklist item is required for governed onboarding.")
+    required: bool = Field(
+        description="Whether the checklist item is required for governed onboarding."
+    )
     notes: str = Field(description="Human-readable guidance for the onboarding item.")
 
 

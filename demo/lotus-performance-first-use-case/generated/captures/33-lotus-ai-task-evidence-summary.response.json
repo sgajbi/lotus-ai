@@ -1,0 +1,39 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "sampled_record_limit":  20,
+    "sampled_record_count":  1,
+    "citation_bearing_execution_count":  0,
+    "citation_backed_answer_count":  0,
+    "refused_answer_count":  0,
+    "latest_generated_at":  "2026-03-24T10:25:36.754802+00:00",
+    "answer_modes":  [
+
+                     ],
+    "evidence_types":  [
+                           {
+                               "evidence_type":  "access_control",
+                               "execution_count":  1
+                           },
+                           {
+                               "evidence_type":  "prompt_selection",
+                               "execution_count":  1
+                           },
+                           {
+                               "evidence_type":  "provider_resolution",
+                               "execution_count":  1
+                           },
+                           {
+                               "evidence_type":  "retrieval_posture",
+                               "execution_count":  1
+                           },
+                           {
+                               "evidence_type":  "safety_outcome",
+                               "execution_count":  1
+                           },
+                           {
+                               "evidence_type":  "task_contract",
+                               "execution_count":  1
+                           }
+                       ]
+}
