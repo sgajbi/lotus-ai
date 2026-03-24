@@ -130,6 +130,7 @@ def test_evaluation_replay_preserves_prior_case_history_and_creates_new_attempt(
         AsyncControlActionRequest(
             job_id=submission.async_job_id or "",
             action_type=AsyncControlActionType.REPLAY_TERMINAL_JOB,
+            caller_app="lotus-platform",
             requested_by="operator-a",
             approved_by="approver-a",
             reason="Replay runtime-backed evaluation after review.",

@@ -21,6 +21,7 @@ router = APIRouter(prefix="/ai/tasks", tags=["tasks"])
     ),
     responses={
         200: {"description": "Task executed successfully."},
+        403: {"description": "Caller is not authorized for the protected task execution path."},
         404: {"description": "Unknown task id."},
         409: {"description": "Task disabled or request conflicts with task policy."},
         500: {"description": "Unexpected server error."},

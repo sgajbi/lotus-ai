@@ -4,6 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
 
 
@@ -231,6 +232,9 @@ class ProviderOperationsControlEventDescriptor(BaseModel):
     affected_record_count: int = Field(
         description="Number of provider-operations state records affected by the action."
     )
+    authorization: AuthorizationDecision = Field(
+        description="Typed caller-authorization decision recorded for the provider control action."
+    )
     recorded_at: str = Field(description="Timestamp when the action was recorded.")
 
 
@@ -262,6 +266,10 @@ class ProviderOperationsControlHistoryResponse(BaseModel):
 class ProviderOperationsControlActionRequest(BaseModel):
     action_type: ProviderOperationsControlActionType = Field(
         description="Requested provider-operations control action."
+    )
+    caller_app: str = Field(
+        min_length=1,
+        description="Caller application identity authorized to issue the provider-operations action.",
     )
     scope: ProviderQuotaScope | None = Field(
         default=None,

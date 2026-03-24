@@ -71,5 +71,6 @@ def map_async_runtime_control_event(
         prior_status=record.prior_status,
         resulting_status=record.resulting_status,
         affected_attempt_id=record.affected_attempt_id,
+        authorization=record.authorization,
         recorded_at=record.recorded_at,
     )

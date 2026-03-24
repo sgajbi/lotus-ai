@@ -36,7 +36,7 @@ def test_map_audit_record_preserves_sorted_context_keys() -> None:
     assert audit_record.output_label == response.output_label
     assert audit_record.caller_app == "lotus-manage"
     assert audit_record.requested_by is None
-    assert audit_record.tenant_id is None
+    assert audit_record.tenant_id == "tenant-sg-001"
     assert audit_record.context_keys == ["rule_count", "status"]
     assert audit_record.result_preview == response.result.message
     assert audit_record.prompt_selection.prompt_version == "foundation.explain.v1"

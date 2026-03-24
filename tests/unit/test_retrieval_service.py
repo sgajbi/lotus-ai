@@ -43,8 +43,8 @@ def test_search_sources_rejects_disabled_source_ids_before_execution() -> None:
     with pytest.raises(HTTPException) as exc_info:
         search_sources(request)
 
-    assert exc_info.value.status_code == 409
-    assert "not enabled" in str(exc_info.value.detail)
+    assert exc_info.value.status_code == 403
+    assert "approved policy scope" in str(exc_info.value.detail)
 
 
 def test_search_sources_rejects_when_query_has_no_catalog_only_matches() -> None:
@@ -59,6 +59,20 @@ def test_search_sources_rejects_when_query_has_no_catalog_only_matches() -> None
 
     assert exc_info.value.status_code == 409
     assert "Retrieval search is not enabled yet" in str(exc_info.value.detail)
+
+
+def test_search_sources_blocks_unknown_caller() -> None:
+    request = RetrievalSearchRequest(
+        query="shared ai platform service",
+        caller_app="unknown-app",
+        correlation_id="corr-ret-unknown",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        search_sources(request)
+
+    assert exc_info.value.status_code == 403
+    assert "not registered" in str(exc_info.value.detail)
 
 
 def test_search_sources_returns_hits_for_enabled_source_subset() -> None:
@@ -95,3 +109,30 @@ def test_search_sources_returns_hits_for_enabled_source_subset() -> None:
     assert response.execution_stage == RetrievalExecutionStage.CATALOG_ONLY
     assert response.hits[0].source_id == "lotus-platform-rfcs"
     assert response.message == "Search completed."
+
+
+def test_search_sources_defaults_to_caller_allowed_sources_when_no_filter_is_supplied() -> None:
+    request = RetrievalSearchRequest(
+        query="shared ai platform service",
+        caller_app="lotus-workbench",
+        correlation_id="corr-ret-default-sources",
+    )
+    repository = InMemoryRetrievalRepository()
+    execution = RetrievalExecutionResponse(
+        status=RetrievalStatus.READY,
+        execution_stage=RetrievalExecutionStage.CATALOG_ONLY,
+        vector_store="postgresql+pgvector",
+        hits=[],
+        message="Search completed.",
+    )
+
+    with (
+        patch("app.services.retrieval_service.get_retrieval_repository", return_value=repository),
+        patch(
+            "app.services.retrieval_service.execute_retrieval_search", return_value=execution
+        ) as execute_mock,
+    ):
+        search_sources(request)
+
+    forwarded_request = execute_mock.call_args.args[0]
+    assert forwarded_request.source_ids == ["lotus-platform-rfcs", "lotus-ai-architecture"]

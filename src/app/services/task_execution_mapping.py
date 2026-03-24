@@ -25,6 +25,7 @@ def map_task_execution_response(
     evidence = build_execution_evidence(
         request=context.request,
         capability=context.capability,
+        authorization=context.authorization,
         prompt=context.prompt,
         prompt_selection=context.prompt_selection,
         provider_execution=resolved.provider_execution,
@@ -56,6 +57,7 @@ def map_task_execution_response(
             prompt_selection=context.prompt_selection,
             provider_mode=resolved.provider_execution.provider_mode,
             safety=resolved.safety_outcome,
+            authorization=context.authorization,
             generated_at=context.generated_at,
             stubbed=resolved.provider_execution.stubbed,
         ),
@@ -101,6 +103,7 @@ def map_audit_record(
         redaction_posture=response.audit.safety.redaction_posture,
         enforced_safety_controls=response.audit.safety.enforced_controls,
         safety_outcome=response.audit.safety,
+        authorization=response.audit.authorization,
         generated_at=response.audit.generated_at,
         stubbed=response.audit.stubbed,
         context_summary=context.request.context.summary,

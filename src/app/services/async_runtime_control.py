@@ -6,6 +6,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.contracts.access_control import AuthorizationCapabilityType, AuthorizationDecision
 from app.contracts.async_runtime import (
     AsyncControlActionRequest,
     AsyncControlActionResponse,
@@ -23,6 +24,7 @@ from app.services.eval_attempt_runtime import (
     queue_next_evaluation_attempt,
 )
 from app.services.async_job_mapping import map_async_runtime_control_event
+from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.async_runtime_transitions import queue_next_async_attempt
 
@@ -52,6 +54,12 @@ def build_async_control_history(*, limit: int = 20) -> AsyncControlHistoryRespon
 
 
 def apply_async_control_action(request: AsyncControlActionRequest) -> AsyncControlActionResponse:
+    authorization = require_authorized(
+        authorize_request(
+            caller_app=request.caller_app,
+            capability_type=AuthorizationCapabilityType.ASYNC_CONTROL,
+        )
+    )
     store = get_async_runtime_store()
     job = store.get_job(job_id=request.job_id)
     if job is None:
@@ -60,7 +68,7 @@ def apply_async_control_action(request: AsyncControlActionRequest) -> AsyncContr
             detail=f"Async job '{request.job_id}' was not found in runtime state.",
         )
 
-    event = _apply_control_action(job=job, request=request)
+    event = _apply_control_action(job=job, request=request, authorization=authorization)
     store.save_control_event(event)
     descriptor = map_async_runtime_control_event(event)
     return AsyncControlActionResponse(
@@ -77,7 +85,10 @@ def apply_async_control_action(request: AsyncControlActionRequest) -> AsyncContr
 
 
 def _apply_control_action(
-    *, job: AsyncRuntimeJobRecord, request: AsyncControlActionRequest
+    *,
+    job: AsyncRuntimeJobRecord,
+    request: AsyncControlActionRequest,
+    authorization: AuthorizationDecision,
 ) -> AsyncRuntimeControlEventRecord:
     action_type = request.action_type
     if action_type == AsyncControlActionType.RETRY_FAILED_JOB:
@@ -112,6 +123,7 @@ def _apply_control_action(
         prior_status=job.lifecycle_status,
         resulting_status=resulting_status,
         affected_attempt_id=affected_attempt_id,
+        authorization=authorization,
         recorded_at=_utcnow(),
     )
 

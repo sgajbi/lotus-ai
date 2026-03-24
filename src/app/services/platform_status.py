@@ -5,6 +5,8 @@ from types import SimpleNamespace
 
 from app.config import settings
 from app.contracts.platform import PlatformRuntimeStatusResponse
+from app.services.access_control_governance import build_access_control_governance_status
+from app.services.access_control_runtime import build_access_control_runtime_status
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
 from app.services.async_governance_status_service import build_async_governance_status
 from app.services.async_runtime_status import build_async_runtime_status
@@ -42,6 +44,8 @@ def _resolve_startup_readiness_state(app_state: object | None) -> StartupReadine
 def build_platform_runtime_status(app_state: object | None = None) -> PlatformRuntimeStatusResponse:
     capabilities = build_capability_catalog()
     prompts = list_registered_prompts()
+    access_control_runtime = build_access_control_runtime_status()
+    access_control_governance = build_access_control_governance_status()
     async_runtime = build_async_runtime_status()
     async_governance = build_async_governance_status()
     provider_governance = build_provider_governance_status()
@@ -67,6 +71,9 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         embedding_provider_mode=settings.embedding_provider_mode,
         safety_mode=settings.safety_mode,
         prompt_store_mode=settings.prompt_store_mode,
+        access_control_store_mode=settings.access_control_store_mode,
+        access_control_runtime=access_control_runtime,
+        access_control_governance=access_control_governance,
         async_runtime=async_runtime,
         async_governance=async_governance,
         provider_governance=provider_governance,

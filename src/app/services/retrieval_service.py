@@ -2,20 +2,31 @@ from __future__ import annotations
 
 from fastapi import HTTPException, status
 
+from app.contracts.access_control import AuthorizationCapabilityType
 from app.contracts.retrieval import (
     RetrievalExecutionRequest,
     RetrievalSearchRequest,
     RetrievalSearchResponse,
 )
+from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.retrieval_gateway import execute_retrieval_search
 from app.services.retrieval_store import get_retrieval_repository
 
 
 def search_sources(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
+    authorization = require_authorized(
+        authorize_request(
+            caller_app=request.caller_app,
+            capability_type=AuthorizationCapabilityType.RETRIEVAL_EXECUTION,
+            tenant_id=request.tenant_id,
+            source_ids=request.source_ids,
+        )
+    )
+    effective_source_ids = authorization.effective_source_ids
     enabled_source_ids = {
         source.source_id for source in get_retrieval_repository().list_sources() if source.enabled
     }
-    if request.source_ids and not set(request.source_ids).issubset(enabled_source_ids):
+    if effective_source_ids and not set(effective_source_ids).issubset(enabled_source_ids):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Requested source_ids include one or more sources that are not enabled.",
@@ -26,7 +37,7 @@ def search_sources(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
             query=request.query,
             caller_app=request.caller_app,
             correlation_id=request.correlation_id,
-            source_ids=request.source_ids,
+            source_ids=effective_source_ids,
             limit=request.limit,
         )
     )

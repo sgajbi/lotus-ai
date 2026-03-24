@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.contracts.access_control import AuthorizationDecision
 from app.contracts.prompts import (
     PromptControlActionType,
     PromptDescriptor,
@@ -31,6 +32,7 @@ class PromptRolloutEventRecord:
     resulting_active_prompt_version: str | None
     prior_candidate_prompt_version: str | None
     resulting_candidate_prompt_version: str | None
+    authorization: AuthorizationDecision
     recorded_at: str
 
 

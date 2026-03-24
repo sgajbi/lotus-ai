@@ -25,6 +25,7 @@ class AuditRecordModel(Base):
     redaction_posture: Mapped[str] = mapped_column(String(64), nullable=False)
     enforced_safety_controls: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     safety_outcome_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    authorization_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     generated_at: Mapped[str] = mapped_column(String(64), nullable=False)
     stubbed: Mapped[bool] = mapped_column(Boolean, nullable=False)
     context_summary: Mapped[str] = mapped_column(Text, nullable=False)
@@ -147,6 +148,7 @@ class PromptRolloutEventModel(Base):
     resulting_candidate_prompt_version: Mapped[str | None] = mapped_column(
         String(128), nullable=True
     )
+    authorization_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
@@ -191,7 +193,25 @@ class ProviderOperationsEventModel(Base):
     requested_by: Mapped[str] = mapped_column(String(256), nullable=False)
     approved_by: Mapped[str] = mapped_column(String(256), nullable=False)
     affected_record_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    authorization_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class CallerPolicyModel(Base):
+    __tablename__ = "caller_policies"
+
+    caller_app: Mapped[str] = mapped_column(String(128), primary_key=True)
+    lifecycle_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    allowed_task_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    allowed_retrieval_source_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    allow_live_provider: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    allow_async_control: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    allow_prompt_control: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    allow_provider_control: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    tenant_policy_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    restricted_tenant_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
 class AsyncJobModel(Base):
@@ -258,6 +278,7 @@ class AsyncControlEventModel(Base):
     prior_status: Mapped[str] = mapped_column(String(64), nullable=False)
     resulting_status: Mapped[str] = mapped_column(String(64), nullable=False)
     affected_attempt_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    authorization_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 

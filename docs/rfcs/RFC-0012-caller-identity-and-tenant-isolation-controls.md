@@ -1,6 +1,6 @@
 # RFC-0012: Caller Identity and Tenant Isolation Controls
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -14,6 +14,15 @@ RFC-0005 made provider operations state durable with caller- and tenant-aware qu
 RFC-0011 defines the dedicated worker and managed-queue deployment model for a more production-grade runtime.
 
 The next high-value shared-platform gap is that caller and tenant identity are now recorded broadly, but still not enforced as a first-class access-control plane.
+
+## Implementation Notes
+
+RFC-0012 is now implemented in four slices:
+
+1. a durable caller-policy registry seam with memory and SQL-backed repositories,
+2. enforced data-plane authorization for task execution, retrieval execution, and live-provider execution with typed authorization decisions persisted into audit and execution evidence,
+3. enforced control-plane authorization for async control, prompt control, and provider control actions with durable authorization context preserved in control history,
+4. dedicated activation-readiness, runbook-readiness, and composed governance surfaces so access-control rollout posture is inspectable and not overstated.
 
 ## Why This Is Next
 
@@ -97,6 +106,14 @@ The first production-capable access model should:
 4. fail conservatively when caller or tenant authorization is invalid or missing for a protected path,
 5. expose operator-facing status for configuration, enforcement, and blocked posture.
 
+The first implementation remains intentionally bounded:
+
+1. the caller-app registry is authoritative for platform access decisions,
+2. enforcement is capability-scoped rather than a generic RBAC system,
+3. tenant restrictions are optional and explicit rather than inferred,
+4. unknown callers fail conservatively on protected paths,
+5. prompt-body editing and end-user entitlements remain out of scope.
+
 ## State Model and Invariants
 
 This RFC establishes the following invariants:
@@ -119,7 +136,8 @@ Required behavior:
 1. recognized caller applications are explicit,
 2. each caller can be mapped to allowed capability classes or task ids,
 3. caller policy is inspectable and durable,
-4. unknown or malformed caller identity fails conservatively.
+4. unknown or malformed caller identity fails conservatively,
+5. the registry is the only authoritative source for caller capability posture; quota configuration does not imply authorization.
 
 ### Tenant Isolation Controls
 
@@ -130,7 +148,8 @@ Required behavior:
 1. tenant-aware policy remains optional but explicit,
 2. protected capabilities can require tenant scope,
 3. retrieval, provider, and future prompt control paths can consume that scope consistently,
-4. missing or mismatched tenant posture blocks protected execution truthfully.
+4. missing or mismatched tenant posture blocks protected execution truthfully,
+5. unrestricted callers do not inherit tenant restrictions implicitly.
 
 ### Control-Plane Authorization
 
@@ -153,6 +172,22 @@ Required behavior:
 2. audit records preserve both request identity and enforcement outcome,
 3. operator inspection can explain why a request was allowed or blocked,
 4. platform runtime status can summarize whether access control is documentary, partial, or enforced.
+
+The first enforcement wave is explicitly limited to:
+
+1. task execution,
+2. retrieval execution and async-backed retrieval submission,
+3. live provider execution,
+4. async control actions,
+5. prompt control actions,
+6. provider control actions.
+
+The following remain out of scope for this RFC:
+
+1. generic IAM integration,
+2. multi-level role hierarchies,
+3. end-user entitlements inside Lotus domain applications,
+4. retrofitting domain-level authorization semantics into `lotus-ai`.
 
 ## Data and Operational Requirements
 

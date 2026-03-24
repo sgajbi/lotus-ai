@@ -162,5 +162,6 @@ def _map_control_event(event: PromptRolloutEventRecord) -> PromptControlEventDes
         resulting_active_prompt_version=event.resulting_active_prompt_version,
         prior_candidate_prompt_version=event.prior_candidate_prompt_version,
         resulting_candidate_prompt_version=event.resulting_candidate_prompt_version,
+        authorization=event.authorization,
         recorded_at=event.recorded_at,
     )

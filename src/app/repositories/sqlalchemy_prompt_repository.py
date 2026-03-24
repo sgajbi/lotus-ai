@@ -5,6 +5,12 @@ from pathlib import Path
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.prompts import (
     PromptControlActionType,
     PromptDescriptor,
@@ -142,6 +148,7 @@ class SqlAlchemyPromptRepository:
                     resulting_active_prompt_version=event.resulting_active_prompt_version,
                     prior_candidate_prompt_version=event.prior_candidate_prompt_version,
                     resulting_candidate_prompt_version=event.resulting_candidate_prompt_version,
+                    authorization_payload=event.authorization.model_dump(mode="json"),
                     recorded_at=event.recorded_at,
                 )
             )
@@ -183,6 +190,11 @@ class SqlAlchemyPromptRepository:
             resulting_active_prompt_version=model.resulting_active_prompt_version,
             prior_candidate_prompt_version=model.prior_candidate_prompt_version,
             resulting_candidate_prompt_version=model.resulting_candidate_prompt_version,
+            authorization=(
+                AuthorizationDecision.model_validate(model.authorization_payload)
+                if model.authorization_payload is not None
+                else _build_legacy_control_authorization(task_id=model.task_id)
+            ),
             recorded_at=model.recorded_at,
         )
 
@@ -197,3 +209,21 @@ class SqlAlchemyPromptRepository:
         if not path.is_absolute():
             path = Path.cwd() / path
         path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _build_legacy_control_authorization(*, task_id: str) -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="legacy-control-plane",
+        capability_type=AuthorizationCapabilityType.PROMPT_CONTROL,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id=task_id,
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=None,
+        summary=(
+            "Legacy prompt control event predates explicit caller-authorization capture and is "
+            "treated as a durable pre-RFC-0012 operator action."
+        ),
+    )

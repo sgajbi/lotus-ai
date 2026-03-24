@@ -2,6 +2,12 @@ from pathlib import Path
 
 from sqlalchemy import text
 
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
@@ -22,6 +28,25 @@ def _prompt_selection(prompt_version: str) -> PromptSelectionTraceDescriptor:
         candidate_prompt_version=None,
         previous_active_prompt_version=None,
         latest_control_event=None,
+    )
+
+
+def _authorization(
+    *,
+    task_id: str = "explain.v1",
+    tenant_id: str | None = "tenant-sg-001",
+) -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-manage",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.RESTRICTED,
+        task_id=task_id,
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=tenant_id,
+        summary="Caller is authorized for bounded task execution.",
     )
 
 
@@ -52,6 +77,7 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
             redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
             enforced_controls=["response_labeling", "correlation_and_audit"],
         ),
+        authorization=_authorization(),
         generated_at="2026-03-22T00:00:00Z",
         stubbed=True,
         context_summary="Explain rebalance outcome",
@@ -118,6 +144,7 @@ def test_sqlalchemy_audit_repository_list_filters_and_orders_latest_first(
             redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
             enforced_controls=["response_labeling", "correlation_and_audit"],
         ),
+        authorization=_authorization(),
         generated_at="2026-03-22T00:00:00Z",
         stubbed=True,
         context_summary="Old",
@@ -211,6 +238,7 @@ def test_sqlalchemy_audit_repository_round_trips_exact_blocked_safety_outcome(
             "runtime_redaction_engine",
         ],
         safety_outcome=blocked_outcome,
+        authorization=_authorization(),
         generated_at="2026-03-23T00:00:00Z",
         stubbed=True,
         context_summary="Explain rebalance outcome",
@@ -270,7 +298,8 @@ def test_sqlalchemy_audit_repository_falls_back_for_legacy_records_without_safet
                     result_preview,
                     structured_output,
                     evidence,
-                    safety_outcome_payload
+                    safety_outcome_payload,
+                    authorization_payload
                 ) VALUES (
                     :request_id,
                     :execution_status,
@@ -294,6 +323,7 @@ def test_sqlalchemy_audit_repository_falls_back_for_legacy_records_without_safet
                     :result_preview,
                     :structured_output,
                     :evidence,
+                    NULL,
                     NULL
                 )
                 """
@@ -330,3 +360,69 @@ def test_sqlalchemy_audit_repository_falls_back_for_legacy_records_without_safet
     assert loaded.safety_outcome.disposition == SafetyExecutionDisposition.DOCUMENTED_ONLY
     assert loaded.prompt_selection.prompt_version == "foundation.explain.v1"
     assert loaded.prompt_selection.latest_control_event is None
+    assert loaded.authorization.outcome == AuthorizationOutcome.ALLOWED
+
+
+def test_sqlalchemy_audit_repository_round_trips_authorization_payload(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-audit-authorization.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyAuditRepository(database_url)
+
+    authorization = AuthorizationDecision(
+        caller_app="lotus-workbench",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id="knowledge_search.v1",
+        requested_source_ids=["lotus-platform-rfcs"],
+        effective_source_ids=["lotus-platform-rfcs"],
+        tenant_id=None,
+        summary="Caller is authorized for governed knowledge search execution.",
+    )
+    record = AuditRecordResponse(
+        request_id="air_sql_authorized",
+        execution_status=TaskExecutionStatus.COMPLETED,
+        task_id="knowledge_search.v1",
+        category=TaskCategory.KNOWLEDGE_SEARCH,
+        output_label=OutputLabel.RETRIEVAL_ANSWER,
+        caller_app="lotus-workbench",
+        correlation_id="corr-sql-authorized",
+        requested_by=None,
+        tenant_id=None,
+        prompt_version="foundation.knowledge_search.v1",
+        prompt_selection=_prompt_selection("foundation.knowledge_search.v1"),
+        provider_mode="catalog_only",
+        safety_mode="documented_only",
+        redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
+        enforced_safety_controls=["response_labeling", "correlation_and_audit"],
+        safety_outcome=build_safety_execution_outcome_from_record(
+            safety_mode="documented_only",
+            output_label=OutputLabel.RETRIEVAL_ANSWER,
+            redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
+            enforced_controls=["response_labeling", "correlation_and_audit"],
+        ),
+        authorization=authorization,
+        generated_at="2026-03-24T00:00:00Z",
+        stubbed=False,
+        context_summary="Search Lotus knowledge sources",
+        context_keys=["limit", "query", "source_ids"],
+        source_refs=["lotus-workbench:knowledge-search:001"],
+        result_preview="Catalog search completed.",
+        structured_output={"provider_id": "retrieval.catalog"},
+        evidence=ExecutionEvidenceBundle(
+            descriptors=[
+                ExecutionEvidenceDescriptor(
+                    evidence_type="access_control",
+                    summary="Caller authorization recorded.",
+                    attributes={"outcome": "ALLOWED"},
+                )
+            ]
+        ),
+    )
+
+    repository.save(record)
+
+    loaded = repository.get("air_sql_authorized")
+    assert loaded is not None
+    assert loaded.authorization == authorization

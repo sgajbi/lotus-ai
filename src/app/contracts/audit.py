@@ -4,6 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.prompts import PromptSelectionTraceDescriptor
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
@@ -42,6 +43,9 @@ class AuditRecordResponse(BaseModel):
     )
     safety_outcome: SafetyExecutionOutcome = Field(
         description="Typed safety execution outcome associated with the audit record."
+    )
+    authorization: AuthorizationDecision = Field(
+        description="Caller-authorization decision recorded for the execution."
     )
     generated_at: str = Field(description="UTC timestamp when the record was created.")
     stubbed: bool = Field(description="Whether the execution result was stubbed.")

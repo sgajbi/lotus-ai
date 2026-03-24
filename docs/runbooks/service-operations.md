@@ -33,6 +33,9 @@
 - Prompt runbook readiness: /platform/prompts/runbook-readiness
 - Prompt evidence readiness: /platform/prompts/evidence-readiness
 - Prompt governance status: /platform/prompts/governance-status
+- Access-control activation readiness: /platform/access-control/activation-readiness
+- Access-control runbook readiness: /platform/access-control/runbook-readiness
+- Access-control governance status: /platform/access-control/governance-status
 - Retrieval activation readiness: /platform/retrieval/activation-readiness
 - Retrieval runbook readiness: /platform/retrieval/runbook-readiness
 - Retrieval evidence readiness: /platform/retrieval/evidence-readiness
@@ -227,6 +230,25 @@ Restart-survival expectations:
 1. when `LOTUS_AI_PROMPT_STORE_MODE=sqlalchemy`, the active prompt version, candidate prompt version, previous-active lineage, and prompt control history must survive service restart
 2. when `LOTUS_AI_EVALUATION_RUNTIME_STORE_MODE=sqlalchemy`, prompt approval evidence must survive service restart and remain inspectable through the prompt approval gate
 3. restart must not be used as a workaround to clear prompt rollout history or revert a prompt change
+
+## Access-Control Governance
+
+Before treating caller identity and tenant isolation as fully governed rollout posture:
+
+1. verify `GET /platform/access-control/runtime-status`
+2. inspect `GET /platform/access-control/activation-readiness` when technical blockers need detail
+3. inspect `GET /platform/access-control/runbook-readiness` when operational blockers need detail
+4. inspect `GET /platform/access-control/governance-status` for the composed governance view
+5. confirm the embedded `access_control_runtime` and `access_control_governance` blocks in `GET /platform/runtime-status` match the detailed access-control views
+6. confirm unknown callers still fail closed on protected data-plane and control-plane paths
+7. treat SQL-backed caller policy storage as the activation gate for restart-safe access-control governance
+
+Current operational expectations:
+
+1. caller onboarding, revocation, tenant restriction changes, blocked-authorization review, and emergency-override posture are documented runbook items
+2. there is no hidden emergency bypass API in RFC-0012; fail-closed behavior is intentional and should be treated as the documented emergency posture
+3. blocked task requests should be reviewed through `/ai/audit` and task execution evidence, while blocked control-plane actions should be reviewed through the relevant control history endpoint
+4. authorized async, prompt, and provider control actions must preserve the recorded caller authorization decision in durable control history
 
 ## Retrieval Activation Governance
 

@@ -6,6 +6,12 @@ from sqlalchemy import create_engine, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.providers import (
     ProviderFailureCategory,
     ProviderOperationsControlActionType,
@@ -281,6 +287,7 @@ class SqlAlchemyProviderOperationsRepository(ProviderOperationsRepository):
             requested_by=record.requested_by,
             approved_by=record.approved_by,
             affected_record_count=record.affected_record_count,
+            authorization_payload=record.authorization.model_dump(mode="json"),
             recorded_at=record.recorded_at,
         )
         with self._session_factory() as session:
@@ -342,6 +349,11 @@ class SqlAlchemyProviderOperationsRepository(ProviderOperationsRepository):
             requested_by=model.requested_by,
             approved_by=model.approved_by,
             affected_record_count=model.affected_record_count,
+            authorization=(
+                AuthorizationDecision.model_validate(model.authorization_payload)
+                if model.authorization_payload is not None
+                else _build_legacy_control_authorization()
+            ),
             recorded_at=model.recorded_at,
         )
 
@@ -356,3 +368,21 @@ class SqlAlchemyProviderOperationsRepository(ProviderOperationsRepository):
         if not path.is_absolute():
             path = Path.cwd() / path
         path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _build_legacy_control_authorization() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="legacy-control-plane",
+        capability_type=AuthorizationCapabilityType.PROVIDER_CONTROL,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id=None,
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=None,
+        summary=(
+            "Legacy provider control event predates explicit caller-authorization capture and is "
+            "treated as a durable pre-RFC-0012 operator action."
+        ),
+    )

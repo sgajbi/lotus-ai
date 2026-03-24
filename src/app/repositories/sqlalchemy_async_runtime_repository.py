@@ -5,6 +5,12 @@ from pathlib import Path
 from sqlalchemy import create_engine, delete, select
 from sqlalchemy.orm import sessionmaker
 
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.db.models import (
     AsyncControlEventModel,
     AsyncJobAttemptModel,
@@ -279,6 +285,7 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
             prior_status=record.prior_status,
             resulting_status=record.resulting_status,
             affected_attempt_id=record.affected_attempt_id,
+            authorization_payload=record.authorization.model_dump(mode="json"),
             recorded_at=record.recorded_at,
         )
         with self._session_factory() as session:
@@ -340,6 +347,11 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
             prior_status=model.prior_status,
             resulting_status=model.resulting_status,
             affected_attempt_id=model.affected_attempt_id,
+            authorization=(
+                AuthorizationDecision.model_validate(model.authorization_payload)
+                if model.authorization_payload is not None
+                else _build_legacy_control_authorization()
+            ),
             recorded_at=model.recorded_at,
         )
 
@@ -354,3 +366,21 @@ class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
         if not path.is_absolute():
             path = Path.cwd() / path
         path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _build_legacy_control_authorization() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="legacy-control-plane",
+        capability_type=AuthorizationCapabilityType.ASYNC_CONTROL,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id=None,
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=None,
+        summary=(
+            "Legacy async control event predates explicit caller-authorization capture and is "
+            "treated as a durable pre-RFC-0012 operator action."
+        ),
+    )

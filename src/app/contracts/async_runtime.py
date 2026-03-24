@@ -4,6 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.access_control import AuthorizationDecision
+
 
 class AsyncQueueMode(str, Enum):
     DISABLED = "DISABLED"
@@ -184,6 +186,9 @@ class AsyncControlEventDescriptor(BaseModel):
     affected_attempt_id: str | None = Field(
         default=None,
         description="Attempt identifier directly affected or created by the action, when applicable.",
+    )
+    authorization: AuthorizationDecision = Field(
+        description="Typed caller-authorization decision recorded for the control action."
     )
     recorded_at: str = Field(description="Timestamp when the action was recorded.")
 
@@ -442,6 +447,10 @@ class AsyncControlHistoryResponse(BaseModel):
 class AsyncControlActionRequest(BaseModel):
     job_id: str = Field(description="Async job identifier targeted by the control action.")
     action_type: AsyncControlActionType = Field(description="Requested async control action.")
+    caller_app: str = Field(
+        min_length=1,
+        description="Caller application identity authorized to issue the async control action.",
+    )
     requested_by: str = Field(
         min_length=1,
         description="Operator or system identity requesting the async control action.",

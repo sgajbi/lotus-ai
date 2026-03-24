@@ -14,7 +14,11 @@ def test_build_task_execution_summary_counts_stubbed_and_retrieval_backed_runs()
         TaskExecutionRequest(
             task_id="explain.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-summary-1"),
+            caller=CallerMetadata(
+                caller_app="lotus-manage",
+                correlation_id="corr-summary-1",
+                tenant_id="tenant-sg-001",
+            ),
             context=TaskContextEnvelope(
                 summary="Explain rebalance outcome",
                 payload={"status": "BLOCKED"},
@@ -27,7 +31,11 @@ def test_build_task_execution_summary_counts_stubbed_and_retrieval_backed_runs()
         TaskExecutionRequest(
             task_id="knowledge_search.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-summary-2"),
+            caller=CallerMetadata(
+                caller_app="lotus-manage",
+                correlation_id="corr-summary-2",
+                tenant_id="tenant-sg-001",
+            ),
             context=TaskContextEnvelope(
                 summary="Search Lotus knowledge sources",
                 payload={

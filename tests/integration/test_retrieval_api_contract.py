@@ -304,8 +304,37 @@ def test_retrieval_search_route_rejects_disabled_source_filter(client: TestClien
         },
     )
 
-    assert response.status_code == 409
-    assert "not enabled" in response.json()["detail"]
+    assert response.status_code == 403
+    assert "approved policy scope" in response.json()["detail"]
+
+
+def test_retrieval_search_route_blocks_unknown_caller(client: TestClient) -> None:
+    response = client.post(
+        "/platform/retrieval/search",
+        json={
+            "query": "shared ai platform service",
+            "caller_app": "unknown-app",
+            "correlation_id": "corr-ret-unknown",
+        },
+    )
+
+    assert response.status_code == 403
+    assert "not registered" in response.json()["detail"]
+
+
+def test_retrieval_search_route_defaults_to_caller_allowed_sources(client: TestClient) -> None:
+    response = client.post(
+        "/platform/retrieval/search",
+        json={
+            "query": "shared ai platform service",
+            "caller_app": "lotus-workbench",
+            "correlation_id": "corr-ret-default-sources",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["hits"][0]["source_id"] in {"lotus-platform-rfcs", "lotus-ai-architecture"}
 
 
 def test_retrieval_search_route_returns_live_hits_when_enabled(client: TestClient) -> None:

@@ -356,6 +356,7 @@ async def list_retrieval_chunks_route(document_id: str) -> RetrievalChunkCatalog
     ),
     responses={
         200: {"description": "Retrieval search completed successfully."},
+        403: {"description": "Caller is not authorized for the protected retrieval search path."},
         409: {"description": "Retrieval is not enabled or requested sources are not enabled."},
         500: {"description": "Unexpected server error."},
     },

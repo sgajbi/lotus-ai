@@ -23,6 +23,7 @@ The current execution posture is:
 - task execution now flows through an explicit internal runtime pipeline with separate validation, resolution, response, evidence, and audit stages,
 - the provider handoff now carries resolved output-label and safety metadata rather than only raw caller context,
 - prompt runtime selection is now resolved through a shared runtime service used by both task execution and prompt-status reporting,
+- caller identity and bounded capability policy now also resolve through a dedicated access-control registry seam, and task, retrieval, live-provider, async-control, prompt-control, plus provider-control paths now enforce that registry explicitly,
 - task execution now builds a shared runtime context object so later stages consume one coherent execution model instead of duplicated fields,
 - response and audit-record assembly for task execution now live in a dedicated mapper layer instead of being embedded in pipeline orchestration,
 - provider execution requests are now assembled through a dedicated builder instead of inline payload construction,
@@ -168,6 +169,7 @@ The current persistence posture is:
 - evaluation runtime-backed run detail now exposes persisted attempts and case-level outcomes directly, while historical file-backed baseline runs remain clearly labeled as non-runtime records,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
 - prompt rollout bodies remain repository-managed, while active selection can now move through explicit durable promote and rollback actions.
+- caller access-control policy can now also move through a dedicated memory or SQL-backed registry seam, with data-plane and control-plane request blocking active and durable SQL-backed full enforcement available when the access-control store uses SQLAlchemy.
 - startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.
 - readiness probe policy defaults to `observe` and can be raised to `degrade` when orchestration should react to readiness findings.
 

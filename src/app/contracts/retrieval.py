@@ -274,6 +274,10 @@ class RetrievalSearchRequest(BaseModel):
     query: str = Field(description="Search query provided by the caller.")
     caller_app: str = Field(description="Calling Lotus application requesting retrieval.")
     correlation_id: str = Field(description="Correlation identifier for the retrieval request.")
+    tenant_id: str | None = Field(
+        default=None,
+        description="Optional tenant identity used when the caller policy requires tenant isolation.",
+    )
     source_ids: list[str] = Field(
         default_factory=list,
         description="Optional source filters limiting retrieval to approved source ids.",

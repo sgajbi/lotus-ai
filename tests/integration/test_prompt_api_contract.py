@@ -62,6 +62,7 @@ def test_prompt_control_routes(client: TestClient) -> None:
         json={
             "task_id": "explain.v1",
             "action_type": "PROMOTE_CANDIDATE",
+            "caller_app": "lotus-platform",
             "candidate_prompt_version": "foundation.explain.v2",
             "requested_by": "alice@lotus.test",
             "approved_by": "bob@lotus.test",
@@ -105,6 +106,7 @@ def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path
                 json={
                     "task_id": "explain.v1",
                     "action_type": "PROMOTE_CANDIDATE",
+                    "caller_app": "lotus-platform",
                     "candidate_prompt_version": "foundation.explain.v2",
                     "requested_by": "alice@lotus.test",
                     "approved_by": "bob@lotus.test",
@@ -119,6 +121,9 @@ def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path
             assert (
                 promote_response.json()["rollout_state"]["latest_control_event"]["action_type"]
                 == "PROMOTE_CANDIDATE"
+            )
+            assert (
+                promote_response.json()["event"]["authorization"]["caller_app"] == "lotus-platform"
             )
 
             runtime_response = durable_client.get("/platform/prompts/runtime-status")
@@ -135,6 +140,7 @@ def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path
                 json={
                     "task_id": "explain.v1",
                     "action_type": "ROLLBACK_TO_PREVIOUS_ACTIVE",
+                    "caller_app": "lotus-platform",
                     "requested_by": "alice@lotus.test",
                     "approved_by": "bob@lotus.test",
                     "reason": "Restore known-good prompt",
@@ -151,6 +157,10 @@ def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path
             )
             assert task_history_response.status_code == 200
             assert len(task_history_response.json()["latest_events"]) == 2
+            assert (
+                task_history_response.json()["latest_events"][0]["authorization"]["caller_app"]
+                == "lotus-platform"
+            )
 
 
 def test_prompt_activation_readiness_route(client: TestClient) -> None:
@@ -205,3 +215,46 @@ def test_prompt_governance_status_route(client: TestClient) -> None:
     assert body["runbook_readiness"]["runbook_ready"] is True
     assert body["evidence_readiness"]["evidence_ready"] is False
     assert len(body["governance_summary"]) == 3
+
+
+def test_prompt_control_routes_block_unauthorized_caller(tmp_path: Path) -> None:
+    from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+
+    database_url = f"sqlite:///{tmp_path / 'prompt-api-unauthorized.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        prompt_store_mode="sqlalchemy",
+        evaluation_runtime_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
+                get_evaluation_runtime_store().save_run(
+                    EvaluationRunRecord(
+                        run_id=f"runtime_prompt_unauthorized_{fixture_id}",
+                        fixture_id=fixture_id,
+                        manifest_version="foundation.v1",
+                        lifecycle_status="COMPLETED",
+                        triggered_by="operator-a",
+                        submitted_at="2026-03-23T12:00:00Z",
+                        async_job_id=f"async_prompt_unauthorized_{fixture_id}",
+                        latest_message="Prompt rollout approval fixture passed.",
+                        verdict="PASS",
+                        case_count=1,
+                    )
+                )
+
+            blocked_response = durable_client.post(
+                "/platform/prompts/control-actions",
+                json={
+                    "task_id": "explain.v1",
+                    "action_type": "PROMOTE_CANDIDATE",
+                    "caller_app": "lotus-workbench",
+                    "candidate_prompt_version": "foundation.explain.v2",
+                    "requested_by": "alice@lotus.test",
+                    "approved_by": "bob@lotus.test",
+                    "reason": "Unauthorized promotion attempt",
+                },
+            )
+            assert blocked_response.status_code == 403

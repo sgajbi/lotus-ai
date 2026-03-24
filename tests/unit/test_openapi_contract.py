@@ -7,6 +7,15 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/runtime-status"]["get"]["operationId"] == (
         "getPlatformRuntimeStatus"
     )
+    assert spec["paths"]["/platform/access-control/runtime-status"]["get"]["operationId"] == (
+        "getAccessControlRuntimeStatus"
+    )
+    assert spec["paths"]["/platform/access-control/governance-status"]["get"]["operationId"] == (
+        "getAccessControlGovernanceStatus"
+    )
+    assert spec["paths"]["/platform/access-control/caller-policies"]["get"]["operationId"] == (
+        "listCallerPolicies"
+    )
     assert spec["paths"]["/platform/async/runtime-status"]["get"]["operationId"] == (
         "getAsyncRuntimeStatus"
     )
@@ -104,6 +113,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     audit_record_schema = spec["components"]["schemas"]["AuditRecordResponse"]
     assert "execution_status" in audit_record_schema["properties"]
     assert "safety_outcome" in audit_record_schema["properties"]
+    assert "authorization" in audit_record_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"
@@ -126,8 +136,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "approval_gate" in prompt_evidence_schema["properties"]
     task_audit_schema = spec["components"]["schemas"]["TaskAuditMetadata"]
     assert "prompt_selection" in task_audit_schema["properties"]
+    assert "authorization" in task_audit_schema["properties"]
     audit_record_schema = spec["components"]["schemas"]["AuditRecordResponse"]
     assert "prompt_selection" in audit_record_schema["properties"]
+    assert "authorization" in audit_record_schema["properties"]
     assert spec["paths"]["/platform/tasks/runtime-status"]["get"]["operationId"] == (
         "getTaskRuntimeStatus"
     )

@@ -6,6 +6,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.contracts.access_control import AuthorizationCapabilityType
 from app.contracts.providers import (
     ProviderOperationsControlActionRequest,
     ProviderOperationsControlActionResponse,
@@ -15,6 +16,7 @@ from app.contracts.providers import (
 )
 from app.repositories.provider_operations_repository import ProviderOperationsEventRecord
 from app.repositories.provider_operations_repository import ProviderOperationsRepository
+from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.provider_budget_policy import _BUDGET_KEY
 from app.services.provider_degradation_state import _DEGRADATION_KEY
 from app.services.provider_operations_store import get_provider_operations_store
@@ -51,6 +53,12 @@ def build_provider_operations_control_history(
 def apply_provider_operations_control_action(
     request: ProviderOperationsControlActionRequest,
 ) -> ProviderOperationsControlActionResponse:
+    authorization = require_authorized(
+        authorize_request(
+            caller_app=request.caller_app,
+            capability_type=AuthorizationCapabilityType.PROVIDER_CONTROL,
+        )
+    )
     if not _reset_actions_supported():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -72,6 +80,7 @@ def apply_provider_operations_control_action(
         requested_by=request.requested_by,
         approved_by=request.approved_by,
         affected_record_count=affected_record_count,
+        authorization=authorization,
         recorded_at=_utcnow(),
     )
     repository.save_operations_event(event)
@@ -142,6 +151,7 @@ def _to_event_descriptor(
         requested_by=event.requested_by,
         approved_by=event.approved_by,
         affected_record_count=event.affected_record_count,
+        authorization=event.authorization,
         recorded_at=event.recorded_at,
     )
 

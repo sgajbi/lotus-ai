@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException, status
 
+from app.contracts.access_control import AuthorizationCapabilityType
 from app.contracts.providers import (
     ProviderExecutionMode,
     ProviderExecutionRequest,
@@ -10,6 +11,7 @@ from app.contracts.providers import (
 )
 from app.providers.base import ProviderExecutionError
 from app.providers.registry import resolve_text_generation_adapter
+from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.provider_policy import require_supported_text_generation_mode
 from app.services.provider_budget_policy import enforce_provider_budget, record_provider_spend
 from app.services.provider_degradation_state import (
@@ -33,6 +35,14 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
             ),
         )
     if mode == ProviderExecutionMode.OPENAI:
+        require_authorized(
+            authorize_request(
+                caller_app=request.caller_app,
+                capability_type=AuthorizationCapabilityType.LIVE_PROVIDER_EXECUTION,
+                tenant_id=request.tenant_id,
+                task_id=request.task_id,
+            )
+        )
         try:
             enforce_provider_quota(request)
             enforce_provider_budget()

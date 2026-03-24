@@ -8,8 +8,9 @@ Its role is to provide:
 2. retrieval,
 3. prompt governance,
 4. safety,
-5. auditability,
-6. reusable AI task execution.
+5. caller identity and access control,
+6. auditability,
+7. reusable AI task execution.
 
 The other Lotus applications remain responsible for:
 
@@ -60,7 +61,8 @@ Owns:
 1. orchestration logic behind routers,
 2. capability catalog assembly,
 3. prompt and provider orchestration,
-4. task execution pipeline stages for validation, resolution, response assembly, and audit persistence.
+4. task execution pipeline stages for validation, resolution, response assembly, and audit persistence,
+5. caller access-control policy resolution and platform-facing posture summaries.
 
 The API-facing service layer should remain stateless so multiple replicas can serve the same
 contracts without hidden node-local behavior.
@@ -150,6 +152,28 @@ now documents governed promotion, rollback, incident review, and audit inspectio
 prompt activation readiness now distinguishes the remaining technical durability gate clearly:
 restart-safe live prompt activation requires SQL-backed prompt rollout state plus SQL-backed
 evaluation runtime evidence.
+
+RFC-0012 Slice 1 adds an explicit caller-policy registry seam alongside those other runtime
+control planes. Caller identity and bounded capability posture are now resolved through a
+dedicated access-control repository, with restart-safe SQL-backed storage available for
+enforced request paths.
+
+RFC-0012 Slice 2 activates that registry on the data plane. `/ai/tasks/execute`, governed
+retrieval search, and the live-provider execution path now fail explicitly for unknown callers,
+disallowed tasks, disallowed retrieval sources, missing required tenant identity, and
+unauthorized live-provider use. Task responses, execution evidence, and persisted audit records
+all now carry the same typed authorization decision instead of leaving caller policy as a
+documentary-only operator surface.
+
+RFC-0012 Slice 3 applies that same caller policy to the control plane. Async recovery actions,
+governed prompt promote or rollback actions, and provider reset actions now fail before state
+mutation when the caller app is not authorized, and the resulting control history records now
+carry the same typed authorization decision as task audit and execution evidence.
+
+RFC-0012 Slice 4 closes the operator-facing governance loop around that enforcement model.
+Access-control runtime status now reports the explicit `FULLY_ENFORCED` posture, dedicated
+activation-readiness and runbook-readiness endpoints exist, and governance status now composes
+runtime, activation, and runbook truth instead of flattening those concerns into one summary.
 
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.

@@ -3,6 +3,12 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from app.config import settings
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from app.contracts.prompts import (
@@ -26,6 +32,21 @@ from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
 
 
+def _authorization() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-platform",
+        capability_type=AuthorizationCapabilityType.PROMPT_CONTROL,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id="explain.v1",
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=None,
+        summary="Allowed prompt control decision.",
+    )
+
+
 def test_apply_prompt_control_action_promotes_candidate_and_records_history(
     tmp_path: Path,
 ) -> None:
@@ -43,6 +64,7 @@ def test_apply_prompt_control_action_promotes_candidate_and_records_history(
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                caller_app="lotus-platform",
                 candidate_prompt_version="foundation.explain.v2",
                 requested_by="alice@lotus.test",
                 approved_by="bob@lotus.test",
@@ -76,6 +98,7 @@ def test_apply_prompt_control_action_rolls_back_to_previous_active_version(tmp_p
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                caller_app="lotus-platform",
                 candidate_prompt_version="foundation.explain.v2",
                 requested_by="alice@lotus.test",
                 approved_by="bob@lotus.test",
@@ -87,6 +110,7 @@ def test_apply_prompt_control_action_rolls_back_to_previous_active_version(tmp_p
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
+                caller_app="lotus-platform",
                 requested_by="alice@lotus.test",
                 approved_by="bob@lotus.test",
                 reason="Restore known-good prompt",
@@ -117,6 +141,7 @@ def test_apply_prompt_control_action_rejects_invalid_rollback_without_previous_a
                 PromptControlActionRequest(
                     task_id="explain.v1",
                     action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
+                    caller_app="lotus-platform",
                     requested_by="alice@lotus.test",
                     approved_by="bob@lotus.test",
                     reason="Attempt invalid rollback",
@@ -139,6 +164,7 @@ def test_apply_prompt_control_action_blocks_promotion_without_durable_prompt_sto
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                caller_app="lotus-platform",
                 candidate_prompt_version="foundation.explain.v2",
                 requested_by="alice@lotus.test",
                 approved_by="bob@lotus.test",
@@ -168,6 +194,7 @@ def test_apply_prompt_control_action_blocks_promotion_without_durable_evaluation
                 PromptControlActionRequest(
                     task_id="explain.v1",
                     action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                    caller_app="lotus-platform",
                     candidate_prompt_version="foundation.explain.v2",
                     requested_by="alice@lotus.test",
                     approved_by="bob@lotus.test",
@@ -197,6 +224,7 @@ def test_apply_prompt_control_action_rejects_missing_rollout_state(tmp_path: Pat
                 PromptControlActionRequest(
                     task_id="missing.v1",
                     action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                    caller_app="lotus-platform",
                     candidate_prompt_version="foundation.explain.v2",
                     requested_by="alice@lotus.test",
                     approved_by="bob@lotus.test",
@@ -226,6 +254,7 @@ def test_apply_prompt_control_action_rejects_blocked_or_invalid_promotion_shapes
                 PromptControlActionRequest(
                     task_id="explain.v1",
                     action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                    caller_app="lotus-platform",
                     requested_by="alice@lotus.test",
                     approved_by="bob@lotus.test",
                     reason="Exercise blocked approval-gate branch",
@@ -244,6 +273,7 @@ def test_apply_prompt_control_action_rejects_blocked_or_invalid_promotion_shapes
                 PromptControlActionRequest(
                     task_id="explain.v1",
                     action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                    caller_app="lotus-platform",
                     requested_by="alice@lotus.test",
                     approved_by="bob@lotus.test",
                     reason="Missing candidate version",
@@ -255,6 +285,7 @@ def test_apply_prompt_control_action_rejects_blocked_or_invalid_promotion_shapes
                 PromptControlActionRequest(
                     task_id="explain.v1",
                     action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                    caller_app="lotus-platform",
                     candidate_prompt_version="foundation.explain.v1",
                     requested_by="alice@lotus.test",
                     approved_by="bob@lotus.test",
@@ -267,6 +298,7 @@ def test_apply_prompt_control_action_rejects_blocked_or_invalid_promotion_shapes
                 PromptControlActionRequest(
                     task_id="explain.v1",
                     action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                    caller_app="lotus-platform",
                     candidate_prompt_version="missing.version",
                     requested_by="alice@lotus.test",
                     approved_by="bob@lotus.test",
@@ -318,6 +350,7 @@ def test_apply_prompt_control_action_rejects_non_candidate_prompt_version(tmp_pa
                 resulting_active_prompt_version="foundation.explain.v1",
                 prior_candidate_prompt_version=rollout_state.candidate_prompt_version,
                 resulting_candidate_prompt_version=rollout_state.candidate_prompt_version,
+                authorization=_authorization(),
                 recorded_at="2026-03-24T09:00:00Z",
             ),
         )
@@ -327,6 +360,7 @@ def test_apply_prompt_control_action_rejects_non_candidate_prompt_version(tmp_pa
                 PromptControlActionRequest(
                     task_id="explain.v1",
                     action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                    caller_app="lotus-platform",
                     candidate_prompt_version="foundation.explain.v2",
                     requested_by="alice@lotus.test",
                     approved_by="bob@lotus.test",
@@ -354,6 +388,7 @@ def test_apply_prompt_control_action_rejects_invalid_rollback_shape(tmp_path: Pa
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                caller_app="lotus-platform",
                 candidate_prompt_version="foundation.explain.v2",
                 requested_by="alice@lotus.test",
                 approved_by="bob@lotus.test",
@@ -366,6 +401,7 @@ def test_apply_prompt_control_action_rejects_invalid_rollback_shape(tmp_path: Pa
                 PromptControlActionRequest(
                     task_id="explain.v1",
                     action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
+                    caller_app="lotus-platform",
                     candidate_prompt_version="foundation.explain.v2",
                     requested_by="alice@lotus.test",
                     approved_by="bob@lotus.test",
@@ -383,6 +419,7 @@ def test_resolve_transition_rejects_unsupported_action_type() -> None:
     request = PromptControlActionRequest(
         task_id="explain.v1",
         action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+        caller_app="lotus-platform",
         candidate_prompt_version="foundation.explain.v2",
         requested_by="alice@lotus.test",
         approved_by="bob@lotus.test",
@@ -400,6 +437,7 @@ def test_resolve_transition_rejects_unsupported_action_type() -> None:
                 runtime_mutation_enabled=True,
             ),
             request=request,
+            authorization=_authorization(),
         )
     except RuntimeError as exc:
         assert "Unsupported prompt control action" in str(exc)
@@ -436,3 +474,33 @@ def _seed_prompt_approval_gate_pass_sqlalchemy() -> None:
                 case_count=1,
             )
         )
+
+
+def test_apply_prompt_control_action_blocks_unauthorized_caller(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'prompt-rollout-unauthorized.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        prompt_store_mode="sqlalchemy",
+        evaluation_runtime_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        _seed_prompt_approval_gate_pass_sqlalchemy()
+
+        try:
+            apply_prompt_control_action(
+                PromptControlActionRequest(
+                    task_id="explain.v1",
+                    action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                    caller_app="lotus-workbench",
+                    candidate_prompt_version="foundation.explain.v2",
+                    requested_by="alice@lotus.test",
+                    approved_by="bob@lotus.test",
+                    reason="Unauthorized promotion attempt",
+                )
+            )
+        except HTTPException as exc:
+            assert exc.status_code == 403
+            assert "not authorized for prompt control-plane actions" in str(exc.detail)
+        else:
+            raise AssertionError("Expected unauthorized prompt control action to fail")

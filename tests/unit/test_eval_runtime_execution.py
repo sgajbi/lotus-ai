@@ -3,6 +3,12 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from app.config import settings
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.prompts import PromptControlActionRequest, PromptControlActionType
 from app.contracts.evals import EvaluationCaseOutcome
 from app.evals.fixture_manifest import EvaluationFixtureRuntimeCase
@@ -20,6 +26,21 @@ from app.services.prompt_store import get_prompt_repository
 from app.services.provider_operations_store import reset_provider_operations_store_cache
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
+
+
+def _authorization() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-platform",
+        capability_type=AuthorizationCapabilityType.PROMPT_CONTROL,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id="explain.v1",
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=None,
+        summary="Allowed prompt control decision.",
+    )
 
 
 def test_execute_fixture_case_reports_failure_for_provider_operations_state_mismatch() -> None:
@@ -465,6 +486,7 @@ def test_apply_prompt_transition_for_evaluation_rejects_missing_active_prompt(
                 resulting_active_prompt_version="missing.version",
                 prior_candidate_prompt_version=rollout_state.candidate_prompt_version,
                 resulting_candidate_prompt_version=rollout_state.candidate_prompt_version,
+                authorization=_authorization(),
                 recorded_at="2026-03-24T09:00:00Z",
             ),
         )
@@ -540,6 +562,7 @@ def test_apply_prompt_rollback_for_evaluation_rejects_missing_state_and_versions
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                caller_app="lotus-platform",
                 candidate_prompt_version="foundation.explain.v2",
                 requested_by="alice@lotus.test",
                 approved_by="bob@lotus.test",
@@ -573,6 +596,7 @@ def test_apply_prompt_rollback_for_evaluation_rejects_missing_state_and_versions
                 resulting_active_prompt_version="foundation.explain.v2",
                 prior_candidate_prompt_version=None,
                 resulting_candidate_prompt_version=None,
+                authorization=_authorization(),
                 recorded_at="2026-03-24T09:10:00Z",
             ),
         )
@@ -624,6 +648,7 @@ def test_apply_prompt_rollback_for_evaluation_rejects_missing_prompt_versions(
                 resulting_active_prompt_version="foundation.explain.v2",
                 prior_candidate_prompt_version=None,
                 resulting_candidate_prompt_version=None,
+                authorization=_authorization(),
                 recorded_at="2026-03-24T09:15:00Z",
             ),
         )

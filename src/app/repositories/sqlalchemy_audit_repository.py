@@ -6,6 +6,12 @@ from sqlalchemy import select
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.prompts import (
@@ -43,6 +49,7 @@ class SqlAlchemyAuditRepository:
             redaction_posture=record.redaction_posture.value,
             enforced_safety_controls=record.enforced_safety_controls,
             safety_outcome_payload=record.safety_outcome.model_dump(mode="json"),
+            authorization_payload=record.authorization.model_dump(mode="json"),
             generated_at=record.generated_at,
             stubbed=record.stubbed,
             context_summary=record.context_summary,
@@ -127,6 +134,11 @@ class SqlAlchemyAuditRepository:
             redaction_posture=redaction_posture,
             enforced_safety_controls=model.enforced_safety_controls,
             safety_outcome=safety_outcome,
+            authorization=(
+                AuthorizationDecision.model_validate(model.authorization_payload)
+                if model.authorization_payload is not None
+                else _build_legacy_authorization(model)
+            ),
             generated_at=model.generated_at,
             stubbed=model.stubbed,
             context_summary=model.context_summary,
@@ -163,4 +175,22 @@ def _build_legacy_prompt_selection(model: AuditRecordModel) -> PromptSelectionTr
         candidate_prompt_version=None,
         previous_active_prompt_version=None,
         latest_control_event=None,
+    )
+
+
+def _build_legacy_authorization(model: AuditRecordModel) -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app=model.caller_app,
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id=model.task_id,
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=model.tenant_id,
+        summary=(
+            "Legacy audit record predates explicit caller authorization payload capture and is "
+            "treated as an allowed task execution record."
+        ),
     )

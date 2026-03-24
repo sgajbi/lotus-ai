@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptDescriptor, PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderExecutionResponse
@@ -14,6 +15,7 @@ def build_execution_evidence(
     *,
     request: TaskExecutionRequest,
     capability: CapabilityDescriptor,
+    authorization: AuthorizationDecision,
     prompt: PromptDescriptor,
     prompt_selection: PromptSelectionTraceDescriptor,
     provider_execution: ProviderExecutionResponse,
@@ -30,6 +32,7 @@ def build_execution_evidence(
                 retrieval_status=retrieval_status,
                 provider_execution=provider_execution,
             ),
+            _access_control_descriptor(authorization=authorization),
         ]
     )
 
@@ -205,4 +208,26 @@ def _retrieval_descriptor(
         evidence_type="retrieval_posture",
         summary="Execution captured the current retrieval execution posture for cross-cutting evidence.",
         attributes=retrieval_attributes,
+    )
+
+
+def _access_control_descriptor(
+    *,
+    authorization: AuthorizationDecision,
+) -> ExecutionEvidenceDescriptor:
+    return ExecutionEvidenceDescriptor(
+        evidence_type="access_control",
+        summary="Execution captured the caller authorization decision applied to the request path.",
+        attributes={
+            "caller_app": authorization.caller_app,
+            "capability_type": authorization.capability_type.value,
+            "outcome": authorization.outcome.value,
+            "allowed": authorization.allowed,
+            "tenant_policy_mode": authorization.tenant_policy_mode.value,
+            "tenant_id": authorization.tenant_id,
+            "task_id": authorization.task_id,
+            "requested_source_ids": authorization.requested_source_ids,
+            "effective_source_ids": authorization.effective_source_ids,
+            "summary": authorization.summary,
+        },
     )
