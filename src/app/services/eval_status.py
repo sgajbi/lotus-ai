@@ -7,6 +7,8 @@ from app.services.deployment_split_routing import (
 )
 from app.services.deployment_split_shared import resolve_deployment_split_posture
 from app.services.eval_approval_gate_summary import (
+    build_analytics_commentary_pack_approval_gate_summary,
+    build_decision_explanation_pack_approval_gate_summary,
     build_first_use_case_approval_gate_summary,
     build_prompt_approval_gate_summary,
     build_provider_approval_gate_summary,
@@ -40,6 +42,8 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
         build_retrieval_approval_gate_summary(),
         build_provider_approval_gate_summary(),
         build_safety_approval_gate_summary(),
+        build_analytics_commentary_pack_approval_gate_summary(),
+        build_decision_explanation_pack_approval_gate_summary(),
     ]
     return EvaluationRuntimeStatusResponse(
         service=catalog.service,

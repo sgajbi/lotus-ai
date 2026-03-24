@@ -19,13 +19,15 @@ def test_evaluation_seam_coverage_reports_staged_fixtures_by_platform_boundary()
     assert async_execution.fixture_ids == ["async_runtime_examples"]
 
     task_execution = seam_coverage[1]
-    assert task_execution.staged_fixture_count == 4
-    assert task_execution.staged_case_count == 8
+    assert task_execution.staged_fixture_count == 6
+    assert task_execution.staged_case_count == 12
     assert task_execution.fixture_ids == [
         "task_capability_contracts",
         "explanation_task_examples",
         "summarization_task_examples",
         "lotus_performance_first_use_case_examples",
+        "capability_pack_analytics_commentary_examples",
+        "capability_pack_decision_explanation_examples",
     ]
 
     prompt_rollout = seam_coverage[2]

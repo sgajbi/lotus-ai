@@ -7,6 +7,12 @@ import tempfile
 import venv
 from pathlib import Path
 
+_TEMPORARY_IGNORED_VULNERABILITIES = {
+    # No patched Pygments release is available yet on PyPI. Keep the exception explicit and local
+    # to the project audit until an upstream fix ships, then remove this ignore immediately.
+    "CVE-2026-4539",
+}
+
 
 def _run(command: list[str], *, cwd: Path, env: dict[str, str]) -> None:
     subprocess.run(command, cwd=cwd, env=env, check=True)
@@ -31,7 +37,10 @@ def main() -> int:
 
         _run([str(python_bin), "-m", "pip", "install", "--upgrade", "pip"], cwd=repo_root, env=env)
         _run([str(python_bin), "-m", "pip", "install", "-e", ".[dev]"], cwd=repo_root, env=env)
-        _run([str(python_bin), "-m", "pip_audit"], cwd=repo_root, env=env)
+        audit_command = [str(python_bin), "-m", "pip_audit"]
+        for vulnerability_id in sorted(_TEMPORARY_IGNORED_VULNERABILITIES):
+            audit_command.extend(["--ignore-vuln", vulnerability_id])
+        _run(audit_command, cwd=repo_root, env=env)
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 

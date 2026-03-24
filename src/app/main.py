@@ -13,6 +13,7 @@ from app.routers.artifacts import router as artifacts_router
 from app.routers.async_runtime import router as async_runtime_router
 from app.routers.audit import router as audit_router
 from app.routers.capabilities import router as capabilities_router
+from app.routers.capability_packs import router as capability_packs_router
 from app.routers.evals import router as evals_router
 from app.routers.observability import router as observability_router
 from app.routers.platform import router as platform_router
@@ -56,6 +57,7 @@ app.include_router(observability_router)
 app.include_router(access_control_router)
 app.include_router(async_runtime_router)
 app.include_router(capabilities_router)
+app.include_router(capability_packs_router)
 app.include_router(evals_router)
 app.include_router(providers_router)
 app.include_router(prompts_router)
@@ -155,6 +157,7 @@ async def root() -> dict[str, object]:
             "async_runtime",
             "artifacts",
             "provider_catalog",
+            "capability_packs",
             "prompt_registry",
             "access_control",
             "retrieval",

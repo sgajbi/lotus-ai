@@ -1,0 +1,51 @@
+{
+  "fixture_family": "capability_pack_decision_explanation_examples",
+  "task_id": "explain.v1",
+  "cases": [
+    {
+      "case_id": "decision_explanation_blocker_state_authorized",
+      "summary": "Decision explanation remains bounded to deterministic blocker state and explicit caller authorization.",
+      "input": {
+        "task_id": "explain.v1",
+        "caller_app": "lotus-manage",
+        "tenant_id": "tenant-sg-001",
+        "decision_scope": "rebalance_submission",
+        "decision_state": "BLOCKED",
+        "blocker_reason": "Approval policy requires a missing compliance attestation.",
+        "required_next_step": "Upload the missing attestation before retry."
+      },
+      "expected": {
+        "output_label": "EXPLANATION_ONLY",
+        "authorization_outcome": "ALLOWED",
+        "caller_app": "lotus-manage",
+        "task_id": "explain.v1",
+        "safety_disposition": "DOCUMENTED_ONLY",
+        "caller_visible_in_payload": true,
+        "stubbed": true
+      }
+    },
+    {
+      "case_id": "decision_explanation_runtime_safety_redaction",
+      "summary": "Decision explanation runtime safety can redact caller-linked fields while preserving deterministic rationale output.",
+      "input": {
+        "task_id": "explain.v1",
+        "caller_app": "lotus-manage",
+        "tenant_id": "tenant-sg-001",
+        "safety_mode": "runtime_enforced",
+        "decision_scope": "approval_review",
+        "decision_state": "PENDING_REVIEW",
+        "blocker_reason": "A second approver must review the exception request.",
+        "required_next_step": "Route the request to the escalation reviewer."
+      },
+      "expected": {
+        "output_label": "EXPLANATION_ONLY",
+        "authorization_outcome": "ALLOWED",
+        "caller_app": "lotus-manage",
+        "task_id": "explain.v1",
+        "safety_disposition": "ENFORCED_REDACTED",
+        "caller_visible_in_payload": false,
+        "stubbed": true
+      }
+    }
+  ]
+}

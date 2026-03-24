@@ -187,14 +187,19 @@ Current state:
 
 ### Next Likely Feature Areas
 
-The next RFCs already identified in the repo describe the expected sequence:
+The next RFCs now identified in the repo describe the expected post-foundation sequence:
 
-1. `RFC-0015` controlled deployment split into runtime, retrieval, and evals
-2. `RFC-0017` production resilience and disaster recovery
-3. `RFC-0018` governed embeddings and provider expansion
-4. `RFC-0019` governed document ingestion and corpus refresh
+1. `RFC-0021` domain AI capability packs and product maturity
+2. `RFC-0022` production go-live approval and managed infrastructure
+3. `RFC-0023` multi-app adoption and capability rollout governance
 
 Current status against that sequence:
+
+1. `RFC-0021` is now partially started through a separate capability-pack catalog layer, with a reusable commentary family and an experimental decision-explanation family modeled explicitly, dedicated runtime-backed pack-quality eval families added, pack-specific activation, runbook, observability, governance, and adoption-template surfaces exposed, and the implemented `lotus-performance` path now anchored to the commentary family while broader approved pack maturity is still future work.
+2. `RFC-0022` is still draft and is intended to follow `RFC-0021`, separating true production go-live approval from merely prod-shaped infrastructure posture.
+3. `RFC-0023` is still draft and is intended to follow both of the above, governing estate-wide multi-app rollout only after reusable capability packs and production approval posture are explicit.
+
+The previous likely feature areas are now implemented:
 
 1. `RFC-0015` is implemented, including runtime, activation, runbook, and governance posture for unified versus split deployment stages.
 2. `RFC-0017` now exposes a bounded resilience runtime inventory surface, an ordered restore-plan surface, explicit degraded-versus-restored runtime posture for queue, worker, provider, retrieval, and artifact continuity dependencies, plus drill-evidence, activation, runbook, and governance surfaces.
@@ -219,10 +224,9 @@ The current preferred RFC-0016 target is:
 
 In practical feature terms, the roadmap is:
 
-1. build cleaner deployment topology on top of the now-explicit production baseline,
-2. improve resilience on top of that baseline, using the new runtime, restore-plan, drill-evidence, and governance surfaces to harden actual recovery posture,
-3. expand retrieval and provider breadth,
-4. broaden corpus management.
+1. turn the current platform backbone into reusable app-facing product capability packs,
+2. define a true final-mile production approval boundary above the existing prod-shaped baseline,
+3. expand from one proven downstream use case into governed multi-app adoption without fragmenting capability behavior.
 
 ## Recommended Reading Order
 

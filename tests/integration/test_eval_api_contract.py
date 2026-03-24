@@ -51,6 +51,20 @@ def test_evaluation_catalog_route(client: TestClient) -> None:
         for fixture in body["fixture_families"]
     )
     assert any(
+        fixture["fixture_id"] == "capability_pack_analytics_commentary_examples"
+        and fixture["manifest_path"]
+        == "docs/evals/fixtures/capability-packs.analytics-commentary/basic_cases.json"
+        and fixture["case_count"] == 2
+        for fixture in body["fixture_families"]
+    )
+    assert any(
+        fixture["fixture_id"] == "capability_pack_decision_explanation_examples"
+        and fixture["manifest_path"]
+        == "docs/evals/fixtures/capability-packs.decision-explanation/basic_cases.json"
+        and fixture["case_count"] == 2
+        for fixture in body["fixture_families"]
+    )
+    assert any(
         fixture["fixture_id"] == "prompt_promotion_examples"
         and fixture["manifest_path"] == "docs/evals/fixtures/prompts.promotion/basic_cases.json"
         and fixture["case_count"] == 1
@@ -132,7 +146,7 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["manifest_version"] == "foundation.v1"
     assert body["evidence_category_count"] == 6
-    assert body["staged_case_count"] == 38
+    assert body["staged_case_count"] == 42
     assert [item["seam_id"] for item in body["seam_coverage"]] == [
         "async_execution",
         "task_execution",
@@ -143,8 +157,8 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     ]
     assert body["seam_coverage"][0]["staged_fixture_count"] == 1
     assert body["seam_coverage"][0]["staged_case_count"] == 3
-    assert body["seam_coverage"][1]["staged_fixture_count"] == 4
-    assert body["seam_coverage"][1]["staged_case_count"] == 8
+    assert body["seam_coverage"][1]["staged_fixture_count"] == 6
+    assert body["seam_coverage"][1]["staged_case_count"] == 12
     assert body["seam_coverage"][2]["staged_fixture_count"] == 2
     assert body["seam_coverage"][2]["staged_case_count"] == 2
     assert body["seam_coverage"][3]["staged_fixture_count"] == 2
@@ -167,6 +181,8 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     assert body["approval_gates"][2]["domain_id"] == "retrieval_execution"
     assert body["approval_gates"][3]["domain_id"] == "provider_execution"
     assert body["approval_gates"][4]["domain_id"] == "safety_enforcement"
+    assert body["approval_gates"][5]["domain_id"] == "analytics_commentary_pack"
+    assert body["approval_gates"][6]["domain_id"] == "decision_explanation_pack"
     assert body["approval_gates"][0]["evidence_state"] == "STAGED_ONLY"
 
 
@@ -231,7 +247,7 @@ def test_evaluation_run_catalog_route(client: TestClient) -> None:
     assert body["status_counts"]["RECORDED"] == 1
     assert body["status_counts"]["SUPERSEDED"] == 1
     assert body["runs"][0]["record_source"] == "STAGED_ARTIFACT"
-    assert body["runs"][0]["staged_case_count"] == 38
+    assert body["runs"][0]["staged_case_count"] == 42
     assert body["runs"][1]["status"] == "SUPERSEDED"
 
 

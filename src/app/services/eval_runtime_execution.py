@@ -411,6 +411,38 @@ def _execute_fixture_case(
             ["service://platform/prompts/control-actions", "service://ai/tasks/execute"],
         )
 
+    if fixture_id == "capability_pack_analytics_commentary_examples":
+        return _evaluate_capability_pack_case(
+            fixture_task_id=fixture_task_id,
+            pack_id="analytics_commentary.pack.v1",
+            failure_label="Analytics commentary pack evaluation",
+            pass_summary=(
+                "Analytics commentary pack execution preserved bounded explanation-only output, "
+                "caller authorization, and product-quality guardrails."
+            ),
+            fail_summary=(
+                "Analytics commentary pack execution did not preserve the expected authorization "
+                "or product-quality guardrails."
+            ),
+            case=case,
+        )
+
+    if fixture_id == "capability_pack_decision_explanation_examples":
+        return _evaluate_capability_pack_case(
+            fixture_task_id=fixture_task_id,
+            pack_id="decision_explanation.pack.v1",
+            failure_label="Decision explanation pack evaluation",
+            pass_summary=(
+                "Decision explanation pack execution preserved bounded explanation-only output, "
+                "caller authorization, and deterministic explanation guardrails."
+            ),
+            fail_summary=(
+                "Decision explanation pack execution did not preserve the expected authorization "
+                "or deterministic explanation guardrails."
+            ),
+            case=case,
+        )
+
     if fixture_id == "lotus_performance_first_use_case_examples":
         task_id = str(case.input_payload.get("task_id", fixture_task_id))
         response, failure_category = _execute_task_case(task_id=task_id, case=case)
@@ -727,6 +759,48 @@ def _execute_fixture_case(
         f"Fixture family '{fixture_id}' does not yet have runtime-backed execution semantics.",
         EvaluationCaseOutcome.FAIL,
         [f"fixture://{fixture_id}"],
+    )
+
+
+def _evaluate_capability_pack_case(
+    *,
+    fixture_task_id: str,
+    pack_id: str,
+    failure_label: str,
+    pass_summary: str,
+    fail_summary: str,
+    case: EvaluationFixtureRuntimeCase,
+) -> tuple[str, EvaluationCaseOutcome, list[str]]:
+    task_id = str(case.input_payload.get("task_id", fixture_task_id))
+    response, failure_category = _execute_task_case(task_id=task_id, case=case)
+    if response is None:
+        return (
+            f"{failure_label} failed unexpectedly with '{failure_category}'.",
+            EvaluationCaseOutcome.FAIL,
+            [
+                f"service://platform/capability-packs/{pack_id}",
+                "service://ai/tasks/execute",
+            ],
+        )
+    caller_visible_in_payload = "caller_app" in response.result.structured_output
+    checks = [
+        response.output_label.value == case.expected_payload["output_label"],
+        response.audit.authorization.outcome.value
+        == case.expected_payload["authorization_outcome"],
+        response.audit.authorization.caller_app == case.expected_payload["caller_app"],
+        response.audit.authorization.task_id == case.expected_payload["task_id"],
+        response.audit.safety.disposition.value == case.expected_payload["safety_disposition"],
+        caller_visible_in_payload == case.expected_payload["caller_visible_in_payload"],
+        response.audit.stubbed is bool(case.expected_payload["stubbed"]),
+    ]
+    outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
+    return (
+        pass_summary if outcome == EvaluationCaseOutcome.PASS else fail_summary,
+        outcome,
+        [
+            f"service://platform/capability-packs/{pack_id}",
+            "service://ai/tasks/execute",
+        ],
     )
 
 

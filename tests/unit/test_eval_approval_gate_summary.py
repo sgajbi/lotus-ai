@@ -3,6 +3,8 @@ from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from app.services.eval_approval_gate_summary import (
     _build_domain_notes,
     _derive_domain_state,
+    build_analytics_commentary_pack_approval_gate_summary,
+    build_decision_explanation_pack_approval_gate_summary,
     build_first_use_case_approval_gate_summary,
     build_prompt_approval_gate_summary,
     build_provider_approval_gate_summary,
@@ -45,6 +47,19 @@ def test_first_use_case_approval_gate_reports_staged_only_without_runtime_runs()
     assert summary.required_fixture_count == 1
     assert summary.runtime_backed_fixture_count == 0
     assert summary.latest_historical_baseline_run_id == "foundation_eval_2026_03_22_001"
+
+
+def test_capability_pack_approval_gates_report_staged_only_without_runtime_runs() -> None:
+    analytics_summary = build_analytics_commentary_pack_approval_gate_summary()
+    decision_summary = build_decision_explanation_pack_approval_gate_summary()
+
+    assert analytics_summary.domain_id == "analytics_commentary_pack"
+    assert analytics_summary.evidence_state.value == "STAGED_ONLY"
+    assert analytics_summary.required_fixture_count == 1
+    assert analytics_summary.runtime_backed_fixture_count == 0
+    assert analytics_summary.latest_historical_baseline_run_id == "foundation_eval_2026_03_22_001"
+    assert decision_summary.domain_id == "decision_explanation_pack"
+    assert decision_summary.evidence_state.value == "STAGED_ONLY"
 
 
 def test_provider_approval_gate_reports_partial_runtime_coverage() -> None:
@@ -235,6 +250,26 @@ def test_first_use_case_approval_gate_reports_runtime_pass_when_required_fixture
     summary = build_first_use_case_approval_gate_summary()
 
     assert summary.domain_id == "first_use_case_onboarding"
+    assert summary.evidence_state.value == "RUNTIME_PASS"
+    assert summary.approval_ready is True
+    assert summary.required_fixture_count == 1
+    assert summary.runtime_backed_fixture_count == 1
+
+
+def test_capability_pack_approval_gate_reports_runtime_pass_when_fixture_passes() -> None:
+    submit_evaluation_run(
+        EvaluationRunSubmissionRequest(
+            fixture_id="capability_pack_analytics_commentary_examples",
+            caller_app="lotus-platform",
+            correlation_id="corr-pack-analytics",
+            triggered_by="operator-a",
+        )
+    )
+    run_next_evaluation_execution_job(worker_id="worker-a")
+
+    summary = build_analytics_commentary_pack_approval_gate_summary()
+
+    assert summary.domain_id == "analytics_commentary_pack"
     assert summary.evidence_state.value == "RUNTIME_PASS"
     assert summary.approval_ready is True
     assert summary.required_fixture_count == 1

@@ -52,6 +52,28 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
         == "docs/evals/fixtures/lotus-performance.first-use-case/basic_cases.json"
     )
     assert first_use_case_fixture.case_count == 2
+    analytics_pack_fixture = next(
+        fixture
+        for fixture in catalog.fixture_families
+        if fixture.fixture_id == "capability_pack_analytics_commentary_examples"
+    )
+    assert analytics_pack_fixture.status == "STAGED"
+    assert (
+        analytics_pack_fixture.manifest_path
+        == "docs/evals/fixtures/capability-packs.analytics-commentary/basic_cases.json"
+    )
+    assert analytics_pack_fixture.case_count == 2
+    decision_pack_fixture = next(
+        fixture
+        for fixture in catalog.fixture_families
+        if fixture.fixture_id == "capability_pack_decision_explanation_examples"
+    )
+    assert decision_pack_fixture.status == "STAGED"
+    assert (
+        decision_pack_fixture.manifest_path
+        == "docs/evals/fixtures/capability-packs.decision-explanation/basic_cases.json"
+    )
+    assert decision_pack_fixture.case_count == 2
     retrieval_fixture = next(
         fixture
         for fixture in catalog.fixture_families

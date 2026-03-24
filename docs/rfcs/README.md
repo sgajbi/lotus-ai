@@ -20,3 +20,6 @@
 - `RFC-0018-governed-embeddings-and-provider-expansion.md` - Implemented
 - `RFC-0019-governed-document-ingestion-and-corpus-refresh.md` - Implemented
 - `RFC-0020-production-standard-deployment-baseline.md` - Implemented
+- `RFC-0021-domain-ai-capability-packs-and-product-maturity.md` - Implemented
+- `RFC-0022-production-go-live-approval-and-managed-infrastructure.md` - Draft
+- `RFC-0023-multi-app-adoption-and-capability-rollout-governance.md` - Draft

@@ -82,13 +82,20 @@ The calling Lotus application owns the business context.
 4. Receive structured AI output and audit metadata.
 5. Apply that output only within the calling service's own business rules.
 
-For new downstream onboarding, start with:
+For new downstream onboarding, start with the capability-pack layer first:
+
+1. `GET /platform/capability-packs`
+2. `GET /platform/capability-packs/{pack_id}`
+3. `GET /platform/capability-packs/{pack_id}/adoption-template`
+4. `GET /platform/capability-packs/{pack_id}/governance-status`
+
+Then use the first-use-case surfaces as the concrete reference path when the selected pack already has one:
 
 1. `GET /platform/use-cases/onboarding-template`
 2. `GET /platform/use-cases/first-production-use-case`
 3. `GET /platform/use-cases/first-production-use-case/governance-status`
 
-That sequence gives the reusable onboarding checklist first, then the currently implemented reference use case and its bounded rollout truth.
+That sequence keeps downstream adoption pack-oriented first, while still preserving the currently implemented reference use case and its bounded rollout truth.
 
 ## Good Use Cases
 

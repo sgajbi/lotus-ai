@@ -58,6 +58,18 @@
       "manifest_path": "docs/evals/fixtures/lotus-performance.first-use-case/basic_cases.json"
     },
     {
+      "fixture_id": "capability_pack_analytics_commentary_examples",
+      "status": "STAGED",
+      "description": "Runtime-backed product-quality examples for the analytics commentary capability pack.",
+      "manifest_path": "docs/evals/fixtures/capability-packs.analytics-commentary/basic_cases.json"
+    },
+    {
+      "fixture_id": "capability_pack_decision_explanation_examples",
+      "status": "STAGED",
+      "description": "Runtime-backed product-quality examples for the decision explanation capability pack.",
+      "manifest_path": "docs/evals/fixtures/capability-packs.decision-explanation/basic_cases.json"
+    },
+    {
       "fixture_id": "prompt_promotion_examples",
       "status": "STAGED",
       "description": "Governed prompt promotion evaluation examples for runtime-backed approval.",
