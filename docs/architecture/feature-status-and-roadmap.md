@@ -170,7 +170,9 @@ Current state:
 Current state:
 
 1. the platform is ready enough for serious integration planning,
-2. first-use-case onboarding is now partially implemented through a bounded `lotus-performance` contract, limited-rollout readiness surface, runbook-readiness surface, composed governance view, and reusable onboarding template, but rollout is not yet closed.
+2. first-use-case onboarding is now partially implemented through a bounded `lotus-performance` contract, limited-rollout readiness surface, runbook-readiness surface, composed governance view, and reusable onboarding template,
+3. a Dockerized live-provider demo path has now been proven technically,
+4. that same live demo also showed the current platform is still not at a truthful production-standard baseline because live success required demo-only posture and the governed first-use-case gate fell back to blocked.
 
 ## Roadmap
 
@@ -178,13 +180,11 @@ Current state:
 
 The next RFCs already identified in the repo describe the expected sequence:
 
-1. `RFC-0013` runtime observability and incident evidence
-2. `RFC-0014` governed artifact and object storage backbone
-3. `RFC-0015` controlled deployment split into runtime, retrieval, and evals
-4. `RFC-0016` first production use-case onboarding
-5. `RFC-0017` production resilience and disaster recovery
-6. `RFC-0018` governed embeddings and provider expansion
-7. `RFC-0019` governed document ingestion and corpus refresh
+1. `RFC-0020` production-standard deployment baseline
+2. `RFC-0015` controlled deployment split into runtime, retrieval, and evals
+3. `RFC-0017` production resilience and disaster recovery
+4. `RFC-0018` governed embeddings and provider expansion
+5. `RFC-0019` governed document ingestion and corpus refresh
 
 The current preferred RFC-0016 target is:
 
@@ -196,13 +196,11 @@ The current preferred RFC-0016 target is:
 
 In practical feature terms, the roadmap is:
 
-1. make the existing platform easier to operate in production,
-2. make large artifacts and evidence more scalable,
-3. make deployment topology cleaner,
-4. onboard the first real downstream use case,
-5. improve resilience,
-6. expand retrieval and provider breadth,
-7. broaden corpus management.
+1. turn the current demo-capable stack into a truthful production-standard baseline,
+2. make deployment topology cleaner after that baseline exists,
+3. improve resilience on top of that baseline,
+4. expand retrieval and provider breadth,
+5. broaden corpus management.
 
 ## Recommended Reading Order
 
