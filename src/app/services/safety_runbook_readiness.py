@@ -37,7 +37,7 @@ def build_safety_runbook_readiness() -> SafetyRunbookReadinessResponse:
             ),
         ),
         SafetyRunbookReadinessItem(
-            runbook_id="safety_oncall_and_observability_dashboard_pack",
+            runbook_id="safety_oncall_and_observability_review",
             status="FOUNDATION_DOCUMENTED",
             required_for_activation=True,
             notes=(

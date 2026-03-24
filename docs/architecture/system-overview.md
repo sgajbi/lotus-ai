@@ -444,8 +444,8 @@ runtime-backed evaluation runs. Historical staged baselines remain visible for c
 they no longer satisfy current live-retrieval approval posture by themselves.
 
 Retrieval runbook readiness is now partially complete rather than purely foundational: live-search
-rollout review plus replay, rollback, and corpus-recovery procedures are documented, while named
-on-call ownership and dedicated observability pack work remain explicit blockers.
+rollout review plus replay, rollback, corpus-recovery, and bounded observability procedures are
+documented, while named on-call ownership remains the explicit blocker.
 
 ### Routers
 

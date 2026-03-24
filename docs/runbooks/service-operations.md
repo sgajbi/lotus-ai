@@ -183,7 +183,7 @@ Before any future live-provider activation slice:
 6. confirm the embedded `provider_governance` and `provider_operations` blocks in `GET /platform/runtime-status` match the detailed provider views
 7. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
 8. confirm staged provider policy, runtime, failure-mode, operations, and degradation fixtures plus the recorded provider regression baseline still match the intended rollout posture
-9. confirm vendor escalation, quota response, spend-anomaly response, circuit-open response, rollback, and provider observability procedures are documented and approved
+9. confirm vendor escalation, quota response, spend-anomaly response, circuit-open response, rollback, and provider incident-review procedures are documented and approved
 10. confirm provider-backed task runtime notes still describe the current rollout truthfully, especially when a live provider is allowlisted but intentionally disabled
 11. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
 12. only then proceed with any live-provider activation rollout review
@@ -280,7 +280,7 @@ Before any future live-retrieval activation slice:
 5. confirm the embedded `retrieval_governance` block in `GET /platform/runtime-status` matches the detailed retrieval governance view
 6. confirm retrieval indexing policy and execution status still reflect governed staged posture unless explicitly approved otherwise
 7. confirm the retrieval approval gate is backed by current runtime-produced live-search evidence rather than historical staged baselines alone
-8. confirm reindex, replay, rollback, and retrieval observability procedures are documented and approved
+8. confirm reindex, replay, rollback, and retrieval incident-review procedures are documented and approved
 9. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
 10. only then proceed with any live-retrieval activation rollout review
 
