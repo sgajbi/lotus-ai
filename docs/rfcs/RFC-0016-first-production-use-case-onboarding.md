@@ -148,6 +148,12 @@ Current implemented posture for the next slice:
 2. `/platform/use-cases/first-production-use-case/runbook-readiness` now exposes the operator support, rollback, unsupported-input triage, and shared-ownership posture,
 3. `/platform/use-cases/first-production-use-case/governance-status` now combines those bounded runtime and runbook views into one limited-rollout review surface.
 
+Current implemented posture for the final slice:
+
+1. `/platform/use-cases/onboarding-template` now exposes the reusable onboarding checklist, approval criteria, and lessons learned derived from the first use case,
+2. the integration guide and first-use-case guide now describe that reusable adoption pattern explicitly,
+3. future downstream onboarding can now start from a typed template instead of reconstructing requirements from multiple RFCs and operator endpoints.
+
 ### Operational Readiness
 
 The first use case is where platform promises become operational obligations.

@@ -104,6 +104,7 @@ Delivery outcomes:
 
 1. One real Lotus app gets business value from `lotus-ai`.
 2. The integration pattern becomes the template for other apps.
+3. Later downstream teams can start from one bounded onboarding checklist and approval-criteria template instead of reconstructing rollout requirements from scratch.
 
 ## Phase 6: Expansion Across Lotus Apps
 

@@ -20,7 +20,7 @@ If you want the shortest summary:
 2. bounded task execution, retrieval, safety, prompt rollout, async workers, runtime-backed evals, caller access control, and bounded observability are real,
 3. artifact storage now has a governed metadata and payload-store foundation, with eval, async, and observability artifact cutovers plus explicit lifecycle and governance surfaces,
 4. embeddings expansion, document ingestion, deployment split, and resilience hardening are still roadmap items.
-5. first-use-case onboarding is in progress with a bounded `lotus-performance` contract plus limited-rollout readiness, runbook, and governance surfaces, but broader rollout is not yet complete.
+5. first-use-case onboarding is in progress with a bounded `lotus-performance` contract plus limited-rollout readiness, runbook, governance, and reusable onboarding-template surfaces, but broader rollout is not yet complete.
 
 ## Current Phase
 

@@ -82,6 +82,14 @@ The calling Lotus application owns the business context.
 4. Receive structured AI output and audit metadata.
 5. Apply that output only within the calling service's own business rules.
 
+For new downstream onboarding, start with:
+
+1. `GET /platform/use-cases/onboarding-template`
+2. `GET /platform/use-cases/first-production-use-case`
+3. `GET /platform/use-cases/first-production-use-case/governance-status`
+
+That sequence gives the reusable onboarding checklist first, then the currently implemented reference use case and its bounded rollout truth.
+
 ## Good Use Cases
 
 ### Preferred first integration: lotus-performance

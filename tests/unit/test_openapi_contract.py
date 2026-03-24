@@ -118,6 +118,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         ]
         == "getFirstProductionUseCaseGovernanceStatus"
     )
+    assert (
+        spec["paths"]["/platform/use-cases/onboarding-template"]["get"]["operationId"]
+        == "getUseCaseOnboardingTemplate"
+    )
     assert spec["paths"]["/platform/evals/catalog"]["get"]["operationId"] == "getEvaluationCatalog"
     assert spec["paths"]["/platform/evals/runs"]["get"]["operationId"] == "getEvaluationRunCatalog"
     assert spec["paths"]["/platform/evals/runs/submit"]["post"]["operationId"] == (
@@ -254,6 +258,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     ]
     assert "readiness" in first_use_case_governance_schema["properties"]
     assert "runbook_readiness" in first_use_case_governance_schema["properties"]
+    onboarding_template_schema = spec["components"]["schemas"]["UseCaseOnboardingTemplateResponse"]
+    assert "checklist" in onboarding_template_schema["properties"]
+    assert "approval_criteria" in onboarding_template_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"

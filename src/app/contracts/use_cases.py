@@ -117,6 +117,54 @@ class FirstUseCaseGovernanceStatusResponse(BaseModel):
     )
 
 
+class UseCaseOnboardingChecklistItem(BaseModel):
+    checklist_id: str = Field(description="Stable onboarding checklist item identifier.")
+    phase: str = Field(description="Rollout or onboarding phase where this checklist item applies.")
+    required: bool = Field(description="Whether the checklist item is required for governed onboarding.")
+    notes: str = Field(description="Human-readable guidance for the onboarding item.")
+
+
+class UseCaseApprovalCriterion(BaseModel):
+    criterion_id: str = Field(description="Stable reusable approval criterion identifier.")
+    criterion_name: str = Field(description="Short name for the reusable approval criterion.")
+    evaluation_surface: str = Field(
+        description="Primary platform endpoint or artifact used to review this criterion."
+    )
+    pass_condition: str = Field(
+        description="Human-readable condition that must be true before approval is granted."
+    )
+
+
+class UseCaseOnboardingTemplateResponse(BaseModel):
+    service: str = Field(description="Service name emitting the use-case onboarding template.")
+    version: str = Field(description="Current lotus-ai service version.")
+    template_id: str = Field(description="Stable identifier for the reusable onboarding template.")
+    based_on_use_case_id: str = Field(
+        description="Implemented or active use case used as the template baseline."
+    )
+    downstream_pattern: str = Field(
+        description="Short description of the downstream integration shape this template covers."
+    )
+    adoption_scope: list[str] = Field(
+        description="Kinds of downstream Lotus use cases this template is intentionally suitable for."
+    )
+    checklist: list[UseCaseOnboardingChecklistItem] = Field(
+        description="Reusable onboarding checklist items for later Lotus app integrations."
+    )
+    approval_criteria: list[UseCaseApprovalCriterion] = Field(
+        description="Reusable approval criteria derived from the first production use case."
+    )
+    lessons_learned: list[str] = Field(
+        description="Captured lessons from the first use-case onboarding path."
+    )
+    non_goals: list[str] = Field(
+        description="Explicit behaviors this reusable template does not authorize."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of the current onboarding template posture."
+    )
+
+
 class FirstUseCaseRuntimeStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the first-use-case contract status.")
     version: str = Field(description="Current lotus-ai service version.")

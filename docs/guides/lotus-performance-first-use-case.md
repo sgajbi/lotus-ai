@@ -59,6 +59,24 @@ Rollback posture is intentionally simple:
 2. unsupported or incomplete analytics inputs should be handled as a support and rollback review path, not normal explanation variance,
 3. audit, observability incident summaries, and attached artifact descriptors are the primary review surfaces for that path.
 
+## Reusable Adoption Template
+
+`lotus-performance` is now also the reference pattern for later downstream onboarding.
+
+Use:
+
+1. `GET /platform/use-cases/onboarding-template`
+
+to retrieve the reusable checklist and approval criteria for later explanation-oriented Lotus app integrations.
+
+The intended pattern remains narrow:
+
+1. caller-supplied structured facts,
+2. explanation-only output,
+3. runtime-backed evaluation gate,
+4. explicit rollback and support review,
+5. no delegation of business truth into `lotus-ai`.
+
 ## Ownership
 
 `lotus-performance` owns:

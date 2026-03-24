@@ -58,3 +58,18 @@ def test_first_production_use_case_governance_status_route(client: TestClient) -
     assert body["governance_ready"] is False
     assert body["readiness"]["approval_gate"]["domain_id"] == "first_use_case_onboarding"
     assert body["runbook_readiness"]["runbook_ready"] is True
+
+
+def test_use_case_onboarding_template_route(client: TestClient) -> None:
+    response = client.get("/platform/use-cases/onboarding-template")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["template_id"] == "bounded_explanation_only_onboarding.v1"
+    assert body["based_on_use_case_id"] == "lotus_performance.analytics_commentary.v1"
+    assert any(item["checklist_id"] == "contract_boundary_defined" for item in body["checklist"])
+    assert any(
+        item["criterion_id"] == "approval_governance_summary"
+        for item in body["approval_criteria"]
+    )

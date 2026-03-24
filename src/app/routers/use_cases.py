@@ -7,11 +7,13 @@ from app.contracts.use_cases import (
     FirstUseCaseReadinessResponse,
     FirstUseCaseRunbookReadinessResponse,
     FirstUseCaseRuntimeStatusResponse,
+    UseCaseOnboardingTemplateResponse,
 )
 from app.services.first_use_case_governance import build_first_use_case_governance_status
 from app.services.first_use_case_readiness import build_first_use_case_readiness
 from app.services.first_use_case_runbook_readiness import build_first_use_case_runbook_readiness
 from app.services.first_use_case_status import build_first_use_case_runtime_status
+from app.services.use_case_onboarding_template import build_use_case_onboarding_template
 
 router = APIRouter(prefix="/platform/use-cases", tags=["platform"])
 
@@ -86,3 +88,21 @@ async def get_first_production_use_case_runbook_readiness_route() -> FirstUseCas
 )
 async def get_first_production_use_case_governance_status_route() -> FirstUseCaseGovernanceStatusResponse:
     return build_first_use_case_governance_status()
+
+
+@router.get(
+    "/onboarding-template",
+    response_model=UseCaseOnboardingTemplateResponse,
+    operation_id="getUseCaseOnboardingTemplate",
+    summary="Get lotus-ai reusable downstream use-case onboarding template",
+    description=(
+        "Returns the reusable onboarding checklist, approval criteria, and lessons learned "
+        "derived from the first bounded production-oriented downstream use case."
+    ),
+    responses={
+        200: {"description": "Use-case onboarding template returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_use_case_onboarding_template_route() -> UseCaseOnboardingTemplateResponse:
+    return build_use_case_onboarding_template()
