@@ -18,6 +18,7 @@ def build_provider_governance_status() -> ProviderGovernanceStatusResponse:
         activation_readiness.activation_ready,
         runbook_readiness.runbook_ready,
         evidence_readiness.evidence_ready,
+        not expansion_policy.expansion_blocked,
     )
     governance_summary = [
         "Provider technical activation now includes bounded live embedding execution, but broader provider rollout remains blocked until both text and embedding control gates are explicitly approved together.",
@@ -27,6 +28,10 @@ def build_provider_governance_status() -> ProviderGovernanceStatusResponse:
             f"from governed provider evaluation runs, currently reporting '{evidence_readiness.approval_gate.evidence_state.value}'."
         ),
     ]
+    if expansion_policy.expansion_blocked:
+        governance_summary.append(
+            "Provider expansion posture is currently blocked because registered provider breadth has exhausted or exceeded the bounded slot model for at least one capability."
+        )
     return ProviderGovernanceStatusResponse(
         service=settings.service_name,
         version=settings.service_version,
