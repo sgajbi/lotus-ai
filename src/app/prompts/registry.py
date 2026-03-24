@@ -6,8 +6,8 @@ from app.contracts.prompts import (
     PromptManagementMode,
 )
 
-_PROMPTS: dict[str, PromptDescriptor] = {
-    "explain.v1": PromptDescriptor(
+_PROMPTS: list[PromptDescriptor] = [
+    PromptDescriptor(
         task_id="explain.v1",
         prompt_version="foundation.explain.v1",
         prompt_kind="system",
@@ -22,7 +22,23 @@ _PROMPTS: dict[str, PromptDescriptor] = {
             "Output must remain explanation-oriented, enterprise-safe, and non-authoritative."
         ),
     ),
-    "summarize.v1": PromptDescriptor(
+    PromptDescriptor(
+        task_id="explain.v1",
+        prompt_version="foundation.explain.v2",
+        prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.CANDIDATE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
+        system_instructions=(
+            "Explain structured Lotus domain outputs clearly, conservatively, and ground the "
+            "response in the supplied fields before adding decision-support framing."
+        ),
+        output_contract_notes=(
+            "Output must remain explanation-oriented, enterprise-safe, non-authoritative, "
+            "and concise enough for operator review."
+        ),
+    ),
+    PromptDescriptor(
         task_id="summarize.v1",
         prompt_version="foundation.summarize.v1",
         prompt_kind="system",
@@ -34,7 +50,7 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         ),
         output_contract_notes="Output is a draft summary, not business truth.",
     ),
-    "classify.v1": PromptDescriptor(
+    PromptDescriptor(
         task_id="classify.v1",
         prompt_version="foundation.classify.v1",
         prompt_kind="system",
@@ -46,7 +62,7 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         ),
         output_contract_notes="Classification must remain within caller-approved label sets.",
     ),
-    "extract.v1": PromptDescriptor(
+    PromptDescriptor(
         task_id="extract.v1",
         prompt_version="foundation.extract.v1",
         prompt_kind="system",
@@ -56,7 +72,7 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         system_instructions="Extract structured fields from curated caller content.",
         output_contract_notes="Extraction output must stay schema-bound and conservative.",
     ),
-    "generate_structured.v1": PromptDescriptor(
+    PromptDescriptor(
         task_id="generate_structured.v1",
         prompt_version="foundation.generate_structured.v1",
         prompt_kind="system",
@@ -68,7 +84,7 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         ),
         output_contract_notes="Generated output must remain draft-only and schema-bound.",
     ),
-    "knowledge_search.v1": PromptDescriptor(
+    PromptDescriptor(
         task_id="knowledge_search.v1",
         prompt_version="foundation.knowledge_search.v1",
         prompt_kind="system",
@@ -78,7 +94,7 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         system_instructions="Search approved Lotus knowledge sources with traceable provenance.",
         output_contract_notes="Citations and source attribution are mandatory when enabled.",
     ),
-    "knowledge_answer.v1": PromptDescriptor(
+    PromptDescriptor(
         task_id="knowledge_answer.v1",
         prompt_version="foundation.knowledge_answer.v1",
         prompt_kind="system",
@@ -90,12 +106,31 @@ _PROMPTS: dict[str, PromptDescriptor] = {
         ),
         output_contract_notes="Refuse when sources are insufficient or unsupported.",
     ),
-}
+    PromptDescriptor(
+        task_id="knowledge_answer.v1",
+        prompt_version="foundation.knowledge_answer.v2",
+        prompt_kind="system",
+        lifecycle_status=PromptLifecycleStatus.CANDIDATE,
+        management_mode=PromptManagementMode.SEEDED_MEMORY,
+        source_reference="app.prompts.registry:_PROMPTS",
+        system_instructions=(
+            "Answer questions from approved Lotus knowledge sources with explicit citations, "
+            "call out weak support plainly, and prefer refusal over unsupported synthesis."
+        ),
+        output_contract_notes=(
+            "Refuse when sources are insufficient or unsupported, and keep the answer "
+            "operator-reviewable."
+        ),
+    ),
+]
 
 
 def get_prompt_by_task_id(task_id: str) -> PromptDescriptor | None:
-    return _PROMPTS.get(task_id)
+    for prompt in _PROMPTS:
+        if prompt.task_id == task_id and prompt.lifecycle_status == PromptLifecycleStatus.ACTIVE:
+            return prompt
+    return None
 
 
 def list_prompts() -> list[PromptDescriptor]:
-    return list(_PROMPTS.values())
+    return list(_PROMPTS)

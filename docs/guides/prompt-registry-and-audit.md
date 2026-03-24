@@ -16,11 +16,12 @@ The next platform requirement is traceability:
 
 Current implementation:
 
-1. repository abstraction for prompt definitions,
+1. repository abstraction for prompt definitions and rollout state,
 2. in-memory prompt registry for simple development,
 3. SQLAlchemy-backed prompt registry for durable storage,
 4. versioned prompt descriptors,
-5. one prompt descriptor per registered task.
+5. one active rollout-state record per registered task,
+6. durable rollout-event history for promote and rollback actions.
 
 Current prompt fields:
 
@@ -43,27 +44,35 @@ Current durable path:
 The current enterprise posture is:
 
 1. prompt definitions can remain memory-backed for local development,
-2. durable prompt definitions are seeded and managed through Alembic revisions,
+2. durable prompt definitions and rollout state are seeded and managed through Alembic revisions,
 3. prompt-store mode is independent from audit and retrieval store mode,
 4. prompt definitions expose lifecycle and provenance metadata in every store mode,
-5. prompt promotion remains read-only at runtime,
-6. public prompt APIs do not change when the backing store changes.
+5. runtime prompt selection now resolves through explicit rollout state rather than assuming a single mutable active row,
+6. bounded promote and rollback actions now update rollout state through durable control history,
+7. prompt bodies still remain repository-managed,
+8. public prompt APIs do not change when the backing store changes.
 
 ## Prompt Governance
 
 Current governance posture:
 
-1. runtime prompt mutation APIs are disabled,
-2. prompt promotion write APIs are disabled,
-3. prompt promotion happens through reviewed repository changes,
-4. SQL-backed prompt promotion is completed through Alembic-managed persistence updates,
-5. the current governance posture is visible through `GET /platform/prompts/governance`,
-6. the active runtime prompt selection set is visible through `GET /platform/prompts/runtime-status`,
-7. the current prompt activation-readiness posture is visible through `GET /platform/prompts/activation-readiness`,
-8. the current prompt operational-readiness posture is visible through `GET /platform/prompts/runbook-readiness`,
-9. the current prompt evidence-readiness posture is visible through `GET /platform/prompts/evidence-readiness`,
-10. the combined prompt rollout review posture is visible through `GET /platform/prompts/governance-status`,
-11. the combined prompt rollout review posture now includes technical, operational, and evidence readiness in one response.
+1. prompt-body mutation APIs are disabled,
+2. prompt promotion and rollback write APIs are enabled only when SQL-backed prompt rollout state is active, and promotion additionally requires SQL-backed evaluation runtime evidence,
+3. durable rollout state is now writable through bounded control-plane actions,
+4. prompt bodies still change through reviewed repository changes,
+5. SQL-backed prompt promotion state is completed through Alembic-managed persistence plus durable control history,
+6. the current governance posture is visible through `GET /platform/prompts/governance`,
+7. the active runtime prompt selection set is visible through `GET /platform/prompts/runtime-status`,
+8. prompt control history is visible through `GET /platform/prompts/control-history`,
+9. prompt control actions are applied through `POST /platform/prompts/control-actions`,
+10. the current prompt activation-readiness posture is visible through `GET /platform/prompts/activation-readiness`,
+11. the current prompt operational-readiness posture is visible through `GET /platform/prompts/runbook-readiness`,
+12. the current prompt evidence-readiness posture is visible through `GET /platform/prompts/evidence-readiness`,
+13. the combined prompt rollout review posture is visible through `GET /platform/prompts/governance-status`,
+14. the combined prompt rollout review posture now includes technical, operational, and evidence readiness in one response,
+15. prompt promotion is blocked unless the runtime-backed prompt approval gate reports `RUNTIME_PASS`,
+16. the prompt runbook now documents governed promotion, rollback, incident review, and audit-inspection procedures,
+17. SQL-backed prompt rollout state and SQL-backed evaluation runtime evidence are the restart-safe technical posture for live prompt activation.
 
 ## Audit Store
 
@@ -77,6 +86,10 @@ Current implementation:
 6. Alembic-managed schema contract for relational persistence.
 
 This gives us immediate traceability while keeping the persistence architecture clean.
+
+Audit records now also preserve prompt selection trace, including rollout role and latest durable
+prompt control event, so prompt promotion and rollback history can be reconstructed from the same
+runtime artifacts that already capture task, provider, safety, and retrieval posture.
 
 Current audit fields also include execution safety posture:
 
@@ -121,8 +134,10 @@ The current enterprise posture is:
 6. `GET /platform/prompts/runbook-readiness`
 7. `GET /platform/prompts/evidence-readiness`
 8. `GET /platform/prompts/governance-status`
-9. `GET /ai/audit/{request_id}`
-10. `GET /ai/audit`
+9. `GET /platform/prompts/control-history`
+10. `POST /platform/prompts/control-actions`
+11. `GET /ai/audit/{request_id}`
+12. `GET /ai/audit`
 
 `GET /ai/audit` supports bounded filtering by:
 
@@ -138,7 +153,6 @@ The current enterprise posture is:
 
 Likely next evolution:
 
-1. prompt promotion and rollback workflow,
-2. tenant-aware prompt selection,
-3. richer prompt approval status and promotion-history metadata,
-4. richer audit records including safety-policy outcomes.
+1. tenant-aware prompt selection,
+2. richer prompt approval status and promotion-history metadata,
+3. richer audit records including safety-policy outcomes.

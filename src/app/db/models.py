@@ -19,6 +19,7 @@ class AuditRecordModel(Base):
     requested_by: Mapped[str | None] = mapped_column(String(256), nullable=True)
     tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     prompt_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt_selection_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     provider_mode: Mapped[str] = mapped_column(String(64), nullable=False)
     safety_mode: Mapped[str] = mapped_column(String(64), nullable=False)
     redaction_posture: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -103,6 +104,50 @@ class PromptDefinitionModel(Base):
     source_reference: Mapped[str] = mapped_column(Text, nullable=False)
     system_instructions: Mapped[str] = mapped_column(Text, nullable=False)
     output_contract_notes: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class PromptDefinitionVersionModel(Base):
+    __tablename__ = "prompt_definition_versions"
+
+    task_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    prompt_version: Mapped[str] = mapped_column(String(128), primary_key=True)
+    prompt_kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    lifecycle_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    management_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_reference: Mapped[str] = mapped_column(Text, nullable=False)
+    system_instructions: Mapped[str] = mapped_column(Text, nullable=False)
+    output_contract_notes: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class PromptRolloutStateModel(Base):
+    __tablename__ = "prompt_rollout_state"
+
+    task_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    active_prompt_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    candidate_prompt_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    previous_active_prompt_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    rollout_mode: Mapped[str] = mapped_column(String(64), nullable=False)
+    runtime_mutation_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class PromptRolloutEventModel(Base):
+    __tablename__ = "prompt_rollout_events"
+
+    event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    task_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    requested_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    prior_active_prompt_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    resulting_active_prompt_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    prior_candidate_prompt_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    resulting_candidate_prompt_version: Mapped[str | None] = mapped_column(
+        String(128), nullable=True
+    )
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
 class ProviderQuotaStateModel(Base):

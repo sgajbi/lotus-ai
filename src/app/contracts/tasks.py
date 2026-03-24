@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.contracts.evidence import ExecutionEvidenceBundle
+from app.contracts.prompts import PromptSelectionTraceDescriptor
 from app.contracts.safety import SafetyExecutionOutcome
 
 
@@ -93,6 +94,9 @@ class TaskAuditMetadata(BaseModel):
     task_id: str = Field(description="Task identifier evaluated for this execution.")
     output_label: OutputLabel = Field(description="Output label attached to the execution.")
     prompt_version: str = Field(description="Prompt version associated with the execution.")
+    prompt_selection: PromptSelectionTraceDescriptor = Field(
+        description="Detailed prompt rollout selection trace associated with the execution."
+    )
     provider_mode: str = Field(description="Provider mode active for the execution.")
     safety: SafetyExecutionOutcome = Field(description="Safety posture resolved for the execution.")
     generated_at: str = Field(description="UTC timestamp when the result was generated.")

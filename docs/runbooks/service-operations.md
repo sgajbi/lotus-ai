@@ -186,17 +186,39 @@ Current governed reset procedure:
 
 ## Prompt Activation Governance
 
-Before any future live-prompt activation slice:
+Before applying a governed prompt promotion or rollback:
 
 1. verify `GET /platform/prompts/governance-status`
 2. inspect `GET /platform/prompts/activation-readiness` when technical blockers need detail
 3. inspect `GET /platform/prompts/runbook-readiness` when operational blockers need detail
 4. inspect `GET /platform/prompts/evidence-readiness` when evaluation, audit, or rollback evidence blockers need detail
 5. confirm the embedded `prompt_governance` block in `GET /platform/runtime-status` matches the detailed prompt governance view
-6. confirm prompt governance and runtime-selection posture still reflect reviewed repository-governed rollout unless explicitly approved otherwise
-7. confirm named approvers, rollback procedures, and prompt audit-evidence procedures are documented and approved
+6. confirm prompt governance and runtime-selection posture still reflect reviewed repository-governed prompt bodies plus governed rollout-state actions
+7. confirm prompt promotion is blocked unless the prompt approval gate reports `RUNTIME_PASS`
 8. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
 9. only then proceed with any live-prompt activation rollout review
+
+Current governed control-action procedure:
+
+1. inspect `/platform/prompts/control-history?task_id=<task_id>` to review the latest promote or rollback actions for the target task
+2. inspect `/platform/prompts/runtime-status` to confirm the current active, candidate, and previous-active prompt versions for that task
+3. inspect `/platform/prompts/evidence-readiness` to confirm the prompt approval gate reports `RUNTIME_PASS` before promotion
+4. apply `POST /platform/prompts/control-actions` with explicit requested-by, approved-by, and reason metadata
+5. verify the resulting control-plane event is visible in both `/platform/prompts/control-history` and the task-specific rollout state in `/platform/prompts/runtime-status`
+6. verify post-change task execution and `/ai/audit` records show the expected selected prompt version and latest control event
+
+Current rollback and incident-response expectations:
+
+1. use the governed rollback action instead of mutating prompt rows or rollout state directly
+2. confirm `/platform/prompts/runtime-status` shows the restored active prompt version and the latest rollback event after the action completes
+3. inspect `/platform/prompts/evidence-readiness` and the relevant runtime-backed evaluation run before re-promoting a candidate after a regression
+4. treat prompt regression review as an evidence-backed operator process: compare the current runtime prompt selection, recent control history, and task-linked audit traces before deciding whether to re-promote or keep the rollback in place
+
+Restart-survival expectations:
+
+1. when `LOTUS_AI_PROMPT_STORE_MODE=sqlalchemy`, the active prompt version, candidate prompt version, previous-active lineage, and prompt control history must survive service restart
+2. when `LOTUS_AI_EVALUATION_RUNTIME_STORE_MODE=sqlalchemy`, prompt approval evidence must survive service restart and remain inspectable through the prompt approval gate
+3. restart must not be used as a workaround to clear prompt rollout history or revert a prompt change
 
 ## Retrieval Activation Governance
 

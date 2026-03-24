@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.contracts.evidence import ExecutionEvidenceBundle
+from app.contracts.prompts import PromptSelectionTraceDescriptor
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 
@@ -28,6 +29,9 @@ class AuditRecordResponse(BaseModel):
         description="Optional tenant or environment ownership marker for the request.",
     )
     prompt_version: str = Field(description="Prompt version associated with the execution.")
+    prompt_selection: PromptSelectionTraceDescriptor = Field(
+        description="Detailed prompt rollout selection trace associated with the audit record."
+    )
     provider_mode: str = Field(description="Provider mode active for the execution.")
     safety_mode: str = Field(description="Safety mode applied to the execution.")
     redaction_posture: RedactionPosture = Field(

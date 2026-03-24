@@ -247,30 +247,38 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["retrieval_governance"]["runbook_readiness"]["runbook_ready"] is False
     assert body["retrieval_governance"]["evidence_readiness"]["evidence_ready"] is False
     assert body["prompt_governance"]["governance_ready"] is False
-    assert body["prompt_governance"]["blocking_area_count"] == 3
+    assert body["prompt_governance"]["blocking_area_count"] == 2
     assert body["prompt_governance"]["activation_readiness"]["activation_ready"] is False
-    assert body["prompt_governance"]["runbook_readiness"]["runbook_ready"] is False
+    assert body["prompt_governance"]["runbook_readiness"]["runbook_ready"] is True
     assert body["prompt_governance"]["evidence_readiness"]["evidence_ready"] is False
     assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
     assert body["evaluation_runtime"]["evidence_category_count"] == 6
-    assert body["evaluation_runtime"]["staged_case_count"] == 30
+    assert body["evaluation_runtime"]["staged_case_count"] == 32
     assert body["evaluation_runtime"]["seam_coverage"][0]["seam_id"] == "async_execution"
     assert body["evaluation_runtime"]["seam_coverage"][0]["staged_fixture_count"] == 1
     assert body["evaluation_runtime"]["seam_coverage"][1]["staged_fixture_count"] == 3
-    assert body["evaluation_runtime"]["seam_coverage"][3]["staged_fixture_count"] == 5
-    assert body["evaluation_runtime"]["seam_coverage"][3]["staged_case_count"] == 12
-    assert body["evaluation_runtime"]["seam_coverage"][4]["staged_fixture_count"] == 2
-    assert body["evaluation_runtime"]["seam_coverage"][4]["staged_case_count"] == 6
-    assert body["evaluation_runtime"]["approval_gates"][0]["domain_id"] == "retrieval_execution"
-    assert body["evaluation_runtime"]["approval_gates"][1]["domain_id"] == "provider_execution"
-    assert body["evaluation_runtime"]["approval_gates"][2]["domain_id"] == "safety_enforcement"
+    assert body["evaluation_runtime"]["seam_coverage"][2]["staged_fixture_count"] == 2
+    assert body["evaluation_runtime"]["seam_coverage"][2]["staged_case_count"] == 2
+    assert body["evaluation_runtime"]["seam_coverage"][4]["staged_fixture_count"] == 5
+    assert body["evaluation_runtime"]["seam_coverage"][4]["staged_case_count"] == 12
+    assert body["evaluation_runtime"]["seam_coverage"][5]["staged_fixture_count"] == 2
+    assert body["evaluation_runtime"]["seam_coverage"][5]["staged_case_count"] == 6
+    assert body["evaluation_runtime"]["approval_gates"][0]["domain_id"] == "prompt_rollout"
+    assert body["evaluation_runtime"]["approval_gates"][1]["domain_id"] == "retrieval_execution"
+    assert body["evaluation_runtime"]["approval_gates"][2]["domain_id"] == "provider_execution"
+    assert body["evaluation_runtime"]["approval_gates"][3]["domain_id"] == "safety_enforcement"
     assert body["evaluation_runtime"]["recorded_run_count"] == 2
     assert body["evaluation_runtime"]["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["evaluation_runtime"]["evaluation_runner_active"] is True
-    assert body["prompt_runtime"]["selection_mode"] == "STATIC_ACTIVE"
+    assert body["prompt_runtime"]["selection_mode"] == "ROLLOUT_STATE_ACTIVE"
+    assert body["prompt_runtime"]["rollout_mode"] == "GOVERNED_CONTROL_ACTIONS"
     assert body["prompt_runtime"]["active_prompt_count"] >= 7
+    assert body["prompt_runtime"]["candidate_prompt_count"] == 0
     assert any(
         selection["task_id"] == "explain.v1" for selection in body["prompt_runtime"]["selections"]
+    )
+    assert any(
+        state["task_id"] == "explain.v1" for state in body["prompt_runtime"]["rollout_states"]
     )
     assert body["task_runtime"]["enabled_task_count"] >= 7
     assert body["task_runtime"]["retrieval_backed_task_count"] == 2

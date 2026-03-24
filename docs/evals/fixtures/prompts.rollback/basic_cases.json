@@ -1,0 +1,35 @@
+{
+  "fixture_family": "prompt_rollback_examples",
+  "task_id": "explain.v1",
+  "cases": [
+    {
+      "case_id": "prompt_rollback_restores_previous_active_selection",
+      "summary": "Prompt rollback restores the known-good prompt while preserving candidate lineage for explanation tasks.",
+      "input": {
+        "task_id": "explain.v1",
+        "caller_app": "lotus-ai",
+        "promote_request": {
+          "task_id": "explain.v1",
+          "candidate_prompt_version": "foundation.explain.v2",
+          "requested_by": "prompt-eval@lotus.test",
+          "approved_by": "prompt-approver@lotus.test",
+          "reason": "Stage rollback evaluation by first promoting the candidate"
+        },
+        "rollback_request": {
+          "task_id": "explain.v1",
+          "requested_by": "prompt-eval@lotus.test",
+          "approved_by": "prompt-approver@lotus.test",
+          "reason": "Evaluate governed prompt rollback runtime trace"
+        },
+        "status": "BLOCKED",
+        "violations": 1,
+        "policy_name": "exposure_guard"
+      },
+      "expected": {
+        "prompt_version": "foundation.explain.v1",
+        "candidate_prompt_version": "foundation.explain.v2",
+        "latest_action_type": "ROLLBACK_TO_PREVIOUS_ACTIVE"
+      }
+    }
+  ]
+}

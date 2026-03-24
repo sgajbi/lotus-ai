@@ -12,38 +12,38 @@ def build_prompt_runbook_readiness() -> PromptRunbookReadinessResponse:
     items = [
         PromptRunbookReadinessItem(
             runbook_id="prompt_operational_runbook",
-            status="FOUNDATION_DOCUMENTED",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Prompt operating model is documented at a foundation level, but live prompt "
-                "promotion and rollback procedures are not yet finalized."
+                "Prompt promotion, rollback, incident review, and audit-inspection procedures are "
+                "documented in the service operations runbook."
             ),
         ),
         PromptRunbookReadinessItem(
             runbook_id="prompt_change_review_and_approval",
-            status="NOT_READY",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Named approvers, separation-of-duties rules, and emergency review procedures "
-                "for live prompt changes must be defined before activation."
+                "Governed prompt control actions require requested-by, approved-by, and operator "
+                "reason metadata, and the review flow is now documented."
             ),
         ),
         PromptRunbookReadinessItem(
             runbook_id="prompt_rollback_and_incident_response",
-            status="NOT_READY",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Rollback, incident response, and prompt-regression triage procedures for "
-                "live prompt changes are not yet documented."
+                "Rollback, regression triage, and incident-response procedures for prompt rollout "
+                "are documented and aligned with the control-plane action model."
             ),
         ),
         PromptRunbookReadinessItem(
             runbook_id="prompt_observability_and_evidence_pack",
-            status="NOT_READY",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Dedicated prompt rollout dashboards, approval evidence views, and audit "
-                "inspection procedures must be defined before activation."
+                "Operators can inspect prompt rollout state, control history, approval evidence, "
+                "platform runtime posture, and audit traces through documented platform endpoints."
             ),
         ),
     ]
@@ -51,7 +51,7 @@ def build_prompt_runbook_readiness() -> PromptRunbookReadinessResponse:
     return PromptRunbookReadinessResponse(
         service=settings.service_name,
         version=settings.service_version,
-        runbook_ready=False,
+        runbook_ready=True,
         required_item_count=required_item_count,
         completed_required_item_count=completed_required_item_count,
         items=items,

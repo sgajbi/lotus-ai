@@ -1,5 +1,6 @@
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
+from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
 from app.contracts.safety import RedactionPosture
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.repositories.memory_audit_repository import InMemoryAuditRepository
@@ -19,6 +20,16 @@ def test_in_memory_audit_store_save_and_get() -> None:
         requested_by="ops.user@lotus",
         tenant_id="tenant-sg-001",
         prompt_version="foundation.explain.v1",
+        prompt_selection=PromptSelectionTraceDescriptor(
+            task_id="explain.v1",
+            prompt_version="foundation.explain.v1",
+            rollout_role=PromptRolloutRole.ACTIVE,
+            selection_reason="Runtime selection resolved through durable prompt rollout state.",
+            active_prompt_version="foundation.explain.v1",
+            candidate_prompt_version=None,
+            previous_active_prompt_version=None,
+            latest_control_event=None,
+        ),
         provider_mode="disabled",
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
@@ -66,6 +77,16 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
         requested_by="ops.user@lotus",
         tenant_id="tenant-sg-001",
         prompt_version="foundation.explain.v1",
+        prompt_selection=PromptSelectionTraceDescriptor(
+            task_id="explain.v1",
+            prompt_version="foundation.explain.v1",
+            rollout_role=PromptRolloutRole.ACTIVE,
+            selection_reason="Runtime selection resolved through durable prompt rollout state.",
+            active_prompt_version="foundation.explain.v1",
+            candidate_prompt_version=None,
+            previous_active_prompt_version=None,
+            latest_control_event=None,
+        ),
         provider_mode="disabled",
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,

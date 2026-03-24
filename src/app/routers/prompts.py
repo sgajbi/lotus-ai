@@ -4,6 +4,9 @@ from fastapi import APIRouter
 
 from app.contracts.prompts import (
     PromptActivationReadinessResponse,
+    PromptControlActionRequest,
+    PromptControlActionResponse,
+    PromptControlHistoryResponse,
     PromptDescriptor,
     PromptEvidenceReadinessResponse,
     PromptGovernanceStatusResponse,
@@ -15,6 +18,10 @@ from app.services.prompt_activation_readiness import build_prompt_activation_rea
 from app.services.prompt_evidence_readiness import build_prompt_evidence_readiness
 from app.services.prompt_governance import build_prompt_governance_status
 from app.services.prompt_governance_status import build_prompt_governance_status_summary
+from app.services.prompt_rollout_control import (
+    apply_prompt_control_action,
+    build_prompt_control_history,
+)
 from app.services.prompt_registry import get_prompt_or_raise, list_registered_prompts
 from app.services.prompt_runbook_readiness import build_prompt_runbook_readiness
 from app.services.prompt_status import build_prompt_runtime_status
@@ -56,6 +63,49 @@ async def list_prompts_route() -> list[PromptDescriptor]:
 )
 async def get_prompt_governance_route() -> PromptGovernanceStatusResponse:
     return build_prompt_governance_status()
+
+
+@router.get(
+    "/control-history",
+    response_model=PromptControlHistoryResponse,
+    operation_id="getPromptControlHistory",
+    summary="Get lotus-ai prompt control history",
+    description=(
+        "Returns durable prompt promote and rollback history so operators can inspect "
+        "reviewable rollout actions over time."
+    ),
+    responses={
+        200: {"description": "Prompt control history returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_prompt_control_history_route(
+    task_id: str | None = None,
+) -> PromptControlHistoryResponse:
+    return build_prompt_control_history(task_id=task_id)
+
+
+@router.post(
+    "/control-actions",
+    response_model=PromptControlActionResponse,
+    operation_id="applyPromptControlAction",
+    summary="Apply a governed lotus-ai prompt control action",
+    description=(
+        "Applies a bounded prompt promote or rollback action against durable rollout state. "
+        "Prompt-body editing remains out of scope for this API."
+    ),
+    responses={
+        200: {"description": "Prompt control action applied successfully."},
+        404: {"description": "Prompt rollout state or candidate version not found."},
+        409: {"description": "Prompt control action was rejected due to an invalid transition."},
+        422: {"description": "Prompt control action payload was invalid for the requested action."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def apply_prompt_control_action_route(
+    request: PromptControlActionRequest,
+) -> PromptControlActionResponse:
+    return apply_prompt_control_action(request)
 
 
 @router.get(

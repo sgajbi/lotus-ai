@@ -1,5 +1,12 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 from _pytest.monkeypatch import MonkeyPatch
+
+from app.main import app
+from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.runtime_settings import override_runtime_settings
 
 
 def test_task_execute_contract(client: TestClient) -> None:
@@ -29,6 +36,8 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["status"] == "COMPLETED"
     assert body["audit"]["stubbed"] is True
     assert body["audit"]["prompt_version"] == "foundation.explain.v1"
+    assert body["audit"]["prompt_selection"]["prompt_version"] == "foundation.explain.v1"
+    assert body["audit"]["prompt_selection"]["latest_control_event"] is None
     assert body["audit"]["safety"]["safety_mode"] == "documented_only"
     assert body["audit"]["safety"]["redaction_posture"] == "MINIMIZATION_REQUIRED"
     assert body["audit"]["safety"]["disposition"] == "DOCUMENTED_ONLY"
@@ -78,6 +87,85 @@ def test_task_execute_contract_enforces_runtime_redaction_when_enabled(client: T
     settings.safety_mode = "documented_only"
 
 
+def test_task_execute_contract_reflects_promoted_prompt_lineage(tmp_path: Path) -> None:
+    from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+
+    database_url = f"sqlite:///{tmp_path / 'task-contract-prompt-rollout.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        prompt_store_mode="sqlalchemy",
+        evaluation_runtime_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
+                get_evaluation_runtime_store().save_run(
+                    EvaluationRunRecord(
+                        run_id=f"runtime_task_prompt_gate_{fixture_id}",
+                        fixture_id=fixture_id,
+                        manifest_version="foundation.v1",
+                        lifecycle_status="COMPLETED",
+                        triggered_by="operator-a",
+                        submitted_at="2026-03-24T09:00:00Z",
+                        async_job_id=f"async_task_prompt_gate_{fixture_id}",
+                        latest_message="Prompt rollout approval fixture passed.",
+                        verdict="PASS",
+                        case_count=1,
+                    )
+                )
+
+            promote_response = durable_client.post(
+                "/platform/prompts/control-actions",
+                json={
+                    "task_id": "explain.v1",
+                    "action_type": "PROMOTE_CANDIDATE",
+                    "candidate_prompt_version": "foundation.explain.v2",
+                    "requested_by": "alice@lotus.test",
+                    "approved_by": "bob@lotus.test",
+                    "reason": "Promote reviewed prompt candidate",
+                },
+            )
+            assert promote_response.status_code == 200
+
+            response = durable_client.post(
+                "/ai/tasks/execute",
+                json={
+                    "task_id": "explain.v1",
+                    "input_mode": "STRUCTURED_CONTEXT",
+                    "caller": {
+                        "caller_app": "lotus-manage",
+                        "correlation_id": "corr-456-promoted",
+                        "requested_by": "ops.user@lotus",
+                        "tenant_id": "tenant-sg-001",
+                    },
+                    "context": {
+                        "summary": "Explain rebalance outcome",
+                        "payload": {"status": "BLOCKED", "violations": 2},
+                        "source_refs": ["lotus-manage:run:reb_005"],
+                    },
+                    "expected_output_label": "EXPLANATION_ONLY",
+                },
+            )
+
+    body = response.json()
+    prompt_evidence = next(
+        descriptor
+        for descriptor in body["evidence"]["descriptors"]
+        if descriptor["evidence_type"] == "prompt_selection"
+    )
+    assert response.status_code == 200
+    assert body["audit"]["prompt_version"] == "foundation.explain.v2"
+    assert (
+        body["audit"]["prompt_selection"]["previous_active_prompt_version"]
+        == "foundation.explain.v1"
+    )
+    assert body["audit"]["prompt_selection"]["latest_control_event"]["action_type"] == (
+        "PROMOTE_CANDIDATE"
+    )
+    assert prompt_evidence["attributes"]["prompt_version"] == "foundation.explain.v2"
+
+
 def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
     execute_response = client.post(
         "/ai/tasks/execute",
@@ -109,6 +197,7 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
     assert body["category"] == "summarize"
     assert body["output_label"] == "DRAFT"
     assert body["prompt_version"] == "foundation.summarize.v1"
+    assert body["prompt_selection"]["prompt_version"] == "foundation.summarize.v1"
     assert body["safety_mode"] == "documented_only"
     assert body["enforced_safety_controls"] == [
         "response_labeling",
@@ -337,6 +426,7 @@ def test_task_execute_contract_supports_bounded_knowledge_search(client: TestCli
     assert body["audit"]["stubbed"] is False
     assert body["audit"]["provider_mode"] == "catalog_only"
     assert body["audit"]["prompt_version"] == "foundation.knowledge_search.v1"
+    assert body["audit"]["prompt_selection"]["prompt_version"] == "foundation.knowledge_search.v1"
     assert body["result"]["structured_output"]["provider_id"] == "retrieval.catalog"
     assert body["result"]["structured_output"]["catalog_only"] is True
     assert body["result"]["structured_output"]["hit_count"] >= 1
@@ -379,6 +469,7 @@ def test_task_execute_contract_supports_bounded_knowledge_answer(client: TestCli
     assert body["audit"]["stubbed"] is False
     assert body["audit"]["provider_mode"] == "catalog_answer"
     assert body["audit"]["prompt_version"] == "foundation.knowledge_answer.v1"
+    assert body["audit"]["prompt_selection"]["prompt_version"] == "foundation.knowledge_answer.v1"
     assert body["result"]["structured_output"]["provider_id"] == "retrieval.answer"
     assert body["result"]["structured_output"]["catalog_only"] is True
     assert body["result"]["structured_output"]["answer_mode"] == "CITATION_BACKED"

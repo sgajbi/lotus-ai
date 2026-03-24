@@ -130,6 +130,27 @@ Prompt runtime services also own lifecycle counting now, so prompt governance an
 runtime status share the same lifecycle summary source instead of duplicating active-prompt
 filtering in separate builders.
 
+RFC-0010 Slices 1 and 2 introduce an explicit durable prompt rollout-state seam plus bounded
+control-plane actions. Prompt definitions are now version-addressable records, runtime selection
+resolves through explicit rollout state, and governed promote/rollback actions update that state
+through durable control history without permitting prompt-body editing through the API.
+
+RFC-0010 Slice 3 then carries that same prompt rollout truth into task execution and audit
+surfaces. Task responses, execution evidence, and persisted audit records now preserve prompt
+selection trace plus latest control-event lineage instead of flattening prompt rollout context
+down to only a prompt-version string.
+
+RFC-0010 Slice 4 reuses the shared runtime-backed evaluation approval-gate model for prompt
+rollout. Prompt evidence readiness now reports staged-only versus runtime-pass/fail/stale posture
+through the same approval summary shape already used by provider, retrieval, and safety rollout,
+and prompt promotion is now blocked unless that prompt approval gate reports `RUNTIME_PASS`.
+
+RFC-0010 Slice 5 closes the operational loop around that rollout model. Prompt runbook readiness
+now documents governed promotion, rollback, incident review, and audit inspection procedures, and
+prompt activation readiness now distinguishes the remaining technical durability gate clearly:
+restart-safe live prompt activation requires SQL-backed prompt rollout state plus SQL-backed
+evaluation runtime evidence.
+
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.
 
@@ -508,13 +529,15 @@ Current rules:
 5. prompt runbook readiness is visible through `/platform/prompts/runbook-readiness`,
 6. prompt evidence readiness is visible through `/platform/prompts/evidence-readiness`,
 7. prompt governance status is visible through `/platform/prompts/governance-status`,
-8. runtime prompt mutation remains disabled in foundation phase,
-9. live prompt promotion remains repository-governed until a stronger activation model is introduced.
+8. prompt-body editing remains disabled in foundation phase,
+9. live prompt promotion and rollback now flow through explicit bounded control-plane actions,
+10. runtime prompt selection now resolves through durable rollout state and durable control history.
 
 `/platform/runtime-status` now embeds prompt governance posture directly so operators can review
 prompt rollout state from the same top-level runtime surface that already carries async, provider,
 and retrieval governance posture. Prompt governance now summarizes technical activation, runbook,
-and evidence readiness together.
+and evidence readiness together, with runbook readiness complete and the remaining technical gate
+called out explicitly when prompt or evaluation state is not restart-safe.
 
 ## Safety Posture
 

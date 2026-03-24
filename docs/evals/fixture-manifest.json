@@ -52,6 +52,18 @@
       "manifest_path": "docs/evals/fixtures/summarize.v1/basic_cases.json"
     },
     {
+      "fixture_id": "prompt_promotion_examples",
+      "status": "STAGED",
+      "description": "Governed prompt promotion evaluation examples for runtime-backed approval.",
+      "manifest_path": "docs/evals/fixtures/prompts.promotion/basic_cases.json"
+    },
+    {
+      "fixture_id": "prompt_rollback_examples",
+      "status": "STAGED",
+      "description": "Governed prompt rollback evaluation examples for runtime-backed approval.",
+      "manifest_path": "docs/evals/fixtures/prompts.rollback/basic_cases.json"
+    },
+    {
       "fixture_id": "retrieval_citation_examples",
       "status": "STAGED",
       "description": "Retrieval citation and refusal evaluation examples for later activation.",

@@ -101,6 +101,10 @@ The current execution posture is:
 - prompt governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
 - platform runtime status now embeds prompt governance posture directly,
 - platform runtime status now summarizes prompt runtime posture directly,
+- prompt runtime selection now resolves through an explicit durable rollout-state seam, and bounded promote/rollback actions now update that state through durable control history rather than repository-only activation,
+- task responses, execution evidence, and audit records now also preserve prompt rollout selection trace plus latest control-event lineage so prompt changes are reviewable from runtime artifacts,
+- prompt evidence readiness now also consumes a runtime-backed approval gate over governed prompt promotion and rollback evaluation fixtures, and candidate promotion is blocked unless that gate reports `RUNTIME_PASS`,
+- prompt runbook readiness now documents promotion, rollback, incident review, and audit inspection procedures explicitly, while technical activation remains restart-safe only when SQL-backed prompt and evaluation-runtime stores are active,
 - task execution responses now include structured evidence about prompt, provider, safety, and retrieval posture,
 - evaluation catalog now exposes staged evidence categories and fixture families,
 - evaluation fixture family detail is now inspectable through a dedicated read-only endpoint,
@@ -161,7 +165,7 @@ The current persistence posture is:
 - explicit evaluation-runtime repository seams and migration-managed SQL tables now exist for runs, attempts, and per-case outcomes when the SQL-backed evaluation-runtime path is enabled in later rollout slices, while public evaluation APIs remain artifact-backed until runtime execution cutover happens,
 - evaluation runtime-backed run detail now exposes persisted attempts and case-level outcomes directly, while historical file-backed baseline runs remain clearly labeled as non-runtime records,
 - Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
-- prompt promotion remains read-only at runtime and is governed through reviewed repository changes plus Alembic-managed persistence updates.
+- prompt rollout bodies remain repository-managed, while active selection can now move through explicit durable promote and rollback actions.
 - startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.
 - readiness probe policy defaults to `observe` and can be raised to `degrade` when orchestration should react to readiness findings.
 

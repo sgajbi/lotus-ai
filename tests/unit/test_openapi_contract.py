@@ -108,6 +108,26 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"
     )
+    assert spec["paths"]["/platform/prompts/control-history"]["get"]["operationId"] == (
+        "getPromptControlHistory"
+    )
+    assert spec["paths"]["/platform/prompts/control-actions"]["post"]["operationId"] == (
+        "applyPromptControlAction"
+    )
+    prompt_runtime_schema = spec["components"]["schemas"]["PromptRuntimeStatusResponse"]
+    assert "rollout_mode" in prompt_runtime_schema["properties"]
+    assert "candidate_prompt_count" in prompt_runtime_schema["properties"]
+    assert "rollout_states" in prompt_runtime_schema["properties"]
+    prompt_rollout_schema = spec["components"]["schemas"]["PromptRolloutDescriptor"]
+    assert "latest_control_event" in prompt_rollout_schema["properties"]
+    prompt_governance_schema = spec["components"]["schemas"]["PromptGovernanceStatusResponse"]
+    assert "control_history_endpoint" in prompt_governance_schema["properties"]
+    prompt_evidence_schema = spec["components"]["schemas"]["PromptEvidenceReadinessResponse"]
+    assert "approval_gate" in prompt_evidence_schema["properties"]
+    task_audit_schema = spec["components"]["schemas"]["TaskAuditMetadata"]
+    assert "prompt_selection" in task_audit_schema["properties"]
+    audit_record_schema = spec["components"]["schemas"]["AuditRecordResponse"]
+    assert "prompt_selection" in audit_record_schema["properties"]
     assert spec["paths"]["/platform/tasks/runtime-status"]["get"]["operationId"] == (
         "getTaskRuntimeStatus"
     )
