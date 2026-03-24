@@ -8,6 +8,7 @@ from app.contracts.providers import (
     ProviderRolloutState,
 )
 from app.services.provider_configuration_status import (
+    build_embedding_configuration_status,
     build_text_generation_configuration_status,
 )
 from app.services.provider_budget_policy import build_provider_budget_policy
@@ -19,6 +20,7 @@ from app.services.provider_rollout_posture import build_provider_rollout_posture
 
 def build_provider_activation_readiness() -> ProviderActivationReadinessResponse:
     configuration = build_text_generation_configuration_status()
+    embedding_configuration = build_embedding_configuration_status()
     budget_policy = build_provider_budget_policy()
     degradation_status = build_provider_degradation_status()
     quota_policy = build_provider_quota_policy()
@@ -86,6 +88,7 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
         provider_mode=settings.provider_mode,
         embedding_provider_mode=settings.embedding_provider_mode,
         text_generation_configuration=configuration,
+        embedding_configuration=embedding_configuration,
         activation_ready=activation_ready,
         blocking_findings=blocking_findings,
         activation_path=activation_path,

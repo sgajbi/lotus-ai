@@ -54,12 +54,22 @@ def test_provider_catalog_route(client: TestClient) -> None:
     assert body["provider_mode"] == "disabled"
     assert body["embedding_provider_mode"] == "disabled"
     assert body["text_generation_configuration"]["rollout_state"] == "STUB_DEFAULT"
+    assert body["embedding_configuration"]["rollout_state"] == "DOCUMENTED_ONLY"
     assert body["text_generation_configuration"]["credential_status"] == "NOT_CONFIGURED"
+    assert body["embedding_configuration"]["credential_status"] == "NOT_CONFIGURED"
     assert body["runtime_execution_enabled"] is False
+    assert body["text_generation_runtime_execution_enabled"] is False
+    assert body["embedding_runtime_execution_enabled"] is False
     assert any(provider["provider_id"] == "text.stub" for provider in body["providers"])
     assert any(
         provider["provider_id"] == "text.openai"
         and provider["adapter_kind"] == "OPENAI_LIVE"
+        and provider["failure_category_on_use"] == "LIVE_EXECUTION_NOT_ENABLED"
+        for provider in body["providers"]
+    )
+    assert any(
+        provider["provider_id"] == "embeddings.openai"
+        and provider["adapter_kind"] == "OPENAI_EMBEDDINGS_LIVE"
         and provider["failure_category_on_use"] == "LIVE_EXECUTION_NOT_ENABLED"
         for provider in body["providers"]
     )
@@ -72,12 +82,18 @@ def test_provider_policy_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["text_generation_configuration"]["rollout_state"] == "STUB_DEFAULT"
+    assert body["embedding_configuration"]["rollout_state"] == "DOCUMENTED_ONLY"
     text_policy = next(
         policy for policy in body["policies"] if policy["capability"] == "TEXT_GENERATION"
+    )
+    embedding_policy = next(
+        policy for policy in body["policies"] if policy["capability"] == "EMBEDDINGS"
     )
     assert text_policy["selected_adapter_kind"] == "STUB"
     assert text_policy["rejection_category"] == "UNSUPPORTED_MODE"
     assert text_policy["allowed_modes"] == ["disabled", "stub", "openai"]
+    assert embedding_policy["selected_adapter_kind"] == "STUB"
+    assert embedding_policy["allowed_modes"] == ["disabled", "stub", "enabled"]
 
 
 def test_provider_quota_policy_route(client: TestClient) -> None:

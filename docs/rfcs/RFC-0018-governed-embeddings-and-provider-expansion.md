@@ -94,6 +94,15 @@ The first implementation should:
 4. define how later provider additions are evaluated without opening broad provider sprawl,
 5. keep task and retrieval runtime behavior truthful during rollout.
 
+For implementation discipline, RFC-0018 will use four explicit postures:
+
+1. `STUB_ONLY`
+2. `LIVE_PATH_DEFINED`
+3. `GOVERNANCE_READY`
+4. `EXPANSION_READY`
+
+Slice 1 stops at `LIVE_PATH_DEFINED`. It must not silently enable retrieval indexing, retrieval search, or live embedding execution just because the provider contracts and registry now understand an embedding live path.
+
 ## State Model and Invariants
 
 This RFC establishes the following invariants:
@@ -174,7 +183,8 @@ Acceptance gate:
 1. provider contracts are explicit,
 2. policy and catalog remain truthful,
 3. unit tests cover embedding capability posture,
-4. no silent retrieval behavior change is introduced.
+4. no silent retrieval behavior change is introduced,
+5. the embedding mode model is internally consistent across config, policy, catalog, and retrieval readiness.
 
 ### Slice 2: Governed Live Embedding Execution
 

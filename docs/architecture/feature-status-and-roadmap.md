@@ -49,7 +49,8 @@ Supported now:
 Important limitation:
 
 1. retrieval is live for the approved indexed corpus only,
-2. broader ingestion, corpus refresh, and embeddings expansion are not implemented yet.
+2. broader ingestion and corpus refresh are not implemented yet,
+3. embedding-provider expansion is now only at the `LIVE_PATH_DEFINED` posture and is still not activated for retrieval execution.
 
 ### Prompt Governance
 
@@ -139,7 +140,9 @@ Practical meaning:
 Current state:
 
 1. retrieval works over the existing approved indexed corpus,
-2. embeddings expansion and broader document ingestion are not yet implemented as first-class governed features.
+2. RFC-0018 Slice 1 now exposes embeddings as a first-class governed provider capability with a registered live path and typed configuration posture,
+3. live embedding execution is still blocked pending later RFC-0018 retrieval, evidence, and governance slices,
+4. broader document ingestion is still not yet implemented as a first-class governed feature.
 
 ### Observability and Incident Evidence
 
@@ -192,7 +195,7 @@ Current status against that sequence:
 
 1. `RFC-0015` is implemented, including runtime, activation, runbook, and governance posture for unified versus split deployment stages.
 2. `RFC-0017` now exposes a bounded resilience runtime inventory surface, an ordered restore-plan surface, explicit degraded-versus-restored runtime posture for queue, worker, provider, retrieval, and artifact continuity dependencies, plus drill-evidence, activation, runbook, and governance surfaces.
-3. `RFC-0018` and `RFC-0019` remain roadmap items.
+3. `RFC-0018` is now in active implementation with Slice 1 complete at the contract and provider-surface layer, while `RFC-0019` remains a roadmap item.
 
 Early RFC-0015 groundwork now exists as a bounded runtime surface:
 

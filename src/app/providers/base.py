@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from app.contracts.providers import (
+    EmbeddingExecutionRequest,
+    EmbeddingExecutionResponse,
     ProviderAdapterKind,
     ProviderCapability,
     ProviderExecutionRequest,
@@ -37,3 +39,9 @@ class TextGenerationProviderAdapter(Protocol):
     descriptor: ProviderAdapterDescriptor
 
     def execute(self, request: ProviderExecutionRequest) -> ProviderExecutionResponse: ...
+
+
+class EmbeddingProviderAdapter(Protocol):
+    descriptor: ProviderAdapterDescriptor
+
+    def embed(self, request: EmbeddingExecutionRequest) -> EmbeddingExecutionResponse: ...

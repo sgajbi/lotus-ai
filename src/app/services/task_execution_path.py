@@ -87,7 +87,11 @@ def _build_provider_backed_task_execution_path(
             f"rollout or configuration posture. {rollout_posture.notes} "
             f"{live_execution_state.blocking_reason or ''}"
         )
-    elif settings.provider_mode not in {mode.value for mode in ProviderExecutionMode}:
+    elif settings.provider_mode not in {
+        ProviderExecutionMode.DISABLED.value,
+        ProviderExecutionMode.STUB.value,
+        ProviderExecutionMode.OPENAI.value,
+    }:
         execution_path = "provider.blocked_text"
         notes = (
             "Task remains provider-backed, but current provider mode is not supported in the "
