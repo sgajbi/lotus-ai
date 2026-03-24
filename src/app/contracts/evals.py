@@ -5,6 +5,11 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from app.contracts.artifacts import ArtifactDescriptor
+from app.contracts.deployment_split import (
+    DeploymentPlaneId,
+    DeploymentRouteMode,
+    DeploymentSplitStage,
+)
 
 
 class EvaluationAssetStatus(str, Enum):
@@ -402,6 +407,18 @@ class EvaluationRuntimeStatusResponse(BaseModel):
     )
     evaluation_runner_active: bool = Field(
         description="Whether a live evaluation runner is active in the current phase."
+    )
+    owning_plane: DeploymentPlaneId = Field(
+        description="Internal plane currently responsible for evaluation runtime execution."
+    )
+    submission_route_mode: DeploymentRouteMode = Field(
+        description="Whether evaluation submission is unified, split-ready while still unified, or actively split."
+    )
+    async_execution_route_mode: DeploymentRouteMode = Field(
+        description="Whether evaluation async execution is unified, split-ready while still unified, or actively split."
+    )
+    rollback_target_stage: DeploymentSplitStage = Field(
+        description="Deployment-split stage operators should roll back to if eval split routing becomes unhealthy."
     )
     message: str = Field(
         description="Human-readable explanation of the current evaluation posture."

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 from app.contracts.evals import EvaluationRuntimeStatusResponse
+from app.services.deployment_split_routing import (
+    resolve_evaluation_async_route,
+    resolve_evaluation_submission_route,
+)
+from app.services.deployment_split_shared import resolve_effective_deployment_split_stage
 from app.services.eval_approval_gate_summary import (
     build_first_use_case_approval_gate_summary,
     build_prompt_approval_gate_summary,
@@ -15,6 +20,9 @@ from app.services.eval_seam_summary import build_evaluation_seam_coverage
 
 
 def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
+    effective_stage, _ = resolve_effective_deployment_split_stage()
+    submission_route = resolve_evaluation_submission_route(effective_stage=effective_stage)
+    async_route = resolve_evaluation_async_route(effective_stage=effective_stage)
     catalog = build_evaluation_catalog()
     inventory_summary = summarize_evaluation_inventory(catalog)
     seam_coverage = build_evaluation_seam_coverage()
@@ -44,8 +52,13 @@ def build_evaluation_runtime_status() -> EvaluationRuntimeStatusResponse:
         latest_recorded_run_id=run_catalog.latest_run_id,
         latest_recorded_run_status=latest_run.status if latest_run is not None else None,
         evaluation_runner_active=True,
+        owning_plane=async_route.owning_plane,
+        submission_route_mode=submission_route.route_mode,
+        async_execution_route_mode=async_route.route_mode,
+        rollback_target_stage=async_route.rollback_target_stage,
         message=(
             "Allowlisted evaluation families now run through the durable async backbone with "
-            "persisted attempts, replay-safe case-result history, and runtime-backed approval-gate summaries."
+            "persisted attempts, replay-safe case-result history, and runtime-backed approval-gate "
+            f"summaries. {submission_route.detail} {async_route.detail}"
         ),
     )

@@ -9,11 +9,16 @@ from app.contracts.retrieval import (
     RetrievalSearchResponse,
 )
 from app.services.access_control_authorization import authorize_request, require_authorized
+from app.services.deployment_split_routing import resolve_retrieval_search_route
+from app.services.deployment_split_shared import resolve_effective_deployment_split_stage
 from app.services.retrieval_gateway import execute_retrieval_search
 from app.services.retrieval_store import get_retrieval_repository
 
 
 def search_sources(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
+    route = resolve_retrieval_search_route(
+        effective_stage=resolve_effective_deployment_split_stage()[0]
+    )
     authorization = require_authorized(
         authorize_request(
             caller_app=request.caller_app,
@@ -53,5 +58,5 @@ def search_sources(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
         execution_stage=execution.execution_stage,
         vector_store=execution.vector_store,
         hits=execution.hits,
-        message=execution.message,
+        message=f"{execution.message} {route.detail}",
     )

@@ -28,6 +28,11 @@ from app.repositories.async_runtime_repository import (
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from app.repositories.evaluation_runtime_repository import EvaluationRunAttemptRecord
 from app.services.async_job_type_catalog import get_async_job_type_descriptor
+from app.services.deployment_split_routing import (
+    resolve_evaluation_async_route,
+    resolve_evaluation_submission_route,
+)
+from app.services.deployment_split_shared import resolve_effective_deployment_split_stage
 from app.services.async_runtime_posture import get_async_runtime_posture
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.async_submission_shared import publish_async_attempt_if_configured
@@ -51,6 +56,9 @@ RUNTIME_BACKED_EVALUATION_FIXTURE_IDS = {
 def submit_evaluation_run(
     request: EvaluationRunSubmissionRequest,
 ) -> EvaluationRunSubmissionResponse:
+    route = resolve_evaluation_submission_route(
+        effective_stage=resolve_effective_deployment_split_stage()[0]
+    )
     submission = _submit_runtime_backed_evaluation_run(
         fixture_id=request.fixture_id,
         caller_app=request.caller_app,
@@ -72,7 +80,7 @@ def submit_evaluation_run(
             message=(
                 f"Evaluation fixture family '{request.fixture_id}' is allowlisted for durable "
                 "runtime-backed submission. The run is queued in evaluation runtime state and linked "
-                "to a durable async job for the governed async execution path."
+                f"to a durable async job for the governed async execution path. {route.detail}"
             ),
         )
     if submission["submission_status"] == EvaluationRunSubmissionStatus.DUPLICATE_REJECTED.value:
@@ -89,7 +97,7 @@ def submit_evaluation_run(
             existing_async_job_id=submission["async_job_id"],
             message=(
                 f"Duplicate evaluation submission rejected because active run '{submission['run_id']}' "
-                f"already owns fixture family '{request.fixture_id}'."
+                f"already owns fixture family '{request.fixture_id}'. {route.detail}"
             ),
         )
     return EvaluationRunSubmissionResponse(
@@ -103,13 +111,16 @@ def submit_evaluation_run(
         async_job_id=None,
         existing_run_id=None,
         existing_async_job_id=None,
-        message=submission["message"],
+        message=f"{submission['message']} {route.detail}",
     )
 
 
 def submit_evaluation_execution_async_job(
     request: AsyncJobSubmissionRequest,
 ) -> AsyncJobSubmissionResponse:
+    route = resolve_evaluation_async_route(
+        effective_stage=resolve_effective_deployment_split_stage()[0]
+    )
     fixture_id = _validate_evaluation_fixture_target(target_id=request.target_id)
     submission = _submit_runtime_backed_evaluation_run(
         fixture_id=fixture_id,
@@ -135,7 +146,7 @@ def submit_evaluation_execution_async_job(
             message=(
                 f"Evaluation fixture family '{fixture_id}' is allowlisted for durable runtime-backed "
                 "submission and governed async execution. The async job is linked to an authoritative "
-                "evaluation run record."
+                f"evaluation run record. {route.detail}"
             ),
         )
     if submission["submission_status"] == EvaluationRunSubmissionStatus.DUPLICATE_REJECTED.value:
@@ -155,7 +166,7 @@ def submit_evaluation_execution_async_job(
             job_id=None,
             message=(
                 f"Duplicate async evaluation submission rejected because active evaluation run "
-                f"'{submission['run_id']}' already owns fixture family '{fixture_id}'."
+                f"'{submission['run_id']}' already owns fixture family '{fixture_id}'. {route.detail}"
             ),
         )
     posture = get_async_runtime_posture()
@@ -172,7 +183,7 @@ def submit_evaluation_execution_async_job(
         existing_job_id=None,
         accepted=False,
         job_id=None,
-        message=submission["message"],
+        message=f"{submission['message']} {route.detail}",
     )
 
 

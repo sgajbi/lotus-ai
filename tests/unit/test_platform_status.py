@@ -123,6 +123,11 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.deployment_split.front_door_plane.value == "runtime"
     assert status.deployment_split.split_ready is False
     assert status.deployment_split.plane_count == 3
+    assert status.deployment_split.route_count == 4
+    assert status.deployment_split.routes[0].route_mode.value == "UNIFIED_INTERNAL"
+    assert status.evaluation_runtime.owning_plane.value == "runtime"
+    assert status.evaluation_runtime.submission_route_mode.value == "UNIFIED_INTERNAL"
+    assert status.evaluation_runtime.async_execution_route_mode.value == "UNIFIED_INTERNAL"
     assert status.safety_runtime.runtime_redaction_active is False
     assert status.safety_governance.governance_ready is False
     assert status.safety_governance.blocking_area_count == 3
@@ -199,6 +204,7 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     assert status.async_runtime.queue_backlog_count == 0
     assert status.deployment_split.configured_stage.value == "UNIFIED"
     assert status.deployment_split.effective_stage.value == "UNIFIED"
+    assert status.evaluation_runtime.async_execution_route_mode.value == "UNIFIED_INTERNAL"
     assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
     assert status.production_baseline.prod_shaped_local is False
     assert status.production_baseline.production_ready is False

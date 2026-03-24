@@ -37,6 +37,26 @@ class DeploymentPlaneOwnershipDescriptor(BaseModel):
     )
 
 
+class DeploymentRouteMode(str, Enum):
+    UNIFIED_INTERNAL = "UNIFIED_INTERNAL"
+    SPLIT_READY_UNIFIED = "SPLIT_READY_UNIFIED"
+    PLANE_SPLIT_ACTIVE = "PLANE_SPLIT_ACTIVE"
+
+
+class DeploymentRouteDescriptor(BaseModel):
+    route_id: str = Field(description="Stable internal deployment-routing descriptor identifier.")
+    owning_plane: DeploymentPlaneId = Field(
+        description="Internal plane currently responsible for executing the routed workload."
+    )
+    route_mode: DeploymentRouteMode = Field(
+        description="Whether the route is still unified, split-ready while still unified, or actively split."
+    )
+    rollback_target_stage: DeploymentSplitStage = Field(
+        description="Deployment-split stage that operators should roll back to if this route becomes unhealthy."
+    )
+    detail: str = Field(description="Human-readable explanation of the current route posture.")
+
+
 class DeploymentSplitRuntimeStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the deployment-split runtime status.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -56,8 +76,14 @@ class DeploymentSplitRuntimeStatusResponse(BaseModel):
     separate_plane_count: int = Field(
         description="Number of planes currently described as independently deployed rather than unified."
     )
+    route_count: int = Field(
+        description="Number of bounded internal routing descriptors covered by the current split posture."
+    )
     planes: list[DeploymentPlaneOwnershipDescriptor] = Field(
         description="Bounded plane-ownership descriptors for runtime, retrieval, and eval deployment planes."
+    )
+    routes: list[DeploymentRouteDescriptor] = Field(
+        description="Bounded internal routing descriptors for retrieval and eval split-aware flows."
     )
     blocking_findings: list[str] = Field(
         description="Human-readable reasons why the configured split stage is not yet the effective split posture."

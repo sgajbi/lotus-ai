@@ -24,6 +24,8 @@ def test_deployment_split_runtime_status_route(client: TestClient) -> None:
     assert body["configured_stage"] == "UNIFIED"
     assert body["effective_stage"] == "UNIFIED"
     assert body["plane_count"] == 3
+    assert body["route_count"] == 4
+    assert any(route["route_id"] == "retrieval_search_execution" for route in body["routes"])
     assert any(plane["plane_id"] == "runtime" for plane in body["planes"])
 
 

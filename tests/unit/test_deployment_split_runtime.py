@@ -17,6 +17,8 @@ def test_deployment_split_runtime_defaults_to_unified() -> None:
     assert status.front_door_plane.value == "runtime"
     assert status.plane_count == 3
     assert status.separate_plane_count == 0
+    assert status.route_count == 4
+    assert status.routes[0].route_mode.value == "UNIFIED_INTERNAL"
     assert status.planes[0].externally_addressable is True
     assert status.planes[1].split_ready is False
     assert status.planes[2].split_ready is False
@@ -27,7 +29,7 @@ def test_deployment_split_runtime_reports_split_ready_when_production_baseline_i
 ) -> None:
     settings.deployment_split_stage = "split_ready"
     monkeypatch.setattr(
-        "app.services.deployment_split_runtime.build_production_baseline_governance_status",
+        "app.services.deployment_split_shared._build_production_baseline_governance_status",
         lambda app_state: SimpleNamespace(governance_ready=True, governance_summary=[]),
     )
 
@@ -37,6 +39,7 @@ def test_deployment_split_runtime_reports_split_ready_when_production_baseline_i
     assert status.effective_stage.value == "SPLIT_READY"
     assert status.split_ready is True
     assert status.blocking_findings == []
+    assert all(route.route_mode.value == "SPLIT_READY_UNIFIED" for route in status.routes)
     assert status.planes[1].split_ready is True
     assert status.planes[2].split_ready is True
 
@@ -46,7 +49,7 @@ def test_deployment_split_runtime_blocks_split_ready_when_production_baseline_is
 ) -> None:
     settings.deployment_split_stage = "split_ready"
     monkeypatch.setattr(
-        "app.services.deployment_split_runtime.build_production_baseline_governance_status",
+        "app.services.deployment_split_shared._build_production_baseline_governance_status",
         lambda app_state: SimpleNamespace(
             governance_ready=False,
             governance_summary=["Production baseline governance remains blocked."],
@@ -58,6 +61,7 @@ def test_deployment_split_runtime_blocks_split_ready_when_production_baseline_is
     assert status.configured_stage.value == "SPLIT_READY"
     assert status.effective_stage.value == "UNIFIED"
     assert status.split_ready is False
+    assert all(route.route_mode.value == "UNIFIED_INTERNAL" for route in status.routes)
     assert status.blocking_findings[0].startswith("RFC-0020 production-baseline governance")
 
 

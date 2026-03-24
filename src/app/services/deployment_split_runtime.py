@@ -7,28 +7,20 @@ from app.contracts.deployment_split import (
     DeploymentSplitRuntimeStatusResponse,
     DeploymentSplitStage,
 )
-from app.services.production_baseline_governance import (
-    build_production_baseline_governance_status,
+from app.services.deployment_split_routing import build_split_route_descriptors
+from app.services.deployment_split_shared import (
+    resolve_configured_deployment_split_stage,
+    resolve_effective_deployment_split_stage,
 )
 
 
 def build_deployment_split_runtime_status(
     app_state: object | None = None,
 ) -> DeploymentSplitRuntimeStatusResponse:
-    configured_stage = _resolve_configured_stage()
-    blocking_findings: list[str] = []
-
-    if configured_stage is DeploymentSplitStage.UNIFIED:
-        effective_stage = DeploymentSplitStage.UNIFIED
-    elif configured_stage is DeploymentSplitStage.SPLIT_READY:
-        effective_stage, blocking_findings = _resolve_split_ready_effective_stage(app_state)
-    else:
-        effective_stage = DeploymentSplitStage.UNIFIED
-        blocking_findings = [
-            "Retrieval and eval plane activation are not yet implemented in the current RFC-0015 slice."
-        ]
-
+    configured_stage = resolve_configured_deployment_split_stage()
+    effective_stage, blocking_findings = resolve_effective_deployment_split_stage(app_state)
     planes = _build_plane_descriptors(effective_stage)
+    routes = build_split_route_descriptors(app_state)
     separate_plane_count = sum(1 for plane in planes if plane.separately_deployed)
     split_ready = effective_stage is not DeploymentSplitStage.UNIFIED
 
@@ -55,33 +47,12 @@ def build_deployment_split_runtime_status(
         split_ready=split_ready,
         plane_count=len(planes),
         separate_plane_count=separate_plane_count,
+        route_count=len(routes),
         planes=planes,
+        routes=routes,
         blocking_findings=blocking_findings,
         status_summary=status_summary,
     )
-
-
-def _resolve_configured_stage() -> DeploymentSplitStage:
-    configured = settings.deployment_split_stage.strip().lower()
-    mapping = {
-        "unified": DeploymentSplitStage.UNIFIED,
-        "split_ready": DeploymentSplitStage.SPLIT_READY,
-        "retrieval_split_active": DeploymentSplitStage.RETRIEVAL_SPLIT_ACTIVE,
-        "retrieval_and_evals_split_active": DeploymentSplitStage.RETRIEVAL_AND_EVALS_SPLIT_ACTIVE,
-    }
-    return mapping.get(configured, DeploymentSplitStage.UNIFIED)
-
-
-def _resolve_split_ready_effective_stage(
-    app_state: object | None,
-) -> tuple[DeploymentSplitStage, list[str]]:
-    production_baseline_governance = build_production_baseline_governance_status(app_state)
-    if production_baseline_governance.governance_ready:
-        return DeploymentSplitStage.SPLIT_READY, []
-    return DeploymentSplitStage.UNIFIED, [
-        "RFC-0020 production-baseline governance is not yet ready, so the platform cannot be treated as split-ready.",
-        *production_baseline_governance.governance_summary,
-    ]
 
 
 def _build_plane_descriptors(

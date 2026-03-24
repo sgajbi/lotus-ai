@@ -190,7 +190,8 @@ The next RFCs already identified in the repo describe the expected sequence:
 Early RFC-0015 groundwork now exists as a bounded runtime surface:
 
 1. `/platform/deployment-split/runtime-status` reports the current unified versus split-ready posture and the intended runtime, retrieval, and eval plane ownership model,
-2. no live plane cutover is active yet; retrieval and eval split activation remain future RFC-0015 slices.
+2. split-aware internal routing is now modeled explicitly for retrieval search, retrieval async execution, evaluation submission, and evaluation async execution while those flows still resolve through the unified runtime plane,
+3. no live plane cutover is active yet; retrieval and eval split activation remain future RFC-0015 slices.
 
 The current preferred RFC-0016 target is:
 

@@ -275,6 +275,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "configured_stage" in deployment_split_schema["properties"]
     assert "effective_stage" in deployment_split_schema["properties"]
     assert "planes" in deployment_split_schema["properties"]
+    assert "routes" in deployment_split_schema["properties"]
     assert "posture" in production_baseline_schema["properties"]
     assert "dependencies" in production_baseline_schema["properties"]
     assert "activation_ready" in production_baseline_activation_schema["properties"]
@@ -376,6 +377,13 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/retrieval/execution-status"]["get"]["operationId"] == (
         "getRetrievalExecutionStatus"
     )
+    retrieval_execution_schema = spec["components"]["schemas"]["RetrievalExecutionStatusResponse"]
+    assert "owning_plane" in retrieval_execution_schema["properties"]
+    assert "route_mode" in retrieval_execution_schema["properties"]
+    eval_runtime_schema = spec["components"]["schemas"]["EvaluationRuntimeStatusResponse"]
+    assert "owning_plane" in eval_runtime_schema["properties"]
+    assert "submission_route_mode" in eval_runtime_schema["properties"]
+    assert "async_execution_route_mode" in eval_runtime_schema["properties"]
     assert spec["paths"]["/platform/retrieval/activation-readiness"]["get"]["operationId"] == (
         "getRetrievalActivationReadiness"
     )
