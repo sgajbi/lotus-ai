@@ -174,6 +174,7 @@ Current state:
 3. a Dockerized live-provider demo path has now been proven technically,
 4. that same live demo also showed the current platform is still not at a truthful production-standard baseline because live success required demo-only posture and the governed first-use-case gate fell back to blocked.
 5. RFC-0020 runtime posture now distinguishes local or demo-capable from prod-shaped local by requiring both PostgreSQL-backed durable stores and the dedicated Redis-backed worker topology before the stack is treated as deployment-shaped.
+6. RFC-0020 now also exposes `/platform/production-baseline/runtime-status`, `/platform/production-baseline/activation-readiness`, `/platform/production-baseline/runbook-readiness`, and `/platform/production-baseline/governance-status` so operators can inspect go-live posture separately from demo success.
 
 ## Roadmap
 

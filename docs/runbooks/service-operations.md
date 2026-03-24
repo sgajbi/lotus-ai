@@ -17,6 +17,10 @@
 - General health: /health
 - Metadata: /metadata
 - Platform runtime status: /platform/runtime-status
+- Production baseline runtime status: /platform/production-baseline/runtime-status
+- Production baseline activation readiness: /platform/production-baseline/activation-readiness
+- Production baseline runbook readiness: /platform/production-baseline/runbook-readiness
+- Production baseline governance status: /platform/production-baseline/governance-status
 - Artifact runtime status: /platform/artifacts/runtime-status
 - Artifact catalog: /platform/artifacts
 - Artifact activation readiness: /platform/artifacts/activation-readiness
@@ -92,6 +96,18 @@ Expected operator flow for SQL-backed stores:
 9. only then proceed with rollout if readiness is `READY`
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
+
+## Production Baseline Governance
+
+Before treating any environment as the accepted RFC-0020 production baseline:
+
+1. verify `GET /platform/production-baseline/runtime-status`
+2. inspect `GET /platform/production-baseline/activation-readiness` when technical blockers need detail
+3. inspect `GET /platform/production-baseline/runbook-readiness` when operator-readiness blockers need detail
+4. inspect `GET /platform/production-baseline/governance-status` for the composed go-live view
+5. confirm the embedded `production_baseline` and `production_baseline_governance` blocks in `GET /platform/runtime-status` match the detailed production-baseline views
+6. treat PostgreSQL-backed durable stores plus Redis and dedicated workers as the minimum prod-shaped local boundary, not as full production readiness
+7. keep local env-file secret handling and filesystem or memory-backed artifact payload storage classified as non-production even if Docker bring-up and live-provider execution both succeed
 
 ## Artifact Governance
 

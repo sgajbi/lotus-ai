@@ -18,6 +18,9 @@ from app.services.first_use_case_governance import build_first_use_case_governan
 from app.services.first_use_case_status import build_first_use_case_runtime_status
 from app.services.observability_governance import build_observability_governance_status
 from app.services.observability_runtime import build_observability_runtime_status
+from app.services.production_baseline_governance import (
+    build_production_baseline_governance_status,
+)
 from app.services.prompt_governance_status import build_prompt_governance_status_summary
 from app.services.prompt_registry import list_registered_prompts
 from app.services.prompt_status import build_prompt_runtime_status
@@ -70,6 +73,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     first_use_case = build_first_use_case_runtime_status()
     first_use_case_governance = build_first_use_case_governance_status()
     production_baseline = build_production_baseline_runtime_status(app_state)
+    production_baseline_governance = build_production_baseline_governance_status(app_state)
     audit_store = get_audit_store_runtime_status()
     artifact_store = get_artifact_store_runtime_status()
     retrieval_store = get_retrieval_store_runtime_status()
@@ -110,6 +114,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         safety_runtime=safety_runtime,
         safety_governance=safety_governance,
         production_baseline=production_baseline,
+        production_baseline_governance=production_baseline_governance,
         audit_store=audit_store,
         retrieval_store=retrieval_store,
         database_configured=(

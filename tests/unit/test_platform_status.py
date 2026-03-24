@@ -124,6 +124,9 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
     assert status.production_baseline.production_ready is False
     assert status.production_baseline.prod_shaped_local is False
+    assert status.production_baseline_governance.governance_ready is False
+    assert status.production_baseline_governance.activation_readiness.activation_ready is False
+    assert status.production_baseline_governance.runbook_readiness.runbook_ready is True
     assert any(
         dependency["dependency_id"] == "database_backend"
         for dependency in [item.model_dump() for item in status.production_baseline.dependencies]

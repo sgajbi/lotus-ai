@@ -67,3 +67,81 @@ class ProductionBaselineRuntimeStatusResponse(BaseModel):
     status_summary: list[str] = Field(
         description="Short operator-facing summary of the current production-baseline posture."
     )
+
+
+class ProductionBaselineActivationReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the production-baseline activation-readiness view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    posture: ProductionBaselinePosture = Field(
+        description="Current top-level production-baseline posture classification."
+    )
+    prod_shaped_local: bool = Field(
+        description="Whether the service currently satisfies the deployment-shaped local baseline."
+    )
+    production_ready: bool = Field(
+        description="Whether the current posture satisfies the full RFC-0020 production baseline."
+    )
+    activation_ready: bool = Field(
+        description="Whether the current runtime posture is activatable as the accepted production baseline."
+    )
+    blocking_findings: list[str] = Field(
+        description="Human-readable reasons why the production baseline is not yet activatable."
+    )
+    activation_path: list[str] = Field(
+        description="Governed high-level path required before the production baseline can be treated as activatable."
+    )
+
+
+class ProductionBaselineRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(
+        description="Stable production-baseline runbook readiness item identifier."
+    )
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before the production baseline can be treated as activatable."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class ProductionBaselineRunbookReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the production-baseline runbook-readiness view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    runbook_ready: bool = Field(
+        description="Whether production-baseline operational runbook readiness is sufficient for go-live posture."
+    )
+    required_item_count: int = Field(
+        description="Number of production-baseline runbook items currently required for activation."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required production-baseline runbook items currently marked complete."
+    )
+    items: list[ProductionBaselineRunbookReadinessItem] = Field(
+        description="Governed production-baseline operational runbook readiness items."
+    )
+
+
+class ProductionBaselineGovernanceStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the production-baseline governance status.")
+    version: str = Field(description="Current lotus-ai service version.")
+    governance_ready: bool = Field(
+        description="Whether production-baseline governance is ready for accepted go-live posture."
+    )
+    runtime_status: ProductionBaselineRuntimeStatusResponse = Field(
+        description="Current runtime-backed production-baseline posture."
+    )
+    activation_readiness: ProductionBaselineActivationReadinessResponse = Field(
+        description="Current activation-readiness posture for the production baseline."
+    )
+    runbook_readiness: ProductionBaselineRunbookReadinessResponse = Field(
+        description="Current runbook-readiness posture for the production baseline."
+    )
+    blocking_area_count: int = Field(
+        description="Number of governance areas currently blocking the accepted production baseline."
+    )
+    governance_summary: list[str] = Field(
+        description="Short operator-facing summary of current production-baseline governance posture."
+    )
