@@ -1,0 +1,70 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "governance_ready":  true,
+    "store_mode":  "sqlalchemy",
+    "enforcement_state":  "FULLY_ENFORCED",
+    "activation_readiness":  {
+                                 "service":  "lotus-ai",
+                                 "version":  "0.1.0",
+                                 "store_mode":  "sqlalchemy",
+                                 "enforcement_state":  "FULLY_ENFORCED",
+                                 "activation_ready":  true,
+                                 "blocking_findings":  [
+
+                                                       ],
+                                 "activation_path":  [
+                                                         "Keep the caller policy registry authoritative for all protected surfaces, including task execution, retrieval execution, live-provider execution, async control, prompt control, and provider control.",
+                                                         "Use SQL-backed caller policy storage before treating access-control enforcement as restart-safe platform governance.",
+                                                         "Inspect `/platform/access-control/runtime-status`, `/platform/access-control/governance-status`, and access-control-linked audit or control history after protected requests are blocked or allowed.",
+                                                         "Keep unknown callers fail-closed and avoid silent fallback from denied live or control-plane paths."
+                                                     ]
+                             },
+    "runbook_readiness":  {
+                              "service":  "lotus-ai",
+                              "version":  "0.1.0",
+                              "runbook_ready":  true,
+                              "required_item_count":  5,
+                              "completed_required_item_count":  5,
+                              "items":  [
+                                            {
+                                                "runbook_id":  "caller_onboarding_procedure",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Caller onboarding and policy review procedures are documented for the caller policy registry."
+                                            },
+                                            {
+                                                "runbook_id":  "caller_revocation_procedure",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Caller disablement and access revocation procedures are documented and aligned with fail-closed enforcement."
+                                            },
+                                            {
+                                                "runbook_id":  "tenant_restriction_change_procedure",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Tenant restriction changes are documented as explicit policy updates that require review before rollout."
+                                            },
+                                            {
+                                                "runbook_id":  "blocked_authorization_incident_review",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Operator guidance covers blocked authorization review using audit records, execution evidence, and control-plane history."
+                                            },
+                                            {
+                                                "runbook_id":  "emergency_override_posture",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "No emergency override API exists in RFC-0012; the fail-closed posture is documented explicitly so operators do not assume a hidden bypass exists."
+                                            }
+                                        ]
+                          },
+    "policy_count":  5,
+    "tenant_restricted_policy_count":  3,
+    "blocking_area_count":  0,
+    "governance_summary":  [
+                               "Caller-app registry entries now define bounded task, retrieval, live-provider, async-control, prompt-control, and provider-control capability posture in one inspectable policy surface.",
+                               "Activation readiness is satisfied because SQL-backed caller policy storage and full protected-surface enforcement are both active.",
+                               "Runbook readiness is complete for caller onboarding, revocation, tenant restriction changes, blocked-authorization review, and emergency-override posture."
+                           ]
+}

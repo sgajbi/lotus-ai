@@ -1,0 +1,35 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "use_case_id":  "lotus_performance.analytics_commentary.v1",
+    "downstream_app":  "lotus-performance",
+    "runbook_ready":  true,
+    "required_item_count":  4,
+    "completed_required_item_count":  4,
+    "items":  [
+                  {
+                      "runbook_id":  "lotus_performance_shared_ownership",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "The integration and use-case guides now define lotus-performance ownership of analytics truth and lotus-ai ownership of explanation generation, audit, and support review posture."
+                  },
+                  {
+                      "runbook_id":  "lotus_performance_rollout_and_rollback_review",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "The service runbook now documents limited-rollout review, rollback-to-blocked posture, and the requirement to stop downstream exposure when first-use-case governance is no longer ready."
+                  },
+                  {
+                      "runbook_id":  "lotus_performance_support_and_incident_review",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "Operators now have an explicit first-use-case path for inspecting runtime readiness, audit traces, observability incident summaries, and bounded artifact descriptors when commentary or input-shape incidents occur."
+                  },
+                  {
+                      "runbook_id":  "lotus_performance_unsupported_input_triage",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "Unsupported or incomplete analytics inputs are now treated as a distinct support and rollback review path rather than normal explanation variance."
+                  }
+              ]
+}

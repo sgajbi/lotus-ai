@@ -1,0 +1,239 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "record_count":  1,
+    "filters_applied":  {
+                            "limit":  20,
+                            "caller_app":  "lotus-performance"
+                        },
+    "records":  [
+                    {
+                        "request_id":  "air_e283a8184ed04ea0911f85e72323438d",
+                        "execution_status":  "COMPLETED",
+                        "task_id":  "explain.v1",
+                        "category":  "explain",
+                        "output_label":  "EXPLANATION_ONLY",
+                        "caller_app":  "lotus-performance",
+                        "correlation_id":  "demo-lotus-performance-001",
+                        "requested_by":  "demo.operator@lotus",
+                        "tenant_id":  "tenant-sg-001",
+                        "prompt_version":  "foundation.explain.v1",
+                        "prompt_selection":  {
+                                                 "task_id":  "explain.v1",
+                                                 "prompt_version":  "foundation.explain.v1",
+                                                 "rollout_role":  "ACTIVE",
+                                                 "selection_reason":  "Runtime selection resolves through durable prompt rollout state and explicit governed prompt control actions.",
+                                                 "active_prompt_version":  "foundation.explain.v1",
+                                                 "candidate_prompt_version":  null,
+                                                 "previous_active_prompt_version":  null,
+                                                 "latest_control_event":  null
+                                             },
+                        "provider_mode":  "openai",
+                        "safety_mode":  "documented_only",
+                        "redaction_posture":  "MINIMIZATION_REQUIRED",
+                        "enforced_safety_controls":  [
+                                                         "response_labeling",
+                                                         "correlation_and_audit"
+                                                     ],
+                        "safety_outcome":  {
+                                               "safety_mode":  "documented_only",
+                                               "output_label":  "EXPLANATION_ONLY",
+                                               "redaction_posture":  "MINIMIZATION_REQUIRED",
+                                               "disposition":  "DOCUMENTED_ONLY",
+                                               "runtime_redaction_active":  false,
+                                               "enforced_controls":  [
+                                                                         "response_labeling",
+                                                                         "correlation_and_audit"
+                                                                     ],
+                                               "control_results":  [
+                                                                       {
+                                                                           "control_id":  "context_minimization",
+                                                                           "execution_state":  "DOCUMENTED_ONLY",
+                                                                           "summary":  "Context minimization remains a caller-side documented control in the current phase."
+                                                                       },
+                                                                       {
+                                                                           "control_id":  "response_labeling",
+                                                                           "execution_state":  "ENFORCED",
+                                                                           "summary":  "Output labeling is enforced on every task execution."
+                                                                       },
+                                                                       {
+                                                                           "control_id":  "correlation_and_audit",
+                                                                           "execution_state":  "ENFORCED",
+                                                                           "summary":  "Correlation metadata and audit capture are enforced on every execution."
+                                                                       },
+                                                                       {
+                                                                           "control_id":  "runtime_redaction_engine",
+                                                                           "execution_state":  "DOCUMENTED_ONLY",
+                                                                           "summary":  "Runtime redaction is typed and inspectable but not yet active in the current slice."
+                                                                       }
+                                                                   ],
+                                               "decision_summary":  "Safety posture is typed and reviewable, but runtime redaction remains documented-only in the current slice."
+                                           },
+                        "authorization":  {
+                                              "caller_app":  "lotus-performance",
+                                              "capability_type":  "task_execution",
+                                              "outcome":  "ALLOWED",
+                                              "allowed":  true,
+                                              "tenant_policy_mode":  "RESTRICTED",
+                                              "task_id":  "explain.v1",
+                                              "requested_source_ids":  [
+
+                                                                       ],
+                                              "effective_source_ids":  [
+
+                                                                       ],
+                                              "tenant_id":  "tenant-sg-001",
+                                              "summary":  "Caller \u0027lotus-performance\u0027 is authorized for task \u0027explain.v1\u0027 under the current caller policy registry."
+                                          },
+                        "generated_at":  "2026-03-24T11:45:40.420956+00:00",
+                        "stubbed":  false,
+                        "context_summary":  "Explain why portfolio YTD performance trailed benchmark in a bounded analytics commentary flow.",
+                        "context_keys":  [
+                                             "analysis_scope",
+                                             "material_findings",
+                                             "metric_deltas",
+                                             "period_window"
+                                         ],
+                        "source_refs":  [
+                                            "lotus-performance:calculation:718d627b-ed25-4913-834f-4ad887a6353e"
+                                        ],
+                        "result_preview":  "For the YTD window of 2025-01-01 to 2025-01-02, the portfolio returned 2.01% versus 2.515% for the benchmark, resulting in relative performance of -50.5 basis points.\n\nBased on the provided findings, the underperformance appears to have originated on 2025-01-02, when the portfolio gained 1.0% and the benchmark gained 1.5%. That single-day difference explains the relative gap identified in this period.\n\nIn bounded terms, the portfolio trailed because its return over the measured window was lower than the benchmarkâ??s return over the same window. No additional attribution detail, such as sector, security, or factor effects, was provided in the source context.",
+                        "structured_output":  {
+                                                  "provider_id":  "text.openai",
+                                                  "provider_mode":  "openai",
+                                                  "adapter_kind":  "OPENAI_LIVE",
+                                                  "model_id":  "gpt-5.4-2026-03-05",
+                                                  "provider_request_id":  "resp_063b8bfbb2d878340069c2796549ec819f9487f666fc197607",
+                                                  "input_tokens":  329,
+                                                  "output_tokens":  158,
+                                                  "total_tokens":  487,
+                                                  "estimated_cost_usd":  null,
+                                                  "output_label":  "EXPLANATION_ONLY",
+                                                  "safety_mode":  "documented_only",
+                                                  "redaction_posture":  "MINIMIZATION_REQUIRED",
+                                                  "source_refs":  [
+                                                                      "lotus-performance:calculation:718d627b-ed25-4913-834f-4ad887a6353e"
+                                                                  ],
+                                                  "input_mode":  "STRUCTURED_CONTEXT",
+                                                  "caller_app":  "lotus-performance"
+                                              },
+                        "evidence":  {
+                                         "descriptors":  [
+                                                             {
+                                                                 "evidence_type":  "task_contract",
+                                                                 "summary":  "Execution used the bounded lotus-ai task contract selected by the caller.",
+                                                                 "attributes":  {
+                                                                                    "task_id":  "explain.v1",
+                                                                                    "category":  "explain",
+                                                                                    "output_label":  "EXPLANATION_ONLY",
+                                                                                    "input_mode":  "STRUCTURED_CONTEXT",
+                                                                                    "caller_app":  "lotus-performance"
+                                                                                }
+                                                             },
+                                                             {
+                                                                 "evidence_type":  "prompt_selection",
+                                                                 "summary":  "Execution resolved to the currently active prompt definition for the task.",
+                                                                 "attributes":  {
+                                                                                    "task_id":  "explain.v1",
+                                                                                    "prompt_version":  "foundation.explain.v1",
+                                                                                    "management_mode":  "MIGRATION_MANAGED",
+                                                                                    "source_reference":  "alembic:0003_create_prompt_definitions_table",
+                                                                                    "rollout_role":  "ACTIVE",
+                                                                                    "active_prompt_version":  "foundation.explain.v1",
+                                                                                    "candidate_prompt_version":  null,
+                                                                                    "previous_active_prompt_version":  null,
+                                                                                    "latest_control_event":  null
+                                                                                }
+                                                             },
+                                                             {
+                                                                 "evidence_type":  "provider_resolution",
+                                                                 "summary":  "Execution flowed through the provider gateway and resolved to the current provider path.",
+                                                                 "attributes":  {
+                                                                                    "provider_id":  "text.openai",
+                                                                                    "provider_mode":  "openai",
+                                                                                    "stubbed":  false,
+                                                                                    "degradation_status":  "DOCUMENTED_ONLY",
+                                                                                    "timeout_ms":  15000,
+                                                                                    "retry_count":  0,
+                                                                                    "max_output_tokens":  512,
+                                                                                    "model_id":  "gpt-5.4-2026-03-05",
+                                                                                    "provider_request_id":  "resp_063b8bfbb2d878340069c2796549ec819f9487f666fc197607",
+                                                                                    "input_tokens":  329,
+                                                                                    "output_tokens":  158,
+                                                                                    "total_tokens":  487,
+                                                                                    "adapter_kind":  "OPENAI_LIVE"
+                                                                                }
+                                                             },
+                                                             {
+                                                                 "evidence_type":  "safety_outcome",
+                                                                 "summary":  "Execution captured the applied safety posture and enforced control set.",
+                                                                 "attributes":  {
+                                                                                    "safety_mode":  "documented_only",
+                                                                                    "output_label":  "EXPLANATION_ONLY",
+                                                                                    "redaction_posture":  "MINIMIZATION_REQUIRED",
+                                                                                    "disposition":  "DOCUMENTED_ONLY",
+                                                                                    "runtime_redaction_active":  false,
+                                                                                    "enforced_controls":  [
+                                                                                                              "response_labeling",
+                                                                                                              "correlation_and_audit"
+                                                                                                          ],
+                                                                                    "control_results":  [
+                                                                                                            {
+                                                                                                                "control_id":  "context_minimization",
+                                                                                                                "execution_state":  "DOCUMENTED_ONLY",
+                                                                                                                "summary":  "Context minimization remains a caller-side documented control in the current phase."
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "control_id":  "response_labeling",
+                                                                                                                "execution_state":  "ENFORCED",
+                                                                                                                "summary":  "Output labeling is enforced on every task execution."
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "control_id":  "correlation_and_audit",
+                                                                                                                "execution_state":  "ENFORCED",
+                                                                                                                "summary":  "Correlation metadata and audit capture are enforced on every execution."
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "control_id":  "runtime_redaction_engine",
+                                                                                                                "execution_state":  "DOCUMENTED_ONLY",
+                                                                                                                "summary":  "Runtime redaction is typed and inspectable but not yet active in the current slice."
+                                                                                                            }
+                                                                                                        ],
+                                                                                    "decision_summary":  "Safety posture is typed and reviewable, but runtime redaction remains documented-only in the current slice."
+                                                                                }
+                                                             },
+                                                             {
+                                                                 "evidence_type":  "retrieval_posture",
+                                                                 "summary":  "Execution captured the current retrieval execution posture for cross-cutting evidence.",
+                                                                 "attributes":  {
+                                                                                    "retrieval_mode":  "disabled",
+                                                                                    "execution_stage":  "SEARCH_DISABLED",
+                                                                                    "live_search_enabled":  false,
+                                                                                    "live_indexing_enabled":  true
+                                                                                }
+                                                             },
+                                                             {
+                                                                 "evidence_type":  "access_control",
+                                                                 "summary":  "Execution captured the caller authorization decision applied to the request path.",
+                                                                 "attributes":  {
+                                                                                    "caller_app":  "lotus-performance",
+                                                                                    "capability_type":  "task_execution",
+                                                                                    "outcome":  "ALLOWED",
+                                                                                    "allowed":  true,
+                                                                                    "tenant_policy_mode":  "RESTRICTED",
+                                                                                    "tenant_id":  "tenant-sg-001",
+                                                                                    "task_id":  "explain.v1",
+                                                                                    "requested_source_ids":  [
+
+                                                                                                             ],
+                                                                                    "effective_source_ids":  [
+
+                                                                                                             ],
+                                                                                    "summary":  "Caller \u0027lotus-performance\u0027 is authorized for task \u0027explain.v1\u0027 under the current caller policy registry."
+                                                                                }
+                                                             }
+                                                         ]
+                                     }
+                    }
+                ]
+}

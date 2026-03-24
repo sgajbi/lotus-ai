@@ -1,0 +1,23 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "store_mode":  "sqlalchemy",
+    "store":  {
+                  "mode":  "sqlalchemy",
+                  "status":  "READY",
+                  "database_configured":  true,
+                  "detail":  "Configured database is reachable and required tables are present."
+              },
+    "enforcement_state":  "FULLY_ENFORCED",
+    "data_plane_enforced":  true,
+    "control_plane_enforced":  true,
+    "unknown_caller_policy":  "Unknown callers are explicitly denied with HTTP 403 across protected data-plane and control-plane request paths.",
+    "tenant_isolation_active":  true,
+    "policy_count":  5,
+    "protected_surface_count":  6,
+    "status_summary":  [
+                           "Current posture is FULLY_ENFORCED: caller registry resolution now governs task, retrieval, live-provider, async-control, prompt-control, and provider-control paths.",
+                           "SQL-backed caller policy storage is active, so enforced authorization decisions are restart-safe across protected data-plane and control-plane request paths.",
+                           "Tenant restrictions are enforced where tenant identity is already part of the protected request contract, and control-plane callers remain fail-closed without a hidden override path."
+                       ]
+}

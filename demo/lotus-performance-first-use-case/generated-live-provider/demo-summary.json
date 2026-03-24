@@ -1,0 +1,15 @@
+{
+    "demo_mode":  "docker-live-provider",
+    "performance_base_url":  "http://127.0.0.1:8002",
+    "lotus_ai_base_url":  "http://127.0.0.1:8140",
+    "capture_root":  "C:\\Users\\Sandeep\\projects\\lotus-ai\\demo\\lotus-performance-first-use-case\\generated-live-provider\\captures",
+    "runtime_root":  "C:\\Users\\Sandeep\\projects\\lotus-ai\\demo\\lotus-performance-first-use-case\\generated-live-provider\\runtime",
+    "docker_env_file":  "C:\\Users\\Sandeep\\projects\\lotus-ai\\.env",
+    "docker_compose_project":  "lotus-ai-first-use-case-demo",
+    "live_provider_enabled":  true,
+    "caller_policy_live_override_applied":  true,
+    "explanation_request_id":  "air_e283a8184ed04ea0911f85e72323438d",
+    "evaluation_run_id":  "evalrun_248dc7e0feac",
+    "performance_calculation_id":  "718d627b-ed25-4913-834f-4ad887a6353e",
+    "completed_at_utc":  "2026-03-24T11:45:56.0149716Z"
+}

@@ -1,0 +1,13 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "roundingPolicyVersion":  "v1",
+    "promptStoreMode":  "sqlalchemy",
+    "accessControlStoreMode":  "sqlalchemy",
+    "artifactStoreMode":  "sqlalchemy",
+    "artifactObjectStoreMode":  "filesystem",
+    "auditStoreMode":  "sqlalchemy",
+    "retrievalStoreMode":  "sqlalchemy",
+    "startupReadinessPolicy":  "warn",
+    "readinessProbePolicy":  "observe"
+}

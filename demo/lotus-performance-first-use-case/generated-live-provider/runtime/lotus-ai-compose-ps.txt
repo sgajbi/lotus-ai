@@ -1,0 +1,4 @@
+NAME                                             IMAGE                                          COMMAND                  SERVICE           CREATED          STATUS                    PORTS
+lotus-ai-first-use-case-demo-lotus-ai-1          lotus-ai-first-use-case-demo-lotus-ai          "sh -c 'python -m al…"   lotus-ai          36 seconds ago   Up 35 seconds (healthy)   0.0.0.0:8140->8140/tcp, [::]:8140->8140/tcp
+lotus-ai-first-use-case-demo-lotus-ai-worker-1   lotus-ai-first-use-case-demo-lotus-ai-worker   "python -m app.worke…"   lotus-ai-worker   36 seconds ago   Up 19 seconds             8140/tcp
+lotus-ai-first-use-case-demo-redis-1             redis:7-alpine                                 "docker-entrypoint.s…"   redis             36 seconds ago   Up 35 seconds             0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp

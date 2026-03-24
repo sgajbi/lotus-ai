@@ -1,0 +1,78 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "safety_mode":  "documented_only",
+    "controls":  [
+                     {
+                         "control_id":  "context_minimization",
+                         "status":  "DOCUMENTED",
+                         "description":  "Calling applications must send only the minimum structured context required for the bounded task."
+                     },
+                     {
+                         "control_id":  "response_labeling",
+                         "status":  "ENFORCED",
+                         "description":  "Every task response carries an explicit output label that downstream systems must honor."
+                     },
+                     {
+                         "control_id":  "correlation_and_audit",
+                         "status":  "ENFORCED",
+                         "description":  "Every task execution must retain correlation metadata and audit evidence."
+                     },
+                     {
+                         "control_id":  "runtime_redaction_engine",
+                         "status":  "DOCUMENTED",
+                         "description":  "Runtime safety outcomes are now typed and reviewable, but deterministic redaction remains documented-only and is not yet active in the current slice."
+                     }
+                 ],
+    "task_policies":  [
+                          {
+                              "task_id":  "explain.v1",
+                              "output_label":  "EXPLANATION_ONLY",
+                              "redaction_posture":  "MINIMIZATION_REQUIRED",
+                              "response_labeling_required":  true,
+                              "intended_use_notes":  "Use only for explanatory assistance; never as authoritative business truth."
+                          },
+                          {
+                              "task_id":  "summarize.v1",
+                              "output_label":  "DRAFT",
+                              "redaction_posture":  "DOCUMENTED_ONLY",
+                              "response_labeling_required":  true,
+                              "intended_use_notes":  "Use as draft content that requires human and domain-system review."
+                          },
+                          {
+                              "task_id":  "classify.v1",
+                              "output_label":  "CLASSIFICATION",
+                              "redaction_posture":  "DOCUMENTED_ONLY",
+                              "response_labeling_required":  true,
+                              "intended_use_notes":  "Use only within caller-approved label boundaries."
+                          },
+                          {
+                              "task_id":  "extract.v1",
+                              "output_label":  "DRAFT",
+                              "redaction_posture":  "DOCUMENTED_ONLY",
+                              "response_labeling_required":  true,
+                              "intended_use_notes":  "Use as draft content that requires human and domain-system review."
+                          },
+                          {
+                              "task_id":  "generate_structured.v1",
+                              "output_label":  "DRAFT",
+                              "redaction_posture":  "DOCUMENTED_ONLY",
+                              "response_labeling_required":  true,
+                              "intended_use_notes":  "Use as draft content that requires human and domain-system review."
+                          },
+                          {
+                              "task_id":  "knowledge_search.v1",
+                              "output_label":  "RETRIEVAL_ANSWER",
+                              "redaction_posture":  "MINIMIZATION_REQUIRED",
+                              "response_labeling_required":  true,
+                              "intended_use_notes":  "Use only with explicit source attribution and caller-side review."
+                          },
+                          {
+                              "task_id":  "knowledge_answer.v1",
+                              "output_label":  "RETRIEVAL_ANSWER",
+                              "redaction_posture":  "MINIMIZATION_REQUIRED",
+                              "response_labeling_required":  true,
+                              "intended_use_notes":  "Use only with explicit source attribution and caller-side review."
+                          }
+                      ]
+}

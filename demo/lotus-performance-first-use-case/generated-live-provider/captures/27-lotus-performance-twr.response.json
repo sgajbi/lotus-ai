@@ -1,0 +1,223 @@
+{
+    "calculation_id":  "718d627b-ed25-4913-834f-4ad887a6353e",
+    "portfolio_id":  "TWR_WITH_BENCHMARK_01",
+    "input_mode":  "stateless",
+    "benchmark_context":  {
+                              "benchmark_id":  "BMK_STATELESS_1",
+                              "benchmark_currency":  "USD",
+                              "input_mode":  "stateless",
+                              "return_source":  "calculated"
+                          },
+    "results_by_period":  {
+                              "YTD":  {
+                                          "portfolio":  {
+                                                            "summary":  {
+                                                                            "period_return":  {
+                                                                                                  "local":  2.0100000000000007,
+                                                                                                  "fx":  0.0,
+                                                                                                  "base":  2.0100000000000007
+                                                                                              },
+                                                                            "cumulative_return":  {
+                                                                                                      "local":  2.0100000000000007,
+                                                                                                      "fx":  0.0,
+                                                                                                      "base":  2.0100000000000007
+                                                                                                  }
+                                                                        },
+                                                            "breakdowns":  {
+                                                                               "daily":  [
+                                                                                             {
+                                                                                                 "period":  "2025-01-01",
+                                                                                                 "period_start":  "2025-01-01",
+                                                                                                 "period_end":  "2025-01-01",
+                                                                                                 "period_return":  {
+                                                                                                                       "local":  1.0000000000000009,
+                                                                                                                       "fx":  0.0,
+                                                                                                                       "base":  1.0000000000000009
+                                                                                                                   },
+                                                                                                 "cumulative_return":  {
+                                                                                                                           "local":  1.0000000000000009,
+                                                                                                                           "fx":  0.0,
+                                                                                                                           "base":  1.0000000000000009
+                                                                                                                       }
+                                                                                             },
+                                                                                             {
+                                                                                                 "period":  "2025-01-02",
+                                                                                                 "period_start":  "2025-01-02",
+                                                                                                 "period_end":  "2025-01-02",
+                                                                                                 "period_return":  {
+                                                                                                                       "local":  1.0000000000000009,
+                                                                                                                       "fx":  0.0,
+                                                                                                                       "base":  1.0000000000000009
+                                                                                                                   },
+                                                                                                 "cumulative_return":  {
+                                                                                                                           "local":  2.0100000000000007,
+                                                                                                                           "fx":  0.0,
+                                                                                                                           "base":  2.0100000000000007
+                                                                                                                       }
+                                                                                             }
+                                                                                         ]
+                                                                           }
+                                                        },
+                                          "benchmark":  {
+                                                            "summary":  {
+                                                                            "period_return":  {
+                                                                                                  "base":  2.515
+                                                                                              },
+                                                                            "cumulative_return":  {
+                                                                                                      "base":  2.515
+                                                                                                  }
+                                                                        },
+                                                            "breakdowns":  {
+                                                                               "daily":  [
+                                                                                             {
+                                                                                                 "period":  "2025-01-01",
+                                                                                                 "period_start":  "2025-01-01",
+                                                                                                 "period_end":  "2025-01-01",
+                                                                                                 "period_return":  {
+                                                                                                                       "base":  1.0
+                                                                                                                   },
+                                                                                                 "cumulative_return":  {
+                                                                                                                           "base":  1.0
+                                                                                                                       }
+                                                                                             },
+                                                                                             {
+                                                                                                 "period":  "2025-01-02",
+                                                                                                 "period_start":  "2025-01-02",
+                                                                                                 "period_end":  "2025-01-02",
+                                                                                                 "period_return":  {
+                                                                                                                       "base":  1.5
+                                                                                                                   },
+                                                                                                 "cumulative_return":  {
+                                                                                                                           "base":  2.515
+                                                                                                                       }
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "benchmark_id":  "BMK_STATELESS_1",
+                                                            "benchmark_currency":  "USD",
+                                                            "input_mode":  "stateless",
+                                                            "return_source":  "calculated"
+                                                        },
+                                          "relative_performance":  {
+                                                                       "summary":  {
+                                                                                       "period_return":  {
+                                                                                                             "base":  -0.5049999999999994
+                                                                                                         },
+                                                                                       "cumulative_return":  {
+                                                                                                                 "base":  -0.5049999999999994
+                                                                                                             }
+                                                                                   },
+                                                                       "breakdowns":  {
+                                                                                          "daily":  [
+                                                                                                        {
+                                                                                                            "period":  "2025-01-01",
+                                                                                                            "period_start":  "2025-01-01",
+                                                                                                            "period_end":  "2025-01-01",
+                                                                                                            "period_return":  {
+                                                                                                                                  "base":  8.8817841970012523E-16
+                                                                                                                              },
+                                                                                                            "cumulative_return":  {
+                                                                                                                                      "base":  8.8817841970012523E-16
+                                                                                                                                  }
+                                                                                                        },
+                                                                                                        {
+                                                                                                            "period":  "2025-01-02",
+                                                                                                            "period_start":  "2025-01-02",
+                                                                                                            "period_end":  "2025-01-02",
+                                                                                                            "period_return":  {
+                                                                                                                                  "base":  -0.4999999999999991
+                                                                                                                              },
+                                                                                                            "cumulative_return":  {
+                                                                                                                                      "base":  -0.5049999999999994
+                                                                                                                                  }
+                                                                                                        }
+                                                                                                    ]
+                                                                                      }
+                                                                   }
+                                      }
+                          },
+    "meta":  {
+                 "calculation_id":  "718d627b-ed25-4913-834f-4ad887a6353e",
+                 "engine_version":  "0.1.0",
+                 "precision_mode":  "FLOAT64",
+                 "annualization":  {
+                                       "enabled":  false,
+                                       "basis":  "BUS/252"
+                                   },
+                 "calendar":  {
+                                  "type":  "BUSINESS",
+                                  "trading_calendar":  "NYSE"
+                              },
+                 "periods":  {
+                                 "requested":  [
+                                                   "YTD"
+                                               ],
+                                 "master_start":  "2025-01-01",
+                                 "master_end":  "2025-01-02"
+                             },
+                 "input_fingerprint":  "sha256:c55b7c5647b50713f9d488c39d31d173a2b9c59b7a62d9698c7ebf700e77b7d1",
+                 "calculation_hash":  "sha256:b699142a51a03aa0a4c0c5fb5c0e7601d2bbe4939ba4050ad989ca3b8422b270"
+             },
+    "diagnostics":  {
+                        "nip_days":  0,
+                        "nip_rule_delta_days":  0,
+                        "reset_days":  0,
+                        "nctrl4_reset_days":  0,
+                        "nctrl4_exclusive_reset_days":  0,
+                        "account_reset_shadow_days":  0,
+                        "sod_reset_shadow_days":  0,
+                        "shadow_reset_overlap_days":  0,
+                        "shadow_only_candidate_reset_days":  0,
+                        "active_reset_with_shadow_days":  0,
+                        "candidate_canonical_reset_days":  0,
+                        "reset_delta_days":  0,
+                        "nip_days_since_last_reset":  0,
+                        "valid_days_since_last_reset":  2,
+                        "effective_period_start":  "2025-01-01",
+                        "notes":  [
+
+                                  ],
+                        "policy":  {
+                                       "overrides":  {
+                                                         "applied_mv_count":  0,
+                                                         "applied_cf_count":  0
+                                                     },
+                                       "ignored_days_count":  0,
+                                       "outliers":  {
+                                                        "flagged_rows":  0
+                                                    }
+                                   },
+                        "samples":  {
+                                        "outliers":  [
+
+                                                     ],
+                                        "methodology_shadows":  [
+                                                                    {
+                                                                        "date":  "2025-01-01",
+                                                                        "active_nip":  0,
+                                                                        "nip_rule_v1":  0,
+                                                                        "nip_rule_v2":  0,
+                                                                        "active_perf_reset":  0,
+                                                                        "candidate_canonical_perf_reset":  0,
+                                                                        "sod_reset_shadow":  0,
+                                                                        "account_reset_shadow":  0,
+                                                                        "previous_sign_zero":  1,
+                                                                        "initial_sign":  1,
+                                                                        "final_sign":  1,
+                                                                        "active_reset_reason_codes":  [
+
+                                                                                                      ],
+                                                                        "candidate_canonical_reset_reason_codes":  [
+
+                                                                                                                   ]
+                                                                    }
+                                                                ]
+                                    }
+                    },
+    "audit":  {
+                  "residual_applied_bp":  0.0,
+                  "counts":  {
+                                 "input_rows":  2
+                             }
+              }
+}

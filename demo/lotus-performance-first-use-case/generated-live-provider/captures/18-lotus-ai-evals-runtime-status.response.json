@@ -1,0 +1,262 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "delivery_phase":  "foundation",
+    "manifest_version":  "foundation.v1",
+    "evidence_category_count":  6,
+    "staged_fixture_count":  15,
+    "documented_fixture_count":  0,
+    "staged_case_count":  34,
+    "seam_coverage":  [
+                          {
+                              "seam_id":  "async_execution",
+                              "fixture_ids":  [
+                                                  "async_runtime_examples"
+                                              ],
+                              "staged_fixture_count":  1,
+                              "staged_case_count":  3
+                          },
+                          {
+                              "seam_id":  "task_execution",
+                              "fixture_ids":  [
+                                                  "task_capability_contracts",
+                                                  "explanation_task_examples",
+                                                  "summarization_task_examples",
+                                                  "lotus_performance_first_use_case_examples"
+                                              ],
+                              "staged_fixture_count":  4,
+                              "staged_case_count":  8
+                          },
+                          {
+                              "seam_id":  "prompt_rollout",
+                              "fixture_ids":  [
+                                                  "prompt_promotion_examples",
+                                                  "prompt_rollback_examples"
+                                              ],
+                              "staged_fixture_count":  2,
+                              "staged_case_count":  2
+                          },
+                          {
+                              "seam_id":  "retrieval",
+                              "fixture_ids":  [
+                                                  "retrieval_citation_examples"
+                                              ],
+                              "staged_fixture_count":  1,
+                              "staged_case_count":  3
+                          },
+                          {
+                              "seam_id":  "provider_execution",
+                              "fixture_ids":  [
+                                                  "provider_policy_examples",
+                                                  "provider_runtime_examples",
+                                                  "provider_failure_mode_examples",
+                                                  "provider_operations_examples",
+                                                  "provider_degradation_examples"
+                                              ],
+                              "staged_fixture_count":  5,
+                              "staged_case_count":  12
+                          },
+                          {
+                              "seam_id":  "safety_execution",
+                              "fixture_ids":  [
+                                                  "safety_policy_examples",
+                                                  "safety_runtime_examples"
+                                              ],
+                              "staged_fixture_count":  2,
+                              "staged_case_count":  6
+                          }
+                      ],
+    "approval_gates":  [
+                           {
+                               "domain_id":  "first_use_case_onboarding",
+                               "domain_label":  "First Use-Case Onboarding",
+                               "approval_ready":  false,
+                               "evidence_state":  "STAGED_ONLY",
+                               "required_fixture_count":  1,
+                               "runtime_backed_fixture_count":  0,
+                               "latest_runtime_run_id":  null,
+                               "latest_runtime_recorded_at":  null,
+                               "latest_historical_baseline_run_id":  "foundation_eval_2026_03_22_001",
+                               "fixture_summaries":  [
+                                                         {
+                                                             "fixture_id":  "lotus_performance_first_use_case_examples",
+                                                             "latest_runtime_run_id":  null,
+                                                             "latest_runtime_recorded_at":  null,
+                                                             "latest_runtime_status":  null,
+                                                             "latest_runtime_verdict":  null,
+                                                             "evidence_state":  "STAGED_ONLY",
+                                                             "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                         }
+                                                     ],
+                               "notes":  [
+                                             "First Use-Case Onboarding approval posture still relies on staged historical baseline \u0027foundation_eval_2026_03_22_001\u0027.",
+                                             "Historical artifacts remain visible for continuity, but they do not satisfy current runtime-backed approval requirements."
+                                         ]
+                           },
+                           {
+                               "domain_id":  "prompt_rollout",
+                               "domain_label":  "Prompt Rollout",
+                               "approval_ready":  false,
+                               "evidence_state":  "STAGED_ONLY",
+                               "required_fixture_count":  2,
+                               "runtime_backed_fixture_count":  0,
+                               "latest_runtime_run_id":  null,
+                               "latest_runtime_recorded_at":  null,
+                               "latest_historical_baseline_run_id":  "foundation_eval_2026_03_22_001",
+                               "fixture_summaries":  [
+                                                         {
+                                                             "fixture_id":  "prompt_promotion_examples",
+                                                             "latest_runtime_run_id":  null,
+                                                             "latest_runtime_recorded_at":  null,
+                                                             "latest_runtime_status":  null,
+                                                             "latest_runtime_verdict":  null,
+                                                             "evidence_state":  "STAGED_ONLY",
+                                                             "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                         },
+                                                         {
+                                                             "fixture_id":  "prompt_rollback_examples",
+                                                             "latest_runtime_run_id":  null,
+                                                             "latest_runtime_recorded_at":  null,
+                                                             "latest_runtime_status":  null,
+                                                             "latest_runtime_verdict":  null,
+                                                             "evidence_state":  "STAGED_ONLY",
+                                                             "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                         }
+                                                     ],
+                               "notes":  [
+                                             "Prompt Rollout approval posture still relies on staged historical baseline \u0027foundation_eval_2026_03_22_001\u0027.",
+                                             "Historical artifacts remain visible for continuity, but they do not satisfy current runtime-backed approval requirements."
+                                         ]
+                           },
+                           {
+                               "domain_id":  "retrieval_execution",
+                               "domain_label":  "Retrieval Execution",
+                               "approval_ready":  false,
+                               "evidence_state":  "STAGED_ONLY",
+                               "required_fixture_count":  1,
+                               "runtime_backed_fixture_count":  0,
+                               "latest_runtime_run_id":  null,
+                               "latest_runtime_recorded_at":  null,
+                               "latest_historical_baseline_run_id":  "foundation_eval_2026_03_22_001",
+                               "fixture_summaries":  [
+                                                         {
+                                                             "fixture_id":  "retrieval_citation_examples",
+                                                             "latest_runtime_run_id":  null,
+                                                             "latest_runtime_recorded_at":  null,
+                                                             "latest_runtime_status":  null,
+                                                             "latest_runtime_verdict":  null,
+                                                             "evidence_state":  "STAGED_ONLY",
+                                                             "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                         }
+                                                     ],
+                               "notes":  [
+                                             "Retrieval Execution approval posture still relies on staged historical baseline \u0027foundation_eval_2026_03_22_001\u0027.",
+                                             "Historical artifacts remain visible for continuity, but they do not satisfy current runtime-backed approval requirements."
+                                         ]
+                           },
+                           {
+                               "domain_id":  "provider_execution",
+                               "domain_label":  "Provider Execution",
+                               "approval_ready":  false,
+                               "evidence_state":  "STAGED_ONLY",
+                               "required_fixture_count":  5,
+                               "runtime_backed_fixture_count":  0,
+                               "latest_runtime_run_id":  null,
+                               "latest_runtime_recorded_at":  null,
+                               "latest_historical_baseline_run_id":  "foundation_eval_2026_03_22_001",
+                               "fixture_summaries":  [
+                                                         {
+                                                             "fixture_id":  "provider_policy_examples",
+                                                             "latest_runtime_run_id":  null,
+                                                             "latest_runtime_recorded_at":  null,
+                                                             "latest_runtime_status":  null,
+                                                             "latest_runtime_verdict":  null,
+                                                             "evidence_state":  "STAGED_ONLY",
+                                                             "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                         },
+                                                         {
+                                                             "fixture_id":  "provider_runtime_examples",
+                                                             "latest_runtime_run_id":  null,
+                                                             "latest_runtime_recorded_at":  null,
+                                                             "latest_runtime_status":  null,
+                                                             "latest_runtime_verdict":  null,
+                                                             "evidence_state":  "STAGED_ONLY",
+                                                             "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                         },
+                                                         {
+                                                             "fixture_id":  "provider_failure_mode_examples",
+                                                             "latest_runtime_run_id":  null,
+                                                             "latest_runtime_recorded_at":  null,
+                                                             "latest_runtime_status":  null,
+                                                             "latest_runtime_verdict":  null,
+                                                             "evidence_state":  "STAGED_ONLY",
+                                                             "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                         },
+                                                         {
+                                                             "fixture_id":  "provider_operations_examples",
+                                                             "latest_runtime_run_id":  null,
+                                                             "latest_runtime_recorded_at":  null,
+                                                             "latest_runtime_status":  null,
+                                                             "latest_runtime_verdict":  null,
+                                                             "evidence_state":  "STAGED_ONLY",
+                                                             "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                         },
+                                                         {
+                                                             "fixture_id":  "provider_degradation_examples",
+                                                             "latest_runtime_run_id":  null,
+                                                             "latest_runtime_recorded_at":  null,
+                                                             "latest_runtime_status":  null,
+                                                             "latest_runtime_verdict":  null,
+                                                             "evidence_state":  "STAGED_ONLY",
+                                                             "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                         }
+                                                     ],
+                               "notes":  [
+                                             "Provider Execution approval posture still relies on staged historical baseline \u0027foundation_eval_2026_03_22_001\u0027.",
+                                             "Historical artifacts remain visible for continuity, but they do not satisfy current runtime-backed approval requirements."
+                                         ]
+                           },
+                           {
+                               "domain_id":  "safety_enforcement",
+                               "domain_label":  "Safety Enforcement",
+                               "approval_ready":  false,
+                               "evidence_state":  "STAGED_ONLY",
+                               "required_fixture_count":  2,
+                               "runtime_backed_fixture_count":  0,
+                               "latest_runtime_run_id":  null,
+                               "latest_runtime_recorded_at":  null,
+                               "latest_historical_baseline_run_id":  "foundation_eval_2026_03_22_001",
+                               "fixture_summaries":  [
+                                                         {
+                                                             "fixture_id":  "safety_policy_examples",
+                                                             "latest_runtime_run_id":  null,
+                                                             "latest_runtime_recorded_at":  null,
+                                                             "latest_runtime_status":  null,
+                                                             "latest_runtime_verdict":  null,
+                                                             "evidence_state":  "STAGED_ONLY",
+                                                             "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                         },
+                                                         {
+                                                             "fixture_id":  "safety_runtime_examples",
+                                                             "latest_runtime_run_id":  null,
+                                                             "latest_runtime_recorded_at":  null,
+                                                             "latest_runtime_status":  null,
+                                                             "latest_runtime_verdict":  null,
+                                                             "evidence_state":  "STAGED_ONLY",
+                                                             "notes":  "No runtime-backed evaluation run has been recorded for this fixture family yet."
+                                                         }
+                                                     ],
+                               "notes":  [
+                                             "Safety Enforcement approval posture still relies on staged historical baseline \u0027foundation_eval_2026_03_22_001\u0027.",
+                                             "Historical artifacts remain visible for continuity, but they do not satisfy current runtime-backed approval requirements."
+                                         ]
+                           }
+                       ],
+    "recorded_run_count":  2,
+    "runtime_backed_run_count":  0,
+    "historical_run_count":  2,
+    "latest_recorded_run_id":  "foundation_eval_2026_03_22_001",
+    "latest_recorded_run_status":  "RECORDED",
+    "evaluation_runner_active":  true,
+    "message":  "Allowlisted evaluation families now run through the durable async backbone with persisted attempts, replay-safe case-result history, and runtime-backed approval-gate summaries."
+}

@@ -1,0 +1,63 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "sampled_audit_record_limit":  20,
+    "sampled_audit_record_count":  1,
+    "sampled_async_job_count":  2,
+    "tenant_breakdown_policy":  "Tenant breakdown includes only authorized task executions carrying tenant identity.",
+    "caller_apps":  [
+                        {
+                            "caller_app":  "lotus-performance",
+                            "execution_count":  1,
+                            "allowed_execution_count":  1,
+                            "retrieval_execution_count":  0,
+                            "live_provider_execution_count":  1,
+                            "async_job_count":  0
+                        },
+                        {
+                            "caller_app":  "lotus-ai",
+                            "execution_count":  0,
+                            "allowed_execution_count":  0,
+                            "retrieval_execution_count":  0,
+                            "live_provider_execution_count":  0,
+                            "async_job_count":  1
+                        },
+                        {
+                            "caller_app":  "lotus-platform",
+                            "execution_count":  0,
+                            "allowed_execution_count":  0,
+                            "retrieval_execution_count":  0,
+                            "live_provider_execution_count":  0,
+                            "async_job_count":  1
+                        }
+                    ],
+    "tenants":  [
+                    {
+                        "tenant_id":  "tenant-sg-001",
+                        "execution_count":  1,
+                        "caller_app_count":  1,
+                        "capability_count":  1
+                    }
+                ],
+    "capabilities":  [
+                         {
+                             "capability_kind":  "ASYNC_JOB_TYPE",
+                             "capability_id":  "evaluation_execution",
+                             "observed_count":  1
+                         },
+                         {
+                             "capability_kind":  "ASYNC_JOB_TYPE",
+                             "capability_id":  "retrieval_indexing",
+                             "observed_count":  1
+                         },
+                         {
+                             "capability_kind":  "TASK",
+                             "capability_id":  "explain.v1",
+                             "observed_count":  1
+                         }
+                     ],
+    "status_summary":  [
+                           "Breakdown summary uses bounded recent audit records plus current async job catalog.",
+                           "Tenant visibility is restricted to authorized executions that already carry tenant identity."
+                       ]
+}

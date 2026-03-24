@@ -6,10 +6,11 @@ services:
 
   lotus-ai:
     build: .
+    command: ["sh", "-c", "python -m alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8140"]
     ports:
-      - \"8140:8140\"
+      - "8140:8140"
     env_file:
-      - .env
+      - ${LOTUS_AI_ENV_FILE:-.env}
     environment:
       LOTUS_AI_ASYNC_CUTOVER_STATE: dedicated_workers_active
       LOTUS_AI_ASYNC_QUEUE_BACKEND_MODE: redis
@@ -22,7 +23,7 @@ services:
     depends_on:
       - redis
     healthcheck:
-      test: [\"CMD\", \"python\", \"-c\", \"import urllib.request; urllib.request.urlopen('http://localhost:8140/health/ready')\"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8140/health/ready')"]
       interval: 15s
       timeout: 3s
       retries: 10
@@ -31,7 +32,7 @@ services:
     build: .
     command: ["python", "-m", "app.worker_main"]
     env_file:
-      - .env
+      - ${LOTUS_AI_ENV_FILE:-.env}
     environment:
       LOTUS_AI_ASYNC_CUTOVER_STATE: dedicated_workers_active
       LOTUS_AI_ASYNC_QUEUE_BACKEND_MODE: redis
@@ -43,8 +44,10 @@ services:
     volumes:
       - lotus-ai-data:/data
     depends_on:
-      - redis
-      - lotus-ai
+      redis:
+        condition: service_started
+      lotus-ai:
+        condition: service_healthy
 
 volumes:
   lotus-ai-data:
