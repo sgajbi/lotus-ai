@@ -20,6 +20,19 @@ def test_async_activation_readiness_reports_foundation_blockers() -> None:
     assert len(readiness.activation_path) == 2
 
 
+def test_async_activation_readiness_reports_shadow_cutover_truth() -> None:
+    settings.async_cutover_state = "queue_delivery_shadow"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+
+    readiness = build_async_activation_readiness()
+
+    assert readiness.cutover_state == "queue_delivery_shadow"
+    assert readiness.queue_backend == "redis_queue"
+    assert readiness.worker_execution == "in_process_stub"
+    assert "shadow mode" in readiness.blocking_findings[0]
+
+
 def test_async_activation_readiness_reports_dedicated_worker_cutover_truth(
     monkeypatch: MonkeyPatch,
 ) -> None:
@@ -62,3 +75,15 @@ def test_async_activation_readiness_reports_drain_mode_as_blocking(
     readiness = build_async_activation_readiness()
 
     assert any("drain mode" in finding for finding in readiness.blocking_findings)
+
+
+def test_async_activation_readiness_reports_degraded_fallback_truth() -> None:
+    settings.async_cutover_state = "degraded_fallback"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+
+    readiness = build_async_activation_readiness()
+
+    assert readiness.cutover_state == "degraded_fallback"
+    assert readiness.worker_mode == "DEGRADED_FALLBACK"
+    assert any("degraded fallback" in finding for finding in readiness.blocking_findings)

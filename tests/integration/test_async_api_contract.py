@@ -102,6 +102,20 @@ def test_async_activation_readiness_route(client: TestClient) -> None:
     assert len(body["activation_path"]) == 2
 
 
+def test_async_activation_readiness_route_reports_shadow_cutover(client: TestClient) -> None:
+    settings.async_cutover_state = "queue_delivery_shadow"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+
+    response = client.get("/platform/async/activation-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["cutover_state"] == "queue_delivery_shadow"
+    assert body["queue_backend"] == "redis_queue"
+    assert body["worker_execution"] == "in_process_stub"
+
+
 def test_async_runbook_readiness_route(client: TestClient) -> None:
     response = client.get("/platform/async/runbook-readiness")
 
@@ -110,9 +124,9 @@ def test_async_runbook_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
     assert body["required_item_count"] == 4
-    assert body["completed_required_item_count"] == 0
+    assert body["completed_required_item_count"] == 2
     assert body["items"][0]["runbook_id"] == "async_operational_runbook"
-    assert body["items"][0]["status"] == "PARTIALLY_COMPLETE"
+    assert body["items"][0]["status"] == "READY"
     assert body["items"][1]["status"] == "NOT_READY"
 
 
@@ -127,6 +141,19 @@ def test_async_governance_status_route(client: TestClient) -> None:
     assert body["activation_readiness"]["activation_ready"] is False
     assert body["runbook_readiness"]["runbook_ready"] is False
     assert len(body["governance_summary"]) == 2
+
+
+def test_async_governance_status_route_reports_degraded_fallback(client: TestClient) -> None:
+    settings.async_cutover_state = "degraded_fallback"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+
+    response = client.get("/platform/async/governance-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["activation_readiness"]["cutover_state"] == "degraded_fallback"
+    assert "degraded fallback posture" in body["governance_summary"][0]
 
 
 def test_async_control_history_route(client: TestClient) -> None:

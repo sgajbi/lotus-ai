@@ -16,7 +16,7 @@ def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
             "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
         ]
         activation_path = [
-            "Confirm queue backlog, redelivery, and active worker identity surfaces remain healthy under the dedicated worker cutover.",
+            "Confirm queue backlog, duplicate/redelivery, drain mode, and active worker identity surfaces remain healthy under the dedicated worker cutover.",
             "Keep dedicated workers primary for the allowlisted job types while expanding reviewed async coverage through later rollout slices.",
         ]
     elif runtime.cutover_state == AsyncCutoverState.DEGRADED_FALLBACK:
@@ -28,6 +28,15 @@ def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
         activation_path = [
             "Restore the Redis-backed managed queue and dedicated worker fleet as the primary path without changing the durable async state model.",
             "Enable broader async job types through reviewed rollout slices with observability, safety, replay, and supportability gates.",
+        ]
+    elif runtime.cutover_state == AsyncCutoverState.QUEUE_DELIVERY_SHADOW:
+        blocking_findings = [
+            "Managed queue delivery is wired in shadow mode, but dedicated workers are not yet the active primary execution path.",
+            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
+        ]
+        activation_path = [
+            "Promote the Redis-backed managed queue from shadow delivery to dedicated primary execution only after worker startup, drain, replay, and queue-outage procedures are reviewed.",
+            "Keep the service database as authoritative async truth while moving the allowlisted job types off API-primary execution.",
         ]
     else:
         blocking_findings = [
