@@ -7,6 +7,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from app.config import settings
 from app.contracts.providers import ProviderFailureCategory
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+from app.services.async_delivery_queue import get_test_async_delivery_queue
 from app.services.platform_status import (
     _resolve_startup_readiness_state,
     build_platform_runtime_status,
@@ -56,6 +57,8 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.async_runtime.queue_backend == "none"
     assert status.async_runtime.worker_mode == "IN_PROCESS_ONLY"
     assert status.async_runtime.active_worker_execution == "in_process_stub"
+    assert status.async_runtime.queue_backlog_count == 0
+    assert status.async_runtime.drain_mode_active is False
     assert status.async_runtime.enqueued_job_count == 0
     assert status.provider_governance.blocking_area_count == 3
     assert status.provider_operations.operations_state.value == "ROLLOUT_BLOCKED"
@@ -83,10 +86,14 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.startup_readiness_warnings == ["audit store: configuration required"]
 
 
-def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover() -> None:
+def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
+    monkeypatch: MonkeyPatch,
+) -> None:
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr("app.services.async_operational_state.get_async_delivery_queue", lambda: queue)
 
     status = build_platform_runtime_status(None)
 
@@ -95,6 +102,7 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover() 
     assert status.async_runtime.queue_backend == "redis_queue"
     assert status.async_runtime.worker_mode == "DEDICATED"
     assert status.async_runtime.active_worker_execution == "queue_backed_workers"
+    assert status.async_runtime.queue_backlog_count == 0
 
 
 def test_build_platform_runtime_status_reflects_durable_provider_operations_posture(

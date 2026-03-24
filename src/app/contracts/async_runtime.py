@@ -290,9 +290,27 @@ class AsyncRuntimeStatusResponse(BaseModel):
     active_worker_count: int = Field(
         description="Number of active worker replicas currently exposed."
     )
+    active_worker_ids: list[str] = Field(
+        description="Worker identities currently holding active async leases."
+    )
     enqueued_job_count: int = Field(description="Number of queued async jobs currently visible.")
     recorded_job_count: int = Field(
         description="Number of recorded async job artifacts currently exposed."
+    )
+    queue_backlog_count: int = Field(
+        description="Number of queue delivery messages currently pending for the active backend."
+    )
+    duplicate_delivery_count: int = Field(
+        description="Observed duplicate queue deliveries rejected safely by the bounded queue seam."
+    )
+    redelivery_count: int = Field(
+        description="Observed queue redelivery count under the bounded queue seam."
+    )
+    drain_mode_active: bool = Field(
+        description="Whether dedicated workers are currently in drain mode and refusing new claims."
+    )
+    degraded_findings: list[str] = Field(
+        description="Human-readable findings describing degraded or operator-significant async worker posture."
     )
     supported_job_types: list[AsyncJobTypeDescriptor] = Field(
         description="Known async job types and their current runtime posture."

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from time import sleep
 
+from app.config import settings
 from app.contracts.async_runtime import AsyncCutoverState
 from app.services.async_delivery_queue import AsyncQueueDeliveryMessage, get_async_delivery_queue
 from app.services.async_runtime_posture import get_async_runtime_posture
@@ -26,6 +27,8 @@ def process_next_async_delivery(
 ) -> DedicatedWorkerCycleResult | None:
     posture = get_async_runtime_posture()
     if posture.cutover_state != AsyncCutoverState.DEDICATED_WORKERS_ACTIVE:
+        return None
+    if settings.async_worker_drain_enabled:
         return None
     delivery = get_async_delivery_queue().dequeue(timeout_seconds=timeout_seconds)
     if delivery is None:

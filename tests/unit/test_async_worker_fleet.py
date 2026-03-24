@@ -1,15 +1,21 @@
+from pathlib import Path
+
+from _pytest.monkeypatch import MonkeyPatch
+
 from app.config import settings
 from app.services.async_delivery_queue import AsyncQueueDeliveryMessage, get_test_async_delivery_queue
 from app.services.async_job_service import build_async_job_detail
+from app.services.async_runtime_store import reset_async_runtime_store_cache
 from app.services.async_worker_fleet import process_next_async_delivery
 from app.services.eval_run_service import build_evaluation_run_detail
 from app.services.eval_run_submission_service import submit_evaluation_run
 from app.services.retrieval_async_execution import submit_retrieval_index_job_async
 from app.contracts.evals import EvaluationRunSubmissionRequest
+from tests.support.migration_runner import upgrade_database_to_head
 
 
 def test_process_next_async_delivery_executes_retrieval_job_in_dedicated_mode(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
@@ -42,7 +48,7 @@ def test_process_next_async_delivery_executes_retrieval_job_in_dedicated_mode(
 
 
 def test_process_next_async_delivery_executes_evaluation_job_in_dedicated_mode(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
@@ -77,7 +83,7 @@ def test_process_next_async_delivery_executes_evaluation_job_in_dedicated_mode(
 
 
 def test_process_next_async_delivery_ignores_duplicate_delivery_after_completion(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
@@ -116,4 +122,70 @@ def test_process_next_async_delivery_ignores_duplicate_delivery_after_completion
 
     assert first is not None
     assert duplicate is None or duplicate.handled is False
+    assert detail.job.status.value == "COMPLETED"
+
+
+def test_process_next_async_delivery_respects_worker_drain_mode(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+    settings.async_worker_drain_enabled = True
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr(
+        "app.services.async_submission_shared.get_async_delivery_queue",
+        lambda: queue,
+    )
+    monkeypatch.setattr(
+        "app.services.async_worker_fleet.get_async_delivery_queue",
+        lambda: queue,
+    )
+
+    submission = submit_retrieval_index_job_async(
+        job_id="retjob_lotus_platform_rfcs",
+        caller_app="lotus-platform",
+        correlation_id="corr-worker-fleet-drain-001",
+    )
+
+    result = process_next_async_delivery(worker_id="worker-a", timeout_seconds=0)
+    detail = build_async_job_detail(job_id=submission.job_id or "")
+
+    assert result is None
+    assert detail.job.status.value == "QUEUED"
+    assert queue.snapshot().pending_delivery_count == 1
+
+
+def test_process_next_async_delivery_survives_sql_store_reset(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.async_runtime_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-worker-fleet.db'}"
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+    upgrade_database_to_head(settings.database_url)
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr(
+        "app.services.async_submission_shared.get_async_delivery_queue",
+        lambda: queue,
+    )
+    monkeypatch.setattr(
+        "app.services.async_worker_fleet.get_async_delivery_queue",
+        lambda: queue,
+    )
+
+    submission = submit_retrieval_index_job_async(
+        job_id="retjob_lotus_platform_rfcs",
+        caller_app="lotus-platform",
+        correlation_id="corr-worker-fleet-sql-001",
+    )
+    reset_async_runtime_store_cache()
+
+    result = process_next_async_delivery(worker_id="worker-a", timeout_seconds=0)
+    detail = build_async_job_detail(job_id=submission.job_id or "")
+
+    assert result is not None
+    assert result.terminal_status == "COMPLETED"
     assert detail.job.status.value == "COMPLETED"

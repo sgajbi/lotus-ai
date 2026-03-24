@@ -54,6 +54,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "async_queue_name": settings.async_queue_name,
         "async_worker_id": settings.async_worker_id,
         "async_worker_queue_poll_seconds": settings.async_worker_queue_poll_seconds,
+        "async_worker_drain_enabled": settings.async_worker_drain_enabled,
         "evaluation_runtime_store_mode": settings.evaluation_runtime_store_mode,
         "startup_readiness_policy": settings.startup_readiness_policy,
         "readiness_probe_policy": settings.readiness_probe_policy,

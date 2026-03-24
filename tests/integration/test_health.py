@@ -223,8 +223,14 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
         == "queue_backed_workers"
     )
     assert body["async_runtime"]["active_worker_count"] == 0
+    assert body["async_runtime"]["active_worker_ids"] == []
     assert body["async_runtime"]["enqueued_job_count"] == 0
     assert body["async_runtime"]["recorded_job_count"] == 2
+    assert body["async_runtime"]["queue_backlog_count"] == 0
+    assert body["async_runtime"]["duplicate_delivery_count"] == 0
+    assert body["async_runtime"]["redelivery_count"] == 0
+    assert body["async_runtime"]["drain_mode_active"] is False
+    assert body["async_runtime"]["degraded_findings"] == []
     assert "current cutover state exposes" in body["async_runtime"]["message"]
     assert body["async_governance"]["governance_ready"] is False
     assert body["async_governance"]["blocking_area_count"] == 2

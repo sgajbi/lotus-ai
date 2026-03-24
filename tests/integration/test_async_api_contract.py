@@ -4,6 +4,7 @@ from app.services.async_worker_runtime import (
     start_async_job,
 )
 from app.config import settings
+from app.services.async_delivery_queue import get_test_async_delivery_queue
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from fastapi.testclient import TestClient
 
@@ -24,17 +25,27 @@ def test_async_runtime_status_route(client: TestClient) -> None:
     assert body["supported_worker_executions"][0]["worker_id"] == "none"
     assert body["supported_worker_executions"][2]["worker_id"] == "queue_backed_workers"
     assert body["active_worker_count"] == 0
+    assert body["active_worker_ids"] == []
     assert body["enqueued_job_count"] == 0
     assert body["recorded_job_count"] == 2
+    assert body["queue_backlog_count"] == 0
+    assert body["duplicate_delivery_count"] == 0
+    assert body["redelivery_count"] == 0
+    assert body["drain_mode_active"] is False
+    assert body["degraded_findings"] == []
     assert body["supported_job_types"][0]["enabled"] is True
     assert body["supported_job_types"][0]["execution_path"] == "durable_runtime_worker_execution"
     assert any(job["job_type"] == "retrieval_indexing" for job in body["supported_job_types"])
 
 
-def test_async_runtime_status_route_reports_dedicated_worker_cutover(client: TestClient) -> None:
+def test_async_runtime_status_route_reports_dedicated_worker_cutover(
+    client: TestClient, monkeypatch
+) -> None:
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr("app.services.async_operational_state.get_async_delivery_queue", lambda: queue)
 
     response = client.get("/platform/async/runtime-status")
 
@@ -45,6 +56,8 @@ def test_async_runtime_status_route_reports_dedicated_worker_cutover(client: Tes
     assert body["worker_mode"] == "DEDICATED"
     assert body["queue_backend"] == "redis_queue"
     assert body["active_worker_execution"] == "queue_backed_workers"
+    assert body["queue_backlog_count"] == 0
+    assert body["degraded_findings"] == []
 
 
 def test_async_queue_backend_catalog_route(client: TestClient) -> None:
@@ -99,6 +112,7 @@ def test_async_runbook_readiness_route(client: TestClient) -> None:
     assert body["required_item_count"] == 4
     assert body["completed_required_item_count"] == 0
     assert body["items"][0]["runbook_id"] == "async_operational_runbook"
+    assert body["items"][0]["status"] == "PARTIALLY_COMPLETE"
     assert body["items"][1]["status"] == "NOT_READY"
 
 

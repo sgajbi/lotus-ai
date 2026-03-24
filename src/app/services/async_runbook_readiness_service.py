@@ -12,11 +12,12 @@ def build_async_runbook_readiness() -> AsyncRunbookReadinessResponse:
     items = [
         AsyncRunbookReadinessItem(
             runbook_id="async_operational_runbook",
-            status="FOUNDATION_DOCUMENTED",
+            status="PARTIALLY_COMPLETE",
             required_for_activation=True,
             notes=(
-                "The current durable async operating model, including claim, lease, retry, and "
-                "recovery behavior for the in-process worker path, is documented at foundation level."
+                "The durable async operating model now includes queue-backed dedicated workers, "
+                "explicit degraded fallback posture, and bounded worker-drain behavior, but final "
+                "operator startup and cutover procedures remain incomplete."
             ),
         ),
         AsyncRunbookReadinessItem(
@@ -30,12 +31,12 @@ def build_async_runbook_readiness() -> AsyncRunbookReadinessResponse:
         ),
         AsyncRunbookReadinessItem(
             runbook_id="async_capacity_and_replay_procedures",
-            status="FOUNDATION_DOCUMENTED",
+            status="PARTIALLY_COMPLETE",
             required_for_activation=True,
             notes=(
-                "Current replay, lease-expiry recovery, and backlog handling procedures are "
-                "documented for the durable in-process worker path, but queue-backed fleet "
-                "capacity and dead-letter procedures are not yet activation-ready."
+                "Replay, lease-expiry recovery, bounded backlog visibility, and worker drain controls "
+                "now exist for the queue-backed worker path, but final queue-outage and capacity "
+                "runbooks are not yet activation-ready."
             ),
         ),
         AsyncRunbookReadinessItem(

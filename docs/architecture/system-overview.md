@@ -369,6 +369,11 @@ now feed allowlisted retrieval-indexing and evaluation-execution jobs into a sep
 process, while claim, lease, start, completion, failure, replay, and requeue semantics remain
 anchored in the authoritative async repository rather than queue-owned state.
 
+RFC-0011 Slice 3 adds the first operational hardening around that cutover. Async runtime status
+now exposes queue backlog, duplicate/redelivery counters, active worker identities, and explicit
+degraded findings, while dedicated drain mode prevents new worker claims without mutating
+durable job truth or hiding replay and recovery posture.
+
 ### Providers
 
 - `src/app/providers/`

@@ -106,8 +106,16 @@ Current recovery expectations:
 3. retrieval index jobs submitted through `POST /platform/retrieval/index-jobs/{job_id}/submit-async` should remain linked to their async runtime records after restart
 4. duplicate runtime-backed retrieval-index submissions should be rejected while an active queued, claimed, or running job already owns the same caller and target
 5. operator retry, replay, requeue, and abandon actions should be applied through `/platform/async/control-plane-actions/apply` rather than ad hoc table edits
-6. dedicated queue-backed worker fleet procedures remain out of scope until a later rollout slice activates them
-7. runtime-backed evaluation runs should preserve queued, claimed, running, completed, failed, and abandoned attempt history across async replay and recovery actions
+6. when `cutover_state=dedicated_workers_active`, queue backlog, duplicate/redelivery counts, active worker identities, and degraded findings should be reviewed through `/platform/async/runtime-status`
+7. `LOTUS_AI_ASYNC_WORKER_DRAIN_ENABLED=true` should prevent new dedicated worker claims while leaving queued runtime truth and governed replay/requeue actions intact
+8. runtime-backed evaluation runs should preserve queued, claimed, running, completed, failed, and abandoned attempt history across async replay and recovery actions
+
+Current dedicated worker operational checks:
+
+1. review `/platform/async/runtime-status` for `queue_backlog_count`, `active_worker_ids`, `duplicate_delivery_count`, `redelivery_count`, `drain_mode_active`, and `degraded_findings`
+2. if queue backlog is growing while `active_worker_ids` is empty, treat the worker fleet as unavailable rather than assuming in-process execution has taken over
+3. if `drain_mode_active=true`, expect queued jobs to remain queued until drain mode is cleared; do not bypass the queue by manually invoking in-process worker paths
+4. if `cutover_state=degraded_fallback`, treat the worker fleet as explicitly degraded and require operator review before considering the rollout healthy again
 
 Current governed control-action procedure:
 
