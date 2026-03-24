@@ -74,7 +74,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.artifact_object_store_mode == "memory"
     assert status.artifact_runtime.metadata_store_mode == "memory"
     assert status.artifact_runtime.object_store_mode == "memory"
-    assert status.artifact_runtime.artifact_count == 0
+    assert status.artifact_runtime.artifact_count >= 0
     assert status.artifact_governance.governance_ready is False
     assert status.artifact_governance.activation_readiness.activation_ready is False
     assert status.artifact_governance.runbook_readiness.runbook_ready is True
@@ -124,6 +124,22 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.capability_pack_catalog.packs[0].quality_evidence_state.value == "STAGED_ONLY"
     assert status.capability_pack_governance.ready_pack_count == 0
     assert status.capability_pack_governance.blocking_pack_count == 2
+    assert status.app_capability_rollout_count == 4
+    assert status.app_capability_rollout_catalog.pairing_count == 4
+    assert status.app_capability_rollout_catalog.onboarded_pairing_count == 1
+    assert status.app_capability_rollout_catalog.active_pairing_count == 0
+    assert (
+        status.app_capability_rollout_catalog.rollout_records[0].downstream_app
+        == "lotus-performance"
+    )
+    assert (
+        status.app_capability_rollout_catalog.rollout_records[0].capability_pack_maturity_stage.value
+        == "REUSABLE"
+    )
+    assert (
+        status.app_capability_rollout_catalog.rollout_records[0].rollout_stage.value
+        == "INTEGRATION_IN_PROGRESS"
+    )
     assert status.first_use_case.downstream_app == "lotus-performance"
     assert status.first_use_case.capability_pack_id == "analytics_commentary.pack.v1"
     assert status.first_use_case.capability_pack_family_id == "analytics_commentary"

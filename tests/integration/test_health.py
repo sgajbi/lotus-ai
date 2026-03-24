@@ -38,6 +38,21 @@ def test_platform_capability_pack_catalog_contract(client: TestClient) -> None:
     assert body["packs"][1]["pack_id"] == "decision_explanation.pack.v1"
 
 
+def test_platform_app_capability_rollout_catalog_contract(client: TestClient) -> None:
+    response = client.get("/platform/app-capability-rollouts")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["pairing_count"] == 4
+    assert body["onboarded_pairing_count"] == 1
+    assert body["active_pairing_count"] == 0
+    assert body["rollout_records"][0]["downstream_app"] == "lotus-performance"
+    assert body["rollout_records"][0]["rollout_stage"] == "INTEGRATION_IN_PROGRESS"
+    assert body["rollout_records"][1]["downstream_app"] == "lotus-manage"
+    assert body["rollout_records"][1]["rollout_stage"] == "NOT_ONBOARDED"
+
+
 def test_first_production_use_case_contract(client: TestClient) -> None:
     response = client.get("/platform/use-cases/first-production-use-case")
 

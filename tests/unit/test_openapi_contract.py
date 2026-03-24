@@ -7,6 +7,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/runtime-status"]["get"]["operationId"] == (
         "getPlatformRuntimeStatus"
     )
+    assert spec["paths"]["/platform/app-capability-rollouts"]["get"]["operationId"] == (
+        "getAppCapabilityRolloutCatalog"
+    )
     assert spec["paths"]["/platform/resilience/runtime-status"]["get"]["operationId"] == (
         "getResilienceRuntimeStatus"
     )
@@ -362,6 +365,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     capability_pack_catalog_governance_schema = spec["components"]["schemas"][
         "CapabilityPackCatalogGovernanceStatusResponse"
     ]
+    app_capability_rollout_catalog_schema = spec["components"]["schemas"][
+        "AppCapabilityRolloutCatalogResponse"
+    ]
+    app_capability_rollout_schema = spec["components"]["schemas"][
+        "AppCapabilityRolloutDescriptor"
+    ]
     async_job_schema = spec["components"]["schemas"]["AsyncJobArtifactDescriptor"]
     assert "artifact_refs" in async_job_schema["properties"]
     evaluation_case_schema = spec["components"]["schemas"]["EvaluationCaseResultDescriptor"]
@@ -467,7 +476,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "artifact_governance" in platform_runtime_schema["properties"]
     assert "capability_pack_catalog" in platform_runtime_schema["properties"]
     assert "capability_pack_governance" in platform_runtime_schema["properties"]
+    assert "app_capability_rollout_catalog" in platform_runtime_schema["properties"]
     assert "capability_pack_count" in platform_runtime_schema["properties"]
+    assert "app_capability_rollout_count" in platform_runtime_schema["properties"]
     assert "resilience_runtime" in platform_runtime_schema["properties"]
     assert "resilience_governance" in platform_runtime_schema["properties"]
     assert "first_use_case" in platform_runtime_schema["properties"]
@@ -520,6 +531,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "activation_readiness" in capability_pack_governance_schema["properties"]
     assert "observability" in capability_pack_governance_schema["properties"]
     assert "pack_summaries" in capability_pack_catalog_governance_schema["properties"]
+    assert "rollout_records" in app_capability_rollout_catalog_schema["properties"]
+    assert "pairing_count" in app_capability_rollout_catalog_schema["properties"]
+    assert "capability_pack_maturity_stage" in app_capability_rollout_schema["properties"]
+    assert "rollout_stage" in app_capability_rollout_schema["properties"]
     assert "based_on_capability_pack_id" in onboarding_template_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (

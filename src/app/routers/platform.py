@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
+from app.contracts.app_capability_rollouts import AppCapabilityRolloutCatalogResponse
 from app.contracts.deployment_split import (
     DeploymentSplitActivationReadinessResponse,
     DeploymentSplitGovernanceStatusResponse,
@@ -33,6 +34,7 @@ from app.contracts.resilience import (
 from app.services.production_baseline_activation_readiness import (
     build_production_baseline_activation_readiness,
 )
+from app.services.app_capability_rollout_catalog import build_app_capability_rollout_catalog
 from app.services.production_baseline_governance import (
     build_production_baseline_governance_status,
 )
@@ -86,6 +88,26 @@ router = APIRouter(prefix="/platform", tags=["platform"])
 )
 async def get_platform_runtime_status_route(request: Request) -> PlatformRuntimeStatusResponse:
     return build_platform_runtime_status(request.app.state)
+
+
+@router.get(
+    "/app-capability-rollouts",
+    response_model=AppCapabilityRolloutCatalogResponse,
+    operation_id="getAppCapabilityRolloutCatalog",
+    summary="Get RFC-0023 app-capability rollout catalog",
+    description=(
+        "Returns the current RFC-0023 app-capability rollout records across downstream applications "
+        "and capability packs, keeping global pack maturity distinct from app-specific rollout stage."
+    ),
+    responses={
+        200: {"description": "App-capability rollout catalog returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_app_capability_rollout_catalog_route(
+    request: Request,
+) -> AppCapabilityRolloutCatalogResponse:
+    return build_app_capability_rollout_catalog(request.app.state)
 
 
 @router.get(

@@ -1,6 +1,6 @@
 # RFC-0023: Multi-App Adoption and Capability Rollout Governance
 
-- Status: Draft
+- Status: Active
 - Date: 2026-03-25
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -259,11 +259,18 @@ Outcome:
 2. a catalog view exists,
 3. rollout stages are explicit.
 
+Boundaries:
+
+1. Slice 1 is status-only and catalog-first,
+2. it must not yet add ownership, escalation, pause, rollback, or retirement controls,
+3. it must keep global capability-pack maturity separate from app-specific rollout stage.
+
 Acceptance gate:
 
-1. the platform can represent app-capability pairings,
-2. global pack maturity and app-specific rollout maturity are not conflated,
-3. at least one catalog surface exists for operators or integrators.
+1. the platform can represent app-capability pairings durably in contract form,
+2. global pack maturity and app-specific rollout stage are not conflated,
+3. at least one rollout catalog surface exists for operators or integrators,
+4. the currently implemented `lotus-performance` pairing is represented truthfully without overstating limited-rollout or active-production posture.
 
 ### Slice 2: Ownership and Rollout Governance
 

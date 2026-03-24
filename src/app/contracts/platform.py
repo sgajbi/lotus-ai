@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from app.contracts.app_capability_rollouts import AppCapabilityRolloutCatalogResponse
 from app.contracts.capability_packs import (
     CapabilityPackCatalogGovernanceStatusResponse,
     CapabilityPackCatalogResponse,
@@ -121,6 +122,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     capability_pack_governance: CapabilityPackCatalogGovernanceStatusResponse = Field(
         description="Current catalog-level governance posture across app-facing capability packs."
     )
+    app_capability_rollout_catalog: AppCapabilityRolloutCatalogResponse = Field(
+        description="Current RFC-0023 app-capability rollout catalog across downstream application pairings."
+    )
     first_use_case_governance: FirstUseCaseGovernanceStatusResponse = Field(
         description="Current bounded rollout and governance posture for the first production use case."
     )
@@ -167,6 +171,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     capability_count: int = Field(description="Number of bounded capabilities exposed by lotus-ai.")
     capability_pack_count: int = Field(
         description="Number of app-facing capability packs currently described by lotus-ai."
+    )
+    app_capability_rollout_count: int = Field(
+        description="Number of app-capability rollout records currently described by lotus-ai."
     )
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     migration_contract_enforced: bool = Field(
