@@ -4,6 +4,11 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.deployment_split import (
+    DeploymentPlaneId,
+    DeploymentRouteMode,
+    DeploymentSplitStage,
+)
 from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
 from app.contracts.runtime_readiness import RuntimeReadinessStatus
 
@@ -342,6 +347,21 @@ class RetrievalExecutionStatusResponse(BaseModel):
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     live_search_enabled: bool = Field(description="Whether live retrieval search is active.")
     live_indexing_enabled: bool = Field(description="Whether live retrieval indexing is active.")
+    owning_plane: DeploymentPlaneId = Field(
+        description="Internal plane currently responsible for retrieval execution."
+    )
+    route_mode: DeploymentRouteMode = Field(
+        description="Whether retrieval execution is unified, split-ready while still unified, or actively split."
+    )
+    rollback_target_stage: DeploymentSplitStage = Field(
+        description="Deployment-split stage operators should roll back to if retrieval split routing becomes unhealthy."
+    )
+    split_route_degraded: bool = Field(
+        description="Whether retrieval execution is currently running under a degraded retrieval-plane split posture."
+    )
+    split_route_findings: list[str] = Field(
+        description="Human-readable degraded findings for the current retrieval split route."
+    )
     message: str = Field(description="Human-readable explanation of the retrieval execution state.")
 
 

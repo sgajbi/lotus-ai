@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     artifact_store_mode: str = "memory"
     artifact_object_store_mode: str = "memory"
     artifact_object_store_root: str | None = None
+    deployment_split_stage: str = "unified"
     startup_readiness_policy: str = "warn"
     readiness_probe_policy: str = "observe"
     database_url: str | None = None

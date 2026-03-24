@@ -47,4 +47,5 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.latest_recorded_run_id == "foundation_eval_2026_03_22_001"
     assert status.latest_recorded_run_status == "RECORDED"
     assert status.evaluation_runner_active is True
+    assert status.split_route_degraded is False
     assert "approval-gate summaries" in status.message

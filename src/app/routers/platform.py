@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
+from app.contracts.deployment_split import (
+    DeploymentSplitActivationReadinessResponse,
+    DeploymentSplitGovernanceStatusResponse,
+    DeploymentSplitRunbookReadinessResponse,
+    DeploymentSplitRuntimeStatusResponse,
+)
 from app.contracts.platform import PlatformRuntimeStatusResponse
 from app.contracts.production_baseline import (
     ProductionBaselineActivationReadinessResponse,
@@ -18,7 +24,15 @@ from app.services.production_baseline_governance import (
 from app.services.production_baseline_runbook_readiness import (
     build_production_baseline_runbook_readiness,
 )
+from app.services.deployment_split_activation_readiness import (
+    build_deployment_split_activation_readiness,
+)
+from app.services.deployment_split_governance import build_deployment_split_governance_status
+from app.services.deployment_split_runbook_readiness import (
+    build_deployment_split_runbook_readiness,
+)
 from app.services.platform_status import build_platform_runtime_status
+from app.services.deployment_split_runtime import build_deployment_split_runtime_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
 
 router = APIRouter(prefix="/platform", tags=["platform"])
@@ -40,6 +54,84 @@ router = APIRouter(prefix="/platform", tags=["platform"])
 )
 async def get_platform_runtime_status_route(request: Request) -> PlatformRuntimeStatusResponse:
     return build_platform_runtime_status(request.app.state)
+
+
+@router.get(
+    "/deployment-split/runtime-status",
+    response_model=DeploymentSplitRuntimeStatusResponse,
+    operation_id="getDeploymentSplitRuntimeStatus",
+    summary="Get RFC-0015 deployment-split runtime status",
+    description=(
+        "Returns the current RFC-0015 deployment-split posture across runtime, retrieval, "
+        "and eval planes, including configured versus effective stage and plane ownership."
+    ),
+    responses={
+        200: {"description": "Deployment-split runtime status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_deployment_split_runtime_status_route(
+    request: Request,
+) -> DeploymentSplitRuntimeStatusResponse:
+    return build_deployment_split_runtime_status(request.app.state)
+
+
+@router.get(
+    "/deployment-split/activation-readiness",
+    response_model=DeploymentSplitActivationReadinessResponse,
+    operation_id="getDeploymentSplitActivationReadiness",
+    summary="Get RFC-0015 deployment-split activation readiness",
+    description=(
+        "Returns whether the configured RFC-0015 deployment-split stage is activatable without "
+        "blocked or degraded split-plane posture."
+    ),
+    responses={
+        200: {"description": "Deployment-split activation readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_deployment_split_activation_readiness_route(
+    request: Request,
+) -> DeploymentSplitActivationReadinessResponse:
+    return build_deployment_split_activation_readiness(request.app.state)
+
+
+@router.get(
+    "/deployment-split/runbook-readiness",
+    response_model=DeploymentSplitRunbookReadinessResponse,
+    operation_id="getDeploymentSplitRunbookReadiness",
+    summary="Get RFC-0015 deployment-split runbook readiness",
+    description=(
+        "Returns the current operator-runbook posture for unified, split-ready, retrieval-split, "
+        "and retrieval-and-evals-split deployment stages."
+    ),
+    responses={
+        200: {"description": "Deployment-split runbook readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_deployment_split_runbook_readiness_route() -> DeploymentSplitRunbookReadinessResponse:
+    return build_deployment_split_runbook_readiness()
+
+
+@router.get(
+    "/deployment-split/governance-status",
+    response_model=DeploymentSplitGovernanceStatusResponse,
+    operation_id="getDeploymentSplitGovernanceStatus",
+    summary="Get RFC-0015 deployment-split governance status",
+    description=(
+        "Returns the composed runtime, activation, runbook, and observability posture for the "
+        "configured RFC-0015 deployment-split stage."
+    ),
+    responses={
+        200: {"description": "Deployment-split governance status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_deployment_split_governance_status_route(
+    request: Request,
+) -> DeploymentSplitGovernanceStatusResponse:
+    return build_deployment_split_governance_status(request.app.state)
 
 
 @router.get(

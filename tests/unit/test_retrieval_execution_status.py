@@ -13,6 +13,7 @@ def test_retrieval_execution_status_reports_disabled_live_execution() -> None:
     assert status.execution_stage == "SEARCH_DISABLED"
     assert status.live_search_enabled is False
     assert status.live_indexing_enabled is True
+    assert status.split_route_degraded is False
 
 
 def test_retrieval_execution_status_reports_enabled_live_execution() -> None:
@@ -28,6 +29,7 @@ def test_retrieval_execution_status_reports_enabled_live_execution() -> None:
     assert status.execution_stage == "LIVE_SEARCH"
     assert status.live_search_enabled is True
     assert status.live_indexing_enabled is True
+    assert status.split_route_degraded is False
     assert "searchable promoted document" in status.message
 
     settings.retrieval_mode = "disabled"
@@ -50,6 +52,7 @@ def test_retrieval_execution_status_reports_no_searchable_corpus_after_rollback(
     assert status.retrieval_mode == "enabled"
     assert status.execution_stage == "LIVE_SEARCH"
     assert status.live_search_enabled is True
+    assert status.split_route_degraded is False
     assert "no promoted indexed documents are currently searchable" in status.message.lower()
 
     settings.retrieval_mode = "disabled"
@@ -77,6 +80,7 @@ def test_retrieval_execution_status_reports_unready_store_when_enabled(
     assert status.retrieval_mode == "enabled"
     assert status.execution_stage == "INDEXING_DISABLED"
     assert status.live_search_enabled is False
+    assert status.split_route_degraded is False
     assert "retrieval store is not ready" in status.message.lower()
 
     settings.retrieval_mode = "disabled"

@@ -108,7 +108,8 @@ def test_search_sources_returns_hits_for_enabled_source_subset() -> None:
     assert response.status == RetrievalStatus.READY
     assert response.execution_stage == RetrievalExecutionStage.CATALOG_ONLY
     assert response.hits[0].source_id == "lotus-platform-rfcs"
-    assert response.message == "Search completed."
+    assert response.message.startswith("Search completed.")
+    assert "unified lotus-ai deployment" in response.message
 
 
 def test_search_sources_defaults_to_caller_allowed_sources_when_no_filter_is_supplied() -> None:

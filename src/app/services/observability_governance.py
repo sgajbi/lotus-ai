@@ -3,12 +3,14 @@ from __future__ import annotations
 from app.config import settings
 from app.contracts.observability import ObservabilityGovernanceStatusResponse
 from app.services.governance_readiness import summarize_governance_flags
+from app.services.deployment_split_runtime import build_deployment_split_runtime_status
 from app.services.observability_activation_readiness import build_observability_activation_readiness
 from app.services.observability_runbook_readiness import build_observability_runbook_readiness
 from app.services.observability_runtime import build_observability_runtime_status
 
 
 def build_observability_governance_status() -> ObservabilityGovernanceStatusResponse:
+    deployment_split = build_deployment_split_runtime_status()
     runtime_status = build_observability_runtime_status()
     activation_readiness = build_observability_activation_readiness()
     runbook_readiness = build_observability_runbook_readiness()
@@ -35,6 +37,11 @@ def build_observability_governance_status() -> ObservabilityGovernanceStatusResp
                 "Runbook readiness is complete for runtime review, incident review, and authorization-aware breakdown inspection."
                 if runbook_readiness.runbook_ready
                 else "Runbook readiness is incomplete for at least one required observability operator path."
+            ),
+            (
+                "Observability summaries remain aligned with the current deployment-split stage and can be used to review unified versus active split-plane posture coherently."
+                if not deployment_split.degraded
+                else "Observability summaries remain aligned with the current deployment-split stage, but split-plane degradation still requires rollback-aware incident review."
             ),
         ],
     )
