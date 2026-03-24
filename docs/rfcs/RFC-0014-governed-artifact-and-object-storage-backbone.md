@@ -1,6 +1,6 @@
 # RFC-0014: Governed Artifact and Object Storage Backbone
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -298,3 +298,22 @@ Approve this RFC if the team agrees that:
 2. relational metadata should remain authoritative while payloads can move to object storage,
 3. evaluation, async, and incident-evidence consumers should converge on one artifact model,
 4. delivery should proceed in the slices defined above.
+
+## Implementation Notes
+
+RFC-0014 is implemented.
+
+Delivered scope:
+
+1. governed artifact metadata and bounded payload-store seams,
+2. runtime artifact refs for evaluation case results and async terminal outputs,
+3. observability incident-bundle artifact integration,
+4. bounded artifact catalog plus activation, runbook, and governance surfaces,
+5. explicit lifecycle posture for active, superseded, archived, and historical staged artifacts.
+
+Important current posture:
+
+1. relational metadata remains authoritative,
+2. runtime consumers now emit artifact descriptors rather than raw payload paths,
+3. filesystem-backed payload storage remains a clearly labeled local or development fallback and does not satisfy full activation readiness,
+4. broader future consumer cutovers remain separate follow-on work rather than hidden scope inside this RFC.

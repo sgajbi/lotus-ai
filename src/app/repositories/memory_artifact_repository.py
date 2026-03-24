@@ -12,7 +12,9 @@ class InMemoryArtifactRepository(ArtifactRepository):
     def list_artifacts(self) -> list[ArtifactRecord]:
         return [
             deepcopy(self._records[artifact_id])
-            for artifact_id in sorted(self._records, key=lambda item: self._records[item].created_at)
+            for artifact_id in sorted(
+                self._records, key=lambda item: self._records[item].created_at
+            )
         ]
 
     def get_artifact(self, *, artifact_id: str) -> ArtifactRecord | None:

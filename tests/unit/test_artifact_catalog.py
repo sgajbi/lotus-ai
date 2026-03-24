@@ -1,7 +1,7 @@
 from app.contracts.artifacts import ArtifactLifecycleStatus, ArtifactStorageBackend
 from app.repositories.artifact_repository import ArtifactRecord
 from app.services.artifact_catalog import build_artifact_catalog
-from app.services.artifact_store import get_artifact_repository
+from app.services.artifact_store import get_artifact_repository, reset_artifact_store_cache
 
 
 def test_artifact_catalog_summarizes_lifecycle_counts_and_filters_domain() -> None:
@@ -55,3 +55,16 @@ def test_artifact_catalog_summarizes_lifecycle_counts_and_filters_domain() -> No
     assert catalog.archived_count == 0
     assert catalog.historical_staged_count == 0
     assert catalog.artifacts[0].artifact_id == "artifact-eval-001"
+
+
+def test_artifact_catalog_returns_empty_when_runtime_store_is_unavailable() -> None:
+    from app.config import settings
+
+    settings.artifact_store_mode = "unsupported"
+    reset_artifact_store_cache()
+
+    catalog = build_artifact_catalog(limit=10)
+
+    assert catalog.artifact_count == 0
+    assert catalog.artifacts == []
+    assert "No artifact descriptors" in catalog.status_summary[1]

@@ -30,9 +30,7 @@ def persist_json_artifact(
     superseded_by_artifact_id: str | None = None,
 ) -> ArtifactDescriptor:
     artifact_id = f"artifact_{domain}_{uuid4().hex[:16]}"
-    object_key = (
-        f"{domain}/{source_object_kind}/{source_object_id}/{artifact_id}.json"
-    )
+    object_key = f"{domain}/{source_object_kind}/{source_object_id}/{artifact_id}.json"
     stored_object = get_artifact_object_store().put_object(
         object_key=object_key,
         payload=payload_json,

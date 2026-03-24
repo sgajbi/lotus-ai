@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from pytest import MonkeyPatch
+
 from app.contracts.artifacts import ArtifactLifecycleStatus, ArtifactStorageBackend
 from app.repositories.artifact_repository import ArtifactRecord
 from app.repositories.sqlalchemy_artifact_repository import SqlAlchemyArtifactRepository
@@ -33,3 +35,24 @@ def test_sqlalchemy_artifact_repository_round_trips_metadata(tmp_path: Path) -> 
 
     assert repository.get_artifact(artifact_id=record.artifact_id) == record
     assert repository.list_artifacts() == [record]
+
+
+def test_sqlalchemy_artifact_repository_handles_missing_and_relative_paths(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    relative_db_path = Path("runtime") / "artifact-relative.db"
+    database_url = f"sqlite:///{relative_db_path.as_posix()}"
+    SqlAlchemyArtifactRepository(database_url)
+    assert relative_db_path.parent.exists()
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyArtifactRepository(database_url)
+
+    assert repository.get_artifact(artifact_id="missing-artifact") is None
+
+    helper = object.__new__(SqlAlchemyArtifactRepository)
+    helper._database_url = "sqlite:///:memory:"
+    helper._ensure_sqlite_parent_directory()
+    helper._database_url = "postgresql://example/db"
+    helper._ensure_sqlite_parent_directory()

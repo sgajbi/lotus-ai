@@ -54,7 +54,9 @@ def test_observability_incident_summary_route(client: TestClient) -> None:
     assert any(summary["domain_id"] == "evaluation" for summary in body["summaries"])
     assert any(summary["domain_id"] == "prompt" for summary in body["summaries"])
     assert any(summary["domain_id"] == "safety" for summary in body["summaries"])
-    assert all(summary["incident_evidence_items"][0]["artifact_refs"] for summary in body["summaries"])
+    assert all(
+        summary["incident_evidence_items"][0]["artifact_refs"] for summary in body["summaries"]
+    )
 
 
 def test_provider_observability_summary_route(client: TestClient) -> None:

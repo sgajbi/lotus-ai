@@ -39,3 +39,19 @@ def test_filesystem_artifact_object_store_round_trips_payload(tmp_path: Path) ->
     assert loaded.payload == b'{"status":"done"}'
     assert loaded.content_type == "application/json"
     assert loaded.checksum_sha256 == stored.checksum_sha256
+
+
+def test_artifact_object_store_delete_and_missing_reads(tmp_path: Path) -> None:
+    memory_store = InMemoryArtifactObjectStore()
+    assert memory_store.get_object(object_key="missing.json") is None
+    memory_store.delete_object(object_key="missing.json")
+
+    filesystem_store = FilesystemArtifactObjectStore(str(tmp_path / "artifacts"))
+    filesystem_store.put_object(
+        object_key="nested\\domain/output.json",
+        payload=b"{}",
+        content_type="application/json",
+    )
+    filesystem_store.delete_object(object_key="/nested/domain/output.json")
+
+    assert filesystem_store.get_object(object_key="nested/domain/output.json") is None

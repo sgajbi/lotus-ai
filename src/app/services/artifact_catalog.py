@@ -10,7 +10,9 @@ from app.services.artifact_store import get_artifact_repository
 from app.services.runtime_readiness import get_artifact_store_runtime_status
 
 
-def build_artifact_catalog(*, limit: int = 100, domain: str | None = None) -> ArtifactCatalogResponse:
+def build_artifact_catalog(
+    *, limit: int = 100, domain: str | None = None
+) -> ArtifactCatalogResponse:
     artifacts = _load_artifacts(limit=limit, domain=domain)
     return ArtifactCatalogResponse(
         service=settings.service_name,
@@ -27,7 +29,9 @@ def build_artifact_catalog(*, limit: int = 100, domain: str | None = None) -> Ar
             if artifact.lifecycle_status == ArtifactLifecycleStatus.SUPERSEDED
         ),
         archived_count=sum(
-            1 for artifact in artifacts if artifact.lifecycle_status == ArtifactLifecycleStatus.ARCHIVED
+            1
+            for artifact in artifacts
+            if artifact.lifecycle_status == ArtifactLifecycleStatus.ARCHIVED
         ),
         historical_staged_count=sum(
             1

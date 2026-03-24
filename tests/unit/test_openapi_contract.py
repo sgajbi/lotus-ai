@@ -198,7 +198,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "object_store" in artifact_runtime_schema["properties"]
     artifact_catalog_schema = spec["components"]["schemas"]["ArtifactCatalogResponse"]
     assert "artifacts" in artifact_catalog_schema["properties"]
-    artifact_activation_schema = spec["components"]["schemas"]["ArtifactActivationReadinessResponse"]
+    artifact_activation_schema = spec["components"]["schemas"][
+        "ArtifactActivationReadinessResponse"
+    ]
     assert "activation_ready" in artifact_activation_schema["properties"]
     artifact_runbook_schema = spec["components"]["schemas"]["ArtifactRunbookReadinessResponse"]
     assert "items" in artifact_runbook_schema["properties"]

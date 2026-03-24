@@ -431,8 +431,7 @@ def _attach_incident_bundle_artifact(
 ) -> DomainIncidentSummaryResponse:
     artifact = persist_observability_incident_bundle(summary=summary)
     items = [
-        _with_artifact_ref(item=item, artifact=artifact)
-        for item in summary.incident_evidence_items
+        _with_artifact_ref(item=item, artifact=artifact) for item in summary.incident_evidence_items
     ]
     return summary.model_copy(update={"incident_evidence_items": items})
 

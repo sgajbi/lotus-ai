@@ -69,7 +69,9 @@ class ArtifactObjectStoreRuntimeStatusDescriptor(BaseModel):
     durable: bool = Field(
         description="Whether the configured object-store mode is durable across restart."
     )
-    detail: str = Field(description="Human-readable explanation of the current object-store posture.")
+    detail: str = Field(
+        description="Human-readable explanation of the current object-store posture."
+    )
 
 
 class ArtifactRuntimeStatusResponse(BaseModel):
@@ -97,8 +99,12 @@ class ArtifactRuntimeStatusResponse(BaseModel):
 class ArtifactCatalogResponse(BaseModel):
     service: str = Field(description="Service name emitting the artifact catalog.")
     version: str = Field(description="Current lotus-ai service version.")
-    artifact_count: int = Field(description="Number of artifact descriptors returned in this response.")
-    active_count: int = Field(description="Number of active runtime-generated artifacts in the response.")
+    artifact_count: int = Field(
+        description="Number of artifact descriptors returned in this response."
+    )
+    active_count: int = Field(
+        description="Number of active runtime-generated artifacts in the response."
+    )
     superseded_count: int = Field(description="Number of superseded artifacts in the response.")
     archived_count: int = Field(description="Number of archived artifacts in the response.")
     historical_staged_count: int = Field(
@@ -113,7 +119,9 @@ class ArtifactCatalogResponse(BaseModel):
 
 
 class ArtifactActivationReadinessResponse(BaseModel):
-    service: str = Field(description="Service name emitting the artifact activation-readiness view.")
+    service: str = Field(
+        description="Service name emitting the artifact activation-readiness view."
+    )
     version: str = Field(description="Current lotus-ai service version.")
     activation_ready: bool = Field(
         description="Whether the artifact backbone is ready for stronger governed rollout posture."

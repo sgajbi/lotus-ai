@@ -50,3 +50,4 @@ def test_memory_artifact_repository_round_trips_records_in_created_order() -> No
         "artifact-newer",
     ]
     assert repository.get_artifact(artifact_id="artifact-older") == older
+    assert repository.get_artifact(artifact_id="missing-artifact") is None
