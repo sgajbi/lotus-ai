@@ -95,7 +95,15 @@ Before treating the in-service observability layer as governed rollout posture:
 5. confirm the embedded `observability_runtime` and `observability_governance` blocks in `GET /platform/runtime-status` match the detailed observability views
 6. confirm `GET /platform/observability/incident-summary` covers provider, retrieval, async, evaluation, prompt, and safety domains without unavailable telemetry posture
 7. confirm `GET /platform/observability/breakdowns` still exposes bounded caller, tenant, and capability samples without leaking unauthorized tenant data
-8. treat SQL-backed audit and caller-policy stores as the activation gate for restart-safe observability governance
+8. confirm observability incident items now expose governed artifact descriptors rather than raw payloads or backend URLs
+9. treat SQL-backed audit and caller-policy stores as the activation gate for restart-safe observability governance
+
+Current incident-review expectations:
+
+1. use `GET /platform/observability/incident-summary` as the summary-first entrypoint for provider, retrieval, async, evaluation, prompt, and safety review
+2. inspect the `artifact_refs` attached to each incident-evidence item when bounded historical or diagnostic context is needed
+3. treat those artifact refs as governed snapshots of the domain incident bundle rather than as a raw export surface
+4. use the linked domain endpoints for deeper runtime and governance inspection instead of expecting observability routes to dump raw payloads inline
 
 ## Async Activation Governance
 

@@ -4,6 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.artifacts import ArtifactDescriptor
+
 
 class ObservabilityPosture(str, Enum):
     HEALTHY = "HEALTHY"
@@ -78,6 +80,10 @@ class IncidentEvidenceSummaryItem(BaseModel):
     )
     durable: bool = Field(
         description="Whether the evidence item is assembled from durable state rather than volatile-only telemetry."
+    )
+    artifact_refs: list[ArtifactDescriptor] = Field(
+        default_factory=list,
+        description="Governed artifact descriptors attached to the bounded incident-evidence item.",
     )
     summary: str = Field(description="Human-readable explanation of the incident-evidence item.")
 

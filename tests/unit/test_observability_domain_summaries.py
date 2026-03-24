@@ -1,5 +1,11 @@
 from pathlib import Path
 
+from app.contracts.artifacts import ArtifactLifecycleStatus
+from app.services.artifact_store import (
+    get_artifact_object_store,
+    get_artifact_repository,
+    reset_artifact_store_cache,
+)
 from app.services.observability_domain_summaries import (
     build_async_observability_bundle,
     build_evaluation_observability_bundle,
@@ -22,6 +28,8 @@ def test_provider_observability_bundle_surfaces_rollout_blocked_incident() -> No
         bundle.summary.incident_evidence_items[0].evidence_id
         == "provider_operations_incident_state"
     )
+    assert len(bundle.summary.incident_evidence_items[0].artifact_refs) == 1
+    assert bundle.summary.incident_evidence_items[0].artifact_refs[0].domain == "observability"
 
 
 def test_retrieval_observability_bundle_marks_sql_store_incident_evidence_durable(
@@ -78,3 +86,75 @@ def test_safety_observability_bundle_surfaces_runtime_enforcement_state() -> Non
     assert (
         bundle.summary.incident_evidence_items[0].evidence_id == "safety_runtime_enforcement_state"
     )
+
+
+def test_observability_bundle_reuses_existing_artifact_when_payload_is_unchanged() -> None:
+    first = build_provider_observability_bundle()
+    second = build_provider_observability_bundle()
+
+    first_artifact = first.summary.incident_evidence_items[0].artifact_refs[0]
+    second_artifact = second.summary.incident_evidence_items[0].artifact_refs[0]
+
+    assert first_artifact.artifact_id == second_artifact.artifact_id
+    assert len(get_artifact_repository().list_artifacts()) == 1
+
+
+def test_observability_bundle_supersedes_prior_artifact_when_posture_changes(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'observability-lineage.db'}"
+    object_root = str(tmp_path / "observability-lineage-objects")
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        artifact_store_mode="sqlalchemy",
+        artifact_object_store_mode="filesystem",
+        artifact_object_store_root=object_root,
+        database_url=database_url,
+    ):
+        healthy = build_async_observability_bundle()
+        with override_runtime_settings(
+            artifact_store_mode="sqlalchemy",
+            artifact_object_store_mode="filesystem",
+            artifact_object_store_root=object_root,
+            database_url=database_url,
+            async_cutover_state="degraded_fallback",
+            async_queue_backend_mode="redis",
+            async_queue_redis_url="redis://localhost:6379/0",
+        ):
+            degraded = build_async_observability_bundle()
+        records = get_artifact_repository().list_artifacts()
+
+    healthy_artifact = healthy.summary.incident_evidence_items[0].artifact_refs[0]
+    degraded_artifact = degraded.summary.incident_evidence_items[0].artifact_refs[0]
+    superseded = next(
+        record for record in records if record.artifact_id == healthy_artifact.artifact_id
+    )
+
+    assert degraded_artifact.artifact_id != healthy_artifact.artifact_id
+    assert len(records) == 2
+    assert superseded.lifecycle_status == ArtifactLifecycleStatus.SUPERSEDED
+    assert superseded.superseded_by_artifact_id == degraded_artifact.artifact_id
+
+
+def test_observability_bundle_persists_sql_backed_incident_artifact(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'observability-artifacts.db'}"
+    object_root = str(tmp_path / "artifact-payloads")
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        artifact_store_mode="sqlalchemy",
+        artifact_object_store_mode="filesystem",
+        artifact_object_store_root=object_root,
+        database_url=database_url,
+    ):
+        bundle = build_evaluation_observability_bundle()
+        artifact = bundle.summary.incident_evidence_items[0].artifact_refs[0]
+        object_key = artifact.storage_reference.split("://", 1)[1]
+        reset_artifact_store_cache()
+        persisted = get_artifact_repository().get_artifact(artifact_id=artifact.artifact_id)
+        stored_object = get_artifact_object_store().get_object(object_key=object_key)
+
+    assert persisted is not None
+    assert stored_object is not None
+    assert persisted.domain == "observability"

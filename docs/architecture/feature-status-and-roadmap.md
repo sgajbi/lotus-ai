@@ -149,7 +149,8 @@ Current state:
 2. `/platform/observability/runtime-status`, `/platform/observability/activation-readiness`, `/platform/observability/runbook-readiness`, and `/platform/observability/governance-status` now provide the bounded in-service observability control-plane surface,
 3. provider, retrieval, async, evaluation, prompt, and safety incident summaries are now available through the observability API surface,
 4. bounded caller, tenant, and capability breakdowns are now available through the observability API surface,
-5. durable observability governance is now explicitly gated on SQL-backed audit and caller-policy stores rather than implied through prose.
+5. observability incident evidence now emits governed artifact descriptors for bounded per-domain incident bundles,
+6. durable observability governance is now explicitly gated on SQL-backed audit and caller-policy stores rather than implied through prose.
 
 ### Artifact Storage
 
@@ -159,7 +160,8 @@ Current state:
 2. relational metadata remains authoritative while payload bytes stay behind a bounded object-store interface,
 3. evaluation runtime case results now emit governed artifact references for runtime-generated evidence bundles,
 4. async runtime jobs now emit governed artifact references for terminal completion and failure payloads,
-5. broader consumer cutovers such as observability bundles and additional runtime domains are still roadmap work.
+5. observability incident summaries now emit governed artifact references for bounded domain incident bundles,
+6. broader consumer cutovers for additional runtime domains are still roadmap work.
 
 ### First Downstream Production Use Case
 

@@ -3,11 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.config import settings
+from app.contracts.artifacts import ArtifactDescriptor
 from app.contracts.observability import (
     DomainIncidentSummaryResponse,
+    IncidentEvidenceSummaryItem,
     ObservabilityBreakdownSupport,
     ObservabilityDomainId,
 )
+from app.services.observability_artifacts import persist_observability_incident_bundle
 from app.services.async_runtime_status import build_async_runtime_status
 from app.services.eval_status import build_evaluation_runtime_status
 from app.services.observability_shared import (
@@ -70,25 +73,27 @@ def build_provider_observability_bundle() -> ObservabilityDomainBundle:
         )
     ]
     return ObservabilityDomainBundle(
-        summary=DomainIncidentSummaryResponse(
-            service=settings.service_name,
-            version=settings.service_version,
-            domain_id=ObservabilityDomainId.PROVIDER,
-            telemetry=telemetry,
-            incident_evidence_items=incident_items,
-            linked_endpoints=[
-                "/platform/providers/operations-status",
-                "/platform/providers/governance-status",
-                "/platform/providers/runbook-readiness",
-            ],
-            summary=[
-                provider_operations.summary[0],
-                (
-                    provider_operations.blocking_reasons[0]
-                    if provider_operations.blocking_reasons
-                    else "No current provider blocking reason is active."
-                ),
-            ],
+        summary=_attach_incident_bundle_artifact(
+            DomainIncidentSummaryResponse(
+                service=settings.service_name,
+                version=settings.service_version,
+                domain_id=ObservabilityDomainId.PROVIDER,
+                telemetry=telemetry,
+                incident_evidence_items=incident_items,
+                linked_endpoints=[
+                    "/platform/providers/operations-status",
+                    "/platform/providers/governance-status",
+                    "/platform/providers/runbook-readiness",
+                ],
+                summary=[
+                    provider_operations.summary[0],
+                    (
+                        provider_operations.blocking_reasons[0]
+                        if provider_operations.blocking_reasons
+                        else "No current provider blocking reason is active."
+                    ),
+                ],
+            )
         )
     )
 
@@ -136,25 +141,27 @@ def build_retrieval_observability_bundle() -> ObservabilityDomainBundle:
         )
     ]
     return ObservabilityDomainBundle(
-        summary=DomainIncidentSummaryResponse(
-            service=settings.service_name,
-            version=settings.service_version,
-            domain_id=ObservabilityDomainId.RETRIEVAL,
-            telemetry=telemetry,
-            incident_evidence_items=incident_items,
-            linked_endpoints=[
-                "/platform/retrieval/execution-status",
-                "/platform/retrieval/activation-readiness",
-                "/platform/retrieval/governance-status",
-            ],
-            summary=[
-                retrieval_execution.message,
-                (
-                    activation_readiness.blocking_findings[0]
-                    if activation_readiness.blocking_findings
-                    else "Retrieval activation currently has no incident blocker."
-                ),
-            ],
+        summary=_attach_incident_bundle_artifact(
+            DomainIncidentSummaryResponse(
+                service=settings.service_name,
+                version=settings.service_version,
+                domain_id=ObservabilityDomainId.RETRIEVAL,
+                telemetry=telemetry,
+                incident_evidence_items=incident_items,
+                linked_endpoints=[
+                    "/platform/retrieval/execution-status",
+                    "/platform/retrieval/activation-readiness",
+                    "/platform/retrieval/governance-status",
+                ],
+                summary=[
+                    retrieval_execution.message,
+                    (
+                        activation_readiness.blocking_findings[0]
+                        if activation_readiness.blocking_findings
+                        else "Retrieval activation currently has no incident blocker."
+                    ),
+                ],
+            )
         )
     )
 
@@ -192,25 +199,27 @@ def build_async_observability_bundle() -> ObservabilityDomainBundle:
         )
     ]
     return ObservabilityDomainBundle(
-        summary=DomainIncidentSummaryResponse(
-            service=settings.service_name,
-            version=settings.service_version,
-            domain_id=ObservabilityDomainId.ASYNC,
-            telemetry=telemetry,
-            incident_evidence_items=incident_items,
-            linked_endpoints=[
-                "/platform/async/runtime-status",
-                "/platform/async/activation-readiness",
-                "/platform/async/governance-status",
-            ],
-            summary=[
-                async_runtime.message,
-                (
-                    async_runtime.degraded_findings[0]
-                    if async_runtime.degraded_findings
-                    else "Async runtime currently exposes no active degraded finding."
-                ),
-            ],
+        summary=_attach_incident_bundle_artifact(
+            DomainIncidentSummaryResponse(
+                service=settings.service_name,
+                version=settings.service_version,
+                domain_id=ObservabilityDomainId.ASYNC,
+                telemetry=telemetry,
+                incident_evidence_items=incident_items,
+                linked_endpoints=[
+                    "/platform/async/runtime-status",
+                    "/platform/async/activation-readiness",
+                    "/platform/async/governance-status",
+                ],
+                summary=[
+                    async_runtime.message,
+                    (
+                        async_runtime.degraded_findings[0]
+                        if async_runtime.degraded_findings
+                        else "Async runtime currently exposes no active degraded finding."
+                    ),
+                ],
+            )
         )
     )
 
@@ -256,23 +265,25 @@ def build_evaluation_observability_bundle() -> ObservabilityDomainBundle:
         )
     ]
     return ObservabilityDomainBundle(
-        summary=DomainIncidentSummaryResponse(
-            service=settings.service_name,
-            version=settings.service_version,
-            domain_id=ObservabilityDomainId.EVALUATION,
-            telemetry=telemetry,
-            incident_evidence_items=incident_items,
-            linked_endpoints=[
-                "/platform/evals/runtime-status",
-                "/platform/evals/runs",
-                "/platform/evals/catalog",
-            ],
-            summary=[
-                evaluation_runtime.message,
-                degraded_findings[0]
-                if degraded_findings
-                else "Evaluation approval posture currently exposes no active incident finding.",
-            ],
+        summary=_attach_incident_bundle_artifact(
+            DomainIncidentSummaryResponse(
+                service=settings.service_name,
+                version=settings.service_version,
+                domain_id=ObservabilityDomainId.EVALUATION,
+                telemetry=telemetry,
+                incident_evidence_items=incident_items,
+                linked_endpoints=[
+                    "/platform/evals/runtime-status",
+                    "/platform/evals/runs",
+                    "/platform/evals/catalog",
+                ],
+                summary=[
+                    evaluation_runtime.message,
+                    degraded_findings[0]
+                    if degraded_findings
+                    else "Evaluation approval posture currently exposes no active incident finding.",
+                ],
+            )
         )
     )
 
@@ -319,23 +330,25 @@ def build_prompt_observability_bundle() -> ObservabilityDomainBundle:
         )
     ]
     return ObservabilityDomainBundle(
-        summary=DomainIncidentSummaryResponse(
-            service=settings.service_name,
-            version=settings.service_version,
-            domain_id=ObservabilityDomainId.PROMPT,
-            telemetry=telemetry,
-            incident_evidence_items=incident_items,
-            linked_endpoints=[
-                "/platform/prompts/runtime-status",
-                "/platform/prompts/control-history",
-                "/platform/prompts/governance-status",
-            ],
-            summary=[
-                prompt_governance.governance_summary[0],
-                degraded_findings[0]
-                if degraded_findings
-                else "Prompt rollout currently exposes no active incident blocker.",
-            ],
+        summary=_attach_incident_bundle_artifact(
+            DomainIncidentSummaryResponse(
+                service=settings.service_name,
+                version=settings.service_version,
+                domain_id=ObservabilityDomainId.PROMPT,
+                telemetry=telemetry,
+                incident_evidence_items=incident_items,
+                linked_endpoints=[
+                    "/platform/prompts/runtime-status",
+                    "/platform/prompts/control-history",
+                    "/platform/prompts/governance-status",
+                ],
+                summary=[
+                    prompt_governance.governance_summary[0],
+                    degraded_findings[0]
+                    if degraded_findings
+                    else "Prompt rollout currently exposes no active incident blocker.",
+                ],
+            )
         )
     )
 
@@ -381,21 +394,23 @@ def build_safety_observability_bundle() -> ObservabilityDomainBundle:
         )
     ]
     return ObservabilityDomainBundle(
-        summary=DomainIncidentSummaryResponse(
-            service=settings.service_name,
-            version=settings.service_version,
-            domain_id=ObservabilityDomainId.SAFETY,
-            telemetry=telemetry,
-            incident_evidence_items=incident_items,
-            linked_endpoints=[
-                "/platform/safety/runtime-status",
-                "/platform/safety/evidence-readiness",
-                "/platform/safety/governance-status",
-            ],
-            summary=[
-                safety_governance.governance_summary[0],
-                safety_governance.governance_summary[2],
-            ],
+        summary=_attach_incident_bundle_artifact(
+            DomainIncidentSummaryResponse(
+                service=settings.service_name,
+                version=settings.service_version,
+                domain_id=ObservabilityDomainId.SAFETY,
+                telemetry=telemetry,
+                incident_evidence_items=incident_items,
+                linked_endpoints=[
+                    "/platform/safety/runtime-status",
+                    "/platform/safety/evidence-readiness",
+                    "/platform/safety/governance-status",
+                ],
+                summary=[
+                    safety_governance.governance_summary[0],
+                    safety_governance.governance_summary[2],
+                ],
+            )
         )
     )
 
@@ -409,3 +424,20 @@ def build_current_observability_bundles() -> list[ObservabilityDomainBundle]:
         build_prompt_observability_bundle(),
         build_safety_observability_bundle(),
     ]
+
+
+def _attach_incident_bundle_artifact(
+    summary: DomainIncidentSummaryResponse,
+) -> DomainIncidentSummaryResponse:
+    artifact = persist_observability_incident_bundle(summary=summary)
+    items = [
+        _with_artifact_ref(item=item, artifact=artifact)
+        for item in summary.incident_evidence_items
+    ]
+    return summary.model_copy(update={"incident_evidence_items": items})
+
+
+def _with_artifact_ref(
+    *, item: IncidentEvidenceSummaryItem, artifact: ArtifactDescriptor
+) -> IncidentEvidenceSummaryItem:
+    return item.model_copy(update={"artifact_refs": [artifact]})

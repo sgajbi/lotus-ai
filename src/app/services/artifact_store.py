@@ -52,7 +52,11 @@ def get_artifact_object_store() -> ArtifactObjectStore:
 
 
 def reset_artifact_store_cache() -> None:
+    global _memory_artifact_repository
+    global _memory_artifact_object_store
     global _sqlalchemy_artifact_repository
     global _filesystem_artifact_object_store
+    _memory_artifact_repository = InMemoryArtifactRepository()
+    _memory_artifact_object_store = InMemoryArtifactObjectStore()
     _sqlalchemy_artifact_repository = None
     _filesystem_artifact_object_store = None

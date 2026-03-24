@@ -157,6 +157,7 @@ The current execution posture is:
 - duplicate runtime-backed retrieval-index submissions are now rejected explicitly with the owning async job id, so duplicate client retries do not silently create ambiguous execution truth,
 - async job catalog and detail views now merge durable runtime-backed submissions with staged artifact records so current and future async posture remain distinguishable,
 - async runtime-backed job detail now exposes attempt history, active lease state, and governed terminal artifact references so claim, retry, recovery, and terminal-output review posture are inspectable instead of implicit,
+- observability incident summaries now persist bounded domain incident bundles through the governed artifact backbone and expose only artifact descriptors on the API surface,
 - async runtime now also exposes a governed control-plane history and action surface for retry, replay, requeue, and manual abandon, so operator recovery is explicit and reviewable instead of being implied by table edits,
 - async job artifacts can now reference related evaluation run artifacts for cross-seam traceability,
 - async runtime now also has an explicit repository and store seam plus migration-managed durable schema for jobs, attempts, and worker leases, even though public async execution behavior remains foundation-phase only for now,

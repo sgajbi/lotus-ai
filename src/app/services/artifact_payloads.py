@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+import hashlib
 from uuid import uuid4
 
 from app.config import settings
@@ -58,6 +60,53 @@ def persist_json_artifact(
     return ArtifactDescriptor.model_validate(record.__dict__)
 
 
+def persist_or_reuse_json_artifact(
+    *,
+    domain: str,
+    artifact_type: str,
+    source_object_kind: str,
+    source_object_id: str,
+    created_at: str,
+    created_by: str,
+    payload_json: bytes,
+    lifecycle_status: ArtifactLifecycleStatus = ArtifactLifecycleStatus.RUNTIME_GENERATED,
+    retention_posture: str = "active",
+) -> ArtifactDescriptor:
+    existing = _find_latest_active_artifact(
+        domain=domain,
+        artifact_type=artifact_type,
+        source_object_kind=source_object_kind,
+        source_object_id=source_object_id,
+    )
+    payload_checksum = hashlib.sha256(payload_json).hexdigest()
+    if existing is not None:
+        object_key = _parse_storage_reference(existing.storage_reference)
+        stored_object = get_artifact_object_store().get_object(object_key=object_key)
+        if stored_object is not None and stored_object.checksum_sha256 == payload_checksum:
+            return ArtifactDescriptor.model_validate(existing.__dict__)
+
+    created = persist_json_artifact(
+        domain=domain,
+        artifact_type=artifact_type,
+        source_object_kind=source_object_kind,
+        source_object_id=source_object_id,
+        created_at=created_at,
+        created_by=created_by,
+        payload_json=payload_json,
+        lifecycle_status=lifecycle_status,
+        retention_posture=retention_posture,
+        lineage_parent_artifact_id=existing.artifact_id if existing is not None else None,
+    )
+    if existing is not None:
+        superseded = replace(
+            existing,
+            lifecycle_status=ArtifactLifecycleStatus.SUPERSEDED,
+            superseded_by_artifact_id=created.artifact_id,
+        )
+        get_artifact_repository().save_artifact(superseded)
+    return created
+
+
 def load_artifact_descriptors(*, artifact_ids: list[str]) -> list[ArtifactDescriptor]:
     repository = get_artifact_repository()
     descriptors: list[ArtifactDescriptor] = []
@@ -73,3 +122,29 @@ def _resolve_storage_backend(stored_object: StoredArtifactObject) -> ArtifactSto
     if settings.artifact_object_store_mode == "memory":
         return ArtifactStorageBackend.MEMORY
     return ArtifactStorageBackend.FILESYSTEM
+
+
+def _find_latest_active_artifact(
+    *,
+    domain: str,
+    artifact_type: str,
+    source_object_kind: str,
+    source_object_id: str,
+) -> ArtifactRecord | None:
+    matches = [
+        artifact
+        for artifact in get_artifact_repository().list_artifacts()
+        if artifact.domain == domain
+        and artifact.artifact_type == artifact_type
+        and artifact.source_object_kind == source_object_kind
+        and artifact.source_object_id == source_object_id
+        and artifact.superseded_by_artifact_id is None
+    ]
+    if not matches:
+        return None
+    return matches[-1]
+
+
+def _parse_storage_reference(storage_reference: str) -> str:
+    _, _, object_key = storage_reference.partition("://")
+    return object_key

@@ -177,6 +177,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     domain_incident_schema = spec["components"]["schemas"]["DomainIncidentSummaryResponse"]
     assert "telemetry" in domain_incident_schema["properties"]
     assert "incident_evidence_items" in domain_incident_schema["properties"]
+    incident_item_schema = spec["components"]["schemas"]["IncidentEvidenceSummaryItem"]
+    assert "artifact_refs" in incident_item_schema["properties"]
     breakdown_schema = spec["components"]["schemas"]["ObservabilityBreakdownSummaryResponse"]
     assert "caller_apps" in breakdown_schema["properties"]
     assert "tenants" in breakdown_schema["properties"]
