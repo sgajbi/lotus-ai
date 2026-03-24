@@ -206,7 +206,7 @@ def test_sqlalchemy_evaluation_runtime_repository_ensure_sqlite_directory_skips_
     SqlAlchemyEvaluationRuntimeRepository(f"sqlite:///{relative_path}")
     assert relative_path.parent.is_dir()
     monkeypatch.setattr(
-        "app.repositories.sqlalchemy_evaluation_runtime_repository.create_engine",
+        "app.repositories.sqlalchemy_repository_base.create_engine",
         lambda database_url, future=True: object(),
     )
     SqlAlchemyEvaluationRuntimeRepository("postgresql://user:pass@localhost/lotus")

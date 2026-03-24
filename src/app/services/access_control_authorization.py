@@ -79,17 +79,18 @@ def authorize_request(
                 tenant_id=tenant_id,
                 summary=(f"Caller '{caller_app}' is not authorized to execute task '{task_id}'."),
             )
-        source_decision = _evaluate_retrieval_sources(
-            caller_app=caller_app,
-            capability_type=capability_type,
-            task_id=task_id,
-            requested_source_ids=requested_source_ids,
-            allowed_source_ids=policy.allowed_retrieval_source_ids,
-            tenant_id=tenant_id,
-            tenant_policy_mode=policy.tenant_policy_mode,
-        )
-        if source_decision is not None:
-            return source_decision
+        if task_id in {"knowledge_search.v1", "knowledge_answer.v1"} or requested_source_ids:
+            source_decision = _evaluate_retrieval_sources(
+                caller_app=caller_app,
+                capability_type=capability_type,
+                task_id=task_id,
+                requested_source_ids=requested_source_ids,
+                allowed_source_ids=policy.allowed_retrieval_source_ids,
+                tenant_id=tenant_id,
+                tenant_policy_mode=policy.tenant_policy_mode,
+            )
+            if source_decision is not None:
+                return source_decision
         effective_source_ids = (
             requested_source_ids or list(policy.allowed_retrieval_source_ids)
             if task_id in {"knowledge_search.v1", "knowledge_answer.v1"}

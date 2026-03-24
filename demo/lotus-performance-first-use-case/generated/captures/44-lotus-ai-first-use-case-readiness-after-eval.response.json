@@ -1,0 +1,89 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "use_case_id":  "lotus_performance.analytics_commentary.v1",
+    "downstream_app":  "lotus-performance",
+    "readiness_ready":  true,
+    "required_item_count":  8,
+    "completed_required_item_count":  8,
+    "approval_gate":  {
+                          "domain_id":  "first_use_case_onboarding",
+                          "domain_label":  "First Use-Case Onboarding",
+                          "approval_ready":  true,
+                          "evidence_state":  "RUNTIME_PASS",
+                          "required_fixture_count":  1,
+                          "runtime_backed_fixture_count":  1,
+                          "latest_runtime_run_id":  "evalrun_a5e159de5fb6",
+                          "latest_runtime_recorded_at":  "2026-03-24T10:25:36.955699Z",
+                          "latest_historical_baseline_run_id":  "foundation_eval_2026_03_22_001",
+                          "fixture_summaries":  [
+                                                    {
+                                                        "fixture_id":  "lotus_performance_first_use_case_examples",
+                                                        "latest_runtime_run_id":  "evalrun_a5e159de5fb6",
+                                                        "latest_runtime_recorded_at":  "2026-03-24T10:25:36.955699Z",
+                                                        "latest_runtime_status":  "COMPLETED",
+                                                        "latest_runtime_verdict":  "PASS",
+                                                        "evidence_state":  "RUNTIME_PASS",
+                                                        "notes":  "Latest runtime-backed evaluation run \u0027evalrun_a5e159de5fb6\u0027 passed under the current fixture manifest."
+                                                    }
+                                                ],
+                          "notes":  [
+                                        "First Use-Case Onboarding approval posture is currently backed by passing runtime-produced evaluation evidence.",
+                                        "Current runtime-backed fixture coverage satisfies all governed approval fixture families."
+                                    ]
+                      },
+    "items":  [
+                  {
+                      "evidence_id":  "lotus_performance_caller_policy",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "Caller policy explicitly recognizes lotus-performance for explain.v1, requires bounded tenant scope, and keeps live-provider execution disabled for this first use case."
+                  },
+                  {
+                      "evidence_id":  "lotus_performance_eval_fixture_pack",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "The lotus-performance first-use-case evaluation fixture family is staged in the governed evaluation manifest."
+                  },
+                  {
+                      "evidence_id":  "lotus_performance_runtime_eval_evidence",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "Runtime-backed lotus-performance first-use-case evaluation runs currently satisfy the governed approval gate."
+                  },
+                  {
+                      "evidence_id":  "lotus_performance_explanation_safety_posture",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "EXPLANATION_ONLY outputs still run through the governed safety layer with minimization-required posture for the first use case."
+                  },
+                  {
+                      "evidence_id":  "lotus_performance_durable_audit_review",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "Limited rollout review now requires SQL-backed audit storage so lotus-performance executions remain supportable and restart-safe."
+                  },
+                  {
+                      "evidence_id":  "lotus_performance_access_control_governance",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "Access-control governance is ready, so lotus-performance caller identity and tenant posture remain durable and reviewable."
+                  },
+                  {
+                      "evidence_id":  "lotus_performance_observability_review_path",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "Observability governance is ready, so bounded incident review and caller-aware breakdowns can support lotus-performance rollout review."
+                  },
+                  {
+                      "evidence_id":  "lotus_performance_artifact_review_path",
+                      "status":  "READY",
+                      "required_for_activation":  true,
+                      "notes":  "The artifact backbone now exposes bounded descriptor-first incident bundles for observability review of the first use case."
+                  }
+              ],
+    "status_summary":  [
+                           "Lotus-performance first-use-case readiness is currently backed by runtime-produced evaluation evidence, bounded caller identity, explanation-only safety posture, and durable support review surfaces.",
+                           "This readiness surface is limited to bounded onboarding and limited-rollout evidence for lotus-performance analytics commentary; it does not imply broader downstream rollout by itself."
+                       ]
+}

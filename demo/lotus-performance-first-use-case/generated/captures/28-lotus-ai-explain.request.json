@@ -1,0 +1,37 @@
+{
+    "task_id":  "explain.v1",
+    "input_mode":  "STRUCTURED_CONTEXT",
+    "caller":  {
+                   "caller_app":  "lotus-performance",
+                   "correlation_id":  "demo-lotus-performance-001",
+                   "requested_by":  "demo.operator@lotus",
+                   "tenant_id":  "tenant-sg-001"
+               },
+    "context":  {
+                    "summary":  "Explain why portfolio YTD performance trailed benchmark in a bounded analytics commentary flow.",
+                    "payload":  {
+                                    "analysis_scope":  "benchmark_relative_performance_ytd",
+                                    "period_window":  {
+                                                          "current_period":  "2025-01-01 to 2025-01-02",
+                                                          "comparison_period":  "portfolio_vs_benchmark_same_window"
+                                                      },
+                                    "metric_deltas":  [
+                                                          {
+                                                              "metric_id":  "relative_performance_bps",
+                                                              "delta_bps":  -50.5,
+                                                              "portfolio_return_pct":  2.01,
+                                                              "benchmark_return_pct":  2.515
+                                                          }
+                                                      ],
+                                    "material_findings":  [
+                                                              "Portfolio YTD return was 2.01% versus benchmark return of 2.515%.",
+                                                              "Relative performance over the same window was -0.505 percentage points.",
+                                                              "The gap emerged on 2025-01-02 after the portfolio posted 1.0% while the benchmark posted 1.5%."
+                                                          ]
+                                },
+                    "source_refs":  [
+                                        "lotus-performance:calculation:2b42271a-0465-4c03-8379-2ac8d7dab5fb"
+                                    ]
+                },
+    "expected_output_label":  "EXPLANATION_ONLY"
+}

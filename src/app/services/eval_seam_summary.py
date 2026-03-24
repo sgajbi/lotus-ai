@@ -9,6 +9,7 @@ SEAM_FIXTURE_MAP: dict[str, list[str]] = {
         "task_capability_contracts",
         "explanation_task_examples",
         "summarization_task_examples",
+        "lotus_performance_first_use_case_examples",
     ],
     "prompt_rollout": [
         "prompt_promotion_examples",

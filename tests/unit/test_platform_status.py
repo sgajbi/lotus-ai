@@ -62,7 +62,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.access_control_runtime.enforcement_state.value == "FULLY_ENFORCED"
     assert status.access_control_runtime.data_plane_enforced is True
     assert status.access_control_runtime.control_plane_enforced is True
-    assert status.access_control_runtime.policy_count >= 4
+    assert status.access_control_runtime.policy_count >= 5
     assert status.access_control_runtime.tenant_isolation_active is True
     assert status.access_control_governance.governance_ready is False
     assert status.access_control_governance.activation_readiness.activation_ready is False
@@ -99,13 +99,23 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.prompt_runtime.candidate_prompt_count == 0
     assert any(state.task_id == "explain.v1" for state in status.prompt_runtime.rollout_states)
     assert status.evaluation_runtime.manifest_version == "foundation.v1"
-    assert status.evaluation_runtime.approval_gates[0].domain_id == "prompt_rollout"
-    assert status.evaluation_runtime.approval_gates[1].domain_id == "retrieval_execution"
-    assert status.evaluation_runtime.approval_gates[2].domain_id == "provider_execution"
-    assert status.evaluation_runtime.approval_gates[3].domain_id == "safety_enforcement"
+    assert status.evaluation_runtime.approval_gates[0].domain_id == "first_use_case_onboarding"
+    assert status.evaluation_runtime.approval_gates[1].domain_id == "prompt_rollout"
+    assert status.evaluation_runtime.approval_gates[2].domain_id == "retrieval_execution"
+    assert status.evaluation_runtime.approval_gates[3].domain_id == "provider_execution"
+    assert status.evaluation_runtime.approval_gates[4].domain_id == "safety_enforcement"
     assert status.task_runtime.enabled_task_count >= 7
     assert status.task_runtime.retrieval_backed_task_count == 2
     assert status.task_runtime.tasks[0].task_id == "explain.v1"
+    assert status.first_use_case.downstream_app == "lotus-performance"
+    assert status.first_use_case.task_id == "explain.v1"
+    assert status.first_use_case.contract_hardened is True
+    assert status.first_use_case_governance.rollout_stage.value == "PRE_PROD_VALIDATION"
+    assert status.first_use_case_governance.operational_posture.value == "LIMITED_ROLLOUT_BLOCKED"
+    assert status.first_use_case_governance.active_production_ready is False
+    assert status.first_use_case_governance.governance_ready is False
+    assert status.first_use_case_governance.readiness.readiness_ready is False
+    assert status.first_use_case_governance.runbook_readiness.runbook_ready is True
     assert status.safety_runtime.runtime_redaction_active is False
     assert status.safety_governance.governance_ready is False
     assert status.safety_governance.blocking_area_count == 3

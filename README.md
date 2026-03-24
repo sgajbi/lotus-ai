@@ -12,13 +12,16 @@ If you are new to the repo, read these first:
 2. [Feature Status and Roadmap](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/feature-status-and-roadmap.md)
 3. [Phased Roadmap](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/phased-roadmap.md)
 4. [RFC Index](C:/Users/Sandeep/projects/lotus-ai/docs/rfcs/README.md)
+5. [lotus-performance First Use-Case Contract](C:/Users/Sandeep/projects/lotus-ai/docs/guides/lotus-performance-first-use-case.md)
+6. [lotus-performance First Use-Case Demo](C:/Users/Sandeep/projects/lotus-ai/demo/lotus-performance-first-use-case/README.md)
 
 If you want the shortest summary:
 
 1. RFC-0001 through RFC-0013 are implemented,
 2. bounded task execution, retrieval, safety, prompt rollout, async workers, runtime-backed evals, caller access control, and bounded observability are real,
 3. artifact storage now has a governed metadata and payload-store foundation, with eval, async, and observability artifact cutovers plus explicit lifecycle and governance surfaces,
-4. embeddings expansion, document ingestion, deployment split, resilience hardening, and first-use-case onboarding are still roadmap items.
+4. embeddings expansion, document ingestion, deployment split, and resilience hardening are still roadmap items.
+5. first-use-case onboarding is implemented with a bounded `lotus-performance` contract, limited-rollout readiness, runbook, governance, reusable onboarding-template surfaces, and a captured end-to-end demo bundle, while active-production rollout remains explicitly deferred.
 
 ## Current Phase
 

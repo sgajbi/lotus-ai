@@ -32,6 +32,7 @@ _PROMPT_APPROVAL_FIXTURE_IDS = (
     "prompt_promotion_examples",
     "prompt_rollback_examples",
 )
+_FIRST_USE_CASE_APPROVAL_FIXTURE_IDS = ("lotus_performance_first_use_case_examples",)
 
 
 @dataclass(frozen=True)
@@ -71,6 +72,14 @@ def build_prompt_approval_gate_summary() -> EvaluationApprovalGateSummaryDescrip
         domain_id="prompt_rollout",
         domain_label="Prompt Rollout",
         required_fixture_ids=_PROMPT_APPROVAL_FIXTURE_IDS,
+    )
+
+
+def build_first_use_case_approval_gate_summary() -> EvaluationApprovalGateSummaryDescriptor:
+    return _build_approval_gate_summary(
+        domain_id="first_use_case_onboarding",
+        domain_label="First Use-Case Onboarding",
+        required_fixture_ids=_FIRST_USE_CASE_APPROVAL_FIXTURE_IDS,
     )
 
 

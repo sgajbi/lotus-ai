@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, delete, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import delete, select
 
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
@@ -25,14 +24,14 @@ from app.repositories.async_runtime_repository import (
     AsyncRuntimeLeaseRecord,
     AsyncRuntimeRepository,
 )
+from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
 
 
-class SqlAlchemyAsyncRuntimeRepository(AsyncRuntimeRepository):
+class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRepository):
     def __init__(self, database_url: str) -> None:
         self._database_url = database_url
         self._ensure_sqlite_parent_directory()
-        self._engine = create_engine(database_url, future=True)
-        self._session_factory = sessionmaker(bind=self._engine, autoflush=False, future=True)
+        self._configure_sqlalchemy(database_url)
 
     def list_jobs(self) -> list[AsyncRuntimeJobRecord]:
         with self._session_factory() as session:

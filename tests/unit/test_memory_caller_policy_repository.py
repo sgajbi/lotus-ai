@@ -6,9 +6,10 @@ def test_memory_caller_policy_repository_lists_seeded_policies() -> None:
 
     policies = repository.list_policies()
 
-    assert len(policies) >= 4
+    assert len(policies) >= 5
     assert policies[0].caller_app == "lotus-advise"
     assert any(policy.caller_app == "lotus-platform" for policy in policies)
+    assert any(policy.caller_app == "lotus-performance" for policy in policies)
 
 
 def test_memory_caller_policy_repository_returns_policy_by_caller_app() -> None:

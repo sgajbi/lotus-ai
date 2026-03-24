@@ -1,0 +1,65 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "delivery_phase":  "foundation",
+    "governance_ready":  false,
+    "activation_readiness":  {
+                                 "service":  "lotus-ai",
+                                 "version":  "0.1.0",
+                                 "delivery_phase":  "foundation",
+                                 "cutover_state":  "in_process_only",
+                                 "activation_ready":  false,
+                                 "queue_backend":  "none",
+                                 "worker_execution":  "in_process_stub",
+                                 "queue_mode":  "DISABLED",
+                                 "worker_mode":  "IN_PROCESS_ONLY",
+                                 "supported_job_type_count":  3,
+                                 "blocking_findings":  [
+                                                           "Dedicated queue-backed worker execution is not the active primary path yet; the current posture is still limited to durable in-process execution or queue-delivery shadow mode.",
+                                                           "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only."
+                                                       ],
+                                 "activation_path":  [
+                                                         "Promote the Redis-backed managed queue from shadow delivery to the primary dedicated-worker path without changing the durable async state model.",
+                                                         "Enable broader async job types through reviewed rollout slices with observability, safety, replay, and supportability gates."
+                                                     ]
+                             },
+    "runbook_readiness":  {
+                              "service":  "lotus-ai",
+                              "version":  "0.1.0",
+                              "delivery_phase":  "foundation",
+                              "runbook_ready":  false,
+                              "required_item_count":  4,
+                              "completed_required_item_count":  3,
+                              "items":  [
+                                            {
+                                                "runbook_id":  "async_operational_runbook",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "The service runbook now documents dedicated worker startup, queue-backed cutover, drain mode, degraded fallback review, and rollback between governed cutover states."
+                                            },
+                                            {
+                                                "runbook_id":  "async_oncall_and_escalation",
+                                                "status":  "NOT_READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "On-call ownership, escalation flow, and incident triage playbooks for worker execution must be defined before activation."
+                                            },
+                                            {
+                                                "runbook_id":  "async_capacity_and_replay_procedures",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Replay, requeue, abandon, lease-expiry recovery, queue backlog review, queue outage response, and worker drain procedures are now documented for the queue-backed worker path."
+                                            },
+                                            {
+                                                "runbook_id":  "async_observability_incident_views",
+                                                "status":  "READY",
+                                                "required_for_activation":  true,
+                                                "notes":  "Bounded async observability and incident-evidence summaries are now exposed through `/platform/observability/async-summary` and `/platform/observability/incident-summary`; external dashboards remain deployment-specific and are not an RFC-0013 activation gate."
+                                            }
+                                        ]
+                          },
+    "blocking_area_count":  2,
+    "governance_summary":  [
+                               "Async technical activation remains partially blocked in foundation phase: durable submission, worker claim, lease recovery, retrieval-indexing execution, and evaluation execution are active for a narrow allowlist, but dedicated worker fleet rollout and broader job enablement are still gated.",
+                               "Async technical rollout is now converged on the dedicated-worker cutover model, but governance remains blocked until named on-call ownership is approved."
+                           ]
+}

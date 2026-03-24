@@ -11,8 +11,9 @@ def test_sqlalchemy_caller_policy_repository_lists_seeded_policies(tmp_path: Pat
     repository = SqlAlchemyCallerPolicyRepository(database_url)
     policies = repository.list_policies()
 
-    assert len(policies) >= 4
+    assert len(policies) >= 5
     assert any(policy.caller_app == "lotus-platform" for policy in policies)
+    assert any(policy.caller_app == "lotus-performance" for policy in policies)
 
 
 def test_sqlalchemy_caller_policy_repository_survives_reopen(tmp_path: Path) -> None:
@@ -23,11 +24,14 @@ def test_sqlalchemy_caller_policy_repository_survives_reopen(tmp_path: Path) -> 
     first_policy = first_repository.get_policy("lotus-manage")
     second_repository = SqlAlchemyCallerPolicyRepository(database_url)
     second_policy = second_repository.get_policy("lotus-manage")
+    lotus_performance_policy = second_repository.get_policy("lotus-performance")
 
     assert first_policy is not None
     assert second_policy is not None
     assert first_policy.allowed_task_ids == second_policy.allowed_task_ids
     assert second_policy.restricted_tenant_ids == ["tenant-sg-001"]
+    assert lotus_performance_policy is not None
+    assert lotus_performance_policy.allowed_task_ids == ["explain.v1"]
 
 
 def test_sqlalchemy_caller_policy_repository_returns_none_for_unknown_caller(

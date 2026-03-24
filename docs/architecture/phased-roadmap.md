@@ -91,27 +91,28 @@ Delivery outcomes:
 
 Preferred first integration:
 
-1. `lotus-manage` explanation of rebalance run outcomes.
+1. `lotus-performance` commentary over structured performance deltas and material changes.
 
 Why:
 
 1. high value,
 2. low execution risk,
-3. clear structured inputs,
-4. deterministic domain system remains in control.
+3. clear structured analytics inputs already exist in the downstream domain,
+4. the deterministic analytics system remains in control while `lotus-ai` stays explanation-oriented.
 
 Delivery outcomes:
 
 1. One real Lotus app gets business value from `lotus-ai`.
 2. The integration pattern becomes the template for other apps.
+3. Later downstream teams can start from one bounded onboarding checklist and approval-criteria template instead of reconstructing rollout requirements from scratch.
 
 ## Phase 6: Expansion Across Lotus Apps
 
 Likely next adopters:
 
-1. `lotus-advise` for workflow summaries,
-2. `lotus-risk` for risk explanations,
-3. `lotus-performance` for analytics commentary,
+1. `lotus-manage` for rebalance and blocker explanations,
+2. `lotus-advise` for workflow summaries,
+3. `lotus-risk` for risk explanations,
 4. `lotus-core` for supportability triage.
 
 ## Phase 7: Async Runs and Controlled Tool Use

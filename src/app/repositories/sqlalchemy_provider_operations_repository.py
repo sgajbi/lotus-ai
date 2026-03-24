@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import sessionmaker
 
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
@@ -30,14 +29,16 @@ from app.repositories.provider_operations_repository import (
     ProviderOperationsRepository,
     ProviderQuotaStateRecord,
 )
+from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
 
 
-class SqlAlchemyProviderOperationsRepository(ProviderOperationsRepository):
+class SqlAlchemyProviderOperationsRepository(
+    SqlAlchemyRepositoryBase, ProviderOperationsRepository
+):
     def __init__(self, database_url: str) -> None:
         self._database_url = database_url
         self._ensure_sqlite_parent_directory()
-        self._engine = create_engine(database_url, future=True)
-        self._session_factory = sessionmaker(bind=self._engine, autoflush=False, future=True)
+        self._configure_sqlalchemy(database_url)
 
     def list_quota_states(self) -> list[ProviderQuotaStateRecord]:
         with self._session_factory() as session:

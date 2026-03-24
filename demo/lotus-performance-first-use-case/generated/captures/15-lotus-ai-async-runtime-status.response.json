@@ -1,0 +1,102 @@
+{
+    "service":  "lotus-ai",
+    "version":  "0.1.0",
+    "delivery_phase":  "foundation",
+    "cutover_state":  "in_process_only",
+    "queue_mode":  "DISABLED",
+    "worker_mode":  "IN_PROCESS_ONLY",
+    "queue_backend":  "none",
+    "supported_queue_backends":  [
+                                     {
+                                         "backend_id":  "none",
+                                         "enabled":  true,
+                                         "backend_class":  "NO_QUEUE",
+                                         "selection_state":  "ACTIVE_DEFAULT",
+                                         "supports_durable_queue":  false,
+                                         "supports_worker_scaling":  false,
+                                         "notes":  "No managed queue delivery is active. The service database remains the authoritative async state store, and API-triggered work stays on the durable in-process worker path."
+                                     },
+                                     {
+                                         "backend_id":  "redis_queue",
+                                         "enabled":  false,
+                                         "backend_class":  "MANAGED_QUEUE",
+                                         "selection_state":  "WIRED_FUTURE_CUTOVER",
+                                         "supports_durable_queue":  true,
+                                         "supports_worker_scaling":  true,
+                                         "notes":  "Managed queue delivery path for dedicated-worker rollout. Queue messages carry durable job references only; the service database remains authoritative async truth."
+                                     },
+                                     {
+                                         "backend_id":  "kafka_orchestrated",
+                                         "enabled":  false,
+                                         "backend_class":  "EVENT_STREAM_BRIDGE",
+                                         "selection_state":  "DOCUMENTED_FUTURE_OPTION",
+                                         "supports_durable_queue":  true,
+                                         "supports_worker_scaling":  true,
+                                         "notes":  "Documented future option for event-driven orchestration where lotus-ai async work must integrate with broader platform event flows."
+                                     }
+                                 ],
+    "active_worker_execution":  "in_process_stub",
+    "supported_worker_executions":  [
+                                        {
+                                            "worker_id":  "none",
+                                            "enabled":  false,
+                                            "execution_class":  "NO_WORKER_RUNTIME",
+                                            "selection_state":  "DOCUMENTED_FOUNDATION_BASELINE",
+                                            "supports_horizontal_scaling":  false,
+                                            "supports_job_isolation":  false,
+                                            "notes":  "Historical foundation baseline before durable worker claim and lease semantics were activated."
+                                        },
+                                        {
+                                            "worker_id":  "in_process_stub",
+                                            "enabled":  true,
+                                            "execution_class":  "STUBBED_WORKER_RUNTIME",
+                                            "selection_state":  "ACTIVE_DEFAULT",
+                                            "supports_horizontal_scaling":  false,
+                                            "supports_job_isolation":  true,
+                                            "notes":  "Current durable worker posture for in-process execution. Claim, lease, heartbeat, recovery, and terminal-state transitions remain authoritative in the service database."
+                                        },
+                                        {
+                                            "worker_id":  "queue_backed_workers",
+                                            "enabled":  false,
+                                            "execution_class":  "DEDICATED_WORKER_FLEET",
+                                            "selection_state":  "WIRED_FUTURE_CUTOVER",
+                                            "supports_horizontal_scaling":  true,
+                                            "supports_job_isolation":  true,
+                                            "notes":  "Target bank-grade async execution model using dedicated worker replicas behind a governed queue backend."
+                                        }
+                                    ],
+    "active_worker_count":  0,
+    "active_worker_ids":  [
+
+                          ],
+    "enqueued_job_count":  0,
+    "recorded_job_count":  2,
+    "queue_backlog_count":  0,
+    "duplicate_delivery_count":  0,
+    "redelivery_count":  0,
+    "drain_mode_active":  false,
+    "degraded_findings":  [
+
+                          ],
+    "supported_job_types":  [
+                                {
+                                    "job_type":  "retrieval_indexing",
+                                    "enabled":  true,
+                                    "execution_path":  "durable_runtime_worker_execution",
+                                    "notes":  "Retrieval indexing now runs through durable async submission, claim, lease, and completion semantics for explicit retrieval index job targets."
+                                },
+                                {
+                                    "job_type":  "evaluation_execution",
+                                    "enabled":  true,
+                                    "execution_path":  "durable_runtime_worker_execution",
+                                    "notes":  "Evaluation execution now supports narrow runtime-backed submission, worker claim, case execution, and persisted verdict history for allowlisted fixture families."
+                                },
+                                {
+                                    "job_type":  "document_ingestion",
+                                    "enabled":  false,
+                                    "execution_path":  "future_worker_queue",
+                                    "notes":  "Large document ingestion remains a documented future async path rather than an active runtime-backed workflow."
+                                }
+                            ],
+    "message":  "Async job truth remains durable in the service database for the allowlisted job types. The current cutover state exposes whether managed queue delivery is disabled, running in shadow mode, serving a dedicated worker fleet, or operating in an explicit degraded fallback."
+}

@@ -1,0 +1,71 @@
+{
+  "fixture_family": "lotus_performance_first_use_case_examples",
+  "task_id": "explain.v1",
+  "cases": [
+    {
+      "case_id": "lotus_performance_structured_commentary_authorized",
+      "summary": "lotus-performance can execute bounded analytics commentary with explanation-only output and explicit authorization trace.",
+      "input": {
+        "task_id": "explain.v1",
+        "caller_app": "lotus-performance",
+        "tenant_id": "tenant-sg-001",
+        "analysis_scope": "quarterly_attribution_change",
+        "period_window": {
+          "current_period": "2026-Q1",
+          "comparison_period": "2025-Q4"
+        },
+        "metric_deltas": [
+          {
+            "metric_id": "portfolio_return_bps",
+            "delta_bps": 124
+          }
+        ],
+        "material_findings": [
+          "Sector allocation contributed most of the positive period-over-period change."
+        ]
+      },
+      "expected": {
+        "output_label": "EXPLANATION_ONLY",
+        "authorization_outcome": "ALLOWED",
+        "caller_app": "lotus-performance",
+        "task_id": "explain.v1",
+        "safety_disposition": "DOCUMENTED_ONLY",
+        "caller_visible_in_payload": true,
+        "stubbed": true
+      }
+    },
+    {
+      "case_id": "lotus_performance_runtime_safety_redaction",
+      "summary": "lotus-performance commentary remains explanation-only while runtime-enforced safety minimizes caller-linked payload fields.",
+      "input": {
+        "task_id": "explain.v1",
+        "caller_app": "lotus-performance",
+        "tenant_id": "tenant-sg-001",
+        "safety_mode": "runtime_enforced",
+        "analysis_scope": "tracking_error_change",
+        "period_window": {
+          "current_period": "2026-Q1",
+          "comparison_period": "2025-Q4"
+        },
+        "metric_deltas": [
+          {
+            "metric_id": "tracking_error_bps",
+            "delta_bps": -18
+          }
+        ],
+        "material_findings": [
+          "Tracking error narrowed after concentration fell in technology holdings."
+        ]
+      },
+      "expected": {
+        "output_label": "EXPLANATION_ONLY",
+        "authorization_outcome": "ALLOWED",
+        "caller_app": "lotus-performance",
+        "task_id": "explain.v1",
+        "safety_disposition": "ENFORCED_REDACTED",
+        "caller_visible_in_payload": false,
+        "stubbed": true
+      }
+    }
+  ]
+}
