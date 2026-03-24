@@ -106,10 +106,11 @@ This posture is valid for engineering validation, demos, and RFC proof:
 This posture is stronger than a basic demo, but still not production:
 
 1. API, worker, and Redis run in containerized topology,
-2. startup, migrations, and asset packaging are exercised,
-3. live provider execution may be tested,
-4. local secret files, fallback object storage, or non-production databases may still exist,
-5. governance may remain intentionally blocked.
+2. PostgreSQL-backed durable store seams are active instead of SQLite or memory-backed durable state,
+3. startup, migrations, and asset packaging are exercised,
+4. live provider execution may be tested,
+5. local secret files or fallback object storage may still exist,
+6. governance may remain intentionally blocked.
 
 ### Production-Ready
 

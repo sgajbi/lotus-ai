@@ -30,25 +30,26 @@ def build_production_baseline_runtime_status(
     startup_state = _resolve_startup_readiness_state(app_state)
     async_runtime = build_async_runtime_status()
     artifact_runtime = build_artifact_runtime_status()
+    durable_store_dependencies = {
+        "audit": get_audit_store_runtime_status(),
+        "prompt": get_prompt_store_runtime_status(),
+        "retrieval": get_retrieval_store_runtime_status(),
+        "access_control": get_access_control_store_runtime_status(),
+        "provider_operations": get_provider_operations_store_runtime_status(),
+        "async_runtime": get_async_runtime_store_runtime_status(),
+        "evaluation_runtime": get_evaluation_runtime_store_runtime_status(),
+        "artifact_metadata": get_artifact_store_runtime_status(),
+    }
 
     dependencies = [
         _classify_database_backend(),
         _classify_sql_store_group(
             "durable_sql_state",
-            [
-                get_audit_store_runtime_status(),
-                get_prompt_store_runtime_status(),
-                get_retrieval_store_runtime_status(),
-                get_access_control_store_runtime_status(),
-                get_provider_operations_store_runtime_status(),
-                get_async_runtime_store_runtime_status(),
-                get_evaluation_runtime_store_runtime_status(),
-                get_artifact_store_runtime_status(),
-            ],
+            durable_store_dependencies,
         ),
         _classify_async_queue(async_runtime.queue_backend),
         _classify_async_worker(async_runtime.worker_mode),
-        _classify_artifact_object_store(artifact_runtime.object_store_mode),
+        _classify_artifact_object_store(artifact_runtime),
         _classify_secret_posture(),
         _classify_migration_posture(startup_state.warnings),
         _classify_live_provider_rollout(),
@@ -127,7 +128,12 @@ def _resolve_startup_readiness_state(app_state: object | None) -> SimpleNamespac
 def _is_prod_shaped_local(
     dependencies: list[ProductionBaselineDependencyDescriptor],
 ) -> bool:
-    required_ids = {"async_queue_backend", "async_worker_mode"}
+    required_ids = {
+        "database_backend",
+        "durable_sql_state",
+        "async_queue_backend",
+        "async_worker_mode",
+    }
     dependency_by_id = {dependency.dependency_id: dependency for dependency in dependencies}
     return all(
         dependency_by_id[dependency_id].classification
@@ -182,23 +188,52 @@ def _classify_database_backend() -> ProductionBaselineDependencyDescriptor:
 
 
 def _classify_sql_store_group(
-    dependency_id: str, stores: list[StoreRuntimeStatusDescriptor]
+    dependency_id: str, stores: dict[str, StoreRuntimeStatusDescriptor]
 ) -> ProductionBaselineDependencyDescriptor:
-    if any(store.mode == "memory" for store in stores):
+    memory_stores = sorted(store_id for store_id, store in stores.items() if store.mode == "memory")
+    if memory_stores:
         return ProductionBaselineDependencyDescriptor(
             dependency_id=dependency_id,
             classification=ProductionDependencyClassification.FALLBACK,
             production_required=True,
             configured_mode="mixed_or_memory",
-            detail="At least one durable control-plane or runtime store is still running in memory mode, so the service remains below the production baseline.",
+            detail=(
+                "At least one durable control-plane or runtime store is still running in "
+                f"memory mode ({', '.join(memory_stores)}), so the service remains below "
+                "the production baseline."
+            ),
         )
-    if any(store.status is not RuntimeReadinessStatus.READY for store in stores):
+    unsupported_stores = sorted(
+        store_id
+        for store_id, store in stores.items()
+        if store.mode not in {"memory", "sqlalchemy"}
+    )
+    if unsupported_stores:
+        return ProductionBaselineDependencyDescriptor(
+            dependency_id=dependency_id,
+            classification=ProductionDependencyClassification.BLOCKED,
+            production_required=True,
+            configured_mode="unsupported",
+            detail=(
+                "At least one required durable store is configured through an unsupported "
+                f"backend ({', '.join(unsupported_stores)}), so the production baseline is blocked."
+            ),
+        )
+    not_ready_stores = sorted(
+        store_id
+        for store_id, store in stores.items()
+        if store.status is not RuntimeReadinessStatus.READY
+    )
+    if not_ready_stores:
         return ProductionBaselineDependencyDescriptor(
             dependency_id=dependency_id,
             classification=ProductionDependencyClassification.BLOCKED,
             production_required=True,
             configured_mode="sqlalchemy",
-            detail="At least one required SQL-backed runtime store is not ready, so the durable-state production baseline is blocked.",
+            detail=(
+                "At least one required SQL-backed runtime store is not ready "
+                f"({', '.join(not_ready_stores)}), so the durable-state production baseline is blocked."
+            ),
         )
     return ProductionBaselineDependencyDescriptor(
         dependency_id=dependency_id,
@@ -262,15 +297,33 @@ def _classify_async_worker(worker_mode: str) -> ProductionBaselineDependencyDesc
 
 
 def _classify_artifact_object_store(
-    object_store_mode: str,
+    artifact_runtime: object,
 ) -> ProductionBaselineDependencyDescriptor:
+    object_store_mode = str(getattr(artifact_runtime, "object_store_mode", "unconfigured"))
+    object_store = getattr(artifact_runtime, "object_store", None)
+    object_store_status = getattr(object_store, "status", None)
+    root_configured = bool(getattr(object_store, "root_configured", False))
+
+    if object_store_status is RuntimeReadinessStatus.CONFIGURATION_REQUIRED:
+        return ProductionBaselineDependencyDescriptor(
+            dependency_id="artifact_object_store",
+            classification=ProductionDependencyClassification.BLOCKED,
+            production_required=True,
+            configured_mode=object_store_mode,
+            detail="Artifact payload storage is configured but missing required object-store root settings, so the production baseline is blocked.",
+        )
     if object_store_mode in {"memory", "filesystem"}:
         return ProductionBaselineDependencyDescriptor(
             dependency_id="artifact_object_store",
             classification=ProductionDependencyClassification.FALLBACK,
             production_required=True,
             configured_mode=object_store_mode,
-            detail="Artifact payload storage is still using a local fallback backend rather than a governed production object store.",
+            detail=(
+                "Artifact payload storage is still using a local fallback backend rather than "
+                "a governed production object store."
+                if object_store_mode == "memory" or root_configured
+                else "Artifact payload storage remains below the production baseline."
+            ),
         )
     return ProductionBaselineDependencyDescriptor(
         dependency_id="artifact_object_store",
@@ -295,7 +348,11 @@ def _classify_secret_posture() -> ProductionBaselineDependencyDescriptor:
         classification=ProductionDependencyClassification.FALLBACK,
         production_required=True,
         configured_mode=settings.secret_source_mode,
-        detail="Secret posture is still local or unspecified, which is acceptable for demos but not for the RFC-0020 production baseline.",
+        detail=(
+            "Secret posture is still local or unspecified while live-provider configuration is present, so the runtime remains demo-capable or prod-shaped local but not production-ready."
+            if settings.live_text_provider_api_key
+            else "Secret posture is still local or unspecified, which is acceptable for demos but not for the RFC-0020 production baseline."
+        ),
     )
 
 

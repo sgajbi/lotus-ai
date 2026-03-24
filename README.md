@@ -388,8 +388,9 @@ The checked-in Docker stack is now a prod-shaped local baseline, not a full prod
 
 1. PostgreSQL backs the SQL store seams instead of SQLite,
 2. Redis and the dedicated worker path are active,
-3. migrations run through an explicit startup script before the API is treated as ready,
-4. artifact payload storage and secret handling remain local-fallback posture until RFC-0020 is completed.
+3. prod-shaped local posture now requires that PostgreSQL-backed durable store seams and the dedicated async queue-plus-worker path are both active at the same time,
+4. migrations run through an explicit startup script before the API is treated as ready,
+5. artifact payload storage and secret handling remain local-fallback posture until RFC-0020 is completed.
 
 ## Documentation
 

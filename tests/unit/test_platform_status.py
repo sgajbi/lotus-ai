@@ -6,6 +6,7 @@ from _pytest.monkeypatch import MonkeyPatch
 
 from app.config import settings
 from app.contracts.providers import ProviderFailureCategory
+from app.contracts.runtime_readiness import RuntimeReadinessStatus, StoreRuntimeStatusDescriptor
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from app.services.artifact_store import reset_artifact_store_cache
 from app.services.async_delivery_queue import get_test_async_delivery_queue
@@ -135,15 +136,47 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
 
 
 def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
-    monkeypatch: MonkeyPatch,
+    tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-prod-shaped-local.db'}"
+    settings.audit_store_mode = "sqlalchemy"
+    settings.prompt_store_mode = "sqlalchemy"
+    settings.retrieval_store_mode = "sqlalchemy"
+    settings.access_control_store_mode = "sqlalchemy"
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.async_runtime_store_mode = "sqlalchemy"
+    settings.evaluation_runtime_store_mode = "sqlalchemy"
+    settings.artifact_store_mode = "sqlalchemy"
+    settings.artifact_object_store_mode = "filesystem"
+    settings.artifact_object_store_root = "/data/object-store"
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
+    upgrade_database_to_head(settings.database_url)
     queue = get_test_async_delivery_queue()
+    ready_store = StoreRuntimeStatusDescriptor(
+        mode="sqlalchemy",
+        status=RuntimeReadinessStatus.READY,
+        database_configured=True,
+        detail="ready",
+    )
     monkeypatch.setattr(
         "app.services.async_operational_state.get_async_delivery_queue", lambda: queue
     )
+    for target in (
+        "get_audit_store_runtime_status",
+        "get_prompt_store_runtime_status",
+        "get_retrieval_store_runtime_status",
+        "get_access_control_store_runtime_status",
+        "get_provider_operations_store_runtime_status",
+        "get_async_runtime_store_runtime_status",
+        "get_evaluation_runtime_store_runtime_status",
+        "get_artifact_store_runtime_status",
+    ):
+        monkeypatch.setattr(
+            f"app.services.production_baseline_runtime.{target}",
+            lambda: ready_store,
+        )
 
     status = build_platform_runtime_status(None)
 
@@ -153,8 +186,8 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     assert status.async_runtime.worker_mode == "DEDICATED"
     assert status.async_runtime.active_worker_execution == "queue_backed_workers"
     assert status.async_runtime.queue_backlog_count == 0
-    assert status.production_baseline.posture.value == "PROD_SHAPED_LOCAL"
-    assert status.production_baseline.prod_shaped_local is True
+    assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
+    assert status.production_baseline.prod_shaped_local is False
     assert status.production_baseline.production_ready is False
 
 
