@@ -80,7 +80,9 @@ def build_resilience_runtime_status() -> ResilienceRuntimeStatusResponse:
             findings=provider_operations.blocking_reasons,
         ),
     ]
-    authoritative_dependency_count = sum(1 for dependency in dependencies if dependency.authoritative)
+    authoritative_dependency_count = sum(
+        1 for dependency in dependencies if dependency.authoritative
+    )
     restart_survivable_dependency_count = sum(
         1 for dependency in dependencies if dependency.restart_survivable
     )
@@ -144,7 +146,9 @@ def build_resilience_runtime_status() -> ResilienceRuntimeStatusResponse:
 def _resolve_resilience_posture(
     dependencies: list[ResilienceDependencyDescriptor],
 ) -> ResiliencePosture:
-    authoritative_dependencies = [dependency for dependency in dependencies if dependency.authoritative]
+    authoritative_dependencies = [
+        dependency for dependency in dependencies if dependency.authoritative
+    ]
     if any(
         dependency.recovery_classification is ResilienceRecoveryClassification.DOCUMENTED_FALLBACK
         and dependency.kind is ResilienceDependencyKind.AUTHORITATIVE_STORE
@@ -167,8 +171,7 @@ def _resolve_recovery_state(
     dependencies: list[ResilienceDependencyDescriptor],
 ) -> ResilienceRecoveryState:
     if any(
-        dependency.recovery_state is ResilienceRecoveryState.DEGRADED
-        for dependency in dependencies
+        dependency.recovery_state is ResilienceRecoveryState.DEGRADED for dependency in dependencies
     ):
         return ResilienceRecoveryState.DEGRADED
     if any(
@@ -242,9 +245,7 @@ def _classify_async_queue_dependency(
     degraded_findings: list[str],
 ) -> ResilienceDependencyDescriptor:
     if queue_backend == "redis_queue":
-        queue_findings = [
-            finding for finding in degraded_findings if "queue" in finding.lower()
-        ]
+        queue_findings = [finding for finding in degraded_findings if "queue" in finding.lower()]
         return ResilienceDependencyDescriptor(
             dependency_id="async_queue_backend",
             kind=ResilienceDependencyKind.RUNTIME_DEPENDENCY,
@@ -428,11 +429,7 @@ def _classify_live_provider_dependency(
                 if operations_state != "NORMAL"
                 else ResilienceRecoveryState.STEADY
             ),
-            recovery_findings=(
-                list(findings)
-                if operations_state != "NORMAL"
-                else []
-            ),
+            recovery_findings=(list(findings) if operations_state != "NORMAL" else []),
             detail="Live provider execution depends on external upstream recovery and should not be treated as internally restorable platform state.",
         )
     return ResilienceDependencyDescriptor(

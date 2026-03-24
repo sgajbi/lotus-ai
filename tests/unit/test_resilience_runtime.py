@@ -211,10 +211,7 @@ def test_resilience_runtime_surfaces_degraded_runtime_dependencies(
 
     assert status.recovery_state is ResilienceRecoveryState.DEGRADED
     assert status.recovery_attention_dependency_count >= 3
-    assert any(
-        finding.startswith("async_queue_backend:")
-        for finding in status.recovery_findings
-    )
+    assert any(finding.startswith("async_queue_backend:") for finding in status.recovery_findings)
     assert any(
         dependency.dependency_id == "live_provider_dependency"
         and dependency.recovery_state is ResilienceRecoveryState.DEGRADED

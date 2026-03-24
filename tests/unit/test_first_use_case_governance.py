@@ -54,7 +54,6 @@ def test_first_use_case_governance_remains_blocked_until_resilience_is_ready(
     assert status.readiness.readiness_ready is False
     assert status.runbook_readiness.runbook_ready is True
     assert any(
-        item.evidence_id == "lotus_performance_resilience_governance"
-        and item.status == "NOT_READY"
+        item.evidence_id == "lotus_performance_resilience_governance" and item.status == "NOT_READY"
         for item in status.readiness.items
     )

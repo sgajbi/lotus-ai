@@ -26,9 +26,7 @@ def test_resilience_runtime_status_route(client: TestClient) -> None:
     assert body["recovery_state"] == "DEGRADED"
     assert body["posture"] == "LOCAL_OR_DEMO_CONTINUITY"
     assert body["dependency_count"] >= 10
-    assert any(
-        dependency["dependency_id"] == "audit_store" for dependency in body["dependencies"]
-    )
+    assert any(dependency["dependency_id"] == "audit_store" for dependency in body["dependencies"])
 
 
 def test_resilience_restore_plan_route(client: TestClient) -> None:

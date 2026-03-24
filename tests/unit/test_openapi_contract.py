@@ -289,22 +289,16 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "artifact_refs" in evaluation_case_schema["properties"]
     platform_runtime_schema = spec["components"]["schemas"]["PlatformRuntimeStatusResponse"]
     resilience_runtime_schema = spec["components"]["schemas"]["ResilienceRuntimeStatusResponse"]
-    resilience_restore_plan_schema = spec["components"]["schemas"][
-        "ResilienceRestorePlanResponse"
-    ]
+    resilience_restore_plan_schema = spec["components"]["schemas"]["ResilienceRestorePlanResponse"]
     resilience_drill_schema = spec["components"]["schemas"]["ResilienceDrillEvidenceResponse"]
     resilience_activation_schema = spec["components"]["schemas"][
         "ResilienceActivationReadinessResponse"
     ]
-    resilience_runbook_schema = spec["components"]["schemas"][
-        "ResilienceRunbookReadinessResponse"
-    ]
+    resilience_runbook_schema = spec["components"]["schemas"]["ResilienceRunbookReadinessResponse"]
     resilience_governance_schema = spec["components"]["schemas"][
         "ResilienceGovernanceStatusResponse"
     ]
-    resilience_dependency_schema = spec["components"]["schemas"][
-        "ResilienceDependencyDescriptor"
-    ]
+    resilience_dependency_schema = spec["components"]["schemas"]["ResilienceDependencyDescriptor"]
     production_baseline_schema = spec["components"]["schemas"][
         "ProductionBaselineRuntimeStatusResponse"
     ]

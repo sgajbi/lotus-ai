@@ -5,7 +5,7 @@ from app.services.resilience_restore_plan import build_resilience_restore_plan
 def test_resilience_restore_plan_is_ordered_and_bounded() -> None:
     plan = build_resilience_restore_plan()
 
-    assert plan.delivery_stage is ResilienceDeliveryStage.ORDERED_RECOVERY_READY
+    assert plan.delivery_stage is ResilienceDeliveryStage.DRILL_VERIFIED
     assert plan.restore_step_count == 4
     assert plan.restore_steps[0].step_id == "restore_authoritative_relational_metadata"
     assert plan.restore_steps[0].classification is (

@@ -60,17 +60,15 @@ def _build_store_restore_validation_item(
         and restore_plan.restore_step_count > 0
     ):
         status = ResilienceDrillEvidenceState.READY
-        notes = (
-            "Restore ordering and authoritative-store validation are defined and the current runtime posture is no longer limited to local or demo continuity."
-        )
+        notes = "Restore ordering and authoritative-store validation are defined and the current runtime posture is no longer limited to local or demo continuity."
     elif restore_plan.restore_step_count > 0:
         status = ResilienceDrillEvidenceState.FOUNDATION_STAGED
-        notes = (
-            "Restore ordering is now defined, but current runtime posture still depends on local or fallback continuity rather than a drill-verifiable durable baseline."
-        )
+        notes = "Restore ordering is now defined, but current runtime posture still depends on local or fallback continuity rather than a drill-verifiable durable baseline."
     else:
         status = ResilienceDrillEvidenceState.NOT_READY
-        notes = "Restore ordering has not been defined well enough to support resilience drill review."
+        notes = (
+            "Restore ordering has not been defined well enough to support resilience drill review."
+        )
     return ResilienceDrillEvidenceItem(
         drill_id="authoritative_store_restore_validation",
         status=status,
@@ -86,19 +84,13 @@ def _build_async_recovery_drill_item(
     dedicated_workers = async_runtime.worker_mode == "DEDICATED"
     if queue_active and dedicated_workers and not async_runtime.degraded_findings:
         status = ResilienceDrillEvidenceState.READY
-        notes = (
-            "Managed queue and dedicated workers are active without degraded findings, so async recovery review can use runtime-backed queue and worker evidence."
-        )
+        notes = "Managed queue and dedicated workers are active without degraded findings, so async recovery review can use runtime-backed queue and worker evidence."
     elif queue_active and dedicated_workers:
         status = ResilienceDrillEvidenceState.PARTIAL
-        notes = (
-            "Managed queue and dedicated workers are configured, but degraded async findings still need operator review before treating recovery evidence as complete."
-        )
+        notes = "Managed queue and dedicated workers are configured, but degraded async findings still need operator review before treating recovery evidence as complete."
     else:
         status = ResilienceDrillEvidenceState.FOUNDATION_STAGED
-        notes = (
-            "Async recovery remains on a local or fallback posture, so only foundational recovery proof is available in this environment."
-        )
+        notes = "Async recovery remains on a local or fallback posture, so only foundational recovery proof is available in this environment."
     return ResilienceDrillEvidenceItem(
         drill_id="async_runtime_recovery_drill",
         status=status,
@@ -150,22 +142,16 @@ def _build_artifact_restore_review_item(
         and artifact_runtime.object_store_mode not in {"memory", "filesystem"}
     ):
         status = ResilienceDrillEvidenceState.READY
-        notes = (
-            "Artifact metadata and payload storage are configured through a non-fallback backend, so artifact-backed recovery review can be treated as drill-ready."
-        )
+        notes = "Artifact metadata and payload storage are configured through a non-fallback backend, so artifact-backed recovery review can be treated as drill-ready."
     elif (
         artifact_runtime.metadata_store.status.value == "READY"
         and artifact_runtime.object_store.status.value == "READY"
     ):
         status = ResilienceDrillEvidenceState.PARTIAL
-        notes = (
-            "Artifact metadata is durable and payload storage is reachable, but the current object-store mode is still a local or development fallback rather than a production recovery backend."
-        )
+        notes = "Artifact metadata is durable and payload storage is reachable, but the current object-store mode is still a local or development fallback rather than a production recovery backend."
     else:
         status = ResilienceDrillEvidenceState.NOT_READY
-        notes = (
-            "Artifact metadata or payload storage is not yet ready enough to support governed restore review."
-        )
+        notes = "Artifact metadata or payload storage is not yet ready enough to support governed restore review."
     return ResilienceDrillEvidenceItem(
         drill_id="artifact_restore_review_drill",
         status=status,
