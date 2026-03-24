@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from app.contracts.prompts import (
@@ -127,3 +128,110 @@ def test_sqlalchemy_prompt_repository_creates_parent_directory_for_sqlite_file(
     SqlAlchemyPromptRepository(database_url)
 
     assert db_path.parent.is_dir()
+
+
+def test_sqlalchemy_prompt_repository_returns_none_for_unknown_prompt_version(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'prompt-registry.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyPromptRepository(database_url)
+
+    assert repository.get_prompt_version("explain.v1", "missing.version") is None
+
+
+def test_sqlalchemy_prompt_repository_rejects_transition_with_missing_prompt_version(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'prompt-registry.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyPromptRepository(database_url)
+    active_prompt = repository.get_prompt_version("explain.v1", "foundation.explain.v1")
+    assert active_prompt is not None
+
+    try:
+        repository.save_prompt_rollout_transition(
+            rollout_state=PromptRolloutStateRecord(
+                task_id="explain.v1",
+                active_prompt_version="foundation.explain.v1",
+                candidate_prompt_version=None,
+                previous_active_prompt_version=None,
+                rollout_mode=PromptRolloutSelectionMode.GOVERNED_CONTROL_ACTIONS,
+                runtime_mutation_enabled=True,
+            ),
+            updated_prompts=[
+                active_prompt.model_copy(update={"prompt_version": "missing.version"}),
+            ],
+            event=PromptRolloutEventRecord(
+                event_id="prompt_evt_missing_prompt",
+                task_id="explain.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Exercise missing prompt transition branch",
+                prior_active_prompt_version="foundation.explain.v1",
+                resulting_active_prompt_version="foundation.explain.v1",
+                prior_candidate_prompt_version=None,
+                resulting_candidate_prompt_version=None,
+                recorded_at="2026-03-24T09:00:00Z",
+            ),
+        )
+    except RuntimeError as exc:
+        assert "missing prompt definition version" in str(exc)
+    else:
+        raise AssertionError("Expected missing prompt definition version to fail")
+
+
+def test_sqlalchemy_prompt_repository_rejects_transition_with_missing_rollout_state(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'prompt-registry.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyPromptRepository(database_url)
+    active_prompt = repository.get_prompt_version("explain.v1", "foundation.explain.v1")
+    assert active_prompt is not None
+
+    try:
+        repository.save_prompt_rollout_transition(
+            rollout_state=PromptRolloutStateRecord(
+                task_id="missing.v1",
+                active_prompt_version="foundation.explain.v1",
+                candidate_prompt_version=None,
+                previous_active_prompt_version=None,
+                rollout_mode=PromptRolloutSelectionMode.GOVERNED_CONTROL_ACTIONS,
+                runtime_mutation_enabled=True,
+            ),
+            updated_prompts=[active_prompt],
+            event=PromptRolloutEventRecord(
+                event_id="prompt_evt_missing_state",
+                task_id="missing.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Exercise missing rollout state branch",
+                prior_active_prompt_version="foundation.explain.v1",
+                resulting_active_prompt_version="foundation.explain.v1",
+                prior_candidate_prompt_version=None,
+                resulting_candidate_prompt_version=None,
+                recorded_at="2026-03-24T09:00:00Z",
+            ),
+        )
+    except RuntimeError as exc:
+        assert "missing rollout state" in str(exc)
+    else:
+        raise AssertionError("Expected missing rollout state to fail")
+
+
+def test_sqlalchemy_prompt_repository_accepts_memory_postgres_and_relative_sqlite_urls(
+    tmp_path: Path,
+) -> None:
+    SqlAlchemyPromptRepository("sqlite:///:memory:")
+    SqlAlchemyPromptRepository("postgresql://lotus:lotus@localhost/lotus")
+
+    previous_cwd = Path.cwd()
+    os.chdir(tmp_path)
+    try:
+        SqlAlchemyPromptRepository("sqlite:///relative/prompt-registry.db")
+        assert (tmp_path / "relative").is_dir()
+    finally:
+        os.chdir(previous_cwd)

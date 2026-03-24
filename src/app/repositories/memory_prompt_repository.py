@@ -14,6 +14,7 @@ from app.services.prompt_rollout_models import (
     PromptRolloutStateRecord,
 )
 
+
 class InMemoryPromptRepository(PromptRepository):
     def __init__(self) -> None:
         prompts = list_prompts()

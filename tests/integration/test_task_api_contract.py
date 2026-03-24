@@ -156,7 +156,10 @@ def test_task_execute_contract_reflects_promoted_prompt_lineage(tmp_path: Path) 
     )
     assert response.status_code == 200
     assert body["audit"]["prompt_version"] == "foundation.explain.v2"
-    assert body["audit"]["prompt_selection"]["previous_active_prompt_version"] == "foundation.explain.v1"
+    assert (
+        body["audit"]["prompt_selection"]["previous_active_prompt_version"]
+        == "foundation.explain.v1"
+    )
     assert body["audit"]["prompt_selection"]["latest_control_event"]["action_type"] == (
         "PROMOTE_CANDIDATE"
     )

@@ -1,14 +1,25 @@
 from pathlib import Path
 
+from fastapi import HTTPException
+
 from app.config import settings
+from app.contracts.prompts import PromptControlActionRequest, PromptControlActionType
 from app.contracts.evals import EvaluationCaseOutcome
 from app.evals.fixture_manifest import EvaluationFixtureRuntimeCase
+from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from app.services.eval_runtime_execution import (
+    _apply_prompt_rollback_for_evaluation,
+    _apply_prompt_transition_for_evaluation,
     _apply_case_configuration,
     _execute_fixture_case,
 )
+from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+from app.services.prompt_rollout_control import apply_prompt_control_action
+from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
+from app.services.prompt_store import get_prompt_repository
 from app.services.provider_operations_store import reset_provider_operations_store_cache
 from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.runtime_settings import override_runtime_settings
 
 
 def test_execute_fixture_case_reports_failure_for_provider_operations_state_mismatch() -> None:
@@ -260,3 +271,372 @@ def test_execute_fixture_case_reports_pass_for_blocked_runtime_safety_case() -> 
         "service://platform/safety/runtime-status",
         "service://ai/tasks/execute",
     ]
+
+
+def test_execute_fixture_case_reports_failure_for_retrieval_task_execution_error() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="retrieval_live_search_failure_case",
+        summary="Live retrieval should fail when retrieval mode is disabled.",
+        input_payload={
+            "task_id": "missing.v1",
+            "query": "shared ai platform service",
+            "retrieval_mode": "disabled",
+        },
+        expected_payload={},
+    )
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="retrieval_citation_examples",
+            fixture_task_id="knowledge_search.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.FAIL
+    assert "failed unexpectedly" in summary
+    assert evidence_refs == ["service://ai/tasks/execute"]
+
+
+def test_execute_fixture_case_reports_failure_for_prompt_promotion_execution_error() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="prompt_promotion_execution_failure",
+        summary="Prompt promotion eval should fail if runtime task execution fails.",
+        input_payload={
+            "task_id": "missing.v1",
+            "promote_request": {
+                "task_id": "explain.v1",
+                "candidate_prompt_version": "foundation.explain.v2",
+                "requested_by": "prompt-eval@lotus.test",
+                "approved_by": "prompt-approver@lotus.test",
+                "reason": "Evaluate prompt promotion runtime trace",
+            },
+        },
+        expected_payload={},
+    )
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="prompt_promotion_examples",
+            fixture_task_id="explain.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.FAIL
+    assert "Prompt promotion evaluation failed unexpectedly" in summary
+    assert evidence_refs == [
+        "service://platform/prompts/control-actions",
+        "service://ai/tasks/execute",
+    ]
+
+
+def test_execute_fixture_case_reports_failure_for_prompt_rollback_execution_error() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="prompt_rollback_execution_failure",
+        summary="Prompt rollback eval should fail if runtime task execution fails.",
+        input_payload={
+            "task_id": "missing.v1",
+            "promote_request": {
+                "task_id": "explain.v1",
+                "candidate_prompt_version": "foundation.explain.v2",
+                "requested_by": "prompt-eval@lotus.test",
+                "approved_by": "prompt-approver@lotus.test",
+                "reason": "Promote before rollback evaluation",
+            },
+            "rollback_request": {
+                "task_id": "explain.v1",
+                "requested_by": "prompt-eval@lotus.test",
+                "approved_by": "prompt-approver@lotus.test",
+                "reason": "Evaluate prompt rollback runtime trace",
+            },
+        },
+        expected_payload={},
+    )
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="prompt_rollback_examples",
+            fixture_task_id="explain.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.FAIL
+    assert "Prompt rollback evaluation failed unexpectedly" in summary
+    assert evidence_refs == [
+        "service://platform/prompts/control-actions",
+        "service://ai/tasks/execute",
+    ]
+
+
+def test_execute_fixture_case_reports_failure_for_runtime_safety_task_execution_error() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="runtime_safety_redacts_explanation_output",
+        summary="Safety eval should fail when task execution raises.",
+        input_payload={
+            "task_id": "missing.v1",
+            "safety_mode": "runtime_enforced",
+        },
+        expected_payload={},
+    )
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="safety_runtime_examples",
+            fixture_task_id="safety.runtime.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.FAIL
+    assert "Safety runtime task execution failed unexpectedly" in summary
+    assert evidence_refs == ["service://ai/tasks/execute"]
+
+
+def test_apply_prompt_transition_for_evaluation_rejects_missing_rollout_state() -> None:
+    try:
+        _apply_prompt_transition_for_evaluation(
+            task_id="missing.v1",
+            candidate_prompt_version="foundation.explain.v2",
+            requested_by="prompt-eval@lotus.test",
+            approved_by="prompt-approver@lotus.test",
+            reason="Missing rollout state",
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 404
+        assert "rollout state" in str(exc.detail)
+    else:
+        raise AssertionError("Expected missing rollout state to fail")
+
+
+def test_apply_prompt_transition_for_evaluation_rejects_missing_and_invalid_candidates() -> None:
+    try:
+        _apply_prompt_transition_for_evaluation(
+            task_id="explain.v1",
+            candidate_prompt_version="missing.version",
+            requested_by="prompt-eval@lotus.test",
+            approved_by="prompt-approver@lotus.test",
+            reason="Missing candidate",
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 404
+        assert "Candidate prompt version" in str(exc.detail)
+    else:
+        raise AssertionError("Expected missing candidate prompt to fail")
+
+    try:
+        _apply_prompt_transition_for_evaluation(
+            task_id="explain.v1",
+            candidate_prompt_version="foundation.explain.v1",
+            requested_by="prompt-eval@lotus.test",
+            approved_by="prompt-approver@lotus.test",
+            reason="Non-candidate prompt version",
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 409
+        assert "not a governed candidate" in str(exc.detail)
+    else:
+        raise AssertionError("Expected non-candidate prompt to fail")
+
+
+def test_apply_prompt_transition_for_evaluation_rejects_missing_active_prompt(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'eval-prompt-missing-active.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(prompt_store_mode="sqlalchemy", database_url=database_url):
+        repository = get_prompt_repository()
+        rollout_state = repository.get_prompt_rollout_state("explain.v1")
+        candidate_prompt = repository.get_prompt_version("explain.v1", "foundation.explain.v2")
+        assert rollout_state is not None
+        assert candidate_prompt is not None
+        repository.save_prompt_rollout_transition(
+            rollout_state=PromptRolloutStateRecord(
+                task_id=rollout_state.task_id,
+                active_prompt_version="missing.version",
+                candidate_prompt_version=rollout_state.candidate_prompt_version,
+                previous_active_prompt_version=rollout_state.previous_active_prompt_version,
+                rollout_mode=rollout_state.rollout_mode,
+                runtime_mutation_enabled=rollout_state.runtime_mutation_enabled,
+            ),
+            updated_prompts=[candidate_prompt],
+            event=PromptRolloutEventRecord(
+                event_id="prompt_evt_eval_missing_active",
+                task_id="explain.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                requested_by="prompt-eval@lotus.test",
+                approved_by="prompt-approver@lotus.test",
+                reason="Exercise missing active prompt branch",
+                prior_active_prompt_version="foundation.explain.v1",
+                resulting_active_prompt_version="missing.version",
+                prior_candidate_prompt_version=rollout_state.candidate_prompt_version,
+                resulting_candidate_prompt_version=rollout_state.candidate_prompt_version,
+                recorded_at="2026-03-24T09:00:00Z",
+            ),
+        )
+
+        try:
+            _apply_prompt_transition_for_evaluation(
+                task_id="explain.v1",
+                candidate_prompt_version="foundation.explain.v2",
+                requested_by="prompt-eval@lotus.test",
+                approved_by="prompt-approver@lotus.test",
+                reason="Missing active prompt",
+            )
+        except HTTPException as exc:
+            assert exc.status_code == 409
+            assert "references missing active prompt" in str(exc.detail)
+        else:
+            raise AssertionError("Expected missing active prompt to fail")
+
+
+def test_apply_prompt_rollback_for_evaluation_rejects_missing_state_and_versions(
+    tmp_path: Path,
+) -> None:
+    try:
+        _apply_prompt_rollback_for_evaluation(
+            task_id="missing.v1",
+            requested_by="prompt-eval@lotus.test",
+            approved_by="prompt-approver@lotus.test",
+            reason="Missing state",
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 404
+        assert "rollout state" in str(exc.detail)
+    else:
+        raise AssertionError("Expected missing rollback state to fail")
+
+    database_url = f"sqlite:///{tmp_path / 'eval-prompt-rollback.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        prompt_store_mode="sqlalchemy",
+        evaluation_runtime_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        get_evaluation_runtime_store().save_run(
+            EvaluationRunRecord(
+                run_id="runtime_prompt_eval_promotion",
+                fixture_id="prompt_promotion_examples",
+                manifest_version="foundation.v1",
+                lifecycle_status="COMPLETED",
+                triggered_by="operator-a",
+                submitted_at="2026-03-24T09:00:00Z",
+                async_job_id="async_prompt_eval_promotion",
+                latest_message="Prompt promotion approval fixture passed.",
+                verdict="PASS",
+                case_count=1,
+            )
+        )
+        get_evaluation_runtime_store().save_run(
+            EvaluationRunRecord(
+                run_id="runtime_prompt_eval_rollback",
+                fixture_id="prompt_rollback_examples",
+                manifest_version="foundation.v1",
+                lifecycle_status="COMPLETED",
+                triggered_by="operator-a",
+                submitted_at="2026-03-24T09:00:00Z",
+                async_job_id="async_prompt_eval_rollback",
+                latest_message="Prompt rollback approval fixture passed.",
+                verdict="PASS",
+                case_count=1,
+            )
+        )
+        apply_prompt_control_action(
+            PromptControlActionRequest(
+                task_id="explain.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                candidate_prompt_version="foundation.explain.v2",
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Promote before rollback error coverage",
+            )
+        )
+
+        repository = get_prompt_repository()
+        rollout_state = repository.get_prompt_rollout_state("explain.v1")
+        active_prompt = repository.get_prompt_version("explain.v1", "foundation.explain.v2")
+        assert rollout_state is not None
+        assert active_prompt is not None
+        repository.save_prompt_rollout_transition(
+            rollout_state=PromptRolloutStateRecord(
+                task_id=rollout_state.task_id,
+                active_prompt_version=rollout_state.active_prompt_version,
+                candidate_prompt_version=rollout_state.candidate_prompt_version,
+                previous_active_prompt_version=None,
+                rollout_mode=rollout_state.rollout_mode,
+                runtime_mutation_enabled=rollout_state.runtime_mutation_enabled,
+            ),
+            updated_prompts=[active_prompt],
+            event=PromptRolloutEventRecord(
+                event_id="prompt_evt_eval_no_previous",
+                task_id="explain.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Exercise no previous active branch",
+                prior_active_prompt_version="foundation.explain.v2",
+                resulting_active_prompt_version="foundation.explain.v2",
+                prior_candidate_prompt_version=None,
+                resulting_candidate_prompt_version=None,
+                recorded_at="2026-03-24T09:10:00Z",
+            ),
+        )
+
+        try:
+            _apply_prompt_rollback_for_evaluation(
+                task_id="explain.v1",
+                requested_by="prompt-eval@lotus.test",
+                approved_by="prompt-approver@lotus.test",
+                reason="No previous active prompt",
+            )
+        except HTTPException as exc:
+            assert exc.status_code == 409
+            assert "no prior active prompt" in str(exc.detail)
+        else:
+            raise AssertionError("Expected missing previous active prompt to fail")
+
+
+def test_apply_prompt_rollback_for_evaluation_rejects_missing_prompt_versions(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'eval-prompt-rollback-missing-versions.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(prompt_store_mode="sqlalchemy", database_url=database_url):
+        repository = get_prompt_repository()
+        rollout_state = repository.get_prompt_rollout_state("explain.v1")
+        candidate_prompt = repository.get_prompt_version("explain.v1", "foundation.explain.v2")
+        assert rollout_state is not None
+        assert candidate_prompt is not None
+        repository.save_prompt_rollout_transition(
+            rollout_state=PromptRolloutStateRecord(
+                task_id=rollout_state.task_id,
+                active_prompt_version="foundation.explain.v2",
+                candidate_prompt_version=rollout_state.candidate_prompt_version,
+                previous_active_prompt_version="missing.version",
+                rollout_mode=rollout_state.rollout_mode,
+                runtime_mutation_enabled=rollout_state.runtime_mutation_enabled,
+            ),
+            updated_prompts=[candidate_prompt],
+            event=PromptRolloutEventRecord(
+                event_id="prompt_evt_eval_missing_versions",
+                task_id="explain.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Exercise missing rollback versions branch",
+                prior_active_prompt_version="foundation.explain.v1",
+                resulting_active_prompt_version="foundation.explain.v2",
+                prior_candidate_prompt_version=None,
+                resulting_candidate_prompt_version=None,
+                recorded_at="2026-03-24T09:15:00Z",
+            ),
+        )
+
+        try:
+            _apply_prompt_rollback_for_evaluation(
+                task_id="explain.v1",
+                requested_by="prompt-eval@lotus.test",
+                approved_by="prompt-approver@lotus.test",
+                reason="Missing rollback prompt versions",
+            )
+        except HTTPException as exc:
+            assert exc.status_code == 409
+            assert "references missing prompt versions" in str(exc.detail)
+        else:
+            raise AssertionError("Expected missing rollback prompt versions to fail")

@@ -1,13 +1,16 @@
 from pathlib import Path
 
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+from app.prompts.registry import list_prompts as list_seeded_prompts
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from fastapi import HTTPException
+from pytest import MonkeyPatch
 
 from app.contracts.prompts import (
     PromptControlActionRequest,
     PromptControlActionType,
     PromptLifecycleStatus,
+    PromptRolloutSelectionMode,
 )
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_submission_service import submit_evaluation_run
@@ -16,6 +19,7 @@ from app.services.evaluation_runtime_store import (
     reset_evaluation_runtime_store_cache,
 )
 from app.services.prompt_rollout_control import apply_prompt_control_action
+from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
 from app.services.prompt_runtime import (
     build_prompt_selection_trace,
     list_active_runtime_prompts,
@@ -24,7 +28,7 @@ from app.services.prompt_runtime import (
     resolve_runtime_prompt_or_raise,
     summarize_prompt_lifecycle_counts,
 )
-from app.services.prompt_store import reset_prompt_store_cache
+from app.services.prompt_store import get_prompt_repository, reset_prompt_store_cache
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
 
@@ -160,7 +164,9 @@ def test_prompt_runtime_selection_survives_sql_store_reinitialization(tmp_path: 
     assert rollout.active_prompt_version == "foundation.explain.v2"
 
 
-def test_prompt_runtime_rollback_lineage_survives_sql_store_reinitialization(tmp_path: Path) -> None:
+def test_prompt_runtime_rollback_lineage_survives_sql_store_reinitialization(
+    tmp_path: Path,
+) -> None:
     database_url = f"sqlite:///{tmp_path / 'prompt-runtime-rollback-restart.db'}"
     upgrade_database_to_head(database_url)
 
@@ -202,11 +208,146 @@ def test_prompt_runtime_rollback_lineage_survives_sql_store_reinitialization(tmp
 
     assert trace.prompt_version == "foundation.explain.v1"
     assert trace.latest_control_event is not None
-    assert trace.latest_control_event.action_type == PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE
+    assert (
+        trace.latest_control_event.action_type
+        == PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE
+    )
     assert rollout.active_prompt_version == "foundation.explain.v1"
     assert rollout.candidate_prompt_version == "foundation.explain.v2"
     assert rollout.latest_control_event is not None
-    assert rollout.latest_control_event.action_type == PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE
+    assert (
+        rollout.latest_control_event.action_type
+        == PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE
+    )
+
+
+def test_resolve_runtime_prompt_or_raise_rejects_missing_active_prompt_version(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'prompt-runtime-missing-active.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(prompt_store_mode="sqlalchemy", database_url=database_url):
+        repository = get_prompt_repository()
+        rollout_state = repository.get_prompt_rollout_state("explain.v1")
+        active_prompt = repository.get_prompt_version("explain.v1", "foundation.explain.v1")
+        assert rollout_state is not None
+        assert active_prompt is not None
+        repository.save_prompt_rollout_transition(
+            rollout_state=PromptRolloutStateRecord(
+                task_id=rollout_state.task_id,
+                active_prompt_version="missing.version",
+                candidate_prompt_version=rollout_state.candidate_prompt_version,
+                previous_active_prompt_version=rollout_state.previous_active_prompt_version,
+                rollout_mode=rollout_state.rollout_mode,
+                runtime_mutation_enabled=rollout_state.runtime_mutation_enabled,
+            ),
+            updated_prompts=[active_prompt],
+            event=PromptRolloutEventRecord(
+                event_id="prompt_evt_runtime_missing_active",
+                task_id="explain.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Exercise runtime missing active prompt branch",
+                prior_active_prompt_version="foundation.explain.v1",
+                resulting_active_prompt_version="missing.version",
+                prior_candidate_prompt_version=None,
+                resulting_candidate_prompt_version=None,
+                recorded_at="2026-03-24T09:00:00Z",
+            ),
+        )
+
+        try:
+            resolve_runtime_prompt_or_raise("explain.v1")
+        except HTTPException as exc:
+            assert exc.status_code == 409
+            assert "missing active prompt version" in str(exc.detail)
+        else:
+            raise AssertionError("Expected missing active prompt version to fail")
+
+
+def test_resolve_runtime_prompt_or_raise_rejects_non_active_prompt_definition(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'prompt-runtime-inactive.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(prompt_store_mode="sqlalchemy", database_url=database_url):
+        repository = get_prompt_repository()
+        rollout_state = repository.get_prompt_rollout_state("explain.v1")
+        active_prompt = repository.get_prompt_version("explain.v1", "foundation.explain.v1")
+        assert rollout_state is not None
+        assert active_prompt is not None
+        repository.save_prompt_rollout_transition(
+            rollout_state=rollout_state,
+            updated_prompts=[
+                active_prompt.model_copy(update={"lifecycle_status": PromptLifecycleStatus.RETIRED})
+            ],
+            event=PromptRolloutEventRecord(
+                event_id="prompt_evt_runtime_inactive",
+                task_id="explain.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Exercise inactive runtime prompt branch",
+                prior_active_prompt_version="foundation.explain.v1",
+                resulting_active_prompt_version="foundation.explain.v1",
+                prior_candidate_prompt_version=None,
+                resulting_candidate_prompt_version=None,
+                recorded_at="2026-03-24T09:00:00Z",
+            ),
+        )
+
+        try:
+            resolve_runtime_prompt_or_raise("explain.v1")
+        except HTTPException as exc:
+            assert exc.status_code == 409
+            assert "not active for runtime selection" in str(exc.detail)
+        else:
+            raise AssertionError("Expected inactive runtime prompt to fail")
+
+
+def test_build_prompt_selection_trace_rejects_rollout_state_removed_after_resolution(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    class FlakyPromptRepository:
+        def __init__(self) -> None:
+            self._calls = 0
+
+        def get_prompt_rollout_state(self, task_id: str) -> PromptRolloutStateRecord | None:
+            self._calls += 1
+            if self._calls == 1:
+                return PromptRolloutStateRecord(
+                    task_id=task_id,
+                    active_prompt_version="foundation.explain.v1",
+                    candidate_prompt_version=None,
+                    previous_active_prompt_version=None,
+                    rollout_mode=PromptRolloutSelectionMode.GOVERNED_CONTROL_ACTIONS,
+                    runtime_mutation_enabled=True,
+                )
+            return None
+
+        def get_prompt_version(self, task_id: str, prompt_version: str) -> object:
+            return next(
+                prompt
+                for prompt in list_seeded_prompts()
+                if prompt.task_id == task_id and prompt.prompt_version == prompt_version
+            )
+
+        def list_prompt_rollout_events(self, task_id: str | None = None) -> list[object]:
+            return []
+
+    repository = FlakyPromptRepository()
+    monkeypatch.setattr("app.services.prompt_runtime.get_prompt_repository", lambda: repository)
+
+    try:
+        build_prompt_selection_trace("explain.v1")
+    except HTTPException as exc:
+        assert exc.status_code == 404
+        assert "No governed prompt rollout state" in str(exc.detail)
+    else:
+        raise AssertionError("Expected missing rollout state during trace build to fail")
 
 
 def _seed_prompt_approval_gate_pass() -> None:

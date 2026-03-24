@@ -277,7 +277,9 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert any(
         selection["task_id"] == "explain.v1" for selection in body["prompt_runtime"]["selections"]
     )
-    assert any(state["task_id"] == "explain.v1" for state in body["prompt_runtime"]["rollout_states"])
+    assert any(
+        state["task_id"] == "explain.v1" for state in body["prompt_runtime"]["rollout_states"]
+    )
     assert body["task_runtime"]["enabled_task_count"] >= 7
     assert body["task_runtime"]["retrieval_backed_task_count"] == 2
     assert any(

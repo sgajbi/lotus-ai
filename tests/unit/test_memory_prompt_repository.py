@@ -32,3 +32,21 @@ def test_memory_prompt_repository_starts_with_empty_rollout_event_history() -> N
     repository = InMemoryPromptRepository()
 
     assert repository.list_prompt_rollout_events() == []
+
+
+def test_memory_prompt_repository_returns_none_for_unknown_prompt_lookups() -> None:
+    repository = InMemoryPromptRepository()
+
+    assert repository.get_prompt("missing.v1") is None
+    assert repository.get_prompt_version("explain.v1", "missing.version") is None
+    assert repository.get_prompt_rollout_state("missing.v1") is None
+
+
+def test_memory_prompt_repository_lists_only_active_prompts_in_runtime_inventory() -> None:
+    repository = InMemoryPromptRepository()
+
+    prompts = repository.list_prompts()
+
+    assert prompts == sorted(prompts, key=lambda prompt: prompt.task_id)
+    assert all(prompt.lifecycle_status.value == "ACTIVE" for prompt in prompts)
+    assert all(prompt.prompt_version != "foundation.explain.v2" for prompt in prompts)

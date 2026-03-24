@@ -231,7 +231,9 @@ def _build_rollback_transition(
     )
     updated_prompts = [
         active_prompt.model_copy(update={"lifecycle_status": PromptLifecycleStatus.CANDIDATE}),
-        previous_active_prompt.model_copy(update={"lifecycle_status": PromptLifecycleStatus.ACTIVE}),
+        previous_active_prompt.model_copy(
+            update={"lifecycle_status": PromptLifecycleStatus.ACTIVE}
+        ),
     ]
     event = PromptRolloutEventRecord(
         event_id=f"prompt_evt_{uuid4().hex[:12]}",
@@ -294,9 +296,7 @@ def _map_rollout_state(
             "Prompt rollout state is now updated only through explicit governed promote and rollback actions."
         ),
         latest_control_event=(
-            _map_control_event(latest_control_event)
-            if latest_control_event is not None
-            else None
+            _map_control_event(latest_control_event) if latest_control_event is not None else None
         ),
     )
 

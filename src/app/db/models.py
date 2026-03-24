@@ -19,9 +19,7 @@ class AuditRecordModel(Base):
     requested_by: Mapped[str | None] = mapped_column(String(256), nullable=True)
     tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     prompt_version: Mapped[str] = mapped_column(String(128), nullable=False)
-    prompt_selection_payload: Mapped[dict[str, object] | None] = mapped_column(
-        JSON, nullable=True
-    )
+    prompt_selection_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     provider_mode: Mapped[str] = mapped_column(String(64), nullable=False)
     safety_mode: Mapped[str] = mapped_column(String(64), nullable=False)
     redaction_posture: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -144,12 +142,8 @@ class PromptRolloutEventModel(Base):
     approved_by: Mapped[str] = mapped_column(String(256), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     prior_active_prompt_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    resulting_active_prompt_version: Mapped[str | None] = mapped_column(
-        String(128), nullable=True
-    )
-    prior_candidate_prompt_version: Mapped[str | None] = mapped_column(
-        String(128), nullable=True
-    )
+    resulting_active_prompt_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    prior_candidate_prompt_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
     resulting_candidate_prompt_version: Mapped[str | None] = mapped_column(
         String(128), nullable=True
     )

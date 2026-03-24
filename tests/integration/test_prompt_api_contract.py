@@ -116,9 +116,10 @@ def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path
                 promote_response.json()["rollout_state"]["active_prompt_version"]
                 == "foundation.explain.v2"
             )
-            assert promote_response.json()["rollout_state"]["latest_control_event"][
-                "action_type"
-            ] == "PROMOTE_CANDIDATE"
+            assert (
+                promote_response.json()["rollout_state"]["latest_control_event"]["action_type"]
+                == "PROMOTE_CANDIDATE"
+            )
 
             runtime_response = durable_client.get("/platform/prompts/runtime-status")
             assert runtime_response.status_code == 200

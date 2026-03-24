@@ -35,7 +35,9 @@ class SqlAlchemyPromptRepository:
         rollout_states = self.list_prompt_rollout_states()
         prompts: list[PromptDescriptor] = []
         for rollout_state in rollout_states:
-            prompt = self.get_prompt_version(rollout_state.task_id, rollout_state.active_prompt_version)
+            prompt = self.get_prompt_version(
+                rollout_state.task_id, rollout_state.active_prompt_version
+            )
             if prompt is not None:
                 prompts.append(prompt)
         prompts.sort(key=lambda prompt: prompt.task_id)
@@ -122,7 +124,9 @@ class SqlAlchemyPromptRepository:
                 raise RuntimeError("Prompt rollout transition referenced a missing rollout state.")
             state_model.active_prompt_version = rollout_state.active_prompt_version
             state_model.candidate_prompt_version = rollout_state.candidate_prompt_version
-            state_model.previous_active_prompt_version = rollout_state.previous_active_prompt_version
+            state_model.previous_active_prompt_version = (
+                rollout_state.previous_active_prompt_version
+            )
             state_model.rollout_mode = rollout_state.rollout_mode.value
             state_model.runtime_mutation_enabled = rollout_state.runtime_mutation_enabled
 

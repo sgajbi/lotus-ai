@@ -79,7 +79,9 @@ async def get_prompt_governance_route() -> PromptGovernanceStatusResponse:
         500: {"description": "Unexpected server error."},
     },
 )
-async def get_prompt_control_history_route(task_id: str | None = None) -> PromptControlHistoryResponse:
+async def get_prompt_control_history_route(
+    task_id: str | None = None,
+) -> PromptControlHistoryResponse:
     return build_prompt_control_history(task_id=task_id)
 
 

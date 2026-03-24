@@ -10,7 +10,6 @@ from fastapi import HTTPException
 from app.config import settings
 from app.contracts.evals import EvaluationCaseOutcome, EvaluationRunVerdict
 from app.contracts.prompts import (
-    PromptControlActionRequest,
     PromptControlActionType,
     PromptLifecycleStatus,
     PromptRolloutSelectionMode,
@@ -36,7 +35,6 @@ from app.repositories.evaluation_runtime_repository import (
 )
 from app.services.eval_run_submission_service import RUNTIME_BACKED_EVALUATION_FIXTURE_IDS
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
-from app.services.prompt_rollout_control import apply_prompt_control_action
 from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
 from app.services.prompt_store import get_prompt_repository
 from app.services.prompt_store import reset_prompt_store_cache
@@ -307,14 +305,11 @@ def _execute_fixture_case(
             reason=str(promote_request["reason"]),
         )
         rollback_request = case.input_payload["rollback_request"]
-        apply_prompt_control_action(
-            PromptControlActionRequest(
-                task_id=str(rollback_request["task_id"]),
-                action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
-                requested_by=str(rollback_request["requested_by"]),
-                approved_by=str(rollback_request["approved_by"]),
-                reason=str(rollback_request["reason"]),
-            )
+        _apply_prompt_rollback_for_evaluation(
+            task_id=str(rollback_request["task_id"]),
+            requested_by=str(rollback_request["requested_by"]),
+            approved_by=str(rollback_request["approved_by"]),
+            reason=str(rollback_request["reason"]),
         )
         response, failure_category = _execute_task_case(
             task_id=str(case.input_payload["task_id"]),
@@ -861,6 +856,67 @@ def _apply_prompt_transition_for_evaluation(
         updated_prompts=[
             active_prompt.model_copy(update={"lifecycle_status": PromptLifecycleStatus.RETIRED}),
             candidate_prompt.model_copy(update={"lifecycle_status": PromptLifecycleStatus.ACTIVE}),
+        ],
+        event=event,
+    )
+
+
+def _apply_prompt_rollback_for_evaluation(
+    *,
+    task_id: str,
+    requested_by: str,
+    approved_by: str,
+    reason: str,
+) -> None:
+    repository = get_prompt_repository()
+    rollout_state = repository.get_prompt_rollout_state(task_id)
+    if rollout_state is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Prompt rollout state for task '{task_id}' was not found.",
+        )
+    if rollout_state.previous_active_prompt_version is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Prompt rollout state for task '{task_id}' has no prior active prompt.",
+        )
+    active_prompt = repository.get_prompt_version(task_id, rollout_state.active_prompt_version)
+    previous_active_prompt = repository.get_prompt_version(
+        task_id, rollout_state.previous_active_prompt_version
+    )
+    if active_prompt is None or previous_active_prompt is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Prompt rollback references missing prompt versions for task '{task_id}'.",
+        )
+    updated_state = PromptRolloutStateRecord(
+        task_id=task_id,
+        active_prompt_version=previous_active_prompt.prompt_version,
+        candidate_prompt_version=active_prompt.prompt_version,
+        previous_active_prompt_version=None,
+        rollout_mode=PromptRolloutSelectionMode.GOVERNED_CONTROL_ACTIONS,
+        runtime_mutation_enabled=True,
+    )
+    event = PromptRolloutEventRecord(
+        event_id=f"prompt_evt_eval_rollback_{previous_active_prompt.prompt_version.replace('.', '_')}",
+        task_id=task_id,
+        action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
+        requested_by=requested_by,
+        approved_by=approved_by,
+        reason=reason,
+        prior_active_prompt_version=active_prompt.prompt_version,
+        resulting_active_prompt_version=previous_active_prompt.prompt_version,
+        prior_candidate_prompt_version=rollout_state.candidate_prompt_version,
+        resulting_candidate_prompt_version=active_prompt.prompt_version,
+        recorded_at=_utcnow_iso(),
+    )
+    repository.save_prompt_rollout_transition(
+        rollout_state=updated_state,
+        updated_prompts=[
+            active_prompt.model_copy(update={"lifecycle_status": PromptLifecycleStatus.CANDIDATE}),
+            previous_active_prompt.model_copy(
+                update={"lifecycle_status": PromptLifecycleStatus.ACTIVE}
+            ),
         ],
         event=event,
     )

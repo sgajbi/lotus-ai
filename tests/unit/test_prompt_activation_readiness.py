@@ -1,8 +1,7 @@
 from pathlib import Path
 
-from app.contracts.evals import EvaluationRunSubmissionRequest
-from app.services.eval_async_execution import run_next_evaluation_execution_job
-from app.services.eval_run_submission_service import submit_evaluation_run
+from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 from app.services.prompt_activation_readiness import build_prompt_activation_readiness
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
@@ -20,17 +19,24 @@ def test_prompt_activation_readiness_blocks_memory_only_runtime_for_live_activat
     assert len(readiness.activation_path) == 4
 
 
-def test_prompt_activation_readiness_remains_blocked_after_prompt_eval_pass_without_durable_stores() -> None:
+def test_prompt_activation_readiness_remains_blocked_after_prompt_eval_pass_without_durable_stores() -> (
+    None
+):
     for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
-        submit_evaluation_run(
-            EvaluationRunSubmissionRequest(
+        get_evaluation_runtime_store().save_run(
+            EvaluationRunRecord(
+                run_id=f"runtime_prompt_activation_{fixture_id}",
                 fixture_id=fixture_id,
-                caller_app="lotus-platform",
-                correlation_id=f"corr-{fixture_id}",
+                manifest_version="foundation.v1",
+                lifecycle_status="COMPLETED",
                 triggered_by="operator-a",
+                submitted_at="2026-03-24T09:00:00Z",
+                async_job_id=f"async_prompt_activation_{fixture_id}",
+                latest_message="Prompt rollout approval fixture passed.",
+                verdict="PASS",
+                case_count=1,
             )
         )
-        run_next_evaluation_execution_job(worker_id="worker-a")
 
     readiness = build_prompt_activation_readiness()
 

@@ -1,6 +1,8 @@
-from app.contracts.evals import EvaluationRunSubmissionRequest
+from app.contracts.evals import EvaluationApprovalEvidenceState, EvaluationRunSubmissionRequest
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from app.services.eval_approval_gate_summary import (
+    _build_domain_notes,
+    _derive_domain_state,
     build_prompt_approval_gate_summary,
     build_provider_approval_gate_summary,
     build_retrieval_approval_gate_summary,
@@ -84,15 +86,20 @@ def test_prompt_approval_gate_reports_runtime_pass_when_required_fixtures_pass()
         "prompt_promotion_examples",
         "prompt_rollback_examples",
     ):
-        submit_evaluation_run(
-            EvaluationRunSubmissionRequest(
+        get_evaluation_runtime_store().save_run(
+            EvaluationRunRecord(
+                run_id=f"runtime_prompt_gate_{fixture_id}",
                 fixture_id=fixture_id,
-                caller_app="lotus-platform",
-                correlation_id=f"corr-{fixture_id}",
+                manifest_version="foundation.v1",
+                lifecycle_status="COMPLETED",
                 triggered_by="operator-a",
+                submitted_at="2026-03-24T09:00:00Z",
+                async_job_id=f"async_prompt_gate_{fixture_id}",
+                latest_message="Prompt rollout approval fixture passed.",
+                verdict="PASS",
+                case_count=1,
             )
         )
-        run_next_evaluation_execution_job(worker_id="worker-a")
 
     summary = build_prompt_approval_gate_summary()
 
@@ -197,3 +204,20 @@ def test_safety_approval_gate_reports_runtime_pass_when_required_fixtures_pass()
     assert summary.approval_ready is True
     assert summary.required_fixture_count == 2
     assert summary.runtime_backed_fixture_count == 2
+
+
+def test_combine_fixture_evidence_states_reports_no_evidence_when_empty() -> None:
+    assert _derive_domain_state(fixture_summaries=[]) == EvaluationApprovalEvidenceState.NO_EVIDENCE
+
+
+def test_build_domain_notes_reports_absence_of_any_evidence() -> None:
+    notes = _build_domain_notes(
+        domain_label="Prompt rollout",
+        evidence_state=EvaluationApprovalEvidenceState.NO_EVIDENCE,
+        fixture_summaries=[],
+        latest_historical_baseline_run_id=None,
+    )
+
+    assert notes == [
+        "Prompt rollout approval posture has no historical or runtime-backed evaluation evidence yet."
+    ]

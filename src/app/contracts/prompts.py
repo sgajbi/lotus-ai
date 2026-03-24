@@ -174,7 +174,9 @@ class PromptRuntimeSelectionDescriptor(BaseModel):
 
 class PromptSelectionTraceDescriptor(BaseModel):
     task_id: str = Field(description="Stable task identifier associated with the prompt selection.")
-    prompt_version: str = Field(description="Prompt version selected for this execution or audit trace.")
+    prompt_version: str = Field(
+        description="Prompt version selected for this execution or audit trace."
+    )
     rollout_role: PromptRolloutRole = Field(
         description="Rollout role associated with the selected prompt version."
     )

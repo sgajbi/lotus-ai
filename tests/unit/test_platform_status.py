@@ -155,7 +155,9 @@ def test_build_platform_runtime_status_reflects_sql_backed_prompt_rollout_after_
     status = build_platform_runtime_status(None)
 
     explain_selection = next(
-        selection for selection in status.prompt_runtime.selections if selection.task_id == "explain.v1"
+        selection
+        for selection in status.prompt_runtime.selections
+        if selection.task_id == "explain.v1"
     )
     explain_state = next(
         state for state in status.prompt_runtime.rollout_states if state.task_id == "explain.v1"
@@ -167,4 +169,6 @@ def test_build_platform_runtime_status_reflects_sql_backed_prompt_rollout_after_
     assert explain_state.active_prompt_version == "foundation.explain.v2"
     assert explain_state.previous_active_prompt_version == "foundation.explain.v1"
     assert explain_state.latest_control_event is not None
-    assert explain_state.latest_control_event.action_type == PromptControlActionType.PROMOTE_CANDIDATE
+    assert (
+        explain_state.latest_control_event.action_type == PromptControlActionType.PROMOTE_CANDIDATE
+    )

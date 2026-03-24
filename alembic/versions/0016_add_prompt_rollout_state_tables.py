@@ -69,9 +69,7 @@ def upgrade() -> None:
         sa.Column("recorded_at", sa.String(length=64), nullable=False),
         sa.PrimaryKeyConstraint("event_id"),
     )
-    op.create_index(
-        "ix_prompt_rollout_events_task_id", "prompt_rollout_events", ["task_id"]
-    )
+    op.create_index("ix_prompt_rollout_events_task_id", "prompt_rollout_events", ["task_id"])
     op.create_index(
         "ix_prompt_rollout_events_action_type", "prompt_rollout_events", ["action_type"]
     )

@@ -4,7 +4,10 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.contracts.tasks import TaskExecutionRequest
-from app.services.prompt_runtime import build_prompt_selection_trace, resolve_runtime_prompt_or_raise
+from app.services.prompt_runtime import (
+    build_prompt_selection_trace,
+    resolve_runtime_prompt_or_raise,
+)
 from app.services.safety_runtime import build_safety_execution_outcome
 from app.services.task_capability_validator import validate_task_capability
 from app.services.task_execution_models import TaskExecutionContext

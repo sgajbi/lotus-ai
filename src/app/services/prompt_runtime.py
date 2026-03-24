@@ -19,9 +19,7 @@ from app.services.prompt_rollout_models import (
 )
 from app.services.prompt_store import get_prompt_repository
 
-_FOUNDATION_SELECTION_REASON = (
-    "Runtime selection resolves through durable prompt rollout state and explicit governed prompt control actions."
-)
+_FOUNDATION_SELECTION_REASON = "Runtime selection resolves through durable prompt rollout state and explicit governed prompt control actions."
 
 
 @dataclass(frozen=True)
@@ -94,7 +92,9 @@ def resolve_runtime_prompt_or_raise(task_id: str) -> ResolvedRuntimePrompt:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No governed prompt rollout state for task_id: {task_id}",
         )
-    prompt = get_prompt_repository().get_prompt_version(task_id, rollout_state.active_prompt_version)
+    prompt = get_prompt_repository().get_prompt_version(
+        task_id, rollout_state.active_prompt_version
+    )
     if prompt is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
