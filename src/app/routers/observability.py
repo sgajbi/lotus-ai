@@ -3,11 +3,15 @@ from __future__ import annotations
 from fastapi import APIRouter, Query
 
 from app.contracts.observability import (
+    ObservabilityActivationReadinessResponse,
     ObservabilityBreakdownSummaryResponse,
     DomainIncidentSummaryResponse,
+    ObservabilityGovernanceStatusResponse,
     ObservabilityIncidentSummaryResponse,
+    ObservabilityRunbookReadinessResponse,
     ObservabilityRuntimeStatusResponse,
 )
+from app.services.observability_activation_readiness import build_observability_activation_readiness
 from app.services.observability_breakdowns import build_observability_breakdown_summary
 from app.services.observability_domain_summaries import (
     build_async_observability_bundle,
@@ -17,7 +21,9 @@ from app.services.observability_domain_summaries import (
     build_retrieval_observability_bundle,
     build_safety_observability_bundle,
 )
+from app.services.observability_governance import build_observability_governance_status
 from app.services.observability_incident_summary import build_observability_incident_summary
+from app.services.observability_runbook_readiness import build_observability_runbook_readiness
 from app.services.observability_runtime import build_observability_runtime_status
 
 router = APIRouter(prefix="/platform/observability", tags=["platform"])
@@ -39,6 +45,62 @@ router = APIRouter(prefix="/platform/observability", tags=["platform"])
 )
 async def get_observability_runtime_status_route() -> ObservabilityRuntimeStatusResponse:
     return build_observability_runtime_status()
+
+
+@router.get(
+    "/activation-readiness",
+    response_model=ObservabilityActivationReadinessResponse,
+    operation_id="getObservabilityActivationReadiness",
+    summary="Get observability activation readiness",
+    description=(
+        "Returns whether the bounded observability layer is durable enough for governed rollout, "
+        "including store-backed incident evidence and authorized breakdown support."
+    ),
+    responses={
+        200: {"description": "Observability activation readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_observability_activation_readiness_route() -> (
+    ObservabilityActivationReadinessResponse
+):
+    return build_observability_activation_readiness()
+
+
+@router.get(
+    "/runbook-readiness",
+    response_model=ObservabilityRunbookReadinessResponse,
+    operation_id="getObservabilityRunbookReadiness",
+    summary="Get observability runbook readiness",
+    description=(
+        "Returns the current observability operational runbook posture for runtime review, "
+        "incident review, and authorization-aware breakdown inspection."
+    ),
+    responses={
+        200: {"description": "Observability runbook readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_observability_runbook_readiness_route() -> ObservabilityRunbookReadinessResponse:
+    return build_observability_runbook_readiness()
+
+
+@router.get(
+    "/governance-status",
+    response_model=ObservabilityGovernanceStatusResponse,
+    operation_id="getObservabilityGovernanceStatus",
+    summary="Get observability governance status",
+    description=(
+        "Returns the composed observability governance posture across runtime, activation, and "
+        "runbook readiness."
+    ),
+    responses={
+        200: {"description": "Observability governance status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_observability_governance_status_route() -> ObservabilityGovernanceStatusResponse:
+    return build_observability_governance_status()
 
 
 @router.get(

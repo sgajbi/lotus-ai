@@ -44,7 +44,7 @@ def build_retrieval_activation_readiness() -> RetrievalActivationReadinessRespon
         )
     if not runbook_readiness.runbook_ready:
         blocking_findings.append(
-            "Retrieval runbook readiness remains incomplete; observability and formal on-call escalation posture are not yet approved."
+            "Retrieval runbook readiness remains incomplete; formal on-call escalation posture is not yet approved."
         )
     if settings.embedding_provider_mode != "enabled":
         blocking_findings.append(

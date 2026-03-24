@@ -229,3 +229,77 @@ class ObservabilityRuntimeStatusResponse(BaseModel):
     status_summary: list[str] = Field(
         description="Short operator-facing summary of the current observability layer posture."
     )
+
+
+class ObservabilityActivationReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the observability activation-readiness view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    posture: ObservabilityPosture = Field(
+        description="Current overall observability posture for lotus-ai."
+    )
+    freshness: ObservabilityFreshness = Field(
+        description="Current overall freshness posture for lotus-ai."
+    )
+    activation_ready: bool = Field(
+        description="Whether the observability layer is durable enough for governed platform rollout."
+    )
+    domain_count: int = Field(description="Number of observability domains summarized in this response.")
+    blocking_findings: list[str] = Field(
+        description="Human-readable reasons why observability governance is not yet fully activatable."
+    )
+    activation_path: list[str] = Field(
+        description="Governed high-level path required before observability rollout is fully ready."
+    )
+
+
+class ObservabilityRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(description="Stable observability runbook readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before full observability activation."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class ObservabilityRunbookReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the observability runbook readiness view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    runbook_ready: bool = Field(
+        description="Whether observability operational runbook readiness is sufficient for full activation."
+    )
+    required_item_count: int = Field(
+        description="Number of observability runbook items currently required for activation."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required observability runbook items currently marked complete."
+    )
+    items: list[ObservabilityRunbookReadinessItem] = Field(
+        description="Governed observability operational runbook readiness items."
+    )
+
+
+class ObservabilityGovernanceStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the observability governance status.")
+    version: str = Field(description="Current lotus-ai service version.")
+    governance_ready: bool = Field(
+        description="Whether observability governance is ready for fully governed rollout."
+    )
+    runtime_status: ObservabilityRuntimeStatusResponse = Field(
+        description="Current runtime-backed observability posture."
+    )
+    activation_readiness: ObservabilityActivationReadinessResponse = Field(
+        description="Current activation-readiness posture for observability rollout."
+    )
+    runbook_readiness: ObservabilityRunbookReadinessResponse = Field(
+        description="Current runbook-readiness posture for observability rollout."
+    )
+    blocking_area_count: int = Field(
+        description="Number of governance areas currently blocking stronger observability posture."
+    )
+    governance_summary: list[str] = Field(
+        description="Short operator-facing summary of current observability governance posture."
+    )

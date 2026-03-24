@@ -30,7 +30,7 @@ def build_observability_runtime_status() -> ObservabilityRuntimeStatusResponse:
     overall_assessment = assess_observability_posture(
         source_available=unavailable_domain_count == 0,
         stale=any(state == ObservabilityFreshness.STALE for state in freshness_states),
-        degraded_findings=[] if degraded_domain_count == 0 else ["partial_domain_coverage"],
+        degraded_findings=[] if degraded_domain_count == 0 else ["degraded_domain_posture"],
     )
     return ObservabilityRuntimeStatusResponse(
         service=settings.service_name,
@@ -76,7 +76,7 @@ def _build_status_summary(
     return [
         f"Observability runtime currently summarizes {healthy_domain_count + degraded_domain_count + unavailable_domain_count} governed domains through bounded in-service contracts.",
         (
-            f"{degraded_domain_count} domain(s) remain in degraded observability posture because the unified incident-evidence rollout is still partial."
+            f"{degraded_domain_count} domain(s) currently report degraded observability posture because the underlying governed runtime or evidence state is degraded."
             if degraded_domain_count
             else "All summarized domains currently report healthy observability posture."
         ),

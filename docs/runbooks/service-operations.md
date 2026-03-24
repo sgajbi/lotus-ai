@@ -17,6 +17,12 @@
 - General health: /health
 - Metadata: /metadata
 - Platform runtime status: /platform/runtime-status
+- Observability runtime status: /platform/observability/runtime-status
+- Observability activation readiness: /platform/observability/activation-readiness
+- Observability runbook readiness: /platform/observability/runbook-readiness
+- Observability governance status: /platform/observability/governance-status
+- Observability incident summary: /platform/observability/incident-summary
+- Observability breakdowns: /platform/observability/breakdowns
 - Async activation readiness: /platform/async/activation-readiness
 - Async runbook readiness: /platform/async/runbook-readiness
 - Async governance status: /platform/async/governance-status
@@ -77,6 +83,19 @@ Expected operator flow for SQL-backed stores:
 9. only then proceed with rollout if readiness is `READY`
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
+
+## Observability Governance
+
+Before treating the in-service observability layer as governed rollout posture:
+
+1. verify `GET /platform/observability/runtime-status`
+2. inspect `GET /platform/observability/activation-readiness` when technical blockers need detail
+3. inspect `GET /platform/observability/runbook-readiness` when operational blockers need detail
+4. inspect `GET /platform/observability/governance-status` for the composed governance view
+5. confirm the embedded `observability_runtime` and `observability_governance` blocks in `GET /platform/runtime-status` match the detailed observability views
+6. confirm `GET /platform/observability/incident-summary` covers provider, retrieval, async, evaluation, prompt, and safety domains without unavailable telemetry posture
+7. confirm `GET /platform/observability/breakdowns` still exposes bounded caller, tenant, and capability samples without leaking unauthorized tenant data
+8. treat SQL-backed audit and caller-policy stores as the activation gate for restart-safe observability governance
 
 ## Async Activation Governance
 

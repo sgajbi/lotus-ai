@@ -67,12 +67,13 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
             ),
         ),
         ProviderRunbookReadinessItem(
-            runbook_id="provider_observability_dashboard_pack",
-            status="NOT_READY",
+            runbook_id="provider_observability_incident_views",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Dedicated provider latency, failure, quota, budget, and degradation dashboards "
-                "and alerts must be defined before activation."
+                "Bounded provider observability and incident-evidence summaries are now exposed through "
+                "`/platform/observability/provider-summary` and `/platform/observability/incident-summary`; "
+                "external dashboards remain a deployment concern rather than an RFC-0013 activation gate."
             ),
         ),
     ]
@@ -80,7 +81,7 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
     return ProviderRunbookReadinessResponse(
         service=settings.service_name,
         version=settings.service_version,
-        runbook_ready=False,
+        runbook_ready=completed_required_item_count == required_item_count,
         required_item_count=required_item_count,
         completed_required_item_count=completed_required_item_count,
         items=items,

@@ -10,6 +10,15 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/observability/runtime-status"]["get"]["operationId"] == (
         "getObservabilityRuntimeStatus"
     )
+    assert spec["paths"]["/platform/observability/activation-readiness"]["get"]["operationId"] == (
+        "getObservabilityActivationReadiness"
+    )
+    assert spec["paths"]["/platform/observability/runbook-readiness"]["get"]["operationId"] == (
+        "getObservabilityRunbookReadiness"
+    )
+    assert spec["paths"]["/platform/observability/governance-status"]["get"]["operationId"] == (
+        "getObservabilityGovernanceStatus"
+    )
     assert spec["paths"]["/platform/observability/incident-summary"]["get"]["operationId"] == (
         "getObservabilityIncidentSummary"
     )
@@ -144,6 +153,20 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     observability_runtime_schema = spec["components"]["schemas"]["ObservabilityRuntimeStatusResponse"]
     assert "domains" in observability_runtime_schema["properties"]
     assert "incident_evidence_items" in observability_runtime_schema["properties"]
+    observability_activation_schema = spec["components"]["schemas"][
+        "ObservabilityActivationReadinessResponse"
+    ]
+    assert "activation_ready" in observability_activation_schema["properties"]
+    observability_runbook_schema = spec["components"]["schemas"][
+        "ObservabilityRunbookReadinessResponse"
+    ]
+    assert "items" in observability_runbook_schema["properties"]
+    observability_governance_schema = spec["components"]["schemas"][
+        "ObservabilityGovernanceStatusResponse"
+    ]
+    assert "runtime_status" in observability_governance_schema["properties"]
+    assert "activation_readiness" in observability_governance_schema["properties"]
+    assert "runbook_readiness" in observability_governance_schema["properties"]
     incident_summary_schema = spec["components"]["schemas"]["ObservabilityIncidentSummaryResponse"]
     assert "summaries" in incident_summary_schema["properties"]
     domain_incident_schema = spec["components"]["schemas"]["DomainIncidentSummaryResponse"]

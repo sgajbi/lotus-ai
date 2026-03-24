@@ -21,23 +21,23 @@ def build_async_governance_status() -> AsyncGovernanceStatusResponse:
         governance_summary = [
             "Async dedicated workers are now the active primary path for the allowlisted retrieval-indexing and evaluation-execution job types, while the service database remains authoritative async truth.",
             *operational_state.degraded_findings,
-            "Async technical rollout is now converged on the dedicated-worker cutover model, but governance remains blocked until named on-call ownership and dedicated observability coverage are approved.",
+            "Async technical rollout is now converged on the dedicated-worker cutover model, but governance remains blocked until named on-call ownership is approved.",
         ]
     elif activation_readiness.cutover_state == AsyncCutoverState.DEGRADED_FALLBACK:
         governance_summary = [
             "Async worker rollout is currently in an explicit degraded fallback posture; queue-backed worker execution is not healthy enough to treat as stable primary execution.",
             *operational_state.degraded_findings,
-            "Async technical rollout is now converged on the dedicated-worker cutover model, but governance remains blocked until named on-call ownership and dedicated observability coverage are approved.",
+            "Async technical rollout is now converged on the dedicated-worker cutover model, but governance remains blocked until named on-call ownership is approved.",
         ]
     elif activation_readiness.cutover_state == AsyncCutoverState.QUEUE_DELIVERY_SHADOW:
         governance_summary = [
             "Async rollout is currently in queue-delivery shadow mode: managed queue delivery is wired, but dedicated workers are not yet the active primary execution path.",
-            "Async technical rollout is now converged on the dedicated-worker cutover model, but governance remains blocked until named on-call ownership and dedicated observability coverage are approved.",
+            "Async technical rollout is now converged on the dedicated-worker cutover model, but governance remains blocked until named on-call ownership is approved.",
         ]
     else:
         governance_summary = [
             "Async technical activation remains partially blocked in foundation phase: durable submission, worker claim, lease recovery, retrieval-indexing execution, and evaluation execution are active for a narrow allowlist, but dedicated worker fleet rollout and broader job enablement are still gated.",
-            "Async technical rollout is now converged on the dedicated-worker cutover model, but governance remains blocked until named on-call ownership and dedicated observability coverage are approved.",
+            "Async technical rollout is now converged on the dedicated-worker cutover model, but governance remains blocked until named on-call ownership is approved.",
         ]
     return AsyncGovernanceStatusResponse(
         service=settings.service_name,

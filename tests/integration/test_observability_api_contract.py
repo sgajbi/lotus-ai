@@ -18,6 +18,28 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
     )
 
 
+def test_observability_governance_routes(client: TestClient) -> None:
+    activation_response = client.get("/platform/observability/activation-readiness")
+    assert activation_response.status_code == 200
+    activation_body = activation_response.json()
+    assert activation_body["activation_ready"] is False
+    assert activation_body["domain_count"] == 6
+
+    runbook_response = client.get("/platform/observability/runbook-readiness")
+    assert runbook_response.status_code == 200
+    runbook_body = runbook_response.json()
+    assert runbook_body["runbook_ready"] is True
+    assert runbook_body["required_item_count"] == 3
+
+    governance_response = client.get("/platform/observability/governance-status")
+    assert governance_response.status_code == 200
+    governance_body = governance_response.json()
+    assert governance_body["governance_ready"] is False
+    assert governance_body["activation_readiness"]["activation_ready"] is False
+    assert governance_body["runbook_readiness"]["runbook_ready"] is True
+    assert governance_body["runtime_status"]["domain_count"] == 6
+
+
 def test_observability_incident_summary_route(client: TestClient) -> None:
     response = client.get("/platform/observability/incident-summary")
 

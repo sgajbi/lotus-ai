@@ -77,7 +77,7 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
         "Review `/platform/providers/control-plane-actions` to confirm recent durable quota, budget, and degradation reset actions are explicit and reviewable before activation expands.",
         "Verify allowlisted rollout configuration and credential posture through `/platform/providers/activation-readiness` before any live mode is considered.",
         "Confirm provider evaluation and failure-mode evidence through `/platform/providers/evidence-readiness`.",
-        "Confirm on-call, quota-handling, rollback, and observability readiness through `/platform/providers/runbook-readiness`.",
+        "Confirm on-call, quota-handling, rollback, and provider incident-review readiness through `/platform/providers/runbook-readiness`.",
         "Approve activation only when `/platform/providers/governance-status` and the embedded `provider_governance` block in `/platform/runtime-status` both show the same ready-to-activate posture.",
     ]
     return ProviderActivationReadinessResponse(
