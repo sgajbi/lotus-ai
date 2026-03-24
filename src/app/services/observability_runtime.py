@@ -8,11 +8,13 @@ from app.contracts.observability import (
     ObservabilityPosture,
     ObservabilityRuntimeStatusResponse,
 )
+from app.services.deployment_split_runtime import build_deployment_split_runtime_status
 from app.services.observability_domain_summaries import build_current_observability_bundles
 from app.services.observability_shared import assess_observability_posture
 
 
 def build_observability_runtime_status() -> ObservabilityRuntimeStatusResponse:
+    deployment_split = build_deployment_split_runtime_status()
     domains = _build_domain_summaries()
     incident_items = _build_incident_items()
     postures = [domain.posture for domain in domains]
@@ -45,6 +47,8 @@ def build_observability_runtime_status() -> ObservabilityRuntimeStatusResponse:
         domains=domains,
         incident_evidence_items=incident_items,
         status_summary=_build_status_summary(
+            deployment_split_summary=deployment_split.status_summary[0],
+            deployment_split_degraded=deployment_split.degraded,
             healthy_domain_count=healthy_domain_count,
             degraded_domain_count=degraded_domain_count,
             unavailable_domain_count=unavailable_domain_count,
@@ -68,6 +72,8 @@ def _build_incident_items() -> list[IncidentEvidenceSummaryItem]:
 
 def _build_status_summary(
     *,
+    deployment_split_summary: str,
+    deployment_split_degraded: bool,
     healthy_domain_count: int,
     degraded_domain_count: int,
     unavailable_domain_count: int,
@@ -75,6 +81,11 @@ def _build_status_summary(
 ) -> list[str]:
     return [
         f"Observability runtime currently summarizes {healthy_domain_count + degraded_domain_count + unavailable_domain_count} governed domains through bounded in-service contracts.",
+        (
+            f"Deployment-split posture: {deployment_split_summary.lower()}"
+            if not deployment_split_degraded
+            else f"Deployment-split posture is active but degraded: {deployment_split_summary.lower()}"
+        ),
         (
             f"{degraded_domain_count} domain(s) currently report degraded observability posture because the underlying governed runtime or evidence state is degraded."
             if degraded_domain_count

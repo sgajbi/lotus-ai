@@ -24,6 +24,7 @@ def test_build_observability_runtime_status_returns_bounded_domain_summary() -> 
         item.evidence_id == "evaluation_approval_gate_state"
         for item in status.incident_evidence_items
     )
+    assert any("deployment-split posture" in line.lower() for line in status.status_summary)
 
 
 def test_build_observability_runtime_status_flags_async_degradation() -> None:
