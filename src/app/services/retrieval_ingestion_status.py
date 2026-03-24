@@ -8,6 +8,7 @@ from app.contracts.retrieval import (
     RetrievalIngestionStatusResponse,
 )
 from app.services.async_job_type_catalog import get_async_job_type_descriptor
+from app.services.retrieval_ingestion_artifacts import load_retrieval_ingestion_artifact_refs
 from app.services.retrieval_store import get_retrieval_repository
 from app.services.runtime_readiness import get_retrieval_store_runtime_status
 
@@ -29,6 +30,10 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
             ingestion_job_count=0,
             staged_ingestion_job_count=0,
             blocked_ingestion_job_count=0,
+            running_ingestion_job_count=0,
+            failed_ingestion_job_count=0,
+            completed_ingestion_job_count=0,
+            artifact_backed_job_count=0,
             runtime_findings=[
                 "Retrieval ingestion durable state is unavailable because the active retrieval store is not ready."
             ],
@@ -57,8 +62,20 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
     )
     staged_job_count = sum(1 for job in jobs if job.status == RetrievalIngestionJobStatus.STAGED)
     blocked_job_count = sum(1 for job in jobs if job.status == RetrievalIngestionJobStatus.BLOCKED)
+    running_job_count = sum(1 for job in jobs if job.status == RetrievalIngestionJobStatus.RUNNING)
+    failed_job_count = sum(1 for job in jobs if job.status == RetrievalIngestionJobStatus.FAILED)
+    completed_job_count = sum(
+        1 for job in jobs if job.status == RetrievalIngestionJobStatus.COMPLETED
+    )
     ingestion_job_type = get_async_job_type_descriptor(job_type="document_ingestion")
     async_enabled = bool(ingestion_job_type and ingestion_job_type.enabled)
+    recent_jobs = [
+        job.model_copy(
+            update={"artifact_refs": load_retrieval_ingestion_artifact_refs(job_id=job.job_id)}
+        )
+        for job in jobs[:10]
+    ]
+    artifact_backed_job_count = sum(1 for job in jobs if load_retrieval_ingestion_artifact_refs(job_id=job.job_id))
 
     findings = [
         "Durable ingestion job and document-version state is now present for governed corpus lineage review.",
@@ -79,6 +96,17 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
         findings.append(
             "Withdrawn document versions remain visible as historical corpus state and are not deleted."
         )
+    if artifact_backed_job_count > 0:
+        findings.append(
+            "Bounded ingestion diagnostics now persist through the governed artifact backbone for corpus-change review."
+        )
+    if failed_job_count > 0:
+        findings.append(
+            "Some ingestion jobs now report failed terminal posture and should be reviewed through bounded artifact-backed diagnostics."
+        )
+    findings.append(
+        "Retrieval observability incident views now include ingestion and corpus-change posture instead of only live-search activation blockers."
+    )
 
     return RetrievalIngestionStatusResponse(
         service=settings.service_name,
@@ -86,7 +114,7 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
         retrieval_mode=settings.retrieval_mode,
         retrieval_store_mode=settings.retrieval_store_mode,
         ingestion_delivery_stage=(
-            RetrievalIngestionDeliveryStage.ASYNC_EXECUTION_READY
+            RetrievalIngestionDeliveryStage.OPERATIONALLY_HARDENED
             if async_enabled
             else RetrievalIngestionDeliveryStage.DURABLE_STATE_READY
         ),
@@ -98,7 +126,11 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
         ingestion_job_count=len(jobs),
         staged_ingestion_job_count=staged_job_count,
         blocked_ingestion_job_count=blocked_job_count,
+        running_ingestion_job_count=running_job_count,
+        failed_ingestion_job_count=failed_job_count,
+        completed_ingestion_job_count=completed_job_count,
+        artifact_backed_job_count=artifact_backed_job_count,
         runtime_findings=findings,
         recent_document_versions=versions[:10],
-        recent_ingestion_jobs=jobs[:10],
+        recent_ingestion_jobs=recent_jobs,
     )

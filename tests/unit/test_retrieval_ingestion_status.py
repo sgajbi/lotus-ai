@@ -8,12 +8,16 @@ def test_retrieval_ingestion_status_reports_durable_lineage_state() -> None:
 
     status = build_retrieval_ingestion_status()
 
-    assert status.ingestion_delivery_stage == "ASYNC_EXECUTION_READY"
+    assert status.ingestion_delivery_stage == "OPERATIONALLY_HARDENED"
     assert status.live_ingestion_enabled is True
     assert status.document_version_count >= 5
     assert status.superseded_document_version_count >= 1
     assert status.withdrawn_document_version_count >= 1
     assert status.blocked_ingestion_job_count >= 1
+    assert status.running_ingestion_job_count == 0
+    assert status.failed_ingestion_job_count == 0
+    assert status.completed_ingestion_job_count == 0
+    assert status.artifact_backed_job_count == 0
     assert status.recent_document_versions
     assert status.recent_ingestion_jobs
 
@@ -40,3 +44,23 @@ def test_retrieval_ingestion_status_reports_catalog_only_when_store_is_unavailab
     assert status.document_version_count == 0
     assert status.ingestion_job_count == 0
     assert status.runtime_findings
+
+
+def test_retrieval_ingestion_status_reports_artifact_backed_runtime_diagnostics() -> None:
+    from app.services.retrieval_ingestion_async_execution import (
+        run_next_retrieval_ingestion_job,
+        submit_retrieval_ingestion_job_async,
+    )
+
+    submit_retrieval_ingestion_job_async(
+        job_id="ingjob_lotus_platform_rfcs_refresh_0069",
+        caller_app="lotus-platform",
+        correlation_id="corr-ret-ingestion-status-artifacts",
+    )
+    run_next_retrieval_ingestion_job(worker_id="worker-a")
+
+    status = build_retrieval_ingestion_status()
+
+    assert status.completed_ingestion_job_count >= 1
+    assert status.artifact_backed_job_count >= 1
+    assert any(job.artifact_refs for job in status.recent_ingestion_jobs)

@@ -47,10 +47,10 @@ def build_retrieval_runbook_readiness() -> RetrievalRunbookReadinessResponse:
         ),
         RetrievalRunbookReadinessItem(
             runbook_id="retrieval_corpus_change_review",
-            status="FOUNDATION_DOCUMENTED",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Corpus refresh, withdrawal, and search-eligibility review are now runtime-visible, but final operational review procedures are still being hardened."
+                "Corpus refresh, withdrawal, search-eligibility review, and artifact-backed ingestion diagnostics are now documented through the retrieval and observability runbook flow."
             ),
         ),
         RetrievalRunbookReadinessItem(

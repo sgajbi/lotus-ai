@@ -12,6 +12,7 @@ from app.contracts.retrieval import (
     RetrievalPipelineStage,
 )
 from app.repositories.async_runtime_repository import AsyncRuntimeJobRecord
+from app.services.retrieval_ingestion_artifacts import load_retrieval_ingestion_artifact_refs
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.retrieval_store import get_retrieval_repository
 
@@ -103,6 +104,9 @@ def get_retrieval_ingestion_job_or_raise(job_id: str) -> RetrievalIngestionJobDe
 def _overlay_runtime_status(
     descriptor: RetrievalIngestionJobDescriptor,
 ) -> RetrievalIngestionJobDescriptor:
+    descriptor = descriptor.model_copy(
+        update={"artifact_refs": load_retrieval_ingestion_artifact_refs(job_id=descriptor.job_id)}
+    )
     runtime_job = _get_runtime_async_ingestion_job(job_id=descriptor.job_id)
     if runtime_job is None:
         return descriptor

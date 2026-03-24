@@ -7,11 +7,17 @@ from app.contracts.retrieval import (
 )
 from app.services.eval_approval_gate_summary import build_retrieval_approval_gate_summary
 from app.services.governance_readiness import summarize_activation_items
+from app.services.retrieval_ingestion_artifacts import load_retrieval_ingestion_artifact_refs
+from app.services.retrieval_store import get_retrieval_repository
 
 
 def build_retrieval_evidence_readiness() -> RetrievalEvidenceReadinessResponse:
     approval_gate = build_retrieval_approval_gate_summary()
     runtime_backed_live_evidence_present = approval_gate.runtime_backed_fixture_count > 0
+    corpus_change_evidence_present = any(
+        load_retrieval_ingestion_artifact_refs(job_id=job.job_id)
+        for job in get_retrieval_repository().list_ingestion_jobs()
+    )
     items = [
         RetrievalEvidenceReadinessItem(
             evidence_id="retrieval_fixture_coverage_pack",
@@ -75,10 +81,14 @@ def build_retrieval_evidence_readiness() -> RetrievalEvidenceReadinessResponse:
         ),
         RetrievalEvidenceReadinessItem(
             evidence_id="retrieval_corpus_change_evidence_pack",
-            status="NOT_READY",
+            status="READY" if corpus_change_evidence_present else "NOT_READY",
             required_for_activation=True,
             notes=(
-                "Runtime-backed evidence covering document refresh, withdrawal, and search-eligibility convergence is not yet assembled."
+                "Runtime-backed corpus-change evidence now includes artifact-backed ingestion diagnostics plus search-eligibility convergence review."
+                if corpus_change_evidence_present
+                else (
+                    "Runtime-backed evidence covering document refresh, withdrawal, and search-eligibility convergence is not yet assembled."
+                )
             ),
         ),
     ]

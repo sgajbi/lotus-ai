@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
 
@@ -22,6 +23,9 @@ from app.services.async_worker_runtime import (
     start_async_job,
 )
 from app.services.retrieval_catalog_service import get_retrieval_ingestion_job_detail_or_raise
+from app.services.retrieval_ingestion_artifacts import (
+    persist_retrieval_ingestion_diagnostic_artifact,
+)
 from app.services.retrieval_async_execution import submit_retrieval_index_job_async
 from app.services.retrieval_store import get_retrieval_repository
 
@@ -104,12 +108,18 @@ def _execute_claimed_retrieval_ingestion_job(
         ingestion_job.target_version_id is None
         or ingestion_job.status == RetrievalIngestionJobStatus.BLOCKED
     ):
-        repository.save_ingestion_job(
-            _updated_ingestion_job(
-                ingestion_job,
-                status=RetrievalIngestionJobStatus.FAILED,
-                message="Ingestion execution is blocked because the target document version is not eligible.",
-            )
+        failed_job = _updated_ingestion_job(
+            ingestion_job,
+            status=RetrievalIngestionJobStatus.FAILED,
+            message="Ingestion execution is blocked because the target document version is not eligible.",
+        )
+        repository.save_ingestion_job(failed_job)
+        persist_retrieval_ingestion_diagnostic_artifact(
+            job=failed_job,
+            created_at=_utcnow_isoformat(),
+            created_by=worker_id,
+            runtime_async_job_id=claim.job.job_id,
+            follow_on_async_job_id=None,
         )
         fail_async_job(
             job_id=claim.job.job_id,
@@ -143,12 +153,18 @@ def _execute_claimed_retrieval_ingestion_job(
             correlation_id=claim.job.correlation_id,
         )
     except Exception as exc:
-        repository.save_ingestion_job(
-            _updated_ingestion_job(
-                ingestion_job,
-                status=RetrievalIngestionJobStatus.FAILED,
-                message=f"Ingestion execution failed: {exc}",
-            )
+        failed_job = _updated_ingestion_job(
+            ingestion_job,
+            status=RetrievalIngestionJobStatus.FAILED,
+            message=f"Ingestion execution failed: {exc}",
+        )
+        repository.save_ingestion_job(failed_job)
+        persist_retrieval_ingestion_diagnostic_artifact(
+            job=failed_job,
+            created_at=_utcnow_isoformat(),
+            created_by=worker_id,
+            runtime_async_job_id=claim.job.job_id,
+            follow_on_async_job_id=None,
         )
         fail_async_job(
             job_id=claim.job.job_id,
@@ -178,12 +194,20 @@ def _execute_claimed_retrieval_ingestion_job(
         f"Runtime-backed ingestion completed for source '{ingestion_job.source_id}'. "
         f"{follow_on_message}"
     )
-    repository.save_ingestion_job(
-        _updated_ingestion_job(
-            ingestion_job,
-            status=RetrievalIngestionJobStatus.COMPLETED,
-            message=completion_message,
-        )
+    completed_job = _updated_ingestion_job(
+        ingestion_job,
+        status=RetrievalIngestionJobStatus.COMPLETED,
+        message=completion_message,
+    )
+    repository.save_ingestion_job(completed_job)
+    persist_retrieval_ingestion_diagnostic_artifact(
+        job=completed_job,
+        created_at=_utcnow_isoformat(),
+        created_by=worker_id,
+        runtime_async_job_id=claim.job.job_id,
+        follow_on_async_job_id=(
+            follow_on_submission.job_id or follow_on_submission.existing_job_id
+        ),
     )
     complete_async_job(
         job_id=claim.job.job_id,
@@ -238,3 +262,7 @@ def _updated_ingestion_job(
             "message": message,
         }
     )
+
+
+def _utcnow_isoformat() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")

@@ -86,11 +86,12 @@ def test_retrieval_ingestion_status_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["ingestion_delivery_stage"] == "ASYNC_EXECUTION_READY"
+    assert body["ingestion_delivery_stage"] == "OPERATIONALLY_HARDENED"
     assert body["live_ingestion_enabled"] is True
     assert body["document_version_count"] >= 5
     assert body["withdrawn_document_version_count"] >= 1
     assert body["blocked_ingestion_job_count"] >= 1
+    assert body["artifact_backed_job_count"] == 0
     assert body["recent_document_versions"]
     assert body["recent_ingestion_jobs"]
 
@@ -112,6 +113,7 @@ def test_retrieval_ingestion_job_detail_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["job"]["source_id"] == "lotus-platform-rfcs"
+    assert body["job"]["artifact_refs"] == []
     assert any(step["step_id"].endswith(".index_followthrough") for step in body["steps"])
 
 
@@ -148,6 +150,7 @@ def test_retrieval_ingestion_job_detail_reflects_runtime_backed_completion(clien
     assert response.status_code == 200
     body = response.json()
     assert body["job"]["status"] == "COMPLETED"
+    assert len(body["job"]["artifact_refs"]) == 1
     assert body["steps"][2]["runtime_status"] == "COMPLETED"
     assert body["steps"][2]["linked_async_job_id"] == async_job_id
     assert body["steps"][3]["linked_async_job_id"] is not None
@@ -253,7 +256,7 @@ def test_retrieval_runbook_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
     assert body["required_item_count"] == 6
-    assert body["completed_required_item_count"] == 3
+    assert body["completed_required_item_count"] == 4
     assert body["items"][0]["runbook_id"] == "retrieval_operational_runbook"
     assert body["items"][0]["status"] == "READY"
     assert body["items"][2]["status"] == "READY"
@@ -293,7 +296,7 @@ def test_retrieval_governance_status_route(client: TestClient) -> None:
     assert body["evidence_readiness"]["evidence_ready"] is False
     assert body["evidence_readiness"]["approval_gate"]["domain_id"] == "retrieval_execution"
     assert body["corpus_change_review_ready"] is False
-    assert len(body["governance_summary"]) == 3
+    assert len(body["governance_summary"]) == 4
 
 
 def test_retrieval_evidence_readiness_route_prefers_runtime_backed_pass_evidence(

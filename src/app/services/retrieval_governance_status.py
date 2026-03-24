@@ -23,12 +23,16 @@ def build_retrieval_governance_status() -> RetrievalGovernanceStatusResponse:
     )
     governance_summary = [
         "Retrieval technical activation now includes a live indexed search path plus bounded live embedding dependency posture, but broader rollout remains blocked until governance gates are completed.",
-        "Retrieval operational runbook readiness remains incomplete until named on-call escalation is approved.",
+        "Retrieval operational runbook readiness now includes explicit corpus-change and artifact-backed incident review, but named on-call escalation is still not approved.",
         (
             "Retrieval evidence readiness now includes a runtime-backed approval gate summary derived "
             f"from governed retrieval evaluation runs, currently reporting '{evidence_readiness.approval_gate.evidence_state.value}'."
         ),
     ]
+    if not corpus_change_review_ready:
+        governance_summary.append(
+            "Corpus-change review is not yet fully evidenced through bounded ingestion diagnostics."
+        )
     return RetrievalGovernanceStatusResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,

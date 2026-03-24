@@ -24,5 +24,6 @@ def test_retrieval_ingestion_job_detail_reports_async_overlay_and_index_followth
     assert submission.accepted is True
     assert detail.job.status == "QUEUED"
     assert detail.job.linked_async_job_id == submission.job_id
+    assert detail.job.artifact_refs == []
     assert detail.steps[2].runtime_status == "QUEUED"
     assert detail.steps[2].linked_async_job_id == submission.job_id

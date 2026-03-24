@@ -49,7 +49,7 @@ Supported now:
 Important limitation:
 
 1. retrieval is live for the approved indexed corpus only,
-2. broader live ingestion and corpus refresh are still intentionally bounded, but RFC-0019 now has durable ingestion state, runtime-backed async ingestion execution for governed corpus-change job targets, and retrieval runtime/governance surfaces that reflect refresh-pending and withdrawn lineage posture truthfully,
+2. broader live ingestion and corpus refresh are still intentionally bounded, but RFC-0019 now has durable ingestion state, runtime-backed async ingestion execution for governed corpus-change job targets, artifact-backed ingestion diagnostics, and retrieval runtime/governance surfaces that reflect refresh-pending and withdrawn lineage posture truthfully,
 3. embedding-provider expansion now has one bounded live path available for retrieval indexing, but broader retrieval/provider activation is still not approved.
 
 ### Prompt Governance
@@ -198,7 +198,7 @@ Current status against that sequence:
 
 1. `RFC-0015` is implemented, including runtime, activation, runbook, and governance posture for unified versus split deployment stages.
 2. `RFC-0017` now exposes a bounded resilience runtime inventory surface, an ordered restore-plan surface, explicit degraded-versus-restored runtime posture for queue, worker, provider, retrieval, and artifact continuity dependencies, plus drill-evidence, activation, runbook, and governance surfaces.
-3. `RFC-0018` is implemented, and `RFC-0019` is now in active implementation with durable ingestion-state, document-lineage, bounded async ingestion execution, and retrieval runtime/governance convergence in place.
+3. `RFC-0018` is implemented, and `RFC-0019` is now in active implementation with durable ingestion-state, document-lineage, bounded async ingestion execution, artifact-backed ingestion diagnostics, and retrieval runtime/governance convergence in place.
 
 Early RFC-0015 groundwork now exists as a bounded runtime surface:
 

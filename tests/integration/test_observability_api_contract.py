@@ -57,6 +57,10 @@ def test_observability_incident_summary_route(client: TestClient) -> None:
     assert all(
         summary["incident_evidence_items"][0]["artifact_refs"] for summary in body["summaries"]
     )
+    retrieval_summary = next(
+        summary for summary in body["summaries"] if summary["domain_id"] == "retrieval"
+    )
+    assert len(retrieval_summary["incident_evidence_items"]) == 2
 
 
 def test_provider_observability_summary_route(client: TestClient) -> None:

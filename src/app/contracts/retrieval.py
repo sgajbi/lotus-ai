@@ -4,6 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.artifacts import ArtifactDescriptor
 from app.contracts.deployment_split import (
     DeploymentPlaneId,
     DeploymentRouteMode,
@@ -329,6 +330,10 @@ class RetrievalIngestionJobDescriptor(BaseModel):
         default=None,
         description="Optional linked async job identifier when ingestion is executing through the durable async runtime.",
     )
+    artifact_refs: list[ArtifactDescriptor] = Field(
+        default_factory=list,
+        description="Governed artifact descriptors attached to the ingestion job for bounded diagnostics and corpus-change review.",
+    )
 
 
 class RetrievalIngestionJobCatalogResponse(BaseModel):
@@ -392,6 +397,18 @@ class RetrievalIngestionStatusResponse(BaseModel):
     )
     blocked_ingestion_job_count: int = Field(
         description="Number of ingestion jobs currently blocked pending governance or execution support."
+    )
+    running_ingestion_job_count: int = Field(
+        description="Number of ingestion jobs currently running through the durable async backbone."
+    )
+    failed_ingestion_job_count: int = Field(
+        description="Number of ingestion jobs currently reporting a failed terminal posture."
+    )
+    completed_ingestion_job_count: int = Field(
+        description="Number of ingestion jobs currently reporting a completed terminal posture."
+    )
+    artifact_backed_job_count: int = Field(
+        description="Number of ingestion jobs currently carrying bounded governed diagnostic artifacts."
     )
     runtime_findings: list[str] = Field(
         description="Human-readable explanation of the current bounded ingestion posture."

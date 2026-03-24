@@ -62,6 +62,7 @@ def test_run_next_retrieval_ingestion_job_completes_and_queues_follow_on_indexin
 
     assert async_detail.job.status.value == "COMPLETED"
     assert ingestion_detail.job.status.value == "COMPLETED"
+    assert len(ingestion_detail.job.artifact_refs) == 1
     assert ingestion_detail.steps[3].runtime_status == "QUEUED"
     assert ingestion_detail.steps[3].linked_async_job_id is not None
     assert retrieval_detail.job.status.value == "QUEUED"

@@ -37,3 +37,21 @@ def test_retrieval_evidence_readiness_prefers_runtime_backed_live_evidence() -> 
     assert readiness.items[2].status == "READY"
     assert readiness.items[3].status == "READY"
     assert readiness.items[5].status == "NOT_READY"
+
+
+def test_retrieval_evidence_readiness_reports_corpus_change_artifact_pack_when_available() -> None:
+    from app.services.retrieval_ingestion_async_execution import (
+        run_next_retrieval_ingestion_job,
+        submit_retrieval_ingestion_job_async,
+    )
+
+    submit_retrieval_ingestion_job_async(
+        job_id="ingjob_lotus_platform_rfcs_refresh_0069",
+        caller_app="lotus-platform",
+        correlation_id="corr-ret-evidence-artifact-001",
+    )
+    run_next_retrieval_ingestion_job(worker_id="worker-a")
+
+    readiness = build_retrieval_evidence_readiness()
+
+    assert readiness.items[5].status == "READY"

@@ -243,6 +243,12 @@ Acceptance gate:
 3. degraded ingestion or refresh posture is visible,
 4. the platform is materially closer to production-grade corpus management.
 
+Current implementation note:
+
+1. ingestion jobs now emit bounded retrieval-owned diagnostic artifacts for completed and failed corpus-change execution,
+2. retrieval observability now includes corpus-change runtime posture alongside live-search activation posture,
+3. retrieval runbook and evidence surfaces now treat corpus-change review as an explicit governed requirement rather than future-only prose.
+
 ## Risks
 
 1. ingestion could widen corpus scope too aggressively if governance is weak,

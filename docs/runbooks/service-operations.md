@@ -365,9 +365,10 @@ Before any future live-retrieval activation slice:
 6. confirm retrieval indexing policy and execution status still reflect governed staged posture unless explicitly approved otherwise
 7. confirm the retrieval approval gate is backed by current runtime-produced live-search evidence rather than historical staged baselines alone
 8. inspect `GET /platform/retrieval/ingestion-status` and `GET /platform/retrieval/document-governance` to confirm refresh-pending, withdrawn, and index-pending corpus posture is explicit before treating a search outage as a generic indexing failure
-9. confirm reindex, replay, rollback, and retrieval incident-review procedures are documented and approved
-10. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
-11. only then proceed with any live-retrieval activation rollout review
+9. inspect `GET /platform/retrieval/ingestion-jobs/{job_id}` and the attached `artifact_refs` when a corpus-change job reaches failed or completed posture and bounded diagnostics are needed
+10. confirm reindex, replay, rollback, and retrieval incident-review procedures are documented and approved
+11. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
+12. only then proceed with any live-retrieval activation rollout review
 
 ## Durable Retrieval Recovery
 
