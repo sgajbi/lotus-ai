@@ -256,6 +256,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     first_use_case_governance_schema = spec["components"]["schemas"][
         "FirstUseCaseGovernanceStatusResponse"
     ]
+    assert "rollout_stage" in first_use_case_governance_schema["properties"]
+    assert "active_production_ready" in first_use_case_governance_schema["properties"]
     assert "readiness" in first_use_case_governance_schema["properties"]
     assert "runbook_readiness" in first_use_case_governance_schema["properties"]
     onboarding_template_schema = spec["components"]["schemas"]["UseCaseOnboardingTemplateResponse"]

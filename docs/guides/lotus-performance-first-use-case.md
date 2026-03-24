@@ -53,6 +53,12 @@ Limited rollout should be treated as governed only when:
 2. `/platform/use-cases/first-production-use-case/runbook-readiness` is ready,
 3. `/platform/use-cases/first-production-use-case/governance-status` reports `LIMITED_ROLLOUT_READY`.
 
+The rollout-stage model is now explicit:
+
+1. `PRE_PROD_VALIDATION` means the bounded contract exists and pre-rollout evidence can be reviewed, but limited rollout is still blocked,
+2. `LIMITED_ROLLOUT` means the first use case is ready for bounded governed downstream activation,
+3. active production posture remains explicitly deferred in RFC-0016 and should not be inferred from limited-rollout readiness alone.
+
 Rollback posture is intentionally simple:
 
 1. if first-use-case governance becomes blocked, downstream exposure should be treated as blocked,

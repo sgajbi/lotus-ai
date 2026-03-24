@@ -18,6 +18,12 @@ class FirstUseCaseOperationalPosture(str, Enum):
     LIMITED_ROLLOUT_READY = "LIMITED_ROLLOUT_READY"
 
 
+class FirstUseCaseRolloutStage(str, Enum):
+    PRE_PROD_VALIDATION = "PRE_PROD_VALIDATION"
+    LIMITED_ROLLOUT = "LIMITED_ROLLOUT"
+    ACTIVE_PRODUCTION_DEFERRED = "ACTIVE_PRODUCTION_DEFERRED"
+
+
 class FirstUseCaseOwnershipBoundary(BaseModel):
     owner: str = Field(description="Owning system or team for the boundary.")
     responsibility: str = Field(description="Bounded responsibility assigned to the owner.")
@@ -97,8 +103,14 @@ class FirstUseCaseGovernanceStatusResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     use_case_id: str = Field(description="Stable identifier for the selected first use case.")
     downstream_app: str = Field(description="Named downstream integration owner for the use case.")
+    rollout_stage: FirstUseCaseRolloutStage = Field(
+        description="Current bounded rollout stage for the first production use case."
+    )
     operational_posture: FirstUseCaseOperationalPosture = Field(
         description="Current bounded rollout posture for the first production use case."
+    )
+    active_production_ready: bool = Field(
+        description="Whether broader active production posture is enabled for the first use case in this RFC."
     )
     governance_ready: bool = Field(
         description="Whether the first use case is ready for limited governed rollout."

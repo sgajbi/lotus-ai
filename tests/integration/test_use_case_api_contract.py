@@ -54,7 +54,9 @@ def test_first_production_use_case_governance_status_route(client: TestClient) -
     assert body["service"] == "lotus-ai"
     assert body["use_case_id"] == "lotus_performance.analytics_commentary.v1"
     assert body["downstream_app"] == "lotus-performance"
+    assert body["rollout_stage"] == "PRE_PROD_VALIDATION"
     assert body["operational_posture"] == "LIMITED_ROLLOUT_BLOCKED"
+    assert body["active_production_ready"] is False
     assert body["governance_ready"] is False
     assert body["readiness"]["approval_gate"]["domain_id"] == "first_use_case_onboarding"
     assert body["runbook_readiness"]["runbook_ready"] is True

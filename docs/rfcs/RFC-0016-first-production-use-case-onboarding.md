@@ -146,7 +146,8 @@ Current implemented posture for the next slice:
 
 1. `/platform/use-cases/first-production-use-case/readiness` now also carries the bounded limited-rollout technical gates for audit, observability, and artifact review,
 2. `/platform/use-cases/first-production-use-case/runbook-readiness` now exposes the operator support, rollback, unsupported-input triage, and shared-ownership posture,
-3. `/platform/use-cases/first-production-use-case/governance-status` now combines those bounded runtime and runbook views into one limited-rollout review surface.
+3. `/platform/use-cases/first-production-use-case/governance-status` now combines those bounded runtime and runbook views into one limited-rollout review surface,
+4. that governance view now also distinguishes `PRE_PROD_VALIDATION`, `LIMITED_ROLLOUT`, and explicitly deferred active-production posture so the RFC does not overstate downstream rollout.
 
 Current implemented posture for the final slice:
 

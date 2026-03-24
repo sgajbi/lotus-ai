@@ -329,7 +329,9 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["first_use_case"]["use_case_id"] == "lotus_performance.analytics_commentary.v1"
     assert body["first_use_case"]["downstream_app"] == "lotus-performance"
     assert body["first_use_case"]["contract_hardened"] is True
+    assert body["first_use_case_governance"]["rollout_stage"] == "PRE_PROD_VALIDATION"
     assert body["first_use_case_governance"]["operational_posture"] == "LIMITED_ROLLOUT_BLOCKED"
+    assert body["first_use_case_governance"]["active_production_ready"] is False
     assert body["first_use_case_governance"]["governance_ready"] is False
     assert body["first_use_case_governance"]["readiness"]["readiness_ready"] is False
     assert body["first_use_case_governance"]["runbook_readiness"]["runbook_ready"] is True

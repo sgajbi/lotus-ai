@@ -14,7 +14,9 @@ def test_first_use_case_governance_blocks_limited_rollout_in_default_memory_post
     assert status.use_case_id == "lotus_performance.analytics_commentary.v1"
     assert status.downstream_app == "lotus-performance"
     assert status.governance_ready is False
+    assert status.rollout_stage.value == "PRE_PROD_VALIDATION"
     assert status.operational_posture.value == "LIMITED_ROLLOUT_BLOCKED"
+    assert status.active_production_ready is False
     assert status.blocking_area_count == 1
     assert status.readiness.readiness_ready is False
     assert status.runbook_readiness.runbook_ready is True
@@ -45,7 +47,9 @@ def test_first_use_case_governance_reports_limited_rollout_ready_when_durable_co
         status = build_first_use_case_governance_status()
 
     assert status.governance_ready is True
+    assert status.rollout_stage.value == "LIMITED_ROLLOUT"
     assert status.operational_posture.value == "LIMITED_ROLLOUT_READY"
+    assert status.active_production_ready is False
     assert status.blocking_area_count == 0
     assert status.readiness.readiness_ready is True
     assert status.runbook_readiness.runbook_ready is True
