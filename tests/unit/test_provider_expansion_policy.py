@@ -1,6 +1,9 @@
+from _pytest.monkeypatch import MonkeyPatch
+
 from app.contracts.providers import (
     ProviderAdapterKind,
     ProviderCapability,
+    ProviderExecutionMode,
 )
 from app.providers.base import ProviderAdapterDescriptor
 from app.services.provider_expansion_policy import build_provider_expansion_policy
@@ -14,7 +17,9 @@ def test_provider_expansion_policy_reports_bounded_headroom_per_capability() -> 
     assert len(policy.capability_rules) == 2
 
     text_rule = next(
-        rule for rule in policy.capability_rules if rule.capability == ProviderCapability.TEXT_GENERATION
+        rule
+        for rule in policy.capability_rules
+        if rule.capability == ProviderCapability.TEXT_GENERATION
     )
     embedding_rule = next(
         rule for rule in policy.capability_rules if rule.capability == ProviderCapability.EMBEDDINGS
@@ -34,7 +39,7 @@ def test_provider_expansion_policy_reports_bounded_headroom_per_capability() -> 
 
 
 def test_provider_expansion_policy_blocks_when_registered_breadth_exceeds_bounded_limit(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         "app.services.provider_expansion_policy.list_registered_provider_descriptors",
@@ -44,7 +49,7 @@ def test_provider_expansion_policy_blocks_when_registered_breadth_exceeds_bounde
                 display_name="Stub",
                 capability=ProviderCapability.TEXT_GENERATION,
                 adapter_kind=ProviderAdapterKind.STUB,
-                runtime_mode="stub",  # type: ignore[arg-type]
+                runtime_mode=ProviderExecutionMode.STUB,
                 enabled_for_execution=False,
                 source_reference="tests",
                 notes="stub",
@@ -54,7 +59,7 @@ def test_provider_expansion_policy_blocks_when_registered_breadth_exceeds_bounde
                 display_name="OpenAI",
                 capability=ProviderCapability.TEXT_GENERATION,
                 adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
-                runtime_mode="openai",  # type: ignore[arg-type]
+                runtime_mode=ProviderExecutionMode.OPENAI,
                 enabled_for_execution=False,
                 source_reference="tests",
                 notes="live",
@@ -64,7 +69,7 @@ def test_provider_expansion_policy_blocks_when_registered_breadth_exceeds_bounde
                 display_name="Alt One",
                 capability=ProviderCapability.TEXT_GENERATION,
                 adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
-                runtime_mode="openai",  # type: ignore[arg-type]
+                runtime_mode=ProviderExecutionMode.OPENAI,
                 enabled_for_execution=False,
                 source_reference="tests",
                 notes="candidate",
@@ -74,7 +79,7 @@ def test_provider_expansion_policy_blocks_when_registered_breadth_exceeds_bounde
                 display_name="Alt Two",
                 capability=ProviderCapability.TEXT_GENERATION,
                 adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
-                runtime_mode="openai",  # type: ignore[arg-type]
+                runtime_mode=ProviderExecutionMode.OPENAI,
                 enabled_for_execution=False,
                 source_reference="tests",
                 notes="candidate",
@@ -85,7 +90,9 @@ def test_provider_expansion_policy_blocks_when_registered_breadth_exceeds_bounde
     policy = build_provider_expansion_policy()
 
     text_rule = next(
-        rule for rule in policy.capability_rules if rule.capability == ProviderCapability.TEXT_GENERATION
+        rule
+        for rule in policy.capability_rules
+        if rule.capability == ProviderCapability.TEXT_GENERATION
     )
     assert policy.expansion_blocked is True
     assert text_rule.available_expansion_slots == 0

@@ -7,6 +7,7 @@ from app.contracts.providers import (
     ProviderRolloutState,
 )
 from app.services.provider_policy import build_provider_policy
+from app.services.provider_policy import require_supported_embedding_mode
 from app.services.provider_policy import require_supported_text_generation_mode
 
 
@@ -83,3 +84,25 @@ def test_provider_policy_reports_unresolved_provider_for_unsupported_mode() -> N
         if policy.capability == ProviderCapability.TEXT_GENERATION
     )
     assert text_policy.selected_provider_id == "text.unresolved"
+
+
+def test_provider_policy_rejects_unknown_embedding_mode() -> None:
+    settings.embedding_provider_mode = "unsupported"
+
+    try:
+        require_supported_embedding_mode()
+    except Exception as exc:
+        assert "not supported in the current phase" in str(exc)
+    else:
+        raise AssertionError("Expected runtime-mode rejection for unsupported embedding mode")
+
+
+def test_provider_policy_reports_unresolved_embedding_provider_for_unsupported_mode() -> None:
+    settings.embedding_provider_mode = "unsupported"
+
+    response = build_provider_policy()
+
+    embedding_policy = next(
+        policy for policy in response.policies if policy.capability == ProviderCapability.EMBEDDINGS
+    )
+    assert embedding_policy.selected_provider_id == "embeddings.unresolved"

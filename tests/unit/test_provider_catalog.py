@@ -22,8 +22,7 @@ def test_provider_catalog_exposes_documented_disabled_execution_posture() -> Non
         == ProviderCredentialStatus.NOT_CONFIGURED
     )
     assert (
-        catalog.embedding_configuration.credential_status
-        == ProviderCredentialStatus.NOT_CONFIGURED
+        catalog.embedding_configuration.credential_status == ProviderCredentialStatus.NOT_CONFIGURED
     )
     assert catalog.runtime_execution_enabled is False
     assert catalog.text_generation_runtime_execution_enabled is False
@@ -88,10 +87,7 @@ def test_provider_catalog_exposes_live_embedding_path_without_enabling_execution
         provider for provider in catalog.providers if provider.provider_id == "embeddings.openai"
     )
     assert catalog.embedding_configuration.configuration_valid is True
-    assert (
-        catalog.embedding_configuration.credential_status
-        == ProviderCredentialStatus.CONFIGURED
-    )
+    assert catalog.embedding_configuration.credential_status == ProviderCredentialStatus.CONFIGURED
     assert openai_embedding_provider.runtime_mode == "enabled"
     assert catalog.embedding_runtime_execution_enabled is True
     embedding_rule = next(

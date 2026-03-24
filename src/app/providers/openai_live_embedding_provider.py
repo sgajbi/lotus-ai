@@ -82,7 +82,9 @@ def _post_openai_embedding(
         method="POST",
     )
     try:
-        with urllib_request.urlopen(request, timeout=max(settings.provider_timeout_ms / 1000.0, 1.0)) as response:
+        with urllib_request.urlopen(
+            request, timeout=max(settings.provider_timeout_ms / 1000.0, 1.0)
+        ) as response:
             return cast(dict[str, Any], json.loads(response.read().decode("utf-8")))
     except error.HTTPError as exc:
         payload = _load_error_payload(exc)

@@ -1,3 +1,5 @@
+from _pytest.monkeypatch import MonkeyPatch
+
 from app.contracts.providers import ProviderExpansionPolicyDescriptor
 from app.services.provider_governance_status import build_provider_governance_status
 
@@ -18,7 +20,7 @@ def test_provider_governance_status_reports_blocked_foundation_posture() -> None
 
 
 def test_provider_governance_status_blocks_when_expansion_policy_is_exhausted(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         "app.services.provider_governance_status.build_provider_expansion_policy",

@@ -6,6 +6,7 @@ from app.services.retrieval_catalog_service import (
     get_retrieval_indexing_policy,
     get_retrieval_job_detail_or_raise,
     get_retrieval_job_catalog,
+    get_retrieval_runtime_status,
 )
 from app.services.retrieval_async_execution import (
     run_next_retrieval_index_job,
@@ -78,3 +79,11 @@ def test_get_retrieval_job_detail_raises_for_unknown_job_id() -> None:
         get_retrieval_job_detail_or_raise("missing-job-id")
 
     assert exc_info.value.status_code == 404
+
+
+def test_get_retrieval_runtime_status_reports_inventory_when_store_is_ready() -> None:
+    response = get_retrieval_runtime_status()
+
+    assert response.retrieval_store_status == "READY"
+    assert response.source_count >= 1
+    assert response.index_job_count >= 1

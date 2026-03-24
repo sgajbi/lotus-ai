@@ -427,7 +427,7 @@ class ProviderExpansionRuleDescriptor(BaseModel):
     )
     requirements: list[str] = Field(
         default_factory=list,
-        description="Explicit governance requirements that any additional provider must satisfy before activation."
+        description="Explicit governance requirements that any additional provider must satisfy before activation.",
     )
     notes: str = Field(
         description="Human-readable explanation of the bounded provider-breadth posture for this capability."
@@ -443,7 +443,7 @@ class ProviderExpansionPolicyDescriptor(BaseModel):
     )
     findings: list[str] = Field(
         default_factory=list,
-        description="Human-readable findings describing the current bounded provider-expansion posture."
+        description="Human-readable findings describing the current bounded provider-expansion posture.",
     )
     capability_rules: list[ProviderExpansionRuleDescriptor] = Field(
         description="Capability-specific bounded provider expansion rules."

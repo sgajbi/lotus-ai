@@ -80,3 +80,10 @@ def test_stub_embedding_provider_returns_bounded_vector() -> None:
     assert response.provider_id == "embeddings.stub"
     assert response.stubbed is True
     assert response.vector_dimension == len(response.embedding)
+
+
+def test_provider_registry_rejects_unregistered_embedding_mode() -> None:
+    with pytest.raises(ProviderExecutionError) as exc_info:
+        resolve_embedding_adapter("unsupported")
+
+    assert exc_info.value.category == ProviderFailureCategory.PROVIDER_NOT_REGISTERED

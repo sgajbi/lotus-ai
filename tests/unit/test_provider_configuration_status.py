@@ -1,6 +1,9 @@
 from app.config import settings
 from app.contracts.providers import ProviderCredentialStatus, ProviderRolloutState
-from app.services.provider_configuration_status import build_embedding_configuration_status
+from app.services.provider_configuration_status import (
+    build_embedding_configuration_status,
+    build_text_generation_configuration_status,
+)
 
 
 def test_embedding_configuration_defaults_to_documented_only() -> None:
@@ -24,3 +27,76 @@ def test_embedding_configuration_reports_live_path_defined_but_not_activated() -
     assert configuration.credential_status == ProviderCredentialStatus.CONFIGURED
     assert configuration.configuration_valid is True
     assert any("bounded rollout" in finding for finding in configuration.findings)
+
+
+def test_text_generation_configuration_rejects_unknown_rollout_state() -> None:
+    settings.provider_rollout_state = "unknown"
+
+    configuration = build_text_generation_configuration_status()
+
+    assert configuration.rollout_state == ProviderRolloutState.DOCUMENTED_ONLY
+    assert configuration.configuration_valid is False
+    assert any("not recognized" in finding for finding in configuration.findings)
+
+
+def test_text_generation_configuration_rejects_unknown_provider_and_partial_values() -> None:
+    settings.provider_rollout_state = "documented_only"
+    settings.live_text_provider_id = "text.unknown"
+    settings.live_text_model_id = "gpt-test"
+
+    configuration = build_text_generation_configuration_status()
+
+    assert configuration.credential_status == ProviderCredentialStatus.INVALID
+    assert configuration.configuration_valid is False
+    assert any("not recognized" in finding for finding in configuration.findings)
+    assert any("partially populated" in finding for finding in configuration.findings)
+    assert any(
+        "present, but rollout remains below live activation" in finding
+        for finding in configuration.findings
+    )
+
+
+def test_embedding_configuration_reports_stub_rollout() -> None:
+    settings.embedding_provider_mode = "stub"
+
+    configuration = build_embedding_configuration_status()
+
+    assert configuration.rollout_state == ProviderRolloutState.STUB_DEFAULT
+    assert configuration.credential_status == ProviderCredentialStatus.NOT_CONFIGURED
+    assert configuration.configuration_valid is True
+    assert any("stub path" in finding for finding in configuration.findings)
+
+
+def test_embedding_configuration_rejects_missing_live_values() -> None:
+    settings.embedding_provider_mode = "enabled"
+
+    configuration = build_embedding_configuration_status()
+
+    assert configuration.rollout_state == ProviderRolloutState.CANARY_ENABLED
+    assert configuration.credential_status == ProviderCredentialStatus.NOT_CONFIGURED
+    assert configuration.configuration_valid is False
+    assert any("requires configured provider id" in finding for finding in configuration.findings)
+
+
+def test_embedding_configuration_rejects_partial_and_unknown_live_provider() -> None:
+    settings.embedding_provider_mode = "enabled"
+    settings.live_embedding_provider_id = "embeddings.other"
+    settings.live_embedding_provider_api_key = "secret"
+
+    configuration = build_embedding_configuration_status()
+
+    assert configuration.credential_status == ProviderCredentialStatus.INVALID
+    assert configuration.configuration_valid is False
+    assert any("not recognized" in finding for finding in configuration.findings)
+    assert any("partially populated" in finding for finding in configuration.findings)
+
+
+def test_embedding_configuration_rejects_unknown_mode() -> None:
+    settings.embedding_provider_mode = "mystery"
+
+    configuration = build_embedding_configuration_status()
+
+    assert configuration.rollout_state == ProviderRolloutState.DOCUMENTED_ONLY
+    assert configuration.credential_status == ProviderCredentialStatus.INVALID
+    assert configuration.configuration_valid is False
+    assert any("not recognized" in finding for finding in configuration.findings)

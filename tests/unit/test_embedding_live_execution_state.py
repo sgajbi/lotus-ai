@@ -21,3 +21,31 @@ def test_embedding_live_execution_state_reports_enabled_when_configured() -> Non
     assert state.live_execution_enabled is True
     assert state.live_mode_requested is True
     assert state.configured_provider_id == "embeddings.openai"
+
+
+def test_embedding_live_execution_state_reports_invalid_live_configuration() -> None:
+    settings.embedding_provider_mode = "enabled"
+    settings.live_embedding_provider_id = "embeddings.openai"
+
+    state = build_embedding_live_execution_state()
+
+    assert state.live_execution_enabled is False
+    assert state.live_mode_requested is True
+    assert state.configuration_valid is False
+    assert (
+        state.blocking_reason
+        == "Live embedding provider configuration is invalid and cannot be activated safely."
+    )
+
+
+def test_embedding_live_execution_state_reports_unsupported_mode() -> None:
+    settings.embedding_provider_mode = "mystery"
+
+    state = build_embedding_live_execution_state()
+
+    assert state.mode_supported is False
+    assert state.live_execution_enabled is False
+    assert (
+        state.blocking_reason
+        == "Configured embedding provider mode is not supported by the current provider backbone."
+    )
