@@ -43,9 +43,9 @@ def build_first_use_case_governance_status() -> FirstUseCaseGovernanceStatusResp
         governance_summary=[
             "The first production use case remains a bounded lotus-performance analytics-commentary path over caller-supplied structured facts rather than a broad downstream rollout.",
             (
-                "Limited rollout is governance-ready because runtime evidence, durable support review, and runbook ownership are all in place."
+                "Limited rollout is governance-ready because runtime evidence, durable support review, resilience governance, and runbook ownership are all in place."
                 if governance_ready
-                else "Limited rollout remains governance-blocked until both the bounded readiness surface and the first-use-case runbook surface report ready."
+                else "Limited rollout remains governance-blocked until the bounded readiness surface, including resilience governance, and the first-use-case runbook surface both report ready."
             ),
             "Active production posture remains explicitly deferred in RFC-0016; this RFC stops at a bounded limited-rollout-ready or pre-prod-validation review state.",
             (

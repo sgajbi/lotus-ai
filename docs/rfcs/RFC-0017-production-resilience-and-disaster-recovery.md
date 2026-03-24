@@ -274,7 +274,7 @@ Outcome:
 
 1. resilience evidence becomes part of governance posture,
 2. recovery drills and restore proofs are reviewable,
-3. first-use-case rollout can depend on continuity evidence.
+3. first-use-case rollout can depend on continuity evidence and resilience governance rather than only local supportability signals.
 
 Acceptance gate:
 

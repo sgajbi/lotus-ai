@@ -402,8 +402,9 @@ Before treating `lotus-performance` analytics commentary as limited governed rol
 4. inspect `GET /platform/use-cases/first-production-use-case/governance-status` for the composed limited-rollout view
 5. confirm the embedded `first_use_case` and `first_use_case_governance` blocks in `GET /platform/runtime-status` match the detailed use-case views
 6. confirm `GET /platform/evals/runtime-status` still reports the `first_use_case_onboarding` approval gate truthfully
-7. confirm `GET /platform/observability/incident-summary` and any attached artifact descriptors remain available for bounded incident review of the first use case
-8. only then proceed with any limited downstream rollout review
+7. confirm `GET /platform/resilience/governance-status` is also ready before treating limited rollout as credible continuity-backed posture
+8. confirm `GET /platform/observability/incident-summary` and any attached artifact descriptors remain available for bounded incident review of the first use case
+9. only then proceed with any limited downstream rollout review
 
 Current rollback and support expectations:
 
