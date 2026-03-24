@@ -15,6 +15,13 @@ from app.contracts.production_baseline import (
     ProductionBaselineRunbookReadinessResponse,
     ProductionBaselineRuntimeStatusResponse,
 )
+from app.contracts.production_go_live import ProductionGoLiveRuntimeStatusResponse
+from app.contracts.production_go_live import (
+    ProductionGoLiveActivationReadinessResponse,
+    ProductionGoLiveGovernanceStatusResponse,
+    ProductionGoLiveRunbookReadinessResponse,
+    ProductionGoLiveUseCaseApprovalResponse,
+)
 from app.contracts.resilience import (
     ResilienceActivationReadinessResponse,
     ResilienceDrillEvidenceResponse,
@@ -42,6 +49,17 @@ from app.services.deployment_split_runbook_readiness import (
 from app.services.platform_status import build_platform_runtime_status
 from app.services.deployment_split_runtime import build_deployment_split_runtime_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
+from app.services.production_go_live_activation_readiness import (
+    build_production_go_live_activation_readiness,
+)
+from app.services.production_go_live_governance import build_production_go_live_governance_status
+from app.services.production_go_live_runbook_readiness import (
+    build_production_go_live_runbook_readiness,
+)
+from app.services.production_go_live_use_case_approval import (
+    build_production_go_live_use_case_approval,
+)
+from app.services.production_go_live_runtime import build_production_go_live_runtime_status
 from app.services.resilience_activation_readiness import build_resilience_activation_readiness
 from app.services.resilience_drill_evidence import build_resilience_drill_evidence
 from app.services.resilience_governance import build_resilience_governance_status
@@ -334,3 +352,101 @@ async def get_production_baseline_governance_status_route(
     request: Request,
 ) -> ProductionBaselineGovernanceStatusResponse:
     return build_production_baseline_governance_status(request.app.state)
+
+
+@router.get(
+    "/production-go-live/runtime-status",
+    response_model=ProductionGoLiveRuntimeStatusResponse,
+    operation_id="getProductionGoLiveRuntimeStatus",
+    summary="Get RFC-0022 production go-live runtime status",
+    description=(
+        "Returns the current RFC-0022 production go-live posture across platform approval state, "
+        "managed secret and object-storage approval domains, live-provider review posture, and the "
+        "current named downstream use-case production state."
+    ),
+    responses={
+        200: {"description": "Production go-live runtime status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_production_go_live_runtime_status_route(
+    request: Request,
+) -> ProductionGoLiveRuntimeStatusResponse:
+    return build_production_go_live_runtime_status(request.app.state)
+
+
+@router.get(
+    "/production-go-live/activation-readiness",
+    response_model=ProductionGoLiveActivationReadinessResponse,
+    operation_id="getProductionGoLiveActivationReadiness",
+    summary="Get RFC-0022 production go-live activation readiness",
+    description=(
+        "Returns whether lotus-ai currently satisfies the bounded production go-live approval "
+        "requirements across platform approval, live-provider governance, and freeze posture."
+    ),
+    responses={
+        200: {"description": "Production go-live activation readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_production_go_live_activation_readiness_route(
+    request: Request,
+) -> ProductionGoLiveActivationReadinessResponse:
+    return build_production_go_live_activation_readiness(request.app.state)
+
+
+@router.get(
+    "/production-go-live/runbook-readiness",
+    response_model=ProductionGoLiveRunbookReadinessResponse,
+    operation_id="getProductionGoLiveRunbookReadiness",
+    summary="Get RFC-0022 production go-live runbook readiness",
+    description=(
+        "Returns the current operator-runbook posture for managed-infrastructure review, live-provider freeze handling, and rollback guidance."
+    ),
+    responses={
+        200: {"description": "Production go-live runbook readiness returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_production_go_live_runbook_readiness_route() -> (
+    ProductionGoLiveRunbookReadinessResponse
+):
+    return build_production_go_live_runbook_readiness()
+
+
+@router.get(
+    "/production-go-live/use-case-approval",
+    response_model=ProductionGoLiveUseCaseApprovalResponse,
+    operation_id="getProductionGoLiveUseCaseApproval",
+    summary="Get RFC-0022 downstream use-case production approval",
+    description=(
+        "Returns the current active-production approval posture for the named downstream use case, including the separation between limited-rollout readiness and active-production approval."
+    ),
+    responses={
+        200: {"description": "Production go-live use-case approval returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_production_go_live_use_case_approval_route(
+    request: Request,
+) -> ProductionGoLiveUseCaseApprovalResponse:
+    return build_production_go_live_use_case_approval(request.app.state)
+
+
+@router.get(
+    "/production-go-live/governance-status",
+    response_model=ProductionGoLiveGovernanceStatusResponse,
+    operation_id="getProductionGoLiveGovernanceStatus",
+    summary="Get RFC-0022 production go-live governance status",
+    description=(
+        "Returns the composed runtime, activation, and runbook posture for the current RFC-0022 production go-live boundary."
+    ),
+    responses={
+        200: {"description": "Production go-live governance status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_production_go_live_governance_status_route(
+    request: Request,
+) -> ProductionGoLiveGovernanceStatusResponse:
+    return build_production_go_live_governance_status(request.app.state)

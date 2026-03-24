@@ -31,6 +31,8 @@ from app.services.prompt_governance_status import build_prompt_governance_status
 from app.services.prompt_registry import list_registered_prompts
 from app.services.prompt_status import build_prompt_runtime_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
+from app.services.production_go_live_governance import build_production_go_live_governance_status
+from app.services.production_go_live_runtime import build_production_go_live_runtime_status
 from app.services.provider_governance_status import build_provider_governance_status
 from app.services.provider_operations_status import build_provider_operations_status
 from app.services.resilience_governance import build_resilience_governance_status
@@ -85,6 +87,8 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     resilience_runtime = build_resilience_runtime_status()
     resilience_governance = build_resilience_governance_status()
     production_baseline = build_production_baseline_runtime_status(app_state)
+    production_go_live = build_production_go_live_runtime_status(app_state)
+    production_go_live_governance = build_production_go_live_governance_status(app_state)
     deployment_split = build_deployment_split_runtime_status(app_state)
     deployment_split_governance = build_deployment_split_governance_status(app_state)
     production_baseline_governance = build_production_baseline_governance_status(app_state)
@@ -132,6 +136,8 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         resilience_runtime=resilience_runtime,
         resilience_governance=resilience_governance,
         production_baseline=production_baseline,
+        production_go_live=production_go_live,
+        production_go_live_governance=production_go_live_governance,
         deployment_split=deployment_split,
         deployment_split_governance=deployment_split_governance,
         production_baseline_governance=production_baseline_governance,

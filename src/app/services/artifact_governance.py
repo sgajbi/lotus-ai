@@ -19,6 +19,11 @@ def build_artifact_governance_status() -> ArtifactGovernanceStatusResponse:
             else "Artifact activation currently has no technical blocker."
         ),
         (
+            "Managed object-storage approval for production go-live remains blocked until artifact payload storage moves off local fallback backends."
+            if settings.artifact_object_store_mode in {"memory", "filesystem"}
+            else "Managed object-storage posture is aligned with production go-live expectations."
+        ),
+        (
             "Artifact runbook posture is complete."
             if runbook_readiness.runbook_ready
             else "Artifact runbook posture still has incomplete required items."

@@ -142,6 +142,10 @@ def _build_provider_operations_summary(
             else "Upstream degradation posture is actively enforced."
         ),
     ]
+    if live_execution_enabled and settings.secret_source_mode != "deployment_managed":
+        summary.append(
+            "Live-provider traffic can be technically enabled while production go-live remains blocked because secret injection is still local or unspecified."
+        )
     if blocking_reasons:
         summary.append(f"Current blocking or warning detail: {blocking_reasons[0]}")
     return summary

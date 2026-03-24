@@ -59,6 +59,16 @@ def test_artifact_governance_status_combines_activation_and_runbook() -> None:
     assert governance.blocking_area_count == 1
 
 
+def test_artifact_governance_summary_mentions_managed_object_storage_block() -> None:
+    settings.artifact_store_mode = "memory"
+    settings.artifact_object_store_mode = "memory"
+    settings.artifact_object_store_root = None
+
+    governance = build_artifact_governance_status()
+
+    assert any("Managed object-storage approval" in line for line in governance.governance_summary)
+
+
 def test_artifact_activation_readiness_blocks_missing_cutover_breadth(
     monkeypatch: MonkeyPatch,
 ) -> None:
