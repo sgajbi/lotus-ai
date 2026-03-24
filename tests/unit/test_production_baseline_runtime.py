@@ -1,10 +1,8 @@
-from pathlib import Path
 from types import SimpleNamespace
 
 from app.config import settings
-from app.services.artifact_store import reset_artifact_store_cache
+from app.contracts.runtime_readiness import RuntimeReadinessStatus, StoreRuntimeStatusDescriptor
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
-from tests.support.migration_runner import upgrade_database_to_head
 
 
 def test_production_baseline_runtime_defaults_to_local_or_demo_capable() -> None:
@@ -24,8 +22,6 @@ def test_production_baseline_runtime_defaults_to_local_or_demo_capable() -> None
     settings.async_cutover_state = "in_process_only"
     settings.async_queue_backend_mode = "none"
     settings.async_queue_redis_url = None
-    reset_artifact_store_cache()
-
     status = build_production_baseline_runtime_status(None)
 
     assert status.posture.value == "LOCAL_OR_DEMO_CAPABLE"
@@ -40,9 +36,9 @@ def test_production_baseline_runtime_defaults_to_local_or_demo_capable() -> None
 
 
 def test_production_baseline_runtime_reports_prod_shaped_local_but_not_production_ready(
-    tmp_path: Path, monkeypatch
+    monkeypatch,
 ) -> None:
-    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-production-baseline.db'}"
+    settings.database_url = "postgresql+psycopg://lotus:lotus@postgres:5432/lotus_ai"
     settings.audit_store_mode = "sqlalchemy"
     settings.prompt_store_mode = "sqlalchemy"
     settings.retrieval_store_mode = "sqlalchemy"
@@ -52,7 +48,7 @@ def test_production_baseline_runtime_reports_prod_shaped_local_but_not_productio
     settings.evaluation_runtime_store_mode = "sqlalchemy"
     settings.artifact_store_mode = "sqlalchemy"
     settings.artifact_object_store_mode = "filesystem"
-    settings.artifact_object_store_root = str(tmp_path / "objects")
+    settings.artifact_object_store_root = "/data/object-store"
     settings.secret_source_mode = "local_or_unspecified"
     settings.provider_mode = "openai"
     settings.provider_rollout_state = "CANARY_ENABLED"
@@ -63,8 +59,44 @@ def test_production_baseline_runtime_reports_prod_shaped_local_but_not_productio
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
-    upgrade_database_to_head(settings.database_url)
-    reset_artifact_store_cache()
+    ready_store = StoreRuntimeStatusDescriptor(
+        mode="sqlalchemy",
+        status=RuntimeReadinessStatus.READY,
+        database_configured=True,
+        detail="ready",
+    )
+    monkeypatch.setattr(
+        "app.services.production_baseline_runtime.get_audit_store_runtime_status",
+        lambda: ready_store,
+    )
+    monkeypatch.setattr(
+        "app.services.production_baseline_runtime.get_prompt_store_runtime_status",
+        lambda: ready_store,
+    )
+    monkeypatch.setattr(
+        "app.services.production_baseline_runtime.get_retrieval_store_runtime_status",
+        lambda: ready_store,
+    )
+    monkeypatch.setattr(
+        "app.services.production_baseline_runtime.get_access_control_store_runtime_status",
+        lambda: ready_store,
+    )
+    monkeypatch.setattr(
+        "app.services.production_baseline_runtime.get_provider_operations_store_runtime_status",
+        lambda: ready_store,
+    )
+    monkeypatch.setattr(
+        "app.services.production_baseline_runtime.get_async_runtime_store_runtime_status",
+        lambda: ready_store,
+    )
+    monkeypatch.setattr(
+        "app.services.production_baseline_runtime.get_evaluation_runtime_store_runtime_status",
+        lambda: ready_store,
+    )
+    monkeypatch.setattr(
+        "app.services.production_baseline_runtime.get_artifact_store_runtime_status",
+        lambda: ready_store,
+    )
 
     monkeypatch.setattr(
         "app.services.production_baseline_runtime.build_async_runtime_status",
@@ -84,11 +116,16 @@ def test_production_baseline_runtime_reports_prod_shaped_local_but_not_productio
     assert status.production_ready is False
     assert any(
         dependency.dependency_id == "database_backend"
-        and dependency.classification.value == "FALLBACK"
+        and dependency.classification.value == "PRODUCTION_STANDARD"
         for dependency in status.dependencies
     )
     assert any(
         dependency.dependency_id == "artifact_object_store"
+        and dependency.classification.value == "FALLBACK"
+        for dependency in status.dependencies
+    )
+    assert any(
+        dependency.dependency_id == "secret_posture"
         and dependency.classification.value == "FALLBACK"
         for dependency in status.dependencies
     )

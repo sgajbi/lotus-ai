@@ -384,6 +384,13 @@ uvicorn app.main:app --reload --port 8140
 docker compose up --build
 ```
 
+The checked-in Docker stack is now a prod-shaped local baseline, not a full production-ready posture:
+
+1. PostgreSQL backs the SQL store seams instead of SQLite,
+2. Redis and the dedicated worker path are active,
+3. migrations run through an explicit startup script before the API is treated as ready,
+4. artifact payload storage and secret handling remain local-fallback posture until RFC-0020 is completed.
+
 ## Documentation
 
 - architecture overview: `docs/architecture/system-overview.md`
