@@ -317,6 +317,12 @@ class InMemoryRetrievalRepository(RetrievalRepository):
             reverse=True,
         )
 
+    def get_ingestion_job(self, job_id: str) -> RetrievalIngestionJobDescriptor | None:
+        for job in self._ingestion_jobs:
+            if job.job_id == job_id:
+                return job.model_copy(deep=True)
+        return None
+
     def save_ingestion_job(self, descriptor: RetrievalIngestionJobDescriptor) -> None:
         self._ingestion_jobs = [
             job for job in self._ingestion_jobs if job.job_id != descriptor.job_id

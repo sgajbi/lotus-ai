@@ -72,6 +72,10 @@ class RetrievalIngestionJobStatus(str, Enum):
     STAGED = "STAGED"
     RECORDED = "RECORDED"
     BLOCKED = "BLOCKED"
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    FAILED = "FAILED"
+    COMPLETED = "COMPLETED"
 
 
 class RetrievalSourceDescriptor(BaseModel):
@@ -296,6 +300,44 @@ class RetrievalIngestionJobDescriptor(BaseModel):
     requested_by: str = Field(description="Operator or system identity that requested the job.")
     requested_at: str = Field(description="Timestamp when the ingestion job was recorded.")
     message: str = Field(description="Human-readable explanation of the ingestion job posture.")
+    runtime_status: str | None = Field(
+        default=None,
+        description="Optional runtime-backed async lifecycle status for this ingestion job.",
+    )
+    linked_async_job_id: str | None = Field(
+        default=None,
+        description="Optional linked async job identifier when ingestion is executing through the durable async runtime.",
+    )
+
+
+class RetrievalIngestionJobCatalogResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval ingestion job catalog.")
+    jobs: list[RetrievalIngestionJobDescriptor] = Field(
+        description="Known retrieval ingestion jobs for governed corpus changes."
+    )
+
+
+class RetrievalIngestionJobStepDescriptor(BaseModel):
+    step_id: str = Field(description="Stable retrieval ingestion step identifier.")
+    name: str = Field(description="Human-readable ingestion step name.")
+    stage: RetrievalPipelineStage = Field(description="Current lifecycle stage for the step.")
+    runtime_status: str | None = Field(
+        default=None,
+        description="Optional runtime-backed async status for this ingestion step.",
+    )
+    linked_async_job_id: str | None = Field(
+        default=None,
+        description="Optional linked async job identifier for this ingestion step.",
+    )
+    description: str = Field(description="Human-readable explanation of the step.")
+
+
+class RetrievalIngestionJobDetailResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval ingestion job detail.")
+    job: RetrievalIngestionJobDescriptor = Field(description="Retrieval ingestion job descriptor.")
+    steps: list[RetrievalIngestionJobStepDescriptor] = Field(
+        description="Ordered ingestion and follow-through steps for the job."
+    )
 
 
 class RetrievalIngestionStatusResponse(BaseModel):

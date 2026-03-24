@@ -17,6 +17,7 @@ from app.repositories.async_runtime_repository import (
     AsyncRuntimeJobRecord,
 )
 from app.services.retrieval_catalog_service import get_retrieval_job_detail_or_raise
+from app.services.retrieval_catalog_service import get_retrieval_ingestion_job_detail_or_raise
 from app.services.async_job_type_catalog import get_async_job_type_descriptor
 from app.services.deployment_split_routing import resolve_retrieval_async_route
 from app.services.deployment_split_shared import resolve_deployment_split_posture
@@ -159,20 +160,25 @@ def _utcnow() -> datetime:
 
 
 def _validate_async_job_target(*, request: AsyncJobSubmissionRequest) -> None:
-    if request.job_type != "retrieval_indexing":
+    if request.job_type not in {"retrieval_indexing", "document_ingestion"}:
         return
     if not request.target_id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Async retrieval_indexing submission requires a concrete retrieval index job target_id.",
+        detail = (
+            "Async retrieval_indexing submission requires a concrete retrieval index job target_id."
+            if request.job_type == "retrieval_indexing"
+            else "Async document_ingestion submission requires a concrete retrieval ingestion job target_id."
         )
-    get_retrieval_job_detail_or_raise(request.target_id)
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+    if request.job_type == "retrieval_indexing":
+        get_retrieval_job_detail_or_raise(request.target_id)
+        return
+    get_retrieval_ingestion_job_detail_or_raise(request.target_id)
 
 
 def _find_active_duplicate_submission(
     *, request: AsyncJobSubmissionRequest
 ) -> AsyncRuntimeJobRecord | None:
-    if request.job_type != "retrieval_indexing" or request.target_id is None:
+    if request.job_type not in {"retrieval_indexing", "document_ingestion"} or request.target_id is None:
         return None
     active_statuses = {
         AsyncJobStatus.QUEUED.value,

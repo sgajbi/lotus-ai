@@ -118,6 +118,13 @@ class SqlAlchemyRetrievalRepository(SqlAlchemyRepositoryBase):
             ).all()
             return [self._to_ingestion_job_descriptor(job) for job in jobs]
 
+    def get_ingestion_job(self, job_id: str) -> RetrievalIngestionJobDescriptor | None:
+        with self._session_factory() as session:
+            job = session.get(RetrievalIngestionJobModel, job_id)
+            if job is None:
+                return None
+            return self._to_ingestion_job_descriptor(job)
+
     def save_ingestion_job(self, descriptor: RetrievalIngestionJobDescriptor) -> None:
         model = RetrievalIngestionJobModel(
             job_id=descriptor.job_id,

@@ -8,8 +8,8 @@ def test_retrieval_ingestion_status_reports_durable_lineage_state() -> None:
 
     status = build_retrieval_ingestion_status()
 
-    assert status.ingestion_delivery_stage == "DURABLE_STATE_READY"
-    assert status.live_ingestion_enabled is False
+    assert status.ingestion_delivery_stage == "ASYNC_EXECUTION_READY"
+    assert status.live_ingestion_enabled is True
     assert status.document_version_count >= 5
     assert status.superseded_document_version_count >= 1
     assert status.withdrawn_document_version_count >= 1

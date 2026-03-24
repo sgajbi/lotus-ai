@@ -452,6 +452,15 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/retrieval/ingestion-status"]["get"]["operationId"] == (
         "getRetrievalIngestionStatus"
     )
+    assert spec["paths"]["/platform/retrieval/ingestion-jobs"]["get"]["operationId"] == (
+        "listRetrievalIngestionJobs"
+    )
+    assert spec["paths"]["/platform/retrieval/ingestion-jobs/{job_id}"]["get"][
+        "operationId"
+    ] == "getRetrievalIngestionJob"
+    assert spec["paths"]["/platform/retrieval/ingestion-jobs/{job_id}/submit-async"]["post"][
+        "operationId"
+    ] == "submitRetrievalIngestionJobAsync"
     assert spec["paths"]["/platform/retrieval/execution-status"]["get"]["operationId"] == (
         "getRetrievalExecutionStatus"
     )
@@ -482,6 +491,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "ingestion_delivery_stage" in retrieval_ingestion_schema["properties"]
     assert "recent_document_versions" in retrieval_ingestion_schema["properties"]
     assert "recent_ingestion_jobs" in retrieval_ingestion_schema["properties"]
+    retrieval_ingestion_job_schema = spec["components"]["schemas"]["RetrievalIngestionJobDescriptor"]
+    assert "runtime_status" in retrieval_ingestion_job_schema["properties"]
+    assert "linked_async_job_id" in retrieval_ingestion_job_schema["properties"]
     assert spec["paths"]["/platform/retrieval/indexing-policy"]["get"]["operationId"] == (
         "getRetrievalIndexingPolicy"
     )

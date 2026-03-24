@@ -5,6 +5,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_submission_service import submit_evaluation_run
+from app.services.retrieval_ingestion_async_execution import run_next_retrieval_ingestion_job
 from app.services.retrieval_async_execution import run_next_retrieval_index_job
 from fastapi.testclient import TestClient
 
@@ -82,13 +83,71 @@ def test_retrieval_ingestion_status_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["ingestion_delivery_stage"] == "DURABLE_STATE_READY"
-    assert body["live_ingestion_enabled"] is False
+    assert body["ingestion_delivery_stage"] == "ASYNC_EXECUTION_READY"
+    assert body["live_ingestion_enabled"] is True
     assert body["document_version_count"] >= 5
     assert body["withdrawn_document_version_count"] >= 1
     assert body["blocked_ingestion_job_count"] >= 1
     assert body["recent_document_versions"]
     assert body["recent_ingestion_jobs"]
+
+
+def test_retrieval_ingestion_jobs_route(client: TestClient) -> None:
+    response = client.get("/platform/retrieval/ingestion-jobs")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert any(job["job_id"] == "ingjob_lotus_platform_rfcs_refresh_0069" for job in body["jobs"])
+
+
+def test_retrieval_ingestion_job_detail_route(client: TestClient) -> None:
+    response = client.get(
+        "/platform/retrieval/ingestion-jobs/ingjob_lotus_platform_rfcs_refresh_0069"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["job"]["source_id"] == "lotus-platform-rfcs"
+    assert any(step["step_id"].endswith(".index_followthrough") for step in body["steps"])
+
+
+def test_retrieval_ingestion_job_submit_async_route(client: TestClient) -> None:
+    response = client.post(
+        "/platform/retrieval/ingestion-jobs/ingjob_lotus_platform_rfcs_refresh_0069/submit-async",
+        params={
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-ret-ingest-submit-001",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["accepted"] is True
+    assert body["target_id"] == "ingjob_lotus_platform_rfcs_refresh_0069"
+
+
+def test_retrieval_ingestion_job_detail_reflects_runtime_backed_completion(client: TestClient) -> None:
+    submit_response = client.post(
+        "/platform/retrieval/ingestion-jobs/ingjob_lotus_platform_rfcs_refresh_0069/submit-async",
+        params={
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-ret-ingest-submit-002",
+        },
+    )
+    async_job_id = submit_response.json()["job_id"]
+    run_next_retrieval_ingestion_job(worker_id="worker-a")
+
+    response = client.get(
+        "/platform/retrieval/ingestion-jobs/ingjob_lotus_platform_rfcs_refresh_0069"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["job"]["status"] == "COMPLETED"
+    assert body["steps"][2]["runtime_status"] == "COMPLETED"
+    assert body["steps"][2]["linked_async_job_id"] == async_job_id
+    assert body["steps"][3]["linked_async_job_id"] is not None
 
 
 def test_retrieval_execution_status_route(client: TestClient) -> None:

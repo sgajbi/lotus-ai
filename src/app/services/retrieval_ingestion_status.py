@@ -7,6 +7,7 @@ from app.contracts.retrieval import (
     RetrievalIngestionJobStatus,
     RetrievalIngestionStatusResponse,
 )
+from app.services.async_job_type_catalog import get_async_job_type_descriptor
 from app.services.retrieval_store import get_retrieval_repository
 from app.services.runtime_readiness import get_retrieval_store_runtime_status
 
@@ -56,11 +57,20 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
     )
     staged_job_count = sum(1 for job in jobs if job.status == RetrievalIngestionJobStatus.STAGED)
     blocked_job_count = sum(1 for job in jobs if job.status == RetrievalIngestionJobStatus.BLOCKED)
+    ingestion_job_type = get_async_job_type_descriptor(job_type="document_ingestion")
+    async_enabled = bool(ingestion_job_type and ingestion_job_type.enabled)
 
     findings = [
         "Durable ingestion job and document-version state is now present for governed corpus lineage review.",
-        "Live ingestion execution remains disabled until async ingestion and corpus-refresh runtime support is implemented.",
     ]
+    if async_enabled:
+        findings.append(
+            "Bounded ingestion jobs can now execute through the durable async runtime and hand off to retrieval indexing."
+        )
+    else:
+        findings.append(
+            "Live ingestion execution remains disabled until async ingestion and corpus-refresh runtime support is implemented."
+        )
     if blocked_job_count > 0:
         findings.append(
             "Some corpus-change requests remain blocked because live onboarding execution is not enabled yet."
@@ -75,8 +85,12 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
         delivery_phase=settings.delivery_phase,
         retrieval_mode=settings.retrieval_mode,
         retrieval_store_mode=settings.retrieval_store_mode,
-        ingestion_delivery_stage=RetrievalIngestionDeliveryStage.DURABLE_STATE_READY,
-        live_ingestion_enabled=False,
+        ingestion_delivery_stage=(
+            RetrievalIngestionDeliveryStage.ASYNC_EXECUTION_READY
+            if async_enabled
+            else RetrievalIngestionDeliveryStage.DURABLE_STATE_READY
+        ),
+        live_ingestion_enabled=async_enabled,
         document_version_count=len(versions),
         active_document_version_count=active_count,
         superseded_document_version_count=superseded_count,
