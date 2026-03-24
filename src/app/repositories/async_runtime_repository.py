@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from app.contracts.access_control import AuthorizationDecision
+
 
 @dataclass(frozen=True)
 class AsyncRuntimeJobRecord:
@@ -57,6 +59,7 @@ class AsyncRuntimeControlEventRecord:
     prior_status: str
     resulting_status: str
     affected_attempt_id: str | None
+    authorization: AuthorizationDecision
     recorded_at: str
 
 

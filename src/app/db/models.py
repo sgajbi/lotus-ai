@@ -148,6 +148,7 @@ class PromptRolloutEventModel(Base):
     resulting_candidate_prompt_version: Mapped[str | None] = mapped_column(
         String(128), nullable=True
     )
+    authorization_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
@@ -192,6 +193,7 @@ class ProviderOperationsEventModel(Base):
     requested_by: Mapped[str] = mapped_column(String(256), nullable=False)
     approved_by: Mapped[str] = mapped_column(String(256), nullable=False)
     affected_record_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    authorization_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
@@ -276,6 +278,7 @@ class AsyncControlEventModel(Base):
     prior_status: Mapped[str] = mapped_column(String(64), nullable=False)
     resulting_status: Mapped[str] = mapped_column(String(64), nullable=False)
     affected_attempt_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    authorization_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 

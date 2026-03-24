@@ -1,3 +1,9 @@
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.providers import (
     ProviderFailureCategory,
     ProviderOperationsControlActionType,
@@ -12,6 +18,21 @@ from app.repositories.provider_operations_repository import (
     ProviderOperationsEventRecord,
     ProviderQuotaStateRecord,
 )
+
+
+def _authorization() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-platform",
+        capability_type=AuthorizationCapabilityType.PROVIDER_CONTROL,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id=None,
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=None,
+        summary="Allowed provider control decision.",
+    )
 
 
 def test_memory_provider_operations_repository_round_trip() -> None:
@@ -143,6 +164,7 @@ def test_memory_provider_operations_repository_records_events_and_resets_state()
             requested_by="ops.user@lotus",
             approved_by="approver.user@lotus",
             affected_record_count=3,
+            authorization=_authorization(),
             recorded_at="2026-03-23T00:03:00Z",
         )
     )
@@ -157,6 +179,7 @@ def test_memory_provider_operations_repository_records_events_and_resets_state()
     assert (
         events[0].action_type == ProviderOperationsControlActionType.RESET_ALL_PROVIDER_OPERATIONS
     )
+    assert events[0].authorization.outcome == AuthorizationOutcome.ALLOWED
     assert repository.list_quota_states() == []
     assert repository.get_budget_state(budget_key="live_text_generation") is None
     assert repository.get_degradation_state(degradation_key="live_text_generation") is None

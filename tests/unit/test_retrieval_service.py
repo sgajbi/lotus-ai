@@ -128,7 +128,9 @@ def test_search_sources_defaults_to_caller_allowed_sources_when_no_filter_is_sup
 
     with (
         patch("app.services.retrieval_service.get_retrieval_repository", return_value=repository),
-        patch("app.services.retrieval_service.execute_retrieval_search", return_value=execution) as execute_mock,
+        patch(
+            "app.services.retrieval_service.execute_retrieval_search", return_value=execution
+        ) as execute_mock,
     ):
         search_sources(request)
 

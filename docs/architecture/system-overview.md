@@ -165,6 +165,16 @@ unauthorized live-provider use. Task responses, execution evidence, and persiste
 all now carry the same typed authorization decision instead of leaving caller policy as a
 documentary-only operator surface.
 
+RFC-0012 Slice 3 applies that same caller policy to the control plane. Async recovery actions,
+governed prompt promote or rollback actions, and provider reset actions now fail before state
+mutation when the caller app is not authorized, and the resulting control history records now
+carry the same typed authorization decision as task audit and execution evidence.
+
+RFC-0012 Slice 4 closes the operator-facing governance loop around that enforcement model.
+Access-control runtime status now reports the explicit `FULLY_ENFORCED` posture, dedicated
+activation-readiness and runbook-readiness endpoints exist, and governance status now composes
+runtime, activation, and runbook truth instead of flattening those concerns into one summary.
+
 Evaluation runtime services also use a dedicated inventory-summary helper now, so fixture and
 case-count derivation is isolated from the final runtime-status response assembly.
 

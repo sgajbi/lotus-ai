@@ -122,6 +122,7 @@ def test_task_execute_contract_reflects_promoted_prompt_lineage(tmp_path: Path) 
                 json={
                     "task_id": "explain.v1",
                     "action_type": "PROMOTE_CANDIDATE",
+                    "caller_app": "lotus-platform",
                     "candidate_prompt_version": "foundation.explain.v2",
                     "requested_by": "alice@lotus.test",
                     "approved_by": "bob@lotus.test",

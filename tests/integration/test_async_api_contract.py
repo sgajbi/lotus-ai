@@ -337,6 +337,7 @@ def test_async_control_action_route_records_manual_replay_event(client: TestClie
         json={
             "job_id": job_id,
             "action_type": "REPLAY_TERMINAL_JOB",
+            "caller_app": "lotus-platform",
             "requested_by": "operator-a",
             "approved_by": "approver-a",
             "reason": "Replay completed job for verification.",
@@ -348,6 +349,7 @@ def test_async_control_action_route_records_manual_replay_event(client: TestClie
     assert action_body["event"]["action_type"] == "REPLAY_TERMINAL_JOB"
     assert action_body["event"]["prior_status"] == "COMPLETED"
     assert action_body["event"]["resulting_status"] == "QUEUED"
+    assert action_body["event"]["authorization"]["caller_app"] == "lotus-platform"
 
     detail_response = client.get(f"/platform/async/jobs/{job_id}")
     detail_body = detail_response.json()
@@ -375,6 +377,34 @@ def test_async_job_submit_route_rejects_documentation_only_job_type(client: Test
     assert body["cutover_state"] == "in_process_only"
     assert body["queue_mode"] == "DISABLED"
     assert body["worker_mode"] == "IN_PROCESS_ONLY"
+
+
+def test_async_control_action_route_blocks_unauthorized_caller(client: TestClient) -> None:
+    submit_response = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "retrieval_indexing",
+            "target_id": "retjob_lotus_platform_rfcs",
+            "caller_app": "lotus-platform",
+            "correlation_id": "corr-async-submit-replay-unauthorized",
+            "payload_summary": "Index newly approved RFC documents.",
+        },
+    )
+    job_id = submit_response.json()["job_id"]
+
+    action_response = client.post(
+        "/platform/async/control-plane-actions/apply",
+        json={
+            "job_id": job_id,
+            "action_type": "REPLAY_TERMINAL_JOB",
+            "caller_app": "lotus-workbench",
+            "requested_by": "operator-a",
+            "approved_by": "approver-a",
+            "reason": "Unauthorized replay attempt.",
+        },
+    )
+
+    assert action_response.status_code == 403
 
 
 def test_async_job_detail_route_exposes_runtime_backed_evaluation_execution(

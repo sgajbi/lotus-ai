@@ -14,7 +14,7 @@ def test_build_provider_execution_request_maps_runtime_context_fields() -> None:
     assert provider_request.task_id == "explain.v1"
     assert provider_request.caller_app == "lotus-manage"
     assert provider_request.requested_by is None
-    assert provider_request.tenant_id is None
+    assert provider_request.tenant_id == "tenant-sg-001"
     assert provider_request.prompt_version == "foundation.explain.v1"
     assert "Explain structured Lotus domain outputs clearly" in provider_request.system_instructions
     assert "explanation-oriented" in provider_request.output_contract_notes

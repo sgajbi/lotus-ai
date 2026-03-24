@@ -2,6 +2,12 @@ from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
 
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeControlEventRecord,
@@ -12,6 +18,21 @@ from app.repositories.sqlalchemy_async_runtime_repository import (
     SqlAlchemyAsyncRuntimeRepository,
 )
 from tests.support.migration_runner import upgrade_database_to_head
+
+
+def _authorization() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-platform",
+        capability_type=AuthorizationCapabilityType.ASYNC_CONTROL,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id=None,
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=None,
+        summary="Allowed async control decision.",
+    )
 
 
 def test_sqlalchemy_async_runtime_repository_round_trip(tmp_path: Path) -> None:
@@ -258,6 +279,7 @@ def test_sqlalchemy_async_runtime_repository_round_trips_control_events(
             prior_status="FAILED",
             resulting_status="QUEUED",
             affected_attempt_id="attempt-002",
+            authorization=_authorization(),
             recorded_at="2026-03-23T18:00:00Z",
         )
     )
@@ -267,6 +289,7 @@ def test_sqlalchemy_async_runtime_repository_round_trips_control_events(
     assert len(events) == 1
     assert events[0].action_type == "RETRY_FAILED_JOB"
     assert events[0].affected_attempt_id == "attempt-002"
+    assert events[0].authorization.outcome == AuthorizationOutcome.ALLOWED
 
 
 def test_sqlalchemy_async_runtime_repository_claims_specific_runnable_job_by_id(

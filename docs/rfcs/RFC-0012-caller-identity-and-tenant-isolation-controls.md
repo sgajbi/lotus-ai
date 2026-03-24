@@ -1,6 +1,6 @@
 # RFC-0012: Caller Identity and Tenant Isolation Controls
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -14,6 +14,15 @@ RFC-0005 made provider operations state durable with caller- and tenant-aware qu
 RFC-0011 defines the dedicated worker and managed-queue deployment model for a more production-grade runtime.
 
 The next high-value shared-platform gap is that caller and tenant identity are now recorded broadly, but still not enforced as a first-class access-control plane.
+
+## Implementation Notes
+
+RFC-0012 is now implemented in four slices:
+
+1. a durable caller-policy registry seam with memory and SQL-backed repositories,
+2. enforced data-plane authorization for task execution, retrieval execution, and live-provider execution with typed authorization decisions persisted into audit and execution evidence,
+3. enforced control-plane authorization for async control, prompt control, and provider control actions with durable authorization context preserved in control history,
+4. dedicated activation-readiness, runbook-readiness, and composed governance surfaces so access-control rollout posture is inspectable and not overstated.
 
 ## Why This Is Next
 

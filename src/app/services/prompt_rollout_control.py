@@ -6,6 +6,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.contracts.access_control import AuthorizationCapabilityType, AuthorizationDecision
 from app.contracts.prompts import (
     PromptControlActionRequest,
     PromptControlActionResponse,
@@ -17,6 +18,7 @@ from app.contracts.prompts import (
     PromptRolloutDescriptor,
     PromptRolloutSelectionMode,
 )
+from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.eval_approval_gate_summary import build_prompt_approval_gate_summary
 from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
 from app.services.prompt_store import get_prompt_repository
@@ -46,6 +48,13 @@ def build_prompt_control_history(*, task_id: str | None = None) -> PromptControl
 
 
 def apply_prompt_control_action(request: PromptControlActionRequest) -> PromptControlActionResponse:
+    authorization = require_authorized(
+        authorize_request(
+            caller_app=request.caller_app,
+            capability_type=AuthorizationCapabilityType.PROMPT_CONTROL,
+            task_id=request.task_id,
+        )
+    )
     _require_durable_prompt_control_plane(request.action_type)
     repository = get_prompt_repository()
     rollout_state = repository.get_prompt_rollout_state(request.task_id)
@@ -58,6 +67,7 @@ def apply_prompt_control_action(request: PromptControlActionRequest) -> PromptCo
     updated_state, updated_prompts, event = _resolve_transition(
         rollout_state=rollout_state,
         request=request,
+        authorization=authorization,
     )
     repository.save_prompt_rollout_transition(
         rollout_state=updated_state,
@@ -104,11 +114,20 @@ def _resolve_transition(
     *,
     rollout_state: PromptRolloutStateRecord,
     request: PromptControlActionRequest,
+    authorization: AuthorizationDecision,
 ) -> tuple[PromptRolloutStateRecord, list[PromptDescriptor], PromptRolloutEventRecord]:
     if request.action_type == PromptControlActionType.PROMOTE_CANDIDATE:
-        return _build_promote_transition(rollout_state=rollout_state, request=request)
+        return _build_promote_transition(
+            rollout_state=rollout_state,
+            request=request,
+            authorization=authorization,
+        )
     if request.action_type == PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE:
-        return _build_rollback_transition(rollout_state=rollout_state, request=request)
+        return _build_rollback_transition(
+            rollout_state=rollout_state,
+            request=request,
+            authorization=authorization,
+        )
     raise RuntimeError("Unsupported prompt control action.")
 
 
@@ -116,6 +135,7 @@ def _build_promote_transition(
     *,
     rollout_state: PromptRolloutStateRecord,
     request: PromptControlActionRequest,
+    authorization: AuthorizationDecision,
 ) -> tuple[PromptRolloutStateRecord, list[PromptDescriptor], PromptRolloutEventRecord]:
     approval_gate = build_prompt_approval_gate_summary()
     if not approval_gate.approval_ready:
@@ -188,6 +208,7 @@ def _build_promote_transition(
         resulting_active_prompt_version=candidate_prompt.prompt_version,
         prior_candidate_prompt_version=rollout_state.candidate_prompt_version,
         resulting_candidate_prompt_version=None,
+        authorization=authorization,
         recorded_at=_utcnow(),
     )
     return updated_state, updated_prompts, event
@@ -197,6 +218,7 @@ def _build_rollback_transition(
     *,
     rollout_state: PromptRolloutStateRecord,
     request: PromptControlActionRequest,
+    authorization: AuthorizationDecision,
 ) -> tuple[PromptRolloutStateRecord, list[PromptDescriptor], PromptRolloutEventRecord]:
     if request.candidate_prompt_version is not None:
         raise HTTPException(
@@ -246,6 +268,7 @@ def _build_rollback_transition(
         resulting_active_prompt_version=previous_active_prompt.prompt_version,
         prior_candidate_prompt_version=rollout_state.candidate_prompt_version,
         resulting_candidate_prompt_version=active_prompt.prompt_version,
+        authorization=authorization,
         recorded_at=_utcnow(),
     )
     return updated_state, updated_prompts, event
@@ -276,6 +299,7 @@ def _map_control_event(event: PromptRolloutEventRecord) -> PromptControlEventDes
         resulting_active_prompt_version=event.resulting_active_prompt_version,
         prior_candidate_prompt_version=event.prior_candidate_prompt_version,
         resulting_candidate_prompt_version=event.resulting_candidate_prompt_version,
+        authorization=event.authorization,
         recorded_at=event.recorded_at,
     )
 

@@ -246,6 +246,7 @@ def test_provider_operations_control_action_route_resets_durable_sql_backed_stat
         "/platform/providers/control-plane-actions/reset",
         json={
             "action_type": "RESET_ALL_PROVIDER_OPERATIONS",
+            "caller_app": "lotus-platform",
             "requested_by": "ops.user@lotus",
             "approved_by": "approver.user@lotus",
             "reason": "Clear durable provider controls after reviewed recovery.",
@@ -256,6 +257,7 @@ def test_provider_operations_control_action_route_resets_durable_sql_backed_stat
     body = response.json()
     assert body["event"]["action_type"] == "RESET_ALL_PROVIDER_OPERATIONS"
     assert body["event"]["affected_record_count"] == 3
+    assert body["event"]["authorization"]["caller_app"] == "lotus-platform"
 
     quota_response = client.get("/platform/providers/quota-policy")
     budget_response = client.get("/platform/providers/budget-policy")
@@ -267,6 +269,10 @@ def test_provider_operations_control_action_route_resets_durable_sql_backed_stat
     assert quota_response.json()["quotas"][0]["current_request_count"] == 0
     assert budget_response.json()["current_spend_usd"] == 0.0
     assert history_response.json()["latest_events"][0]["event_id"] == body["event"]["event_id"]
+    assert (
+        history_response.json()["latest_events"][0]["authorization"]["caller_app"]
+        == "lotus-platform"
+    )
 
 
 def test_provider_activation_readiness_route(client: TestClient) -> None:
@@ -345,6 +351,27 @@ def test_provider_governance_status_route(client: TestClient) -> None:
     assert body["evidence_readiness"]["evidence_ready"] is False
     assert body["evidence_readiness"]["approval_gate"]["domain_id"] == "provider_execution"
     assert len(body["governance_summary"]) == 3
+
+
+def test_provider_control_action_route_blocks_unauthorized_caller(
+    client: TestClient, tmp_path: Path
+) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-ops-unauthorized-route.db'}"
+    upgrade_database_to_head(settings.database_url)
+
+    response = client.post(
+        "/platform/providers/control-plane-actions/reset",
+        json={
+            "action_type": "RESET_BUDGET",
+            "caller_app": "lotus-workbench",
+            "requested_by": "ops.user@lotus",
+            "approved_by": "approver.user@lotus",
+            "reason": "Unauthorized budget reset attempt.",
+        },
+    )
+
+    assert response.status_code == 403
 
 
 def test_provider_evidence_readiness_route_reports_partial_runtime_coverage(

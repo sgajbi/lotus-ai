@@ -105,3 +105,35 @@ def test_authorize_request_uses_sql_backed_registry_when_configured(tmp_path: Pa
 
     assert decision.allowed is True
     assert decision.outcome == AuthorizationOutcome.ALLOWED
+
+
+def test_authorize_request_allows_async_control_for_platform_caller() -> None:
+    decision = authorize_request(
+        caller_app="lotus-platform",
+        capability_type=AuthorizationCapabilityType.ASYNC_CONTROL,
+    )
+
+    assert decision.allowed is True
+    assert decision.outcome == AuthorizationOutcome.ALLOWED
+
+
+def test_authorize_request_blocks_prompt_control_for_non_operator_caller() -> None:
+    decision = authorize_request(
+        caller_app="lotus-manage",
+        capability_type=AuthorizationCapabilityType.PROMPT_CONTROL,
+        tenant_id="tenant-sg-001",
+        task_id="explain.v1",
+    )
+
+    assert decision.allowed is False
+    assert decision.outcome == AuthorizationOutcome.BLOCKED_PROMPT_CONTROL_NOT_ALLOWED
+
+
+def test_authorize_request_blocks_provider_control_for_unknown_caller() -> None:
+    decision = authorize_request(
+        caller_app="unknown-app",
+        capability_type=AuthorizationCapabilityType.PROVIDER_CONTROL,
+    )
+
+    assert decision.allowed is False
+    assert decision.outcome == AuthorizationOutcome.BLOCKED_UNKNOWN_CALLER

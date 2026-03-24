@@ -8,9 +8,10 @@ from app.contracts.runtime_readiness import StoreRuntimeStatusDescriptor
 
 
 class AccessControlEnforcementState(str, Enum):
-    DOCUMENTARY_ONLY = "DOCUMENTARY_ONLY"
+    REGISTRY_ONLY = "REGISTRY_ONLY"
     POLICY_RESOLUTION_READY = "POLICY_RESOLUTION_READY"
-    ENFORCED = "ENFORCED"
+    DATA_PLANE_ENFORCED = "DATA_PLANE_ENFORCED"
+    FULLY_ENFORCED = "FULLY_ENFORCED"
 
 
 class TenantPolicyMode(str, Enum):
@@ -28,6 +29,9 @@ class AuthorizationCapabilityType(str, Enum):
     TASK_EXECUTION = "task_execution"
     RETRIEVAL_EXECUTION = "retrieval_execution"
     LIVE_PROVIDER_EXECUTION = "live_provider_execution"
+    ASYNC_CONTROL = "async_control"
+    PROMPT_CONTROL = "prompt_control"
+    PROVIDER_CONTROL = "provider_control"
 
 
 class AuthorizationOutcome(str, Enum):
@@ -37,6 +41,9 @@ class AuthorizationOutcome(str, Enum):
     BLOCKED_TASK_NOT_ALLOWED = "BLOCKED_TASK_NOT_ALLOWED"
     BLOCKED_RETRIEVAL_SOURCE_NOT_ALLOWED = "BLOCKED_RETRIEVAL_SOURCE_NOT_ALLOWED"
     BLOCKED_LIVE_PROVIDER_NOT_ALLOWED = "BLOCKED_LIVE_PROVIDER_NOT_ALLOWED"
+    BLOCKED_ASYNC_CONTROL_NOT_ALLOWED = "BLOCKED_ASYNC_CONTROL_NOT_ALLOWED"
+    BLOCKED_PROMPT_CONTROL_NOT_ALLOWED = "BLOCKED_PROMPT_CONTROL_NOT_ALLOWED"
+    BLOCKED_PROVIDER_CONTROL_NOT_ALLOWED = "BLOCKED_PROVIDER_CONTROL_NOT_ALLOWED"
     BLOCKED_TENANT_REQUIRED = "BLOCKED_TENANT_REQUIRED"
     BLOCKED_TENANT_NOT_ALLOWED = "BLOCKED_TENANT_NOT_ALLOWED"
 
@@ -127,6 +134,12 @@ class AccessControlRuntimeStatusResponse(BaseModel):
     enforcement_state: AccessControlEnforcementState = Field(
         description="Current access-control enforcement posture."
     )
+    data_plane_enforced: bool = Field(
+        description="Whether protected data-plane request paths are currently enforced through the caller policy registry."
+    )
+    control_plane_enforced: bool = Field(
+        description="Whether protected control-plane action paths are currently enforced through the caller policy registry."
+    )
     unknown_caller_policy: str = Field(
         description="Documented handling for unknown callers under the current posture."
     )
@@ -142,6 +155,54 @@ class AccessControlRuntimeStatusResponse(BaseModel):
     )
 
 
+class AccessControlActivationReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the access-control activation readiness view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    store_mode: str = Field(description="Configured caller policy store mode.")
+    enforcement_state: AccessControlEnforcementState = Field(
+        description="Current access-control enforcement posture."
+    )
+    activation_ready: bool = Field(
+        description="Whether access-control posture is fully activatable as a durable shared-service control plane."
+    )
+    blocking_findings: list[str] = Field(
+        description="Human-readable reasons why access-control governance is not yet ready for fully durable activation."
+    )
+    activation_path: list[str] = Field(
+        description="Governed high-level path required before access-control rollout is fully ready."
+    )
+
+
+class AccessControlRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(description="Stable access-control runbook readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before full access-control activation."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class AccessControlRunbookReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the access-control runbook readiness view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    runbook_ready: bool = Field(
+        description="Whether access-control operational runbook readiness is sufficient for full activation."
+    )
+    required_item_count: int = Field(
+        description="Number of access-control runbook items currently required for activation."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required access-control runbook items currently marked complete."
+    )
+    items: list[AccessControlRunbookReadinessItem] = Field(
+        description="Governed access-control operational runbook readiness items."
+    )
+
+
 class AccessControlGovernanceStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the access-control governance status.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -151,6 +212,12 @@ class AccessControlGovernanceStatusResponse(BaseModel):
     store_mode: str = Field(description="Configured caller policy store mode.")
     enforcement_state: AccessControlEnforcementState = Field(
         description="Current access-control enforcement posture."
+    )
+    activation_readiness: AccessControlActivationReadinessResponse = Field(
+        description="Current activation-readiness posture for access-control rollout."
+    )
+    runbook_readiness: AccessControlRunbookReadinessResponse = Field(
+        description="Current runbook-readiness posture for access-control rollout."
     )
     policy_count: int = Field(description="Number of recognized caller policies.")
     tenant_restricted_policy_count: int = Field(

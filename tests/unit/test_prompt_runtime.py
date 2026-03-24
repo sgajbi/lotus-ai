@@ -1,5 +1,11 @@
 from pathlib import Path
 
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from app.prompts.registry import list_prompts as list_seeded_prompts
 from app.contracts.evals import EvaluationRunSubmissionRequest
@@ -31,6 +37,21 @@ from app.services.prompt_runtime import (
 from app.services.prompt_store import get_prompt_repository, reset_prompt_store_cache
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
+
+
+def _authorization() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-platform",
+        capability_type=AuthorizationCapabilityType.PROMPT_CONTROL,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id="explain.v1",
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=None,
+        summary="Allowed prompt control decision.",
+    )
 
 
 def test_resolve_runtime_prompt_or_raise_returns_active_prompt_selection() -> None:
@@ -111,6 +132,7 @@ def test_build_prompt_selection_trace_includes_latest_control_event_after_promot
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                caller_app="lotus-platform",
                 candidate_prompt_version="foundation.explain.v2",
                 requested_by="alice@lotus.test",
                 approved_by="bob@lotus.test",
@@ -140,6 +162,7 @@ def test_prompt_runtime_selection_survives_sql_store_reinitialization(tmp_path: 
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                caller_app="lotus-platform",
                 candidate_prompt_version="foundation.explain.v2",
                 requested_by="alice@lotus.test",
                 approved_by="bob@lotus.test",
@@ -180,6 +203,7 @@ def test_prompt_runtime_rollback_lineage_survives_sql_store_reinitialization(
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                caller_app="lotus-platform",
                 candidate_prompt_version="foundation.explain.v2",
                 requested_by="alice@lotus.test",
                 approved_by="bob@lotus.test",
@@ -190,6 +214,7 @@ def test_prompt_runtime_rollback_lineage_survives_sql_store_reinitialization(
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
+                caller_app="lotus-platform",
                 requested_by="alice@lotus.test",
                 approved_by="bob@lotus.test",
                 reason="Restore known-good prompt",
@@ -254,6 +279,7 @@ def test_resolve_runtime_prompt_or_raise_rejects_missing_active_prompt_version(
                 resulting_active_prompt_version="missing.version",
                 prior_candidate_prompt_version=None,
                 resulting_candidate_prompt_version=None,
+                authorization=_authorization(),
                 recorded_at="2026-03-24T09:00:00Z",
             ),
         )
@@ -295,6 +321,7 @@ def test_resolve_runtime_prompt_or_raise_rejects_non_active_prompt_definition(
                 resulting_active_prompt_version="foundation.explain.v1",
                 prior_candidate_prompt_version=None,
                 resulting_candidate_prompt_version=None,
+                authorization=_authorization(),
                 recorded_at="2026-03-24T09:00:00Z",
             ),
         )

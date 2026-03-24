@@ -77,9 +77,7 @@ def authorize_request(
                 task_id=task_id,
                 requested_source_ids=requested_source_ids,
                 tenant_id=tenant_id,
-                summary=(
-                    f"Caller '{caller_app}' is not authorized to execute task '{task_id}'."
-                ),
+                summary=(f"Caller '{caller_app}' is not authorized to execute task '{task_id}'."),
             )
         source_decision = _evaluate_retrieval_sources(
             caller_app=caller_app,
@@ -148,9 +146,7 @@ def authorize_request(
                 task_id=task_id,
                 requested_source_ids=requested_source_ids,
                 tenant_id=tenant_id,
-                summary=(
-                    f"Caller '{caller_app}' is not authorized for live provider execution."
-                ),
+                summary=(f"Caller '{caller_app}' is not authorized for live provider execution."),
             )
         return _allowed_decision(
             caller_app=caller_app,
@@ -163,6 +159,63 @@ def authorize_request(
             summary=(
                 f"Caller '{caller_app}' is authorized for live provider execution under the "
                 "current caller policy registry."
+            ),
+        )
+
+    if capability_type == AuthorizationCapabilityType.ASYNC_CONTROL:
+        return _evaluate_control_capability(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            allowed=policy.allow_async_control,
+            blocked_outcome=AuthorizationOutcome.BLOCKED_ASYNC_CONTROL_NOT_ALLOWED,
+            blocked_summary=(
+                f"Caller '{caller_app}' is not authorized for async control-plane actions."
+            ),
+            allowed_summary=(
+                f"Caller '{caller_app}' is authorized for async control-plane actions under the "
+                "current caller policy registry."
+            ),
+        )
+
+    if capability_type == AuthorizationCapabilityType.PROMPT_CONTROL:
+        return _evaluate_control_capability(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            allowed=policy.allow_prompt_control,
+            blocked_outcome=AuthorizationOutcome.BLOCKED_PROMPT_CONTROL_NOT_ALLOWED,
+            blocked_summary=(
+                f"Caller '{caller_app}' is not authorized for prompt control-plane actions."
+            ),
+            allowed_summary=(
+                f"Caller '{caller_app}' is authorized for prompt control-plane actions under the "
+                "current caller policy registry."
+            ),
+        )
+
+    if capability_type == AuthorizationCapabilityType.PROVIDER_CONTROL:
+        return _evaluate_control_capability(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            allowed=policy.allow_provider_control,
+            blocked_outcome=AuthorizationOutcome.BLOCKED_PROVIDER_CONTROL_NOT_ALLOWED,
+            blocked_summary=(
+                f"Caller '{caller_app}' is not authorized for provider control-plane actions."
+            ),
+            allowed_summary=(
+                f"Caller '{caller_app}' is authorized for provider control-plane actions under "
+                "the current caller policy registry."
             ),
         )
 
@@ -288,4 +341,41 @@ def _allowed_decision(
         effective_source_ids=effective_source_ids,
         tenant_id=tenant_id,
         summary=summary,
+    )
+
+
+def _evaluate_control_capability(
+    *,
+    caller_app: str,
+    capability_type: AuthorizationCapabilityType,
+    task_id: str | None,
+    requested_source_ids: list[str],
+    tenant_id: str | None,
+    tenant_policy_mode: TenantPolicyMode,
+    allowed: bool,
+    blocked_outcome: AuthorizationOutcome,
+    blocked_summary: str,
+    allowed_summary: str,
+) -> AuthorizationDecision:
+    if not allowed:
+        return AuthorizationDecision(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            outcome=blocked_outcome,
+            allowed=False,
+            tenant_policy_mode=tenant_policy_mode,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            summary=blocked_summary,
+        )
+    return _allowed_decision(
+        caller_app=caller_app,
+        capability_type=capability_type,
+        tenant_id=tenant_id,
+        task_id=task_id,
+        tenant_policy_mode=tenant_policy_mode,
+        requested_source_ids=requested_source_ids,
+        effective_source_ids=[],
+        summary=allowed_summary,
     )

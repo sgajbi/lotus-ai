@@ -8,6 +8,12 @@ from typing import Iterator, cast
 from fastapi import HTTPException
 
 from app.config import settings
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.evals import EvaluationCaseOutcome, EvaluationRunVerdict
 from app.contracts.prompts import (
     PromptControlActionType,
@@ -583,16 +589,17 @@ def _execute_task_case(
     task_id: str,
     case: EvaluationFixtureRuntimeCase,
 ) -> tuple[TaskExecutionResponse | None, str | None]:
+    caller_app = _resolve_eval_caller_app(task_id=task_id, case=case)
     try:
         response = execute_task(
             TaskExecutionRequest(
                 task_id=task_id,
                 input_mode=TaskInputMode.STRUCTURED_CONTEXT,
                 caller=CallerMetadata(
-                    caller_app=case.input_payload.get("caller_app", "lotus-ai"),
+                    caller_app=caller_app,
                     correlation_id=case.input_payload.get("correlation_id", f"eval-{case.case_id}"),
                     tenant_id=_default_eval_tenant_id(
-                        caller_app=str(case.input_payload.get("caller_app", "lotus-ai")),
+                        caller_app=caller_app,
                         case_tenant_id=case.input_payload.get("tenant_id"),
                     ),
                 ),
@@ -611,6 +618,19 @@ def _execute_task_case(
         detail = str(exc.detail)
         failure_category = detail.split(":", 1)[0] if ":" in detail else detail
         return (None, failure_category)
+
+
+def _resolve_eval_caller_app(*, task_id: str, case: EvaluationFixtureRuntimeCase) -> str:
+    configured_caller_app = case.input_payload.get("caller_app")
+    if (
+        isinstance(configured_caller_app, str)
+        and configured_caller_app
+        and configured_caller_app != "lotus-ai"
+    ):
+        return configured_caller_app
+    if task_id.startswith("knowledge_"):
+        return "lotus-workbench"
+    return "lotus-manage"
 
 
 def _build_task_payload(*, case: EvaluationFixtureRuntimeCase) -> dict[str, object]:
@@ -864,6 +884,10 @@ def _apply_prompt_transition_for_evaluation(
         resulting_active_prompt_version=candidate_prompt.prompt_version,
         prior_candidate_prompt_version=rollout_state.candidate_prompt_version,
         resulting_candidate_prompt_version=None,
+        authorization=_evaluation_control_authorization(
+            capability_type=AuthorizationCapabilityType.PROMPT_CONTROL,
+            task_id=task_id,
+        ),
         recorded_at=_utcnow_iso(),
     )
     repository.save_prompt_rollout_transition(
@@ -923,6 +947,10 @@ def _apply_prompt_rollback_for_evaluation(
         resulting_active_prompt_version=previous_active_prompt.prompt_version,
         prior_candidate_prompt_version=rollout_state.candidate_prompt_version,
         resulting_candidate_prompt_version=active_prompt.prompt_version,
+        authorization=_evaluation_control_authorization(
+            capability_type=AuthorizationCapabilityType.PROMPT_CONTROL,
+            task_id=task_id,
+        ),
         recorded_at=_utcnow_iso(),
     )
     repository.save_prompt_rollout_transition(
@@ -939,6 +967,25 @@ def _apply_prompt_rollback_for_evaluation(
 
 def _utcnow_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _evaluation_control_authorization(
+    *,
+    capability_type: AuthorizationCapabilityType,
+    task_id: str | None = None,
+) -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-platform",
+        capability_type=capability_type,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id=task_id,
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=None,
+        summary="Evaluation fixture recorded an allowed control-plane authorization decision.",
+    )
 
 
 def _execute_direct_safety_case(

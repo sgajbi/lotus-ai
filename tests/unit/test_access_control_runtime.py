@@ -15,13 +15,17 @@ def test_access_control_runtime_status_reports_enforced_memory_mode() -> None:
     status = build_access_control_runtime_status()
 
     assert status.store_mode == "memory"
-    assert status.enforcement_state.value == "ENFORCED"
+    assert status.enforcement_state.value == "FULLY_ENFORCED"
     assert status.store.status.value == "READY"
+    assert status.data_plane_enforced is True
+    assert status.control_plane_enforced is True
     assert status.policy_count >= 4
     assert status.tenant_isolation_active is True
 
 
-def test_access_control_runtime_status_reports_enforced_sql_policy_resolution(tmp_path: Path) -> None:
+def test_access_control_runtime_status_reports_enforced_sql_policy_resolution(
+    tmp_path: Path,
+) -> None:
     settings.access_control_store_mode = "sqlalchemy"
     settings.database_url = f"sqlite:///{tmp_path / 'access-control-runtime.db'}"
     upgrade_database_to_head(settings.database_url)
@@ -29,7 +33,7 @@ def test_access_control_runtime_status_reports_enforced_sql_policy_resolution(tm
     status = build_access_control_runtime_status()
 
     assert status.store_mode == "sqlalchemy"
-    assert status.enforcement_state.value == "ENFORCED"
+    assert status.enforcement_state.value == "FULLY_ENFORCED"
     assert status.store.status.value == "READY"
     assert "restart-safe" in status.status_summary[1]
 

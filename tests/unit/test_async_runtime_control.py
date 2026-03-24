@@ -68,6 +68,7 @@ def test_async_control_action_retries_failed_job_and_records_event(
         AsyncControlActionRequest(
             job_id=response.job_id or "",
             action_type=AsyncControlActionType.RETRY_FAILED_JOB,
+            caller_app="lotus-platform",
             requested_by="operator-a",
             approved_by="approver-a",
             reason="Retry after transient investigation.",
@@ -80,6 +81,7 @@ def test_async_control_action_retries_failed_job_and_records_event(
     assert detail.job.status.value == "QUEUED"
     assert detail.attempts[-1].status == "QUEUED"
     assert detail.control_events[0].action_type.value == "RETRY_FAILED_JOB"
+    assert detail.control_events[0].authorization.caller_app == "lotus-platform"
     republished = queue.dequeue(timeout_seconds=0)
     assert republished is not None
     assert republished.delivery_id.endswith("_attempt_002")
@@ -116,6 +118,7 @@ def test_async_control_action_history_survives_sql_store_reset(
         AsyncControlActionRequest(
             job_id=response.job_id or "",
             action_type=AsyncControlActionType.ABANDON_ACTIVE_JOB,
+            caller_app="lotus-platform",
             requested_by="operator-a",
             approved_by="approver-a",
             reason="Manual stop for recovery validation.",
@@ -144,6 +147,7 @@ def test_async_control_action_raises_not_found_for_missing_job() -> None:
             AsyncControlActionRequest(
                 job_id="missing-job",
                 action_type=AsyncControlActionType.RETRY_FAILED_JOB,
+                caller_app="lotus-platform",
                 requested_by="operator-a",
                 approved_by="approver-a",
                 reason="Retry missing job.",
@@ -169,6 +173,7 @@ def test_async_control_action_requeues_abandoned_job() -> None:
         AsyncControlActionRequest(
             job_id=response.job_id or "",
             action_type=AsyncControlActionType.ABANDON_ACTIVE_JOB,
+            caller_app="lotus-platform",
             requested_by="operator-a",
             approved_by="approver-a",
             reason="Abandon before requeue.",
@@ -179,6 +184,7 @@ def test_async_control_action_requeues_abandoned_job() -> None:
         AsyncControlActionRequest(
             job_id=response.job_id or "",
             action_type=AsyncControlActionType.REQUEUE_ABANDONED_JOB,
+            caller_app="lotus-platform",
             requested_by="operator-a",
             approved_by="approver-a",
             reason="Requeue after manual abandon.",
@@ -232,6 +238,7 @@ def test_async_control_action_rejects_invalid_state_transitions(
             AsyncControlActionRequest(
                 job_id=response.job_id or "",
                 action_type=action_type,
+                caller_app="lotus-platform",
                 requested_by="operator-a",
                 approved_by="approver-a",
                 reason="Invalid transition coverage.",
@@ -258,6 +265,7 @@ def test_async_control_action_rejects_missing_active_lease() -> None:
             AsyncControlActionRequest(
                 job_id=response.job_id or "",
                 action_type=AsyncControlActionType.ABANDON_ACTIVE_JOB,
+                caller_app="lotus-platform",
                 requested_by="operator-a",
                 approved_by="approver-a",
                 reason="Missing lease coverage.",
@@ -288,6 +296,7 @@ def test_async_control_action_rejects_missing_attempt_for_active_lease() -> None
             AsyncControlActionRequest(
                 job_id=response.job_id or "",
                 action_type=AsyncControlActionType.ABANDON_ACTIVE_JOB,
+                caller_app="lotus-platform",
                 requested_by="operator-a",
                 approved_by="approver-a",
                 reason="Missing attempt coverage.",
@@ -314,6 +323,7 @@ def test_async_control_action_abandon_updates_linked_evaluation_attempt() -> Non
         AsyncControlActionRequest(
             job_id=response.async_job_id or "",
             action_type=AsyncControlActionType.ABANDON_ACTIVE_JOB,
+            caller_app="lotus-platform",
             requested_by="operator-a",
             approved_by="approver-a",
             reason="Abandon linked evaluation.",
@@ -326,3 +336,29 @@ def test_async_control_action_abandon_updates_linked_evaluation_attempt() -> Non
     assert detail.run.status.value == "ABANDONED"
     assert detail.attempts[0].status.value == "ABANDONED"
     assert detail.attempts[0].failure_reason == "MANUAL_ABANDON"
+
+
+def test_async_control_action_blocks_unauthorized_caller() -> None:
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-control-unauthorized",
+            payload_summary="Refresh retrieval documents.",
+        )
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        apply_async_control_action(
+            AsyncControlActionRequest(
+                job_id=response.job_id or "",
+                action_type=AsyncControlActionType.RETRY_FAILED_JOB,
+                caller_app="lotus-manage",
+                requested_by="operator-a",
+                approved_by="approver-a",
+                reason="Unauthorized retry attempt.",
+            )
+        )
+
+    assert exc_info.value.status_code == 403

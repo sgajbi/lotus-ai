@@ -53,10 +53,14 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
 
     assert status.service == "lotus-ai"
     assert status.access_control_store_mode == "memory"
-    assert status.access_control_runtime.enforcement_state.value == "ENFORCED"
+    assert status.access_control_runtime.enforcement_state.value == "FULLY_ENFORCED"
+    assert status.access_control_runtime.data_plane_enforced is True
+    assert status.access_control_runtime.control_plane_enforced is True
     assert status.access_control_runtime.policy_count >= 4
     assert status.access_control_runtime.tenant_isolation_active is True
     assert status.access_control_governance.governance_ready is False
+    assert status.access_control_governance.activation_readiness.activation_ready is False
+    assert status.access_control_governance.runbook_readiness.runbook_ready is True
     assert status.access_control_governance.blocking_area_count == 1
     assert status.async_runtime.cutover_state == "in_process_only"
     assert status.async_runtime.queue_mode == "DISABLED"
@@ -173,6 +177,7 @@ def test_build_platform_runtime_status_reflects_sql_backed_prompt_rollout_after_
         PromptControlActionRequest(
             task_id="explain.v1",
             action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+            caller_app="lotus-platform",
             candidate_prompt_version="foundation.explain.v2",
             requested_by="alice@lotus.test",
             approved_by="bob@lotus.test",

@@ -80,6 +80,7 @@ def test_provider_operations_control_action_resets_durable_state_and_records_eve
     response = apply_provider_operations_control_action(
         ProviderOperationsControlActionRequest(
             action_type=ProviderOperationsControlActionType.RESET_ALL_PROVIDER_OPERATIONS,
+            caller_app="lotus-platform",
             requested_by="ops.user@lotus",
             approved_by="approver.user@lotus",
             reason="Clear durable provider controls after reviewed recovery.",
@@ -104,6 +105,7 @@ def test_provider_operations_control_action_rejects_missing_targeted_quota_scope
         apply_provider_operations_control_action(
             ProviderOperationsControlActionRequest(
                 action_type=ProviderOperationsControlActionType.RESET_QUOTA_SCOPE,
+                caller_app="lotus-platform",
                 requested_by="ops.user@lotus",
                 approved_by="approver.user@lotus",
                 reason="Targeted quota reset.",
@@ -120,6 +122,7 @@ def test_provider_operations_control_action_rejects_nondurable_store_mode() -> N
         apply_provider_operations_control_action(
             ProviderOperationsControlActionRequest(
                 action_type=ProviderOperationsControlActionType.RESET_BUDGET,
+                caller_app="lotus-platform",
                 requested_by="ops.user@lotus",
                 approved_by="approver.user@lotus",
                 reason="Budget reset on in-memory store should fail.",
@@ -148,6 +151,7 @@ def test_provider_operations_control_action_resets_targeted_quota_scope(tmp_path
     response = apply_provider_operations_control_action(
         ProviderOperationsControlActionRequest(
             action_type=ProviderOperationsControlActionType.RESET_QUOTA_SCOPE,
+            caller_app="lotus-platform",
             scope=ProviderQuotaScope.TASK,
             scope_key="explain.v1",
             requested_by="ops.user@lotus",
@@ -159,3 +163,25 @@ def test_provider_operations_control_action_resets_targeted_quota_scope(tmp_path
     assert response.event.affected_record_count == 1
     assert response.event.scope == ProviderQuotaScope.TASK
     assert response.event.scope_key == "explain.v1"
+
+
+def test_provider_operations_control_action_blocks_unauthorized_caller(tmp_path: Path) -> None:
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-ops-unauthorized.db'}"
+    upgrade_database_to_head(settings.database_url)
+
+    try:
+        apply_provider_operations_control_action(
+            ProviderOperationsControlActionRequest(
+                action_type=ProviderOperationsControlActionType.RESET_BUDGET,
+                caller_app="lotus-workbench",
+                requested_by="ops.user@lotus",
+                approved_by="approver.user@lotus",
+                reason="Unauthorized budget reset attempt.",
+            )
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 403
+        assert "not authorized for provider control-plane actions" in str(exc.detail)
+    else:
+        raise AssertionError("Expected unauthorized provider control action to be rejected.")

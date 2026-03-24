@@ -12,7 +12,9 @@ def test_access_control_governance_status_blocks_when_store_is_memory() -> None:
     status = build_access_control_governance_status()
 
     assert status.governance_ready is False
-    assert status.enforcement_state.value == "ENFORCED"
+    assert status.enforcement_state.value == "FULLY_ENFORCED"
+    assert status.activation_readiness.activation_ready is False
+    assert status.runbook_readiness.runbook_ready is True
     assert status.blocking_area_count == 1
 
 
@@ -24,6 +26,8 @@ def test_access_control_governance_status_reports_sql_backed_registry_ready(tmp_
     status = build_access_control_governance_status()
 
     assert status.governance_ready is True
-    assert status.enforcement_state.value == "ENFORCED"
+    assert status.enforcement_state.value == "FULLY_ENFORCED"
+    assert status.activation_readiness.activation_ready is True
+    assert status.runbook_readiness.runbook_ready is True
     assert status.tenant_restricted_policy_count >= 2
     assert status.blocking_area_count == 0

@@ -4,6 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
 
 
@@ -98,6 +99,9 @@ class PromptControlEventDescriptor(BaseModel):
         default=None,
         description="Candidate prompt version after the control action completed, if any.",
     )
+    authorization: AuthorizationDecision = Field(
+        description="Typed caller-authorization decision recorded for the prompt control action."
+    )
     recorded_at: str = Field(description="UTC timestamp when the control action was recorded.")
 
 
@@ -105,6 +109,9 @@ class PromptControlActionRequest(BaseModel):
     task_id: str = Field(description="Stable task identifier targeted by the control action.")
     action_type: PromptControlActionType = Field(
         description="Governed prompt control-plane action to apply."
+    )
+    caller_app: str = Field(
+        description="Caller application identity authorized to issue the prompt control action."
     )
     candidate_prompt_version: str | None = Field(
         default=None,

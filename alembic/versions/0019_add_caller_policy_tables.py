@@ -34,7 +34,9 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.String(length=64), nullable=False),
         sa.PrimaryKeyConstraint("caller_app"),
     )
-    op.create_index("ix_caller_policies_updated_at", "caller_policies", ["updated_at"], unique=False)
+    op.create_index(
+        "ix_caller_policies_updated_at", "caller_policies", ["updated_at"], unique=False
+    )
 
     op.execute(
         """

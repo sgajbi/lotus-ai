@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from app.contracts.access_control import AuthorizationDecision
 from app.contracts.providers import (
     ProviderFailureCategory,
     ProviderOperationsControlActionType,
@@ -47,6 +48,7 @@ class ProviderOperationsEventRecord:
     requested_by: str
     approved_by: str
     affected_record_count: int
+    authorization: AuthorizationDecision
     recorded_at: str
 
 

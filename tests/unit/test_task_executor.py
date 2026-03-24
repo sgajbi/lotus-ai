@@ -680,6 +680,7 @@ def test_execute_task_reflects_promoted_prompt_selection_in_audit_and_evidence(
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                caller_app="lotus-platform",
                 candidate_prompt_version="foundation.explain.v2",
                 requested_by="alice@lotus.test",
                 approved_by="bob@lotus.test",

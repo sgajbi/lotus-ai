@@ -1,6 +1,12 @@
 import os
 from pathlib import Path
 
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.prompts import (
     PromptControlActionType,
     PromptLifecycleStatus,
@@ -10,6 +16,21 @@ from app.contracts.prompts import (
 from app.repositories.sqlalchemy_prompt_repository import SqlAlchemyPromptRepository
 from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
 from tests.support.migration_runner import upgrade_database_to_head
+
+
+def _authorization() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-platform",
+        capability_type=AuthorizationCapabilityType.PROMPT_CONTROL,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id="explain.v1",
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=None,
+        summary="Allowed prompt control decision.",
+    )
 
 
 def test_sqlalchemy_prompt_repository_returns_seeded_prompts(tmp_path: Path) -> None:
@@ -103,6 +124,7 @@ def test_sqlalchemy_prompt_repository_saves_rollout_transition_and_event(tmp_pat
             resulting_active_prompt_version="foundation.explain.v2",
             prior_candidate_prompt_version=None,
             resulting_candidate_prompt_version=None,
+            authorization=_authorization(),
             recorded_at="2026-03-23T09:00:00Z",
         ),
     )
@@ -117,6 +139,7 @@ def test_sqlalchemy_prompt_repository_saves_rollout_transition_and_event(tmp_pat
     assert active_prompt is not None
     assert active_prompt.prompt_version == "foundation.explain.v2"
     assert rollout_events[-1].action_type == PromptControlActionType.PROMOTE_CANDIDATE
+    assert rollout_events[-1].authorization.outcome == AuthorizationOutcome.ALLOWED
 
 
 def test_sqlalchemy_prompt_repository_creates_parent_directory_for_sqlite_file(
@@ -173,6 +196,7 @@ def test_sqlalchemy_prompt_repository_rejects_transition_with_missing_prompt_ver
                 resulting_active_prompt_version="foundation.explain.v1",
                 prior_candidate_prompt_version=None,
                 resulting_candidate_prompt_version=None,
+                authorization=_authorization(),
                 recorded_at="2026-03-24T09:00:00Z",
             ),
         )
@@ -213,6 +237,7 @@ def test_sqlalchemy_prompt_repository_rejects_transition_with_missing_rollout_st
                 resulting_active_prompt_version="foundation.explain.v1",
                 prior_candidate_prompt_version=None,
                 resulting_candidate_prompt_version=None,
+                authorization=_authorization(),
                 recorded_at="2026-03-24T09:00:00Z",
             ),
         )

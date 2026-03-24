@@ -1,3 +1,9 @@
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeJobRecord,
@@ -5,6 +11,21 @@ from app.repositories.async_runtime_repository import (
     AsyncRuntimeLeaseRecord,
 )
 from app.repositories.memory_async_runtime_repository import InMemoryAsyncRuntimeRepository
+
+
+def _authorization() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-platform",
+        capability_type=AuthorizationCapabilityType.ASYNC_CONTROL,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        task_id=None,
+        requested_source_ids=[],
+        effective_source_ids=[],
+        tenant_id=None,
+        summary="Allowed async control decision.",
+    )
 
 
 def test_memory_async_runtime_repository_round_trip() -> None:
@@ -206,6 +227,7 @@ def test_memory_async_runtime_repository_round_trips_control_events() -> None:
             prior_status="FAILED",
             resulting_status="QUEUED",
             affected_attempt_id="attempt-002",
+            authorization=_authorization(),
             recorded_at="2026-03-23T18:00:00Z",
         )
     )
@@ -215,6 +237,7 @@ def test_memory_async_runtime_repository_round_trips_control_events() -> None:
     assert len(events) == 1
     assert events[0].action_type == "RETRY_FAILED_JOB"
     assert events[0].affected_attempt_id == "attempt-002"
+    assert events[0].authorization.outcome == AuthorizationOutcome.ALLOWED
 
 
 def test_memory_async_runtime_repository_claims_specific_runnable_job_by_id() -> None:

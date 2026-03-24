@@ -219,10 +219,14 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["retrieval_store"]["status"] == "READY"
     assert body["access_control_store_mode"] == "memory"
     assert body["access_control_runtime"]["store_mode"] == "memory"
-    assert body["access_control_runtime"]["enforcement_state"] == "ENFORCED"
+    assert body["access_control_runtime"]["enforcement_state"] == "FULLY_ENFORCED"
+    assert body["access_control_runtime"]["data_plane_enforced"] is True
+    assert body["access_control_runtime"]["control_plane_enforced"] is True
     assert body["access_control_runtime"]["policy_count"] >= 4
     assert body["access_control_runtime"]["tenant_isolation_active"] is True
     assert body["access_control_governance"]["governance_ready"] is False
+    assert body["access_control_governance"]["activation_readiness"]["activation_ready"] is False
+    assert body["access_control_governance"]["runbook_readiness"]["runbook_ready"] is True
     assert body["access_control_governance"]["blocking_area_count"] == 1
     assert body["async_runtime"]["cutover_state"] == "in_process_only"
     assert body["async_runtime"]["queue_mode"] == "DISABLED"
