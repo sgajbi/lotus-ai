@@ -46,6 +46,7 @@ def test_resolve_startup_readiness_state_reads_blocking_and_findings() -> None:
 
 
 def test_build_platform_runtime_status_includes_startup_readiness_state() -> None:
+    settings.deployment_split_stage = "unified"
     settings.artifact_store_mode = "memory"
     settings.artifact_object_store_mode = "memory"
     settings.artifact_object_store_root = None
@@ -117,6 +118,11 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.first_use_case_governance.governance_ready is False
     assert status.first_use_case_governance.readiness.readiness_ready is False
     assert status.first_use_case_governance.runbook_readiness.runbook_ready is True
+    assert status.deployment_split.configured_stage.value == "UNIFIED"
+    assert status.deployment_split.effective_stage.value == "UNIFIED"
+    assert status.deployment_split.front_door_plane.value == "runtime"
+    assert status.deployment_split.split_ready is False
+    assert status.deployment_split.plane_count == 3
     assert status.safety_runtime.runtime_redaction_active is False
     assert status.safety_governance.governance_ready is False
     assert status.safety_governance.blocking_area_count == 3
@@ -141,6 +147,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
 def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
+    settings.deployment_split_stage = "unified"
     settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-prod-shaped-local.db'}"
     settings.audit_store_mode = "sqlalchemy"
     settings.prompt_store_mode = "sqlalchemy"
@@ -190,6 +197,8 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     assert status.async_runtime.worker_mode == "DEDICATED"
     assert status.async_runtime.active_worker_execution == "queue_backed_workers"
     assert status.async_runtime.queue_backlog_count == 0
+    assert status.deployment_split.configured_stage.value == "UNIFIED"
+    assert status.deployment_split.effective_stage.value == "UNIFIED"
     assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
     assert status.production_baseline.prod_shaped_local is False
     assert status.production_baseline.production_ready is False

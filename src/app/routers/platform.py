@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
+from app.contracts.deployment_split import DeploymentSplitRuntimeStatusResponse
 from app.contracts.platform import PlatformRuntimeStatusResponse
 from app.contracts.production_baseline import (
     ProductionBaselineActivationReadinessResponse,
@@ -19,6 +20,7 @@ from app.services.production_baseline_runbook_readiness import (
     build_production_baseline_runbook_readiness,
 )
 from app.services.platform_status import build_platform_runtime_status
+from app.services.deployment_split_runtime import build_deployment_split_runtime_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
 
 router = APIRouter(prefix="/platform", tags=["platform"])
@@ -40,6 +42,26 @@ router = APIRouter(prefix="/platform", tags=["platform"])
 )
 async def get_platform_runtime_status_route(request: Request) -> PlatformRuntimeStatusResponse:
     return build_platform_runtime_status(request.app.state)
+
+
+@router.get(
+    "/deployment-split/runtime-status",
+    response_model=DeploymentSplitRuntimeStatusResponse,
+    operation_id="getDeploymentSplitRuntimeStatus",
+    summary="Get RFC-0015 deployment-split runtime status",
+    description=(
+        "Returns the current RFC-0015 deployment-split posture across runtime, retrieval, "
+        "and eval planes, including configured versus effective stage and plane ownership."
+    ),
+    responses={
+        200: {"description": "Deployment-split runtime status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_deployment_split_runtime_status_route(
+    request: Request,
+) -> DeploymentSplitRuntimeStatusResponse:
+    return build_deployment_split_runtime_status(request.app.state)
 
 
 @router.get(

@@ -7,6 +7,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/runtime-status"]["get"]["operationId"] == (
         "getPlatformRuntimeStatus"
     )
+    assert spec["paths"]["/platform/deployment-split/runtime-status"]["get"]["operationId"] == (
+        "getDeploymentSplitRuntimeStatus"
+    )
     assert spec["paths"]["/platform/production-baseline/runtime-status"]["get"]["operationId"] == (
         "getProductionBaselineRuntimeStatus"
     )
@@ -257,6 +260,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     production_baseline_schema = spec["components"]["schemas"][
         "ProductionBaselineRuntimeStatusResponse"
     ]
+    deployment_split_schema = spec["components"]["schemas"][
+        "DeploymentSplitRuntimeStatusResponse"
+    ]
     production_baseline_activation_schema = spec["components"]["schemas"][
         "ProductionBaselineActivationReadinessResponse"
     ]
@@ -266,6 +272,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     production_baseline_governance_schema = spec["components"]["schemas"][
         "ProductionBaselineGovernanceStatusResponse"
     ]
+    assert "configured_stage" in deployment_split_schema["properties"]
+    assert "effective_stage" in deployment_split_schema["properties"]
+    assert "planes" in deployment_split_schema["properties"]
     assert "posture" in production_baseline_schema["properties"]
     assert "dependencies" in production_baseline_schema["properties"]
     assert "activation_ready" in production_baseline_activation_schema["properties"]
@@ -276,6 +285,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "artifact_governance" in platform_runtime_schema["properties"]
     assert "first_use_case" in platform_runtime_schema["properties"]
     assert "first_use_case_governance" in platform_runtime_schema["properties"]
+    assert "deployment_split" in platform_runtime_schema["properties"]
     assert "production_baseline" in platform_runtime_schema["properties"]
     assert "production_baseline_governance" in platform_runtime_schema["properties"]
     first_use_case_schema = spec["components"]["schemas"]["FirstUseCaseRuntimeStatusResponse"]

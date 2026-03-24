@@ -1,244 +1,349 @@
 # RFC-0015: Controlled Deployment Split Into Runtime, Retrieval, and Evals
 
 - Status: Draft
-- Date: 2026-03-23
+- Date: 2026-03-24
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
 
 ## Summary
 
-`lotus-ai` should define and execute a controlled deployment split into runtime, retrieval, and evaluation service planes when scale and operational pressure justify it, while preserving the existing external platform contracts.
-
-The architecture already documents this as the likely first split path:
+`lotus-ai` should introduce a governed deployment split into three internal planes only when the now-implemented single-service production baseline is stable enough to support that move without fragmenting contracts or governance:
 
 1. `lotus-ai-runtime`
 2. `lotus-ai-retrieval`
 3. `lotus-ai-evals`
 
-The platform is approaching the point where that path should be governed as an explicit RFC rather than remain only a future note in the architecture.
+This RFC is not about breaking the product into loosely related microservices. It is about taking the deployable seams already anticipated by the architecture and turning them into one explicit, reversible, evidence-gated rollout path.
 
-## Why This Is Next
+## Why This RFC Exists
 
-The platform now has multiple increasingly real subdomains:
+The architecture has long identified runtime, retrieval, and evals as the first likely split path, but that idea now needs stricter governance.
 
-1. provider execution and operations controls,
-2. retrieval indexing and planned live retrieval activation,
-3. runtime-backed async and evaluation execution,
-4. prompt, safety, and authorization control planes,
-5. growing observability and artifact-storage requirements.
+That is true because the repo has moved materially since the early architecture notes:
 
-The codebase has already been shaped to keep those domains separable, but deployment is still unified.
+1. async runtime is durable and worker-backed,
+2. retrieval has its own runtime, governance, and evidence posture,
+3. evals have their own durable runtime, approval-gate evidence, and artifact flows,
+4. observability and artifact storage now expose domain-oriented operational truth,
+5. RFC-0020 established the production-standard single-service baseline that later split work must build on.
 
-That is fine while volume is moderate, but the documented architecture already expects later separation:
+The platform therefore no longer needs a vague future note. It needs one RFC that says:
 
-1. [scalability-and-deployment-model.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/scalability-and-deployment-model.md#L1) says internal seams must stay clean enough for later deployable splits,
-2. the same document names `lotus-ai-runtime`, `lotus-ai-retrieval`, and `lotus-ai-evals` as the likely first split path,
-3. the existing contracts and repository seams are increasingly ready for that move.
+1. what can split,
+2. what must remain shared,
+3. what state remains authoritative,
+4. how routing and rollback work,
+5. what evidence justifies each cutover stage.
+
+## Relationship To Other RFCs
+
+This RFC depends on other work already completed or still upcoming.
+
+### Already Implemented
+
+The split must build on these completed foundations:
+
+1. `RFC-0011` dedicated workers and managed queue
+2. `RFC-0012` caller identity and tenant-aware authorization
+3. `RFC-0013` observability and incident-evidence surfaces
+4. `RFC-0014` governed artifact and object-storage backbone
+5. `RFC-0016` first downstream production use case onboarding
+6. `RFC-0020` production-standard deployment baseline
+
+### Still Separate
+
+This RFC must stay distinct from:
+
+1. `RFC-0017`, which is about resilience, restore, and disaster-recovery posture,
+2. `RFC-0018`, which expands providers and embeddings,
+3. `RFC-0019`, which expands governed document ingestion and corpus refresh.
+
+Those RFCs may increase the value of a split, but they should not be folded into this one.
 
 ## Problem Statement
 
-`lotus-ai` is intentionally being built as one service first, but it is no longer just a lightweight foundation:
+`lotus-ai` is no longer only a small foundation service. It now contains multiple durable and increasingly independent operational domains:
 
-1. retrieval and evaluation now have their own durable runtimes,
-2. provider operations have their own control plane,
-3. async execution is durable and moving toward dedicated workers,
-4. observability and artifact storage will increase domain-specific operational pressure further.
+1. runtime request orchestration and live-provider control,
+2. retrieval search, indexing, and corpus governance,
+3. evaluation execution and approval evidence,
+4. prompt, safety, authorization, audit, and observability control planes.
 
-If all of that remains in a single deployable indefinitely, the platform will eventually pay a price in:
+Keeping all of that in one deployable forever would eventually create:
 
-1. noisy-neighbor interference,
-2. uneven scaling,
-3. operational blast radius,
-4. slower rollout of domain-specific runtime capabilities.
+1. noisy-neighbor interference between synchronous runtime traffic and domain-heavy retrieval or eval workloads,
+2. uneven scaling pressure across unrelated concerns,
+3. broader operational blast radius during deploys or incidents,
+4. slower rollout of domain-specific runtime improvements.
 
-At the same time, splitting too early or without strict governance would create:
+But splitting too early or too loosely would create different problems:
 
-1. broken external contracts,
-2. duplicate policy logic,
-3. split-brain operational truth,
-4. accidental re-introduction of service boundaries that the current repo already keeps coherent.
+1. fragmented external contracts,
+2. duplicated policy and governance logic,
+3. split-brain runtime truth,
+4. harder rollback,
+5. more infrastructure without meaningful operational gain.
+
+The problem this RFC solves is not "how do we make more services." It is:
+
+how do we evolve from one production-standard deployable into a controlled multi-plane topology without losing the coherent platform behavior already built into `lotus-ai`.
 
 ## Goals
 
-1. Define a governed deployment split path before ad hoc decomposition pressure appears.
-2. Preserve the current external contract surface while allowing internal deployable separation.
-3. Keep runtime, retrieval, and evaluation ownership boundaries explicit.
-4. Minimize split-brain risks around durable state, observability, and control planes.
-5. Ensure the split is operationally justified and reversible.
+1. Define one explicit and reversible deployment-split path into runtime, retrieval, and eval planes.
+2. Preserve one coherent external `lotus-ai` contract surface for downstream Lotus apps.
+3. Keep audit, authorization, safety, prompt, and observability semantics coherent across all planes.
+4. Make routing, state ownership, cutover, and rollback observable and reviewable.
+5. Ensure split activation happens only when there is clear operational evidence and a meaningful scaling reason.
 
 ## Non-Goals
 
-1. Immediate codebase or repository breakup.
-2. External API rewrites for downstream Lotus apps.
-3. Broad microservice decomposition beyond the three named planes.
-4. Splitting ownership of core policy, audit, or identity semantics across unrelated stacks.
-5. Treating deployment decomposition as a substitute for fixing runtime/control-plane weaknesses first.
+1. Immediate repository breakup.
+2. External API fragmentation into separate client-facing services.
+3. Splitting every control-plane domain into its own deployable.
+4. Replacing the RFC-0020 single-service production baseline before that baseline has proven stable.
+5. Treating deployment split as a substitute for resilience, provider expansion, or ingestion work.
 
-## Current State
+## Current Reality
 
-The platform already has the necessary architectural precursors:
+The current platform is more split-ready than it used to be, but still intentionally unified.
 
-1. explicit repository seams and service seams by domain,
-2. durable runtime state for async, evaluation, retrieval metadata, provider operations, and audit,
-3. explicit runtime-status, readiness, governance, and runbook surfaces by domain,
-4. a documented target worker/API split and future service split path,
-5. bounded contracts that can remain stable while internal deployment changes.
+### What Is Already True
 
-The missing piece is an explicit split-control plan:
+1. the architecture explicitly anticipates later deployment split without external contract rewrite,
+2. major domains already have durable stores, runtime surfaces, governance surfaces, and runbooks,
+3. async, retrieval, eval, artifact, access-control, and observability seams are now explicit enough to reason about plane boundaries,
+4. the production-baseline control plane now distinguishes:
+   1. `LOCAL_OR_DEMO_CAPABLE`
+   2. `PROD_SHAPED_LOCAL`
+   3. `PRODUCTION_READY`
 
-1. what moves first,
-2. what remains shared,
-3. how routing and ownership work,
-4. how rollback works,
-5. what evidence justifies each split stage.
+### What Is Still Missing
+
+1. there is no split-aware runtime model yet,
+2. there is no explicit routing or ownership contract for a three-plane topology,
+3. platform status does not yet describe unified versus split deployment posture,
+4. rollback from split mode is not yet modeled,
+5. no current plane can be activated independently while preserving one front-door contract.
 
 ## Decision
 
-`lotus-ai` will define a controlled deployment split path into runtime, retrieval, and evaluation planes, but only through a governed staged rollout that preserves one external contract surface.
+`lotus-ai` will keep one external contract surface and introduce split deployment only as an internal topology change governed by explicit readiness, runtime truth, and rollback capability.
 
-The first implementation of this RFC should:
+The first and only split path in scope for this RFC is:
 
-1. formalize shared versus split responsibilities,
-2. define the routing and state-ownership model,
-3. keep audit, identity, safety, and contract governance coherent across the split,
-4. treat deployment split as an operational change rather than a product-contract rewrite,
-5. require rollback and observability readiness before any live cutover.
+1. runtime plane
+2. retrieval plane
+3. evaluation plane
 
-## State Model and Invariants
+This split must proceed through staged activation, not one big cutover.
 
-This RFC establishes the following invariants:
+## Deployment Stages
 
-1. downstream Lotus apps continue to see one coherent external `lotus-ai` contract surface,
-2. deployment split must not create duplicate sources of truth for runtime state,
-3. audit, safety, identity, and authorization boundaries remain explicit across all split planes,
-4. retrieval and evaluation domain services may scale independently, but shared governance semantics must remain coherent,
-5. deployment routing and rollback state must be reviewable,
-6. split rollout must not silently weaken observability or incident response.
+This RFC defines four deployment stages.
 
-## Architecture Direction
+### Stage 0: Unified
 
-### Shared Front Door and Contract Preservation
+Current posture.
 
-The external API surface should remain unified even if internal deployment planes split.
+1. one externally coherent API deployment,
+2. one dedicated worker topology,
+3. retrieval and eval execution remain internal domains of the same deployable shape,
+4. plane ownership may be documented, but traffic is not yet split.
 
-Required behavior:
+### Stage 1: Split-Ready
 
-1. one coherent front-door contract remains for Lotus apps,
-2. routing to retrieval or evaluation planes is internal,
-3. external OpenAPI contracts do not fragment unnecessarily,
-4. API versioning and vocabulary remain stable.
+1. plane ownership, routing contracts, and runtime posture are modeled explicitly,
+2. all required routing and rollback seams exist,
+3. the platform can report whether each plane is unified or split-eligible,
+4. no live plane cutover yet.
 
-### Domain Plane Ownership
+### Stage 2: Retrieval-Split Active
 
-Define explicit ownership boundaries for each plane.
+1. retrieval traffic and retrieval async work can be routed to a distinct retrieval plane,
+2. the runtime plane remains the external front door,
+3. unified rollback remains available.
 
-Required behavior:
+### Stage 3: Retrieval-and-Evals-Split Active
 
-1. runtime plane owns synchronous task execution, provider orchestration, prompt/safety/identity controls, and top-level orchestration,
-2. retrieval plane owns retrieval indexing, retrieval search execution, retrieval corpus governance, and related worker/runtime paths,
-3. evaluation plane owns evaluation execution, approval evidence, and evaluation artifact flows,
-4. shared durable stores remain authoritative where appropriate rather than being duplicated per plane without need.
+1. retrieval and eval planes can run independently,
+2. runtime remains the front-door plane,
+3. audit, evidence, authorization, and observability remain coherent,
+4. rollback to a more unified stage remains explicit.
 
-### Routing and State Convergence
+## Plane Ownership Model
 
-Internal routing must preserve coherent runtime truth.
+### Runtime Plane
 
-Required behavior:
+The runtime plane owns:
 
-1. request and async routing are explicit and observable,
-2. shared state ownership is documented and bounded,
-3. cross-plane relationships such as audit, approval evidence, and artifact references stay traceable,
-4. rollback to unified deployment remains possible.
+1. external HTTP contract surface,
+2. synchronous task execution orchestration,
+3. provider orchestration and live-provider controls,
+4. prompt selection and prompt control actions,
+5. safety enforcement,
+6. caller identity and authorization controls,
+7. top-level routing and correlation,
+8. the unified platform status surface.
 
-### Operational and Governance Convergence
+### Retrieval Plane
 
-Split rollout should only happen when the platform can run it safely.
+The retrieval plane owns:
 
-Required behavior:
+1. retrieval indexing execution,
+2. retrieval search execution,
+3. retrieval corpus and source governance,
+4. retrieval-specific async paths,
+5. retrieval-specific observability and incident-evidence production.
 
-1. observability and incident-evidence surfaces can explain cross-plane behavior,
-2. worker, artifact, and authorization controls remain coherent,
-3. domain runbooks define cross-plane escalation and rollback,
-4. split rollout is governed by explicit readiness and evidence gates.
+### Evaluation Plane
+
+The evaluation plane owns:
+
+1. evaluation execution,
+2. evaluation approval evidence generation,
+3. evaluation-specific artifact flows,
+4. evaluation runtime and operator evidence surfaces.
+
+### Shared Control-Plane Responsibilities
+
+These must not be fragmented into conflicting sources of truth:
+
+1. audit semantics,
+2. caller identity and authorization semantics,
+3. prompt governance semantics,
+4. safety policy semantics,
+5. artifact metadata lineage,
+6. top-level observability and production-baseline truth.
+
+## State Ownership Invariants
+
+The split is valid only if these invariants remain true.
+
+1. downstream Lotus apps still see one coherent external `lotus-ai` surface,
+2. one authoritative store remains defined for each durable state domain,
+3. no plane invents a private version of caller, tenant, audit, or policy truth,
+4. cross-plane artifact references remain traceable and descriptor-first,
+5. routing decisions are observable,
+6. rollback from split mode does not require rewriting external contracts,
+7. split activation must not silently weaken incident diagnosis or operator evidence.
+
+## Routing Invariants
+
+1. external clients continue to call the runtime plane,
+2. split-aware routing is internal and explicit,
+3. async routing remains bounded by job type and domain,
+4. retrieval routing and eval routing must be independently observable,
+5. a failed split plane must surface as explicit degraded posture rather than invisible in-process fallback.
+
+## Readiness Preconditions
+
+This RFC must not be implemented as the next step after a demo. It must be built only on a stable baseline.
+
+Minimum preconditions:
+
+1. RFC-0020 production-baseline surfaces remain truthful and stable,
+2. the current single-service production baseline is the accepted default posture,
+3. retrieval and eval control planes have enough runtime and observability truth to support split diagnosis,
+4. there is actual scale, isolation, latency, or operational evidence that justifies split activation,
+5. runbooks can explain unified and split rollback paths clearly.
 
 ## Data and Operational Requirements
 
-1. Shared durable state must remain authoritative and reviewable.
-2. Cross-plane routing must be observable.
-3. Split rollout must be reversible.
-4. Retrieval and evaluation scaling must improve materially when split is activated.
-5. Authorization, safety, and audit semantics must remain intact across the split.
-6. Runbooks must define cutover, rollback, degradation, and incident ownership clearly.
-7. Tests must prove contract stability across split-aware routing.
+1. shared durable state remains authoritative and reviewable,
+2. cross-plane routing is observable,
+3. split rollout is reversible,
+4. retrieval and evaluation scaling improve materially when their planes are activated,
+5. authorization, safety, prompt, and audit semantics remain intact,
+6. runbooks define cutover, rollback, degradation, and incident ownership across planes,
+7. tests prove contract stability and routing truth under unified and split-aware modes.
 
 ## Delivery Slices
 
-### Slice 1: Split Readiness Model and Plane Ownership Contracts
+### Slice 1: Split Readiness Contracts and Plane Ownership
 
 Outcome:
 
-1. explicit split-readiness contracts and ownership rules exist,
-2. shared versus domain-specific responsibilities are defined clearly,
-3. no deployment cutover yet.
+1. split-stage contracts exist,
+2. runtime, retrieval, and eval plane ownership is defined explicitly,
+3. shared versus plane-owned responsibilities are modeled,
+4. no traffic cutover yet.
 
 Acceptance gate:
 
-1. ownership boundaries are explicit,
-2. routing and state responsibilities are documented and testable,
-3. runtime surfaces remain truthful,
-4. no accidental contract fragmentation is introduced.
+1. typed split-readiness and plane-ownership contracts exist,
+2. platform/runtime surfaces can describe unified versus split-ready posture truthfully,
+3. ownership boundaries are explicit enough to test,
+4. no external contract fragmentation is introduced.
 
-### Slice 2: Internal Routing and Deployment-Mode Abstractions
+### Slice 2: Split-Aware Routing and Deployment-Mode Abstractions
 
 Outcome:
 
-1. internal routing seams support unified versus split deployment modes,
-2. domain-specific planes can be enabled without external contract change,
-3. rollback to unified deployment remains explicit.
+1. internal routing can distinguish unified versus split-aware modes,
+2. runtime plane remains the external front door,
+3. retrieval and eval routing seams are explicit,
+4. rollback to unified remains first-class.
 
 Acceptance gate:
 
-1. internal routing is observable and bounded,
-2. rollback semantics are explicit,
-3. tests cover unified and split-aware routing behavior,
+1. routing is observable and bounded,
+2. rollback semantics are explicit and operator-visible,
+3. tests cover unified and split-aware behavior,
 4. state ownership remains coherent.
 
-### Slice 3: Retrieval and Evaluation Plane Activation
+### Slice 3: Retrieval Plane Activation
 
 Outcome:
 
-1. retrieval and evaluation become the first deployable split planes,
-2. runtime plane continues to front the external contract,
-3. domain scaling improves without contract rewrite.
+1. retrieval becomes the first split-active plane,
+2. runtime still fronts the external contract,
+3. retrieval indexing and retrieval search can scale independently.
 
 Acceptance gate:
 
-1. retrieval and evaluation routing work under split mode,
-2. audit, approval evidence, and artifact references remain coherent,
-3. cross-plane observability is sufficient,
-4. integration and runtime tests prove behavior under split mode.
+1. retrieval routing works under split mode,
+2. audit, authorization, and artifact semantics remain coherent,
+3. degraded retrieval-plane posture is visible,
+4. integration tests prove retrieval split behavior and unified rollback.
 
-### Slice 4: Runbook, Observability, and Governance Hardening
+### Slice 4: Evaluation Plane Activation
 
 Outcome:
 
-1. split-mode observability, incident evidence, and runbooks are production-capable,
-2. governance can review split readiness explicitly,
-3. operators can diagnose and roll back split deployment safely.
+1. evals become the second split-active plane,
+2. evaluation execution and evidence flows can scale independently,
+3. runtime remains the top-level contract plane.
 
 Acceptance gate:
 
-1. runbooks match split deployment reality,
-2. governance distinguishes unified versus split readiness,
-3. degraded cross-plane posture is visible and actionable,
-4. the platform is materially closer to the documented bank-grade deployment target.
+1. eval routing works under split mode,
+2. approval evidence and artifact lineage remain coherent,
+3. degraded eval-plane posture is visible,
+4. integration tests prove evaluation split behavior and unified rollback.
+
+### Slice 5: Cross-Plane Runbook, Observability, and Governance Hardening
+
+Outcome:
+
+1. split-mode runtime, activation, runbook, and governance surfaces are production-capable,
+2. operators can diagnose cross-plane incidents,
+3. governance can distinguish unified, split-ready, retrieval-split, and retrieval-and-evals-split posture,
+4. the platform is ready for resilience work on top of the split model.
+
+Acceptance gate:
+
+1. runbooks match actual split deployment behavior,
+2. cross-plane degraded posture is visible and actionable,
+3. platform status and observability surfaces remain coherent across all stages,
+4. rollback guidance is explicit and tested.
 
 ## Risks
 
-1. splitting too early could widen operational complexity without enough payoff,
-2. weak ownership boundaries could duplicate logic and create split-brain truth,
-3. routing mistakes could damage latency or incident diagnosis,
-4. rollback could be harder than expected if state boundaries are not kept disciplined.
+1. the split could be activated before there is enough scale evidence to justify the operational cost,
+2. unclear ownership could duplicate control-plane logic,
+3. routing mistakes could hide failures behind misleading "healthy" top-level status,
+4. rollback could be harder than expected if plane state boundaries are under-specified.
 
 ## Alternatives Considered
 
@@ -248,42 +353,52 @@ Rejected as the long-term posture.
 
 Reason:
 
-1. the platform architecture already anticipates scale pressures that justify split deployment,
-2. retrieval and evaluation are the clearest candidates for independent scaling.
+1. the architecture already anticipates independent scaling pressure,
+2. retrieval and evals are the clearest early split candidates.
 
-### Alternative 2: Split Repository and External Contracts First
-
-Rejected.
-
-Reason:
-
-1. that would create unnecessary downstream churn,
-2. the architecture explicitly says the first split should be a deployment split, not a contract rewrite.
-
-### Alternative 3: Split Many More Planes at Once
+### Alternative 2: Split External Contracts First
 
 Rejected.
 
 Reason:
 
-1. it would over-fragment the platform too early,
-2. runtime, retrieval, and evaluation are the bounded first split path already supported by the architecture.
+1. it would create unnecessary downstream churn,
+2. the architecture explicitly treats the first split as deployment topology, not client-facing contract breakup.
 
-## Acceptance Criteria
+### Alternative 3: Fold Split Work Into RFC-0020
 
-This RFC is complete when:
+Rejected.
 
-1. the platform has an explicit, testable, and reversible deployment split model,
-2. runtime, retrieval, and evaluation can operate as separate deployable planes without external contract churn,
-3. shared governance, audit, safety, identity, and observability semantics remain coherent,
-4. split rollout has clear readiness, evidence, and rollback posture,
-5. the platform is materially closer to the documented long-term deployment architecture.
+Reason:
+
+1. RFC-0020 defines the single-service production baseline,
+2. this RFC should start only after that baseline exists and is understood as the default.
+
+### Alternative 4: Split More Than Three Planes Immediately
+
+Rejected.
+
+Reason:
+
+1. that would over-fragment the service too early,
+2. runtime, retrieval, and evals are the bounded first split path already documented by the architecture.
+
+## Gold-Standard Acceptance Criteria
+
+This RFC is complete only when:
+
+1. the platform has an explicit, testable, and reversible split model,
+2. runtime, retrieval, and evals can operate as separate deployable planes without external contract churn,
+3. shared governance, audit, safety, authorization, and observability semantics remain coherent,
+4. split rollout has clear readiness, evidence, degraded, and rollback posture,
+5. platform and operator docs describe the same topology truth,
+6. `lotus-ai` is materially closer to the long-term deployment architecture without sacrificing the production baseline established by RFC-0020.
 
 ## Approval Requested
 
 Approve this RFC if the team agrees that:
 
-1. the next architecture-level milestone after the current runtime/control-plane sequence is a governed deployment split path,
-2. the first split should be runtime, retrieval, and evaluation planes only,
-3. external contracts should remain unified while deployment topology evolves,
-4. delivery should proceed in the slices defined above.
+1. the next topology milestone after the production-standard single-service baseline is a governed split into runtime, retrieval, and eval planes,
+2. that split should remain internal and should not fragment external contracts,
+3. retrieval should activate before evals,
+4. delivery should proceed only through the slices and gates defined above.

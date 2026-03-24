@@ -187,6 +187,11 @@ The next RFCs already identified in the repo describe the expected sequence:
 3. `RFC-0018` governed embeddings and provider expansion
 4. `RFC-0019` governed document ingestion and corpus refresh
 
+Early RFC-0015 groundwork now exists as a bounded runtime surface:
+
+1. `/platform/deployment-split/runtime-status` reports the current unified versus split-ready posture and the intended runtime, retrieval, and eval plane ownership model,
+2. no live plane cutover is active yet; retrieval and eval split activation remain future RFC-0015 slices.
+
 The current preferred RFC-0016 target is:
 
 1. `lotus-performance` analytics commentary over caller-supplied structured performance facts.

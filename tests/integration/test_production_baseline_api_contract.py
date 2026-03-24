@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from app.config import settings
+
 
 def test_platform_runtime_status_route(client: TestClient) -> None:
     response = client.get("/platform/runtime-status")
@@ -7,8 +9,22 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
+    assert "deployment_split" in body
     assert "production_baseline" in body
     assert "production_baseline_governance" in body
+
+
+def test_deployment_split_runtime_status_route(client: TestClient) -> None:
+    settings.deployment_split_stage = "unified"
+    response = client.get("/platform/deployment-split/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["configured_stage"] == "UNIFIED"
+    assert body["effective_stage"] == "UNIFIED"
+    assert body["plane_count"] == 3
+    assert any(plane["plane_id"] == "runtime" for plane in body["planes"])
 
 
 def test_production_baseline_runtime_status_route(client: TestClient) -> None:
