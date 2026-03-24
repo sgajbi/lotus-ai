@@ -19,7 +19,7 @@ def build_retrieval_governance_status() -> RetrievalGovernanceStatusResponse:
     )
     governance_summary = [
         "Retrieval technical activation now includes a live indexed search path, but broader rollout remains blocked until governance gates are completed.",
-        "Retrieval operational runbook readiness remains incomplete until reindex, replay, and observability procedures are fully documented and approved.",
+        "Retrieval operational runbook readiness remains incomplete until named on-call escalation is approved.",
         (
             "Retrieval evidence readiness now includes a runtime-backed approval gate summary derived "
             f"from governed retrieval evaluation runs, currently reporting '{evidence_readiness.approval_gate.evidence_state.value}'."

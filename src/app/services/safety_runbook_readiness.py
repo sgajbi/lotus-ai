@@ -37,13 +37,13 @@ def build_safety_runbook_readiness() -> SafetyRunbookReadinessResponse:
             ),
         ),
         SafetyRunbookReadinessItem(
-            runbook_id="safety_oncall_and_observability_dashboard_pack",
+            runbook_id="safety_oncall_and_observability_review",
             status="FOUNDATION_DOCUMENTED",
             required_for_activation=True,
             notes=(
-                "Safety rollout review flow is documented, but named on-call ownership and a "
-                "dedicated observability dashboard pack for blocked, degraded, and redacted task "
-                "outcomes remain to be approved."
+                "Safety rollout review flow and bounded observability endpoints are documented, but "
+                "named on-call ownership for blocked, degraded, and redacted task outcomes remains "
+                "to be approved."
             ),
         ),
     ]

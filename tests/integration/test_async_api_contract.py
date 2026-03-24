@@ -127,7 +127,7 @@ def test_async_runbook_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
     assert body["required_item_count"] == 4
-    assert body["completed_required_item_count"] == 2
+    assert body["completed_required_item_count"] == 3
     assert body["items"][0]["runbook_id"] == "async_operational_runbook"
     assert body["items"][0]["status"] == "READY"
     assert body["items"][1]["status"] == "NOT_READY"

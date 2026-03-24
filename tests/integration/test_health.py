@@ -228,6 +228,13 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["access_control_governance"]["activation_readiness"]["activation_ready"] is False
     assert body["access_control_governance"]["runbook_readiness"]["runbook_ready"] is True
     assert body["access_control_governance"]["blocking_area_count"] == 1
+    assert body["observability_runtime"]["domain_count"] == 6
+    assert body["observability_runtime"]["unavailable_domain_count"] == 0
+    assert body["observability_runtime"]["incident_evidence_supported_domain_count"] >= 1
+    assert body["observability_governance"]["governance_ready"] is False
+    assert body["observability_governance"]["activation_readiness"]["activation_ready"] is False
+    assert body["observability_governance"]["runbook_readiness"]["runbook_ready"] is True
+    assert body["observability_governance"]["blocking_area_count"] == 1
     assert body["async_runtime"]["cutover_state"] == "in_process_only"
     assert body["async_runtime"]["queue_mode"] == "DISABLED"
     assert body["async_runtime"]["worker_mode"] == "IN_PROCESS_ONLY"
@@ -253,7 +260,7 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["async_governance"]["blocking_area_count"] == 2
     assert body["async_governance"]["activation_readiness"]["activation_ready"] is False
     assert body["async_governance"]["runbook_readiness"]["runbook_ready"] is False
-    assert body["async_governance"]["runbook_readiness"]["completed_required_item_count"] == 2
+    assert body["async_governance"]["runbook_readiness"]["completed_required_item_count"] == 3
     assert body["provider_governance"]["governance_ready"] is False
     assert body["provider_governance"]["blocking_area_count"] == 3
     assert body["provider_governance"]["activation_readiness"]["activation_ready"] is False
@@ -267,6 +274,7 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["retrieval_governance"]["blocking_area_count"] == 3
     assert body["retrieval_governance"]["activation_readiness"]["activation_ready"] is False
     assert body["retrieval_governance"]["runbook_readiness"]["runbook_ready"] is False
+    assert body["retrieval_governance"]["runbook_readiness"]["completed_required_item_count"] == 3
     assert body["retrieval_governance"]["evidence_readiness"]["evidence_ready"] is False
     assert body["prompt_governance"]["governance_ready"] is False
     assert body["prompt_governance"]["blocking_area_count"] == 2
@@ -317,6 +325,7 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["safety_governance"]["blocking_area_count"] == 3
     assert body["safety_governance"]["runtime_status"]["runtime_redaction_active"] is False
     assert body["safety_governance"]["runbook_readiness"]["runbook_ready"] is False
+    assert body["safety_governance"]["runbook_readiness"]["completed_required_item_count"] == 3
     assert body["safety_governance"]["evidence_readiness"]["approval_gate"]["domain_id"] == (
         "safety_enforcement"
     )

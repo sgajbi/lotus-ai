@@ -38,12 +38,13 @@ def build_async_runbook_readiness() -> AsyncRunbookReadinessResponse:
             ),
         ),
         AsyncRunbookReadinessItem(
-            runbook_id="async_observability_dashboard_pack",
-            status="NOT_READY",
+            runbook_id="async_observability_incident_views",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Dedicated queue and worker dashboards, alerts, and supportability views must be "
-                "defined before activation."
+                "Bounded async observability and incident-evidence summaries are now exposed through "
+                "`/platform/observability/async-summary` and `/platform/observability/incident-summary`; "
+                "external dashboards remain deployment-specific and are not an RFC-0013 activation gate."
             ),
         ),
     ]
@@ -52,7 +53,7 @@ def build_async_runbook_readiness() -> AsyncRunbookReadinessResponse:
         service=settings.service_name,
         version=settings.service_version,
         delivery_phase=settings.delivery_phase,
-        runbook_ready=False,
+        runbook_ready=completed_required_item_count == required_item_count,
         required_item_count=required_item_count,
         completed_required_item_count=completed_required_item_count,
         items=items,

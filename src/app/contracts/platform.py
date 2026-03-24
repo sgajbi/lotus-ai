@@ -8,6 +8,10 @@ from app.contracts.access_control import (
 )
 from app.contracts.async_runtime import AsyncGovernanceStatusResponse, AsyncRuntimeStatusResponse
 from app.contracts.evals import EvaluationRuntimeStatusResponse
+from app.contracts.observability import (
+    ObservabilityGovernanceStatusResponse,
+    ObservabilityRuntimeStatusResponse,
+)
 from app.contracts.prompts import (
     PromptGovernanceStatusSummaryResponse,
     PromptRuntimeStatusResponse,
@@ -44,6 +48,12 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     access_control_governance: AccessControlGovernanceStatusResponse = Field(
         description="Current caller identity and access-control governance posture for lotus-ai."
+    )
+    observability_runtime: ObservabilityRuntimeStatusResponse = Field(
+        description="Current bounded observability and incident-evidence posture for lotus-ai."
+    )
+    observability_governance: ObservabilityGovernanceStatusResponse = Field(
+        description="Current observability governance posture for lotus-ai."
     )
     async_governance: AsyncGovernanceStatusResponse = Field(
         description="Current async governance posture for lotus-ai."

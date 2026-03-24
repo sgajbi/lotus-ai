@@ -38,12 +38,13 @@ def build_retrieval_runbook_readiness() -> RetrievalRunbookReadinessResponse:
             ),
         ),
         RetrievalRunbookReadinessItem(
-            runbook_id="retrieval_observability_dashboard_pack",
-            status="NOT_READY",
+            runbook_id="retrieval_observability_incident_views",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Dedicated retrieval latency, indexing backlog, citation quality, and search "
-                "failure dashboards and alerts must be defined before activation."
+                "Bounded retrieval observability and incident-evidence summaries are now exposed through "
+                "`/platform/observability/retrieval-summary` and `/platform/observability/incident-summary`; "
+                "external dashboards remain deployment-specific and are not an RFC-0013 activation gate."
             ),
         ),
     ]

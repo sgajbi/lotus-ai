@@ -12,6 +12,8 @@ from app.services.async_governance_status_service import build_async_governance_
 from app.services.async_runtime_status import build_async_runtime_status
 from app.services.capability_catalog import build_capability_catalog
 from app.services.eval_status import build_evaluation_runtime_status
+from app.services.observability_governance import build_observability_governance_status
+from app.services.observability_runtime import build_observability_runtime_status
 from app.services.prompt_governance_status import build_prompt_governance_status_summary
 from app.services.prompt_registry import list_registered_prompts
 from app.services.prompt_status import build_prompt_runtime_status
@@ -46,6 +48,8 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     prompts = list_registered_prompts()
     access_control_runtime = build_access_control_runtime_status()
     access_control_governance = build_access_control_governance_status()
+    observability_runtime = build_observability_runtime_status()
+    observability_governance = build_observability_governance_status()
     async_runtime = build_async_runtime_status()
     async_governance = build_async_governance_status()
     provider_governance = build_provider_governance_status()
@@ -74,6 +78,8 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         access_control_store_mode=settings.access_control_store_mode,
         access_control_runtime=access_control_runtime,
         access_control_governance=access_control_governance,
+        observability_runtime=observability_runtime,
+        observability_governance=observability_governance,
         async_runtime=async_runtime,
         async_governance=async_governance,
         provider_governance=provider_governance,

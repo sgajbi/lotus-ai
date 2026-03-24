@@ -25,7 +25,7 @@ def build_safety_governance_status() -> SafetyGovernanceStatusResponse:
         ),
         (
             "Safety runbook readiness is grounded in documented activation, rollback, degraded-response, "
-            "and audit-review procedures, but named on-call ownership and dedicated observability remain incomplete."
+            "and audit-review procedures, but named on-call ownership remains incomplete."
         ),
         (
             "Safety evidence readiness now uses a runtime-backed approval gate summary derived from governed safety evaluation runs, "

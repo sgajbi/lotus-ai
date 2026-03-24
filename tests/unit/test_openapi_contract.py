@@ -7,6 +7,42 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/runtime-status"]["get"]["operationId"] == (
         "getPlatformRuntimeStatus"
     )
+    assert spec["paths"]["/platform/observability/runtime-status"]["get"]["operationId"] == (
+        "getObservabilityRuntimeStatus"
+    )
+    assert spec["paths"]["/platform/observability/activation-readiness"]["get"]["operationId"] == (
+        "getObservabilityActivationReadiness"
+    )
+    assert spec["paths"]["/platform/observability/runbook-readiness"]["get"]["operationId"] == (
+        "getObservabilityRunbookReadiness"
+    )
+    assert spec["paths"]["/platform/observability/governance-status"]["get"]["operationId"] == (
+        "getObservabilityGovernanceStatus"
+    )
+    assert spec["paths"]["/platform/observability/incident-summary"]["get"]["operationId"] == (
+        "getObservabilityIncidentSummary"
+    )
+    assert spec["paths"]["/platform/observability/provider-summary"]["get"]["operationId"] == (
+        "getProviderObservabilitySummary"
+    )
+    assert spec["paths"]["/platform/observability/retrieval-summary"]["get"]["operationId"] == (
+        "getRetrievalObservabilitySummary"
+    )
+    assert spec["paths"]["/platform/observability/async-summary"]["get"]["operationId"] == (
+        "getAsyncObservabilitySummary"
+    )
+    assert spec["paths"]["/platform/observability/evaluation-summary"]["get"]["operationId"] == (
+        "getEvaluationObservabilitySummary"
+    )
+    assert spec["paths"]["/platform/observability/prompt-summary"]["get"]["operationId"] == (
+        "getPromptObservabilitySummary"
+    )
+    assert spec["paths"]["/platform/observability/safety-summary"]["get"]["operationId"] == (
+        "getSafetyObservabilitySummary"
+    )
+    assert spec["paths"]["/platform/observability/breakdowns"]["get"]["operationId"] == (
+        "getObservabilityBreakdownSummary"
+    )
     assert spec["paths"]["/platform/access-control/runtime-status"]["get"]["operationId"] == (
         "getAccessControlRuntimeStatus"
     )
@@ -114,6 +150,34 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "execution_status" in audit_record_schema["properties"]
     assert "safety_outcome" in audit_record_schema["properties"]
     assert "authorization" in audit_record_schema["properties"]
+    observability_runtime_schema = spec["components"]["schemas"][
+        "ObservabilityRuntimeStatusResponse"
+    ]
+    assert "domains" in observability_runtime_schema["properties"]
+    assert "incident_evidence_items" in observability_runtime_schema["properties"]
+    observability_activation_schema = spec["components"]["schemas"][
+        "ObservabilityActivationReadinessResponse"
+    ]
+    assert "activation_ready" in observability_activation_schema["properties"]
+    observability_runbook_schema = spec["components"]["schemas"][
+        "ObservabilityRunbookReadinessResponse"
+    ]
+    assert "items" in observability_runbook_schema["properties"]
+    observability_governance_schema = spec["components"]["schemas"][
+        "ObservabilityGovernanceStatusResponse"
+    ]
+    assert "runtime_status" in observability_governance_schema["properties"]
+    assert "activation_readiness" in observability_governance_schema["properties"]
+    assert "runbook_readiness" in observability_governance_schema["properties"]
+    incident_summary_schema = spec["components"]["schemas"]["ObservabilityIncidentSummaryResponse"]
+    assert "summaries" in incident_summary_schema["properties"]
+    domain_incident_schema = spec["components"]["schemas"]["DomainIncidentSummaryResponse"]
+    assert "telemetry" in domain_incident_schema["properties"]
+    assert "incident_evidence_items" in domain_incident_schema["properties"]
+    breakdown_schema = spec["components"]["schemas"]["ObservabilityBreakdownSummaryResponse"]
+    assert "caller_apps" in breakdown_schema["properties"]
+    assert "tenants" in breakdown_schema["properties"]
+    assert "capabilities" in breakdown_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"

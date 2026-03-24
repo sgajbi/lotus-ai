@@ -17,6 +17,12 @@
 - General health: /health
 - Metadata: /metadata
 - Platform runtime status: /platform/runtime-status
+- Observability runtime status: /platform/observability/runtime-status
+- Observability activation readiness: /platform/observability/activation-readiness
+- Observability runbook readiness: /platform/observability/runbook-readiness
+- Observability governance status: /platform/observability/governance-status
+- Observability incident summary: /platform/observability/incident-summary
+- Observability breakdowns: /platform/observability/breakdowns
 - Async activation readiness: /platform/async/activation-readiness
 - Async runbook readiness: /platform/async/runbook-readiness
 - Async governance status: /platform/async/governance-status
@@ -77,6 +83,19 @@ Expected operator flow for SQL-backed stores:
 9. only then proceed with rollout if readiness is `READY`
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
+
+## Observability Governance
+
+Before treating the in-service observability layer as governed rollout posture:
+
+1. verify `GET /platform/observability/runtime-status`
+2. inspect `GET /platform/observability/activation-readiness` when technical blockers need detail
+3. inspect `GET /platform/observability/runbook-readiness` when operational blockers need detail
+4. inspect `GET /platform/observability/governance-status` for the composed governance view
+5. confirm the embedded `observability_runtime` and `observability_governance` blocks in `GET /platform/runtime-status` match the detailed observability views
+6. confirm `GET /platform/observability/incident-summary` covers provider, retrieval, async, evaluation, prompt, and safety domains without unavailable telemetry posture
+7. confirm `GET /platform/observability/breakdowns` still exposes bounded caller, tenant, and capability samples without leaking unauthorized tenant data
+8. treat SQL-backed audit and caller-policy stores as the activation gate for restart-safe observability governance
 
 ## Async Activation Governance
 
@@ -164,7 +183,7 @@ Before any future live-provider activation slice:
 6. confirm the embedded `provider_governance` and `provider_operations` blocks in `GET /platform/runtime-status` match the detailed provider views
 7. confirm provider policy and catalog still reflect governed disabled or stub posture unless explicitly approved otherwise
 8. confirm staged provider policy, runtime, failure-mode, operations, and degradation fixtures plus the recorded provider regression baseline still match the intended rollout posture
-9. confirm vendor escalation, quota response, spend-anomaly response, circuit-open response, rollback, and provider observability procedures are documented and approved
+9. confirm vendor escalation, quota response, spend-anomaly response, circuit-open response, rollback, and provider incident-review procedures are documented and approved
 10. confirm provider-backed task runtime notes still describe the current rollout truthfully, especially when a live provider is allowlisted but intentionally disabled
 11. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
 12. only then proceed with any live-provider activation rollout review
@@ -261,7 +280,7 @@ Before any future live-retrieval activation slice:
 5. confirm the embedded `retrieval_governance` block in `GET /platform/runtime-status` matches the detailed retrieval governance view
 6. confirm retrieval indexing policy and execution status still reflect governed staged posture unless explicitly approved otherwise
 7. confirm the retrieval approval gate is backed by current runtime-produced live-search evidence rather than historical staged baselines alone
-8. confirm reindex, replay, rollback, and retrieval observability procedures are documented and approved
+8. confirm reindex, replay, rollback, and retrieval incident-review procedures are documented and approved
 9. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
 10. only then proceed with any live-retrieval activation rollout review
 
