@@ -4,6 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.artifacts import ArtifactDescriptor
 from app.contracts.deployment_split import (
     DeploymentPlaneId,
     DeploymentRouteMode,
@@ -46,6 +47,36 @@ class RetrievalPipelineStage(str, Enum):
     DOCUMENTED = "DOCUMENTED"
     STAGED = "STAGED"
     ENABLED = "ENABLED"
+
+
+class RetrievalIngestionDeliveryStage(str, Enum):
+    CATALOG_ONLY = "CATALOG_ONLY"
+    DURABLE_STATE_READY = "DURABLE_STATE_READY"
+    ASYNC_EXECUTION_READY = "ASYNC_EXECUTION_READY"
+    RUNTIME_CONVERGED = "RUNTIME_CONVERGED"
+    OPERATIONALLY_HARDENED = "OPERATIONALLY_HARDENED"
+
+
+class RetrievalDocumentVersionLifecycleStatus(str, Enum):
+    ACTIVE = "ACTIVE"
+    SUPERSEDED = "SUPERSEDED"
+    WITHDRAWN = "WITHDRAWN"
+
+
+class RetrievalIngestionAction(str, Enum):
+    ONBOARD = "ONBOARD"
+    REFRESH = "REFRESH"
+    WITHDRAW = "WITHDRAW"
+
+
+class RetrievalIngestionJobStatus(str, Enum):
+    STAGED = "STAGED"
+    RECORDED = "RECORDED"
+    BLOCKED = "BLOCKED"
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    FAILED = "FAILED"
+    COMPLETED = "COMPLETED"
 
 
 class RetrievalSourceDescriptor(BaseModel):
@@ -93,6 +124,21 @@ class RetrievalDocumentGovernanceDescriptor(BaseModel):
     index_status: RetrievalIndexStatus = Field(
         description="Current indexing status for the document."
     )
+    active_version_id: str | None = Field(
+        default=None,
+        description="Currently active document-version identifier when one exists.",
+    )
+    active_version_refresh_action: RetrievalIngestionAction | None = Field(
+        default=None,
+        description="Corpus action that produced the currently active document version, when one exists.",
+    )
+    active_version_created_at: str | None = Field(
+        default=None,
+        description="Recorded timestamp for the currently active document version, when one exists.",
+    )
+    pending_ingestion_job_count: int = Field(
+        description="Number of non-terminal ingestion jobs currently recorded for the document or source."
+    )
     notes: str = Field(description="Human-readable explanation of the document governance posture.")
 
 
@@ -110,6 +156,12 @@ class RetrievalDocumentGovernanceResponse(BaseModel):
     )
     blocked_document_count: int = Field(
         description="Number of documents currently blocked from live search by source posture."
+    )
+    refresh_pending_document_count: int = Field(
+        description="Number of documents currently withheld from live search while a governed corpus-change job is still in flight."
+    )
+    withdrawn_document_count: int = Field(
+        description="Number of documents currently withheld from live search because the latest governed lineage is withdrawn."
     )
     documents: list[RetrievalDocumentGovernanceDescriptor] = Field(
         description="Per-document governance posture for the currently registered retrieval corpus."
@@ -229,6 +281,146 @@ class RetrievalIndexJobDetailResponse(BaseModel):
     )
 
 
+class RetrievalDocumentVersionDescriptor(BaseModel):
+    version_id: str = Field(description="Stable retrieval document-version identifier.")
+    document_id: str = Field(description="Stable retrieval document identifier.")
+    source_id: str = Field(description="Retrieval source identifier for the version.")
+    title: str = Field(description="Human-readable title for the versioned document.")
+    location: str = Field(description="Repository-relative or logical location for the version.")
+    lifecycle_status: RetrievalDocumentVersionLifecycleStatus = Field(
+        description="Current governed lifecycle posture for the recorded document version."
+    )
+    refresh_action: RetrievalIngestionAction = Field(
+        description="Corpus action that introduced or mutated this document version."
+    )
+    lineage_parent_version_id: str | None = Field(
+        default=None,
+        description="Optional prior document-version identifier this version extends or supersedes.",
+    )
+    created_at: str = Field(description="Recorded creation timestamp for the version.")
+    created_by: str = Field(description="Operator or system identity that recorded the version.")
+    notes: str = Field(description="Human-readable explanation of the version posture.")
+
+
+class RetrievalIngestionJobDescriptor(BaseModel):
+    job_id: str = Field(description="Stable retrieval ingestion job identifier.")
+    source_id: str = Field(description="Retrieval source identifier owned by the ingestion job.")
+    document_id: str | None = Field(
+        default=None,
+        description="Optional retrieval document identifier directly targeted by the job.",
+    )
+    target_version_id: str | None = Field(
+        default=None,
+        description="Optional document-version identifier directly referenced by the job.",
+    )
+    requested_action: RetrievalIngestionAction = Field(
+        description="Governed corpus action requested by the job."
+    )
+    status: RetrievalIngestionJobStatus = Field(
+        description="Current durable lifecycle posture for the ingestion job record."
+    )
+    requested_by: str = Field(description="Operator or system identity that requested the job.")
+    requested_at: str = Field(description="Timestamp when the ingestion job was recorded.")
+    message: str = Field(description="Human-readable explanation of the ingestion job posture.")
+    runtime_status: str | None = Field(
+        default=None,
+        description="Optional runtime-backed async lifecycle status for this ingestion job.",
+    )
+    linked_async_job_id: str | None = Field(
+        default=None,
+        description="Optional linked async job identifier when ingestion is executing through the durable async runtime.",
+    )
+    artifact_refs: list[ArtifactDescriptor] = Field(
+        default_factory=list,
+        description="Governed artifact descriptors attached to the ingestion job for bounded diagnostics and corpus-change review.",
+    )
+
+
+class RetrievalIngestionJobCatalogResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval ingestion job catalog.")
+    jobs: list[RetrievalIngestionJobDescriptor] = Field(
+        description="Known retrieval ingestion jobs for governed corpus changes."
+    )
+
+
+class RetrievalIngestionJobStepDescriptor(BaseModel):
+    step_id: str = Field(description="Stable retrieval ingestion step identifier.")
+    name: str = Field(description="Human-readable ingestion step name.")
+    stage: RetrievalPipelineStage = Field(description="Current lifecycle stage for the step.")
+    runtime_status: str | None = Field(
+        default=None,
+        description="Optional runtime-backed async status for this ingestion step.",
+    )
+    linked_async_job_id: str | None = Field(
+        default=None,
+        description="Optional linked async job identifier for this ingestion step.",
+    )
+    description: str = Field(description="Human-readable explanation of the step.")
+
+
+class RetrievalIngestionJobDetailResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval ingestion job detail.")
+    job: RetrievalIngestionJobDescriptor = Field(description="Retrieval ingestion job descriptor.")
+    steps: list[RetrievalIngestionJobStepDescriptor] = Field(
+        description="Ordered ingestion and follow-through steps for the job."
+    )
+
+
+class RetrievalIngestionStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the retrieval ingestion status.")
+    delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    retrieval_mode: str = Field(description="Configured retrieval execution mode.")
+    retrieval_store_mode: str = Field(description="Current retrieval metadata store mode.")
+    ingestion_delivery_stage: RetrievalIngestionDeliveryStage = Field(
+        description="Current delivery stage for governed corpus-ingestion capability."
+    )
+    live_ingestion_enabled: bool = Field(
+        description="Whether runtime-backed live ingestion execution is currently enabled."
+    )
+    document_version_count: int = Field(
+        description="Number of document-version records currently visible through the active retrieval store."
+    )
+    active_document_version_count: int = Field(
+        description="Number of active document-version records currently visible through the active retrieval store."
+    )
+    superseded_document_version_count: int = Field(
+        description="Number of superseded document-version records currently visible through the active retrieval store."
+    )
+    withdrawn_document_version_count: int = Field(
+        description="Number of withdrawn document-version records currently visible through the active retrieval store."
+    )
+    ingestion_job_count: int = Field(
+        description="Number of ingestion job records currently visible through the active retrieval store."
+    )
+    staged_ingestion_job_count: int = Field(
+        description="Number of ingestion jobs currently recorded as staged rather than runtime-backed."
+    )
+    blocked_ingestion_job_count: int = Field(
+        description="Number of ingestion jobs currently blocked pending governance or execution support."
+    )
+    running_ingestion_job_count: int = Field(
+        description="Number of ingestion jobs currently running through the durable async backbone."
+    )
+    failed_ingestion_job_count: int = Field(
+        description="Number of ingestion jobs currently reporting a failed terminal posture."
+    )
+    completed_ingestion_job_count: int = Field(
+        description="Number of ingestion jobs currently reporting a completed terminal posture."
+    )
+    artifact_backed_job_count: int = Field(
+        description="Number of ingestion jobs currently carrying bounded governed diagnostic artifacts."
+    )
+    runtime_findings: list[str] = Field(
+        description="Human-readable explanation of the current bounded ingestion posture."
+    )
+    recent_document_versions: list[RetrievalDocumentVersionDescriptor] = Field(
+        description="Bounded recent document-version records for corpus lineage inspection."
+    )
+    recent_ingestion_jobs: list[RetrievalIngestionJobDescriptor] = Field(
+        description="Bounded recent ingestion job records for operator inspection."
+    )
+
+
 class RetrievalIndexingPolicyResponse(BaseModel):
     service: str = Field(description="Service name emitting the retrieval indexing policy.")
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
@@ -282,6 +474,12 @@ class RetrievalRuntimeStatusResponse(BaseModel):
     )
     index_job_count: int = Field(
         description="Number of retrieval indexing jobs visible through the active store."
+    )
+    document_version_count: int = Field(
+        description="Number of retrieval document-version records visible through the active store."
+    )
+    ingestion_job_count: int = Field(
+        description="Number of retrieval ingestion-job records visible through the active store."
     )
 
 
@@ -376,6 +574,12 @@ class RetrievalExecutionStatusResponse(BaseModel):
     rollback_target_stage: DeploymentSplitStage = Field(
         description="Deployment-split stage operators should roll back to if retrieval split routing becomes unhealthy."
     )
+    refresh_pending_document_count: int = Field(
+        description="Number of documents currently withheld from live search while a governed corpus-change job is still in flight."
+    )
+    withdrawn_document_count: int = Field(
+        description="Number of documents currently withheld from live search because the latest governed lineage is withdrawn."
+    )
     split_route_degraded: bool = Field(
         description="Whether retrieval execution is currently running under a degraded retrieval-plane split posture."
     )
@@ -394,6 +598,9 @@ class RetrievalActivationReadinessResponse(BaseModel):
     embedding_provider_mode: str = Field(description="Configured embedding provider mode.")
     embedding_execution_enabled: bool = Field(
         description="Whether live embedding execution is currently enabled for bounded retrieval indexing."
+    )
+    ingestion_execution_enabled: bool = Field(
+        description="Whether bounded runtime-backed ingestion execution is currently enabled for governed corpus-change jobs."
     )
     activation_ready: bool = Field(
         description="Whether live retrieval execution is currently ready for activation."
@@ -475,6 +682,9 @@ class RetrievalGovernanceStatusResponse(BaseModel):
     )
     evidence_readiness: RetrievalEvidenceReadinessResponse = Field(
         description="Evaluation and citation evidence-readiness summary for retrieval execution."
+    )
+    corpus_change_review_ready: bool = Field(
+        description="Whether corpus-change posture is currently reviewed explicitly enough for governed retrieval rollout."
     )
     blocking_area_count: int = Field(
         description="Number of top-level retrieval governance areas currently blocking activation."

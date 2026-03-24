@@ -35,6 +35,8 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
             owning_plane=route.owning_plane,
             route_mode=route.route_mode,
             rollback_target_stage=route.rollback_target_stage,
+            refresh_pending_document_count=0,
+            withdrawn_document_count=0,
             split_route_degraded=route.degraded,
             split_route_findings=route.degraded_findings,
             message=(
@@ -59,6 +61,8 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
             owning_plane=route.owning_plane,
             route_mode=route.route_mode,
             rollback_target_stage=route.rollback_target_stage,
+            refresh_pending_document_count=0,
+            withdrawn_document_count=0,
             split_route_degraded=route.degraded,
             split_route_findings=route.degraded_findings,
             message=(
@@ -71,10 +75,24 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
     searchable_document_count = document_governance.searchable_document_count
     index_pending_document_count = document_governance.index_pending_document_count
     blocked_document_count = document_governance.blocked_document_count
+    refresh_pending_document_count = document_governance.refresh_pending_document_count
+    withdrawn_document_count = document_governance.withdrawn_document_count
     if searchable_document_count > 0:
         message = (
             "Retrieval mode is enabled and retrieval requests resolve through the live indexed "
             f"search path over {searchable_document_count} searchable promoted document(s)."
+        )
+    elif refresh_pending_document_count > 0:
+        message = (
+            "Retrieval mode is enabled and the live indexed search path is active, but no "
+            "documents are currently searchable because governed corpus refresh work is still in flight "
+            f"for {refresh_pending_document_count} document(s)."
+        )
+    elif withdrawn_document_count > 0:
+        message = (
+            "Retrieval mode is enabled and the live indexed search path is active, but no "
+            "documents are currently searchable because the latest governed corpus lineage is withdrawn "
+            f"for {withdrawn_document_count} document(s)."
         )
     elif index_pending_document_count > 0:
         message = (
@@ -108,6 +126,8 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
         owning_plane=route.owning_plane,
         route_mode=route.route_mode,
         rollback_target_stage=route.rollback_target_stage,
+        refresh_pending_document_count=refresh_pending_document_count,
+        withdrawn_document_count=withdrawn_document_count,
         split_route_degraded=route.degraded,
         split_route_findings=route.degraded_findings,
         message=f"{message} {route.detail}",

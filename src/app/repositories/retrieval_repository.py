@@ -5,6 +5,8 @@ from typing import Protocol
 from app.contracts.retrieval import (
     RetrievalChunkDescriptor,
     RetrievalDocumentDescriptor,
+    RetrievalDocumentVersionDescriptor,
+    RetrievalIngestionJobDescriptor,
     RetrievalIndexJobDescriptor,
     RetrievalSearchHit,
     RetrievalSourceDescriptor,
@@ -23,6 +25,16 @@ class RetrievalRepository(Protocol):
     def get_document(self, document_id: str) -> RetrievalDocumentDescriptor | None: ...
 
     def list_chunks_for_document(self, document_id: str) -> list[RetrievalChunkDescriptor]: ...
+
+    def list_document_versions(self) -> list[RetrievalDocumentVersionDescriptor]: ...
+
+    def save_document_version(self, descriptor: RetrievalDocumentVersionDescriptor) -> None: ...
+
+    def list_ingestion_jobs(self) -> list[RetrievalIngestionJobDescriptor]: ...
+
+    def get_ingestion_job(self, job_id: str) -> RetrievalIngestionJobDescriptor | None: ...
+
+    def save_ingestion_job(self, descriptor: RetrievalIngestionJobDescriptor) -> None: ...
 
     def search_indexed_chunks(
         self, *, query: str, source_ids: list[str], limit: int

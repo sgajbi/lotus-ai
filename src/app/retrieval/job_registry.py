@@ -190,6 +190,9 @@ def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
     store_status = get_retrieval_store_runtime_status()
     if store_status.status == "READY":
         inventory = summarize_retrieval_runtime_inventory()
+        repository = get_retrieval_repository()
+        document_version_count = len(repository.list_document_versions())
+        ingestion_job_count = len(repository.list_ingestion_jobs())
     else:
         inventory = RetrievalRuntimeInventorySummary(
             source_count=0,
@@ -197,6 +200,8 @@ def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
             chunk_count=0,
             index_job_count=0,
         )
+        document_version_count = 0
+        ingestion_job_count = 0
     return RetrievalRuntimeStatusResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,
@@ -210,6 +215,8 @@ def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
         document_count=inventory.document_count,
         chunk_count=inventory.chunk_count,
         index_job_count=inventory.index_job_count,
+        document_version_count=document_version_count,
+        ingestion_job_count=ingestion_job_count,
     )
 
 

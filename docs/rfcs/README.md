@@ -18,5 +18,5 @@
 - `RFC-0016-first-production-use-case-onboarding.md` - Implemented
 - `RFC-0017-production-resilience-and-disaster-recovery.md` - Implemented
 - `RFC-0018-governed-embeddings-and-provider-expansion.md` - Implemented
-- `RFC-0019-governed-document-ingestion-and-corpus-refresh.md` - Draft
+- `RFC-0019-governed-document-ingestion-and-corpus-refresh.md` - Implemented
 - `RFC-0020-production-standard-deployment-baseline.md` - Implemented

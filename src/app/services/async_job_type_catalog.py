@@ -25,11 +25,11 @@ def list_async_job_types() -> list[AsyncJobTypeDescriptor]:
         ),
         AsyncJobTypeDescriptor(
             job_type="document_ingestion",
-            enabled=False,
-            execution_path="future_worker_queue",
+            enabled=True,
+            execution_path="durable_runtime_worker_execution",
             notes=(
-                "Large document ingestion remains a documented future async path rather than an "
-                "active runtime-backed workflow."
+                "Bounded document ingestion now runs through durable async submission, claim, "
+                "replay, and completion semantics for governed retrieval ingestion job targets."
             ),
         ),
     ]

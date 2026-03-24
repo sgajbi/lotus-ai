@@ -10,5 +10,6 @@ def test_retrieval_governance_status_reports_blocked_foundation_posture() -> Non
     assert status.activation_readiness.activation_ready is False
     assert status.runbook_readiness.runbook_ready is False
     assert status.evidence_readiness.evidence_ready is False
-    assert len(status.governance_summary) == 3
+    assert status.corpus_change_review_ready is False
+    assert len(status.governance_summary) == 4
     assert "runtime-backed approval gate summary" in status.governance_summary[2]

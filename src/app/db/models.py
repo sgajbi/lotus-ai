@@ -61,6 +61,9 @@ class RetrievalDocumentModel(Base):
 
     source: Mapped["RetrievalSourceModel"] = relationship(back_populates="documents")
     chunks: Mapped[list["RetrievalChunkModel"]] = relationship(back_populates="document")
+    versions: Mapped[list["RetrievalDocumentVersionModel"]] = relationship(
+        back_populates="document"
+    )
 
 
 class RetrievalChunkModel(Base):
@@ -92,6 +95,46 @@ class RetrievalIndexJobModel(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False)
 
     source: Mapped["RetrievalSourceModel"] = relationship(back_populates="index_jobs")
+
+
+class RetrievalDocumentVersionModel(Base):
+    __tablename__ = "retrieval_document_versions"
+
+    version_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey("retrieval_documents.document_id"), nullable=False, index=True
+    )
+    source_id: Mapped[str] = mapped_column(
+        ForeignKey("retrieval_sources.source_id"), nullable=False, index=True
+    )
+    lifecycle_status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    refresh_action: Mapped[str] = mapped_column(String(32), nullable=False)
+    lineage_parent_version_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    location: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    notes: Mapped[str] = mapped_column(Text, nullable=False)
+
+    document: Mapped["RetrievalDocumentModel"] = relationship(back_populates="versions")
+
+
+class RetrievalIngestionJobModel(Base):
+    __tablename__ = "retrieval_ingestion_jobs"
+
+    job_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    source_id: Mapped[str] = mapped_column(
+        ForeignKey("retrieval_sources.source_id"), nullable=False, index=True
+    )
+    document_id: Mapped[str | None] = mapped_column(
+        ForeignKey("retrieval_documents.document_id"), nullable=True, index=True
+    )
+    target_version_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    requested_action: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    requested_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    requested_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class PromptDefinitionModel(Base):

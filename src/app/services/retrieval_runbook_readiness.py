@@ -46,6 +46,14 @@ def build_retrieval_runbook_readiness() -> RetrievalRunbookReadinessResponse:
             ),
         ),
         RetrievalRunbookReadinessItem(
+            runbook_id="retrieval_corpus_change_review",
+            status="READY",
+            required_for_activation=True,
+            notes=(
+                "Corpus refresh, withdrawal, search-eligibility review, and artifact-backed ingestion diagnostics are now documented through the retrieval and observability runbook flow."
+            ),
+        ),
+        RetrievalRunbookReadinessItem(
             runbook_id="retrieval_observability_incident_views",
             status="READY",
             required_for_activation=True,

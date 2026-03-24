@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
-from unittest.mock import patch
 
 from app.contracts.async_runtime import AsyncJobSubmissionRequest
 from app.repositories.async_runtime_repository import (
@@ -184,29 +183,46 @@ def test_submit_async_job_raises_not_found_for_unknown_job_type() -> None:
         raise AssertionError("Expected async submission to raise HTTPException.")
 
 
-def test_submit_async_job_rejects_disabled_non_evaluation_job_type() -> None:
-    with patch("app.services.async_submission_service.get_async_job_type_descriptor") as descriptor:
-        descriptor.return_value = type(
-            "JobTypeDescriptor",
+def test_submit_async_job_rejects_disabled_job_type_via_catalog_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.async_submission_service.get_async_job_type_descriptor",
+        lambda job_type: type(
+            "JobType",
             (),
-            {
-                "enabled": False,
-                "execution_path": "future_worker_queue",
-            },
-        )()
-        response = submit_async_job(
-            AsyncJobSubmissionRequest(
-                job_type="document_ingestion",
-                target_id="doc-001",
-                caller_app="lotus-platform",
-                correlation_id="corr-async-disabled-doc-ingestion",
-                payload_summary="Ingest large document.",
-            )
-        )
+            {"job_type": job_type, "enabled": False, "execution_path": "staged_only"},
+        )(),
+    )
 
-    assert response.accepted is False
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="document_ingestion",
+            target_id="ingjob_lotus_platform_rfcs_refresh_0069",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-disabled-override",
+            payload_summary="Disabled override.",
+        )
+    )
+
     assert response.submission_status == "REJECTED"
-    assert "staged-only" in response.message
+    assert response.accepted is False
+
+
+def test_submit_async_job_accepts_document_ingestion_job_type() -> None:
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="document_ingestion",
+            target_id="ingjob_lotus_platform_rfcs_refresh_0069",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-doc-ingestion",
+            payload_summary="Ingest approved refreshed retrieval document.",
+        )
+    )
+
+    assert response.accepted is True
+    assert response.submission_status == "ACCEPTED"
+    assert response.target_id == "ingjob_lotus_platform_rfcs_refresh_0069"
 
 
 def test_validate_async_job_target_ignores_non_retrieval_job_types() -> None:
@@ -311,6 +327,20 @@ def test_find_active_duplicate_submission_ignores_same_target_for_different_call
             caller_app="lotus-platform",
             correlation_id="corr-async-different-caller",
             payload_summary="Fresh request.",
+        )
+    )
+
+    assert duplicate is None
+
+
+def test_find_active_duplicate_submission_ignores_non_retrieval_job_types() -> None:
+    duplicate = _find_active_duplicate_submission(
+        request=AsyncJobSubmissionRequest(
+            job_type="report_export",
+            target_id=None,
+            caller_app="lotus-platform",
+            correlation_id="corr-async-non-retrieval",
+            payload_summary="No retrieval semantics.",
         )
     )
 

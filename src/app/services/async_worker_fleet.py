@@ -8,6 +8,7 @@ from app.contracts.async_runtime import AsyncCutoverState
 from app.services.async_delivery_queue import AsyncQueueDeliveryMessage, get_async_delivery_queue
 from app.services.async_runtime_posture import get_async_runtime_posture
 from app.services.eval_async_execution import run_evaluation_execution_job_by_id
+from app.services.retrieval_ingestion_async_execution import run_retrieval_ingestion_job_by_id
 from app.services.retrieval_async_execution import run_retrieval_index_job_by_id
 
 
@@ -84,6 +85,20 @@ def _dispatch_delivery(
             job_type=delivery.job_type,
             handled=evaluation_result is not None,
             terminal_status=None if evaluation_result is None else "COMPLETED",
+        )
+    if delivery.job_type == "document_ingestion":
+        ingestion_result = run_retrieval_ingestion_job_by_id(
+            async_job_id=delivery.job_id,
+            worker_id=worker_id,
+        )
+        return DedicatedWorkerCycleResult(
+            delivery_id=delivery.delivery_id,
+            job_id=delivery.job_id,
+            job_type=delivery.job_type,
+            handled=ingestion_result is not None,
+            terminal_status=(
+                None if ingestion_result is None else ingestion_result.terminal_status
+            ),
         )
     return DedicatedWorkerCycleResult(
         delivery_id=delivery.delivery_id,

@@ -9,6 +9,7 @@ from app.contracts.retrieval import (
     RetrievalSearchHit,
     RetrievalStatus,
 )
+from app.repositories.retrieval_repository import RetrievalRepository
 from app.retrieval.document_governance import build_retrieval_document_governance
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
 from app.retrieval.search_scoring import score_terms
@@ -16,8 +17,9 @@ from app.services.retrieval_store import get_retrieval_repository
 
 
 def execute_retrieval_search(request: RetrievalExecutionRequest) -> RetrievalExecutionResponse:
+    repository = get_retrieval_repository()
     if settings.retrieval_mode != "enabled":
-        catalog_hits = _build_catalog_only_hits(request)
+        catalog_hits = _build_catalog_only_hits(request, repository=repository)
         if catalog_hits:
             return RetrievalExecutionResponse(
                 status=RetrievalStatus.READY,
@@ -40,7 +42,10 @@ def execute_retrieval_search(request: RetrievalExecutionRequest) -> RetrievalExe
             ),
         )
 
-    document_governance = build_retrieval_document_governance()
+    document_governance = build_retrieval_document_governance(
+        source_ids=request.source_ids,
+        repository=repository,
+    )
     if document_governance.searchable_document_count == 0:
         return RetrievalExecutionResponse(
             status=RetrievalStatus.REJECTED,
@@ -50,7 +55,7 @@ def execute_retrieval_search(request: RetrievalExecutionRequest) -> RetrievalExe
             message=_build_live_search_unavailable_message(document_governance=document_governance),
         )
 
-    live_hits = get_retrieval_repository().search_indexed_chunks(
+    live_hits = repository.search_indexed_chunks(
         query=request.query,
         source_ids=request.source_ids,
         limit=request.limit,
@@ -75,10 +80,22 @@ def _build_live_search_unavailable_message(
     *, document_governance: RetrievalDocumentGovernanceResponse
 ) -> str:
     searchable_document_count = document_governance.searchable_document_count
+    refresh_pending_document_count = document_governance.refresh_pending_document_count
+    withdrawn_document_count = document_governance.withdrawn_document_count
     index_pending_document_count = document_governance.index_pending_document_count
     blocked_document_count = document_governance.blocked_document_count
     if searchable_document_count > 0:
         return "Live retrieval search is available."
+    if refresh_pending_document_count > 0:
+        return (
+            "Live retrieval search is enabled but currently blocked because governed corpus refresh "
+            "work is still in flight."
+        )
+    if withdrawn_document_count > 0:
+        return (
+            "Live retrieval search is enabled but currently blocked because the latest governed "
+            "corpus lineage is withdrawn."
+        )
     if index_pending_document_count > 0:
         return (
             "Live retrieval search is enabled but currently blocked because promoted corpus "
@@ -95,8 +112,9 @@ def _build_live_search_unavailable_message(
     )
 
 
-def _build_catalog_only_hits(request: RetrievalExecutionRequest) -> list[RetrievalSearchHit]:
-    repository = get_retrieval_repository()
+def _build_catalog_only_hits(
+    request: RetrievalExecutionRequest, *, repository: RetrievalRepository
+) -> list[RetrievalSearchHit]:
     requested_source_ids = set(request.source_ids)
     enabled_sources = [
         source

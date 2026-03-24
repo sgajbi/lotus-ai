@@ -6,9 +6,12 @@ from app.contracts.retrieval import (
     RetrievalChunkCatalogResponse,
     RetrievalDocumentCatalogResponse,
     RetrievalDocumentGovernanceResponse,
+    RetrievalIngestionJobCatalogResponse,
+    RetrievalIngestionJobDetailResponse,
     RetrievalIndexJobCatalogResponse,
     RetrievalIndexJobDetailResponse,
     RetrievalIndexStatusResponse,
+    RetrievalIngestionStatusResponse,
     RetrievalIndexingPolicyResponse,
     RetrievalSourceGovernanceResponse,
     RetrievalRuntimeStatusResponse,
@@ -27,6 +30,11 @@ from app.retrieval.job_registry import (
 )
 from app.retrieval.source_governance import build_retrieval_source_governance
 from app.retrieval.source_registry import list_retrieval_sources
+from app.services.retrieval_ingestion_status import build_retrieval_ingestion_status
+from app.services.retrieval_ingestion_job_service import (
+    build_retrieval_ingestion_job_catalog,
+    get_retrieval_ingestion_job_detail,
+)
 
 
 def get_retrieval_index_status() -> RetrievalIndexStatusResponse:
@@ -67,6 +75,18 @@ def get_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
 
 def get_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
     return build_retrieval_runtime_status()
+
+
+def get_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
+    return build_retrieval_ingestion_status()
+
+
+def get_retrieval_ingestion_job_catalog() -> RetrievalIngestionJobCatalogResponse:
+    return build_retrieval_ingestion_job_catalog()
+
+
+def get_retrieval_ingestion_job_detail_or_raise(job_id: str) -> RetrievalIngestionJobDetailResponse:
+    return get_retrieval_ingestion_job_detail(job_id)
 
 
 def get_retrieval_source_governance() -> RetrievalSourceGovernanceResponse:

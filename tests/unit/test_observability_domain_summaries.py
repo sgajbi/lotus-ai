@@ -47,6 +47,11 @@ def test_retrieval_observability_bundle_marks_sql_store_incident_evidence_durabl
 
     assert bundle.summary.domain_id == "retrieval"
     assert bundle.summary.incident_evidence_items[0].durable is True
+    assert len(bundle.summary.incident_evidence_items) == 2
+    assert (
+        bundle.summary.incident_evidence_items[1].evidence_id
+        == "retrieval_corpus_change_runtime_state"
+    )
 
 
 def test_async_observability_bundle_surfaces_degraded_fallback() -> None:

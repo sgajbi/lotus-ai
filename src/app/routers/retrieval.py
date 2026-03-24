@@ -9,9 +9,12 @@ from app.contracts.retrieval import (
     RetrievalDocumentCatalogResponse,
     RetrievalDocumentGovernanceResponse,
     RetrievalEvidenceReadinessResponse,
+    RetrievalIngestionJobCatalogResponse,
+    RetrievalIngestionJobDetailResponse,
     RetrievalIndexJobCatalogResponse,
     RetrievalIndexJobDetailResponse,
     RetrievalIndexStatusResponse,
+    RetrievalIngestionStatusResponse,
     RetrievalIndexingPolicyResponse,
     RetrievalExecutionStatusResponse,
     RetrievalGovernanceStatusResponse,
@@ -31,10 +34,14 @@ from app.services.retrieval_catalog_service import (
     get_retrieval_job_catalog,
     get_documents_for_source,
     get_retrieval_document_governance,
+    get_retrieval_ingestion_job_catalog,
+    get_retrieval_ingestion_job_detail_or_raise,
+    get_retrieval_ingestion_status,
     get_retrieval_index_status,
     get_retrieval_source_governance,
 )
 from app.services.retrieval_activation_readiness import build_retrieval_activation_readiness
+from app.services.retrieval_ingestion_async_execution import submit_retrieval_ingestion_job_async
 from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
 from app.services.retrieval_execution_status import build_retrieval_execution_status
 from app.services.retrieval_governance_status import build_retrieval_governance_status
@@ -133,6 +140,89 @@ async def get_retrieval_index_status_route() -> RetrievalIndexStatusResponse:
 )
 async def get_retrieval_runtime_status_route() -> RetrievalRuntimeStatusResponse:
     return get_retrieval_runtime_status()
+
+
+@router.get(
+    "/ingestion-status",
+    response_model=RetrievalIngestionStatusResponse,
+    operation_id="getRetrievalIngestionStatus",
+    summary="Get retrieval ingestion status",
+    description=(
+        "Returns the bounded governed corpus-ingestion posture for lotus-ai, including durable "
+        "document-version lineage and recorded ingestion requests without claiming live onboarding execution."
+    ),
+    responses={
+        200: {"description": "Retrieval ingestion status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_ingestion_status_route() -> RetrievalIngestionStatusResponse:
+    return get_retrieval_ingestion_status()
+
+
+@router.get(
+    "/ingestion-jobs",
+    response_model=RetrievalIngestionJobCatalogResponse,
+    operation_id="listRetrievalIngestionJobs",
+    summary="List retrieval ingestion jobs",
+    description=(
+        "Returns the currently known governed retrieval ingestion jobs, including runtime-backed "
+        "async overlay when document ingestion is executing through the durable async backbone."
+    ),
+    responses={
+        200: {"description": "Retrieval ingestion jobs returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def list_retrieval_ingestion_jobs_route() -> RetrievalIngestionJobCatalogResponse:
+    return get_retrieval_ingestion_job_catalog()
+
+
+@router.get(
+    "/ingestion-jobs/{job_id}",
+    response_model=RetrievalIngestionJobDetailResponse,
+    operation_id="getRetrievalIngestionJob",
+    summary="Get retrieval ingestion job detail",
+    description=(
+        "Returns the retrieval ingestion execution plan for a governed corpus-change job, "
+        "including runtime-backed async execution and index follow-through posture when available."
+    ),
+    responses={
+        200: {"description": "Retrieval ingestion job detail returned successfully."},
+        404: {"description": "Retrieval ingestion job not found."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_retrieval_ingestion_job_route(job_id: str) -> RetrievalIngestionJobDetailResponse:
+    return get_retrieval_ingestion_job_detail_or_raise(job_id)
+
+
+@router.post(
+    "/ingestion-jobs/{job_id}/submit-async",
+    response_model=AsyncJobSubmissionResponse,
+    operation_id="submitRetrievalIngestionJobAsync",
+    summary="Submit a retrieval ingestion job into the async runtime",
+    description=(
+        "Submits a concrete retrieval ingestion job into the durable async runtime so bounded "
+        "corpus onboarding, refresh, or withdrawal can execute through the existing worker backbone."
+    ),
+    responses={
+        200: {"description": "Retrieval ingestion async submission evaluated successfully."},
+        404: {"description": "Retrieval ingestion job not found."},
+        409: {"description": "Retrieval ingestion submission is not currently allowed."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def submit_retrieval_ingestion_job_async_route(
+    job_id: str,
+    caller_app: str,
+    correlation_id: str,
+) -> AsyncJobSubmissionResponse:
+    return submit_retrieval_ingestion_job_async(
+        job_id=job_id,
+        caller_app=caller_app,
+        correlation_id=correlation_id,
+    )
 
 
 @router.get(

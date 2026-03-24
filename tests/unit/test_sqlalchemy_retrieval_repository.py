@@ -1,6 +1,15 @@
 from pathlib import Path
 
-from app.contracts.retrieval import RetrievalJobStatus
+from _pytest.monkeypatch import MonkeyPatch
+
+from app.contracts.retrieval import (
+    RetrievalDocumentVersionDescriptor,
+    RetrievalDocumentVersionLifecycleStatus,
+    RetrievalIngestionAction,
+    RetrievalIngestionJobDescriptor,
+    RetrievalIngestionJobStatus,
+    RetrievalJobStatus,
+)
 from app.repositories.sqlalchemy_retrieval_repository import SqlAlchemyRetrievalRepository
 from tests.support.migration_runner import upgrade_database_to_head
 
@@ -14,12 +23,16 @@ def test_sqlalchemy_retrieval_repository_returns_seeded_catalog(tmp_path: Path) 
     documents = repository.list_documents_for_source("lotus-platform-rfcs")
     chunks = repository.list_chunks_for_document("lotus-platform-rfc-0069")
     job = repository.get_index_job("retjob_lotus_platform_rfcs")
+    versions = repository.list_document_versions()
+    ingestion_jobs = repository.list_ingestion_jobs()
 
     assert any(source.source_id == "lotus-platform-rfcs" for source in sources)
     assert any(document.document_id == "lotus-platform-rfc-0069" for document in documents)
     assert any(chunk.chunk_id == "chunk_rfc_0069_0001" for chunk in chunks)
     assert job is not None
     assert job.source_id == "lotus-platform-rfcs"
+    assert any(version.lifecycle_status == "SUPERSEDED" for version in versions)
+    assert any(job.status == "BLOCKED" for job in ingestion_jobs)
 
 
 def test_sqlalchemy_retrieval_repository_returns_none_for_unknown_records(
@@ -32,6 +45,7 @@ def test_sqlalchemy_retrieval_repository_returns_none_for_unknown_records(
     assert repository.get_source("missing-source") is None
     assert repository.get_document("missing-document") is None
     assert repository.get_index_job("missing-job") is None
+    assert repository.get_ingestion_job("missing-job") is None
     assert repository.list_documents_for_source("missing-source") == []
     assert repository.list_chunks_for_document("missing-document") == []
 
@@ -45,6 +59,26 @@ def test_sqlalchemy_retrieval_repository_creates_parent_directory_for_sqlite_fil
     SqlAlchemyRetrievalRepository(database_url)
 
     assert db_path.parent.is_dir()
+
+
+def test_sqlalchemy_retrieval_repository_leaves_memory_sqlite_without_directory_work(
+    tmp_path: Path,
+) -> None:
+    repository = SqlAlchemyRetrievalRepository("sqlite:///:memory:")
+
+    assert repository is not None
+
+
+def test_sqlalchemy_retrieval_repository_handles_relative_sqlite_path(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    relative_db = Path("tmp") / "nested" / "lotus-ai-relative.db"
+    monkeypatch.chdir(tmp_path)
+
+    SqlAlchemyRetrievalRepository(f"sqlite:///{relative_db}")
+
+    assert (tmp_path / "tmp" / "nested").is_dir()
 
 
 def test_sqlalchemy_retrieval_repository_updates_jobs_and_index_status(tmp_path: Path) -> None:
@@ -79,6 +113,50 @@ def test_sqlalchemy_retrieval_repository_updates_jobs_and_index_status(tmp_path:
     assert job.status == "COMPLETED"
     assert all(document.index_status == "INDEXED" for document in documents)
     assert all(chunk.index_status == "INDEXED" for chunk in chunks)
+
+
+def test_sqlalchemy_retrieval_repository_persists_document_version_and_ingestion_job_state(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-retrieval.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyRetrievalRepository(database_url)
+
+    repository.save_document_version(
+        RetrievalDocumentVersionDescriptor(
+            version_id="ver_test_refresh",
+            document_id="lotus-ai-system-overview",
+            source_id="lotus-ai-architecture",
+            title="lotus-ai System Overview",
+            location="lotus-ai/docs/architecture/system-overview.md",
+            lifecycle_status=RetrievalDocumentVersionLifecycleStatus.ACTIVE,
+            refresh_action=RetrievalIngestionAction.REFRESH,
+            lineage_parent_version_id="ver_lotus_ai_system_overview_2026_03_22",
+            created_at="2026-03-24T01:00:00Z",
+            created_by="operator-a",
+            notes="Latest active refresh seed.",
+        )
+    )
+    repository.save_ingestion_job(
+        RetrievalIngestionJobDescriptor(
+            job_id="ingjob_test_refresh",
+            source_id="lotus-ai-architecture",
+            document_id="lotus-ai-system-overview",
+            target_version_id="ver_test_refresh",
+            requested_action=RetrievalIngestionAction.REFRESH,
+            status=RetrievalIngestionJobStatus.STAGED,
+            requested_by="operator-a",
+            requested_at="2026-03-24T01:00:00Z",
+            message="Recorded for later runtime execution.",
+        )
+    )
+
+    restarted_repository = SqlAlchemyRetrievalRepository(database_url)
+    versions = restarted_repository.list_document_versions()
+    ingestion_jobs = restarted_repository.list_ingestion_jobs()
+
+    assert versions[0].version_id == "ver_test_refresh"
+    assert ingestion_jobs[0].job_id == "ingjob_test_refresh"
 
 
 def test_sqlalchemy_retrieval_repository_searches_indexed_chunks(tmp_path: Path) -> None:
@@ -142,3 +220,23 @@ def test_sqlalchemy_retrieval_repository_preserves_live_search_state_across_rest
     )
 
     assert rolled_back_hits == []
+
+
+def test_sqlalchemy_retrieval_repository_returns_no_hits_for_unmatched_indexed_query(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-retrieval.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyRetrievalRepository(database_url)
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+
+    hits = repository.search_indexed_chunks(
+        query="zzzxqv unmatched phrase",
+        source_ids=["lotus-platform-rfcs"],
+        limit=5,
+    )
+
+    assert hits == []

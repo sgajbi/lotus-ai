@@ -49,7 +49,7 @@ Supported now:
 Important limitation:
 
 1. retrieval is live for the approved indexed corpus only,
-2. broader ingestion and corpus refresh are not implemented yet,
+2. broader live ingestion and corpus refresh are still intentionally bounded, but RFC-0019 now has durable ingestion state, runtime-backed async ingestion execution for governed corpus-change job targets, artifact-backed ingestion diagnostics, and retrieval runtime/governance surfaces that reflect refresh-pending and withdrawn lineage posture truthfully; the final hardened posture depends on that artifact-backed review path being operational, not just async execution existing,
 3. embedding-provider expansion now has one bounded live path available for retrieval indexing, but broader retrieval/provider activation is still not approved.
 
 ### Prompt Governance
@@ -144,7 +144,7 @@ Current state:
 3. retrieval indexing can now consume that bounded live embedding path when configured,
 4. provider and retrieval evidence/runbook surfaces now include dedicated embedding-runtime coverage rather than treating embeddings as a future-only dependency,
 5. provider catalog, policy, operations, and governance surfaces now also expose a bounded per-capability expansion-slot model so future provider breadth is explicit without implying activation,
-6. broader document ingestion is still not yet implemented as a first-class governed feature,
+6. durable ingestion job and document-version lineage state now exists and bounded runtime-backed async ingestion execution is now available for governed corpus-change job targets, but broader production-grade live onboarding and corpus refresh governance are still not fully implemented,
 7. full retrieval/provider activation still remains blocked on final RFC-0018 closure and governance review rather than hidden provider-breadth assumptions.
 
 ### Observability and Incident Evidence
@@ -198,7 +198,7 @@ Current status against that sequence:
 
 1. `RFC-0015` is implemented, including runtime, activation, runbook, and governance posture for unified versus split deployment stages.
 2. `RFC-0017` now exposes a bounded resilience runtime inventory surface, an ordered restore-plan surface, explicit degraded-versus-restored runtime posture for queue, worker, provider, retrieval, and artifact continuity dependencies, plus drill-evidence, activation, runbook, and governance surfaces.
-3. `RFC-0018` is now in active implementation with Slice 4 complete through bounded provider-expansion modeling, while `RFC-0019` remains a roadmap item.
+3. `RFC-0018` and `RFC-0019` are implemented, so the platform now has governed live embeddings, bounded provider expansion, durable ingestion-state, document-lineage, bounded async ingestion execution, artifact-backed ingestion diagnostics, and retrieval runtime/governance convergence in place.
 
 Early RFC-0015 groundwork now exists as a bounded runtime surface:
 

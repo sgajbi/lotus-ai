@@ -23,6 +23,7 @@ from app.services.prompt_status import build_prompt_runtime_status
 from app.services.provider_operations_status import build_provider_operations_status
 from app.services.retrieval_activation_readiness import build_retrieval_activation_readiness
 from app.services.retrieval_execution_status import build_retrieval_execution_status
+from app.services.retrieval_ingestion_status import build_retrieval_ingestion_status
 from app.services.runtime_readiness import get_retrieval_store_runtime_status
 from app.services.safety_evidence_readiness import build_safety_evidence_readiness
 from app.services.safety_governance_status import build_safety_governance_status
@@ -101,13 +102,24 @@ def build_provider_observability_bundle() -> ObservabilityDomainBundle:
 def build_retrieval_observability_bundle() -> ObservabilityDomainBundle:
     retrieval_execution = build_retrieval_execution_status()
     activation_readiness = build_retrieval_activation_readiness()
+    ingestion_status = build_retrieval_ingestion_status()
     store_status = get_retrieval_store_runtime_status()
-    degraded_findings = list(activation_readiness.blocking_findings)
+    degraded_findings = [
+        *activation_readiness.blocking_findings,
+        *[
+            finding
+            for finding in ingestion_status.runtime_findings
+            if "blocked" in finding.lower()
+            or "failed" in finding.lower()
+            or "withdrawn" in finding.lower()
+        ],
+    ]
     telemetry = build_domain_telemetry_summary(
         domain_id=ObservabilityDomainId.RETRIEVAL,
         telemetry_sources=[
             "retrieval_execution_status",
             "retrieval_activation_readiness",
+            "retrieval_ingestion_status",
             "correlation_middleware",
             "prometheus",
         ],
@@ -124,7 +136,7 @@ def build_retrieval_observability_bundle() -> ObservabilityDomainBundle:
         incident_signal_count=len(degraded_findings),
         summary=[
             retrieval_execution.message,
-            "Retrieval incident summaries are grounded in searchable-corpus, evidence, and activation state.",
+            "Retrieval incident summaries are grounded in searchable-corpus, ingestion, evidence, and activation state.",
         ],
     )
     incident_items = [
@@ -138,7 +150,24 @@ def build_retrieval_observability_bundle() -> ObservabilityDomainBundle:
             durable=settings.retrieval_store_mode == "sqlalchemy"
             and store_status.status == "READY",
             summary="Retrieval activation state captures searchable corpus, reindex, rollback, and evidence blockers for current incident review.",
-        )
+        ),
+        build_incident_evidence_item(
+            domain_id=ObservabilityDomainId.RETRIEVAL,
+            evidence_id="retrieval_corpus_change_runtime_state",
+            source_available=store_status.status == "READY"
+            or settings.retrieval_store_mode == "memory",
+            stale=False,
+            degraded_findings=[
+                finding
+                for finding in ingestion_status.runtime_findings
+                if "blocked" in finding.lower()
+                or "failed" in finding.lower()
+                or "withdrawn" in finding.lower()
+            ],
+            durable=settings.retrieval_store_mode == "sqlalchemy"
+            and store_status.status == "READY",
+            summary="Retrieval ingestion status captures corpus-change execution, artifact-backed diagnostics, and refresh or withdrawal posture for incident review.",
+        ),
     ]
     return ObservabilityDomainBundle(
         summary=_attach_incident_bundle_artifact(
@@ -150,16 +179,16 @@ def build_retrieval_observability_bundle() -> ObservabilityDomainBundle:
                 incident_evidence_items=incident_items,
                 linked_endpoints=[
                     "/platform/retrieval/execution-status",
+                    "/platform/retrieval/ingestion-status",
+                    "/platform/retrieval/ingestion-jobs",
                     "/platform/retrieval/activation-readiness",
                     "/platform/retrieval/governance-status",
                 ],
                 summary=[
                     retrieval_execution.message,
-                    (
-                        activation_readiness.blocking_findings[0]
-                        if activation_readiness.blocking_findings
-                        else "Retrieval activation currently has no incident blocker."
-                    ),
+                    degraded_findings[0]
+                    if degraded_findings
+                    else "Retrieval runtime and corpus-change posture currently expose no active incident blocker.",
                 ],
             )
         )

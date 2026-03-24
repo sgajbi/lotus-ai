@@ -13,6 +13,7 @@ def test_retrieval_activation_readiness_reports_foundation_blockers() -> None:
     assert readiness.retrieval_mode == "disabled"
     assert readiness.embedding_provider_mode == "disabled"
     assert readiness.embedding_execution_enabled is False
+    assert readiness.ingestion_execution_enabled is True
     assert readiness.activation_ready is False
     assert any(
         "Retrieval mode is not enabled" in finding for finding in readiness.blocking_findings
@@ -88,6 +89,8 @@ def test_retrieval_activation_readiness_reports_blocked_corpus_path(
             searchable_document_count=0,
             index_pending_document_count=0,
             blocked_document_count=2,
+            refresh_pending_document_count=0,
+            withdrawn_document_count=0,
             documents=[],
         ),
     )
@@ -114,6 +117,8 @@ def test_retrieval_activation_readiness_reports_no_registered_live_corpus(
             searchable_document_count=0,
             index_pending_document_count=0,
             blocked_document_count=0,
+            refresh_pending_document_count=0,
+            withdrawn_document_count=0,
             documents=[],
         ),
     )
@@ -124,4 +129,31 @@ def test_retrieval_activation_readiness_reports_no_registered_live_corpus(
     assert any(
         "currently registered for the live retrieval path" in finding
         for finding in readiness.blocking_findings
+    )
+
+
+def test_retrieval_activation_readiness_reports_refresh_pending_corpus(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.retrieval_mode = "enabled"
+    monkeypatch.setattr(
+        "app.services.retrieval_activation_readiness.build_retrieval_document_governance",
+        lambda: RetrievalDocumentGovernanceResponse(
+            service="lotus-ai",
+            retrieval_mode="enabled",
+            vector_store="postgresql+pgvector",
+            searchable_document_count=0,
+            index_pending_document_count=0,
+            blocked_document_count=0,
+            refresh_pending_document_count=1,
+            withdrawn_document_count=0,
+            documents=[],
+        ),
+    )
+
+    readiness = build_retrieval_activation_readiness()
+
+    assert readiness.activation_ready is False
+    assert any(
+        "refresh work is still in flight" in finding for finding in readiness.blocking_findings
     )
