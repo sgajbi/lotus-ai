@@ -43,11 +43,13 @@ RUNTIME_BACKED_EVALUATION_FIXTURE_IDS = {
     "prompt_promotion_examples",
     "prompt_rollback_examples",
     "retrieval_citation_examples",
+    "retrieval_embedding_examples",
     "provider_policy_examples",
     "provider_runtime_examples",
     "provider_failure_mode_examples",
     "provider_operations_examples",
     "provider_degradation_examples",
+    "provider_embedding_examples",
     "safety_policy_examples",
     "safety_runtime_examples",
 }

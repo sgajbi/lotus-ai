@@ -1,5 +1,12 @@
 from unittest.mock import patch
 
+from _pytest.monkeypatch import MonkeyPatch
+
+from app.contracts.providers import (
+    EmbeddingExecutionRequest,
+    EmbeddingExecutionResponse,
+    ProviderAdapterKind,
+)
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeClaimRecord,
     AsyncRuntimeAttemptRecord,
@@ -8,8 +15,10 @@ from app.repositories.async_runtime_repository import (
 )
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.async_job_service import build_async_job_detail
+from app.services.retrieval_store import get_retrieval_repository
 from app.services.retrieval_async_execution import (
     run_next_retrieval_index_job,
+    run_retrieval_index_job_by_id,
     submit_retrieval_index_job_async,
 )
 from app.services.retrieval_catalog_service import (
@@ -57,6 +66,53 @@ def test_run_next_retrieval_index_job_completes_and_updates_retrieval_state() ->
     assert retrieval_detail.steps[2].runtime_status == "COMPLETED"
     assert retrieval_detail.steps[2].linked_async_job_id == submit_response.job_id
     assert all(document.index_status.value == "INDEXED" for document in source_documents.documents)
+
+
+def test_run_next_retrieval_index_job_uses_live_embedding_path_when_enabled(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.embedding_provider_mode = "enabled"
+    settings.live_embedding_provider_id = "embeddings.openai"
+    settings.live_embedding_model_id = "text-embedding-3-large"
+    settings.live_embedding_provider_api_key = "secret"
+
+    submit_retrieval_index_job_async(
+        job_id="retjob_lotus_platform_rfcs",
+        caller_app="lotus-platform",
+        correlation_id="corr-ret-async-live-001",
+    )
+
+    calls: list[str] = []
+
+    def _fake_execute_embedding_generation(
+        request: EmbeddingExecutionRequest,
+    ) -> EmbeddingExecutionResponse:
+        calls.append(request.content)
+
+        return EmbeddingExecutionResponse(
+            provider_id="embeddings.openai",
+            provider_mode="enabled",
+            adapter_kind=ProviderAdapterKind.OPENAI_EMBEDDINGS_LIVE,
+            failure_category=None,
+            model_id="text-embedding-3-large",
+            stubbed=False,
+            vector_dimension=3,
+            embedding=[0.1, 0.2, 0.3],
+            message="ok",
+        )
+
+    monkeypatch.setattr(
+        "app.services.retrieval_async_execution.execute_embedding_generation",
+        _fake_execute_embedding_generation,
+    )
+
+    result = run_next_retrieval_index_job(worker_id="worker-a")
+
+    assert result is not None
+    assert result.terminal_status == "COMPLETED"
+    assert calls
 
 
 def test_run_next_retrieval_index_job_returns_none_when_no_jobs_are_claimed() -> None:
@@ -157,3 +213,79 @@ def test_run_next_retrieval_index_job_fails_claim_with_missing_target() -> None:
     assert result is None
     fail_async_job.assert_called_once()
     assert fail_async_job.call_args.kwargs["failure_reason"] == "UNSUPPORTED_ASYNC_JOB_TYPE"
+
+
+def test_run_retrieval_index_job_by_id_returns_none_when_job_is_missing() -> None:
+    assert run_retrieval_index_job_by_id(async_job_id="missing-job", worker_id="worker-a") is None
+
+
+def test_run_next_retrieval_index_job_marks_failure_when_embedding_generation_fails(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.providers.base import ProviderExecutionError
+    from app.contracts.providers import ProviderFailureCategory
+
+    submit_response = submit_retrieval_index_job_async(
+        job_id="retjob_lotus_platform_rfcs",
+        caller_app="lotus-platform",
+        correlation_id="corr-ret-async-fail-001",
+    )
+
+    monkeypatch.setattr(
+        "app.services.retrieval_async_execution.execute_embedding_generation",
+        lambda request: (_ for _ in ()).throw(
+            ProviderExecutionError(
+                category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+                message="timed out",
+            )
+        ),
+    )
+
+    result = run_next_retrieval_index_job(worker_id="worker-a")
+
+    assert result is not None
+    assert result.async_job_id == submit_response.job_id
+    assert result.terminal_status == "FAILED"
+
+
+def test_run_next_retrieval_index_job_uses_document_title_when_preview_is_empty(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    submit_retrieval_index_job_async(
+        job_id="retjob_lotus_platform_rfcs",
+        caller_app="lotus-platform",
+        correlation_id="corr-ret-async-empty-preview-001",
+    )
+    repository = get_retrieval_repository()
+    document = repository.list_documents_for_source("lotus-platform-rfcs")[0]
+    for chunk in repository.list_chunks_for_document(document.document_id):
+        chunk.preview = ""
+
+    observed_content: list[str] = []
+
+    def _capture_embedding(
+        request: EmbeddingExecutionRequest,
+    ) -> EmbeddingExecutionResponse:
+        observed_content.append(request.content)
+        return EmbeddingExecutionResponse(
+            provider_id="embeddings.stub",
+            provider_mode="stub",
+            adapter_kind=ProviderAdapterKind.STUB,
+            failure_category=None,
+            model_id="bounded-stub-vector",
+            stubbed=True,
+            vector_dimension=3,
+            embedding=[0.1, 0.2, 0.3],
+            message="ok",
+        )
+
+    monkeypatch.setattr(
+        "app.services.retrieval_async_execution.execute_embedding_generation",
+        _capture_embedding,
+    )
+
+    result = run_next_retrieval_index_job(worker_id="worker-a")
+
+    assert result is not None
+    assert observed_content
+    assert document.title in observed_content[0]

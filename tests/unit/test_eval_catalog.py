@@ -62,6 +62,17 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
         retrieval_fixture.manifest_path == "docs/evals/fixtures/retrieval.search/basic_cases.json"
     )
     assert retrieval_fixture.case_count == 3
+    retrieval_embedding_fixture = next(
+        fixture
+        for fixture in catalog.fixture_families
+        if fixture.fixture_id == "retrieval_embedding_examples"
+    )
+    assert retrieval_embedding_fixture.status == "STAGED"
+    assert (
+        retrieval_embedding_fixture.manifest_path
+        == "docs/evals/fixtures/retrieval.embeddings/basic_cases.json"
+    )
+    assert retrieval_embedding_fixture.case_count == 2
     provider_fixture = next(
         fixture
         for fixture in catalog.fixture_families
@@ -114,6 +125,17 @@ def test_evaluation_catalog_reports_evidence_categories_and_fixture_families() -
         == "docs/evals/fixtures/providers.degradation/basic_cases.json"
     )
     assert provider_degradation_fixture.case_count == 3
+    provider_embedding_fixture = next(
+        fixture
+        for fixture in catalog.fixture_families
+        if fixture.fixture_id == "provider_embedding_examples"
+    )
+    assert provider_embedding_fixture.status == "STAGED"
+    assert (
+        provider_embedding_fixture.manifest_path
+        == "docs/evals/fixtures/providers.embeddings/basic_cases.json"
+    )
+    assert provider_embedding_fixture.case_count == 2
     safety_fixture = next(
         fixture
         for fixture in catalog.fixture_families

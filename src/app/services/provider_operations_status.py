@@ -7,6 +7,7 @@ from app.contracts.providers import (
     ProviderOperationsStatusResponse,
     ProviderQuotaScope,
 )
+from app.services.provider_expansion_policy import build_provider_expansion_policy
 from app.services.provider_budget_policy import build_provider_budget_policy
 from app.services.provider_degradation_state import build_provider_degradation_status
 from app.services.provider_live_execution_state import build_provider_live_execution_state
@@ -36,6 +37,7 @@ def build_provider_operations_status() -> ProviderOperationsStatusResponse:
         quota_policy=quota_policy,
         budget_policy=budget_policy,
         degradation_status=degradation_status,
+        expansion_policy=build_provider_expansion_policy(),
         blocking_reasons=blocking_reasons,
         summary=_build_provider_operations_summary(
             operations_state=operations_state,

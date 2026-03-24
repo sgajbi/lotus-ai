@@ -1,6 +1,7 @@
 import pytest
 
 from app.contracts.providers import (
+    EmbeddingExecutionRequest,
     ProviderAdapterKind,
     ProviderExecutionMode,
     ProviderFailureCategory,
@@ -8,11 +9,12 @@ from app.contracts.providers import (
 from app.providers.base import ProviderExecutionError
 from app.providers.registry import (
     list_registered_provider_descriptors,
+    resolve_embedding_adapter,
     resolve_text_generation_adapter,
 )
 
 
-def test_provider_registry_lists_stub_and_openai_live_descriptors() -> None:
+def test_provider_registry_lists_text_and_embedding_descriptors() -> None:
     descriptors = list_registered_provider_descriptors()
 
     assert any(
@@ -23,6 +25,17 @@ def test_provider_registry_lists_stub_and_openai_live_descriptors() -> None:
     assert any(
         descriptor.provider_id == "text.openai"
         and descriptor.adapter_kind == ProviderAdapterKind.OPENAI_LIVE
+        and descriptor.failure_category_on_use == ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
+        for descriptor in descriptors
+    )
+    assert any(
+        descriptor.provider_id == "embeddings.stub"
+        and descriptor.adapter_kind == ProviderAdapterKind.STUB
+        for descriptor in descriptors
+    )
+    assert any(
+        descriptor.provider_id == "embeddings.openai"
+        and descriptor.adapter_kind == ProviderAdapterKind.OPENAI_EMBEDDINGS_LIVE
         and descriptor.failure_category_on_use == ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
         for descriptor in descriptors
     )
@@ -39,5 +52,38 @@ def test_provider_registry_resolves_stub_adapter_for_supported_modes() -> None:
 def test_provider_registry_rejects_unregistered_mode() -> None:
     with pytest.raises(ProviderExecutionError) as exc_info:
         resolve_text_generation_adapter("unsupported")
+
+    assert exc_info.value.category == ProviderFailureCategory.PROVIDER_NOT_REGISTERED
+
+
+def test_provider_registry_resolves_embedding_adapters_for_supported_modes() -> None:
+    disabled_adapter = resolve_embedding_adapter(ProviderExecutionMode.DISABLED)
+    stub_adapter = resolve_embedding_adapter(ProviderExecutionMode.STUB)
+    live_adapter = resolve_embedding_adapter(ProviderExecutionMode.ENABLED)
+
+    assert disabled_adapter.descriptor.provider_id == "embeddings.stub"
+    assert stub_adapter.descriptor.provider_id == "embeddings.stub"
+    assert live_adapter.descriptor.provider_id == "embeddings.openai"
+
+
+def test_stub_embedding_provider_returns_bounded_vector() -> None:
+    adapter = resolve_embedding_adapter(ProviderExecutionMode.STUB)
+
+    response = adapter.embed(
+        EmbeddingExecutionRequest(
+            caller_app="lotus-platform",
+            corpus_id="lotus-platform-rfcs",
+            content="Shared AI platform service with governed retrieval indexing.",
+        )
+    )
+
+    assert response.provider_id == "embeddings.stub"
+    assert response.stubbed is True
+    assert response.vector_dimension == len(response.embedding)
+
+
+def test_provider_registry_rejects_unregistered_embedding_mode() -> None:
+    with pytest.raises(ProviderExecutionError) as exc_info:
+        resolve_embedding_adapter("unsupported")
 
     assert exc_info.value.category == ProviderFailureCategory.PROVIDER_NOT_REGISTERED

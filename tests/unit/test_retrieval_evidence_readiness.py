@@ -9,7 +9,7 @@ def test_retrieval_evidence_readiness_reports_foundation_evidence_gaps() -> None
 
     assert readiness.service == "lotus-ai"
     assert readiness.evidence_ready is False
-    assert readiness.required_item_count == 4
+    assert readiness.required_item_count == 5
     assert readiness.completed_required_item_count == 0
     assert readiness.items[0].evidence_id == "retrieval_fixture_coverage_pack"
     assert readiness.items[1].status == "NOT_READY"
@@ -18,15 +18,16 @@ def test_retrieval_evidence_readiness_reports_foundation_evidence_gaps() -> None
 
 
 def test_retrieval_evidence_readiness_prefers_runtime_backed_live_evidence() -> None:
-    submit_evaluation_run(
-        EvaluationRunSubmissionRequest(
-            fixture_id="retrieval_citation_examples",
-            caller_app="lotus-platform",
-            correlation_id="corr-ret-evidence-001",
-            triggered_by="operator-a",
+    for fixture_id in ("retrieval_citation_examples", "retrieval_embedding_examples"):
+        submit_evaluation_run(
+            EvaluationRunSubmissionRequest(
+                fixture_id=fixture_id,
+                caller_app="lotus-platform",
+                correlation_id=f"corr-{fixture_id}",
+                triggered_by="operator-a",
+            )
         )
-    )
-    run_next_evaluation_execution_job(worker_id="worker-a")
+        run_next_evaluation_execution_job(worker_id="worker-a")
 
     readiness = build_retrieval_evidence_readiness()
 
@@ -34,3 +35,4 @@ def test_retrieval_evidence_readiness_prefers_runtime_backed_live_evidence() -> 
     assert readiness.items[0].status == "READY"
     assert readiness.items[1].status == "READY"
     assert readiness.items[2].status == "READY"
+    assert readiness.items[3].status == "READY"

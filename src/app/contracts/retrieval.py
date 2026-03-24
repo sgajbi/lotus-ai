@@ -235,6 +235,16 @@ class RetrievalIndexingPolicyResponse(BaseModel):
     retrieval_mode: str = Field(description="Current retrieval mode configured for lotus-ai.")
     retrieval_store_mode: str = Field(description="Current retrieval metadata store mode.")
     embedding_provider_mode: str = Field(description="Current embedding provider mode.")
+    embedding_execution_enabled: bool = Field(
+        description="Whether live embedding execution is currently enabled for bounded retrieval indexing."
+    )
+    embedding_provider_id: str = Field(
+        description="Embedding provider identifier currently selected for retrieval indexing."
+    )
+    embedding_model_id: str | None = Field(
+        default=None,
+        description="Configured embedding model identifier currently selected for retrieval indexing, when one exists.",
+    )
     chunking_strategy: str = Field(description="Current chunking strategy label.")
     embedding_strategy: str = Field(description="Current embedding strategy label.")
     persistence_strategy: str = Field(description="Current vector persistence strategy label.")
@@ -347,6 +357,16 @@ class RetrievalExecutionStatusResponse(BaseModel):
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     live_search_enabled: bool = Field(description="Whether live retrieval search is active.")
     live_indexing_enabled: bool = Field(description="Whether live retrieval indexing is active.")
+    embedding_execution_enabled: bool = Field(
+        description="Whether retrieval indexing currently uses a live embedding provider path instead of the stub embedding path."
+    )
+    embedding_provider_id: str = Field(
+        description="Embedding provider identifier currently selected for retrieval indexing."
+    )
+    embedding_model_id: str | None = Field(
+        default=None,
+        description="Configured embedding model identifier currently selected for retrieval indexing, when one exists.",
+    )
     owning_plane: DeploymentPlaneId = Field(
         description="Internal plane currently responsible for retrieval execution."
     )
@@ -372,6 +392,9 @@ class RetrievalActivationReadinessResponse(BaseModel):
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
     retrieval_mode: str = Field(description="Configured retrieval execution mode.")
     embedding_provider_mode: str = Field(description="Configured embedding provider mode.")
+    embedding_execution_enabled: bool = Field(
+        description="Whether live embedding execution is currently enabled for bounded retrieval indexing."
+    )
     activation_ready: bool = Field(
         description="Whether live retrieval execution is currently ready for activation."
     )

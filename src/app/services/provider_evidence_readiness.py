@@ -14,12 +14,14 @@ _PROVIDER_RUNTIME_FIXTURE_IDS = frozenset({"provider_runtime_examples"})
 _PROVIDER_FAILURE_FIXTURE_IDS = frozenset({"provider_failure_mode_examples"})
 _PROVIDER_OPERATIONS_FIXTURE_IDS = frozenset({"provider_operations_examples"})
 _PROVIDER_DEGRADATION_FIXTURE_IDS = frozenset({"provider_degradation_examples"})
+_PROVIDER_EMBEDDING_FIXTURE_IDS = frozenset({"provider_embedding_examples"})
 _PROVIDER_RECORDED_BASELINE_FIXTURE_IDS = (
     _PROVIDER_POLICY_FIXTURE_IDS
     | _PROVIDER_RUNTIME_FIXTURE_IDS
     | _PROVIDER_FAILURE_FIXTURE_IDS
     | _PROVIDER_OPERATIONS_FIXTURE_IDS
     | _PROVIDER_DEGRADATION_FIXTURE_IDS
+    | _PROVIDER_EMBEDDING_FIXTURE_IDS
 )
 
 
@@ -35,6 +37,7 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
     degradation_fixture_ready = _PROVIDER_DEGRADATION_FIXTURE_IDS.issubset(
         inventory.staged_fixture_ids
     )
+    embedding_fixture_ready = _PROVIDER_EMBEDDING_FIXTURE_IDS.issubset(inventory.staged_fixture_ids)
     regression_baseline_ready = _PROVIDER_RECORDED_BASELINE_FIXTURE_IDS.issubset(
         inventory.recorded_provider_fixture_ids
     )
@@ -95,6 +98,16 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
             ),
         ),
         ProviderEvidenceReadinessItem(
+            evidence_id="provider_embedding_fixture_pack",
+            status="READY" if embedding_fixture_ready else "NOT_READY",
+            required_for_activation=True,
+            notes=(
+                "Provider embedding fixtures cover bounded live embedding configuration, rejection posture, and successful vector metadata preservation."
+                if embedding_fixture_ready
+                else "Provider embedding execution fixtures are not yet staged."
+            ),
+        ),
+        ProviderEvidenceReadinessItem(
             evidence_id="provider_regression_run_baseline",
             status="READY" if regression_baseline_ready else "NOT_READY",
             required_for_activation=True,
@@ -102,8 +115,7 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
                 "A recorded evaluation run proves provider policy, runtime, failure-mode, and durable provider-operations "
                 f"coverage in '{inventory.latest_recorded_provider_run_id}'."
                 if regression_baseline_ready and inventory.latest_recorded_provider_run_id
-                else "A governed recorded run proving provider policy, runtime, failure-mode, and durable provider-operations "
-                "coverage is not yet present."
+                else "A governed recorded run proving provider policy, runtime, failure-mode, durable provider-operations, and embedding coverage is not yet present."
             ),
         ),
         ProviderEvidenceReadinessItem(

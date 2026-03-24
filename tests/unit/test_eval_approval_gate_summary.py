@@ -20,7 +20,7 @@ def test_provider_approval_gate_reports_staged_only_without_runtime_runs() -> No
     assert summary.domain_id == "provider_execution"
     assert summary.evidence_state.value == "STAGED_ONLY"
     assert summary.approval_ready is False
-    assert summary.required_fixture_count == 5
+    assert summary.required_fixture_count == 6
     assert summary.runtime_backed_fixture_count == 0
     assert summary.latest_historical_baseline_run_id == "foundation_eval_2026_03_22_001"
 
@@ -74,6 +74,7 @@ def test_provider_approval_gate_reports_runtime_pass_when_all_required_fixtures_
         "provider_failure_mode_examples",
         "provider_operations_examples",
         "provider_degradation_examples",
+        "provider_embedding_examples",
     ):
         submit_evaluation_run(
             EvaluationRunSubmissionRequest(
@@ -89,7 +90,7 @@ def test_provider_approval_gate_reports_runtime_pass_when_all_required_fixtures_
 
     assert summary.evidence_state.value == "RUNTIME_PASS"
     assert summary.approval_ready is True
-    assert summary.runtime_backed_fixture_count == 5
+    assert summary.runtime_backed_fixture_count == 6
     assert all(item.evidence_state.value == "RUNTIME_PASS" for item in summary.fixture_summaries)
 
 
@@ -146,6 +147,7 @@ def test_retrieval_approval_gate_reports_runtime_stale_for_old_manifest_version(
     assert summary.approval_ready is False
     assert summary.runtime_backed_fixture_count == 1
     assert summary.fixture_summaries[0].evidence_state.value == "RUNTIME_STALE"
+    assert summary.fixture_summaries[1].evidence_state.value == "STAGED_ONLY"
 
 
 def test_provider_approval_gate_reports_runtime_fail_for_terminal_non_passing_run() -> None:
@@ -192,6 +194,7 @@ def test_retrieval_approval_gate_reports_runtime_in_progress() -> None:
     assert summary.evidence_state.value == "RUNTIME_IN_PROGRESS"
     assert summary.approval_ready is False
     assert summary.fixture_summaries[0].evidence_state.value == "RUNTIME_IN_PROGRESS"
+    assert summary.fixture_summaries[1].evidence_state.value == "STAGED_ONLY"
 
 
 def test_safety_approval_gate_reports_runtime_pass_when_required_fixtures_pass() -> None:

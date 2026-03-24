@@ -13,8 +13,13 @@ def test_provider_activation_readiness_reports_foundation_blockers() -> None:
     assert (
         readiness.text_generation_configuration.rollout_state == ProviderRolloutState.STUB_DEFAULT
     )
+    assert readiness.embedding_configuration.rollout_state == ProviderRolloutState.DOCUMENTED_ONLY
     assert (
         readiness.text_generation_configuration.credential_status
+        == ProviderCredentialStatus.NOT_CONFIGURED
+    )
+    assert (
+        readiness.embedding_configuration.credential_status
         == ProviderCredentialStatus.NOT_CONFIGURED
     )
     assert len(readiness.blocking_findings) == 4

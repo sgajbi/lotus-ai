@@ -26,6 +26,8 @@ def test_provider_operations_status_reports_rollout_blocked_foundation_posture()
     assert status.quota_policy.quota_enforced is False
     assert status.budget_policy.budget_enforced is False
     assert status.degradation_status.status == "DOCUMENTED_ONLY"
+    assert status.expansion_policy.bounded_expansion_enabled is True
+    assert status.expansion_policy.expansion_blocked is False
     assert status.blocking_reasons
 
 

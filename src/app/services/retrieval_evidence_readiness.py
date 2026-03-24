@@ -53,6 +53,18 @@ def build_retrieval_evidence_readiness() -> RetrievalEvidenceReadinessResponse:
             ),
         ),
         RetrievalEvidenceReadinessItem(
+            evidence_id="retrieval_embedding_runtime_pack",
+            status="READY" if runtime_backed_live_evidence_present else "NOT_READY",
+            required_for_activation=True,
+            notes=(
+                "Runtime-backed retrieval evidence now includes embedding provider posture for indexing and live-search dependency review."
+                if runtime_backed_live_evidence_present
+                else (
+                    "Activation review evidence linking retrieval indexing posture to embedding-provider runtime is not yet assembled."
+                )
+            ),
+        ),
+        RetrievalEvidenceReadinessItem(
             evidence_id="retrieval_reindex_and_rollback_evidence_pack",
             status="NOT_READY",
             required_for_activation=True,

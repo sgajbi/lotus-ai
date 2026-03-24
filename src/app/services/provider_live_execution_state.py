@@ -29,7 +29,11 @@ def build_provider_live_execution_state(
     *, task_id: str | None = None
 ) -> ProviderLiveExecutionState:
     configuration = build_text_generation_configuration_status()
-    mode_supported = settings.provider_mode in {mode.value for mode in ProviderExecutionMode}
+    mode_supported = settings.provider_mode in {
+        ProviderExecutionMode.DISABLED.value,
+        ProviderExecutionMode.STUB.value,
+        ProviderExecutionMode.OPENAI.value,
+    }
     live_mode_requested = settings.provider_mode == ProviderExecutionMode.OPENAI.value
     credentials_configured = configuration.credential_status == ProviderCredentialStatus.CONFIGURED
     rollout_permits_live_execution = configuration.rollout_state in {

@@ -86,6 +86,7 @@ def test_retrieval_execution_status_route(client: TestClient) -> None:
     assert body["execution_stage"] == "SEARCH_DISABLED"
     assert body["live_search_enabled"] is False
     assert body["live_indexing_enabled"] is True
+    assert body["embedding_execution_enabled"] is False
     assert body["route_mode"] == "UNIFIED_INTERNAL"
     assert body["split_route_degraded"] is False
 
@@ -160,6 +161,7 @@ def test_retrieval_activation_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["retrieval_mode"] == "disabled"
     assert body["embedding_provider_mode"] == "disabled"
+    assert body["embedding_execution_enabled"] is False
     assert body["activation_ready"] is False
     assert any("Retrieval mode is not enabled" in finding for finding in body["blocking_findings"])
     assert len(body["activation_path"]) == 4
@@ -172,11 +174,12 @@ def test_retrieval_runbook_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
-    assert body["required_item_count"] == 4
+    assert body["required_item_count"] == 5
     assert body["completed_required_item_count"] == 3
     assert body["items"][0]["runbook_id"] == "retrieval_operational_runbook"
     assert body["items"][0]["status"] == "READY"
     assert body["items"][2]["status"] == "READY"
+    assert body["items"][3]["runbook_id"] == "retrieval_embedding_dependency_review"
 
 
 def test_retrieval_evidence_readiness_route(client: TestClient) -> None:
@@ -186,10 +189,11 @@ def test_retrieval_evidence_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["evidence_ready"] is False
-    assert body["required_item_count"] == 4
+    assert body["required_item_count"] == 5
     assert body["completed_required_item_count"] == 0
     assert body["items"][0]["evidence_id"] == "retrieval_fixture_coverage_pack"
     assert body["items"][1]["status"] == "NOT_READY"
+    assert body["items"][3]["evidence_id"] == "retrieval_embedding_runtime_pack"
     assert body["approval_gate"]["domain_id"] == "retrieval_execution"
     assert body["approval_gate"]["evidence_state"] == "STAGED_ONLY"
     assert (
@@ -216,15 +220,16 @@ def test_retrieval_governance_status_route(client: TestClient) -> None:
 def test_retrieval_evidence_readiness_route_prefers_runtime_backed_pass_evidence(
     client: TestClient,
 ) -> None:
-    submit_evaluation_run(
-        EvaluationRunSubmissionRequest(
-            fixture_id="retrieval_citation_examples",
-            caller_app="lotus-platform",
-            correlation_id="corr-retrieval-approval-001",
-            triggered_by="operator-a",
+    for fixture_id in ("retrieval_citation_examples", "retrieval_embedding_examples"):
+        submit_evaluation_run(
+            EvaluationRunSubmissionRequest(
+                fixture_id=fixture_id,
+                caller_app="lotus-platform",
+                correlation_id=f"corr-{fixture_id}",
+                triggered_by="operator-a",
+            )
         )
-    )
-    run_next_evaluation_execution_job(worker_id="worker-a")
+        run_next_evaluation_execution_job(worker_id="worker-a")
 
     response = client.get("/platform/retrieval/evidence-readiness")
 
@@ -251,6 +256,7 @@ def test_retrieval_indexing_policy_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["persistence_strategy"] == "postgresql+pgvector"
     assert body["retrieval_store_mode"] == "memory"
+    assert body["embedding_execution_enabled"] is False
 
 
 def test_retrieval_index_job_detail_route(client: TestClient) -> None:

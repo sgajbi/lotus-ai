@@ -21,11 +21,11 @@ from app.retrieval.inventory_summary import (
 )
 from app.retrieval.policy import (
     CHUNKING_STRATEGY,
-    EMBEDDING_STRATEGY,
     PERSISTENCE_STRATEGY,
     VECTOR_STORE_STRATEGY,
 )
 from app.services.retrieval_store import get_retrieval_repository
+from app.services.retrieval_embedding_runtime import build_retrieval_embedding_runtime
 from app.services.runtime_readiness import get_retrieval_store_runtime_status
 from app.services.async_runtime_store import get_async_runtime_store
 
@@ -134,7 +134,7 @@ def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
                         else runtime_job.lifecycle_status,
                         linked_async_job_id=None if runtime_job is None else runtime_job.job_id,
                         description=(
-                            "Embedding generation remains deterministic and bounded for the current retrieval indexing runtime path."
+                            "Embedding generation is bounded and governed through the selected embedding provider path for the current retrieval indexing runtime posture."
                         ),
                     ),
                     RetrievalIndexJobStepDescriptor(
@@ -163,20 +163,25 @@ def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
 
 
 def build_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
+    embedding_runtime = build_retrieval_embedding_runtime()
     return RetrievalIndexingPolicyResponse(
         service=settings.service_name,
         vector_store=VECTOR_STORE_STRATEGY,
         retrieval_mode=settings.retrieval_mode,
         retrieval_store_mode=settings.retrieval_store_mode,
         embedding_provider_mode=settings.embedding_provider_mode,
+        embedding_execution_enabled=embedding_runtime.embedding_execution_enabled,
+        embedding_provider_id=embedding_runtime.embedding_provider_id,
+        embedding_model_id=embedding_runtime.embedding_model_id,
         chunking_strategy=CHUNKING_STRATEGY,
-        embedding_strategy=EMBEDDING_STRATEGY,
+        embedding_strategy=embedding_runtime.embedding_strategy,
         persistence_strategy=PERSISTENCE_STRATEGY,
         execution_stage=RetrievalPipelineStage.ENABLED,
         notes=[
             "Retrieval indexing can now run through the durable async runtime for allowlisted job targets.",
             "Approved source curation is required before any document enters the retrieval corpus.",
             "PostgreSQL with pgvector remains the first vector-store architecture for lotus-ai.",
+            *embedding_runtime.findings,
         ],
     )
 

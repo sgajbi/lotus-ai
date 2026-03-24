@@ -1,0 +1,36 @@
+{
+  "task_id": "retrieval.embedding-runtime.v1",
+  "fixture_family": "retrieval_embedding_examples",
+  "cases": [
+    {
+      "case_id": "retrieval_indexing_reports_stub_embedding_posture_when_disabled",
+      "summary": "Retrieval indexing should report stub embedding posture when live embedding execution is not enabled.",
+      "input": {
+        "retrieval_mode": "enabled",
+        "embedding_provider_mode": "disabled"
+      },
+      "expected": {
+        "embedding_execution_enabled": false,
+        "embedding_strategy": "provider-disabled",
+        "expected_outcome": "STUBBED_INDEXING_POSTURE"
+      }
+    },
+    {
+      "case_id": "retrieval_indexing_reports_live_embedding_posture_when_enabled",
+      "summary": "Retrieval indexing should report live embedding posture when bounded live embedding execution is configured.",
+      "input": {
+        "retrieval_mode": "enabled",
+        "embedding_provider_mode": "enabled",
+        "live_embedding_provider_id": "embeddings.openai",
+        "live_embedding_model_id": "text-embedding-3-large",
+        "live_embedding_provider_api_key": "eval-secret"
+      },
+      "expected": {
+        "embedding_execution_enabled": true,
+        "embedding_provider_id": "embeddings.openai",
+        "embedding_strategy": "provider-live-openai",
+        "expected_outcome": "LIVE_INDEXING_POSTURE"
+      }
+    }
+  ]
+}

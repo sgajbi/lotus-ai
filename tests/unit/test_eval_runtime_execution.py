@@ -60,6 +60,126 @@ def test_execute_fixture_case_reports_failure_for_provider_operations_state_mism
     assert evidence_refs == ["service://platform/providers/operations-status"]
 
 
+def test_execute_fixture_case_reports_pass_for_provider_embedding_rejection_case() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="live_embedding_mode_requires_complete_configuration",
+        summary="Live embedding mode should reject partial credential configuration before execution.",
+        input_payload={
+            "embedding_provider_mode": "enabled",
+            "live_embedding_provider_id": "embeddings.openai",
+            "live_embedding_model_id": None,
+            "live_embedding_provider_api_key": "secret",
+        },
+        expected_payload={
+            "failure_category": "INVALID_LIVE_CONFIGURATION",
+            "expected_outcome": "REJECTION",
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="provider_embedding_examples",
+            fixture_task_id="provider.embeddings.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "invalid configuration posture" in summary
+    assert evidence_refs == ["service://platform/providers", "service://platform/providers/policy"]
+
+
+def test_execute_fixture_case_reports_pass_for_provider_embedding_success_case() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="live_embedding_execution_returns_vector_metadata",
+        summary="Live embedding execution should preserve provider identity and vector metadata when bounded rollout is configured.",
+        input_payload={
+            "embedding_provider_mode": "enabled",
+            "live_embedding_provider_id": "embeddings.openai",
+            "live_embedding_model_id": "text-embedding-3-large",
+            "live_embedding_provider_api_key": "eval-secret",
+        },
+        expected_payload={
+            "provider_id": "embeddings.openai",
+            "model_id": "text-embedding-3-large",
+            "adapter_kind": "OPENAI_EMBEDDINGS_LIVE",
+            "expected_outcome": "SUCCESS",
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="provider_embedding_examples",
+            fixture_task_id="provider.embeddings.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "preserved provider identity and model metadata" in summary
+    assert evidence_refs == ["service://platform/providers", "service://platform/providers/policy"]
+
+
+def test_execute_fixture_case_reports_pass_for_retrieval_embedding_stub_posture() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="retrieval_indexing_reports_stub_embedding_posture_when_disabled",
+        summary="Retrieval indexing should report stub embedding posture when live embedding execution is not enabled.",
+        input_payload={
+            "retrieval_mode": "enabled",
+            "embedding_provider_mode": "disabled",
+        },
+        expected_payload={
+            "embedding_execution_enabled": False,
+            "embedding_strategy": "provider-disabled",
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="retrieval_embedding_examples",
+            fixture_task_id="retrieval.embedding-runtime.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "matched the expected bounded indexing posture" in summary
+    assert evidence_refs == [
+        "service://platform/retrieval/execution-status",
+        "service://platform/retrieval/activation-readiness",
+    ]
+
+
+def test_execute_fixture_case_reports_pass_for_retrieval_embedding_live_posture() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="retrieval_indexing_reports_live_embedding_posture_when_enabled",
+        summary="Retrieval indexing should report live embedding posture when bounded live embedding execution is configured.",
+        input_payload={
+            "retrieval_mode": "enabled",
+            "embedding_provider_mode": "enabled",
+            "live_embedding_provider_id": "embeddings.openai",
+            "live_embedding_model_id": "text-embedding-3-large",
+            "live_embedding_provider_api_key": "eval-secret",
+        },
+        expected_payload={
+            "embedding_execution_enabled": True,
+            "embedding_provider_id": "embeddings.openai",
+            "embedding_strategy": "provider-live-openai",
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="retrieval_embedding_examples",
+            fixture_task_id="retrieval.embedding-runtime.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "matched the expected bounded indexing posture" in summary
+    assert evidence_refs == [
+        "service://platform/retrieval/execution-status",
+        "service://platform/retrieval/activation-readiness",
+    ]
+
+
 def test_execute_fixture_case_reports_pass_for_live_retrieval_search_case() -> None:
     case = EvaluationFixtureRuntimeCase(
         case_id="retrieval_live_search_case",

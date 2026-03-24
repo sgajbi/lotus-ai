@@ -7,6 +7,7 @@ def test_provider_evidence_inventory_reports_staged_and_recorded_provider_assets
     assert "provider_policy_examples" in inventory.staged_fixture_ids
     assert "provider_runtime_examples" in inventory.staged_fixture_ids
     assert "provider_failure_mode_examples" in inventory.staged_fixture_ids
+    assert "provider_embedding_examples" in inventory.staged_fixture_ids
     assert "provider_resolution" in inventory.evidence_category_ids
     assert inventory.latest_recorded_provider_run_id == "foundation_eval_2026_03_22_001"
     assert inventory.recorded_provider_fixture_ids == frozenset(
@@ -16,5 +17,6 @@ def test_provider_evidence_inventory_reports_staged_and_recorded_provider_assets
             "provider_failure_mode_examples",
             "provider_operations_examples",
             "provider_degradation_examples",
+            "provider_embedding_examples",
         }
     )

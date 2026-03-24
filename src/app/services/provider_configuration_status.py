@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from app.config import settings
 from app.contracts.providers import (
+    ProviderCapability,
     ProviderConfigurationStatusDescriptor,
     ProviderCredentialStatus,
+    ProviderExecutionMode,
     ProviderRolloutState,
 )
 from app.services.provider_task_allowlist import (
@@ -89,7 +91,79 @@ def build_text_generation_configuration_status() -> ProviderConfigurationStatusD
         )
 
     return ProviderConfigurationStatusDescriptor(
+        capability=ProviderCapability.TEXT_GENERATION,
         rollout_state=resolved_rollout_state,
+        configured_live_provider_id=configured_live_provider_id,
+        configured_live_model_id=configured_live_model_id,
+        allowlisted_task_ids=allowlisted_task_ids,
+        credential_status=credential_status,
+        configuration_valid=configuration_valid,
+        findings=findings,
+    )
+
+
+def build_embedding_configuration_status() -> ProviderConfigurationStatusDescriptor:
+    configured_mode = settings.embedding_provider_mode
+    configured_live_provider_id = settings.live_embedding_provider_id
+    configured_live_model_id = settings.live_embedding_model_id
+    api_key = settings.live_embedding_provider_api_key
+    findings: list[str] = []
+    configuration_valid = True
+    allowlisted_task_ids: list[str] = []
+
+    if configured_mode == ProviderExecutionMode.DISABLED.value:
+        rollout_state = ProviderRolloutState.DOCUMENTED_ONLY
+        credential_status = ProviderCredentialStatus.NOT_CONFIGURED
+        findings.append(
+            "Embedding provider rollout remains documented-only until a later RFC-0018 slice enables governed live execution."
+        )
+    elif configured_mode == ProviderExecutionMode.STUB.value:
+        rollout_state = ProviderRolloutState.STUB_DEFAULT
+        credential_status = ProviderCredentialStatus.NOT_CONFIGURED
+        findings.append(
+            "Embedding provider remains on the stub path for contract validation and bounded retrieval preparation."
+        )
+    elif configured_mode == ProviderExecutionMode.ENABLED.value:
+        rollout_state = ProviderRolloutState.CANARY_ENABLED
+        live_config_values = [
+            configured_live_provider_id,
+            configured_live_model_id,
+            api_key,
+        ]
+        populated_live_config_count = sum(bool(value) for value in live_config_values)
+        if configured_live_provider_id not in {None, "embeddings.openai"}:
+            configuration_valid = False
+            findings.append(
+                "Configured live embedding provider id is not recognized by the current provider backbone."
+            )
+        if populated_live_config_count == 0:
+            credential_status = ProviderCredentialStatus.NOT_CONFIGURED
+            configuration_valid = False
+            findings.append(
+                "Live embedding mode requires configured provider id, model id, and provider credential values."
+            )
+        elif populated_live_config_count == len(live_config_values):
+            credential_status = ProviderCredentialStatus.CONFIGURED
+        else:
+            credential_status = ProviderCredentialStatus.INVALID
+            configuration_valid = False
+            findings.append(
+                "Live embedding credentials are partially populated and therefore invalid."
+            )
+        findings.append(
+            "Live embedding provider execution is now configured for bounded rollout, but broader retrieval/provider governance still remains a separate approval concern."
+        )
+    else:
+        rollout_state = ProviderRolloutState.DOCUMENTED_ONLY
+        credential_status = ProviderCredentialStatus.INVALID
+        configuration_valid = False
+        findings.append(
+            "Configured embedding provider mode is not recognized and cannot be evaluated safely."
+        )
+
+    return ProviderConfigurationStatusDescriptor(
+        capability=ProviderCapability.EMBEDDINGS,
+        rollout_state=rollout_state,
         configured_live_provider_id=configured_live_provider_id,
         configured_live_model_id=configured_live_model_id,
         allowlisted_task_ids=allowlisted_task_ids,

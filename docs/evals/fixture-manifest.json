@@ -76,6 +76,12 @@
       "manifest_path": "docs/evals/fixtures/retrieval.search/basic_cases.json"
     },
     {
+      "fixture_id": "retrieval_embedding_examples",
+      "status": "STAGED",
+      "description": "Retrieval embedding-runtime evaluation examples for bounded indexing rollout.",
+      "manifest_path": "docs/evals/fixtures/retrieval.embeddings/basic_cases.json"
+    },
+    {
       "fixture_id": "provider_policy_examples",
       "status": "STAGED",
       "description": "Provider policy and disabled-execution evaluation examples.",
@@ -104,6 +110,12 @@
       "status": "STAGED",
       "description": "Provider degraded-upstream and circuit-open evaluation examples.",
       "manifest_path": "docs/evals/fixtures/providers.degradation/basic_cases.json"
+    },
+    {
+      "fixture_id": "provider_embedding_examples",
+      "status": "STAGED",
+      "description": "Provider embedding execution and configuration evaluation examples.",
+      "manifest_path": "docs/evals/fixtures/providers.embeddings/basic_cases.json"
     },
     {
       "fixture_id": "safety_policy_examples",

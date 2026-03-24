@@ -1,6 +1,6 @@
 # RFC-0018: Governed Embeddings and Provider Expansion
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -94,6 +94,15 @@ The first implementation should:
 4. define how later provider additions are evaluated without opening broad provider sprawl,
 5. keep task and retrieval runtime behavior truthful during rollout.
 
+For implementation discipline, RFC-0018 will use four explicit postures:
+
+1. `STUB_ONLY`
+2. `LIVE_PATH_DEFINED`
+3. `GOVERNANCE_READY`
+4. `EXPANSION_READY`
+
+Slice 1 stops at `LIVE_PATH_DEFINED`. It must not silently enable retrieval indexing, retrieval search, or live embedding execution just because the provider contracts and registry now understand an embedding live path.
+
 ## State Model and Invariants
 
 This RFC establishes the following invariants:
@@ -174,7 +183,8 @@ Acceptance gate:
 1. provider contracts are explicit,
 2. policy and catalog remain truthful,
 3. unit tests cover embedding capability posture,
-4. no silent retrieval behavior change is introduced.
+4. no silent retrieval behavior change is introduced,
+5. the embedding mode model is internally consistent across config, policy, catalog, and retrieval readiness.
 
 ### Slice 2: Governed Live Embedding Execution
 
@@ -220,6 +230,12 @@ Acceptance gate:
 2. provider breadth does not weaken control-plane clarity,
 3. tests cover multi-provider policy semantics,
 4. the platform is materially closer to a mature shared-provider layer.
+
+Implementation note:
+
+1. provider breadth is modeled through explicit per-capability slot limits rather than speculative runnable adapters,
+2. the current governed model allows one later additional provider slot for text generation and one for embeddings,
+3. any later provider still remains blocked from activation until it satisfies the same catalog, evaluation, runbook, quota, budget, degradation, and governance controls as the current live paths.
 
 ## Risks
 

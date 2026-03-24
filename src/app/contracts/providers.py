@@ -23,11 +23,13 @@ class ProviderExecutionMode(str, Enum):
     DISABLED = "disabled"
     STUB = "stub"
     OPENAI = "openai"
+    ENABLED = "enabled"
 
 
 class ProviderAdapterKind(str, Enum):
     STUB = "STUB"
     OPENAI_LIVE = "OPENAI_LIVE"
+    OPENAI_EMBEDDINGS_LIVE = "OPENAI_EMBEDDINGS_LIVE"
 
 
 class ProviderFailureCategory(str, Enum):
@@ -201,6 +203,9 @@ class ProviderOperationsStatusResponse(BaseModel):
     degradation_status: ProviderDegradationStatusDescriptor = Field(
         description="Current live-provider degradation posture."
     )
+    expansion_policy: ProviderExpansionPolicyDescriptor = Field(
+        description="Bounded provider-expansion policy as it relates to current provider operations posture."
+    )
     blocking_reasons: list[str] = Field(
         default_factory=list,
         description="Human-readable reasons why provider operations are currently blocked or degraded.",
@@ -345,20 +350,23 @@ class ProviderBudgetPolicyResponse(BaseModel):
 
 
 class ProviderConfigurationStatusDescriptor(BaseModel):
+    capability: ProviderCapability = Field(
+        description="Provider capability whose rollout and configuration posture is being described."
+    )
     rollout_state: ProviderRolloutState = Field(
-        description="Current governed rollout posture for live text-generation provider activation."
+        description="Current governed rollout posture for this provider capability."
     )
     configured_live_provider_id: str | None = Field(
         default=None,
-        description="Allowlisted live provider identifier configured for future activation, when present.",
+        description="Allowlisted or configured live provider identifier for this capability, when present.",
     )
     configured_live_model_id: str | None = Field(
         default=None,
-        description="Allowlisted live model identifier configured for future activation, when present.",
+        description="Allowlisted or configured live model identifier for this capability, when present.",
     )
     allowlisted_task_ids: list[str] = Field(
         default_factory=list,
-        description="Bounded task identifiers currently allowlisted for future live text-generation execution.",
+        description="Bounded task identifiers currently allowlisted for future activation, when this capability is task-scoped.",
     )
     credential_status: ProviderCredentialStatus = Field(
         description="Current credential posture for the configured live provider path."
@@ -398,6 +406,50 @@ class ProviderDescriptor(BaseModel):
     notes: str = Field(description="Operational notes describing the current provider posture.")
 
 
+class ProviderExpansionRuleDescriptor(BaseModel):
+    capability: ProviderCapability = Field(
+        description="Provider capability governed by this bounded expansion rule."
+    )
+    registered_provider_ids: list[str] = Field(
+        description="Currently registered provider identifiers for this capability."
+    )
+    live_capable_provider_ids: list[str] = Field(
+        description="Registered provider identifiers that expose a non-stub live-capable adapter for this capability."
+    )
+    max_governed_provider_count: int = Field(
+        description="Maximum bounded provider count currently approved for this capability."
+    )
+    available_expansion_slots: int = Field(
+        description="Remaining bounded expansion slots available before this capability exceeds the approved provider-breadth model."
+    )
+    expansion_ready: bool = Field(
+        description="Whether this capability remains within the bounded provider-expansion policy."
+    )
+    requirements: list[str] = Field(
+        default_factory=list,
+        description="Explicit governance requirements that any additional provider must satisfy before activation.",
+    )
+    notes: str = Field(
+        description="Human-readable explanation of the bounded provider-breadth posture for this capability."
+    )
+
+
+class ProviderExpansionPolicyDescriptor(BaseModel):
+    bounded_expansion_enabled: bool = Field(
+        description="Whether lotus-ai now exposes an explicit bounded provider-expansion model."
+    )
+    expansion_blocked: bool = Field(
+        description="Whether the current registered provider breadth violates or exhausts the bounded expansion policy."
+    )
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Human-readable findings describing the current bounded provider-expansion posture.",
+    )
+    capability_rules: list[ProviderExpansionRuleDescriptor] = Field(
+        description="Capability-specific bounded provider expansion rules."
+    )
+
+
 class ProviderCatalogResponse(BaseModel):
     service: str = Field(description="Service name emitting the provider catalog.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -406,8 +458,20 @@ class ProviderCatalogResponse(BaseModel):
     text_generation_configuration: ProviderConfigurationStatusDescriptor = Field(
         description="Current rollout and configuration posture for future live text-generation activation."
     )
+    embedding_configuration: ProviderConfigurationStatusDescriptor = Field(
+        description="Current rollout and configuration posture for future live embedding-provider activation."
+    )
     runtime_execution_enabled: bool = Field(
         description="Whether any provider is currently enabled for live execution."
+    )
+    text_generation_runtime_execution_enabled: bool = Field(
+        description="Whether any text-generation provider path is currently enabled for live execution."
+    )
+    embedding_runtime_execution_enabled: bool = Field(
+        description="Whether any embedding provider path is currently enabled for live execution."
+    )
+    expansion_policy: ProviderExpansionPolicyDescriptor = Field(
+        description="Bounded provider-expansion policy describing current provider breadth and future governed slots."
     )
     providers: list[ProviderDescriptor] = Field(
         description="Governed provider catalog exposed by lotus-ai."
@@ -444,6 +508,12 @@ class ProviderPolicyResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     text_generation_configuration: ProviderConfigurationStatusDescriptor = Field(
         description="Current rollout and configuration posture for future live text-generation activation."
+    )
+    embedding_configuration: ProviderConfigurationStatusDescriptor = Field(
+        description="Current rollout and configuration posture for future live embedding-provider activation."
+    )
+    expansion_policy: ProviderExpansionPolicyDescriptor = Field(
+        description="Bounded provider-expansion policy describing how later providers are reviewed without widening execution semantics prematurely."
     )
     policies: list[ProviderPolicyDescriptor] = Field(
         description="Capability-specific provider execution policies."
@@ -488,6 +558,23 @@ class ProviderExecutionRequest(BaseModel):
     )
     max_output_tokens: int = Field(
         description="Maximum bounded output-token budget allowed for this execution request."
+    )
+
+
+class EmbeddingExecutionRequest(BaseModel):
+    caller_app: str = Field(description="Calling Lotus application or platform component.")
+    tenant_id: str | None = Field(
+        default=None,
+        description="Optional tenant or environment ownership marker for the embedding request.",
+    )
+    corpus_id: str | None = Field(
+        default=None,
+        description="Optional bounded corpus identifier associated with the embedding request.",
+    )
+    content: str = Field(description="Bounded text content to convert into an embedding.")
+    metadata: dict[str, object] = Field(
+        default_factory=dict,
+        description="Structured metadata describing the bounded embedding request context.",
     )
 
 
@@ -546,6 +633,37 @@ class ProviderExecutionResponse(BaseModel):
     )
 
 
+class EmbeddingExecutionResponse(BaseModel):
+    provider_id: str = Field(description="Provider identifier selected for embedding execution.")
+    provider_mode: str = Field(description="Provider mode active during embedding execution.")
+    adapter_kind: ProviderAdapterKind | None = Field(
+        default=None,
+        description="Registered adapter kind that handled the embedding request, when applicable.",
+    )
+    failure_category: ProviderFailureCategory | None = Field(
+        default=None,
+        description="Structured provider failure category when embedding execution is rejected or degraded.",
+    )
+    model_id: str | None = Field(
+        default=None,
+        description="Embedding model identifier used for execution when one is available.",
+    )
+    stubbed: bool = Field(
+        description="Whether embedding execution was handled by a stub provider path."
+    )
+    vector_dimension: int | None = Field(
+        default=None,
+        description="Dimension of the returned embedding vector, when execution succeeded.",
+    )
+    embedding: list[float] = Field(
+        default_factory=list,
+        description="Embedding vector returned by the provider layer when execution succeeded.",
+    )
+    message: str = Field(
+        description="Human-readable embedding execution message returned by the provider layer."
+    )
+
+
 class ProviderActivationReadinessResponse(BaseModel):
     service: str = Field(
         description="Service name emitting the provider activation readiness view."
@@ -555,6 +673,9 @@ class ProviderActivationReadinessResponse(BaseModel):
     embedding_provider_mode: str = Field(description="Configured embedding provider mode.")
     text_generation_configuration: ProviderConfigurationStatusDescriptor = Field(
         description="Current rollout and configuration posture for future live text-generation activation."
+    )
+    embedding_configuration: ProviderConfigurationStatusDescriptor = Field(
+        description="Current rollout and configuration posture for future live embedding-provider activation."
     )
     activation_ready: bool = Field(
         description="Whether provider execution is currently ready for live activation."
@@ -636,6 +757,9 @@ class ProviderGovernanceStatusResponse(BaseModel):
     )
     evidence_readiness: ProviderEvidenceReadinessResponse = Field(
         description="Evaluation and audit evidence-readiness summary for provider execution."
+    )
+    expansion_policy: ProviderExpansionPolicyDescriptor = Field(
+        description="Bounded provider-expansion policy describing whether later provider breadth can be reviewed without weakening governance clarity."
     )
     blocking_area_count: int = Field(
         description="Number of top-level provider governance areas currently blocking activation."

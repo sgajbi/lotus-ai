@@ -42,11 +42,14 @@ from app.repositories.evaluation_runtime_repository import (
 )
 from app.services.eval_run_submission_service import RUNTIME_BACKED_EVALUATION_FIXTURE_IDS
 from app.services.artifact_payloads import persist_json_artifact
+from app.services.embedding_live_execution_state import build_embedding_live_execution_state
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
 from app.services.prompt_store import get_prompt_repository
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import build_provider_budget_policy
+from app.services.provider_catalog import build_provider_catalog
+from app.services.provider_configuration_status import build_embedding_configuration_status
 from app.services.provider_degradation_state import (
     record_provider_failure,
     reset_provider_degradation_state,
@@ -58,6 +61,7 @@ from app.services.provider_operations_store import (
     reset_provider_operations_store_cache,
 )
 from app.services.provider_quota_policy import reset_provider_quota_counters
+from app.services.retrieval_embedding_runtime import build_retrieval_embedding_runtime
 from app.services.retrieval_execution_status import build_retrieval_execution_status
 from app.services.retrieval_store import get_retrieval_repository, reset_retrieval_repository
 from app.services.safety_enforcement import (
@@ -284,6 +288,39 @@ def _execute_fixture_case(
             ["service://ai/tasks/execute", "service://platform/retrieval/execution-status"],
         )
 
+    if fixture_id == "retrieval_embedding_examples":
+        embedding_runtime = build_retrieval_embedding_runtime()
+        retrieval_status = build_retrieval_execution_status()
+        checks = [
+            embedding_runtime.embedding_execution_enabled
+            == case.expected_payload["embedding_execution_enabled"],
+            embedding_runtime.embedding_strategy == case.expected_payload["embedding_strategy"],
+            retrieval_status.embedding_execution_enabled
+            == case.expected_payload["embedding_execution_enabled"],
+        ]
+        if case.expected_payload.get("embedding_provider_id") is not None:
+            checks.append(
+                embedding_runtime.embedding_provider_id
+                == case.expected_payload["embedding_provider_id"]
+            )
+            checks.append(
+                retrieval_status.embedding_provider_id
+                == case.expected_payload["embedding_provider_id"]
+            )
+        outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
+        return (
+            (
+                "Retrieval embedding runtime matched the expected bounded indexing posture."
+                if outcome == EvaluationCaseOutcome.PASS
+                else "Retrieval embedding runtime did not match the expected bounded indexing posture."
+            ),
+            outcome,
+            [
+                "service://platform/retrieval/execution-status",
+                "service://platform/retrieval/activation-readiness",
+            ],
+        )
+
     if fixture_id == "prompt_promotion_examples":
         promote_request = case.input_payload["promote_request"]
         _apply_prompt_transition_for_evaluation(
@@ -473,6 +510,54 @@ def _execute_fixture_case(
             ),
             outcome,
             ["service://ai/tasks/execute"],
+        )
+
+    if fixture_id == "provider_embedding_examples":
+        if case.expected_payload["expected_outcome"] == "REJECTION":
+            embedding_state = build_embedding_live_execution_state()
+            configuration = build_embedding_configuration_status()
+            outcome = (
+                EvaluationCaseOutcome.PASS
+                if (
+                    embedding_state.live_execution_enabled is False
+                    and configuration.configuration_valid is False
+                    and case.expected_payload["failure_category"] == "INVALID_LIVE_CONFIGURATION"
+                )
+                else EvaluationCaseOutcome.FAIL
+            )
+            return (
+                (
+                    "Live embedding configuration rejection matched the expected invalid configuration posture."
+                    if outcome == EvaluationCaseOutcome.PASS
+                    else "Live embedding configuration rejection did not match the expected invalid configuration posture."
+                ),
+                outcome,
+                ["service://platform/providers", "service://platform/providers/policy"],
+            )
+
+        embedding_state = build_embedding_live_execution_state()
+        provider_catalog = build_provider_catalog()
+        embedding_provider = next(
+            provider
+            for provider in provider_catalog.providers
+            if provider.provider_id == case.expected_payload["provider_id"]
+        )
+        checks = [
+            embedding_state.live_execution_enabled is True,
+            embedding_state.configured_provider_id == case.expected_payload["provider_id"],
+            embedding_state.configured_model_id == case.expected_payload["model_id"],
+            embedding_provider.adapter_kind.value == case.expected_payload["adapter_kind"],
+            provider_catalog.embedding_runtime_execution_enabled is True,
+        ]
+        outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
+        return (
+            (
+                "Bounded live embedding configuration preserved provider identity and model metadata without drifting into an ungoverned path."
+                if outcome == EvaluationCaseOutcome.PASS
+                else "Bounded live embedding configuration did not preserve the expected provider identity and model metadata."
+            ),
+            outcome,
+            ["service://platform/providers", "service://platform/providers/policy"],
         )
 
     if fixture_id == "provider_failure_mode_examples":
@@ -751,6 +836,10 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
         "provider_operations_store_mode": settings.provider_operations_store_mode,
         "retrieval_mode": settings.retrieval_mode,
         "safety_mode": settings.safety_mode,
+        "embedding_provider_mode": settings.embedding_provider_mode,
+        "live_embedding_provider_id": settings.live_embedding_provider_id,
+        "live_embedding_model_id": settings.live_embedding_model_id,
+        "live_embedding_provider_api_key": settings.live_embedding_provider_api_key,
     }
     try:
         reset_prompt_store_cache()
@@ -762,6 +851,26 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
             settings.retrieval_mode = str(input_payload["retrieval_mode"])
         if "safety_mode" in input_payload:
             settings.safety_mode = str(input_payload["safety_mode"])
+        if "embedding_provider_mode" in input_payload:
+            settings.embedding_provider_mode = str(input_payload["embedding_provider_mode"])
+        if "live_embedding_provider_id" in input_payload:
+            settings.live_embedding_provider_id = (
+                str(input_payload["live_embedding_provider_id"])
+                if input_payload["live_embedding_provider_id"] is not None
+                else None
+            )
+        if "live_embedding_model_id" in input_payload:
+            settings.live_embedding_model_id = (
+                str(input_payload["live_embedding_model_id"])
+                if input_payload["live_embedding_model_id"] is not None
+                else None
+            )
+        if "live_embedding_provider_api_key" in input_payload:
+            settings.live_embedding_provider_api_key = (
+                str(input_payload["live_embedding_provider_api_key"])
+                if input_payload["live_embedding_provider_api_key"] is not None
+                else None
+            )
         indexed_sources = input_payload.get("index_sources", [])
         if isinstance(indexed_sources, list):
             repository = get_retrieval_repository()
