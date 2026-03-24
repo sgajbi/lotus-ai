@@ -7,6 +7,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/runtime-status"]["get"]["operationId"] == (
         "getPlatformRuntimeStatus"
     )
+    assert spec["paths"]["/platform/production-baseline/runtime-status"]["get"]["operationId"] == (
+        "getProductionBaselineRuntimeStatus"
+    )
     assert spec["paths"]["/platform/observability/runtime-status"]["get"]["operationId"] == (
         "getObservabilityRuntimeStatus"
     )
@@ -239,10 +242,16 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     evaluation_case_schema = spec["components"]["schemas"]["EvaluationCaseResultDescriptor"]
     assert "artifact_refs" in evaluation_case_schema["properties"]
     platform_runtime_schema = spec["components"]["schemas"]["PlatformRuntimeStatusResponse"]
+    production_baseline_schema = spec["components"]["schemas"][
+        "ProductionBaselineRuntimeStatusResponse"
+    ]
+    assert "posture" in production_baseline_schema["properties"]
+    assert "dependencies" in production_baseline_schema["properties"]
     assert "artifact_runtime" in platform_runtime_schema["properties"]
     assert "artifact_governance" in platform_runtime_schema["properties"]
     assert "first_use_case" in platform_runtime_schema["properties"]
     assert "first_use_case_governance" in platform_runtime_schema["properties"]
+    assert "production_baseline" in platform_runtime_schema["properties"]
     first_use_case_schema = spec["components"]["schemas"]["FirstUseCaseRuntimeStatusResponse"]
     assert "downstream_contract_fields" in first_use_case_schema["properties"]
     assert "ownership_boundaries" in first_use_case_schema["properties"]

@@ -17,6 +17,7 @@ from app.contracts.prompts import (
     PromptGovernanceStatusSummaryResponse,
     PromptRuntimeStatusResponse,
 )
+from app.contracts.production_baseline import ProductionBaselineRuntimeStatusResponse
 from app.contracts.providers import (
     ProviderGovernanceStatusResponse,
     ProviderOperationsStatusResponse,
@@ -103,6 +104,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     safety_governance: SafetyGovernanceStatusResponse = Field(
         description="Current safety governance posture for lotus-ai."
+    )
+    production_baseline: ProductionBaselineRuntimeStatusResponse = Field(
+        description="Current RFC-0020 production-baseline posture across major deployment dependencies."
     )
     audit_store: StoreRuntimeStatusDescriptor = Field(
         description="Current audit persistence runtime posture."

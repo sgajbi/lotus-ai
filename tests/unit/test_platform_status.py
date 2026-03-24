@@ -120,6 +120,13 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.safety_governance.governance_ready is False
     assert status.safety_governance.blocking_area_count == 3
     assert status.safety_governance.runbook_readiness.runbook_ready is False
+    assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
+    assert status.production_baseline.production_ready is False
+    assert status.production_baseline.prod_shaped_local is False
+    assert any(
+        dependency["dependency_id"] == "database_backend"
+        for dependency in [item.model_dump() for item in status.production_baseline.dependencies]
+    )
     assert (
         status.safety_governance.evidence_readiness.approval_gate.domain_id == "safety_enforcement"
     )
@@ -146,6 +153,9 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     assert status.async_runtime.worker_mode == "DEDICATED"
     assert status.async_runtime.active_worker_execution == "queue_backed_workers"
     assert status.async_runtime.queue_backlog_count == 0
+    assert status.production_baseline.posture.value == "PROD_SHAPED_LOCAL"
+    assert status.production_baseline.prod_shaped_local is True
+    assert status.production_baseline.production_ready is False
 
 
 def test_build_platform_runtime_status_reflects_durable_provider_operations_posture(
