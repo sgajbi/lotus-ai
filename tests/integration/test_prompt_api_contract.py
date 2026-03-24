@@ -1,6 +1,11 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
+from app.main import app
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.runtime_settings import override_runtime_settings
 
 
 def test_prompt_registry_routes(client: TestClient) -> None:
@@ -22,8 +27,8 @@ def test_prompt_governance_route(client: TestClient) -> None:
     body = response.json()
     assert body["prompt_store_mode"] == "memory"
     assert body["management_mode"] == "SEEDED_MEMORY"
-    assert body["runtime_mutation_enabled"] is True
-    assert body["promotion_write_api_enabled"] is True
+    assert body["runtime_mutation_enabled"] is False
+    assert body["promotion_write_api_enabled"] is False
     assert body["control_history_endpoint"] == "/platform/prompts/control-history"
     assert "governed promote and rollback actions" in body["promotion_path"]
     assert body["active_prompt_count"] >= 7
@@ -64,68 +69,87 @@ def test_prompt_control_routes(client: TestClient) -> None:
         },
     )
     assert blocked_promote_response.status_code == 409
-    assert "RUNTIME_PASS" in blocked_promote_response.json()["detail"]
+    assert "SQL-backed prompt rollout state" in blocked_promote_response.json()["detail"]
 
+
+def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path) -> None:
     from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 
-    for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
-        get_evaluation_runtime_store().save_run(
-            EvaluationRunRecord(
-                run_id=f"runtime_prompt_gate_{fixture_id}",
-                fixture_id=fixture_id,
-                manifest_version="foundation.v1",
-                lifecycle_status="COMPLETED",
-                triggered_by="operator-a",
-                submitted_at="2026-03-23T12:00:00Z",
-                async_job_id=f"async_prompt_gate_{fixture_id}",
-                latest_message="Prompt rollout approval fixture passed.",
-                verdict="PASS",
-                case_count=1,
+    database_url = f"sqlite:///{tmp_path / 'prompt-api-contract.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        prompt_store_mode="sqlalchemy",
+        evaluation_runtime_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
+                get_evaluation_runtime_store().save_run(
+                    EvaluationRunRecord(
+                        run_id=f"runtime_prompt_gate_{fixture_id}",
+                        fixture_id=fixture_id,
+                        manifest_version="foundation.v1",
+                        lifecycle_status="COMPLETED",
+                        triggered_by="operator-a",
+                        submitted_at="2026-03-23T12:00:00Z",
+                        async_job_id=f"async_prompt_gate_{fixture_id}",
+                        latest_message="Prompt rollout approval fixture passed.",
+                        verdict="PASS",
+                        case_count=1,
+                    )
+                )
+
+            promote_response = durable_client.post(
+                "/platform/prompts/control-actions",
+                json={
+                    "task_id": "explain.v1",
+                    "action_type": "PROMOTE_CANDIDATE",
+                    "candidate_prompt_version": "foundation.explain.v2",
+                    "requested_by": "alice@lotus.test",
+                    "approved_by": "bob@lotus.test",
+                    "reason": "Approve explanation candidate",
+                },
             )
-        )
+            assert promote_response.status_code == 200
+            assert (
+                promote_response.json()["rollout_state"]["active_prompt_version"]
+                == "foundation.explain.v2"
+            )
+            assert promote_response.json()["rollout_state"]["latest_control_event"][
+                "action_type"
+            ] == "PROMOTE_CANDIDATE"
 
-    promote_response = client.post(
-        "/platform/prompts/control-actions",
-        json={
-            "task_id": "explain.v1",
-            "action_type": "PROMOTE_CANDIDATE",
-            "candidate_prompt_version": "foundation.explain.v2",
-            "requested_by": "alice@lotus.test",
-            "approved_by": "bob@lotus.test",
-            "reason": "Approve explanation candidate",
-        },
-    )
-    assert promote_response.status_code == 200
-    assert promote_response.json()["rollout_state"]["active_prompt_version"] == "foundation.explain.v2"
-    assert promote_response.json()["rollout_state"]["latest_control_event"]["action_type"] == (
-        "PROMOTE_CANDIDATE"
-    )
+            runtime_response = durable_client.get("/platform/prompts/runtime-status")
+            assert runtime_response.status_code == 200
+            explain_state = next(
+                state
+                for state in runtime_response.json()["rollout_states"]
+                if state["task_id"] == "explain.v1"
+            )
+            assert explain_state["latest_control_event"]["action_type"] == "PROMOTE_CANDIDATE"
 
-    runtime_response = client.get("/platform/prompts/runtime-status")
-    assert runtime_response.status_code == 200
-    explain_state = next(
-        state
-        for state in runtime_response.json()["rollout_states"]
-        if state["task_id"] == "explain.v1"
-    )
-    assert explain_state["latest_control_event"]["action_type"] == "PROMOTE_CANDIDATE"
+            rollback_response = durable_client.post(
+                "/platform/prompts/control-actions",
+                json={
+                    "task_id": "explain.v1",
+                    "action_type": "ROLLBACK_TO_PREVIOUS_ACTIVE",
+                    "requested_by": "alice@lotus.test",
+                    "approved_by": "bob@lotus.test",
+                    "reason": "Restore known-good prompt",
+                },
+            )
+            assert rollback_response.status_code == 200
+            assert (
+                rollback_response.json()["rollout_state"]["active_prompt_version"]
+                == "foundation.explain.v1"
+            )
 
-    rollback_response = client.post(
-        "/platform/prompts/control-actions",
-        json={
-            "task_id": "explain.v1",
-            "action_type": "ROLLBACK_TO_PREVIOUS_ACTIVE",
-            "requested_by": "alice@lotus.test",
-            "approved_by": "bob@lotus.test",
-            "reason": "Restore known-good prompt",
-        },
-    )
-    assert rollback_response.status_code == 200
-    assert rollback_response.json()["rollout_state"]["active_prompt_version"] == "foundation.explain.v1"
-
-    task_history_response = client.get("/platform/prompts/control-history", params={"task_id": "explain.v1"})
-    assert task_history_response.status_code == 200
-    assert len(task_history_response.json()["latest_events"]) == 2
+            task_history_response = durable_client.get(
+                "/platform/prompts/control-history", params={"task_id": "explain.v1"}
+            )
+            assert task_history_response.status_code == 200
+            assert len(task_history_response.json()["latest_events"]) == 2
 
 
 def test_prompt_activation_readiness_route(client: TestClient) -> None:

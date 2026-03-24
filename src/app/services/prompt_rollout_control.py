@@ -46,6 +46,7 @@ def build_prompt_control_history(*, task_id: str | None = None) -> PromptControl
 
 
 def apply_prompt_control_action(request: PromptControlActionRequest) -> PromptControlActionResponse:
+    _require_durable_prompt_control_plane(request.action_type)
     repository = get_prompt_repository()
     rollout_state = repository.get_prompt_rollout_state(request.task_id)
     if rollout_state is None:
@@ -75,6 +76,28 @@ def apply_prompt_control_action(request: PromptControlActionRequest) -> PromptCo
             f"Action requested by `{request.requested_by}` and approved by `{request.approved_by}`.",
         ],
     )
+
+
+def _require_durable_prompt_control_plane(action_type: PromptControlActionType) -> None:
+    if settings.prompt_store_mode != "sqlalchemy":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Prompt control actions require SQL-backed prompt rollout state so promote and "
+                "rollback history remain durable across restart."
+            ),
+        )
+    if (
+        action_type == PromptControlActionType.PROMOTE_CANDIDATE
+        and settings.evaluation_runtime_store_mode != "sqlalchemy"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Prompt promotion requires SQL-backed evaluation runtime evidence so the approval "
+                "gate remains durable across restart."
+            ),
+        )
 
 
 def _resolve_transition(

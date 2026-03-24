@@ -57,7 +57,7 @@ The current enterprise posture is:
 Current governance posture:
 
 1. prompt-body mutation APIs are disabled,
-2. prompt promotion and rollback write APIs are enabled only for governed rollout-state actions,
+2. prompt promotion and rollback write APIs are enabled only when SQL-backed prompt rollout state is active, and promotion additionally requires SQL-backed evaluation runtime evidence,
 3. durable rollout state is now writable through bounded control-plane actions,
 4. prompt bodies still change through reviewed repository changes,
 5. SQL-backed prompt promotion state is completed through Alembic-managed persistence plus durable control history,

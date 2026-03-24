@@ -91,20 +91,30 @@ def test_list_prompt_rollout_descriptors_matches_runtime_inventory() -> None:
     assert all(descriptor.latest_control_event is None for descriptor in rollout_descriptors)
 
 
-def test_build_prompt_selection_trace_includes_latest_control_event_after_promotion() -> None:
-    _seed_prompt_approval_gate_pass()
-    apply_prompt_control_action(
-        PromptControlActionRequest(
-            task_id="explain.v1",
-            action_type=PromptControlActionType.PROMOTE_CANDIDATE,
-            candidate_prompt_version="foundation.explain.v2",
-            requested_by="alice@lotus.test",
-            approved_by="bob@lotus.test",
-            reason="Promote explanation prompt",
-        )
-    )
+def test_build_prompt_selection_trace_includes_latest_control_event_after_promotion(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'prompt-trace-promotion.db'}"
+    upgrade_database_to_head(database_url)
 
-    trace = build_prompt_selection_trace("explain.v1")
+    with override_runtime_settings(
+        prompt_store_mode="sqlalchemy",
+        evaluation_runtime_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        _seed_prompt_approval_gate_pass_sqlalchemy()
+        apply_prompt_control_action(
+            PromptControlActionRequest(
+                task_id="explain.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                candidate_prompt_version="foundation.explain.v2",
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Promote explanation prompt",
+            )
+        )
+
+        trace = build_prompt_selection_trace("explain.v1")
 
     assert trace.prompt_version == "foundation.explain.v2"
     assert trace.previous_active_prompt_version == "foundation.explain.v1"

@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import cast
 
 from fastapi import HTTPException
@@ -7,6 +8,7 @@ from pytest_mock import MockerFixture
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from app.contracts.providers import ProviderExecutionResponse
+from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from app.contracts.tasks import (
     CallerMetadata,
     OutputLabel,
@@ -18,8 +20,11 @@ from app.repositories.memory_retrieval_repository import InMemoryRetrievalReposi
 from app.contracts.prompts import PromptControlActionRequest, PromptControlActionType
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_submission_service import submit_evaluation_run
+from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 from app.services.prompt_rollout_control import apply_prompt_control_action
 from app.services.task_executor import execute_task
+from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.runtime_settings import override_runtime_settings
 
 
 def _request(
@@ -490,22 +495,32 @@ def test_execute_task_routes_allowlisted_task_through_live_provider(
     assert provider_evidence.attributes["model_id"] == "gpt-5.4"
 
 
-def test_execute_task_reflects_promoted_prompt_selection_in_audit_and_evidence() -> None:
-    _seed_prompt_approval_gate_pass()
-    apply_prompt_control_action(
-        PromptControlActionRequest(
-            task_id="explain.v1",
-            action_type=PromptControlActionType.PROMOTE_CANDIDATE,
-            candidate_prompt_version="foundation.explain.v2",
-            requested_by="alice@lotus.test",
-            approved_by="bob@lotus.test",
-            reason="Promote updated explanation prompt",
-        )
-    )
+def test_execute_task_reflects_promoted_prompt_selection_in_audit_and_evidence(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'task-executor-prompt-rollout.db'}"
+    upgrade_database_to_head(database_url)
 
-    response = execute_task(
-        _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
-    )
+    with override_runtime_settings(
+        prompt_store_mode="sqlalchemy",
+        evaluation_runtime_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        _seed_prompt_approval_gate_pass_sqlalchemy()
+        apply_prompt_control_action(
+            PromptControlActionRequest(
+                task_id="explain.v1",
+                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+                candidate_prompt_version="foundation.explain.v2",
+                requested_by="alice@lotus.test",
+                approved_by="bob@lotus.test",
+                reason="Promote updated explanation prompt",
+            )
+        )
+
+        response = execute_task(
+            _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
+        )
 
     prompt_evidence = next(
         descriptor
@@ -537,3 +552,21 @@ def _seed_prompt_approval_gate_pass() -> None:
             )
         )
         run_next_evaluation_execution_job(worker_id="worker-a")
+
+
+def _seed_prompt_approval_gate_pass_sqlalchemy() -> None:
+    for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
+        get_evaluation_runtime_store().save_run(
+            EvaluationRunRecord(
+                run_id=f"runtime_task_executor_{fixture_id}",
+                fixture_id=fixture_id,
+                manifest_version="foundation.v1",
+                lifecycle_status="COMPLETED",
+                triggered_by="operator-a",
+                submitted_at="2026-03-24T09:00:00Z",
+                async_job_id=f"async_task_executor_{fixture_id}",
+                latest_message="Prompt rollout approval fixture passed.",
+                verdict="PASS",
+                case_count=1,
+            )
+        )
