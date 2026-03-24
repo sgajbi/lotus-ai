@@ -187,6 +187,12 @@ The next RFCs already identified in the repo describe the expected sequence:
 3. `RFC-0018` governed embeddings and provider expansion
 4. `RFC-0019` governed document ingestion and corpus refresh
 
+Current status against that sequence:
+
+1. `RFC-0015` is implemented, including runtime, activation, runbook, and governance posture for unified versus split deployment stages.
+2. `RFC-0017` has started with a bounded resilience runtime inventory surface that enumerates authoritative stores and critical dependencies, but ordered restore posture, drill evidence, and resilience governance remain future slices.
+3. `RFC-0018` and `RFC-0019` remain roadmap items.
+
 Early RFC-0015 groundwork now exists as a bounded runtime surface:
 
 1. `/platform/deployment-split/runtime-status` reports the current unified versus split-ready posture and the intended runtime, retrieval, and eval plane ownership model,
@@ -207,7 +213,7 @@ The current preferred RFC-0016 target is:
 In practical feature terms, the roadmap is:
 
 1. build cleaner deployment topology on top of the now-explicit production baseline,
-2. improve resilience on top of that baseline,
+2. improve resilience on top of that baseline, starting from the new runtime inventory surface and then adding ordered recovery, drill evidence, and governance,
 3. expand retrieval and provider breadth,
 4. broaden corpus management.
 

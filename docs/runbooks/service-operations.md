@@ -17,6 +17,7 @@
 - General health: /health
 - Metadata: /metadata
 - Platform runtime status: /platform/runtime-status
+- Resilience runtime status: /platform/resilience/runtime-status
 - Deployment-split runtime status: /platform/deployment-split/runtime-status
 - Deployment-split activation readiness: /platform/deployment-split/activation-readiness
 - Deployment-split runbook readiness: /platform/deployment-split/runbook-readiness
@@ -98,6 +99,16 @@ Expected operator flow for SQL-backed stores:
 7. verify `GET /platform/safety/governance-status` when runtime safety rollout posture matters
 8. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
 9. only then proceed with rollout if readiness is `READY`
+
+## Resilience Inventory
+
+Before treating service continuity posture as anything stronger than bounded inventory truth:
+
+1. verify `GET /platform/resilience/runtime-status`
+2. confirm the embedded `resilience_runtime` block in `GET /platform/runtime-status` matches the detailed resilience view
+3. treat `LOCAL_OR_DEMO_CONTINUITY` as local or demo durability only, not as restart-safe production posture
+4. treat `PARTIAL_RUNTIME_DURABILITY` as evidence that some critical dependencies are durable while others still require external recovery or remain blocked
+5. do not infer restore ordering, backup automation, drill evidence, or resilience governance from this slice alone; those remain future RFC-0017 work
 
 CI also runs `make runtime-mode-smoke` as a dedicated gate so SQL-backed startup, readiness, and migration behavior remain continuously verified.
 

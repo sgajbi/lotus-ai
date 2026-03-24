@@ -9,9 +9,23 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
+    assert "resilience_runtime" in body
     assert "deployment_split" in body
     assert "production_baseline" in body
     assert "production_baseline_governance" in body
+
+
+def test_resilience_runtime_status_route(client: TestClient) -> None:
+    response = client.get("/platform/resilience/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["posture"] == "LOCAL_OR_DEMO_CONTINUITY"
+    assert body["dependency_count"] >= 10
+    assert any(
+        dependency["dependency_id"] == "audit_store" for dependency in body["dependencies"]
+    )
 
 
 def test_deployment_split_runtime_status_route(client: TestClient) -> None:

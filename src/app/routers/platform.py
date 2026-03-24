@@ -15,6 +15,7 @@ from app.contracts.production_baseline import (
     ProductionBaselineRunbookReadinessResponse,
     ProductionBaselineRuntimeStatusResponse,
 )
+from app.contracts.resilience import ResilienceRuntimeStatusResponse
 from app.services.production_baseline_activation_readiness import (
     build_production_baseline_activation_readiness,
 )
@@ -34,6 +35,7 @@ from app.services.deployment_split_runbook_readiness import (
 from app.services.platform_status import build_platform_runtime_status
 from app.services.deployment_split_runtime import build_deployment_split_runtime_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
+from app.services.resilience_runtime import build_resilience_runtime_status
 
 router = APIRouter(prefix="/platform", tags=["platform"])
 
@@ -54,6 +56,24 @@ router = APIRouter(prefix="/platform", tags=["platform"])
 )
 async def get_platform_runtime_status_route(request: Request) -> PlatformRuntimeStatusResponse:
     return build_platform_runtime_status(request.app.state)
+
+
+@router.get(
+    "/resilience/runtime-status",
+    response_model=ResilienceRuntimeStatusResponse,
+    operation_id="getResilienceRuntimeStatus",
+    summary="Get RFC-0017 resilience runtime status",
+    description=(
+        "Returns the current RFC-0017 resilience inventory across authoritative stores and "
+        "critical runtime dependencies, including restart-survival and fallback posture."
+    ),
+    responses={
+        200: {"description": "Resilience runtime status returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_resilience_runtime_status_route() -> ResilienceRuntimeStatusResponse:
+    return build_resilience_runtime_status()
 
 
 @router.get(

@@ -9,6 +9,15 @@
 
 `lotus-ai` should implement an explicit production resilience and disaster-recovery model so the platform can support real use cases without relying on implicit restart behavior, best-effort recovery, or architecture assumptions that are not yet governed.
 
+This RFC is bounded to platform-owned continuity truth:
+
+1. authoritative stores and critical dependencies,
+2. backup and restore posture descriptions,
+3. degraded versus restored runtime semantics,
+4. operator-visible recovery inventory, ordering, and evidence.
+
+It does not promise full infrastructure automation in one pass.
+
 The platform now has:
 
 1. durable provider operations state,
@@ -100,6 +109,14 @@ The first production-capable resilience posture should:
 4. define failover and rollback semantics where the platform already depends on durable runtime state,
 5. require verification through meaningful recovery and restore testing.
 
+The rollout posture for this RFC is intentionally staged:
+
+1. `INVENTORIED_ONLY`
+2. `ORDERED_RECOVERY_READY`
+3. `DRILL_VERIFIED`
+
+Slice 1 delivers the first posture only. It must not imply ordered restore or drill-backed readiness yet.
+
 ## State Model and Invariants
 
 This RFC establishes the following invariants:
@@ -123,6 +140,18 @@ Required behavior:
 2. define backup and restore expectations per store,
 3. define how cross-store consistency is validated after restore,
 4. distinguish metadata restore from larger artifact/object restore where applicable.
+
+Authoritative stores in scope for the first pass are:
+
+1. audit
+2. prompt rollout
+3. retrieval metadata
+4. caller policy
+5. provider operations
+6. async runtime
+7. evaluation runtime
+8. artifact metadata
+9. artifact payload storage
 
 ### Queue, Worker, and Runtime Recovery
 
@@ -183,6 +212,17 @@ Acceptance gate:
 2. store and dependency ownership are explicit,
 3. runtime/readiness surfaces stay truthful,
 4. no hidden continuity assumptions remain undocumented.
+
+Delivered interfaces for this slice:
+
+1. `/platform/resilience/runtime-status`
+2. embedded `resilience_runtime` block in `/platform/runtime-status`
+
+Explicit non-goals for this slice:
+
+1. no backup orchestration,
+2. no restore-plan endpoint yet,
+3. no drill evidence or resilience governance surface yet.
 
 ### Slice 2: Backup, Restore, and Recovery Ordering
 
