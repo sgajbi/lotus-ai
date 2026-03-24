@@ -82,6 +82,43 @@ class IncidentEvidenceSummaryItem(BaseModel):
     summary: str = Field(description="Human-readable explanation of the incident-evidence item.")
 
 
+class DomainIncidentSummaryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the domain incident summary.")
+    version: str = Field(description="Current lotus-ai service version.")
+    domain_id: ObservabilityDomainId = Field(
+        description="Stable platform domain represented by the incident summary."
+    )
+    telemetry: DomainTelemetrySummary = Field(
+        description="Bounded telemetry summary for the domain."
+    )
+    incident_evidence_items: list[IncidentEvidenceSummaryItem] = Field(
+        description="Bounded incident-evidence items currently exposed for the domain."
+    )
+    linked_endpoints: list[str] = Field(
+        description="Existing platform endpoints that provide deeper runtime or governance inspection for the domain."
+    )
+    summary: list[str] = Field(
+        description="Short operator-facing incident summary for the domain."
+    )
+
+
+class ObservabilityIncidentSummaryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the observability incident summary.")
+    version: str = Field(description="Current lotus-ai service version.")
+    domain_count: int = Field(
+        description="Number of domain incident summaries included in the response."
+    )
+    degraded_domain_count: int = Field(
+        description="Number of domain incident summaries currently reporting degraded posture."
+    )
+    summaries: list[DomainIncidentSummaryResponse] = Field(
+        description="Bounded incident summaries for the currently implemented observability domains."
+    )
+    status_summary: list[str] = Field(
+        description="Short operator-facing summary of current incident-evidence coverage."
+    )
+
+
 class ObservabilityRuntimeStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the observability runtime status.")
     version: str = Field(description="Current lotus-ai service version.")

@@ -10,18 +10,15 @@ from app.contracts.observability import (
     ObservabilityPosture,
     ObservabilityRuntimeStatusResponse,
 )
-from app.contracts.providers import ProviderOperationsState
 from app.contracts.safety import SafetyExecutionDisposition
-from app.services.async_runtime_status import build_async_runtime_status
-from app.services.prompt_status import build_prompt_runtime_status
-from app.services.provider_operations_status import build_provider_operations_status
-from app.services.retrieval_execution_status import build_retrieval_execution_status
-from app.services.safety_status import build_safety_runtime_status
+from app.services.observability_domain_summaries import build_slice_two_observability_bundles
 from app.services.observability_shared import (
     assess_observability_posture,
     build_domain_telemetry_summary,
     build_incident_evidence_item,
 )
+from app.services.prompt_status import build_prompt_runtime_status
+from app.services.safety_status import build_safety_runtime_status
 
 
 def build_observability_runtime_status() -> ObservabilityRuntimeStatusResponse:
@@ -66,137 +63,78 @@ def build_observability_runtime_status() -> ObservabilityRuntimeStatusResponse:
 
 
 def _build_domain_summaries() -> list[DomainTelemetrySummary]:
-    provider_operations = build_provider_operations_status()
-    retrieval_execution = build_retrieval_execution_status()
-    async_runtime = build_async_runtime_status()
+    bundles = build_slice_two_observability_bundles()
     prompt_runtime = build_prompt_runtime_status()
     safety_runtime = build_safety_runtime_status()
-    return [
-        build_domain_telemetry_summary(
-            domain_id=ObservabilityDomainId.PROVIDER,
-            telemetry_sources=[
-                "provider_operations_status",
-                "correlation_middleware",
-                "prometheus",
-            ],
-            source_available=True,
-            degraded_findings=_provider_findings(provider_operations),
-            stale=False,
-            incident_evidence_supported=False,
-            breakdown_support=ObservabilityBreakdownSupport(
-                caller_app_supported=True,
-                tenant_supported=True,
-                capability_supported=True,
+    domains = [bundle.summary.telemetry for bundle in bundles]
+    domains.extend(
+        [
+            build_domain_telemetry_summary(
+                domain_id=ObservabilityDomainId.EVALUATION,
+                telemetry_sources=["evaluation_runtime_status", "evaluation_runtime_store"],
+                source_available=True,
+                degraded_findings=[],
+                stale=False,
+                incident_evidence_supported=False,
+                breakdown_support=ObservabilityBreakdownSupport(
+                    caller_app_supported=True,
+                    tenant_supported=False,
+                    capability_supported=True,
+                ),
+                incident_signal_count=0,
+                summary=[
+                    "Evaluation observability currently reuses runtime-backed run and approval-gate summaries.",
+                    "Dedicated incident-evidence summaries for stale or failing approval posture are not yet rolled out.",
+                ],
             ),
-            incident_signal_count=(
-                1
-                if provider_operations.operations_state != ProviderOperationsState.ROLLOUT_BLOCKED
-                else 0
+            build_domain_telemetry_summary(
+                domain_id=ObservabilityDomainId.PROMPT,
+                telemetry_sources=["prompt_runtime_status", "prompt_control_history"],
+                source_available=True,
+                degraded_findings=[],
+                stale=False,
+                incident_evidence_supported=False,
+                breakdown_support=ObservabilityBreakdownSupport(
+                    caller_app_supported=True,
+                    tenant_supported=False,
+                    capability_supported=True,
+                ),
+                incident_signal_count=prompt_runtime.candidate_prompt_count,
+                summary=[
+                    "Prompt observability currently reuses rollout-state selection and control-history data.",
+                    "Dedicated incident-evidence summaries for blocked promotions and rollback posture are not yet rolled out.",
+                ],
             ),
-            summary=[
-                "Provider observability currently reuses runtime provider operations, correlation propagation, and metrics exposure.",
-                "Dedicated incident-evidence summaries for provider failures and budget anomalies are not yet rolled out.",
-            ],
-        ),
-        build_domain_telemetry_summary(
-            domain_id=ObservabilityDomainId.RETRIEVAL,
-            telemetry_sources=[
-                "retrieval_execution_status",
-                "correlation_middleware",
-                "prometheus",
-            ],
-            source_available=True,
-            degraded_findings=_retrieval_findings(retrieval_execution),
-            stale=False,
-            incident_evidence_supported=False,
-            breakdown_support=ObservabilityBreakdownSupport(
-                caller_app_supported=True,
-                tenant_supported=True,
-                capability_supported=True,
+            build_domain_telemetry_summary(
+                domain_id=ObservabilityDomainId.SAFETY,
+                telemetry_sources=["safety_runtime_status", "audit_repository", "execution_evidence"],
+                source_available=True,
+                degraded_findings=_safety_findings(safety_runtime),
+                stale=False,
+                incident_evidence_supported=True,
+                breakdown_support=ObservabilityBreakdownSupport(
+                    caller_app_supported=True,
+                    tenant_supported=True,
+                    capability_supported=True,
+                ),
+                incident_signal_count=0,
+                summary=[
+                    "Safety observability already has bounded durable evidence through audit and execution-evidence records.",
+                    "A unified observability incident view for blocked, degraded, and redacted outcomes is not yet rolled out.",
+                ],
             ),
-            incident_signal_count=0,
-            summary=[
-                "Retrieval observability currently reuses live-search runtime status, correlation propagation, and metrics exposure.",
-                "Dedicated incident-evidence summaries for indexing, replay, and rollback are not yet rolled out.",
-            ],
-        ),
-        build_domain_telemetry_summary(
-            domain_id=ObservabilityDomainId.ASYNC,
-            telemetry_sources=["async_runtime_status", "async_delivery_queue", "prometheus"],
-            source_available=True,
-            degraded_findings=list(async_runtime.degraded_findings),
-            stale=False,
-            incident_evidence_supported=False,
-            breakdown_support=ObservabilityBreakdownSupport(
-                caller_app_supported=True,
-                tenant_supported=False,
-                capability_supported=True,
-            ),
-            incident_signal_count=len(async_runtime.degraded_findings),
-            summary=[
-                "Async observability currently reuses queue backlog, worker identity, and drain-mode signals from the runtime service layer.",
-                "Dedicated incident-evidence summaries for replay, redelivery, and worker outages are not yet rolled out.",
-            ],
-        ),
-        build_domain_telemetry_summary(
-            domain_id=ObservabilityDomainId.EVALUATION,
-            telemetry_sources=["evaluation_runtime_status", "evaluation_runtime_store"],
-            source_available=True,
-            degraded_findings=[],
-            stale=False,
-            incident_evidence_supported=False,
-            breakdown_support=ObservabilityBreakdownSupport(
-                caller_app_supported=True,
-                tenant_supported=False,
-                capability_supported=True,
-            ),
-            incident_signal_count=0,
-            summary=[
-                "Evaluation observability currently reuses runtime-backed run and approval-gate summaries.",
-                "Dedicated incident-evidence summaries for stale or failing approval posture are not yet rolled out.",
-            ],
-        ),
-        build_domain_telemetry_summary(
-            domain_id=ObservabilityDomainId.PROMPT,
-            telemetry_sources=["prompt_runtime_status", "prompt_control_history"],
-            source_available=True,
-            degraded_findings=[],
-            stale=False,
-            incident_evidence_supported=False,
-            breakdown_support=ObservabilityBreakdownSupport(
-                caller_app_supported=True,
-                tenant_supported=False,
-                capability_supported=True,
-            ),
-            incident_signal_count=prompt_runtime.candidate_prompt_count,
-            summary=[
-                "Prompt observability currently reuses rollout-state selection and control-history data.",
-                "Dedicated incident-evidence summaries for blocked promotions and rollback posture are not yet rolled out.",
-            ],
-        ),
-        build_domain_telemetry_summary(
-            domain_id=ObservabilityDomainId.SAFETY,
-            telemetry_sources=["safety_runtime_status", "audit_repository", "execution_evidence"],
-            source_available=True,
-            degraded_findings=_safety_findings(safety_runtime),
-            stale=False,
-            incident_evidence_supported=True,
-            breakdown_support=ObservabilityBreakdownSupport(
-                caller_app_supported=True,
-                tenant_supported=True,
-                capability_supported=True,
-            ),
-            incident_signal_count=0,
-            summary=[
-                "Safety observability already has bounded durable evidence through audit and execution-evidence records.",
-                "A unified observability incident view for blocked, degraded, and redacted outcomes is not yet rolled out.",
-            ],
-        ),
-    ]
+        ]
+    )
+    return domains
 
 
 def _build_incident_items() -> list[IncidentEvidenceSummaryItem]:
-    return [
+    items = [
+        item
+        for bundle in build_slice_two_observability_bundles()
+        for item in bundle.summary.incident_evidence_items
+    ]
+    items.append(
         build_incident_evidence_item(
             domain_id=ObservabilityDomainId.SAFETY,
             evidence_id="safety_audit_evidence_pack",
@@ -205,34 +143,9 @@ def _build_incident_items() -> list[IncidentEvidenceSummaryItem]:
             degraded_findings=[],
             durable=True,
             summary="Safety audit and execution evidence is already durable and correlation-backed.",
-        ),
-        build_incident_evidence_item(
-            domain_id=ObservabilityDomainId.ASYNC,
-            evidence_id="async_runtime_operational_snapshot",
-            source_available=True,
-            stale=False,
-            degraded_findings=[],
-            durable=False,
-            summary="Async worker backlog and drain-mode signals are currently available through bounded runtime snapshots.",
-        ),
-    ]
-
-
-def _provider_findings(provider_operations: object) -> list[str]:
-    findings: list[str] = []
-    if (
-        getattr(provider_operations, "operations_state", None)
-        == ProviderOperationsState.ROLLOUT_BLOCKED
-    ):
-        findings.append("provider_observability_not_yet_promoted")
-    return findings
-
-
-def _retrieval_findings(retrieval_execution: object) -> list[str]:
-    findings: list[str] = []
-    if getattr(retrieval_execution, "live_search_enabled", False) is False:
-        findings.append("retrieval_runtime_not_ready")
-    return findings
+        )
+    )
+    return items
 
 
 def _safety_findings(safety_runtime: object) -> list[str]:
@@ -259,7 +172,5 @@ def _build_status_summary(
             if degraded_domain_count
             else "All summarized domains currently report healthy observability posture."
         ),
-        (
-            f"{incident_evidence_supported_domain_count} domain(s) already expose bounded durable incident evidence."
-        ),
+        f"{incident_evidence_supported_domain_count} domain(s) already expose bounded incident evidence.",
     ]

@@ -10,6 +10,18 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/observability/runtime-status"]["get"]["operationId"] == (
         "getObservabilityRuntimeStatus"
     )
+    assert spec["paths"]["/platform/observability/incident-summary"]["get"]["operationId"] == (
+        "getObservabilityIncidentSummary"
+    )
+    assert spec["paths"]["/platform/observability/provider-summary"]["get"]["operationId"] == (
+        "getProviderObservabilitySummary"
+    )
+    assert spec["paths"]["/platform/observability/retrieval-summary"]["get"]["operationId"] == (
+        "getRetrievalObservabilitySummary"
+    )
+    assert spec["paths"]["/platform/observability/async-summary"]["get"]["operationId"] == (
+        "getAsyncObservabilitySummary"
+    )
     assert spec["paths"]["/platform/access-control/runtime-status"]["get"]["operationId"] == (
         "getAccessControlRuntimeStatus"
     )
@@ -120,6 +132,11 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     observability_runtime_schema = spec["components"]["schemas"]["ObservabilityRuntimeStatusResponse"]
     assert "domains" in observability_runtime_schema["properties"]
     assert "incident_evidence_items" in observability_runtime_schema["properties"]
+    incident_summary_schema = spec["components"]["schemas"]["ObservabilityIncidentSummaryResponse"]
+    assert "summaries" in incident_summary_schema["properties"]
+    domain_incident_schema = spec["components"]["schemas"]["DomainIncidentSummaryResponse"]
+    assert "telemetry" in domain_incident_schema["properties"]
+    assert "incident_evidence_items" in domain_incident_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"
