@@ -248,6 +248,7 @@ Current implementation note:
 1. ingestion jobs now emit bounded retrieval-owned diagnostic artifacts for completed and failed corpus-change execution,
 2. retrieval observability now includes corpus-change runtime posture alongside live-search activation posture,
 3. retrieval runbook and evidence surfaces now treat corpus-change review as an explicit governed requirement rather than future-only prose.
+4. the final operationally hardened posture requires retrieval ingestion diagnostics to flow through the governed artifact backbone; async execution alone is not enough.
 
 ## Risks
 

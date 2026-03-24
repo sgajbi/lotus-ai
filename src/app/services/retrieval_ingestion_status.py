@@ -7,7 +7,9 @@ from app.contracts.retrieval import (
     RetrievalIngestionJobStatus,
     RetrievalIngestionStatusResponse,
 )
+from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.services.async_job_type_catalog import get_async_job_type_descriptor
+from app.services.artifact_runtime import ACTIVE_ARTIFACT_DOMAINS, build_artifact_runtime_status
 from app.services.retrieval_ingestion_artifacts import load_retrieval_ingestion_artifact_refs
 from app.services.retrieval_store import get_retrieval_repository
 from app.services.runtime_readiness import get_retrieval_store_runtime_status
@@ -69,6 +71,12 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
     )
     ingestion_job_type = get_async_job_type_descriptor(job_type="document_ingestion")
     async_enabled = bool(ingestion_job_type and ingestion_job_type.enabled)
+    artifact_runtime = build_artifact_runtime_status()
+    artifact_review_ready = (
+        artifact_runtime.metadata_store.status is RuntimeReadinessStatus.READY
+        and artifact_runtime.object_store.status is RuntimeReadinessStatus.READY
+        and "retrieval" in ACTIVE_ARTIFACT_DOMAINS
+    )
     recent_jobs = [
         job.model_copy(
             update={"artifact_refs": load_retrieval_ingestion_artifact_refs(job_id=job.job_id)}
@@ -100,6 +108,10 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
         findings.append(
             "Bounded ingestion diagnostics now persist through the governed artifact backbone for corpus-change review."
         )
+    elif async_enabled and not artifact_review_ready:
+        findings.append(
+            "Runtime-backed ingestion execution is available, but artifact-backed corpus-change diagnostics are not yet fully operational through the governed artifact backbone."
+        )
     if failed_job_count > 0:
         findings.append(
             "Some ingestion jobs now report failed terminal posture and should be reviewed through bounded artifact-backed diagnostics."
@@ -115,8 +127,12 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
         retrieval_store_mode=settings.retrieval_store_mode,
         ingestion_delivery_stage=(
             RetrievalIngestionDeliveryStage.OPERATIONALLY_HARDENED
-            if async_enabled
-            else RetrievalIngestionDeliveryStage.DURABLE_STATE_READY
+            if async_enabled and artifact_review_ready
+            else (
+                RetrievalIngestionDeliveryStage.RUNTIME_CONVERGED
+                if async_enabled
+                else RetrievalIngestionDeliveryStage.DURABLE_STATE_READY
+            )
         ),
         live_ingestion_enabled=async_enabled,
         document_version_count=len(versions),

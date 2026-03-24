@@ -205,7 +205,7 @@ The current retrieval-storage decision is:
 The current retrieval posture is:
 
 - approved retrieval sources are registered explicitly,
-- a bounded retrieval ingestion-status surface now exposes durable document-version lineage plus recorded corpus-change requests, governed ingestion jobs can now execute through the durable async backbone for explicit corpus-change targets, artifact-backed ingestion diagnostics are now persisted for bounded corpus-change review, and retrieval runtime plus governance surfaces now distinguish index-pending, refresh-pending, and withdrawn corpus posture explicitly,
+- a bounded retrieval ingestion-status surface now exposes durable document-version lineage plus recorded corpus-change requests, governed ingestion jobs can now execute through the durable async backbone for explicit corpus-change targets, artifact-backed ingestion diagnostics are now persisted for bounded corpus-change review, and retrieval runtime plus governance surfaces now distinguish index-pending, refresh-pending, and withdrawn corpus posture explicitly while only treating the posture as fully hardened once that artifact-backed review path is operational,
 - retrieval source discovery is exposed through the platform API,
 - provider posture discovery is exposed through the platform API,
 - runtime posture for retrieval and platform services is exposed through the platform API,

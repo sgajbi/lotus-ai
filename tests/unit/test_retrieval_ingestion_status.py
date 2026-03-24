@@ -64,3 +64,32 @@ def test_retrieval_ingestion_status_reports_artifact_backed_runtime_diagnostics(
     assert status.completed_ingestion_job_count >= 1
     assert status.artifact_backed_job_count >= 1
     assert any(job.artifact_refs for job in status.recent_ingestion_jobs)
+
+
+def test_retrieval_ingestion_status_degrades_when_artifact_review_path_is_not_ready(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.retrieval_ingestion_status.build_artifact_runtime_status",
+        lambda: type(
+            "ArtifactRuntime",
+            (),
+            {
+                "metadata_store": type(
+                    "MetadataStore",
+                    (),
+                    {"status": RuntimeReadinessStatus.READY},
+                )(),
+                "object_store": type(
+                    "ObjectStore",
+                    (),
+                    {"status": RuntimeReadinessStatus.CONFIGURATION_REQUIRED},
+                )(),
+            },
+        )(),
+    )
+
+    status = build_retrieval_ingestion_status()
+
+    assert status.ingestion_delivery_stage == "RUNTIME_CONVERGED"
+    assert any("artifact-backed corpus-change diagnostics" in finding for finding in status.runtime_findings)

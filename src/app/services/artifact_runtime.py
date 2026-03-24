@@ -10,7 +10,7 @@ from app.services.artifact_store import get_artifact_repository
 from app.services.runtime_readiness import get_artifact_store_runtime_status
 
 SUPPORTED_ARTIFACT_DOMAINS = ["evaluation", "async", "observability", "retrieval", "prompt"]
-ACTIVE_ARTIFACT_DOMAINS = ["evaluation", "async", "observability"]
+ACTIVE_ARTIFACT_DOMAINS = ["evaluation", "async", "observability", "retrieval"]
 
 
 def build_artifact_runtime_status() -> ArtifactRuntimeStatusResponse:
@@ -24,7 +24,7 @@ def build_artifact_runtime_status() -> ArtifactRuntimeStatusResponse:
             "a governed object-store seam."
         ),
         (
-            "Evaluation, async, and observability now emit governed runtime artifact refs while retrieval and prompt remain future consumers."
+            "Evaluation, async, observability, and retrieval now emit governed runtime artifact refs while prompt remains a future consumer."
         ),
     ]
     if object_store.mode == "filesystem":

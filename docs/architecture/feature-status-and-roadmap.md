@@ -49,7 +49,7 @@ Supported now:
 Important limitation:
 
 1. retrieval is live for the approved indexed corpus only,
-2. broader live ingestion and corpus refresh are still intentionally bounded, but RFC-0019 now has durable ingestion state, runtime-backed async ingestion execution for governed corpus-change job targets, artifact-backed ingestion diagnostics, and retrieval runtime/governance surfaces that reflect refresh-pending and withdrawn lineage posture truthfully,
+2. broader live ingestion and corpus refresh are still intentionally bounded, but RFC-0019 now has durable ingestion state, runtime-backed async ingestion execution for governed corpus-change job targets, artifact-backed ingestion diagnostics, and retrieval runtime/governance surfaces that reflect refresh-pending and withdrawn lineage posture truthfully; the final hardened posture depends on that artifact-backed review path being operational, not just async execution existing,
 3. embedding-provider expansion now has one bounded live path available for retrieval indexing, but broader retrieval/provider activation is still not approved.
 
 ### Prompt Governance
