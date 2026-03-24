@@ -30,7 +30,7 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
     posture = resolve_deployment_split_posture()
     retrieval_async_route = resolve_retrieval_async_route(
         effective_stage=posture.effective_stage,
-        degraded_findings=posture.degraded_findings,
+        degraded_findings=posture.retrieval_degraded_findings,
     )
     if request.job_type == "evaluation_execution":
         return submit_evaluation_execution_async_job(request)

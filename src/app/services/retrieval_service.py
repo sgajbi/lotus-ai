@@ -19,7 +19,7 @@ def search_sources(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
     posture = resolve_deployment_split_posture()
     route = resolve_retrieval_search_route(
         effective_stage=posture.effective_stage,
-        degraded_findings=posture.degraded_findings,
+        degraded_findings=posture.retrieval_degraded_findings,
     )
     authorization = require_authorized(
         authorize_request(

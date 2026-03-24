@@ -103,3 +103,88 @@ class DeploymentSplitRuntimeStatusResponse(BaseModel):
     status_summary: list[str] = Field(
         description="Short operator-facing summary of the current deployment-split posture."
     )
+
+
+class DeploymentSplitActivationReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the deployment-split activation-readiness view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    configured_stage: DeploymentSplitStage = Field(
+        description="Configured internal deployment-split stage requested for the current runtime."
+    )
+    effective_stage: DeploymentSplitStage = Field(
+        description="Effective deployment-split stage currently supportable by the implementation and runtime posture."
+    )
+    split_ready: bool = Field(
+        description="Whether the current runtime posture is at least split-ready."
+    )
+    split_active: bool = Field(
+        description="Whether the current effective stage currently has one or more active split planes."
+    )
+    activation_ready: bool = Field(
+        description="Whether the configured deployment-split stage is activatable without blocked or degraded split posture."
+    )
+    degraded: bool = Field(
+        description="Whether the current effective stage remains active but degraded."
+    )
+    blocking_findings: list[str] = Field(
+        description="Human-readable reasons why the configured deployment-split stage is not yet activatable."
+    )
+    activation_path: list[str] = Field(
+        description="Governed high-level path required before the configured deployment-split stage can be treated as activatable."
+    )
+
+
+class DeploymentSplitRunbookReadinessItem(BaseModel):
+    runbook_id: str = Field(description="Stable deployment-split runbook readiness item identifier.")
+    status: str = Field(description="Current readiness posture for the runbook requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this runbook item must be complete before the current deployment-split stage can be treated as activatable."
+    )
+    notes: str = Field(description="Human-readable explanation of the runbook requirement.")
+
+
+class DeploymentSplitRunbookReadinessResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the deployment-split runbook-readiness view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    runbook_ready: bool = Field(
+        description="Whether deployment-split operational runbook readiness is sufficient for the current configured stage."
+    )
+    required_item_count: int = Field(
+        description="Number of deployment-split runbook items currently required for activation."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required deployment-split runbook items currently marked complete."
+    )
+    items: list[DeploymentSplitRunbookReadinessItem] = Field(
+        description="Governed deployment-split operational runbook readiness items."
+    )
+
+
+class DeploymentSplitGovernanceStatusResponse(BaseModel):
+    service: str = Field(description="Service name emitting the deployment-split governance status.")
+    version: str = Field(description="Current lotus-ai service version.")
+    governance_ready: bool = Field(
+        description="Whether deployment-split governance is ready for the configured stage."
+    )
+    runtime_status: DeploymentSplitRuntimeStatusResponse = Field(
+        description="Current runtime-backed deployment-split posture."
+    )
+    activation_readiness: DeploymentSplitActivationReadinessResponse = Field(
+        description="Current activation-readiness posture for the configured deployment-split stage."
+    )
+    runbook_readiness: DeploymentSplitRunbookReadinessResponse = Field(
+        description="Current runbook-readiness posture for the deployment-split stage."
+    )
+    observability_governance_ready: bool = Field(
+        description="Whether cross-plane observability governance is ready to support the configured deployment-split stage."
+    )
+    blocking_area_count: int = Field(
+        description="Number of governance areas currently blocking the configured deployment-split stage."
+    )
+    governance_summary: list[str] = Field(
+        description="Short operator-facing summary of the current deployment-split governance posture."
+    )

@@ -10,6 +10,20 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/deployment-split/runtime-status"]["get"]["operationId"] == (
         "getDeploymentSplitRuntimeStatus"
     )
+    assert (
+        spec["paths"]["/platform/deployment-split/activation-readiness"]["get"][
+            "operationId"
+        ]
+        == "getDeploymentSplitActivationReadiness"
+    )
+    assert (
+        spec["paths"]["/platform/deployment-split/runbook-readiness"]["get"]["operationId"]
+        == "getDeploymentSplitRunbookReadiness"
+    )
+    assert (
+        spec["paths"]["/platform/deployment-split/governance-status"]["get"]["operationId"]
+        == "getDeploymentSplitGovernanceStatus"
+    )
     assert spec["paths"]["/platform/production-baseline/runtime-status"]["get"]["operationId"] == (
         "getProductionBaselineRuntimeStatus"
     )
@@ -263,6 +277,15 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     deployment_split_schema = spec["components"]["schemas"][
         "DeploymentSplitRuntimeStatusResponse"
     ]
+    deployment_split_activation_schema = spec["components"]["schemas"][
+        "DeploymentSplitActivationReadinessResponse"
+    ]
+    deployment_split_runbook_schema = spec["components"]["schemas"][
+        "DeploymentSplitRunbookReadinessResponse"
+    ]
+    deployment_split_governance_schema = spec["components"]["schemas"][
+        "DeploymentSplitGovernanceStatusResponse"
+    ]
     production_baseline_activation_schema = spec["components"]["schemas"][
         "ProductionBaselineActivationReadinessResponse"
     ]
@@ -278,6 +301,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "routes" in deployment_split_schema["properties"]
     assert "degraded" in deployment_split_schema["properties"]
     assert "degraded_findings" in deployment_split_schema["properties"]
+    assert "activation_ready" in deployment_split_activation_schema["properties"]
+    assert "items" in deployment_split_runbook_schema["properties"]
+    assert "runtime_status" in deployment_split_governance_schema["properties"]
+    assert "observability_governance_ready" in deployment_split_governance_schema["properties"]
     assert "posture" in production_baseline_schema["properties"]
     assert "dependencies" in production_baseline_schema["properties"]
     assert "activation_ready" in production_baseline_activation_schema["properties"]
@@ -289,6 +316,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "first_use_case" in platform_runtime_schema["properties"]
     assert "first_use_case_governance" in platform_runtime_schema["properties"]
     assert "deployment_split" in platform_runtime_schema["properties"]
+    assert "deployment_split_governance" in platform_runtime_schema["properties"]
     assert "production_baseline" in platform_runtime_schema["properties"]
     assert "production_baseline_governance" in platform_runtime_schema["properties"]
     first_use_case_schema = spec["components"]["schemas"]["FirstUseCaseRuntimeStatusResponse"]

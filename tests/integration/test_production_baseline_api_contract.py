@@ -29,6 +29,28 @@ def test_deployment_split_runtime_status_route(client: TestClient) -> None:
     assert any(plane["plane_id"] == "runtime" for plane in body["planes"])
 
 
+def test_deployment_split_governance_routes(client: TestClient) -> None:
+    activation_response = client.get("/platform/deployment-split/activation-readiness")
+    runbook_response = client.get("/platform/deployment-split/runbook-readiness")
+    governance_response = client.get("/platform/deployment-split/governance-status")
+
+    assert activation_response.status_code == 200
+    assert runbook_response.status_code == 200
+    assert governance_response.status_code == 200
+
+    activation_body = activation_response.json()
+    runbook_body = runbook_response.json()
+    governance_body = governance_response.json()
+
+    assert activation_body["service"] == "lotus-ai"
+    assert "activation_ready" in activation_body
+    assert runbook_body["runbook_ready"] is True
+    assert runbook_body["required_item_count"] >= 1
+    assert governance_body["runtime_status"]["service"] == "lotus-ai"
+    assert "activation_readiness" in governance_body
+    assert "runbook_readiness" in governance_body
+
+
 def test_production_baseline_runtime_status_route(client: TestClient) -> None:
     response = client.get("/platform/production-baseline/runtime-status")
 

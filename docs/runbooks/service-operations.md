@@ -17,6 +17,10 @@
 - General health: /health
 - Metadata: /metadata
 - Platform runtime status: /platform/runtime-status
+- Deployment-split runtime status: /platform/deployment-split/runtime-status
+- Deployment-split activation readiness: /platform/deployment-split/activation-readiness
+- Deployment-split runbook readiness: /platform/deployment-split/runbook-readiness
+- Deployment-split governance status: /platform/deployment-split/governance-status
 - Production baseline runtime status: /platform/production-baseline/runtime-status
 - Production baseline activation readiness: /platform/production-baseline/activation-readiness
 - Production baseline runbook readiness: /platform/production-baseline/runbook-readiness
@@ -108,6 +112,19 @@ Before treating any environment as the accepted RFC-0020 production baseline:
 5. confirm the embedded `production_baseline` and `production_baseline_governance` blocks in `GET /platform/runtime-status` match the detailed production-baseline views
 6. treat PostgreSQL-backed durable stores plus Redis and dedicated workers as the minimum prod-shaped local boundary, not as full production readiness
 7. keep local env-file secret handling and filesystem or memory-backed artifact payload storage classified as non-production even if Docker bring-up and live-provider execution both succeed
+
+## Deployment-Split Governance
+
+Before treating any RFC-0015 split stage as a governed active topology:
+
+1. verify `GET /platform/deployment-split/runtime-status`
+2. inspect `GET /platform/deployment-split/activation-readiness` when configured-stage versus effective-stage blockers need detail
+3. inspect `GET /platform/deployment-split/runbook-readiness` when operator-readiness blockers need detail
+4. inspect `GET /platform/deployment-split/governance-status` for the composed rollout view
+5. confirm the embedded `deployment_split` and `deployment_split_governance` blocks in `GET /platform/runtime-status` match the detailed deployment-split views
+6. treat the runtime plane as the only supported external front door even when retrieval and eval planes are active internally
+7. treat rollback to `UNIFIED` as the first supported rollback target whenever retrieval or eval split posture remains blocked or degraded
+8. confirm `GET /platform/observability/runtime-status` and the retrieval and evaluation runtime surfaces still expose coherent split-plane truth before treating an active split stage as healthy
 
 ## Artifact Governance
 

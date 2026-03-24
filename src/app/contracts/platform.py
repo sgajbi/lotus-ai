@@ -8,7 +8,10 @@ from app.contracts.access_control import (
 )
 from app.contracts.artifacts import ArtifactGovernanceStatusResponse, ArtifactRuntimeStatusResponse
 from app.contracts.async_runtime import AsyncGovernanceStatusResponse, AsyncRuntimeStatusResponse
-from app.contracts.deployment_split import DeploymentSplitRuntimeStatusResponse
+from app.contracts.deployment_split import (
+    DeploymentSplitGovernanceStatusResponse,
+    DeploymentSplitRuntimeStatusResponse,
+)
 from app.contracts.evals import EvaluationRuntimeStatusResponse
 from app.contracts.observability import (
     ObservabilityGovernanceStatusResponse,
@@ -114,6 +117,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     deployment_split: DeploymentSplitRuntimeStatusResponse = Field(
         description="Current RFC-0015 deployment-split ownership and staged split-readiness posture."
+    )
+    deployment_split_governance: DeploymentSplitGovernanceStatusResponse = Field(
+        description="Current RFC-0015 deployment-split governance posture across runtime, activation, runbook, and observability readiness."
     )
     production_baseline_governance: ProductionBaselineGovernanceStatusResponse = Field(
         description="Current RFC-0020 production-baseline governance posture across runtime, activation, and runbook readiness."

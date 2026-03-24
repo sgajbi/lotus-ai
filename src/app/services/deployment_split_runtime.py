@@ -48,6 +48,11 @@ def build_deployment_split_runtime_status(
                 else "Configured split stage currently matches the effective deployment-split posture."
             )
         ),
+        (
+            "Operators should roll back to UNIFIED if degraded retrieval or eval split posture persists."
+            if posture.retrieval_degraded_findings or posture.eval_degraded_findings
+            else "Rollback to UNIFIED remains the first supported rollback target for all active split stages."
+        ),
     ]
 
     return DeploymentSplitRuntimeStatusResponse(

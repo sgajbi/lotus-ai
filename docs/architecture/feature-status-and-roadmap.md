@@ -190,11 +190,11 @@ The next RFCs already identified in the repo describe the expected sequence:
 Early RFC-0015 groundwork now exists as a bounded runtime surface:
 
 1. `/platform/deployment-split/runtime-status` reports the current unified versus split-ready posture and the intended runtime, retrieval, and eval plane ownership model,
-2. split-aware internal routing is now modeled explicitly for retrieval search, retrieval async execution, evaluation submission, and evaluation async execution,
-3. retrieval can now be modeled as the first split-active internal plane while the runtime plane remains the single external front door,
-4. retrieval-and-evals split can now be modeled as the second active internal stage while the runtime plane still remains the single external front door,
-5. both retrieval and eval split activation are explicitly rollbackable to `UNIFIED` and can be reported as degraded instead of silently falling back,
-6. cross-plane runbook and governance hardening remain future RFC-0015 work.
+2. `/platform/deployment-split/activation-readiness`, `/platform/deployment-split/runbook-readiness`, and `/platform/deployment-split/governance-status` now expose the operator-facing rollout truth for each split stage,
+3. split-aware internal routing is now modeled explicitly for retrieval search, retrieval async execution, evaluation submission, and evaluation async execution,
+4. retrieval can now be modeled as the first split-active internal plane while the runtime plane remains the single external front door,
+5. retrieval-and-evals split can now be modeled as the second active internal stage while the runtime plane still remains the single external front door,
+6. both retrieval and eval split activation are explicitly rollbackable to `UNIFIED` and can be reported as degraded instead of silently falling back.
 
 The current preferred RFC-0016 target is:
 
