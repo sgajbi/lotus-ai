@@ -136,6 +136,12 @@ Required behavior:
 4. rollback criteria are explicit,
 5. commentary correctness is judged against structured analytics facts and conservative explanation behavior rather than stylistic preference alone.
 
+Current implemented posture for this slice:
+
+1. `lotus-performance` now has a bounded caller-policy entry with `explain.v1` access only,
+2. `lotus_performance_first_use_case_examples` is the dedicated runtime-backed evaluation family for this onboarding path,
+3. `/platform/use-cases/first-production-use-case/readiness` exposes the caller, safety, and approval-gate posture without overstating broader downstream rollout.
+
 ### Operational Readiness
 
 The first use case is where platform promises become operational obligations.

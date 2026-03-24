@@ -19,7 +19,8 @@ If you want the shortest summary:
 1. RFC-0001 through RFC-0013 are implemented,
 2. bounded task execution, retrieval, safety, prompt rollout, async workers, runtime-backed evals, caller access control, and bounded observability are real,
 3. artifact storage now has a governed metadata and payload-store foundation, with eval, async, and observability artifact cutovers plus explicit lifecycle and governance surfaces,
-4. embeddings expansion, document ingestion, deployment split, resilience hardening, and first-use-case onboarding are still roadmap items.
+4. embeddings expansion, document ingestion, deployment split, and resilience hardening are still roadmap items.
+5. first-use-case onboarding is in progress with a bounded `lotus-performance` contract and readiness surface, but broader rollout is not yet complete.
 
 ## Current Phase
 

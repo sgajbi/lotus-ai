@@ -52,6 +52,12 @@
       "manifest_path": "docs/evals/fixtures/summarize.v1/basic_cases.json"
     },
     {
+      "fixture_id": "lotus_performance_first_use_case_examples",
+      "status": "STAGED",
+      "description": "Runtime-backed onboarding examples for the first lotus-performance analytics commentary use case.",
+      "manifest_path": "docs/evals/fixtures/lotus-performance.first-use-case/basic_cases.json"
+    },
+    {
       "fixture_id": "prompt_promotion_examples",
       "status": "STAGED",
       "description": "Governed prompt promotion evaluation examples for runtime-backed approval.",

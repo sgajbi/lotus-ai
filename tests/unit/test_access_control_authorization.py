@@ -21,6 +21,18 @@ def test_authorize_request_allows_registered_task_execution() -> None:
     assert decision.outcome == AuthorizationOutcome.ALLOWED
 
 
+def test_authorize_request_allows_lotus_performance_first_use_case_task() -> None:
+    decision = authorize_request(
+        caller_app="lotus-performance",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        tenant_id="tenant-sg-001",
+        task_id="explain.v1",
+    )
+
+    assert decision.allowed is True
+    assert decision.outcome == AuthorizationOutcome.ALLOWED
+
+
 def test_authorize_request_blocks_unknown_caller() -> None:
     decision = authorize_request(
         caller_app="unknown-app",

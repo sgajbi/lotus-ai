@@ -3,6 +3,7 @@ from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from app.services.eval_approval_gate_summary import (
     _build_domain_notes,
     _derive_domain_state,
+    build_first_use_case_approval_gate_summary,
     build_prompt_approval_gate_summary,
     build_provider_approval_gate_summary,
     build_retrieval_approval_gate_summary,
@@ -31,6 +32,17 @@ def test_prompt_approval_gate_reports_staged_only_without_runtime_runs() -> None
     assert summary.evidence_state.value == "STAGED_ONLY"
     assert summary.approval_ready is False
     assert summary.required_fixture_count == 2
+    assert summary.runtime_backed_fixture_count == 0
+    assert summary.latest_historical_baseline_run_id == "foundation_eval_2026_03_22_001"
+
+
+def test_first_use_case_approval_gate_reports_staged_only_without_runtime_runs() -> None:
+    summary = build_first_use_case_approval_gate_summary()
+
+    assert summary.domain_id == "first_use_case_onboarding"
+    assert summary.evidence_state.value == "STAGED_ONLY"
+    assert summary.approval_ready is False
+    assert summary.required_fixture_count == 1
     assert summary.runtime_backed_fixture_count == 0
     assert summary.latest_historical_baseline_run_id == "foundation_eval_2026_03_22_001"
 
@@ -204,6 +216,26 @@ def test_safety_approval_gate_reports_runtime_pass_when_required_fixtures_pass()
     assert summary.approval_ready is True
     assert summary.required_fixture_count == 2
     assert summary.runtime_backed_fixture_count == 2
+
+
+def test_first_use_case_approval_gate_reports_runtime_pass_when_required_fixture_passes() -> None:
+    submit_evaluation_run(
+        EvaluationRunSubmissionRequest(
+            fixture_id="lotus_performance_first_use_case_examples",
+            caller_app="lotus-platform",
+            correlation_id="corr-lotus-performance-first-use-case",
+            triggered_by="operator-a",
+        )
+    )
+    run_next_evaluation_execution_job(worker_id="worker-a")
+
+    summary = build_first_use_case_approval_gate_summary()
+
+    assert summary.domain_id == "first_use_case_onboarding"
+    assert summary.evidence_state.value == "RUNTIME_PASS"
+    assert summary.approval_ready is True
+    assert summary.required_fixture_count == 1
+    assert summary.runtime_backed_fixture_count == 1
 
 
 def test_combine_fixture_evidence_states_reports_no_evidence_when_empty() -> None:

@@ -16,7 +16,7 @@ def test_access_control_routes_report_memory_posture(client: TestClient) -> None
     assert runtime_body["data_plane_enforced"] is True
     assert runtime_body["control_plane_enforced"] is True
     assert runtime_body["tenant_isolation_active"] is True
-    assert runtime_body["policy_count"] >= 4
+    assert runtime_body["policy_count"] >= 5
 
     activation_response = client.get("/platform/access-control/activation-readiness")
     assert activation_response.status_code == 200

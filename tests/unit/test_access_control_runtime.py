@@ -19,7 +19,7 @@ def test_access_control_runtime_status_reports_enforced_memory_mode() -> None:
     assert status.store.status.value == "READY"
     assert status.data_plane_enforced is True
     assert status.control_plane_enforced is True
-    assert status.policy_count >= 4
+    assert status.policy_count >= 5
     assert status.tenant_isolation_active is True
 
 
@@ -41,5 +41,5 @@ def test_access_control_runtime_status_reports_enforced_sql_policy_resolution(
 def test_list_caller_policies_returns_catalog() -> None:
     catalog = list_caller_policies()
 
-    assert catalog.policy_count >= 4
+    assert catalog.policy_count >= 5
     assert any(policy.caller_app == "lotus-platform" for policy in catalog.policies)

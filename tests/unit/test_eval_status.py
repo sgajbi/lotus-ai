@@ -8,9 +8,9 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.delivery_phase == "foundation"
     assert status.manifest_version == "foundation.v1"
     assert status.evidence_category_count == 6
-    assert status.staged_fixture_count >= 14
+    assert status.staged_fixture_count >= 15
     assert status.documented_fixture_count == 0
-    assert status.staged_case_count == 32
+    assert status.staged_case_count == 34
     assert [item.seam_id for item in status.seam_coverage] == [
         "async_execution",
         "task_execution",
@@ -21,8 +21,8 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     ]
     assert status.seam_coverage[0].staged_fixture_count == 1
     assert status.seam_coverage[0].staged_case_count == 3
-    assert status.seam_coverage[1].staged_fixture_count == 3
-    assert status.seam_coverage[1].staged_case_count == 6
+    assert status.seam_coverage[1].staged_fixture_count == 4
+    assert status.seam_coverage[1].staged_case_count == 8
     assert status.seam_coverage[2].staged_fixture_count == 2
     assert status.seam_coverage[2].staged_case_count == 2
     assert status.seam_coverage[4].staged_fixture_count == 5
@@ -30,6 +30,7 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.seam_coverage[5].staged_fixture_count == 2
     assert status.seam_coverage[5].staged_case_count == 6
     assert [gate.domain_id for gate in status.approval_gates] == [
+        "first_use_case_onboarding",
         "prompt_rollout",
         "retrieval_execution",
         "provider_execution",
@@ -38,6 +39,8 @@ def test_evaluation_runtime_status_reports_staged_assets() -> None:
     assert status.approval_gates[0].evidence_state.value == "STAGED_ONLY"
     assert status.approval_gates[1].evidence_state.value == "STAGED_ONLY"
     assert status.approval_gates[2].evidence_state.value == "STAGED_ONLY"
+    assert status.approval_gates[3].evidence_state.value == "STAGED_ONLY"
+    assert status.approval_gates[4].evidence_state.value == "STAGED_ONLY"
     assert status.recorded_run_count == 2
     assert status.runtime_backed_run_count == 0
     assert status.historical_run_count == 2

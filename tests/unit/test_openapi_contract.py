@@ -100,6 +100,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         spec["paths"]["/platform/use-cases/first-production-use-case"]["get"]["operationId"]
         == "getFirstProductionUseCaseStatus"
     )
+    assert (
+        spec["paths"]["/platform/use-cases/first-production-use-case/readiness"]["get"][
+            "operationId"
+        ]
+        == "getFirstProductionUseCaseReadiness"
+    )
     assert spec["paths"]["/platform/evals/catalog"]["get"]["operationId"] == "getEvaluationCatalog"
     assert spec["paths"]["/platform/evals/runs"]["get"]["operationId"] == "getEvaluationRunCatalog"
     assert spec["paths"]["/platform/evals/runs/submit"]["post"]["operationId"] == (
@@ -223,6 +229,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     first_use_case_schema = spec["components"]["schemas"]["FirstUseCaseRuntimeStatusResponse"]
     assert "downstream_contract_fields" in first_use_case_schema["properties"]
     assert "ownership_boundaries" in first_use_case_schema["properties"]
+    first_use_case_readiness_schema = spec["components"]["schemas"]["FirstUseCaseReadinessResponse"]
+    assert "approval_gate" in first_use_case_readiness_schema["properties"]
+    assert "items" in first_use_case_readiness_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (
         "getPromptRuntimeStatus"

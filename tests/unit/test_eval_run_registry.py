@@ -59,7 +59,7 @@ def test_load_evaluation_run_artifacts_returns_seeded_run_inventory() -> None:
     runs = load_evaluation_run_artifacts()
 
     assert runs[0].run_id == "foundation_eval_2026_03_22_001"
-    assert runs[0].staged_case_count == 32
+    assert runs[0].staged_case_count == 34
     assert runs[1].status == "SUPERSEDED"
 
 

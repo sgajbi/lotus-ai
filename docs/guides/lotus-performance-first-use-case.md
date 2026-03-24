@@ -26,6 +26,20 @@ Required upstream fields:
 
 These fields should be structured and curated by `lotus-performance`. `lotus-ai` should not receive raw portfolio dumps as the primary contract for this use case.
 
+## Readiness Signals
+
+Use these runtime surfaces to review onboarding readiness without overstating downstream activation:
+
+1. `GET /platform/use-cases/first-production-use-case`
+2. `GET /platform/use-cases/first-production-use-case/readiness`
+3. `GET /platform/evals/runtime-status`
+
+The readiness view is currently bounded to:
+
+1. explicit caller-policy registration for `lotus-performance`,
+2. explanation-only safety posture for `EXPLANATION_ONLY` output,
+3. a dedicated runtime-backed evaluation family for the first use case.
+
 ## Ownership
 
 `lotus-performance` owns:

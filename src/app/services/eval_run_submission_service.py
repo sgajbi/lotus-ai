@@ -34,6 +34,7 @@ from app.services.async_submission_shared import publish_async_attempt_if_config
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 
 RUNTIME_BACKED_EVALUATION_FIXTURE_IDS = {
+    "lotus_performance_first_use_case_examples",
     "prompt_promotion_examples",
     "prompt_rollback_examples",
     "retrieval_citation_examples",

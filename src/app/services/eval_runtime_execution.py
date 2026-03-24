@@ -374,6 +374,43 @@ def _execute_fixture_case(
             ["service://platform/prompts/control-actions", "service://ai/tasks/execute"],
         )
 
+    if fixture_id == "lotus_performance_first_use_case_examples":
+        task_id = str(case.input_payload.get("task_id", fixture_task_id))
+        response, failure_category = _execute_task_case(task_id=task_id, case=case)
+        if response is None:
+            return (
+                f"First-use-case commentary evaluation failed unexpectedly with '{failure_category}'.",
+                EvaluationCaseOutcome.FAIL,
+                [
+                    "service://platform/use-cases/first-production-use-case/readiness",
+                    "service://ai/tasks/execute",
+                ],
+            )
+        caller_visible_in_payload = "caller_app" in response.result.structured_output
+        checks = [
+            response.output_label.value == case.expected_payload["output_label"],
+            response.audit.authorization.outcome.value
+            == case.expected_payload["authorization_outcome"],
+            response.audit.authorization.caller_app == case.expected_payload["caller_app"],
+            response.audit.authorization.task_id == case.expected_payload["task_id"],
+            response.audit.safety.disposition.value == case.expected_payload["safety_disposition"],
+            caller_visible_in_payload == case.expected_payload["caller_visible_in_payload"],
+            response.audit.stubbed is bool(case.expected_payload["stubbed"]),
+        ]
+        outcome = EvaluationCaseOutcome.PASS if all(checks) else EvaluationCaseOutcome.FAIL
+        return (
+            (
+                "Lotus-performance analytics commentary preserved bounded explanation-only output, caller authorization, and safety posture."
+                if outcome == EvaluationCaseOutcome.PASS
+                else "Lotus-performance analytics commentary did not preserve the expected authorization or explanation-only safety posture."
+            ),
+            outcome,
+            [
+                "service://platform/use-cases/first-production-use-case/readiness",
+                "service://ai/tasks/execute",
+            ],
+        )
+
     if fixture_id == "provider_policy_examples":
         policy = build_provider_policy().policies[
             0 if case.input_payload["capability"] == "TEXT_GENERATION" else 1

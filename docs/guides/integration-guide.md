@@ -89,6 +89,7 @@ The calling Lotus application owns the business context.
 1. Explain already computed performance deltas.
 2. Summarize material attribution or period-over-period changes.
 3. Keep outputs commentary-oriented and grounded in structured analytics owned by `lotus-performance`.
+4. Review `GET /platform/use-cases/first-production-use-case/readiness` before treating the integration as ready for limited governed onboarding.
 
 ### lotus-manage
 

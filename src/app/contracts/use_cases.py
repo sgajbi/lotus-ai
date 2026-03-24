@@ -4,6 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
 from app.contracts.tasks import OutputLabel, TaskCategory
 
 
@@ -19,6 +20,40 @@ class FirstUseCaseOwnershipBoundary(BaseModel):
 class FirstUseCaseContractField(BaseModel):
     field_name: str = Field(description="Stable structured input field name for the use case.")
     description: str = Field(description="Meaning of the field within the use-case contract.")
+
+
+class FirstUseCaseReadinessItem(BaseModel):
+    evidence_id: str = Field(description="Stable first-use-case readiness item identifier.")
+    status: str = Field(description="Current readiness posture for this use-case requirement.")
+    required_for_activation: bool = Field(
+        description="Whether this readiness item must be complete before the first use case is treated as rollout-ready."
+    )
+    notes: str = Field(description="Human-readable explanation of the readiness item.")
+
+
+class FirstUseCaseReadinessResponse(BaseModel):
+    service: str = Field(description="Service name emitting the first-use-case readiness view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    use_case_id: str = Field(description="Stable identifier for the selected first use case.")
+    downstream_app: str = Field(description="Named downstream integration owner for the use case.")
+    readiness_ready: bool = Field(
+        description="Whether the bounded first use case currently has sufficient technical evidence for limited governed onboarding."
+    )
+    required_item_count: int = Field(
+        description="Number of first-use-case readiness items currently required."
+    )
+    completed_required_item_count: int = Field(
+        description="Number of required first-use-case readiness items currently marked complete."
+    )
+    approval_gate: EvaluationApprovalGateSummaryDescriptor = Field(
+        description="Runtime-backed evaluation approval-gate summary for the selected first use case."
+    )
+    items: list[FirstUseCaseReadinessItem] = Field(
+        description="Governed readiness items for the selected first use case."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of the current first-use-case readiness posture."
+    )
 
 
 class FirstUseCaseRuntimeStatusResponse(BaseModel):

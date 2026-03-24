@@ -232,7 +232,7 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["access_control_runtime"]["enforcement_state"] == "FULLY_ENFORCED"
     assert body["access_control_runtime"]["data_plane_enforced"] is True
     assert body["access_control_runtime"]["control_plane_enforced"] is True
-    assert body["access_control_runtime"]["policy_count"] >= 4
+    assert body["access_control_runtime"]["policy_count"] >= 5
     assert body["access_control_runtime"]["tenant_isolation_active"] is True
     assert body["access_control_governance"]["governance_ready"] is False
     assert body["access_control_governance"]["activation_readiness"]["activation_ready"] is False
@@ -293,20 +293,24 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["prompt_governance"]["evidence_readiness"]["evidence_ready"] is False
     assert body["evaluation_runtime"]["manifest_version"] == "foundation.v1"
     assert body["evaluation_runtime"]["evidence_category_count"] == 6
-    assert body["evaluation_runtime"]["staged_case_count"] == 32
+    assert body["evaluation_runtime"]["staged_case_count"] == 34
     assert body["evaluation_runtime"]["seam_coverage"][0]["seam_id"] == "async_execution"
     assert body["evaluation_runtime"]["seam_coverage"][0]["staged_fixture_count"] == 1
-    assert body["evaluation_runtime"]["seam_coverage"][1]["staged_fixture_count"] == 3
+    assert body["evaluation_runtime"]["seam_coverage"][1]["staged_fixture_count"] == 4
+    assert body["evaluation_runtime"]["seam_coverage"][1]["staged_case_count"] == 8
     assert body["evaluation_runtime"]["seam_coverage"][2]["staged_fixture_count"] == 2
     assert body["evaluation_runtime"]["seam_coverage"][2]["staged_case_count"] == 2
     assert body["evaluation_runtime"]["seam_coverage"][4]["staged_fixture_count"] == 5
     assert body["evaluation_runtime"]["seam_coverage"][4]["staged_case_count"] == 12
     assert body["evaluation_runtime"]["seam_coverage"][5]["staged_fixture_count"] == 2
     assert body["evaluation_runtime"]["seam_coverage"][5]["staged_case_count"] == 6
-    assert body["evaluation_runtime"]["approval_gates"][0]["domain_id"] == "prompt_rollout"
-    assert body["evaluation_runtime"]["approval_gates"][1]["domain_id"] == "retrieval_execution"
-    assert body["evaluation_runtime"]["approval_gates"][2]["domain_id"] == "provider_execution"
-    assert body["evaluation_runtime"]["approval_gates"][3]["domain_id"] == "safety_enforcement"
+    assert body["evaluation_runtime"]["approval_gates"][0]["domain_id"] == (
+        "first_use_case_onboarding"
+    )
+    assert body["evaluation_runtime"]["approval_gates"][1]["domain_id"] == "prompt_rollout"
+    assert body["evaluation_runtime"]["approval_gates"][2]["domain_id"] == "retrieval_execution"
+    assert body["evaluation_runtime"]["approval_gates"][3]["domain_id"] == "provider_execution"
+    assert body["evaluation_runtime"]["approval_gates"][4]["domain_id"] == "safety_enforcement"
     assert body["evaluation_runtime"]["recorded_run_count"] == 2
     assert body["evaluation_runtime"]["latest_recorded_run_id"] == "foundation_eval_2026_03_22_001"
     assert body["evaluation_runtime"]["evaluation_runner_active"] is True
