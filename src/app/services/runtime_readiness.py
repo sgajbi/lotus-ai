@@ -86,7 +86,11 @@ def get_artifact_store_runtime_status() -> StoreRuntimeStatusDescriptor:
 def get_prompt_store_runtime_status() -> StoreRuntimeStatusDescriptor:
     return _build_store_runtime_status(
         configured_mode=settings.prompt_store_mode,
-        expected_tables=["prompt_definitions", "prompt_definition_versions", "prompt_rollout_state"],
+        expected_tables=[
+            "prompt_definitions",
+            "prompt_definition_versions",
+            "prompt_rollout_state",
+        ],
         memory_detail="In-memory prompt registry is active for local or foundation-phase prompt selection.",
         unsupported_detail="Configured prompt store mode is not supported by lotus-ai.",
     )

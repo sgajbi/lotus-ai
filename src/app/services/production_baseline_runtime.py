@@ -204,9 +204,7 @@ def _classify_sql_store_group(
             ),
         )
     unsupported_stores = sorted(
-        store_id
-        for store_id, store in stores.items()
-        if store.mode not in {"memory", "sqlalchemy"}
+        store_id for store_id, store in stores.items() if store.mode not in {"memory", "sqlalchemy"}
     )
     if unsupported_stores:
         return ProductionBaselineDependencyDescriptor(

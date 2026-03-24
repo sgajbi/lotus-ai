@@ -18,9 +18,7 @@ class ProductionDependencyClassification(str, Enum):
 
 
 class ProductionBaselineDependencyDescriptor(BaseModel):
-    dependency_id: str = Field(
-        description="Stable production-baseline dependency identifier."
-    )
+    dependency_id: str = Field(description="Stable production-baseline dependency identifier.")
     classification: ProductionDependencyClassification = Field(
         description="Whether the dependency currently satisfies production baseline, remains a fallback, or is blocked."
     )
@@ -30,9 +28,7 @@ class ProductionBaselineDependencyDescriptor(BaseModel):
     configured_mode: str = Field(
         description="Configured mode or backend label currently selected for this dependency."
     )
-    detail: str = Field(
-        description="Human-readable explanation of the current dependency posture."
-    )
+    detail: str = Field(description="Human-readable explanation of the current dependency posture.")
 
 
 class ProductionBaselineRuntimeStatusResponse(BaseModel):
@@ -125,7 +121,9 @@ class ProductionBaselineRunbookReadinessResponse(BaseModel):
 
 
 class ProductionBaselineGovernanceStatusResponse(BaseModel):
-    service: str = Field(description="Service name emitting the production-baseline governance status.")
+    service: str = Field(
+        description="Service name emitting the production-baseline governance status."
+    )
     version: str = Field(description="Current lotus-ai service version.")
     governance_ready: bool = Field(
         description="Whether production-baseline governance is ready for accepted go-live posture."

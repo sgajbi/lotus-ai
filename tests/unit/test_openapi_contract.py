@@ -10,15 +10,18 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/production-baseline/runtime-status"]["get"]["operationId"] == (
         "getProductionBaselineRuntimeStatus"
     )
-    assert spec["paths"]["/platform/production-baseline/activation-readiness"]["get"][
-        "operationId"
-    ] == "getProductionBaselineActivationReadiness"
-    assert spec["paths"]["/platform/production-baseline/runbook-readiness"]["get"][
-        "operationId"
-    ] == "getProductionBaselineRunbookReadiness"
-    assert spec["paths"]["/platform/production-baseline/governance-status"]["get"][
-        "operationId"
-    ] == "getProductionBaselineGovernanceStatus"
+    assert (
+        spec["paths"]["/platform/production-baseline/activation-readiness"]["get"]["operationId"]
+        == "getProductionBaselineActivationReadiness"
+    )
+    assert (
+        spec["paths"]["/platform/production-baseline/runbook-readiness"]["get"]["operationId"]
+        == "getProductionBaselineRunbookReadiness"
+    )
+    assert (
+        spec["paths"]["/platform/production-baseline/governance-status"]["get"]["operationId"]
+        == "getProductionBaselineGovernanceStatus"
+    )
     assert spec["paths"]["/platform/observability/runtime-status"]["get"]["operationId"] == (
         "getObservabilityRuntimeStatus"
     )

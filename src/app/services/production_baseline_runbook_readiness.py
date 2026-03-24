@@ -8,9 +8,7 @@ from app.contracts.production_baseline import (
 from app.services.governance_readiness import summarize_activation_items
 
 
-def build_production_baseline_runbook_readiness() -> (
-    ProductionBaselineRunbookReadinessResponse
-):
+def build_production_baseline_runbook_readiness() -> ProductionBaselineRunbookReadinessResponse:
     items = [
         ProductionBaselineRunbookReadinessItem(
             runbook_id="deployment_baseline_boundary",
