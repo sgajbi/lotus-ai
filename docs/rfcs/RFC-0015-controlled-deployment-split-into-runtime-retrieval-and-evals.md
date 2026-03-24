@@ -120,11 +120,11 @@ The current platform is more split-ready than it used to be, but still intention
 
 ### What Is Still Missing
 
-1. there is no split-aware runtime model yet,
-2. there is no explicit routing or ownership contract for a three-plane topology,
-3. platform status does not yet describe unified versus split deployment posture,
-4. rollback from split mode is not yet modeled,
-5. no current plane can be activated independently while preserving one front-door contract.
+1. eval plane activation is not implemented yet,
+2. cross-plane governance and runbook hardening for fully active split posture is still incomplete,
+3. retrieval split is modeled internally, but the runtime plane still remains the only external front door,
+4. unified rollback remains the only supported rollback target,
+5. retrieval-and-evals split activation is still future work.
 
 ## Decision
 

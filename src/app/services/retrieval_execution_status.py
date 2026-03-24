@@ -8,13 +8,16 @@ from app.contracts.retrieval import (
 from app.retrieval.document_governance import build_retrieval_document_governance
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
 from app.services.deployment_split_routing import resolve_retrieval_search_route
-from app.services.deployment_split_shared import resolve_effective_deployment_split_stage
+from app.services.deployment_split_shared import resolve_deployment_split_posture
 from app.services.runtime_readiness import get_retrieval_store_runtime_status
 
 
 def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
-    effective_stage, _ = resolve_effective_deployment_split_stage()
-    route = resolve_retrieval_search_route(effective_stage=effective_stage)
+    posture = resolve_deployment_split_posture()
+    route = resolve_retrieval_search_route(
+        effective_stage=posture.effective_stage,
+        degraded_findings=posture.degraded_findings,
+    )
     if settings.retrieval_mode != "enabled":
         return RetrievalExecutionStatusResponse(
             service=settings.service_name,
@@ -27,6 +30,8 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
             owning_plane=route.owning_plane,
             route_mode=route.route_mode,
             rollback_target_stage=route.rollback_target_stage,
+            split_route_degraded=route.degraded,
+            split_route_findings=route.degraded_findings,
             message=(
                 "Live retrieval search remains disabled, but runtime-backed retrieval indexing is "
                 f"enabled for allowlisted async jobs. {route.detail}"
@@ -46,6 +51,8 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
             owning_plane=route.owning_plane,
             route_mode=route.route_mode,
             rollback_target_stage=route.rollback_target_stage,
+            split_route_degraded=route.degraded,
+            split_route_findings=route.degraded_findings,
             message=(
                 "Live retrieval search is configured but unavailable because the retrieval store "
                 f"is not ready: {store_status.detail} {route.detail}"
@@ -90,5 +97,7 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
         owning_plane=route.owning_plane,
         route_mode=route.route_mode,
         rollback_target_stage=route.rollback_target_stage,
+        split_route_degraded=route.degraded,
+        split_route_findings=route.degraded_findings,
         message=f"{message} {route.detail}",
     )

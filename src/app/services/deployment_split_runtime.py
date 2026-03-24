@@ -9,16 +9,16 @@ from app.contracts.deployment_split import (
 )
 from app.services.deployment_split_routing import build_split_route_descriptors
 from app.services.deployment_split_shared import (
-    resolve_configured_deployment_split_stage,
-    resolve_effective_deployment_split_stage,
+    resolve_deployment_split_posture,
 )
 
 
 def build_deployment_split_runtime_status(
     app_state: object | None = None,
 ) -> DeploymentSplitRuntimeStatusResponse:
-    configured_stage = resolve_configured_deployment_split_stage()
-    effective_stage, blocking_findings = resolve_effective_deployment_split_stage(app_state)
+    posture = resolve_deployment_split_posture(app_state)
+    configured_stage = posture.configured_stage
+    effective_stage = posture.effective_stage
     planes = _build_plane_descriptors(effective_stage)
     routes = build_split_route_descriptors(app_state)
     separate_plane_count = sum(1 for plane in planes if plane.separately_deployed)
@@ -28,13 +28,21 @@ def build_deployment_split_runtime_status(
         (
             "Lotus-ai remains in the unified deployment stage."
             if effective_stage is DeploymentSplitStage.UNIFIED
-            else "Lotus-ai is currently operating in a split-ready posture without live plane cutover."
+            else (
+                "Lotus-ai is currently operating in an active retrieval-split posture."
+                if effective_stage is DeploymentSplitStage.RETRIEVAL_SPLIT_ACTIVE
+                else "Lotus-ai is currently operating in a split-ready posture without live plane cutover."
+            )
         ),
         "The runtime plane remains the single external front door while retrieval and eval planes are modeled as internal deployment seams.",
         (
             "Configured split stage is blocked by production-baseline or rollout prerequisites."
             if configured_stage is not effective_stage
-            else "Configured split stage currently matches the effective deployment-split posture."
+            else (
+                "Configured split stage currently matches the effective deployment-split posture, but retrieval split routing is degraded."
+                if posture.degraded_findings
+                else "Configured split stage currently matches the effective deployment-split posture."
+            )
         ),
     ]
 
@@ -50,7 +58,9 @@ def build_deployment_split_runtime_status(
         route_count=len(routes),
         planes=planes,
         routes=routes,
-        blocking_findings=blocking_findings,
+        blocking_findings=posture.blocking_findings,
+        degraded=bool(posture.degraded_findings),
+        degraded_findings=posture.degraded_findings,
         status_summary=status_summary,
     )
 

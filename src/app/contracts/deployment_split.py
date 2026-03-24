@@ -54,6 +54,12 @@ class DeploymentRouteDescriptor(BaseModel):
     rollback_target_stage: DeploymentSplitStage = Field(
         description="Deployment-split stage that operators should roll back to if this route becomes unhealthy."
     )
+    degraded: bool = Field(
+        description="Whether this route is currently active in a degraded split-plane posture."
+    )
+    degraded_findings: list[str] = Field(
+        description="Human-readable findings describing why the route is degraded under the active split posture."
+    )
     detail: str = Field(description="Human-readable explanation of the current route posture.")
 
 
@@ -87,6 +93,12 @@ class DeploymentSplitRuntimeStatusResponse(BaseModel):
     )
     blocking_findings: list[str] = Field(
         description="Human-readable reasons why the configured split stage is not yet the effective split posture."
+    )
+    degraded: bool = Field(
+        description="Whether the current effective split posture is active but degraded."
+    )
+    degraded_findings: list[str] = Field(
+        description="Human-readable degraded findings that still preserve the currently active split posture."
     )
     status_summary: list[str] = Field(
         description="Short operator-facing summary of the current deployment-split posture."

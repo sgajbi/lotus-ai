@@ -10,14 +10,16 @@ from app.contracts.retrieval import (
 )
 from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.deployment_split_routing import resolve_retrieval_search_route
-from app.services.deployment_split_shared import resolve_effective_deployment_split_stage
+from app.services.deployment_split_shared import resolve_deployment_split_posture
 from app.services.retrieval_gateway import execute_retrieval_search
 from app.services.retrieval_store import get_retrieval_repository
 
 
 def search_sources(request: RetrievalSearchRequest) -> RetrievalSearchResponse:
+    posture = resolve_deployment_split_posture()
     route = resolve_retrieval_search_route(
-        effective_stage=resolve_effective_deployment_split_stage()[0]
+        effective_stage=posture.effective_stage,
+        degraded_findings=posture.degraded_findings,
     )
     authorization = require_authorized(
         authorize_request(

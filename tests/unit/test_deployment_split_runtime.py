@@ -65,12 +65,71 @@ def test_deployment_split_runtime_blocks_split_ready_when_production_baseline_is
     assert status.blocking_findings[0].startswith("RFC-0020 production-baseline governance")
 
 
-def test_deployment_split_runtime_reports_future_stages_as_not_yet_implemented() -> None:
-    settings.deployment_split_stage = "retrieval_split_active"
+def test_deployment_split_runtime_reports_future_stages_as_not_yet_implemented(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.deployment_split_stage = "retrieval_and_evals_split_active"
+    monkeypatch.setattr(
+        "app.services.deployment_split_shared._build_production_baseline_governance_status",
+        lambda app_state: SimpleNamespace(governance_ready=True, governance_summary=[]),
+    )
+    monkeypatch.setattr(
+        "app.services.deployment_split_shared._build_retrieval_governance_status",
+        lambda app_state: SimpleNamespace(governance_ready=True, governance_summary=[]),
+    )
 
     status = build_deployment_split_runtime_status(None)
 
-    assert status.configured_stage.value == "RETRIEVAL_SPLIT_ACTIVE"
-    assert status.effective_stage.value == "UNIFIED"
-    assert status.split_ready is False
-    assert "not yet implemented" in status.blocking_findings[0]
+    assert status.configured_stage.value == "RETRIEVAL_AND_EVALS_SPLIT_ACTIVE"
+    assert status.effective_stage.value == "RETRIEVAL_SPLIT_ACTIVE"
+    assert status.split_ready is True
+    assert "Eval plane activation is not yet implemented" in status.blocking_findings[0]
+
+
+def test_deployment_split_runtime_reports_retrieval_split_active_when_ready(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.deployment_split_stage = "retrieval_split_active"
+    monkeypatch.setattr(
+        "app.services.deployment_split_shared._build_production_baseline_governance_status",
+        lambda app_state: SimpleNamespace(governance_ready=True, governance_summary=[]),
+    )
+    monkeypatch.setattr(
+        "app.services.deployment_split_shared._build_retrieval_governance_status",
+        lambda app_state: SimpleNamespace(governance_ready=True, governance_summary=[]),
+    )
+
+    status = build_deployment_split_runtime_status(None)
+
+    assert status.effective_stage.value == "RETRIEVAL_SPLIT_ACTIVE"
+    assert status.split_ready is True
+    assert status.separate_plane_count == 1
+    assert status.degraded is False
+    assert status.routes[0].owning_plane.value == "retrieval"
+    assert status.routes[0].route_mode.value == "PLANE_SPLIT_ACTIVE"
+    assert status.routes[2].route_mode.value == "SPLIT_READY_UNIFIED"
+
+
+def test_deployment_split_runtime_surfaces_degraded_retrieval_split_posture(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.deployment_split_stage = "retrieval_split_active"
+    monkeypatch.setattr(
+        "app.services.deployment_split_shared._build_production_baseline_governance_status",
+        lambda app_state: SimpleNamespace(governance_ready=True, governance_summary=[]),
+    )
+    monkeypatch.setattr(
+        "app.services.deployment_split_shared._build_retrieval_governance_status",
+        lambda app_state: SimpleNamespace(
+            governance_ready=False,
+            governance_summary=["Retrieval evidence readiness remains blocked."],
+        ),
+    )
+
+    status = build_deployment_split_runtime_status(None)
+
+    assert status.effective_stage.value == "RETRIEVAL_SPLIT_ACTIVE"
+    assert status.degraded is True
+    assert "Retrieval split activation remains configured" in status.degraded_findings[0]
+    assert status.routes[0].degraded is True
+    assert status.routes[0].route_mode.value == "PLANE_SPLIT_ACTIVE"

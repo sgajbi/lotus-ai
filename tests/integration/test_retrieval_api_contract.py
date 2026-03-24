@@ -1,3 +1,7 @@
+from types import SimpleNamespace
+
+from _pytest.monkeypatch import MonkeyPatch
+
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_submission_service import submit_evaluation_run
@@ -82,6 +86,8 @@ def test_retrieval_execution_status_route(client: TestClient) -> None:
     assert body["execution_stage"] == "SEARCH_DISABLED"
     assert body["live_search_enabled"] is False
     assert body["live_indexing_enabled"] is True
+    assert body["route_mode"] == "UNIFIED_INTERNAL"
+    assert body["split_route_degraded"] is False
 
 
 def test_retrieval_execution_status_route_reports_live_search_when_enabled(
@@ -104,6 +110,46 @@ def test_retrieval_execution_status_route_reports_live_search_when_enabled(
     assert body["execution_stage"] == "LIVE_SEARCH"
     assert body["live_search_enabled"] is True
     assert "searchable promoted document" in body["message"]
+
+
+def test_retrieval_split_active_runtime_routes_are_reported_explicitly(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.deployment_split_stage = "retrieval_split_active"
+    monkeypatch.setattr(
+        "app.services.deployment_split_shared._build_production_baseline_governance_status",
+        lambda app_state: SimpleNamespace(governance_ready=True, governance_summary=[]),
+    )
+    monkeypatch.setattr(
+        "app.services.deployment_split_shared._build_retrieval_governance_status",
+        lambda app_state: SimpleNamespace(
+            governance_ready=False,
+            governance_summary=["Retrieval runbook readiness remains blocked."],
+        ),
+    )
+
+    split_response = client.get("/platform/deployment-split/runtime-status")
+    retrieval_response = client.get("/platform/retrieval/execution-status")
+
+    assert split_response.status_code == 200
+    assert retrieval_response.status_code == 200
+
+    split_body = split_response.json()
+    retrieval_body = retrieval_response.json()
+    assert split_body["effective_stage"] == "RETRIEVAL_SPLIT_ACTIVE"
+    assert split_body["degraded"] is True
+    assert any(
+        route["route_id"] == "retrieval_search_execution"
+        and route["route_mode"] == "PLANE_SPLIT_ACTIVE"
+        and route["owning_plane"] == "retrieval"
+        for route in split_body["routes"]
+    )
+    assert retrieval_body["owning_plane"] == "retrieval"
+    assert retrieval_body["route_mode"] == "PLANE_SPLIT_ACTIVE"
+    assert retrieval_body["split_route_degraded"] is True
 
 
 def test_retrieval_activation_readiness_route(client: TestClient) -> None:

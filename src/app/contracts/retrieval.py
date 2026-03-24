@@ -356,6 +356,12 @@ class RetrievalExecutionStatusResponse(BaseModel):
     rollback_target_stage: DeploymentSplitStage = Field(
         description="Deployment-split stage operators should roll back to if retrieval split routing becomes unhealthy."
     )
+    split_route_degraded: bool = Field(
+        description="Whether retrieval execution is currently running under a degraded retrieval-plane split posture."
+    )
+    split_route_findings: list[str] = Field(
+        description="Human-readable degraded findings for the current retrieval split route."
+    )
     message: str = Field(description="Human-readable explanation of the retrieval execution state.")
 
 
