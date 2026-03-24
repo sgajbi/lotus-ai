@@ -139,6 +139,15 @@ class ProductionBaselineGovernanceStatusResponse(BaseModel):
     runbook_readiness: ProductionBaselineRunbookReadinessResponse = Field(
         description="Current runbook-readiness posture for the production baseline."
     )
+    provider_governance_ready: bool = Field(
+        description="Whether the current live-provider posture is also governance-ready when live execution is configured."
+    )
+    first_use_case_governance_ready: bool = Field(
+        description="Whether the current first production-oriented downstream use case is governance-ready."
+    )
+    dependent_rollout_findings: list[str] = Field(
+        description="Human-readable dependent rollout or use-case findings that keep technical production posture from being mistaken for broader go-live approval."
+    )
     blocking_area_count: int = Field(
         description="Number of governance areas currently blocking the accepted production baseline."
     )

@@ -1,5 +1,8 @@
+from types import SimpleNamespace
+
 from _pytest.monkeypatch import MonkeyPatch
 
+from app.config import settings
 from app.contracts.production_baseline import (
     ProductionBaselineActivationReadinessResponse,
     ProductionBaselineDependencyDescriptor,
@@ -84,6 +87,7 @@ def test_production_baseline_runbook_readiness_is_ready() -> None:
 def test_production_baseline_governance_status_composes_runtime_activation_and_runbook(
     monkeypatch: MonkeyPatch,
 ) -> None:
+    settings.provider_mode = "openai"
     runtime_status = _runtime_status(
         posture=ProductionBaselinePosture.PROD_SHAPED_LOCAL,
         prod_shaped_local=True,
@@ -118,9 +122,20 @@ def test_production_baseline_governance_status_composes_runtime_activation_and_r
             items=[],
         ),
     )
+    monkeypatch.setattr(
+        "app.services.production_baseline_governance.build_provider_governance_status",
+        lambda: SimpleNamespace(governance_ready=False),
+    )
+    monkeypatch.setattr(
+        "app.services.production_baseline_governance.build_first_use_case_governance_status",
+        lambda: SimpleNamespace(governance_ready=False),
+    )
 
     governance = build_production_baseline_governance_status(None)
 
     assert governance.governance_ready is False
     assert governance.runtime_status.posture is ProductionBaselinePosture.PROD_SHAPED_LOCAL
-    assert governance.blocking_area_count == 1
+    assert governance.provider_governance_ready is False
+    assert governance.first_use_case_governance_ready is False
+    assert governance.blocking_area_count == 2
+    assert len(governance.dependent_rollout_findings) == 2

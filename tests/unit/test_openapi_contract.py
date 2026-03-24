@@ -268,6 +268,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "activation_ready" in production_baseline_activation_schema["properties"]
     assert "items" in production_baseline_runbook_schema["properties"]
     assert "runtime_status" in production_baseline_governance_schema["properties"]
+    assert "dependent_rollout_findings" in production_baseline_governance_schema["properties"]
     assert "artifact_runtime" in platform_runtime_schema["properties"]
     assert "artifact_governance" in platform_runtime_schema["properties"]
     assert "first_use_case" in platform_runtime_schema["properties"]
