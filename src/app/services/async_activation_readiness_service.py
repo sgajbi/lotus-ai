@@ -8,17 +8,18 @@ from app.services.async_runtime_status import build_async_runtime_status
 def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
     runtime = build_async_runtime_status()
     blocking_findings = [
-        "Dedicated queue-backed worker execution remains disabled; the current durable in-process worker posture is reviewable but not yet horizontally isolated.",
+        "Dedicated queue-backed worker execution is not the active primary path yet; the current posture is still limited to durable in-process execution or queue-delivery shadow mode.",
         "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
     ]
     activation_path = [
-        "Activate an isolated queue-backed worker execution strategy on top of the durable submission, claim, lease, and recovery model.",
+        "Promote the Redis-backed managed queue from shadow delivery to the primary dedicated-worker path without changing the durable async state model.",
         "Enable broader async job types through reviewed rollout slices with observability, safety, replay, and supportability gates.",
     ]
     return AsyncActivationReadinessResponse(
         service=settings.service_name,
         version=settings.service_version,
         delivery_phase=settings.delivery_phase,
+        cutover_state=runtime.cutover_state,
         activation_ready=False,
         queue_backend=runtime.queue_backend,
         worker_execution=runtime.active_worker_execution,

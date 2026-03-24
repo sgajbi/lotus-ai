@@ -51,9 +51,10 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     )
 
     assert status.service == "lotus-ai"
-    assert status.async_runtime.queue_mode == "STUBBED"
-    assert status.async_runtime.queue_backend == "service_database"
-    assert status.async_runtime.worker_mode == "STUBBED"
+    assert status.async_runtime.cutover_state == "in_process_only"
+    assert status.async_runtime.queue_mode == "DISABLED"
+    assert status.async_runtime.queue_backend == "none"
+    assert status.async_runtime.worker_mode == "IN_PROCESS_ONLY"
     assert status.async_runtime.active_worker_execution == "in_process_stub"
     assert status.async_runtime.enqueued_job_count == 0
     assert status.provider_governance.blocking_area_count == 3

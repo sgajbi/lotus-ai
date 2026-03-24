@@ -211,11 +211,12 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["audit_store"]["status"] == "READY"
     assert body["retrieval_store"]["mode"] == "memory"
     assert body["retrieval_store"]["status"] == "READY"
-    assert body["async_runtime"]["queue_mode"] == "STUBBED"
-    assert body["async_runtime"]["worker_mode"] == "STUBBED"
+    assert body["async_runtime"]["cutover_state"] == "in_process_only"
+    assert body["async_runtime"]["queue_mode"] == "DISABLED"
+    assert body["async_runtime"]["worker_mode"] == "IN_PROCESS_ONLY"
     assert body["async_runtime"]["supported_queue_backends"][0]["backend_id"] == "none"
-    assert body["async_runtime"]["supported_queue_backends"][1]["backend_id"] == "service_database"
-    assert body["async_runtime"]["queue_backend"] == "service_database"
+    assert body["async_runtime"]["supported_queue_backends"][1]["backend_id"] == "redis_queue"
+    assert body["async_runtime"]["queue_backend"] == "none"
     assert body["async_runtime"]["active_worker_execution"] == "in_process_stub"
     assert (
         body["async_runtime"]["supported_worker_executions"][2]["worker_id"]
@@ -224,10 +225,7 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["async_runtime"]["active_worker_count"] == 0
     assert body["async_runtime"]["enqueued_job_count"] == 0
     assert body["async_runtime"]["recorded_job_count"] == 2
-    assert (
-        "retrieval indexing and evaluation execution already running through the runtime-backed in-process worker path"
-        in body["async_runtime"]["message"]
-    )
+    assert "current cutover state exposes" in body["async_runtime"]["message"]
     assert body["async_governance"]["governance_ready"] is False
     assert body["async_governance"]["blocking_area_count"] == 2
     assert body["async_governance"]["activation_readiness"]["activation_ready"] is False

@@ -7,12 +7,21 @@ from pydantic import BaseModel, Field
 
 class AsyncQueueMode(str, Enum):
     DISABLED = "DISABLED"
-    STUBBED = "STUBBED"
+    SHADOW = "SHADOW"
+    ACTIVE = "ACTIVE"
 
 
 class AsyncWorkerMode(str, Enum):
-    DOCUMENTED_ONLY = "DOCUMENTED_ONLY"
-    STUBBED = "STUBBED"
+    IN_PROCESS_ONLY = "IN_PROCESS_ONLY"
+    DEDICATED = "DEDICATED"
+    DEGRADED_FALLBACK = "DEGRADED_FALLBACK"
+
+
+class AsyncCutoverState(str, Enum):
+    IN_PROCESS_ONLY = "in_process_only"
+    QUEUE_DELIVERY_SHADOW = "queue_delivery_shadow"
+    DEDICATED_WORKERS_ACTIVE = "dedicated_workers_active"
+    DEGRADED_FALLBACK = "degraded_fallback"
 
 
 class AsyncJobStatus(str, Enum):
@@ -234,6 +243,9 @@ class AsyncJobSubmissionResponse(BaseModel):
     submission_status: AsyncSubmissionStatus = Field(
         description="Submission outcome under the current async runtime posture."
     )
+    cutover_state: AsyncCutoverState = Field(
+        description="Current async worker-fleet cutover state governing the submission."
+    )
     queue_mode: AsyncQueueMode = Field(
         description="Queue mode that governed the submission decision."
     )
@@ -260,6 +272,9 @@ class AsyncRuntimeStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the async runtime status.")
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    cutover_state: AsyncCutoverState = Field(
+        description="Current async worker-fleet cutover state."
+    )
     queue_mode: AsyncQueueMode = Field(description="Current queue execution mode.")
     worker_mode: AsyncWorkerMode = Field(description="Current worker runtime mode.")
     queue_backend: str = Field(description="Current queue backend posture label.")
@@ -317,6 +332,9 @@ class AsyncActivationReadinessResponse(BaseModel):
     service: str = Field(description="Service name emitting the async activation readiness view.")
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    cutover_state: AsyncCutoverState = Field(
+        description="Current async worker-fleet cutover state."
+    )
     activation_ready: bool = Field(
         description="Whether lotus-ai async execution is currently ready for live activation."
     )

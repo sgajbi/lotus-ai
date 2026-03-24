@@ -39,9 +39,9 @@ router = APIRouter(prefix="/platform/async", tags=["platform"])
     operation_id="getAsyncRuntimeStatus",
     summary="Get lotus-ai async runtime status",
     description=(
-        "Returns the current queue and worker posture for lotus-ai async execution, including "
-        "known async job types, whether durable submission is active for any allowlisted job "
-        "types, and whether stubbed or dedicated background workers are active."
+        "Returns the current async cutover state, queue posture, and worker posture for lotus-ai "
+        "async execution, including whether managed queue delivery is disabled, running in shadow "
+        "mode, or serving a dedicated worker fleet."
     ),
     responses={
         200: {"description": "Async runtime status returned successfully."},
@@ -59,7 +59,7 @@ async def get_async_runtime_status_route() -> AsyncRuntimeStatusResponse:
     summary="Get lotus-ai async queue backend catalog",
     description=(
         "Returns the governed queue backend strategies recognized by lotus-ai, including the "
-        "current durable-submission backend and documented future worker-scalable backend options."
+        "current managed-queue posture and documented future worker-scalable backend options."
     ),
     responses={
         200: {"description": "Async queue backend catalog returned successfully."},
@@ -77,7 +77,7 @@ async def get_async_queue_backend_catalog_route() -> AsyncQueueBackendCatalogRes
     summary="Get lotus-ai async worker execution catalog",
     description=(
         "Returns the governed worker execution strategies recognized by lotus-ai, including the "
-        "current stubbed worker default and documented future dedicated worker rollout options."
+        "current in-process default and documented future dedicated worker rollout options."
     ),
     responses={
         200: {"description": "Async worker execution catalog returned successfully."},
@@ -95,7 +95,7 @@ async def get_async_worker_execution_catalog_route() -> AsyncWorkerExecutionCata
     summary="Get lotus-ai async activation readiness",
     description=(
         "Returns whether lotus-ai async execution is currently ready for live activation, along "
-        "with the blocking findings and governed activation path beyond the current stubbed worker posture."
+        "with the blocking findings and governed activation path beyond the current cutover posture."
     ),
     responses={
         200: {"description": "Async activation readiness returned successfully."},
@@ -227,7 +227,7 @@ async def get_async_job_detail_route(job_id: str) -> AsyncJobDetailResponse:
     summary="Submit a lotus-ai async job request",
     description=(
         "Validates an async job submission against the current async runtime posture. Allowlisted "
-        "job types are durably recorded in queue-backed runtime state, staged-only job "
+        "job types are durably recorded in authoritative runtime state, staged-only job "
         "types return an explicit rejected response, and duplicate active retrieval-index "
         "submissions are rejected with the owning runtime job id."
     ),

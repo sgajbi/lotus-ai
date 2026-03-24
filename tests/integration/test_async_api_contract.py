@@ -13,11 +13,12 @@ def test_async_runtime_status_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["queue_mode"] == "STUBBED"
-    assert body["worker_mode"] == "STUBBED"
-    assert body["queue_backend"] == "service_database"
+    assert body["cutover_state"] == "in_process_only"
+    assert body["queue_mode"] == "DISABLED"
+    assert body["worker_mode"] == "IN_PROCESS_ONLY"
+    assert body["queue_backend"] == "none"
     assert body["supported_queue_backends"][0]["backend_id"] == "none"
-    assert body["supported_queue_backends"][1]["backend_id"] == "service_database"
+    assert body["supported_queue_backends"][1]["backend_id"] == "redis_queue"
     assert body["active_worker_execution"] == "in_process_stub"
     assert body["supported_worker_executions"][0]["worker_id"] == "none"
     assert body["supported_worker_executions"][2]["worker_id"] == "queue_backed_workers"
@@ -35,12 +36,11 @@ def test_async_queue_backend_catalog_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["active_queue_backend"] == "service_database"
-    assert body["backend_count"] == 4
+    assert body["active_queue_backend"] == "none"
+    assert body["backend_count"] == 3
     assert body["backends"][0]["backend_id"] == "none"
-    assert body["backends"][1]["backend_id"] == "service_database"
-    assert body["backends"][2]["backend_id"] == "redis_queue"
-    assert body["backends"][3]["backend_id"] == "kafka_orchestrated"
+    assert body["backends"][1]["backend_id"] == "redis_queue"
+    assert body["backends"][2]["backend_id"] == "kafka_orchestrated"
 
 
 def test_async_worker_execution_catalog_route(client: TestClient) -> None:
@@ -64,7 +64,8 @@ def test_async_activation_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["activation_ready"] is False
-    assert body["queue_backend"] == "service_database"
+    assert body["cutover_state"] == "in_process_only"
+    assert body["queue_backend"] == "none"
     assert body["worker_execution"] == "in_process_stub"
     assert body["supported_job_type_count"] == 3
     assert len(body["blocking_findings"]) == 2
@@ -164,8 +165,9 @@ def test_async_job_submit_route_accepts_runtime_backed_submission(client: TestCl
     assert body["job_id"] is not None
     assert body["target_id"] == "retjob_lotus_platform_rfcs"
     assert body["existing_job_id"] is None
-    assert body["queue_mode"] == "STUBBED"
-    assert body["worker_mode"] == "STUBBED"
+    assert body["cutover_state"] == "in_process_only"
+    assert body["queue_mode"] == "DISABLED"
+    assert body["worker_mode"] == "IN_PROCESS_ONLY"
 
     catalog_response = client.get("/platform/async/jobs")
     catalog_body = catalog_response.json()
@@ -309,8 +311,9 @@ def test_async_job_submit_route_rejects_documentation_only_job_type(client: Test
     assert body["submission_status"] == "ACCEPTED"
     assert body["accepted"] is True
     assert body["job_id"] is not None
-    assert body["queue_mode"] == "STUBBED"
-    assert body["worker_mode"] == "STUBBED"
+    assert body["cutover_state"] == "in_process_only"
+    assert body["queue_mode"] == "DISABLED"
+    assert body["worker_mode"] == "IN_PROCESS_ONLY"
 
 
 def test_async_job_detail_route_exposes_runtime_backed_evaluation_execution(

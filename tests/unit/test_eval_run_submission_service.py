@@ -122,6 +122,9 @@ def test_submit_evaluation_execution_async_job_accepts_allowlisted_fixture_famil
 
     assert response.accepted is True
     assert response.job_id is not None
+    assert response.cutover_state == "in_process_only"
+    assert response.queue_mode == "DISABLED"
+    assert response.worker_mode == "IN_PROCESS_ONLY"
 
     async_catalog = build_async_job_catalog()
     runtime_job = next(job for job in async_catalog.jobs if job.job_id == response.job_id)

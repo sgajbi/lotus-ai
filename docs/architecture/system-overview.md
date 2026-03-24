@@ -338,7 +338,7 @@ for jobs, attempts, and worker leases. That durable storage seam now underpins t
 cutover slices instead of leaving async state in documentation artifacts or ad hoc process memory.
 
 The next slice activates a narrow durable-submission posture on top of that seam. Allowlisted job
-types can now be recorded into runtime-backed queue state and appear in the public async job
+types can now be recorded into authoritative runtime state and appear in the public async job
 catalog/detail views as durable runtime records, while non-allowlisted job types remain explicitly
 staged or historical until their own runtime-backed rollout slices arrive.
 
@@ -355,7 +355,9 @@ document/chunk index-status surfaces. Live retrieval search rollout remains a se
 Async evaluation and runbook surfaces now reflect that same runtime truth explicitly: runtime-backed
 evaluation execution is active for the allowlisted fixture families, staged evaluation assets remain
 as governed continuity baselines, and the service runbook documents restart-survival plus recovery
-expectations for the SQL-backed async runtime path.
+expectations for the SQL-backed async runtime path. RFC-0011 Slice 1 adds the cutover-state model
+for managed queue rollout, so operator surfaces no longer treat the service database itself as the
+queue backend.
 
 Async runtime-backed jobs now also expose a narrow control-plane surface for retry, replay,
 requeue, and manual abandon actions. Those operator actions are recorded durably as async
