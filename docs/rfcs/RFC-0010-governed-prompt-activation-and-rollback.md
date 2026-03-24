@@ -1,6 +1,6 @@
 # RFC-0010: Governed Prompt Activation and Rollback
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -300,6 +300,24 @@ This RFC is complete when:
 5. stale or staged-only evidence cannot silently satisfy live prompt activation,
 6. the platform is materially closer to enterprise-grade prompt governance and rollback discipline,
 7. repository-only prompt activation is no longer the authoritative runtime control path.
+
+## Implementation Notes
+
+Implemented in five slices:
+
+1. durable prompt rollout state and version-addressable prompt definitions,
+2. bounded promote and rollback control-plane actions with durable history,
+3. prompt runtime, task execution, audit, and execution-evidence convergence,
+4. runtime-backed prompt approval-gate evidence and promotion blocking,
+5. runbook and operational hardening plus SQL-backed restart-survival coverage.
+
+Current authoritative posture:
+
+1. prompt bodies remain repository-managed,
+2. prompt rollout state is the authoritative runtime control plane,
+3. promote and rollback actions are allowed only when SQL-backed prompt rollout state is active,
+4. promotion additionally requires SQL-backed runtime-backed evaluation evidence,
+5. platform, prompt, audit, and task surfaces now report the same prompt rollout truth model.
 
 ## Approval Requested
 
