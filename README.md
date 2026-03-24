@@ -4,6 +4,21 @@ Shared AI platform service for Lotus applications.
 
 `lotus-ai` provides the reusable AI infrastructure layer for the Lotus estate. It exists to help the other Lotus apps build governed AI features without moving domain ownership out of the services that already own portfolio data, analytics, workflow state, and deterministic decision logic.
 
+## Start Here
+
+If you are new to the repo, read these first:
+
+1. [System Overview](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/system-overview.md)
+2. [Feature Status and Roadmap](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/feature-status-and-roadmap.md)
+3. [Phased Roadmap](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/phased-roadmap.md)
+4. [RFC Index](C:/Users/Sandeep/projects/lotus-ai/docs/rfcs/README.md)
+
+If you want the shortest summary:
+
+1. RFC-0001 through RFC-0012 are implemented,
+2. bounded task execution, retrieval, safety, prompt rollout, async workers, runtime-backed evals, and caller access control are real,
+3. broader production observability, artifact storage, embeddings expansion, document ingestion, and first-use-case onboarding are still roadmap items.
+
 ## Current Phase
 
 The repository is in foundation phase.
