@@ -10,9 +10,7 @@ from app.contracts.async_runtime import (
     AsyncJobStatus,
     AsyncJobSubmissionRequest,
     AsyncJobSubmissionResponse,
-    AsyncQueueMode,
     AsyncSubmissionStatus,
-    AsyncWorkerMode,
 )
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
@@ -20,7 +18,9 @@ from app.repositories.async_runtime_repository import (
 )
 from app.services.retrieval_catalog_service import get_retrieval_job_detail_or_raise
 from app.services.async_job_type_catalog import get_async_job_type_descriptor
+from app.services.async_runtime_posture import get_async_runtime_posture
 from app.services.async_runtime_store import get_async_runtime_store
+from app.services.async_submission_shared import publish_async_attempt_if_configured
 from app.services.eval_run_submission_service import submit_evaluation_execution_async_job
 
 
@@ -35,13 +35,15 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
         )
 
     if not job_type.enabled:
+        posture = get_async_runtime_posture()
         return AsyncJobSubmissionResponse(
             service=settings.service_name,
             version=settings.service_version,
             delivery_phase=settings.delivery_phase,
             submission_status=AsyncSubmissionStatus.REJECTED,
-            queue_mode=AsyncQueueMode.STUBBED,
-            worker_mode=AsyncWorkerMode.STUBBED,
+            cutover_state=posture.cutover_state,
+            queue_mode=posture.queue_mode,
+            worker_mode=posture.worker_mode,
             job_type=request.job_type,
             target_id=request.target_id,
             existing_job_id=None,
@@ -55,13 +57,15 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
     _validate_async_job_target(request=request)
     duplicate_job = _find_active_duplicate_submission(request=request)
     if duplicate_job is not None:
+        posture = get_async_runtime_posture()
         return AsyncJobSubmissionResponse(
             service=settings.service_name,
             version=settings.service_version,
             delivery_phase=settings.delivery_phase,
             submission_status=AsyncSubmissionStatus.DUPLICATE_REJECTED,
-            queue_mode=AsyncQueueMode.STUBBED,
-            worker_mode=AsyncWorkerMode.STUBBED,
+            cutover_state=posture.cutover_state,
+            queue_mode=posture.queue_mode,
+            worker_mode=posture.worker_mode,
             job_type=request.job_type,
             target_id=request.target_id,
             existing_job_id=duplicate_job.job_id,
@@ -76,48 +80,49 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
     job_id = f"asyncjob_{request.job_type}_{uuid4().hex[:12]}"
     attempt_id = f"{job_id}_attempt_001"
     store = get_async_runtime_store()
-    store.save_job(
-        AsyncRuntimeJobRecord(
-            job_id=job_id,
-            job_type=request.job_type,
-            target_id=request.target_id,
-            lifecycle_status=AsyncJobStatus.QUEUED.value,
-            submitted_at=submitted_at,
-            caller_app=request.caller_app,
-            correlation_id=request.correlation_id,
-            payload_summary=request.payload_summary,
-            execution_path=job_type.execution_path,
-            related_evaluation_run_id=None,
-            latest_message=(
-                "Job accepted into durable async runtime state and is waiting for a later "
-                "worker-enabled execution slice."
-            ),
-            attempt_count=1,
-        )
+    job_record = AsyncRuntimeJobRecord(
+        job_id=job_id,
+        job_type=request.job_type,
+        target_id=request.target_id,
+        lifecycle_status=AsyncJobStatus.QUEUED.value,
+        submitted_at=submitted_at,
+        caller_app=request.caller_app,
+        correlation_id=request.correlation_id,
+        payload_summary=request.payload_summary,
+        execution_path=job_type.execution_path,
+        related_evaluation_run_id=None,
+        latest_message="Job accepted into durable async runtime state.",
+        attempt_count=1,
     )
-    store.save_attempt(
-        AsyncRuntimeAttemptRecord(
-            attempt_id=attempt_id,
-            job_id=job_id,
-            attempt_number=1,
-            lifecycle_status="SUBMITTED",
-            worker_id=None,
-            claimed_at=None,
-            heartbeat_at=None,
-            started_at=None,
-            completed_at=None,
-            failure_reason=None,
-            recorded_message="Initial durable async submission recorded.",
-        )
+    attempt_record = AsyncRuntimeAttemptRecord(
+        attempt_id=attempt_id,
+        job_id=job_id,
+        attempt_number=1,
+        lifecycle_status="SUBMITTED",
+        worker_id=None,
+        claimed_at=None,
+        heartbeat_at=None,
+        started_at=None,
+        completed_at=None,
+        failure_reason=None,
+        recorded_message="Initial durable async submission recorded.",
     )
+    store.save_job(job_record)
+    store.save_attempt(attempt_record)
+    delivery_published = publish_async_attempt_if_configured(
+        job=job_record,
+        attempt=attempt_record,
+    )
+    posture = get_async_runtime_posture()
 
     return AsyncJobSubmissionResponse(
         service=settings.service_name,
         version=settings.service_version,
         delivery_phase=settings.delivery_phase,
         submission_status=AsyncSubmissionStatus.ACCEPTED,
-        queue_mode=AsyncQueueMode.STUBBED,
-        worker_mode=AsyncWorkerMode.STUBBED,
+        cutover_state=posture.cutover_state,
+        queue_mode=posture.queue_mode,
+        worker_mode=posture.worker_mode,
         job_type=request.job_type,
         target_id=request.target_id,
         existing_job_id=None,
@@ -125,8 +130,11 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
         job_id=job_id,
         message=(
             f"Async job type '{request.job_type}' is allowlisted for durable submission. The job "
-            "is recorded and queued, and can later move through stubbed worker claim and completion semantics. "
-            "No dedicated worker fleet is active yet."
+            + (
+                "was also published to the managed queue path for dedicated worker execution."
+                if delivery_published
+                else "is recorded in the authoritative async state store while in-process execution remains primary."
+            )
         ),
     )
 

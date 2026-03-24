@@ -1,12 +1,50 @@
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
   lotus-ai:
     build: .
     ports:
       - \"8140:8140\"
     env_file:
       - .env
+    environment:
+      LOTUS_AI_ASYNC_CUTOVER_STATE: dedicated_workers_active
+      LOTUS_AI_ASYNC_QUEUE_BACKEND_MODE: redis
+      LOTUS_AI_ASYNC_QUEUE_REDIS_URL: redis://redis:6379/0
+      LOTUS_AI_ASYNC_RUNTIME_STORE_MODE: sqlalchemy
+      LOTUS_AI_EVALUATION_RUNTIME_STORE_MODE: sqlalchemy
+      LOTUS_AI_DATABASE_URL: sqlite:////data/lotus-ai.db
+    volumes:
+      - lotus-ai-data:/data
+    depends_on:
+      - redis
     healthcheck:
       test: [\"CMD\", \"python\", \"-c\", \"import urllib.request; urllib.request.urlopen('http://localhost:8140/health/ready')\"]
       interval: 15s
       timeout: 3s
       retries: 10
+
+  lotus-ai-worker:
+    build: .
+    command: ["python", "-m", "app.worker_main"]
+    env_file:
+      - .env
+    environment:
+      LOTUS_AI_ASYNC_CUTOVER_STATE: dedicated_workers_active
+      LOTUS_AI_ASYNC_QUEUE_BACKEND_MODE: redis
+      LOTUS_AI_ASYNC_QUEUE_REDIS_URL: redis://redis:6379/0
+      LOTUS_AI_ASYNC_RUNTIME_STORE_MODE: sqlalchemy
+      LOTUS_AI_EVALUATION_RUNTIME_STORE_MODE: sqlalchemy
+      LOTUS_AI_DATABASE_URL: sqlite:////data/lotus-ai.db
+      LOTUS_AI_ASYNC_WORKER_ID: lotus-ai-worker-1
+    volumes:
+      - lotus-ai-data:/data
+    depends_on:
+      - redis
+      - lotus-ai
+
+volumes:
+  lotus-ai-data:

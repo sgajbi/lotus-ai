@@ -1,8 +1,11 @@
+from _pytest.monkeypatch import MonkeyPatch
 from app.services.async_worker_runtime import (
     claim_next_async_job,
     complete_async_job,
     start_async_job,
 )
+from app.config import settings
+from app.services.async_delivery_queue import get_test_async_delivery_queue
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from fastapi.testclient import TestClient
 
@@ -13,20 +16,51 @@ def test_async_runtime_status_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["queue_mode"] == "STUBBED"
-    assert body["worker_mode"] == "STUBBED"
-    assert body["queue_backend"] == "service_database"
+    assert body["cutover_state"] == "in_process_only"
+    assert body["queue_mode"] == "DISABLED"
+    assert body["worker_mode"] == "IN_PROCESS_ONLY"
+    assert body["queue_backend"] == "none"
     assert body["supported_queue_backends"][0]["backend_id"] == "none"
-    assert body["supported_queue_backends"][1]["backend_id"] == "service_database"
+    assert body["supported_queue_backends"][1]["backend_id"] == "redis_queue"
     assert body["active_worker_execution"] == "in_process_stub"
     assert body["supported_worker_executions"][0]["worker_id"] == "none"
     assert body["supported_worker_executions"][2]["worker_id"] == "queue_backed_workers"
     assert body["active_worker_count"] == 0
+    assert body["active_worker_ids"] == []
     assert body["enqueued_job_count"] == 0
     assert body["recorded_job_count"] == 2
+    assert body["queue_backlog_count"] == 0
+    assert body["duplicate_delivery_count"] == 0
+    assert body["redelivery_count"] == 0
+    assert body["drain_mode_active"] is False
+    assert body["degraded_findings"] == []
     assert body["supported_job_types"][0]["enabled"] is True
     assert body["supported_job_types"][0]["execution_path"] == "durable_runtime_worker_execution"
     assert any(job["job_type"] == "retrieval_indexing" for job in body["supported_job_types"])
+
+
+def test_async_runtime_status_route_reports_dedicated_worker_cutover(
+    client: TestClient, monkeypatch: MonkeyPatch
+) -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr(
+        "app.services.async_operational_state.get_async_delivery_queue", lambda: queue
+    )
+
+    response = client.get("/platform/async/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["cutover_state"] == "dedicated_workers_active"
+    assert body["queue_mode"] == "ACTIVE"
+    assert body["worker_mode"] == "DEDICATED"
+    assert body["queue_backend"] == "redis_queue"
+    assert body["active_worker_execution"] == "queue_backed_workers"
+    assert body["queue_backlog_count"] == 0
+    assert body["degraded_findings"] == []
 
 
 def test_async_queue_backend_catalog_route(client: TestClient) -> None:
@@ -35,12 +69,11 @@ def test_async_queue_backend_catalog_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["active_queue_backend"] == "service_database"
-    assert body["backend_count"] == 4
+    assert body["active_queue_backend"] == "none"
+    assert body["backend_count"] == 3
     assert body["backends"][0]["backend_id"] == "none"
-    assert body["backends"][1]["backend_id"] == "service_database"
-    assert body["backends"][2]["backend_id"] == "redis_queue"
-    assert body["backends"][3]["backend_id"] == "kafka_orchestrated"
+    assert body["backends"][1]["backend_id"] == "redis_queue"
+    assert body["backends"][2]["backend_id"] == "kafka_orchestrated"
 
 
 def test_async_worker_execution_catalog_route(client: TestClient) -> None:
@@ -64,11 +97,26 @@ def test_async_activation_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["activation_ready"] is False
-    assert body["queue_backend"] == "service_database"
+    assert body["cutover_state"] == "in_process_only"
+    assert body["queue_backend"] == "none"
     assert body["worker_execution"] == "in_process_stub"
     assert body["supported_job_type_count"] == 3
     assert len(body["blocking_findings"]) == 2
     assert len(body["activation_path"]) == 2
+
+
+def test_async_activation_readiness_route_reports_shadow_cutover(client: TestClient) -> None:
+    settings.async_cutover_state = "queue_delivery_shadow"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+
+    response = client.get("/platform/async/activation-readiness")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["cutover_state"] == "queue_delivery_shadow"
+    assert body["queue_backend"] == "redis_queue"
+    assert body["worker_execution"] == "in_process_stub"
 
 
 def test_async_runbook_readiness_route(client: TestClient) -> None:
@@ -79,8 +127,9 @@ def test_async_runbook_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
     assert body["required_item_count"] == 4
-    assert body["completed_required_item_count"] == 0
+    assert body["completed_required_item_count"] == 2
     assert body["items"][0]["runbook_id"] == "async_operational_runbook"
+    assert body["items"][0]["status"] == "READY"
     assert body["items"][1]["status"] == "NOT_READY"
 
 
@@ -95,6 +144,19 @@ def test_async_governance_status_route(client: TestClient) -> None:
     assert body["activation_readiness"]["activation_ready"] is False
     assert body["runbook_readiness"]["runbook_ready"] is False
     assert len(body["governance_summary"]) == 2
+
+
+def test_async_governance_status_route_reports_degraded_fallback(client: TestClient) -> None:
+    settings.async_cutover_state = "degraded_fallback"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+
+    response = client.get("/platform/async/governance-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["activation_readiness"]["cutover_state"] == "degraded_fallback"
+    assert "degraded fallback posture" in body["governance_summary"][0]
 
 
 def test_async_control_history_route(client: TestClient) -> None:
@@ -164,8 +226,9 @@ def test_async_job_submit_route_accepts_runtime_backed_submission(client: TestCl
     assert body["job_id"] is not None
     assert body["target_id"] == "retjob_lotus_platform_rfcs"
     assert body["existing_job_id"] is None
-    assert body["queue_mode"] == "STUBBED"
-    assert body["worker_mode"] == "STUBBED"
+    assert body["cutover_state"] == "in_process_only"
+    assert body["queue_mode"] == "DISABLED"
+    assert body["worker_mode"] == "IN_PROCESS_ONLY"
 
     catalog_response = client.get("/platform/async/jobs")
     catalog_body = catalog_response.json()
@@ -309,8 +372,9 @@ def test_async_job_submit_route_rejects_documentation_only_job_type(client: Test
     assert body["submission_status"] == "ACCEPTED"
     assert body["accepted"] is True
     assert body["job_id"] is not None
-    assert body["queue_mode"] == "STUBBED"
-    assert body["worker_mode"] == "STUBBED"
+    assert body["cutover_state"] == "in_process_only"
+    assert body["queue_mode"] == "DISABLED"
+    assert body["worker_mode"] == "IN_PROCESS_ONLY"
 
 
 def test_async_job_detail_route_exposes_runtime_backed_evaluation_execution(

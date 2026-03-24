@@ -18,6 +18,7 @@ from app.services.async_submission_service import (
 )
 from app.config import settings
 from app.services.async_runtime_store import get_async_runtime_store
+from app.services.async_delivery_queue import get_test_async_delivery_queue
 from tests.support.migration_runner import upgrade_database_to_head
 
 
@@ -37,8 +38,9 @@ def test_submit_async_job_accepts_allowlisted_runtime_backed_job_type() -> None:
     assert response.accepted is True
     assert response.job_id is not None
     assert response.target_id == "retjob_lotus_platform_rfcs"
-    assert response.queue_mode == "STUBBED"
-    assert response.worker_mode == "STUBBED"
+    assert response.cutover_state == "in_process_only"
+    assert response.queue_mode == "DISABLED"
+    assert response.worker_mode == "IN_PROCESS_ONLY"
 
 
 def test_submit_async_job_persists_sql_backed_runtime_submission(tmp_path: Path) -> None:
@@ -64,6 +66,40 @@ def test_submit_async_job_persists_sql_backed_runtime_submission(tmp_path: Path)
     assert runtime_job.target_id == "retjob_lotus_platform_rfcs"
     assert runtime_job.status == "QUEUED"
     assert runtime_job.record_source == "RUNTIME_STATE"
+
+
+def test_submit_async_job_publishes_bounded_shadow_queue_message_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings.async_cutover_state = "queue_delivery_shadow"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr(
+        "app.services.async_submission_shared.get_async_delivery_queue",
+        lambda: queue,
+    )
+
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-shadow-001",
+            payload_summary="Index newly approved RFC documents.",
+        )
+    )
+
+    published_message = queue.list_messages()[0]
+
+    assert response.accepted is True
+    assert response.cutover_state == "queue_delivery_shadow"
+    assert response.queue_mode == "SHADOW"
+    assert response.worker_mode == "IN_PROCESS_ONLY"
+    assert published_message.job_id == response.job_id
+    assert published_message.job_type == "retrieval_indexing"
+    assert published_message.target_id == "retjob_lotus_platform_rfcs"
+    assert published_message.correlation_id == "corr-async-shadow-001"
 
 
 def test_submit_async_job_rejects_duplicate_active_runtime_submission() -> None:
@@ -126,8 +162,9 @@ def test_submit_async_job_rejects_documentation_only_job_type() -> None:
     assert response.submission_status == "ACCEPTED"
     assert response.accepted is True
     assert response.job_id is not None
-    assert response.queue_mode == "STUBBED"
-    assert response.worker_mode == "STUBBED"
+    assert response.cutover_state == "in_process_only"
+    assert response.queue_mode == "DISABLED"
+    assert response.worker_mode == "IN_PROCESS_ONLY"
 
 
 def test_submit_async_job_raises_not_found_for_unknown_job_type() -> None:

@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from app.config import settings
 from app.contracts.async_runtime import AsyncControlActionRequest, AsyncControlActionType
 from app.repositories.memory_async_runtime_repository import InMemoryAsyncRuntimeRepository
+from app.services.async_delivery_queue import get_test_async_delivery_queue
 from app.services.async_job_service import build_async_job_detail
 from app.services.async_runtime_control import (
     apply_async_control_action,
@@ -29,6 +30,14 @@ from tests.support.migration_runner import upgrade_database_to_head
 def test_async_control_action_retries_failed_job_and_records_event(
     monkeypatch: MonkeyPatch,
 ) -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr(
+        "app.services.async_submission_shared.get_async_delivery_queue",
+        lambda: queue,
+    )
     monkeypatch.setattr(
         "app.services.async_worker_runtime._utcnow",
         lambda: datetime(2026, 3, 23, 16, 0, tzinfo=UTC),
@@ -43,6 +52,7 @@ def test_async_control_action_retries_failed_job_and_records_event(
         )
     )
     claim_next_async_job(worker_id="worker-a")
+    queue.dequeue(timeout_seconds=0)
     fail_async_job(
         job_id=response.job_id or "",
         worker_id="worker-a",
@@ -70,6 +80,9 @@ def test_async_control_action_retries_failed_job_and_records_event(
     assert detail.job.status.value == "QUEUED"
     assert detail.attempts[-1].status == "QUEUED"
     assert detail.control_events[0].action_type.value == "RETRY_FAILED_JOB"
+    republished = queue.dequeue(timeout_seconds=0)
+    assert republished is not None
+    assert republished.delivery_id.endswith("_attempt_002")
 
 
 def test_async_control_action_history_survives_sql_store_reset(

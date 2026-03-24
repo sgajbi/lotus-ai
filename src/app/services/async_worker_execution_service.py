@@ -5,9 +5,11 @@ from app.contracts.async_runtime import (
     AsyncWorkerExecutionCatalogResponse,
     AsyncWorkerExecutionDescriptor,
 )
+from app.services.async_runtime_posture import get_async_runtime_posture
 
 
 def list_async_worker_executions() -> list[AsyncWorkerExecutionDescriptor]:
+    posture = get_async_runtime_posture()
     return [
         AsyncWorkerExecutionDescriptor(
             worker_id="none",
@@ -23,22 +25,29 @@ def list_async_worker_executions() -> list[AsyncWorkerExecutionDescriptor]:
         ),
         AsyncWorkerExecutionDescriptor(
             worker_id="in_process_stub",
-            enabled=True,
+            enabled=posture.active_worker_execution == "in_process_stub",
             execution_class="STUBBED_WORKER_RUNTIME",
-            selection_state="ACTIVE_SLICE_4_DEFAULT",
+            selection_state=(
+                "ACTIVE_DEFAULT"
+                if posture.active_worker_execution == "in_process_stub"
+                else "AVAILABLE_FALLBACK"
+            ),
             supports_horizontal_scaling=False,
             supports_job_isolation=True,
             notes=(
-                "Current controlled worker posture. lotus-ai now supports durable claim, lease, "
-                "heartbeat, recovery, and terminal-state transitions for runtime-backed jobs "
-                "without activating a dedicated worker fleet."
+                "Current durable worker posture for in-process execution. Claim, lease, heartbeat, "
+                "recovery, and terminal-state transitions remain authoritative in the service database."
             ),
         ),
         AsyncWorkerExecutionDescriptor(
             worker_id="queue_backed_workers",
-            enabled=False,
+            enabled=posture.active_worker_execution == "queue_backed_workers",
             execution_class="DEDICATED_WORKER_FLEET",
-            selection_state="DOCUMENTED_FUTURE_OPTION",
+            selection_state=(
+                "ACTIVE_PRIMARY"
+                if posture.active_worker_execution == "queue_backed_workers"
+                else "WIRED_FUTURE_CUTOVER"
+            ),
             supports_horizontal_scaling=True,
             supports_job_isolation=True,
             notes=(
@@ -50,12 +59,13 @@ def list_async_worker_executions() -> list[AsyncWorkerExecutionDescriptor]:
 
 
 def build_async_worker_execution_catalog() -> AsyncWorkerExecutionCatalogResponse:
+    posture = get_async_runtime_posture()
     workers = list_async_worker_executions()
     return AsyncWorkerExecutionCatalogResponse(
         service=settings.service_name,
         version=settings.service_version,
         delivery_phase=settings.delivery_phase,
-        active_worker_execution="in_process_stub",
+        active_worker_execution=posture.active_worker_execution,
         worker_count=len(workers),
         workers=workers,
     )

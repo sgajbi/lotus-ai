@@ -6,6 +6,7 @@ import pytest
 
 from app.config import settings
 from app.services.audit_store import reset_audit_store_cache
+from app.services.async_delivery_queue import reset_async_delivery_queue_cache
 from app.services.async_runtime_store import reset_async_runtime_store_cache
 from app.services.evaluation_runtime_store import reset_evaluation_runtime_store_cache
 from app.services.prompt_store import reset_prompt_store_cache
@@ -47,6 +48,13 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "retrieval_store_mode": settings.retrieval_store_mode,
         "provider_operations_store_mode": settings.provider_operations_store_mode,
         "async_runtime_store_mode": settings.async_runtime_store_mode,
+        "async_cutover_state": settings.async_cutover_state,
+        "async_queue_backend_mode": settings.async_queue_backend_mode,
+        "async_queue_redis_url": settings.async_queue_redis_url,
+        "async_queue_name": settings.async_queue_name,
+        "async_worker_id": settings.async_worker_id,
+        "async_worker_queue_poll_seconds": settings.async_worker_queue_poll_seconds,
+        "async_worker_drain_enabled": settings.async_worker_drain_enabled,
         "evaluation_runtime_store_mode": settings.evaluation_runtime_store_mode,
         "startup_readiness_policy": settings.startup_readiness_policy,
         "readiness_probe_policy": settings.readiness_probe_policy,
@@ -64,5 +72,6 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_provider_degradation_state()
         reset_provider_quota_counters()
         reset_provider_operations_store_cache()
+        reset_async_delivery_queue_cache()
         reset_async_runtime_store_cache()
         reset_evaluation_runtime_store_cache()

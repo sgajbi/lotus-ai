@@ -68,6 +68,37 @@ def claim_next_async_job_for_types(
     )
 
 
+def claim_async_job_by_id(*, job_id: str, worker_id: str) -> AsyncWorkerClaimResult | None:
+    now = _utcnow()
+    recover_expired_async_jobs(now=now)
+    claimed = get_async_runtime_store().claim_runnable_job_by_id(
+        job_id=job_id,
+        worker_id=worker_id,
+        claimed_at=_isoformat(now),
+        heartbeat_at=_isoformat(now),
+        lease_expires_at=_isoformat(now + timedelta(seconds=_LEASE_SECONDS)),
+        latest_message=(
+            f"Job claimed by worker '{worker_id}' and is waiting for explicit execution start."
+        ),
+        attempt_message=f"Attempt claimed by worker '{worker_id}'.",
+    )
+    if claimed is None:
+        return None
+    if claimed.job.related_evaluation_run_id is not None:
+        claim_active_evaluation_attempt(
+            run_id=claimed.job.related_evaluation_run_id,
+            worker_id=worker_id,
+            reason_message=(
+                f"Evaluation attempt claimed by worker '{worker_id}' and is waiting for explicit execution start."
+            ),
+        )
+    return AsyncWorkerClaimResult(
+        job=claimed.job,
+        attempt=claimed.attempt,
+        lease=claimed.lease,
+    )
+
+
 def start_async_job(*, job_id: str, worker_id: str) -> None:
     store = get_async_runtime_store()
     now = _utcnow()

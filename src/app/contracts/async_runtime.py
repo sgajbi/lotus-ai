@@ -7,12 +7,21 @@ from pydantic import BaseModel, Field
 
 class AsyncQueueMode(str, Enum):
     DISABLED = "DISABLED"
-    STUBBED = "STUBBED"
+    SHADOW = "SHADOW"
+    ACTIVE = "ACTIVE"
 
 
 class AsyncWorkerMode(str, Enum):
-    DOCUMENTED_ONLY = "DOCUMENTED_ONLY"
-    STUBBED = "STUBBED"
+    IN_PROCESS_ONLY = "IN_PROCESS_ONLY"
+    DEDICATED = "DEDICATED"
+    DEGRADED_FALLBACK = "DEGRADED_FALLBACK"
+
+
+class AsyncCutoverState(str, Enum):
+    IN_PROCESS_ONLY = "in_process_only"
+    QUEUE_DELIVERY_SHADOW = "queue_delivery_shadow"
+    DEDICATED_WORKERS_ACTIVE = "dedicated_workers_active"
+    DEGRADED_FALLBACK = "degraded_fallback"
 
 
 class AsyncJobStatus(str, Enum):
@@ -234,6 +243,9 @@ class AsyncJobSubmissionResponse(BaseModel):
     submission_status: AsyncSubmissionStatus = Field(
         description="Submission outcome under the current async runtime posture."
     )
+    cutover_state: AsyncCutoverState = Field(
+        description="Current async worker-fleet cutover state governing the submission."
+    )
     queue_mode: AsyncQueueMode = Field(
         description="Queue mode that governed the submission decision."
     )
@@ -260,6 +272,9 @@ class AsyncRuntimeStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the async runtime status.")
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    cutover_state: AsyncCutoverState = Field(
+        description="Current async worker-fleet cutover state."
+    )
     queue_mode: AsyncQueueMode = Field(description="Current queue execution mode.")
     worker_mode: AsyncWorkerMode = Field(description="Current worker runtime mode.")
     queue_backend: str = Field(description="Current queue backend posture label.")
@@ -275,9 +290,27 @@ class AsyncRuntimeStatusResponse(BaseModel):
     active_worker_count: int = Field(
         description="Number of active worker replicas currently exposed."
     )
+    active_worker_ids: list[str] = Field(
+        description="Worker identities currently holding active async leases."
+    )
     enqueued_job_count: int = Field(description="Number of queued async jobs currently visible.")
     recorded_job_count: int = Field(
         description="Number of recorded async job artifacts currently exposed."
+    )
+    queue_backlog_count: int = Field(
+        description="Number of queue delivery messages currently pending for the active backend."
+    )
+    duplicate_delivery_count: int = Field(
+        description="Observed duplicate queue deliveries rejected safely by the bounded queue seam."
+    )
+    redelivery_count: int = Field(
+        description="Observed queue redelivery count under the bounded queue seam."
+    )
+    drain_mode_active: bool = Field(
+        description="Whether dedicated workers are currently in drain mode and refusing new claims."
+    )
+    degraded_findings: list[str] = Field(
+        description="Human-readable findings describing degraded or operator-significant async worker posture."
     )
     supported_job_types: list[AsyncJobTypeDescriptor] = Field(
         description="Known async job types and their current runtime posture."
@@ -317,6 +350,9 @@ class AsyncActivationReadinessResponse(BaseModel):
     service: str = Field(description="Service name emitting the async activation readiness view.")
     version: str = Field(description="Current lotus-ai service version.")
     delivery_phase: str = Field(description="Current lotus-ai delivery phase.")
+    cutover_state: AsyncCutoverState = Field(
+        description="Current async worker-fleet cutover state."
+    )
     activation_ready: bool = Field(
         description="Whether lotus-ai async execution is currently ready for live activation."
     )

@@ -269,6 +269,60 @@ def test_sqlalchemy_async_runtime_repository_round_trips_control_events(
     assert events[0].affected_attempt_id == "attempt-002"
 
 
+def test_sqlalchemy_async_runtime_repository_claims_specific_runnable_job_by_id(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-async-runtime.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyAsyncRuntimeRepository(database_url)
+    repository.save_job(
+        AsyncRuntimeJobRecord(
+            job_id="async-job-claim-by-id",
+            job_type="evaluation_execution",
+            target_id="provider_runtime_examples",
+            lifecycle_status="QUEUED",
+            submitted_at="2026-03-23T00:00:00Z",
+            caller_app="lotus-ai",
+            correlation_id="corr-claim-by-id",
+            payload_summary="Run evaluation execution.",
+            execution_path="durable_runtime_submission",
+            related_evaluation_run_id="evalrun_001",
+            latest_message="Queued for dedicated worker execution.",
+            attempt_count=1,
+        )
+    )
+    repository.save_attempt(
+        AsyncRuntimeAttemptRecord(
+            attempt_id="attempt-claim-by-id-001",
+            job_id="async-job-claim-by-id",
+            attempt_number=1,
+            lifecycle_status="QUEUED",
+            worker_id=None,
+            claimed_at=None,
+            heartbeat_at=None,
+            started_at=None,
+            completed_at=None,
+            failure_reason=None,
+            recorded_message="Queued for worker claim.",
+        )
+    )
+
+    claim = repository.claim_runnable_job_by_id(
+        job_id="async-job-claim-by-id",
+        worker_id="worker-a",
+        claimed_at="2026-03-23T00:01:00Z",
+        heartbeat_at="2026-03-23T00:01:00Z",
+        lease_expires_at="2026-03-23T00:06:00Z",
+        latest_message="Claimed by worker-a.",
+        attempt_message="Attempt claimed by worker-a.",
+    )
+
+    assert claim is not None
+    assert claim.job.job_id == "async-job-claim-by-id"
+    assert claim.attempt.worker_id == "worker-a"
+    assert claim.lease.worker_id == "worker-a"
+
+
 def test_sqlalchemy_async_runtime_repository_returns_none_for_unknown_attempt(
     tmp_path: Path,
 ) -> None:
