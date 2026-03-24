@@ -106,7 +106,8 @@ def build_retrieval_observability_bundle() -> ObservabilityDomainBundle:
             "correlation_middleware",
             "prometheus",
         ],
-        source_available=store_status.status == "READY" or settings.retrieval_store_mode == "memory",
+        source_available=store_status.status == "READY"
+        or settings.retrieval_store_mode == "memory",
         degraded_findings=degraded_findings,
         stale=False,
         incident_evidence_supported=True,
@@ -125,10 +126,12 @@ def build_retrieval_observability_bundle() -> ObservabilityDomainBundle:
         build_incident_evidence_item(
             domain_id=ObservabilityDomainId.RETRIEVAL,
             evidence_id="retrieval_live_search_activation_state",
-            source_available=store_status.status == "READY" or settings.retrieval_store_mode == "memory",
+            source_available=store_status.status == "READY"
+            or settings.retrieval_store_mode == "memory",
             stale=False,
             degraded_findings=degraded_findings,
-            durable=settings.retrieval_store_mode == "sqlalchemy" and store_status.status == "READY",
+            durable=settings.retrieval_store_mode == "sqlalchemy"
+            and store_status.status == "READY",
             summary="Retrieval activation state captures searchable corpus, reindex, rollback, and evidence blockers for current incident review.",
         )
     ]
@@ -224,7 +227,9 @@ def build_evaluation_observability_bundle() -> ObservabilityDomainBundle:
         telemetry_sources=["evaluation_runtime_status", "evaluation_runtime_store"],
         source_available=True,
         degraded_findings=degraded_findings,
-        stale=any(gate.evidence_state == "RUNTIME_STALE" for gate in evaluation_runtime.approval_gates),
+        stale=any(
+            gate.evidence_state == "RUNTIME_STALE" for gate in evaluation_runtime.approval_gates
+        ),
         incident_evidence_supported=True,
         breakdown_support=ObservabilityBreakdownSupport(
             caller_app_supported=True,
@@ -242,7 +247,9 @@ def build_evaluation_observability_bundle() -> ObservabilityDomainBundle:
             domain_id=ObservabilityDomainId.EVALUATION,
             evidence_id="evaluation_approval_gate_state",
             source_available=True,
-            stale=any(gate.evidence_state == "RUNTIME_STALE" for gate in evaluation_runtime.approval_gates),
+            stale=any(
+                gate.evidence_state == "RUNTIME_STALE" for gate in evaluation_runtime.approval_gates
+            ),
             degraded_findings=degraded_findings,
             durable=True,
             summary="Evaluation runtime status captures approval-gate freshness, partial evidence, and failing runtime verdict posture.",
@@ -278,7 +285,11 @@ def build_prompt_observability_bundle() -> ObservabilityDomainBundle:
     stale = prompt_evidence.approval_gate.evidence_state == "RUNTIME_STALE"
     telemetry = build_domain_telemetry_summary(
         domain_id=ObservabilityDomainId.PROMPT,
-        telemetry_sources=["prompt_runtime_status", "prompt_governance_status", "prompt_control_history"],
+        telemetry_sources=[
+            "prompt_runtime_status",
+            "prompt_governance_status",
+            "prompt_control_history",
+        ],
         source_available=True,
         degraded_findings=degraded_findings,
         stale=stale,
@@ -337,7 +348,12 @@ def build_safety_observability_bundle() -> ObservabilityDomainBundle:
     stale = safety_evidence.approval_gate.evidence_state == "RUNTIME_STALE"
     telemetry = build_domain_telemetry_summary(
         domain_id=ObservabilityDomainId.SAFETY,
-        telemetry_sources=["safety_runtime_status", "safety_governance_status", "audit_repository", "execution_evidence"],
+        telemetry_sources=[
+            "safety_runtime_status",
+            "safety_governance_status",
+            "audit_repository",
+            "execution_evidence",
+        ],
         source_available=True,
         degraded_findings=[] if safety_runtime.runtime_redaction_active else degraded_findings,
         stale=stale,

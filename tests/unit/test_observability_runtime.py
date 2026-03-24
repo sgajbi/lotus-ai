@@ -12,9 +12,18 @@ def test_build_observability_runtime_status_returns_bounded_domain_summary() -> 
     assert status.incident_evidence_supported_domain_count >= 4
     assert any(domain.domain_id == "provider" for domain in status.domains)
     assert any(domain.domain_id == "safety" for domain in status.domains)
-    assert any(item.evidence_id == "safety_runtime_enforcement_state" for item in status.incident_evidence_items)
-    assert any(item.evidence_id == "provider_operations_incident_state" for item in status.incident_evidence_items)
-    assert any(item.evidence_id == "evaluation_approval_gate_state" for item in status.incident_evidence_items)
+    assert any(
+        item.evidence_id == "safety_runtime_enforcement_state"
+        for item in status.incident_evidence_items
+    )
+    assert any(
+        item.evidence_id == "provider_operations_incident_state"
+        for item in status.incident_evidence_items
+    )
+    assert any(
+        item.evidence_id == "evaluation_approval_gate_state"
+        for item in status.incident_evidence_items
+    )
 
 
 def test_build_observability_runtime_status_flags_async_degradation() -> None:

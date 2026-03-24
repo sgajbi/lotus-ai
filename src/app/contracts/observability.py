@@ -97,9 +97,7 @@ class DomainIncidentSummaryResponse(BaseModel):
     linked_endpoints: list[str] = Field(
         description="Existing platform endpoints that provide deeper runtime or governance inspection for the domain."
     )
-    summary: list[str] = Field(
-        description="Short operator-facing incident summary for the domain."
-    )
+    summary: list[str] = Field(description="Short operator-facing incident summary for the domain.")
 
 
 class ObservabilityCapabilityKind(str, Enum):
@@ -207,7 +205,9 @@ class ObservabilityRuntimeStatusResponse(BaseModel):
     freshness: ObservabilityFreshness = Field(
         description="Current overall freshness posture for the observability layer."
     )
-    domain_count: int = Field(description="Number of observability domains summarized in this response.")
+    domain_count: int = Field(
+        description="Number of observability domains summarized in this response."
+    )
     healthy_domain_count: int = Field(
         description="Number of summarized domains currently reporting healthy observability posture."
     )
@@ -245,7 +245,9 @@ class ObservabilityActivationReadinessResponse(BaseModel):
     activation_ready: bool = Field(
         description="Whether the observability layer is durable enough for governed platform rollout."
     )
-    domain_count: int = Field(description="Number of observability domains summarized in this response.")
+    domain_count: int = Field(
+        description="Number of observability domains summarized in this response."
+    )
     blocking_findings: list[str] = Field(
         description="Human-readable reasons why observability governance is not yet fully activatable."
     )

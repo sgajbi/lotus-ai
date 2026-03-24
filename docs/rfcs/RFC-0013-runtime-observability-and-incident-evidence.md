@@ -1,6 +1,6 @@
 # RFC-0013: Runtime Observability and Incident Evidence Backbone
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-23
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -15,6 +15,16 @@ RFC-0011 defines the dedicated worker and queue-backed deployment target.
 RFC-0012 defines caller identity and tenant isolation controls for a real shared-service posture.
 
 The next high-value platform gap is that observability expectations are documented in many places, but the platform does not yet have a unified, runtime-backed observability and incident-evidence layer to match those controls.
+
+## Implementation Notes
+
+RFC-0013 is now implemented in five slices:
+
+1. bounded observability contracts and a shared runtime-status foundation for provider, retrieval, async, evaluation, prompt, and safety domains,
+2. provider, retrieval, and async incident summaries grounded in existing runtime and durable state,
+3. evaluation, prompt, and safety observability convergence with runtime-backed incident evidence,
+4. authorization-aware caller, tenant, and capability breakdown summaries over bounded recent audit and async activity,
+5. dedicated observability activation-readiness, runbook-readiness, and governance surfaces, with platform-status embedding and runbook wording aligned to the implemented in-service observability layer.
 
 ## Why This Is Next
 

@@ -18,7 +18,10 @@ def test_provider_observability_bundle_surfaces_rollout_blocked_incident() -> No
     assert bundle.summary.domain_id == "provider"
     assert bundle.summary.telemetry.incident_evidence_supported is True
     assert bundle.summary.telemetry.incident_signal_count >= 1
-    assert bundle.summary.incident_evidence_items[0].evidence_id == "provider_operations_incident_state"
+    assert (
+        bundle.summary.incident_evidence_items[0].evidence_id
+        == "provider_operations_incident_state"
+    )
 
 
 def test_retrieval_observability_bundle_marks_sql_store_incident_evidence_durable(
@@ -72,4 +75,6 @@ def test_safety_observability_bundle_surfaces_runtime_enforcement_state() -> Non
 
     assert bundle.summary.domain_id == "safety"
     assert bundle.summary.telemetry.incident_evidence_supported is True
-    assert bundle.summary.incident_evidence_items[0].evidence_id == "safety_runtime_enforcement_state"
+    assert (
+        bundle.summary.incident_evidence_items[0].evidence_id == "safety_runtime_enforcement_state"
+    )

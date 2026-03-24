@@ -4,7 +4,11 @@ from app.contracts.access_control import (
     AuthorizationOutcome,
     TenantPolicyMode,
 )
-from app.contracts.async_runtime import AsyncJobArtifactDescriptor, AsyncJobRecordSource, AsyncJobStatus
+from app.contracts.async_runtime import (
+    AsyncJobArtifactDescriptor,
+    AsyncJobRecordSource,
+    AsyncJobStatus,
+)
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.observability import ObservabilityCapabilityKind
@@ -19,11 +23,15 @@ from app.services.observability_breakdowns import (
 from app.services.safety_runtime import build_safety_execution_outcome_from_record
 
 
-def _authorization(*, caller_app: str, task_id: str, tenant_id: str | None, allowed: bool) -> AuthorizationDecision:
+def _authorization(
+    *, caller_app: str, task_id: str, tenant_id: str | None, allowed: bool
+) -> AuthorizationDecision:
     return AuthorizationDecision(
         caller_app=caller_app,
         capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
-        outcome=AuthorizationOutcome.ALLOWED if allowed else AuthorizationOutcome.BLOCKED_TENANT_NOT_ALLOWED,
+        outcome=AuthorizationOutcome.ALLOWED
+        if allowed
+        else AuthorizationOutcome.BLOCKED_TENANT_NOT_ALLOWED,
         allowed=allowed,
         tenant_policy_mode=TenantPolicyMode.RESTRICTED,
         task_id=task_id,
@@ -48,8 +56,12 @@ def _record(
         request_id=request_id,
         execution_status=TaskExecutionStatus.COMPLETED,
         task_id=task_id,
-        category=TaskCategory.KNOWLEDGE_ANSWER if task_id.startswith("knowledge_") else TaskCategory.EXPLAIN,
-        output_label=OutputLabel.RETRIEVAL_ANSWER if task_id.startswith("knowledge_") else OutputLabel.EXPLANATION_ONLY,
+        category=TaskCategory.KNOWLEDGE_ANSWER
+        if task_id.startswith("knowledge_")
+        else TaskCategory.EXPLAIN,
+        output_label=OutputLabel.RETRIEVAL_ANSWER
+        if task_id.startswith("knowledge_")
+        else OutputLabel.EXPLANATION_ONLY,
         caller_app=caller_app,
         correlation_id=f"corr-{request_id}",
         requested_by=None,
@@ -71,11 +83,15 @@ def _record(
         enforced_safety_controls=["response_labeling", "correlation_and_audit"],
         safety_outcome=build_safety_execution_outcome_from_record(
             safety_mode="documented_only",
-            output_label=OutputLabel.RETRIEVAL_ANSWER if task_id.startswith("knowledge_") else OutputLabel.EXPLANATION_ONLY,
+            output_label=OutputLabel.RETRIEVAL_ANSWER
+            if task_id.startswith("knowledge_")
+            else OutputLabel.EXPLANATION_ONLY,
             redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
             enforced_controls=["response_labeling", "correlation_and_audit"],
         ),
-        authorization=_authorization(caller_app=caller_app, task_id=task_id, tenant_id=tenant_id, allowed=allowed),
+        authorization=_authorization(
+            caller_app=caller_app, task_id=task_id, tenant_id=tenant_id, allowed=allowed
+        ),
         generated_at="2026-03-24T00:00:00Z",
         stubbed=provider_mode in {"disabled", "catalog_only"},
         context_summary="synthetic",

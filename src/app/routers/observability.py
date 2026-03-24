@@ -225,6 +225,6 @@ async def get_safety_observability_summary_route() -> DomainIncidentSummaryRespo
     },
 )
 async def get_observability_breakdown_summary_route(
-    limit: int = Query(default=100, ge=1, le=200)
+    limit: int = Query(default=100, ge=1, le=200),
 ) -> ObservabilityBreakdownSummaryResponse:
     return build_observability_breakdown_summary(limit=limit)

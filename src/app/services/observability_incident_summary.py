@@ -12,9 +12,7 @@ def build_observability_incident_summary() -> ObservabilityIncidentSummaryRespon
     bundles = build_current_observability_bundles()
     summaries = [bundle.summary for bundle in bundles]
     degraded_domain_count = sum(
-        1
-        for summary in summaries
-        if summary.telemetry.posture == ObservabilityPosture.DEGRADED
+        1 for summary in summaries if summary.telemetry.posture == ObservabilityPosture.DEGRADED
     )
     return ObservabilityIncidentSummaryResponse(
         service=settings.service_name,

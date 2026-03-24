@@ -19,7 +19,9 @@ _RETRIEVAL_TASK_IDS = {"knowledge_search.v1", "knowledge_answer.v1"}
 _NON_LIVE_PROVIDER_MODES = {"disabled", "stub", "catalog_only"}
 
 
-def build_observability_breakdown_summary(*, limit: int = 100) -> ObservabilityBreakdownSummaryResponse:
+def build_observability_breakdown_summary(
+    *, limit: int = 100
+) -> ObservabilityBreakdownSummaryResponse:
     records = get_audit_store().list(limit=limit)
     jobs = build_async_job_catalog().jobs
     return ObservabilityBreakdownSummaryResponse(
@@ -67,7 +69,9 @@ def _build_caller_samples(
                 async_job_count=len(caller_jobs),
             )
         )
-    samples.sort(key=lambda sample: (-sample.execution_count, -sample.async_job_count, sample.caller_app))
+    samples.sort(
+        key=lambda sample: (-sample.execution_count, -sample.async_job_count, sample.caller_app)
+    )
     return samples
 
 
@@ -127,7 +131,13 @@ def _build_capability_samples(
         )
         for job_type, count in sorted(async_job_type_counts.items())
     )
-    samples.sort(key=lambda sample: (-sample.observed_count, sample.capability_kind.value, sample.capability_id))
+    samples.sort(
+        key=lambda sample: (
+            -sample.observed_count,
+            sample.capability_kind.value,
+            sample.capability_id,
+        )
+    )
     return samples
 
 
