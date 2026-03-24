@@ -4,6 +4,9 @@ import pytest
 from fastapi import HTTPException
 
 from app.contracts.retrieval import (
+    RetrievalIngestionAction,
+    RetrievalIngestionJobDescriptor,
+    RetrievalIngestionJobStatus,
     RetrievalExecutionResponse,
     RetrievalExecutionStage,
     RetrievalSearchHit,
@@ -137,3 +140,44 @@ def test_search_sources_defaults_to_caller_allowed_sources_when_no_filter_is_sup
 
     forwarded_request = execute_mock.call_args.args[0]
     assert forwarded_request.source_ids == ["lotus-platform-rfcs", "lotus-ai-architecture"]
+
+
+def test_search_sources_with_live_retrieval_withholds_refresh_pending_document_only() -> None:
+    from app.config import settings
+
+    settings.retrieval_mode = "enabled"
+    repository = InMemoryRetrievalRepository()
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+    repository.save_ingestion_job(
+        RetrievalIngestionJobDescriptor(
+            job_id="ingjob_test_refresh_pending",
+            source_id="lotus-platform-rfcs",
+            document_id="lotus-platform-rfc-0069",
+            target_version_id="ver_lotus_platform_rfc_0069_2026_03_22",
+            requested_action=RetrievalIngestionAction.REFRESH,
+            status=RetrievalIngestionJobStatus.RUNNING,
+            requested_by="operator-a",
+            requested_at="2026-03-25T01:00:00Z",
+            message="Refresh in flight.",
+        )
+    )
+
+    request = RetrievalSearchRequest(
+        query="shared ai platform service",
+        caller_app="lotus-workbench",
+        correlation_id="corr-ret-refresh-pending",
+        source_ids=["lotus-platform-rfcs"],
+    )
+
+    with patch("app.services.retrieval_gateway.get_retrieval_repository", return_value=repository):
+        response = search_sources(request)
+
+    assert response.status == RetrievalStatus.READY
+    assert response.execution_stage == RetrievalExecutionStage.LIVE_SEARCH
+    assert response.hits
+    assert all(hit.document_id != "lotus-platform-rfc-0069" for hit in response.hits)
+    assert any(hit.document_id == "lotus-platform-rfc-0068" for hit in response.hits)
+    settings.retrieval_mode = "disabled"

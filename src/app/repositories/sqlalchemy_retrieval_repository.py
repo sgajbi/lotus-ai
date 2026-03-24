@@ -29,6 +29,7 @@ from app.db.models import (
     RetrievalSourceModel,
 )
 from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
+from app.retrieval.search_eligibility import is_live_search_chunk_eligible
 from app.retrieval.search_scoring import score_terms
 
 
@@ -165,6 +166,35 @@ class SqlAlchemyRetrievalRepository(SqlAlchemyRepositoryBase):
             rows = session.execute(statement).all()
             ranked_hits: list[RetrievalSearchHit] = []
             for chunk, document, _source in rows:
+                document_versions = session.scalars(
+                    select(RetrievalDocumentVersionModel).where(
+                        RetrievalDocumentVersionModel.document_id == document.document_id
+                    )
+                ).all()
+                ingestion_jobs = session.scalars(
+                    select(RetrievalIngestionJobModel).where(
+                        (RetrievalIngestionJobModel.document_id == document.document_id)
+                        | (
+                            (RetrievalIngestionJobModel.source_id == document.source_id)
+                            & RetrievalIngestionJobModel.document_id.is_(None)
+                        )
+                    )
+                ).all()
+                source_descriptor = self._to_source_descriptor(_source)
+                document_descriptor = self._to_document_descriptor(session, document)
+                chunk_descriptor = self._to_chunk_descriptor(chunk)
+                if not is_live_search_chunk_eligible(
+                    source=source_descriptor,
+                    document=document_descriptor,
+                    chunk=chunk_descriptor,
+                    document_versions=[
+                        self._to_document_version_descriptor(version) for version in document_versions
+                    ],
+                    ingestion_jobs=[
+                        self._to_ingestion_job_descriptor(job) for job in ingestion_jobs
+                    ],
+                ):
+                    continue
                 score = score_terms(
                     query=query,
                     searchable_text=f"{document.title} {chunk.preview}",

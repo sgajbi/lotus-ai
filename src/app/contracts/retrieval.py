@@ -123,6 +123,21 @@ class RetrievalDocumentGovernanceDescriptor(BaseModel):
     index_status: RetrievalIndexStatus = Field(
         description="Current indexing status for the document."
     )
+    active_version_id: str | None = Field(
+        default=None,
+        description="Currently active document-version identifier when one exists.",
+    )
+    active_version_refresh_action: RetrievalIngestionAction | None = Field(
+        default=None,
+        description="Corpus action that produced the currently active document version, when one exists.",
+    )
+    active_version_created_at: str | None = Field(
+        default=None,
+        description="Recorded timestamp for the currently active document version, when one exists.",
+    )
+    pending_ingestion_job_count: int = Field(
+        description="Number of non-terminal ingestion jobs currently recorded for the document or source."
+    )
     notes: str = Field(description="Human-readable explanation of the document governance posture.")
 
 
@@ -140,6 +155,12 @@ class RetrievalDocumentGovernanceResponse(BaseModel):
     )
     blocked_document_count: int = Field(
         description="Number of documents currently blocked from live search by source posture."
+    )
+    refresh_pending_document_count: int = Field(
+        description="Number of documents currently withheld from live search while a governed corpus-change job is still in flight."
+    )
+    withdrawn_document_count: int = Field(
+        description="Number of documents currently withheld from live search because the latest governed lineage is withdrawn."
     )
     documents: list[RetrievalDocumentGovernanceDescriptor] = Field(
         description="Per-document governance posture for the currently registered retrieval corpus."
@@ -437,6 +458,12 @@ class RetrievalRuntimeStatusResponse(BaseModel):
     index_job_count: int = Field(
         description="Number of retrieval indexing jobs visible through the active store."
     )
+    document_version_count: int = Field(
+        description="Number of retrieval document-version records visible through the active store."
+    )
+    ingestion_job_count: int = Field(
+        description="Number of retrieval ingestion-job records visible through the active store."
+    )
 
 
 class RetrievalSearchRequest(BaseModel):
@@ -530,6 +557,12 @@ class RetrievalExecutionStatusResponse(BaseModel):
     rollback_target_stage: DeploymentSplitStage = Field(
         description="Deployment-split stage operators should roll back to if retrieval split routing becomes unhealthy."
     )
+    refresh_pending_document_count: int = Field(
+        description="Number of documents currently withheld from live search while a governed corpus-change job is still in flight."
+    )
+    withdrawn_document_count: int = Field(
+        description="Number of documents currently withheld from live search because the latest governed lineage is withdrawn."
+    )
     split_route_degraded: bool = Field(
         description="Whether retrieval execution is currently running under a degraded retrieval-plane split posture."
     )
@@ -548,6 +581,9 @@ class RetrievalActivationReadinessResponse(BaseModel):
     embedding_provider_mode: str = Field(description="Configured embedding provider mode.")
     embedding_execution_enabled: bool = Field(
         description="Whether live embedding execution is currently enabled for bounded retrieval indexing."
+    )
+    ingestion_execution_enabled: bool = Field(
+        description="Whether bounded runtime-backed ingestion execution is currently enabled for governed corpus-change jobs."
     )
     activation_ready: bool = Field(
         description="Whether live retrieval execution is currently ready for activation."
@@ -629,6 +665,9 @@ class RetrievalGovernanceStatusResponse(BaseModel):
     )
     evidence_readiness: RetrievalEvidenceReadinessResponse = Field(
         description="Evaluation and citation evidence-readiness summary for retrieval execution."
+    )
+    corpus_change_review_ready: bool = Field(
+        description="Whether corpus-change posture is currently reviewed explicitly enough for governed retrieval rollout."
     )
     blocking_area_count: int = Field(
         description="Number of top-level retrieval governance areas currently blocking activation."

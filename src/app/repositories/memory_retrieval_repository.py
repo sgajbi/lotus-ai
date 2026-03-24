@@ -345,6 +345,19 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                         source=source,
                         document=document,
                         chunk=chunk,
+                        document_versions=[
+                            version
+                            for version in self._document_versions
+                            if version.document_id == document.document_id
+                        ],
+                        ingestion_jobs=[
+                            job
+                            for job in self._ingestion_jobs
+                            if (
+                                job.document_id is None and job.source_id == source.source_id
+                            )
+                            or job.document_id == document.document_id
+                        ],
                     ):
                         continue
                     score = score_terms(

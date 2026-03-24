@@ -48,8 +48,9 @@ def test_retrieval_document_governance_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["searchable_document_count"] == 0
-    assert body["index_pending_document_count"] >= 3
-    assert body["blocked_document_count"] >= 1
+    assert body["refresh_pending_document_count"] == 0
+    assert body["withdrawn_document_count"] >= 1
+    assert body["blocked_document_count"] == 0
     assert any(
         document["document_id"] == "lotus-platform-rfc-0069"
         and document["governance_status"] == "INDEX_PENDING"
@@ -75,6 +76,8 @@ def test_retrieval_runtime_status_route(client: TestClient) -> None:
     assert body["retrieval_store_mode"] == "memory"
     assert body["retrieval_store_status"] == "READY"
     assert body["source_count"] >= 4
+    assert body["document_version_count"] >= 5
+    assert body["ingestion_job_count"] >= 3
 
 
 def test_retrieval_ingestion_status_route(client: TestClient) -> None:
@@ -236,6 +239,7 @@ def test_retrieval_activation_readiness_route(client: TestClient) -> None:
     assert body["retrieval_mode"] == "disabled"
     assert body["embedding_provider_mode"] == "disabled"
     assert body["embedding_execution_enabled"] is False
+    assert body["ingestion_execution_enabled"] is True
     assert body["activation_ready"] is False
     assert any("Retrieval mode is not enabled" in finding for finding in body["blocking_findings"])
     assert len(body["activation_path"]) == 4
@@ -248,7 +252,7 @@ def test_retrieval_runbook_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
-    assert body["required_item_count"] == 5
+    assert body["required_item_count"] == 6
     assert body["completed_required_item_count"] == 3
     assert body["items"][0]["runbook_id"] == "retrieval_operational_runbook"
     assert body["items"][0]["status"] == "READY"
@@ -263,7 +267,7 @@ def test_retrieval_evidence_readiness_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["evidence_ready"] is False
-    assert body["required_item_count"] == 5
+    assert body["required_item_count"] == 6
     assert body["completed_required_item_count"] == 0
     assert body["items"][0]["evidence_id"] == "retrieval_fixture_coverage_pack"
     assert body["items"][1]["status"] == "NOT_READY"
@@ -288,6 +292,7 @@ def test_retrieval_governance_status_route(client: TestClient) -> None:
     assert body["runbook_readiness"]["runbook_ready"] is False
     assert body["evidence_readiness"]["evidence_ready"] is False
     assert body["evidence_readiness"]["approval_gate"]["domain_id"] == "retrieval_execution"
+    assert body["corpus_change_review_ready"] is False
     assert len(body["governance_summary"]) == 3
 
 

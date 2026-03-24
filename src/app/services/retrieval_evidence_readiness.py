@@ -73,6 +73,14 @@ def build_retrieval_evidence_readiness() -> RetrievalEvidenceReadinessResponse:
                 "is not yet documented."
             ),
         ),
+        RetrievalEvidenceReadinessItem(
+            evidence_id="retrieval_corpus_change_evidence_pack",
+            status="NOT_READY",
+            required_for_activation=True,
+            notes=(
+                "Runtime-backed evidence covering document refresh, withdrawal, and search-eligibility convergence is not yet assembled."
+            ),
+        ),
     ]
     required_item_count, completed_required_item_count = summarize_activation_items(items)
     evidence_ready = completed_required_item_count == required_item_count

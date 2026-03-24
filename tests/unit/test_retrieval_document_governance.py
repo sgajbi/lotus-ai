@@ -8,7 +8,9 @@ def test_build_retrieval_document_governance_reflects_default_document_posture()
     assert response.service == "lotus-ai"
     assert response.searchable_document_count == 0
     assert response.index_pending_document_count >= 3
-    assert response.blocked_document_count >= 1
+    assert response.refresh_pending_document_count == 0
+    assert response.withdrawn_document_count >= 1
+    assert response.blocked_document_count == 0
     assert any(
         document.document_id == "lotus-platform-rfc-0069"
         and document.governance_status == "INDEX_PENDING"
@@ -17,7 +19,7 @@ def test_build_retrieval_document_governance_reflects_default_document_posture()
     )
     assert any(
         document.document_id == "lotus-platform-observability-standards"
-        and document.governance_status == "BLOCKED_BY_SOURCE"
+        and document.governance_status == "WITHDRAWN"
         and document.search_enabled is False
         for document in response.documents
     )
@@ -38,8 +40,9 @@ def test_build_retrieval_document_governance_marks_indexed_enabled_documents_sea
         response = build_retrieval_document_governance()
 
     assert response.searchable_document_count >= 2
+    assert response.refresh_pending_document_count == 0
     assert any(
-        document.document_id == "lotus-platform-rfc-0069"
+        document.document_id == "lotus-platform-rfc-0068"
         and document.governance_status == "SEARCH_ENABLED"
         and document.search_enabled is True
         for document in response.documents

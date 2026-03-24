@@ -222,6 +222,12 @@ Acceptance gate:
 3. evaluation evidence covers corpus-refresh scenarios,
 4. supportability improves materially.
 
+Current implementation note:
+
+1. retrieval runtime, activation, evidence, runbook, and governance surfaces now expose refresh-pending and withdrawn corpus posture explicitly,
+2. live search now withholds only the affected document lineage instead of collapsing unrelated searchable documents behind a single source-level blocker,
+3. corpus-change review is now represented explicitly in retrieval evidence and runbook posture.
+
 ### Slice 4: Artifact, Observability, and Operational Hardening
 
 Outcome:

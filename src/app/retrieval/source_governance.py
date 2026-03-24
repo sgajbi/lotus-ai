@@ -3,6 +3,8 @@ from __future__ import annotations
 from app.config import settings
 from app.contracts.retrieval import (
     RetrievalDocumentDescriptor,
+    RetrievalDocumentVersionDescriptor,
+    RetrievalIngestionJobDescriptor,
     RetrievalIndexStatus,
     RetrievalSourceDescriptor,
     RetrievalSourceGovernanceDescriptor,
@@ -15,8 +17,26 @@ from app.services.retrieval_store import get_retrieval_repository
 
 
 def build_retrieval_source_governance() -> RetrievalSourceGovernanceResponse:
-    sources = get_retrieval_repository().list_sources()
-    governance_sources = [_build_source_governance_descriptor(source=source) for source in sources]
+    repository = get_retrieval_repository()
+    sources = repository.list_sources()
+    versions_by_document: dict[str, list[RetrievalDocumentVersionDescriptor]] = {}
+    for version in repository.list_document_versions():
+        versions_by_document.setdefault(version.document_id, []).append(version)
+    jobs_by_document: dict[str, list[RetrievalIngestionJobDescriptor]] = {}
+    jobs_by_source: dict[str, list[RetrievalIngestionJobDescriptor]] = {}
+    for job in repository.list_ingestion_jobs():
+        if job.document_id is not None:
+            jobs_by_document.setdefault(job.document_id, []).append(job)
+        jobs_by_source.setdefault(job.source_id, []).append(job)
+    governance_sources = [
+        _build_source_governance_descriptor(
+            source=source,
+            versions_by_document=versions_by_document,
+            jobs_by_document=jobs_by_document,
+            jobs_by_source=jobs_by_source,
+        )
+        for source in sources
+    ]
     return RetrievalSourceGovernanceResponse(
         service=settings.service_name,
         retrieval_mode=settings.retrieval_mode,
@@ -36,7 +56,11 @@ def build_retrieval_source_governance() -> RetrievalSourceGovernanceResponse:
 
 
 def _build_source_governance_descriptor(
-    *, source: RetrievalSourceDescriptor
+    *,
+    source: RetrievalSourceDescriptor,
+    versions_by_document: dict[str, list[RetrievalDocumentVersionDescriptor]],
+    jobs_by_document: dict[str, list[RetrievalIngestionJobDescriptor]],
+    jobs_by_source: dict[str, list[RetrievalIngestionJobDescriptor]],
 ) -> RetrievalSourceGovernanceDescriptor:
     repository = get_retrieval_repository()
     documents = repository.list_documents_for_source(source.source_id)
@@ -45,6 +69,9 @@ def _build_source_governance_descriptor(
         source=source,
         documents=documents,
         index_status=inventory.index_status,
+        versions_by_document=versions_by_document,
+        jobs_by_document=jobs_by_document,
+        jobs_by_source=jobs_by_source,
     )
     return RetrievalSourceGovernanceDescriptor(
         source_id=source.source_id,
@@ -63,9 +90,24 @@ def _derive_source_governance(
     source: RetrievalSourceDescriptor,
     documents: list[RetrievalDocumentDescriptor],
     index_status: RetrievalIndexStatus,
+    versions_by_document: dict[str, list[RetrievalDocumentVersionDescriptor]],
+    jobs_by_document: dict[str, list[RetrievalIngestionJobDescriptor]],
+    jobs_by_source: dict[str, list[RetrievalIngestionJobDescriptor]],
 ) -> tuple[str, str]:
     if any(
-        build_document_eligibility(source=source, document=document).search_enabled
+        build_document_eligibility(
+            source=source,
+            document=document,
+            document_versions=versions_by_document.get(document.document_id, []),
+            ingestion_jobs=[
+                *[
+                    job
+                    for job in jobs_by_source.get(source.source_id, [])
+                    if job.document_id is None
+                ],
+                *jobs_by_document.get(document.document_id, []),
+            ],
+        ).search_enabled
         for document in documents
     ):
         return (
