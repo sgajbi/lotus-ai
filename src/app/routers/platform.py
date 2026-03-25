@@ -2,6 +2,16 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
+from app.contracts.app_capability_rollouts import (
+    AppCapabilityRolloutCatalogGovernanceStatusResponse,
+    AppCapabilityRolloutCatalogLifecycleStatusResponse,
+    AppCapabilityRolloutCatalogResponse,
+    AppCapabilityRolloutDetailResponse,
+    AppCapabilityRolloutGovernanceStatusResponse,
+    AppCapabilityRolloutLifecycleStatusResponse,
+    AppCapabilityOnboardingTemplateResponse,
+    AppCapabilityRolloutObservabilitySummaryResponse,
+)
 from app.contracts.deployment_split import (
     DeploymentSplitActivationReadinessResponse,
     DeploymentSplitGovernanceStatusResponse,
@@ -32,6 +42,20 @@ from app.contracts.resilience import (
 )
 from app.services.production_baseline_activation_readiness import (
     build_production_baseline_activation_readiness,
+)
+from app.services.app_capability_rollout_catalog import (
+    build_app_capability_rollout_catalog,
+    build_app_capability_rollout_catalog_governance_status,
+    build_app_capability_rollout_detail,
+    build_app_capability_rollout_governance_status,
+    build_app_capability_onboarding_template,
+)
+from app.services.app_capability_rollout_lifecycle import (
+    build_app_capability_rollout_catalog_lifecycle_status,
+    build_app_capability_rollout_lifecycle_status,
+)
+from app.services.app_capability_rollout_observability import (
+    build_app_capability_rollout_observability_summary,
 )
 from app.services.production_baseline_governance import (
     build_production_baseline_governance_status,
@@ -86,6 +110,210 @@ router = APIRouter(prefix="/platform", tags=["platform"])
 )
 async def get_platform_runtime_status_route(request: Request) -> PlatformRuntimeStatusResponse:
     return build_platform_runtime_status(request.app.state)
+
+
+@router.get(
+    "/app-capability-rollouts",
+    response_model=AppCapabilityRolloutCatalogResponse,
+    operation_id="getAppCapabilityRolloutCatalog",
+    summary="Get RFC-0023 app-capability rollout catalog",
+    description=(
+        "Returns the current RFC-0023 app-capability rollout records across downstream applications "
+        "and capability packs, keeping global pack maturity distinct from app-specific rollout stage."
+    ),
+    responses={
+        200: {"description": "App-capability rollout catalog returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_app_capability_rollout_catalog_route(
+    request: Request,
+) -> AppCapabilityRolloutCatalogResponse:
+    return build_app_capability_rollout_catalog(request.app.state)
+
+
+@router.get(
+    "/app-capability-rollouts/governance-status",
+    response_model=AppCapabilityRolloutCatalogGovernanceStatusResponse,
+    operation_id="getAppCapabilityRolloutCatalogGovernanceStatus",
+    summary="Get RFC-0023 app-capability rollout catalog governance status",
+    description=(
+        "Returns the current RFC-0023 catalog-level governance posture across downstream "
+        "app-capability rollout pairings."
+    ),
+    responses={
+        200: {
+            "description": "App-capability rollout catalog governance status returned successfully."
+        },
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_app_capability_rollout_catalog_governance_status_route(
+    request: Request,
+) -> AppCapabilityRolloutCatalogGovernanceStatusResponse:
+    return build_app_capability_rollout_catalog_governance_status(request.app.state)
+
+
+@router.get(
+    "/app-capability-rollouts/observability-summary",
+    response_model=AppCapabilityRolloutObservabilitySummaryResponse,
+    operation_id="getAppCapabilityRolloutObservabilitySummary",
+    summary="Get RFC-0023 app-capability rollout observability summary",
+    description=(
+        "Returns the current RFC-0023 estate-wide rollout visibility posture across downstream "
+        "app-capability pairings, including bounded activity samples and linked incident-review surfaces."
+    ),
+    responses={
+        200: {"description": "App-capability rollout observability summary returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_app_capability_rollout_observability_summary_route(
+    request: Request,
+) -> AppCapabilityRolloutObservabilitySummaryResponse:
+    return build_app_capability_rollout_observability_summary(request.app.state)
+
+
+@router.get(
+    "/app-capability-rollouts/lifecycle-status",
+    response_model=AppCapabilityRolloutCatalogLifecycleStatusResponse,
+    operation_id="getAppCapabilityRolloutCatalogLifecycleStatus",
+    summary="Get RFC-0023 app-capability rollout lifecycle status",
+    description=(
+        "Returns the current RFC-0023 catalog-level lifecycle discipline posture across downstream "
+        "app-capability rollout pairings, including retirement readiness and historical traceability."
+    ),
+    responses={
+        200: {
+            "description": "App-capability rollout catalog lifecycle status returned successfully."
+        },
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_app_capability_rollout_catalog_lifecycle_status_route(
+    request: Request,
+) -> AppCapabilityRolloutCatalogLifecycleStatusResponse:
+    return build_app_capability_rollout_catalog_lifecycle_status(request.app.state)
+
+
+@router.get(
+    "/app-capability-rollouts/{downstream_app}/{capability_pack_id}",
+    response_model=AppCapabilityRolloutDetailResponse,
+    operation_id="getAppCapabilityRolloutDetail",
+    summary="Get RFC-0023 app-capability rollout detail",
+    description=(
+        "Returns current rollout, ownership, escalation, and lifecycle-transition detail for one "
+        "downstream app-capability pairing."
+    ),
+    responses={
+        200: {"description": "App-capability rollout detail returned successfully."},
+        404: {"description": "Unknown app-capability rollout pairing."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_app_capability_rollout_detail_route(
+    downstream_app: str, capability_pack_id: str, request: Request
+) -> AppCapabilityRolloutDetailResponse:
+    try:
+        return build_app_capability_rollout_detail(
+            downstream_app=downstream_app,
+            capability_pack_id=capability_pack_id,
+            app_state=request.app.state,
+        )
+    except ValueError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/app-capability-rollouts/{downstream_app}/{capability_pack_id}/governance-status",
+    response_model=AppCapabilityRolloutGovernanceStatusResponse,
+    operation_id="getAppCapabilityRolloutGovernanceStatus",
+    summary="Get RFC-0023 app-capability rollout governance status",
+    description=(
+        "Returns current ownership, escalation, and lifecycle governance posture for one "
+        "downstream app-capability pairing."
+    ),
+    responses={
+        200: {"description": "App-capability rollout governance status returned successfully."},
+        404: {"description": "Unknown app-capability rollout pairing."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_app_capability_rollout_governance_status_route(
+    downstream_app: str, capability_pack_id: str, request: Request
+) -> AppCapabilityRolloutGovernanceStatusResponse:
+    try:
+        return build_app_capability_rollout_governance_status(
+            downstream_app=downstream_app,
+            capability_pack_id=capability_pack_id,
+            app_state=request.app.state,
+        )
+    except ValueError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/app-capability-rollouts/{downstream_app}/{capability_pack_id}/lifecycle-status",
+    response_model=AppCapabilityRolloutLifecycleStatusResponse,
+    operation_id="getAppCapabilityRolloutLifecycleStatus",
+    summary="Get RFC-0023 app-capability rollout lifecycle status",
+    description=(
+        "Returns current retirement readiness, lifecycle discipline, and historical traceability posture "
+        "for one downstream app-capability pairing."
+    ),
+    responses={
+        200: {"description": "App-capability rollout lifecycle status returned successfully."},
+        404: {"description": "Unknown app-capability rollout pairing."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_app_capability_rollout_lifecycle_status_route(
+    downstream_app: str, capability_pack_id: str, request: Request
+) -> AppCapabilityRolloutLifecycleStatusResponse:
+    try:
+        return build_app_capability_rollout_lifecycle_status(
+            downstream_app=downstream_app,
+            capability_pack_id=capability_pack_id,
+            app_state=request.app.state,
+        )
+    except ValueError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/app-capability-rollouts/{downstream_app}/{capability_pack_id}/onboarding-template",
+    response_model=AppCapabilityOnboardingTemplateResponse,
+    operation_id="getAppCapabilityOnboardingTemplate",
+    summary="Get RFC-0023 app-capability onboarding template",
+    description=(
+        "Returns the reusable onboarding workflow and approval path for one downstream "
+        "app-capability pairing."
+    ),
+    responses={
+        200: {"description": "App-capability onboarding template returned successfully."},
+        404: {"description": "Unknown app-capability rollout pairing."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_app_capability_onboarding_template_route(
+    downstream_app: str, capability_pack_id: str, request: Request
+) -> AppCapabilityOnboardingTemplateResponse:
+    try:
+        return build_app_capability_onboarding_template(
+            downstream_app=downstream_app,
+            capability_pack_id=capability_pack_id,
+            app_state=request.app.state,
+        )
+    except ValueError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get(

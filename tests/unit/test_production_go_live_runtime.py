@@ -10,6 +10,12 @@ from app.contracts.production_go_live import (
     ProductionGoLiveDomainStatus,
 )
 from app.services.production_go_live_runtime import build_production_go_live_runtime_status
+from app.services.production_go_live_activation_readiness import (
+    build_production_go_live_activation_readiness,
+)
+from app.services.production_go_live_approval_domains import (
+    build_managed_secret_approval_domain,
+)
 
 
 def test_build_production_go_live_runtime_status_distinguishes_platform_and_use_case_states() -> (
@@ -309,3 +315,41 @@ def test_build_production_go_live_runtime_uses_informational_use_case_domain_for
 
     assert domain_by_id["downstream_use_case_production"].status.value == "INFORMATIONAL"
     assert status.use_case_state.value == "LIMITED_ROLLOUT_ONLY"
+
+
+def test_build_production_go_live_activation_readiness_reports_review_required_rollout(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    monkeypatch.setattr(
+        "app.services.production_go_live_activation_readiness.build_provider_governance_status",
+        lambda: type("ProviderGovernance", (), {"governance_ready": False})(),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_activation_readiness.build_production_go_live_runtime_status",
+        lambda app_state: build_production_go_live_runtime_status(),
+    )
+
+    status = build_production_go_live_activation_readiness()
+
+    assert status.activation_ready is False
+    assert any(
+        "Provider governance is not yet approved" in finding for finding in status.blocking_findings
+    )
+    assert any(
+        "review requires either approval recovery" in finding
+        for finding in status.blocking_findings
+    )
+
+
+def test_build_managed_secret_approval_domain_reports_local_live_provider_secret_blocker(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "secret_source_mode", "local_or_unspecified")
+    monkeypatch.setattr(settings, "live_text_provider_api_key", "secret")
+
+    domain = build_managed_secret_approval_domain()
+
+    assert domain.status.value == "BLOCKED"
+    assert "Live-provider configuration is present" in domain.detail

@@ -7,6 +7,47 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/runtime-status"]["get"]["operationId"] == (
         "getPlatformRuntimeStatus"
     )
+    assert spec["paths"]["/platform/app-capability-rollouts"]["get"]["operationId"] == (
+        "getAppCapabilityRolloutCatalog"
+    )
+    assert (
+        spec["paths"]["/platform/app-capability-rollouts/governance-status"]["get"]["operationId"]
+        == "getAppCapabilityRolloutCatalogGovernanceStatus"
+    )
+    assert (
+        spec["paths"]["/platform/app-capability-rollouts/observability-summary"]["get"][
+            "operationId"
+        ]
+        == "getAppCapabilityRolloutObservabilitySummary"
+    )
+    assert (
+        spec["paths"]["/platform/app-capability-rollouts/lifecycle-status"]["get"]["operationId"]
+        == "getAppCapabilityRolloutCatalogLifecycleStatus"
+    )
+    assert (
+        spec["paths"]["/platform/app-capability-rollouts/{downstream_app}/{capability_pack_id}"][
+            "get"
+        ]["operationId"]
+        == "getAppCapabilityRolloutDetail"
+    )
+    assert (
+        spec["paths"][
+            "/platform/app-capability-rollouts/{downstream_app}/{capability_pack_id}/governance-status"
+        ]["get"]["operationId"]
+        == "getAppCapabilityRolloutGovernanceStatus"
+    )
+    assert (
+        spec["paths"][
+            "/platform/app-capability-rollouts/{downstream_app}/{capability_pack_id}/lifecycle-status"
+        ]["get"]["operationId"]
+        == "getAppCapabilityRolloutLifecycleStatus"
+    )
+    assert (
+        spec["paths"][
+            "/platform/app-capability-rollouts/{downstream_app}/{capability_pack_id}/onboarding-template"
+        ]["get"]["operationId"]
+        == "getAppCapabilityOnboardingTemplate"
+    )
     assert spec["paths"]["/platform/resilience/runtime-status"]["get"]["operationId"] == (
         "getResilienceRuntimeStatus"
     )
@@ -362,6 +403,40 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     capability_pack_catalog_governance_schema = spec["components"]["schemas"][
         "CapabilityPackCatalogGovernanceStatusResponse"
     ]
+    app_capability_rollout_catalog_schema = spec["components"]["schemas"][
+        "AppCapabilityRolloutCatalogResponse"
+    ]
+    app_capability_rollout_schema = spec["components"]["schemas"]["AppCapabilityRolloutDescriptor"]
+    app_capability_rollout_detail_schema = spec["components"]["schemas"][
+        "AppCapabilityRolloutDetailResponse"
+    ]
+    app_capability_rollout_governance_schema = spec["components"]["schemas"][
+        "AppCapabilityRolloutGovernanceStatusResponse"
+    ]
+    app_capability_rollout_catalog_governance_schema = spec["components"]["schemas"][
+        "AppCapabilityRolloutCatalogGovernanceStatusResponse"
+    ]
+    app_capability_rollout_lifecycle_schema = spec["components"]["schemas"][
+        "AppCapabilityRolloutLifecycleStatusResponse"
+    ]
+    app_capability_rollout_catalog_lifecycle_schema = spec["components"]["schemas"][
+        "AppCapabilityRolloutCatalogLifecycleStatusResponse"
+    ]
+    app_capability_rollout_lifecycle_summary_schema = spec["components"]["schemas"][
+        "AppCapabilityRolloutLifecycleSummaryItem"
+    ]
+    app_capability_lifecycle_item_schema = spec["components"]["schemas"][
+        "AppCapabilityLifecycleItem"
+    ]
+    app_capability_rollout_observability_schema = spec["components"]["schemas"][
+        "AppCapabilityRolloutObservabilitySummaryResponse"
+    ]
+    app_capability_rollout_observability_item_schema = spec["components"]["schemas"][
+        "AppCapabilityRolloutObservabilityItem"
+    ]
+    app_capability_onboarding_schema = spec["components"]["schemas"][
+        "AppCapabilityOnboardingTemplateResponse"
+    ]
     async_job_schema = spec["components"]["schemas"]["AsyncJobArtifactDescriptor"]
     assert "artifact_refs" in async_job_schema["properties"]
     evaluation_case_schema = spec["components"]["schemas"]["EvaluationCaseResultDescriptor"]
@@ -467,7 +542,15 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "artifact_governance" in platform_runtime_schema["properties"]
     assert "capability_pack_catalog" in platform_runtime_schema["properties"]
     assert "capability_pack_governance" in platform_runtime_schema["properties"]
+    assert "app_capability_rollout_catalog" in platform_runtime_schema["properties"]
+    assert "app_capability_rollout_governance" in platform_runtime_schema["properties"]
+    assert "app_capability_rollout_observability" in platform_runtime_schema["properties"]
+    assert "app_capability_rollout_lifecycle" in platform_runtime_schema["properties"]
     assert "capability_pack_count" in platform_runtime_schema["properties"]
+    assert "app_capability_rollout_count" in platform_runtime_schema["properties"]
+    assert "app_capability_rollout_ready_count" in platform_runtime_schema["properties"]
+    assert "app_capability_rollout_observed_count" in platform_runtime_schema["properties"]
+    assert "app_capability_rollout_lifecycle_ready_count" in platform_runtime_schema["properties"]
     assert "resilience_runtime" in platform_runtime_schema["properties"]
     assert "resilience_governance" in platform_runtime_schema["properties"]
     assert "first_use_case" in platform_runtime_schema["properties"]
@@ -520,6 +603,33 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "activation_readiness" in capability_pack_governance_schema["properties"]
     assert "observability" in capability_pack_governance_schema["properties"]
     assert "pack_summaries" in capability_pack_catalog_governance_schema["properties"]
+    assert "rollout_records" in app_capability_rollout_catalog_schema["properties"]
+    assert "pairing_count" in app_capability_rollout_catalog_schema["properties"]
+    assert "capability_pack_maturity_stage" in app_capability_rollout_schema["properties"]
+    assert "rollout_stage" in app_capability_rollout_schema["properties"]
+    assert "ownership_boundaries" in app_capability_rollout_detail_schema["properties"]
+    assert "escalation_paths" in app_capability_rollout_detail_schema["properties"]
+    assert "transition_targets" in app_capability_rollout_detail_schema["properties"]
+    assert "items" in app_capability_rollout_governance_schema["properties"]
+    assert "transition_targets" in app_capability_rollout_governance_schema["properties"]
+    assert "pairing_summaries" in app_capability_rollout_catalog_governance_schema["properties"]
+    assert "items" in app_capability_rollout_lifecycle_schema["properties"]
+    assert "retirement_ready_now" in app_capability_rollout_lifecycle_schema["properties"]
+    assert "historical_traceability_ready" in app_capability_rollout_lifecycle_schema["properties"]
+    assert "retirement_scope" in app_capability_rollout_lifecycle_schema["properties"]
+    assert "retirement_rationale_summary" in app_capability_rollout_lifecycle_schema["properties"]
+    assert "pairing_summaries" in app_capability_rollout_catalog_lifecycle_schema["properties"]
+    assert "retirement_scope" in app_capability_rollout_lifecycle_summary_schema["properties"]
+    assert "required_for_retirement" in app_capability_lifecycle_item_schema["properties"]
+    assert "items" in app_capability_rollout_observability_schema["properties"]
+    assert "blocked_pairing_count" in app_capability_rollout_observability_schema["properties"]
+    assert (
+        "estate_visibility_state" in app_capability_rollout_observability_item_schema["properties"]
+    )
+    assert "linked_endpoints" in app_capability_rollout_observability_item_schema["properties"]
+    assert "checklist" in app_capability_onboarding_schema["properties"]
+    assert "approval_criteria" in app_capability_onboarding_schema["properties"]
+    assert "based_on_pack_template_id" in app_capability_onboarding_schema["properties"]
     assert "based_on_capability_pack_id" in onboarding_template_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (

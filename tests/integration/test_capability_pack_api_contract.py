@@ -94,3 +94,18 @@ def test_capability_pack_adoption_template_route_for_decision_explanation(
     assert any(
         item["checklist_id"] == "deterministic_decision_owner_defined" for item in body["checklist"]
     )
+
+
+def test_capability_pack_governance_routes_reject_unknown_pack(client: TestClient) -> None:
+    paths = [
+        "/platform/capability-packs/unknown.pack/adoption-template",
+        "/platform/capability-packs/unknown.pack/observability-summary",
+        "/platform/capability-packs/unknown.pack/activation-readiness",
+        "/platform/capability-packs/unknown.pack/runbook-readiness",
+        "/platform/capability-packs/unknown.pack/governance-status",
+    ]
+
+    for path in paths:
+        response = client.get(path)
+        assert response.status_code == 404
+        assert "Unknown capability pack" in response.json()["detail"]

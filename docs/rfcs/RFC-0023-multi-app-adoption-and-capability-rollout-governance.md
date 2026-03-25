@@ -1,6 +1,6 @@
 # RFC-0023: Multi-App Adoption and Capability Rollout Governance
 
-- Status: Draft
+- Status: Implemented
 - Date: 2026-03-25
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -259,11 +259,18 @@ Outcome:
 2. a catalog view exists,
 3. rollout stages are explicit.
 
+Boundaries:
+
+1. Slice 1 is status-only and catalog-first,
+2. it must not yet add ownership, escalation, pause, rollback, or retirement controls,
+3. it must keep global capability-pack maturity separate from app-specific rollout stage.
+
 Acceptance gate:
 
-1. the platform can represent app-capability pairings,
-2. global pack maturity and app-specific rollout maturity are not conflated,
-3. at least one catalog surface exists for operators or integrators.
+1. the platform can represent app-capability pairings durably in contract form,
+2. global pack maturity and app-specific rollout stage are not conflated,
+3. at least one rollout catalog surface exists for operators or integrators,
+4. the currently implemented `lotus-performance` pairing is represented truthfully without overstating limited-rollout or active-production posture.
 
 ### Slice 2: Ownership and Rollout Governance
 
@@ -272,6 +279,12 @@ Outcome:
 1. each app-capability pairing has explicit ownership and escalation posture,
 2. rollout, pause, rollback, and retirement state are modeled,
 3. governance surfaces become pairing-aware.
+
+Boundaries:
+
+1. Slice 2 must stay pairing-level and must not yet expand into reusable onboarding workflow or estate-wide observability,
+2. pause, rollback, and retirement may be modeled as explicit lifecycle transitions even when current pairings are not actively using those states,
+3. global capability-pack maturity must remain separate from app-specific rollout governance.
 
 Acceptance gate:
 
@@ -287,6 +300,12 @@ Outcome:
 2. downstream app teams can follow a standard path,
 3. one-off bespoke onboarding logic is reduced materially.
 
+Boundaries:
+
+1. Slice 3 should compose existing pack and reference-use-case templates instead of inventing a second onboarding framework,
+2. approval criteria must stay pairing-aware and must not imply estate-wide activation,
+3. estate-wide rollout visibility remains out of scope for this slice.
+
 Acceptance gate:
 
 1. onboarding guidance is standardized,
@@ -301,6 +320,12 @@ Outcome:
 2. operators can see where capabilities are active, blocked, paused, or retired,
 3. estate-wide rollout posture becomes inspectable.
 
+Boundaries:
+
+1. Slice 4 should derive estate visibility from the existing rollout-record, governance, and bounded audit or async surfaces instead of creating a second adoption registry,
+2. it may expose linked incident-review and rollout-review endpoints per pairing, but it must not yet add retirement-policy enforcement or lifecycle cleanup actions,
+3. estate-wide visibility must keep app-capability pairing truth explicit instead of collapsing back into global pack-only maturity.
+
 Acceptance gate:
 
 1. app-capability rollout visibility is available,
@@ -314,6 +339,13 @@ Outcome:
 1. capabilities can be retired per app or globally in a governed way,
 2. stale pairings do not linger indefinitely,
 3. lifecycle management becomes part of the adoption model rather than an afterthought.
+
+Boundaries:
+
+1. Slice 5 should reuse the existing rollout detail, governance, and observability seams instead of creating a separate retirement registry,
+2. it may add lifecycle-discipline review surfaces and make retirement transitions explicit for stale pairings, but it must not yet introduce destructive control-plane actions,
+3. historical traceability must remain reviewable through linked rollout, onboarding, and observability surfaces instead of implicit operator knowledge.
+4. retirement should state whether it is pairing-only or whether broader capability-pack follow-on review is required.
 
 Acceptance gate:
 
