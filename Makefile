@@ -49,7 +49,7 @@ test-e2e:
 
 test-coverage:
 	COVERAGE_FILE=.coverage.unit python -m pytest tests/unit --cov=src --cov-report=
-	COVERAGE_FILE=.coverage.integration python -m pytest tests/integration --cov=src --cov-report=
+	COVERAGE_FILE=.coverage.integration python scripts/run_integration_coverage.py
 	COVERAGE_FILE=.coverage.e2e python -m pytest tests/e2e --cov=src --cov-report=
 	python -m coverage combine .coverage.unit .coverage.integration .coverage.e2e
 	python -m coverage report --fail-under=99
