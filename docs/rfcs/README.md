@@ -23,3 +23,6 @@
 - `RFC-0021-domain-ai-capability-packs-and-product-maturity.md` - Implemented
 - `RFC-0022-production-go-live-approval-and-managed-infrastructure.md` - Implemented
 - `RFC-0023-multi-app-adoption-and-capability-rollout-governance.md` - Implemented
+- `RFC-0024-portfolio-narrative-copilot-for-lotus-performance.md` - Draft
+- `RFC-0025-operational-root-cause-copilot-for-lotus-core.md` - Draft
+- `RFC-0026-operator-control-plane-dashboard-and-observability-integration.md` - Draft
