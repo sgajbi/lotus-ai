@@ -125,9 +125,12 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.capability_pack_governance.ready_pack_count == 0
     assert status.capability_pack_governance.blocking_pack_count == 2
     assert status.app_capability_rollout_count == 4
+    assert status.app_capability_rollout_ready_count == 1
     assert status.app_capability_rollout_catalog.pairing_count == 4
     assert status.app_capability_rollout_catalog.onboarded_pairing_count == 1
     assert status.app_capability_rollout_catalog.active_pairing_count == 0
+    assert status.app_capability_rollout_governance.ready_pairing_count == 1
+    assert status.app_capability_rollout_governance.blocking_pairing_count == 3
     assert (
         status.app_capability_rollout_catalog.rollout_records[0].downstream_app
         == "lotus-performance"

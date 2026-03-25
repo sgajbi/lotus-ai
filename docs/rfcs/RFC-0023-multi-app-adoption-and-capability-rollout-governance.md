@@ -280,6 +280,12 @@ Outcome:
 2. rollout, pause, rollback, and retirement state are modeled,
 3. governance surfaces become pairing-aware.
 
+Boundaries:
+
+1. Slice 2 must stay pairing-level and must not yet expand into reusable onboarding workflow or estate-wide observability,
+2. pause, rollback, and retirement may be modeled as explicit lifecycle transitions even when current pairings are not actively using those states,
+3. global capability-pack maturity must remain separate from app-specific rollout governance.
+
 Acceptance gate:
 
 1. support boundaries are explicit,

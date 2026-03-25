@@ -5,7 +5,10 @@ from types import SimpleNamespace
 
 from app.config import settings
 from app.contracts.platform import PlatformRuntimeStatusResponse
-from app.services.app_capability_rollout_catalog import build_app_capability_rollout_catalog
+from app.services.app_capability_rollout_catalog import (
+    build_app_capability_rollout_catalog,
+    build_app_capability_rollout_catalog_governance_status,
+)
 from app.services.artifact_runtime import build_artifact_runtime_status
 from app.services.artifact_governance import build_artifact_governance_status
 from app.services.access_control_governance import build_access_control_governance_status
@@ -68,6 +71,9 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     capability_packs = build_capability_pack_catalog()
     capability_pack_governance = build_capability_pack_catalog_governance_status()
     app_capability_rollouts = build_app_capability_rollout_catalog(app_state)
+    app_capability_rollout_governance = build_app_capability_rollout_catalog_governance_status(
+        app_state
+    )
     prompts = list_registered_prompts()
     access_control_runtime = build_access_control_runtime_status()
     access_control_governance = build_access_control_governance_status()
@@ -133,6 +139,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         capability_pack_catalog=capability_packs,
         capability_pack_governance=capability_pack_governance,
         app_capability_rollout_catalog=app_capability_rollouts,
+        app_capability_rollout_governance=app_capability_rollout_governance,
         first_use_case_governance=first_use_case_governance,
         safety_runtime=safety_runtime,
         safety_governance=safety_governance,
@@ -155,6 +162,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         capability_count=len(capabilities.tasks),
         capability_pack_count=capability_packs.pack_count,
         app_capability_rollout_count=app_capability_rollouts.pairing_count,
+        app_capability_rollout_ready_count=app_capability_rollout_governance.ready_pairing_count,
         vector_store=VECTOR_STORE_STRATEGY,
         migration_contract_enforced=True,
         startup_readiness_blocking=startup_state.blocking,
