@@ -197,7 +197,7 @@ Current status against that sequence:
 
 1. `RFC-0021` is now partially started through a separate capability-pack catalog layer, with a reusable commentary family and an experimental decision-explanation family modeled explicitly, dedicated runtime-backed pack-quality eval families added, pack-specific activation, runbook, observability, governance, and adoption-template surfaces exposed, and the implemented `lotus-performance` path now anchored to the commentary family while broader approved pack maturity is still future work.
 2. `RFC-0022` now includes a dedicated production go-live runtime surface plus activation, runbook, governance, and named use-case approval views that separate technically running, production-capable, platform-production-approved, limited-rollout-ready, and active-production-approved posture; managed-secret and managed-object-storage approval domains now also converge explicitly with artifact governance, provider-usage truth, bounded provider freeze or rollback posture, and pack plus downstream approval review.
-3. `RFC-0023` now includes a Slice 2 pairing-governance layer above the rollout catalog, exposing explicit ownership, escalation, and lifecycle-transition posture per app-capability pairing while still deferring reusable onboarding workflow and estate-wide observability to later slices.
+3. `RFC-0023` now includes a Slice 3 app-capability onboarding layer that reuses pack-native and reference-use-case templates, giving each pairing a standard checklist and approval path without yet claiming estate-wide rollout visibility.
 
 The previous likely feature areas are now implemented:
 

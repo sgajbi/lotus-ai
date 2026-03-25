@@ -5,6 +5,7 @@ from app.contracts.app_capability_rollouts import (
     AppCapabilityRolloutCatalogResponse,
     AppCapabilityRolloutDescriptor,
     AppCapabilityRolloutDetailResponse,
+    AppCapabilityOnboardingTemplateResponse,
     AppCapabilityRolloutGovernanceItem,
     AppCapabilityRolloutGovernanceStatusResponse,
     AppCapabilityRolloutCatalogGovernanceStatusResponse,
@@ -14,12 +15,18 @@ from app.contracts.app_capability_rollouts import (
     AppCapabilityRolloutStage,
     AppCapabilityRolloutTransitionDescriptor,
 )
+from app.contracts.capability_packs import (
+    CapabilityPackAdoptionChecklistItem,
+    CapabilityPackAdoptionCriterion,
+)
 from app.services.capability_pack_catalog import build_capability_pack_catalog, get_capability_pack_by_id
+from app.services.capability_pack_adoption_template import build_capability_pack_adoption_template
 from app.services.first_use_case_governance import build_first_use_case_governance_status
 from app.services.first_use_case_status import build_first_use_case_runtime_status
 from app.services.production_go_live_use_case_approval import (
     build_production_go_live_use_case_approval,
 )
+from app.services.use_case_onboarding_template import build_use_case_onboarding_template
 
 
 def build_app_capability_rollout_catalog(
@@ -50,6 +57,80 @@ def build_app_capability_rollout_catalog(
             "App-capability rollout records are now modeled separately from global capability-pack maturity so downstream rollout truth stays pairing-specific.",
             "Slice 1 is intentionally catalog-first: it exposes status and rollout-stage truth without yet introducing ownership, pause, rollback, or retirement controls.",
             "The first implemented lotus-performance pairing remains the concrete anchor while later candidate apps stay visible as not-onboarded rollout records instead of living only in RFC prose.",
+        ],
+    )
+
+
+def build_app_capability_onboarding_template(
+    *, downstream_app: str, capability_pack_id: str, app_state: object | None = None
+) -> AppCapabilityOnboardingTemplateResponse:
+    record = get_app_capability_rollout_record(
+        downstream_app=downstream_app,
+        capability_pack_id=capability_pack_id,
+        app_state=app_state,
+    )
+    pack_template = build_capability_pack_adoption_template(capability_pack_id)
+    reference_use_case_template = (
+        build_use_case_onboarding_template()
+        if record.current_anchor_use_case_id == "lotus_performance.analytics_commentary.v1"
+        else None
+    )
+    checklist = list(pack_template.checklist)
+    if reference_use_case_template is not None:
+        checklist.extend(
+            CapabilityPackAdoptionChecklistItem(
+                checklist_id=item.checklist_id,
+                phase=item.phase,
+                required=item.required,
+                notes=item.notes,
+            )
+            for item in reference_use_case_template.checklist
+            if item.checklist_id
+            in {
+                "runtime_eval_family_staged_and_passing",
+                "limited_rollout_support_path_reviewed",
+                "observability_and_artifact_review_path_available",
+            }
+        )
+    approval_criteria = list(pack_template.approval_criteria)
+    if reference_use_case_template is not None:
+        approval_criteria.extend(
+            CapabilityPackAdoptionCriterion(
+                criterion_id=criterion.criterion_id,
+                criterion_name=criterion.criterion_name,
+                evaluation_surface=criterion.evaluation_surface,
+                pass_condition=criterion.pass_condition,
+            )
+            for criterion in reference_use_case_template.approval_criteria
+            if criterion.criterion_id
+            in {
+                "approval_runtime_readiness",
+                "approval_runbook_readiness",
+                "approval_governance_summary",
+            }
+        )
+    return AppCapabilityOnboardingTemplateResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        template_id=f"{downstream_app}.{capability_pack_id}.onboarding-template.v1",
+        downstream_app=downstream_app,
+        capability_pack_id=capability_pack_id,
+        current_rollout_stage=record.rollout_stage,
+        based_on_pack_template_id=pack_template.template_id,
+        reference_use_case_template_id=(
+            reference_use_case_template.template_id
+            if reference_use_case_template is not None
+            else None
+        ),
+        checklist=checklist,
+        approval_criteria=approval_criteria,
+        status_summary=[
+            "App-capability onboarding now composes reusable pack adoption guidance with pairing-specific rollout truth instead of rebuilding onboarding from scratch for each app.",
+            (
+                "The current pairing reuses the first implemented use-case onboarding template as an active reference."
+                if reference_use_case_template is not None
+                else "The current pairing reuses the pack-native adoption template only, because no direct implemented reference use-case template applies yet."
+            ),
         ],
     )
 

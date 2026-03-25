@@ -300,6 +300,12 @@ Outcome:
 2. downstream app teams can follow a standard path,
 3. one-off bespoke onboarding logic is reduced materially.
 
+Boundaries:
+
+1. Slice 3 should compose existing pack and reference-use-case templates instead of inventing a second onboarding framework,
+2. approval criteria must stay pairing-aware and must not imply estate-wide activation,
+3. estate-wide rollout visibility remains out of scope for this slice.
+
 Acceptance gate:
 
 1. onboarding guidance is standardized,

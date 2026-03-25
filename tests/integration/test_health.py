@@ -55,6 +55,13 @@ def test_platform_app_capability_rollout_catalog_contract(client: TestClient) ->
     assert governance_response.status_code == 200
     assert governance_response.json()["ready_pairing_count"] == 1
     assert governance_response.json()["blocking_pairing_count"] == 3
+    onboarding_response = client.get(
+        "/platform/app-capability-rollouts/lotus-performance/analytics_commentary.pack.v1/onboarding-template"
+    )
+    assert onboarding_response.status_code == 200
+    assert onboarding_response.json()["reference_use_case_template_id"] == (
+        "bounded_explanation_only_onboarding.v1"
+    )
 
 
 def test_first_production_use_case_contract(client: TestClient) -> None:

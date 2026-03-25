@@ -19,6 +19,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"][
         "/platform/app-capability-rollouts/{downstream_app}/{capability_pack_id}/governance-status"
     ]["get"]["operationId"] == "getAppCapabilityRolloutGovernanceStatus"
+    assert spec["paths"][
+        "/platform/app-capability-rollouts/{downstream_app}/{capability_pack_id}/onboarding-template"
+    ]["get"]["operationId"] == "getAppCapabilityOnboardingTemplate"
     assert spec["paths"]["/platform/resilience/runtime-status"]["get"]["operationId"] == (
         "getResilienceRuntimeStatus"
     )
@@ -389,6 +392,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     app_capability_rollout_catalog_governance_schema = spec["components"]["schemas"][
         "AppCapabilityRolloutCatalogGovernanceStatusResponse"
     ]
+    app_capability_onboarding_schema = spec["components"]["schemas"][
+        "AppCapabilityOnboardingTemplateResponse"
+    ]
     async_job_schema = spec["components"]["schemas"]["AsyncJobArtifactDescriptor"]
     assert "artifact_refs" in async_job_schema["properties"]
     evaluation_case_schema = spec["components"]["schemas"]["EvaluationCaseResultDescriptor"]
@@ -561,6 +567,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "items" in app_capability_rollout_governance_schema["properties"]
     assert "transition_targets" in app_capability_rollout_governance_schema["properties"]
     assert "pairing_summaries" in app_capability_rollout_catalog_governance_schema["properties"]
+    assert "checklist" in app_capability_onboarding_schema["properties"]
+    assert "approval_criteria" in app_capability_onboarding_schema["properties"]
+    assert "based_on_pack_template_id" in app_capability_onboarding_schema["properties"]
     assert "based_on_capability_pack_id" in onboarding_template_schema["properties"]
     assert spec["paths"]["/platform/prompts"]["get"]["operationId"] == "listPromptDefinitions"
     assert spec["paths"]["/platform/prompts/runtime-status"]["get"]["operationId"] == (

@@ -5,6 +5,10 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from app.contracts.capability_packs import CapabilityPackMaturityStage
+from app.contracts.capability_packs import (
+    CapabilityPackAdoptionChecklistItem,
+    CapabilityPackAdoptionCriterion,
+)
 
 
 class AppCapabilityRolloutStage(str, Enum):
@@ -172,6 +176,41 @@ class AppCapabilityRolloutCatalogGovernanceStatusResponse(BaseModel):
     )
     status_summary: list[str] = Field(
         description="Human-readable summary of catalog-level app-capability rollout governance posture."
+    )
+
+
+class AppCapabilityOnboardingTemplateResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the app-capability onboarding template."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    template_id: str = Field(
+        description="Stable identifier for the app-capability onboarding template."
+    )
+    downstream_app: str = Field(
+        description="Downstream application represented by the onboarding template."
+    )
+    capability_pack_id: str = Field(
+        description="Capability-pack identifier represented by the onboarding template."
+    )
+    current_rollout_stage: AppCapabilityRolloutStage = Field(
+        description="Current app-specific rollout stage for the pairing."
+    )
+    based_on_pack_template_id: str = Field(
+        description="Capability-pack adoption template currently reused by this app-capability onboarding template."
+    )
+    reference_use_case_template_id: str | None = Field(
+        default=None,
+        description="Reference use-case onboarding template currently reused by this app-capability onboarding template, when one exists.",
+    )
+    checklist: list[CapabilityPackAdoptionChecklistItem] = Field(
+        description="Reusable onboarding checklist items for the app-capability pairing."
+    )
+    approval_criteria: list[CapabilityPackAdoptionCriterion] = Field(
+        description="Reusable approval criteria for the app-capability pairing."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of the current app-capability onboarding posture."
     )
 
 

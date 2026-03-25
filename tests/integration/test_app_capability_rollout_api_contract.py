@@ -40,6 +40,20 @@ def test_app_capability_rollout_detail_and_governance_routes(client: TestClient)
     assert catalog_governance_response.json()["blocking_pairing_count"] == 3
 
 
+def test_app_capability_onboarding_template_route(client: TestClient) -> None:
+    response = client.get(
+        "/platform/app-capability-rollouts/lotus-performance/analytics_commentary.pack.v1/onboarding-template"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["downstream_app"] == "lotus-performance"
+    assert body["capability_pack_id"] == "analytics_commentary.pack.v1"
+    assert body["based_on_pack_template_id"] == "analytics_commentary.pack.v1.adoption-template.v1"
+    assert body["reference_use_case_template_id"] == "bounded_explanation_only_onboarding.v1"
+    assert any(item["checklist_id"] == "runtime_eval_family_staged_and_passing" for item in body["checklist"])
+
+
 def test_app_capability_rollout_detail_route_rejects_unknown_pairing(client: TestClient) -> None:
     response = client.get("/platform/app-capability-rollouts/unknown/unknown.pack.v1")
 

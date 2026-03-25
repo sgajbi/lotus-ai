@@ -7,6 +7,7 @@ from app.contracts.app_capability_rollouts import (
     AppCapabilityRolloutCatalogResponse,
     AppCapabilityRolloutDetailResponse,
     AppCapabilityRolloutGovernanceStatusResponse,
+    AppCapabilityOnboardingTemplateResponse,
 )
 from app.contracts.deployment_split import (
     DeploymentSplitActivationReadinessResponse,
@@ -44,6 +45,7 @@ from app.services.app_capability_rollout_catalog import (
     build_app_capability_rollout_catalog_governance_status,
     build_app_capability_rollout_detail,
     build_app_capability_rollout_governance_status,
+    build_app_capability_onboarding_template,
 )
 from app.services.production_baseline_governance import (
     build_production_baseline_governance_status,
@@ -190,6 +192,36 @@ async def get_app_capability_rollout_governance_status_route(
 ) -> AppCapabilityRolloutGovernanceStatusResponse:
     try:
         return build_app_capability_rollout_governance_status(
+            downstream_app=downstream_app,
+            capability_pack_id=capability_pack_id,
+            app_state=request.app.state,
+        )
+    except ValueError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/app-capability-rollouts/{downstream_app}/{capability_pack_id}/onboarding-template",
+    response_model=AppCapabilityOnboardingTemplateResponse,
+    operation_id="getAppCapabilityOnboardingTemplate",
+    summary="Get RFC-0023 app-capability onboarding template",
+    description=(
+        "Returns the reusable onboarding workflow and approval path for one downstream "
+        "app-capability pairing."
+    ),
+    responses={
+        200: {"description": "App-capability onboarding template returned successfully."},
+        404: {"description": "Unknown app-capability rollout pairing."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_app_capability_onboarding_template_route(
+    downstream_app: str, capability_pack_id: str, request: Request
+) -> AppCapabilityOnboardingTemplateResponse:
+    try:
+        return build_app_capability_onboarding_template(
             downstream_app=downstream_app,
             capability_pack_id=capability_pack_id,
             app_state=request.app.state,

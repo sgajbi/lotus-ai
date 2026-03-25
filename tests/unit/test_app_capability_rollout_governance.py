@@ -2,6 +2,7 @@ from app.services.app_capability_rollout_catalog import (
     build_app_capability_rollout_catalog_governance_status,
     build_app_capability_rollout_detail,
     build_app_capability_rollout_governance_status,
+    build_app_capability_onboarding_template,
 )
 
 
@@ -51,3 +52,39 @@ def test_build_app_capability_rollout_catalog_governance_status_summarizes_pairi
     assert status.blocking_pairing_count == 3
     assert status.governance_ready is False
     assert status.pairing_summaries[0].downstream_app == "lotus-performance"
+
+
+def test_build_app_capability_onboarding_template_reuses_reference_use_case_when_available() -> (
+    None
+):
+    template = build_app_capability_onboarding_template(
+        downstream_app="lotus-performance",
+        capability_pack_id="analytics_commentary.pack.v1",
+    )
+
+    assert template.downstream_app == "lotus-performance"
+    assert template.based_on_pack_template_id == "analytics_commentary.pack.v1.adoption-template.v1"
+    assert template.reference_use_case_template_id == "bounded_explanation_only_onboarding.v1"
+    assert any(
+        item.checklist_id == "runtime_eval_family_staged_and_passing" for item in template.checklist
+    )
+    assert any(
+        criterion.criterion_id == "approval_governance_summary"
+        for criterion in template.approval_criteria
+    )
+
+
+def test_build_app_capability_onboarding_template_falls_back_to_pack_template_for_non_anchor_pairing() -> (
+    None
+):
+    template = build_app_capability_onboarding_template(
+        downstream_app="lotus-manage",
+        capability_pack_id="analytics_commentary.pack.v1",
+    )
+
+    assert template.downstream_app == "lotus-manage"
+    assert template.reference_use_case_template_id is None
+    assert any(item.checklist_id == "pack_contract_adopted" for item in template.checklist)
+    assert any(
+        criterion.criterion_id == "pack_governance_ready" for criterion in template.approval_criteria
+    )
