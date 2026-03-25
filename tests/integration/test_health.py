@@ -55,6 +55,14 @@ def test_platform_app_capability_rollout_catalog_contract(client: TestClient) ->
     assert governance_response.status_code == 200
     assert governance_response.json()["ready_pairing_count"] == 1
     assert governance_response.json()["blocking_pairing_count"] == 3
+    observability_response = client.get("/platform/app-capability-rollouts/observability-summary")
+    assert observability_response.status_code == 200
+    assert observability_response.json()["pairing_count"] == 4
+    assert observability_response.json()["blocked_pairing_count"] == 4
+    lifecycle_response = client.get("/platform/app-capability-rollouts/lifecycle-status")
+    assert lifecycle_response.status_code == 200
+    assert lifecycle_response.json()["ready_pairing_count"] == 1
+    assert lifecycle_response.json()["blocking_pairing_count"] == 3
     onboarding_response = client.get(
         "/platform/app-capability-rollouts/lotus-performance/analytics_commentary.pack.v1/onboarding-template"
     )
@@ -387,6 +395,14 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["capability_pack_catalog"]["packs"][1]["pack_id"] == "decision_explanation.pack.v1"
     assert body["capability_pack_governance"]["ready_pack_count"] == 0
     assert body["capability_pack_governance"]["blocking_pack_count"] == 2
+    assert body["app_capability_rollout_catalog"]["pairing_count"] == 4
+    assert body["app_capability_rollout_governance"]["ready_pairing_count"] == 1
+    assert body["app_capability_rollout_observability"]["pairing_count"] == 4
+    assert body["app_capability_rollout_observability"]["blocked_pairing_count"] == 4
+    assert body["app_capability_rollout_lifecycle"]["ready_pairing_count"] == 1
+    assert body["app_capability_rollout_lifecycle"]["blocking_pairing_count"] == 3
+    assert body["app_capability_rollout_observed_count"] >= 0
+    assert body["app_capability_rollout_lifecycle_ready_count"] == 1
     assert body["first_use_case"]["use_case_id"] == "lotus_performance.analytics_commentary.v1"
     assert body["first_use_case"]["downstream_app"] == "lotus-performance"
     assert body["first_use_case"]["capability_pack_id"] == "analytics_commentary.pack.v1"

@@ -19,7 +19,10 @@ from app.contracts.capability_packs import (
     CapabilityPackAdoptionChecklistItem,
     CapabilityPackAdoptionCriterion,
 )
-from app.services.capability_pack_catalog import build_capability_pack_catalog, get_capability_pack_by_id
+from app.services.capability_pack_catalog import (
+    build_capability_pack_catalog,
+    get_capability_pack_by_id,
+)
 from app.services.capability_pack_adoption_template import build_capability_pack_adoption_template
 from app.services.first_use_case_governance import build_first_use_case_governance_status
 from app.services.first_use_case_status import build_first_use_case_runtime_status
@@ -177,7 +180,9 @@ def build_app_capability_rollout_governance_status(
         app_state=app_state,
     )
     items = _build_governance_items(detail=detail)
-    blocking_area_count = sum(1 for item in items if item.required_for_rollout and item.status != "READY")
+    blocking_area_count = sum(
+        1 for item in items if item.required_for_rollout and item.status != "READY"
+    )
     governance_ready = blocking_area_count == 0
     return AppCapabilityRolloutGovernanceStatusResponse(
         service=settings.service_name,
@@ -247,11 +252,12 @@ def get_app_capability_rollout_record(
     *, downstream_app: str, capability_pack_id: str, app_state: object | None = None
 ) -> AppCapabilityRolloutDescriptor:
     for record in _build_rollout_records(app_state):
-        if record.downstream_app == downstream_app and record.capability_pack_id == capability_pack_id:
+        if (
+            record.downstream_app == downstream_app
+            and record.capability_pack_id == capability_pack_id
+        ):
             return record
-    raise ValueError(
-        f"Unknown app-capability rollout: {downstream_app} / {capability_pack_id}"
-    )
+    raise ValueError(f"Unknown app-capability rollout: {downstream_app} / {capability_pack_id}")
 
 
 def _build_rollout_records(app_state: object | None) -> list[AppCapabilityRolloutDescriptor]:
@@ -386,7 +392,9 @@ def _build_ownership_boundaries(
     ]
 
 
-def _build_escalation_paths(*, record: AppCapabilityRolloutDescriptor) -> list[AppCapabilityEscalationItem]:
+def _build_escalation_paths(
+    *, record: AppCapabilityRolloutDescriptor
+) -> list[AppCapabilityEscalationItem]:
     if record.downstream_app == "lotus-performance":
         return [
             AppCapabilityEscalationItem(
@@ -419,7 +427,12 @@ def _build_transition_targets(
                 target_stage=AppCapabilityRolloutStage.INTEGRATION_IN_PROGRESS,
                 allowed_now=True,
                 notes="The first supported transition for a not-onboarded pairing is explicit integration work.",
-            )
+            ),
+            AppCapabilityRolloutTransitionDescriptor(
+                target_stage=AppCapabilityRolloutStage.RETIRED,
+                allowed_now=True,
+                notes="A stale not-onboarded pairing may be retired explicitly instead of lingering indefinitely in the catalog.",
+            ),
         ]
     if stage is AppCapabilityRolloutStage.INTEGRATION_IN_PROGRESS:
         return [
@@ -436,6 +449,11 @@ def _build_transition_targets(
                 target_stage=AppCapabilityRolloutStage.PAUSED_OR_ROLLED_BACK,
                 allowed_now=True,
                 notes="Integration work can be paused or rolled back explicitly without deleting the pairing record.",
+            ),
+            AppCapabilityRolloutTransitionDescriptor(
+                target_stage=AppCapabilityRolloutStage.RETIRED,
+                allowed_now=True,
+                notes="An integration-stage pairing may be retired explicitly when the downstream app or shared platform no longer intends to pursue the adoption path.",
             ),
         ]
     if stage is AppCapabilityRolloutStage.LIMITED_ROLLOUT:
@@ -489,8 +507,7 @@ def _build_governance_items(
     *, detail: AppCapabilityRolloutDetailResponse
 ) -> list[AppCapabilityRolloutGovernanceItem]:
     named_downstream_owner_ready = any(
-        boundary.owner == detail.record.downstream_app
-        and "tbd" not in boundary.responsibility
+        boundary.owner == detail.record.downstream_app and "tbd" not in boundary.responsibility
         for boundary in detail.ownership_boundaries
     )
     shared_support_ready = any(path.status == "READY" for path in detail.escalation_paths)

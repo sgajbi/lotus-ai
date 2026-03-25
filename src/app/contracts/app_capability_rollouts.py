@@ -20,6 +20,18 @@ class AppCapabilityRolloutStage(str, Enum):
     RETIRED = "RETIRED"
 
 
+class AppCapabilityEstateVisibilityState(str, Enum):
+    BLOCKED = "BLOCKED"
+    ACTIVE = "ACTIVE"
+    PAUSED = "PAUSED"
+    RETIRED = "RETIRED"
+
+
+class AppCapabilityRetirementScope(str, Enum):
+    PAIRING_ONLY = "PAIRING_ONLY"
+    PAIRING_WITH_GLOBAL_PACK_REVIEW = "PAIRING_WITH_GLOBAL_PACK_REVIEW"
+
+
 class AppCapabilityRolloutDescriptor(BaseModel):
     downstream_app: str = Field(
         description="Downstream Lotus application represented by this app-capability rollout record."
@@ -72,9 +84,7 @@ class AppCapabilityRolloutTransitionDescriptor(BaseModel):
     allowed_now: bool = Field(
         description="Whether the represented transition is currently allowed for the pairing."
     )
-    notes: str = Field(
-        description="Human-readable explanation of the current transition posture."
-    )
+    notes: str = Field(description="Human-readable explanation of the current transition posture.")
 
 
 class AppCapabilityRolloutDetailResponse(BaseModel):
@@ -214,10 +224,163 @@ class AppCapabilityOnboardingTemplateResponse(BaseModel):
     )
 
 
-class AppCapabilityRolloutCatalogResponse(BaseModel):
-    service: str = Field(
-        description="Service name emitting the app-capability rollout catalog."
+class AppCapabilityRolloutObservabilityItem(BaseModel):
+    downstream_app: str = Field(
+        description="Downstream application represented by the estate-observability summary item."
     )
+    capability_pack_id: str = Field(
+        description="Capability-pack identifier represented by the estate-observability summary item."
+    )
+    rollout_stage: AppCapabilityRolloutStage = Field(
+        description="Current rollout stage for the represented app-capability pairing."
+    )
+    estate_visibility_state: AppCapabilityEstateVisibilityState = Field(
+        description="Estate-wide visibility posture for the represented app-capability pairing."
+    )
+    governance_ready: bool = Field(
+        description="Whether the represented app-capability pairing currently satisfies its bounded governance posture."
+    )
+    sampled_audit_record_count: int = Field(
+        description="Number of bounded audit records currently sampled for the represented pairing."
+    )
+    sampled_async_job_count: int = Field(
+        description="Number of bounded async job records currently sampled for the represented pairing."
+    )
+    incident_signal_count: int = Field(
+        description="Number of sampled bounded incident-like signals currently associated with the represented pairing."
+    )
+    linked_endpoints: list[str] = Field(
+        description="Linked operator-facing endpoints for reviewing this pairing's rollout and incident posture."
+    )
+
+
+class AppCapabilityRolloutObservabilitySummaryResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the app-capability rollout observability summary."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    observability_ready: bool = Field(
+        description="Whether estate-wide rollout visibility is currently reviewable through bounded app-capability observability surfaces."
+    )
+    pairing_count: int = Field(
+        description="Number of app-capability pairings currently summarized in the estate-observability view."
+    )
+    active_pairing_count: int = Field(
+        description="Number of summarized pairings currently in active rollout visibility posture."
+    )
+    blocked_pairing_count: int = Field(
+        description="Number of summarized pairings currently in blocked rollout visibility posture."
+    )
+    paused_pairing_count: int = Field(
+        description="Number of summarized pairings currently in paused rollout visibility posture."
+    )
+    retired_pairing_count: int = Field(
+        description="Number of summarized pairings currently in retired rollout visibility posture."
+    )
+    observed_pairing_count: int = Field(
+        description="Number of summarized pairings with at least one bounded audit or async sample."
+    )
+    items: list[AppCapabilityRolloutObservabilityItem] = Field(
+        description="Bounded estate-wide rollout observability items across current app-capability pairings."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of the current estate-wide app-capability rollout visibility posture."
+    )
+
+
+class AppCapabilityLifecycleItem(BaseModel):
+    item_id: str = Field(
+        description="Stable lifecycle-discipline item identifier for the app-capability pairing."
+    )
+    status: str = Field(description="Current posture for the lifecycle-discipline item.")
+    required_for_retirement: bool = Field(
+        description="Whether the lifecycle item must be satisfied before the pairing can be retired safely."
+    )
+    notes: str = Field(description="Human-readable explanation of the lifecycle-discipline item.")
+
+
+class AppCapabilityRolloutLifecycleStatusResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the app-capability rollout lifecycle status."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    record: AppCapabilityRolloutDescriptor = Field(
+        description="Current rollout descriptor for the requested app-capability pairing."
+    )
+    lifecycle_ready: bool = Field(
+        description="Whether the requested app-capability pairing currently satisfies bounded lifecycle-discipline posture."
+    )
+    retirement_ready_now: bool = Field(
+        description="Whether the requested app-capability pairing currently has enough lifecycle discipline to be retired safely."
+    )
+    historical_traceability_ready: bool = Field(
+        description="Whether traceability surfaces are in place to review the pairing after pause, rollback, or retirement."
+    )
+    retirement_scope: AppCapabilityRetirementScope = Field(
+        description="Whether retiring the pairing is a pairing-only lifecycle action or should trigger broader capability-pack follow-on review."
+    )
+    retirement_rationale_summary: list[str] = Field(
+        description="Bounded reasons and review notes that should be preserved when considering retirement of the pairing."
+    )
+    traceability_endpoints: list[str] = Field(
+        description="Linked endpoints operators should use to inspect lifecycle history and retirement rationale for the pairing."
+    )
+    items: list[AppCapabilityLifecycleItem] = Field(
+        description="Governed lifecycle-discipline items for the requested app-capability pairing."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of the current app-capability lifecycle posture."
+    )
+
+
+class AppCapabilityRolloutLifecycleSummaryItem(BaseModel):
+    downstream_app: str = Field(
+        description="Downstream application represented by the rollout-lifecycle summary item."
+    )
+    capability_pack_id: str = Field(
+        description="Capability-pack identifier represented by the rollout-lifecycle summary item."
+    )
+    rollout_stage: AppCapabilityRolloutStage = Field(
+        description="Current rollout stage for the represented app-capability pairing."
+    )
+    lifecycle_ready: bool = Field(
+        description="Whether the represented app-capability pairing currently satisfies bounded lifecycle discipline."
+    )
+    retirement_ready_now: bool = Field(
+        description="Whether the represented app-capability pairing could currently be retired safely."
+    )
+    historical_traceability_ready: bool = Field(
+        description="Whether traceability surfaces are currently in place for the represented app-capability pairing."
+    )
+    retirement_scope: AppCapabilityRetirementScope = Field(
+        description="Whether the represented pairing's retirement is pairing-only or should trigger broader capability-pack review."
+    )
+
+
+class AppCapabilityRolloutCatalogLifecycleStatusResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the app-capability rollout catalog lifecycle view."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    lifecycle_ready: bool = Field(
+        description="Whether all currently modeled app-capability pairings satisfy bounded lifecycle-discipline posture."
+    )
+    ready_pairing_count: int = Field(
+        description="Number of app-capability pairings currently satisfying lifecycle-discipline posture."
+    )
+    blocking_pairing_count: int = Field(
+        description="Number of app-capability pairings currently blocked in lifecycle-discipline review."
+    )
+    pairing_summaries: list[AppCapabilityRolloutLifecycleSummaryItem] = Field(
+        description="Bounded lifecycle-discipline summaries for currently modeled app-capability pairings."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of catalog-level app-capability lifecycle posture."
+    )
+
+
+class AppCapabilityRolloutCatalogResponse(BaseModel):
+    service: str = Field(description="Service name emitting the app-capability rollout catalog.")
     version: str = Field(description="Current lotus-ai service version.")
     phase: str = Field(description="Current delivery phase for lotus-ai.")
     pairing_count: int = Field(

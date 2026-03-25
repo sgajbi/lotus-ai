@@ -17,7 +17,8 @@ def test_build_app_capability_rollout_detail_exposes_ownership_and_transitions()
     assert any(boundary.owner == "lotus-performance" for boundary in detail.ownership_boundaries)
     assert any(path.escalation_id == "shared_rollout_review" for path in detail.escalation_paths)
     assert any(
-        transition.target_stage.value == "LIMITED_ROLLOUT" for transition in detail.transition_targets
+        transition.target_stage.value == "LIMITED_ROLLOUT"
+        for transition in detail.transition_targets
     )
     assert any(
         transition.target_stage.value == "PAUSED_OR_ROLLED_BACK"
@@ -42,7 +43,9 @@ def test_build_app_capability_rollout_governance_status_distinguishes_ready_and_
     assert lotus_manage.governance_ready is False
     assert lotus_manage.blocking_area_count >= 2
     assert any(item.item_id == "downstream_owner_boundary" for item in lotus_manage.items)
-    assert any(item.item_id == "pause_rollback_retirement_model" for item in lotus_performance.items)
+    assert any(
+        item.item_id == "pause_rollback_retirement_model" for item in lotus_performance.items
+    )
 
 
 def test_build_app_capability_rollout_catalog_governance_status_summarizes_pairings() -> None:
@@ -86,5 +89,6 @@ def test_build_app_capability_onboarding_template_falls_back_to_pack_template_fo
     assert template.reference_use_case_template_id is None
     assert any(item.checklist_id == "pack_contract_adopted" for item in template.checklist)
     assert any(
-        criterion.criterion_id == "pack_governance_ready" for criterion in template.approval_criteria
+        criterion.criterion_id == "pack_governance_ready"
+        for criterion in template.approval_criteria
     )

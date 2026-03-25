@@ -131,12 +131,21 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.app_capability_rollout_catalog.active_pairing_count == 0
     assert status.app_capability_rollout_governance.ready_pairing_count == 1
     assert status.app_capability_rollout_governance.blocking_pairing_count == 3
+    assert status.app_capability_rollout_observability.pairing_count == 4
+    assert status.app_capability_rollout_observability.blocked_pairing_count == 4
+    assert status.app_capability_rollout_observability.observability_ready is True
+    assert status.app_capability_rollout_lifecycle.ready_pairing_count == 1
+    assert status.app_capability_rollout_lifecycle.blocking_pairing_count == 3
+    assert status.app_capability_rollout_observed_count >= 0
+    assert status.app_capability_rollout_lifecycle_ready_count == 1
     assert (
         status.app_capability_rollout_catalog.rollout_records[0].downstream_app
         == "lotus-performance"
     )
     assert (
-        status.app_capability_rollout_catalog.rollout_records[0].capability_pack_maturity_stage.value
+        status.app_capability_rollout_catalog.rollout_records[
+            0
+        ].capability_pack_maturity_stage.value
         == "REUSABLE"
     )
     assert (

@@ -1,9 +1,16 @@
 from pathlib import Path
 
+from _pytest.monkeypatch import MonkeyPatch
+
 from app.contracts.evals import EvaluationRunSubmissionRequest
+from app.contracts.evals import EvaluationApprovalEvidenceState
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_submission_service import submit_evaluation_run
-from app.services.first_use_case_readiness import build_first_use_case_readiness
+from app.services.first_use_case_readiness import (
+    _approval_gate_status,
+    build_first_use_case_readiness,
+)
+from app.services.first_use_case_status import build_first_use_case_runtime_status
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
 
@@ -85,3 +92,26 @@ def test_first_use_case_readiness_uses_sql_seeded_lotus_performance_policy(
     assert readiness.items[7].status == "NOT_READY"
     assert readiness.items[8].status == "READY"
     assert readiness.readiness_ready is False
+
+
+def test_first_use_case_readiness_maps_all_runtime_gate_states() -> None:
+    assert _approval_gate_status(EvaluationApprovalEvidenceState.RUNTIME_PARTIAL) == "PARTIAL"
+    assert _approval_gate_status(EvaluationApprovalEvidenceState.RUNTIME_FAIL) == "FAILED"
+    assert _approval_gate_status(EvaluationApprovalEvidenceState.RUNTIME_STALE) == "STALE"
+    assert _approval_gate_status(EvaluationApprovalEvidenceState.NO_EVIDENCE) == "NOT_READY"
+
+
+def test_first_use_case_runtime_status_requires_registered_capability_pack(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.first_use_case_status.get_capability_pack_by_id",
+        lambda pack_id: None,
+    )
+
+    try:
+        build_first_use_case_runtime_status()
+    except RuntimeError as exc:
+        assert "analytics_commentary.pack.v1 capability pack is not registered" in str(exc)
+    else:
+        raise AssertionError("Expected missing capability pack to raise RuntimeError")

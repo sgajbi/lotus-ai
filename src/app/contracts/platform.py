@@ -4,7 +4,9 @@ from pydantic import BaseModel, Field
 
 from app.contracts.app_capability_rollouts import (
     AppCapabilityRolloutCatalogGovernanceStatusResponse,
+    AppCapabilityRolloutCatalogLifecycleStatusResponse,
     AppCapabilityRolloutCatalogResponse,
+    AppCapabilityRolloutObservabilitySummaryResponse,
 )
 from app.contracts.capability_packs import (
     CapabilityPackCatalogGovernanceStatusResponse,
@@ -131,6 +133,12 @@ class PlatformRuntimeStatusResponse(BaseModel):
     app_capability_rollout_governance: AppCapabilityRolloutCatalogGovernanceStatusResponse = Field(
         description="Current RFC-0023 catalog-level governance posture across app-capability rollout pairings."
     )
+    app_capability_rollout_observability: AppCapabilityRolloutObservabilitySummaryResponse = Field(
+        description="Current RFC-0023 estate-wide observability posture across app-capability rollout pairings."
+    )
+    app_capability_rollout_lifecycle: AppCapabilityRolloutCatalogLifecycleStatusResponse = Field(
+        description="Current RFC-0023 lifecycle-discipline posture across app-capability rollout pairings."
+    )
     first_use_case_governance: FirstUseCaseGovernanceStatusResponse = Field(
         description="Current bounded rollout and governance posture for the first production use case."
     )
@@ -183,6 +191,12 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     app_capability_rollout_ready_count: int = Field(
         description="Number of app-capability rollout records currently satisfying bounded governance posture."
+    )
+    app_capability_rollout_observed_count: int = Field(
+        description="Number of app-capability rollout records currently showing bounded audit or async activity samples."
+    )
+    app_capability_rollout_lifecycle_ready_count: int = Field(
+        description="Number of app-capability rollout records currently satisfying bounded lifecycle-discipline posture."
     )
     vector_store: str = Field(description="Current or planned vector-store strategy label.")
     migration_contract_enforced: bool = Field(

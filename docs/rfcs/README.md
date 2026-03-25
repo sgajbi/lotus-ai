@@ -22,4 +22,4 @@
 - `RFC-0020-production-standard-deployment-baseline.md` - Implemented
 - `RFC-0021-domain-ai-capability-packs-and-product-maturity.md` - Implemented
 - `RFC-0022-production-go-live-approval-and-managed-infrastructure.md` - Implemented
-- `RFC-0023-multi-app-adoption-and-capability-rollout-governance.md` - Draft
+- `RFC-0023-multi-app-adoption-and-capability-rollout-governance.md` - Implemented

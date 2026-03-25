@@ -14,6 +14,7 @@ from app.services.capability_pack_governance import (
 from app.services.capability_pack_observability import (
     build_capability_pack_observability_summary,
 )
+from app.services.capability_pack_quality_gates import build_capability_pack_approval_gate
 from app.services.capability_pack_runbook_readiness import (
     build_capability_pack_runbook_readiness,
 )
@@ -96,3 +97,38 @@ def test_analytics_commentary_pack_governance_can_become_ready_after_runtime_qua
     assert governance.observability.observability_ready is True
     assert catalog_governance.ready_pack_count == 1
     assert catalog_governance.blocking_pack_count == 1
+
+
+def test_decision_explanation_pack_activation_and_runbook_surfaces_remain_blocked() -> None:
+    activation = build_capability_pack_activation_readiness(pack_id="decision_explanation.pack.v1")
+    runbook = build_capability_pack_runbook_readiness(pack_id="decision_explanation.pack.v1")
+
+    assert activation.activation_ready is False
+    assert activation.completed_required_item_count == 1
+    assert any(
+        item.item_id == "downstream_anchor" and item.status == "BLOCKED"
+        for item in activation.items
+    )
+    assert runbook.runbook_ready is False
+    assert any(
+        item.item_id == "downstream_owner_documented" and item.status == "BLOCKED"
+        for item in runbook.items
+    )
+
+
+def test_capability_pack_services_reject_unknown_pack_ids() -> None:
+    builders = (
+        lambda: build_capability_pack_observability_summary(pack_id="unknown.pack.v1"),
+        lambda: build_capability_pack_activation_readiness(pack_id="unknown.pack.v1"),
+        lambda: build_capability_pack_runbook_readiness(pack_id="unknown.pack.v1"),
+        lambda: build_capability_pack_approval_gate(pack_id="unknown.pack.v1"),
+        lambda: build_capability_pack_governance_status(pack_id="unknown.pack.v1"),
+    )
+
+    for builder in builders:
+        try:
+            builder()
+        except ValueError as exc:
+            assert "Unknown capability pack" in str(exc)
+        else:
+            raise AssertionError("Expected unknown capability pack lookup to fail")

@@ -1,6 +1,6 @@
 # RFC-0023: Multi-App Adoption and Capability Rollout Governance
 
-- Status: Active
+- Status: Implemented
 - Date: 2026-03-25
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers
@@ -320,6 +320,12 @@ Outcome:
 2. operators can see where capabilities are active, blocked, paused, or retired,
 3. estate-wide rollout posture becomes inspectable.
 
+Boundaries:
+
+1. Slice 4 should derive estate visibility from the existing rollout-record, governance, and bounded audit or async surfaces instead of creating a second adoption registry,
+2. it may expose linked incident-review and rollout-review endpoints per pairing, but it must not yet add retirement-policy enforcement or lifecycle cleanup actions,
+3. estate-wide visibility must keep app-capability pairing truth explicit instead of collapsing back into global pack-only maturity.
+
 Acceptance gate:
 
 1. app-capability rollout visibility is available,
@@ -333,6 +339,13 @@ Outcome:
 1. capabilities can be retired per app or globally in a governed way,
 2. stale pairings do not linger indefinitely,
 3. lifecycle management becomes part of the adoption model rather than an afterthought.
+
+Boundaries:
+
+1. Slice 5 should reuse the existing rollout detail, governance, and observability seams instead of creating a separate retirement registry,
+2. it may add lifecycle-discipline review surfaces and make retirement transitions explicit for stale pairings, but it must not yet introduce destructive control-plane actions,
+3. historical traceability must remain reviewable through linked rollout, onboarding, and observability surfaces instead of implicit operator knowledge.
+4. retirement should state whether it is pairing-only or whether broader capability-pack follow-on review is required.
 
 Acceptance gate:
 
