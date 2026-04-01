@@ -11,6 +11,8 @@ $DatabasePath = Join-Path $RuntimeRoot "lotus-ai-demo.db"
 $StdoutLog = Join-Path $RuntimeRoot "lotus-ai.stdout.log"
 $StderrLog = Join-Path $RuntimeRoot "lotus-ai.stderr.log"
 $PidFile = Join-Path $RuntimeRoot "lotus-ai.pid"
+$LotusAiBaseUrl = if ($env:LOTUS_AI_BASE_URL) { $env:LOTUS_AI_BASE_URL } else { "http://127.0.0.1:8140" }
+$PerformanceBaseUrl = if ($env:LOTUS_PERFORMANCE_BASE_URL) { $env:LOTUS_PERFORMANCE_BASE_URL } else { "http://performance.dev.lotus" }
 
 function Ensure-Directory([string]$Path) {
     New-Item -ItemType Directory -Force -Path $Path | Out-Null
@@ -78,7 +80,7 @@ function Start-LotusAiDemo() {
     do {
         Start-Sleep -Seconds 1
         try {
-            $ready = Invoke-RestMethod -Uri "http://127.0.0.1:8140/health/ready" -Method Get
+            $ready = Invoke-RestMethod -Uri "$LotusAiBaseUrl/health/ready" -Method Get
             if ($ready.status -eq "ready") {
                 return
             }
@@ -101,7 +103,7 @@ function Ensure-LotusPerformanceReady() {
     do {
         Start-Sleep -Seconds 2
         try {
-            $ready = Invoke-RestMethod -Uri "http://127.0.0.1:8002/health/ready" -Method Get
+            $ready = Invoke-RestMethod -Uri "$PerformanceBaseUrl/health/ready" -Method Get
             if ($ready.status -eq "ready") {
                 return
             }
@@ -115,7 +117,7 @@ function Ensure-LotusPerformanceReady() {
 function Run-FirstUseCaseEval() {
     $submission = Invoke-CapturedPost `
         -Name "19-lotus-ai-first-use-case-eval-submit" `
-        -Uri "http://127.0.0.1:8140/platform/evals/runs/submit" `
+        -Uri "$LotusAiBaseUrl/platform/evals/runs/submit" `
         -RequestPath (Join-Path $RequestRoot "lotus-ai-first-use-case-eval.request.json")
 
     $env:PYTHONPATH = "src"
@@ -139,7 +141,7 @@ print(result)
 
     Invoke-CapturedGet `
         -Name "21-lotus-ai-first-use-case-eval-run-detail" `
-        -Uri ("http://127.0.0.1:8140/platform/evals/runs/" + $submission.run_id) | Out-Null
+        -Uri ("$LotusAiBaseUrl/platform/evals/runs/" + $submission.run_id) | Out-Null
 }
 
 Ensure-Directory $GeneratedRoot
@@ -151,33 +153,33 @@ Stop-LotusAiIfRunning
 Ensure-LotusPerformanceReady
 Start-LotusAiDemo
 
-Invoke-CapturedGet -Name "01-lotus-performance-health-ready" -Uri "http://127.0.0.1:8002/health/ready" | Out-Null
-Invoke-CapturedGet -Name "02-lotus-ai-health" -Uri "http://127.0.0.1:8140/health" | Out-Null
-Invoke-CapturedGet -Name "03-lotus-ai-health-ready" -Uri "http://127.0.0.1:8140/health/ready" | Out-Null
-Invoke-CapturedGet -Name "04-lotus-ai-root" -Uri "http://127.0.0.1:8140/" | Out-Null
-Invoke-CapturedGet -Name "05-lotus-ai-metadata" -Uri "http://127.0.0.1:8140/metadata" | Out-Null
-Invoke-CapturedGet -Name "06-lotus-ai-platform-runtime-status" -Uri "http://127.0.0.1:8140/platform/runtime-status" | Out-Null
-Invoke-CapturedGet -Name "07-lotus-ai-capabilities" -Uri "http://127.0.0.1:8140/platform/capabilities" | Out-Null
-Invoke-CapturedGet -Name "08-lotus-ai-task-runtime-status" -Uri "http://127.0.0.1:8140/platform/tasks/runtime-status" | Out-Null
-Invoke-CapturedGet -Name "09-lotus-ai-access-control-runtime-status" -Uri "http://127.0.0.1:8140/platform/access-control/runtime-status" | Out-Null
-Invoke-CapturedGet -Name "10-lotus-ai-access-control-caller-policies" -Uri "http://127.0.0.1:8140/platform/access-control/caller-policies" | Out-Null
-Invoke-CapturedGet -Name "11-lotus-ai-provider-catalog" -Uri "http://127.0.0.1:8140/platform/providers" | Out-Null
-Invoke-CapturedGet -Name "12-lotus-ai-retrieval-sources" -Uri "http://127.0.0.1:8140/platform/retrieval/sources" | Out-Null
-Invoke-CapturedGet -Name "13-lotus-ai-safety-policy" -Uri "http://127.0.0.1:8140/platform/safety/policy" | Out-Null
-Invoke-CapturedGet -Name "14-lotus-ai-prompt-runtime-status" -Uri "http://127.0.0.1:8140/platform/prompts/runtime-status" | Out-Null
-Invoke-CapturedGet -Name "15-lotus-ai-async-runtime-status" -Uri "http://127.0.0.1:8140/platform/async/runtime-status" | Out-Null
-Invoke-CapturedGet -Name "16-lotus-ai-artifact-runtime-status" -Uri "http://127.0.0.1:8140/platform/artifacts/runtime-status" | Out-Null
-Invoke-CapturedGet -Name "17-lotus-ai-observability-runtime-status" -Uri "http://127.0.0.1:8140/platform/observability/runtime-status" | Out-Null
-Invoke-CapturedGet -Name "18-lotus-ai-evals-runtime-status" -Uri "http://127.0.0.1:8140/platform/evals/runtime-status" | Out-Null
-Invoke-CapturedGet -Name "22-lotus-ai-first-use-case-contract" -Uri "http://127.0.0.1:8140/platform/use-cases/first-production-use-case" | Out-Null
-Invoke-CapturedGet -Name "23-lotus-ai-first-use-case-readiness-before-eval" -Uri "http://127.0.0.1:8140/platform/use-cases/first-production-use-case/readiness" | Out-Null
-Invoke-CapturedGet -Name "24-lotus-ai-first-use-case-runbook-readiness" -Uri "http://127.0.0.1:8140/platform/use-cases/first-production-use-case/runbook-readiness" | Out-Null
-Invoke-CapturedGet -Name "25-lotus-ai-first-use-case-governance-before-eval" -Uri "http://127.0.0.1:8140/platform/use-cases/first-production-use-case/governance-status" | Out-Null
-Invoke-CapturedGet -Name "26-lotus-ai-onboarding-template" -Uri "http://127.0.0.1:8140/platform/use-cases/onboarding-template" | Out-Null
+Invoke-CapturedGet -Name "01-lotus-performance-health-ready" -Uri "$PerformanceBaseUrl/health/ready" | Out-Null
+Invoke-CapturedGet -Name "02-lotus-ai-health" -Uri "$LotusAiBaseUrl/health" | Out-Null
+Invoke-CapturedGet -Name "03-lotus-ai-health-ready" -Uri "$LotusAiBaseUrl/health/ready" | Out-Null
+Invoke-CapturedGet -Name "04-lotus-ai-root" -Uri "$LotusAiBaseUrl/" | Out-Null
+Invoke-CapturedGet -Name "05-lotus-ai-metadata" -Uri "$LotusAiBaseUrl/metadata" | Out-Null
+Invoke-CapturedGet -Name "06-lotus-ai-platform-runtime-status" -Uri "$LotusAiBaseUrl/platform/runtime-status" | Out-Null
+Invoke-CapturedGet -Name "07-lotus-ai-capabilities" -Uri "$LotusAiBaseUrl/platform/capabilities" | Out-Null
+Invoke-CapturedGet -Name "08-lotus-ai-task-runtime-status" -Uri "$LotusAiBaseUrl/platform/tasks/runtime-status" | Out-Null
+Invoke-CapturedGet -Name "09-lotus-ai-access-control-runtime-status" -Uri "$LotusAiBaseUrl/platform/access-control/runtime-status" | Out-Null
+Invoke-CapturedGet -Name "10-lotus-ai-access-control-caller-policies" -Uri "$LotusAiBaseUrl/platform/access-control/caller-policies" | Out-Null
+Invoke-CapturedGet -Name "11-lotus-ai-provider-catalog" -Uri "$LotusAiBaseUrl/platform/providers" | Out-Null
+Invoke-CapturedGet -Name "12-lotus-ai-retrieval-sources" -Uri "$LotusAiBaseUrl/platform/retrieval/sources" | Out-Null
+Invoke-CapturedGet -Name "13-lotus-ai-safety-policy" -Uri "$LotusAiBaseUrl/platform/safety/policy" | Out-Null
+Invoke-CapturedGet -Name "14-lotus-ai-prompt-runtime-status" -Uri "$LotusAiBaseUrl/platform/prompts/runtime-status" | Out-Null
+Invoke-CapturedGet -Name "15-lotus-ai-async-runtime-status" -Uri "$LotusAiBaseUrl/platform/async/runtime-status" | Out-Null
+Invoke-CapturedGet -Name "16-lotus-ai-artifact-runtime-status" -Uri "$LotusAiBaseUrl/platform/artifacts/runtime-status" | Out-Null
+Invoke-CapturedGet -Name "17-lotus-ai-observability-runtime-status" -Uri "$LotusAiBaseUrl/platform/observability/runtime-status" | Out-Null
+Invoke-CapturedGet -Name "18-lotus-ai-evals-runtime-status" -Uri "$LotusAiBaseUrl/platform/evals/runtime-status" | Out-Null
+Invoke-CapturedGet -Name "22-lotus-ai-first-use-case-contract" -Uri "$LotusAiBaseUrl/platform/use-cases/first-production-use-case" | Out-Null
+Invoke-CapturedGet -Name "23-lotus-ai-first-use-case-readiness-before-eval" -Uri "$LotusAiBaseUrl/platform/use-cases/first-production-use-case/readiness" | Out-Null
+Invoke-CapturedGet -Name "24-lotus-ai-first-use-case-runbook-readiness" -Uri "$LotusAiBaseUrl/platform/use-cases/first-production-use-case/runbook-readiness" | Out-Null
+Invoke-CapturedGet -Name "25-lotus-ai-first-use-case-governance-before-eval" -Uri "$LotusAiBaseUrl/platform/use-cases/first-production-use-case/governance-status" | Out-Null
+Invoke-CapturedGet -Name "26-lotus-ai-onboarding-template" -Uri "$LotusAiBaseUrl/platform/use-cases/onboarding-template" | Out-Null
 
 $performanceResponse = Invoke-CapturedPost `
     -Name "27-lotus-performance-twr" `
-    -Uri "http://127.0.0.1:8002/performance/twr" `
+    -Uri "$PerformanceBaseUrl/performance/twr" `
     -RequestPath (Join-Path $RequestRoot "lotus-performance-twr.request.json")
 
 $explainTemplatePath = Join-Path $RequestRoot "lotus-ai-explain.request.json"
@@ -188,33 +190,33 @@ Write-JsonFile $explainRequestPath $explain
 
 $taskResponse = Invoke-CapturedPost `
     -Name "29-lotus-ai-explain" `
-    -Uri "http://127.0.0.1:8140/ai/tasks/execute" `
+    -Uri "$LotusAiBaseUrl/ai/tasks/execute" `
     -RequestPath $explainRequestPath
 
-Invoke-CapturedGet -Name "30-lotus-ai-audit-detail" -Uri ("http://127.0.0.1:8140/ai/audit/" + $taskResponse.audit.request_id) | Out-Null
-Invoke-CapturedGet -Name "31-lotus-ai-audit-catalog" -Uri "http://127.0.0.1:8140/ai/audit?caller_app=lotus-performance&limit=20" | Out-Null
-Invoke-CapturedGet -Name "32-lotus-ai-task-execution-summary" -Uri "http://127.0.0.1:8140/platform/tasks/execution-summary?limit=20" | Out-Null
-Invoke-CapturedGet -Name "33-lotus-ai-task-evidence-summary" -Uri "http://127.0.0.1:8140/platform/tasks/evidence-summary?limit=20" | Out-Null
-Invoke-CapturedGet -Name "34-lotus-ai-observability-incident-summary" -Uri "http://127.0.0.1:8140/platform/observability/incident-summary" | Out-Null
-Invoke-CapturedGet -Name "35-lotus-ai-observability-breakdowns" -Uri "http://127.0.0.1:8140/platform/observability/breakdowns?limit=20" | Out-Null
-Invoke-CapturedGet -Name "36-lotus-ai-access-control-governance" -Uri "http://127.0.0.1:8140/platform/access-control/governance-status" | Out-Null
-Invoke-CapturedGet -Name "37-lotus-ai-artifact-governance" -Uri "http://127.0.0.1:8140/platform/artifacts/governance-status" | Out-Null
-Invoke-CapturedGet -Name "38-lotus-ai-observability-governance" -Uri "http://127.0.0.1:8140/platform/observability/governance-status" | Out-Null
-Invoke-CapturedGet -Name "39-lotus-ai-provider-governance" -Uri "http://127.0.0.1:8140/platform/providers/governance-status" | Out-Null
-Invoke-CapturedGet -Name "40-lotus-ai-retrieval-governance" -Uri "http://127.0.0.1:8140/platform/retrieval/governance-status" | Out-Null
-Invoke-CapturedGet -Name "41-lotus-ai-safety-governance" -Uri "http://127.0.0.1:8140/platform/safety/governance-status" | Out-Null
-Invoke-CapturedGet -Name "42-lotus-ai-prompt-governance" -Uri "http://127.0.0.1:8140/platform/prompts/governance-status" | Out-Null
-Invoke-CapturedGet -Name "43-lotus-ai-async-governance" -Uri "http://127.0.0.1:8140/platform/async/governance-status" | Out-Null
+Invoke-CapturedGet -Name "30-lotus-ai-audit-detail" -Uri ("$LotusAiBaseUrl/ai/audit/" + $taskResponse.audit.request_id) | Out-Null
+Invoke-CapturedGet -Name "31-lotus-ai-audit-catalog" -Uri "$LotusAiBaseUrl/ai/audit?caller_app=lotus-performance&limit=20" | Out-Null
+Invoke-CapturedGet -Name "32-lotus-ai-task-execution-summary" -Uri "$LotusAiBaseUrl/platform/tasks/execution-summary?limit=20" | Out-Null
+Invoke-CapturedGet -Name "33-lotus-ai-task-evidence-summary" -Uri "$LotusAiBaseUrl/platform/tasks/evidence-summary?limit=20" | Out-Null
+Invoke-CapturedGet -Name "34-lotus-ai-observability-incident-summary" -Uri "$LotusAiBaseUrl/platform/observability/incident-summary" | Out-Null
+Invoke-CapturedGet -Name "35-lotus-ai-observability-breakdowns" -Uri "$LotusAiBaseUrl/platform/observability/breakdowns?limit=20" | Out-Null
+Invoke-CapturedGet -Name "36-lotus-ai-access-control-governance" -Uri "$LotusAiBaseUrl/platform/access-control/governance-status" | Out-Null
+Invoke-CapturedGet -Name "37-lotus-ai-artifact-governance" -Uri "$LotusAiBaseUrl/platform/artifacts/governance-status" | Out-Null
+Invoke-CapturedGet -Name "38-lotus-ai-observability-governance" -Uri "$LotusAiBaseUrl/platform/observability/governance-status" | Out-Null
+Invoke-CapturedGet -Name "39-lotus-ai-provider-governance" -Uri "$LotusAiBaseUrl/platform/providers/governance-status" | Out-Null
+Invoke-CapturedGet -Name "40-lotus-ai-retrieval-governance" -Uri "$LotusAiBaseUrl/platform/retrieval/governance-status" | Out-Null
+Invoke-CapturedGet -Name "41-lotus-ai-safety-governance" -Uri "$LotusAiBaseUrl/platform/safety/governance-status" | Out-Null
+Invoke-CapturedGet -Name "42-lotus-ai-prompt-governance" -Uri "$LotusAiBaseUrl/platform/prompts/governance-status" | Out-Null
+Invoke-CapturedGet -Name "43-lotus-ai-async-governance" -Uri "$LotusAiBaseUrl/platform/async/governance-status" | Out-Null
 
 Run-FirstUseCaseEval
 
-Invoke-CapturedGet -Name "44-lotus-ai-first-use-case-readiness-after-eval" -Uri "http://127.0.0.1:8140/platform/use-cases/first-production-use-case/readiness" | Out-Null
-Invoke-CapturedGet -Name "45-lotus-ai-first-use-case-governance-after-eval" -Uri "http://127.0.0.1:8140/platform/use-cases/first-production-use-case/governance-status" | Out-Null
-Invoke-CapturedGet -Name "46-lotus-ai-evals-run-catalog" -Uri "http://127.0.0.1:8140/platform/evals/runs" | Out-Null
+Invoke-CapturedGet -Name "44-lotus-ai-first-use-case-readiness-after-eval" -Uri "$LotusAiBaseUrl/platform/use-cases/first-production-use-case/readiness" | Out-Null
+Invoke-CapturedGet -Name "45-lotus-ai-first-use-case-governance-after-eval" -Uri "$LotusAiBaseUrl/platform/use-cases/first-production-use-case/governance-status" | Out-Null
+Invoke-CapturedGet -Name "46-lotus-ai-evals-run-catalog" -Uri "$LotusAiBaseUrl/platform/evals/runs" | Out-Null
 
 $summary = [pscustomobject]@{
-    performance_base_url = "http://127.0.0.1:8002"
-    lotus_ai_base_url = "http://127.0.0.1:8140"
+    performance_base_url = $PerformanceBaseUrl
+    lotus_ai_base_url = $LotusAiBaseUrl
     capture_root = $CaptureRoot
     runtime_root = $RuntimeRoot
     explanation_request_id = $taskResponse.audit.request_id
