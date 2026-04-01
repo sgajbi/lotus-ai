@@ -20,8 +20,8 @@ $DockerEnvFile = if ($UseProjectEnvFile) {
     Join-Path $RuntimeRoot ".env.docker-demo"
 }
 $ComposeProject = "lotus-ai-first-use-case-demo"
-$LotusAiBaseUrl = "http://127.0.0.1:8140"
-$PerformanceBaseUrl = "http://127.0.0.1:8002"
+$LotusAiBaseUrl = if ($env:LOTUS_AI_BASE_URL) { $env:LOTUS_AI_BASE_URL } else { "http://127.0.0.1:8140" }
+$PerformanceBaseUrl = if ($env:LOTUS_PERFORMANCE_BASE_URL) { $env:LOTUS_PERFORMANCE_BASE_URL } else { "http://performance.dev.lotus" }
 
 function Ensure-Directory([string]$Path) {
     New-Item -ItemType Directory -Force -Path $Path | Out-Null

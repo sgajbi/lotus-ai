@@ -37,6 +37,12 @@ The next pass can reuse the same flow with `lotus-ai` brought up via Docker, and
 1. Docker Desktop is running.
 2. `lotus-performance` repo exists at `../lotus-performance`.
 3. Python dependencies for `lotus-ai` are installed locally.
+4. canonical local performance service identity is `http://performance.dev.lotus`.
+
+For the standalone source-run path in this demo:
+
+- `lotus-ai` defaults to the direct local process URL `http://127.0.0.1:8140`
+- override it with `LOTUS_AI_BASE_URL` if you are routing through a local ingress layer
 
 ## Run
 
@@ -68,8 +74,8 @@ powershell -ExecutionPolicy Bypass -File demo/lotus-performance-first-use-case/r
 
 After the script completes:
 
-1. `lotus-performance` should be healthy on `http://127.0.0.1:8002`
-2. `lotus-ai` should be healthy on `http://127.0.0.1:8140`
+1. `lotus-performance` should be healthy on `http://performance.dev.lotus`
+2. `lotus-ai` should be healthy on the configured `LOTUS_AI_BASE_URL` or the direct local default `http://127.0.0.1:8140`
 3. pre-eval first-use-case governance should show one blocker: runtime-backed eval evidence
 4. post-eval first-use-case governance should report `LIMITED_ROLLOUT_READY`
 5. the captured `explain.v1` response should show:

@@ -192,12 +192,18 @@ The next RFCs now identified in the repo describe the expected post-foundation s
 1. `RFC-0021` domain AI capability packs and product maturity
 2. `RFC-0022` production go-live approval and managed infrastructure
 3. `RFC-0023` multi-app adoption and capability rollout governance
+4. `RFC-0024` portfolio narrative copilot for `lotus-performance`
+5. `RFC-0025` operational root-cause copilot for `lotus-core`
+6. `RFC-0026` operator control-plane dashboard and observability integration
 
 Current status against that sequence:
 
 1. `RFC-0021` is now partially started through a separate capability-pack catalog layer, with a reusable commentary family and an experimental decision-explanation family modeled explicitly, dedicated runtime-backed pack-quality eval families added, pack-specific activation, runbook, observability, governance, and adoption-template surfaces exposed, and the implemented `lotus-performance` path now anchored to the commentary family while broader approved pack maturity is still future work.
 2. `RFC-0022` now includes a dedicated production go-live runtime surface plus activation, runbook, governance, and named use-case approval views that separate technically running, production-capable, platform-production-approved, limited-rollout-ready, and active-production-approved posture; managed-secret and managed-object-storage approval domains now also converge explicitly with artifact governance, provider-usage truth, bounded provider freeze or rollback posture, and pack plus downstream approval review.
 3. `RFC-0023` now includes Slice 5 lifecycle discipline, so app-capability rollout records now have catalog, governance, onboarding-template, observability-summary, and lifecycle-status surfaces; retirement-ready versus blocked pairings are inspectable, stale not-onboarded or integration-stage pairings can be modeled as explicitly retired instead of lingering forever, historical traceability remains linked back to rollout, onboarding, and observability review surfaces, and retirement now states whether it is pairing-only or should trigger broader capability-pack follow-on review.
+4. `RFC-0024` is now drafted as the first genuinely product-defining `lotus-performance` feature, explicitly extending RFC-0016 rather than replacing it; the existing commentary seed becomes the narrow rollout anchor for a richer portfolio narrative copilot grounded in TWR, benchmark, contribution, attribution, returns-series, diagnostics, and lineage-backed evidence.
+5. `RFC-0025` is now drafted as the first high-value `lotus-core` operational AI feature, turning the existing support, lineage, reconciliation, replay, transaction-state, and snapshot control-plane surfaces into a bounded root-cause copilot rather than a generic support chatbot.
+6. `RFC-0026` is now drafted to add the missing operator UI layer over the already-shipped control planes, while explicitly keeping logs, metrics, traces, and alerting in external observability tooling rather than trying to recreate Grafana or Datadog inside `lotus-ai`.
 
 The previous likely feature areas are now implemented:
 
@@ -226,7 +232,10 @@ In practical feature terms, the roadmap is:
 
 1. turn the current platform backbone into reusable app-facing product capability packs,
 2. define a true final-mile production approval boundary above the existing prod-shaped baseline,
-3. expand from one proven downstream use case into governed multi-app adoption without fragmenting capability behavior.
+3. expand from one proven downstream use case into governed multi-app adoption without fragmenting capability behavior,
+4. convert the `lotus-performance` first-use-case seed into a genuinely reusable and high-value portfolio narrative capability,
+5. add an operational investigation copilot for `lotus-core` that explains likely causes from existing support and lineage truth,
+6. add an operator control-plane dashboard so the platform's many governance and rollout surfaces are operationally usable without replacing standard observability stacks.
 
 ## Recommended Reading Order
 
