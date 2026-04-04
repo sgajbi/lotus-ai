@@ -74,6 +74,11 @@ The calling Lotus application owns the business context.
 
 `lotus-ai` should receive structured context that has already been curated by the calling service or by `lotus-gateway`.
 
+For `lotus-workbench` Advisor Brief, the browser should call `lotus-gateway`, and `lotus-gateway`
+should assemble the performance fact bundle before invoking `POST /ai/tasks/execute` with
+`task_id=explain.v1`. `lotus-ai` should explain only the caller-supplied facts and preserve audit
+and evidence metadata; it should not recompute returns, attribution, or benchmark values.
+
 ## Recommended Integration Pattern
 
 1. Build a domain-owned context payload.
