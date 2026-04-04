@@ -9,6 +9,7 @@ from app.contracts.providers import (
     ProviderExecutionResponse,
 )
 from app.providers.base import ProviderAdapterDescriptor
+from app.providers.advisor_brief_stub import build_advisor_brief_stub_result
 
 
 class StubTextProvider:
@@ -27,6 +28,43 @@ class StubTextProvider:
     )
 
     def execute(self, request: ProviderExecutionRequest) -> ProviderExecutionResponse:
+        advisor_brief_result = build_advisor_brief_stub_result(
+            context_payload=request.context_payload,
+            source_refs=request.source_refs,
+        )
+        if request.task_id == "explain.v1" and advisor_brief_result:
+            message, structured_output = advisor_brief_result
+            return ProviderExecutionResponse(
+                provider_id=self.descriptor.provider_id,
+                provider_mode=settings.provider_mode,
+                adapter_kind=self.descriptor.adapter_kind,
+                failure_category=None,
+                timeout_ms=request.timeout_ms,
+                retry_count=0,
+                max_output_tokens=request.max_output_tokens,
+                stubbed=True,
+                message=message,
+                structured_output={
+                    **structured_output,
+                    "phase": settings.delivery_phase,
+                    "provider_id": self.descriptor.provider_id,
+                    "provider_mode": settings.provider_mode,
+                    "adapter_kind": self.descriptor.adapter_kind.value,
+                    "timeout_ms": request.timeout_ms,
+                    "retry_count": 0,
+                    "max_output_tokens": request.max_output_tokens,
+                    "output_label": request.output_label,
+                    "safety_mode": request.safety_mode,
+                    "redaction_posture": request.redaction_posture,
+                    "context_summary": request.context_summary,
+                    "context_keys": sorted(request.context_payload.keys()),
+                    "source_refs": request.source_refs,
+                    "stub_reason": (
+                        "lotus-ai foundation phase exposes governed integration contracts "
+                        "before live provider execution is enabled."
+                    ),
+                },
+            )
         return ProviderExecutionResponse(
             provider_id=self.descriptor.provider_id,
             provider_mode=settings.provider_mode,

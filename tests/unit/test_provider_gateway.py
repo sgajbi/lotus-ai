@@ -53,6 +53,64 @@ def test_execute_text_generation_routes_through_stub_provider() -> None:
     assert response.structured_output["context_keys"] == ["rule_count", "status"]
     assert response.structured_output["output_label"] == "EXPLANATION_ONLY"
     assert response.structured_output["redaction_posture"] == "MINIMIZATION_REQUIRED"
+    assert response.message == (
+        "Stub execution completed for foundation-phase task explain.v1 requested by "
+        "lotus-manage."
+    )
+
+
+def test_execute_text_generation_returns_source_grounded_advisor_brief_stub() -> None:
+    response = execute_text_generation(
+        _request(
+            caller_app="lotus-gateway",
+            context_summary="Draft client talking points from source performance facts.",
+            context_payload={
+                "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                "period": {"period": "YTD"},
+                "performance": {
+                    "portfolio_return_pct": 1.25,
+                    "benchmark_return_pct": 7.93,
+                    "active_return_pct": -6.68,
+                },
+                "supportability": [
+                    {"key": "portfolio_context", "value": "ready"},
+                    {"key": "performance_context", "value": "ready"},
+                ],
+                "contribution": {"top_positions": [{"position_id": "AAPL US"}]},
+                "attribution": {"top_effects": [{"key_label": "Asset Class / Equity"}]},
+            },
+            source_refs=[
+                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+            ],
+        )
+    )
+
+    assert response.provider_id == "text.stub"
+    assert response.stubbed is True
+    assert response.message == (
+        "Advisor brief for PB_SG_GLOBAL_BAL_001: YTD portfolio return is 1.25%; "
+        "benchmark return is 7.93%; active return is -6.68%; top contributor is "
+        "AAPL US; largest attribution effect is Asset Class / Equity."
+    )
+    assert response.structured_output["advisor_brief_status"] == "ready"
+    assert response.structured_output["coverage_state"] == "ready"
+    assert response.structured_output["grounded_facts"] == [
+        {
+            "metric_label": "Portfolio Return",
+            "metric_value": "1.25%",
+            "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+        },
+        {
+            "metric_label": "Benchmark Return",
+            "metric_value": "7.93%",
+            "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+        },
+        {
+            "metric_label": "Active Return",
+            "metric_value": "-6.68%",
+            "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+        },
+    ]
 
 
 def test_execute_text_generation_rejects_blocked_live_provider_mode() -> None:

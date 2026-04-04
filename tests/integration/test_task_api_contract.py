@@ -49,6 +49,74 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"
 
 
+def test_task_execute_contract_returns_grounded_advisor_brief_for_gateway_fact_bundle(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-gateway",
+                "correlation_id": "corr-advisor-brief-001",
+            },
+            "context": {
+                "summary": "Draft advisor brief from source performance facts.",
+                "payload": {
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [
+                        {"key": "portfolio_context", "value": "ready"},
+                        {"key": "performance_context", "value": "ready"},
+                    ],
+                    "contribution": {
+                        "top_positions": [{"position_id": "AAPL US", "total_contribution_pct": 0.3}],
+                    },
+                    "attribution": {
+                        "top_effects": [
+                            {"key_label": "Asset Class / Equity", "total_effect_pct": -4.1},
+                        ],
+                    },
+                },
+                "source_refs": [
+                    "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+                    "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-details:YTD",
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["task_id"] == "explain.v1"
+    assert body["status"] == "COMPLETED"
+    assert body["audit"]["stubbed"] is True
+    assert body["audit"]["authorization"]["caller_app"] == "lotus-gateway"
+    assert body["result"]["message"] == (
+        "Advisor brief for PB_SG_GLOBAL_BAL_001: YTD portfolio return is 1.25%; "
+        "benchmark return is 7.93%; active return is -6.68%; top contributor is "
+        "AAPL US; largest attribution effect is Asset Class / Equity."
+    )
+    assert body["result"]["structured_output"]["advisor_brief_status"] == "ready"
+    assert body["result"]["structured_output"]["grounded_facts"][0] == {
+        "metric_label": "Portfolio Return",
+        "metric_value": "1.25%",
+        "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+    }
+    assert body["result"]["structured_output"]["source_refs"] == [
+        "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+        "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-details:YTD",
+    ]
+    assert len(body["evidence"]["descriptors"]) == 6
+
+
 def test_task_execute_contract_enforces_runtime_redaction_when_enabled(client: TestClient) -> None:
     from app.config import settings
 

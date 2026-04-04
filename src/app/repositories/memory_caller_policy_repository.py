@@ -69,6 +69,22 @@ _DEFAULT_POLICIES = [
         restricted_tenant_ids=["tenant-sg-001"],
     ),
     CallerPolicyDescriptor(
+        caller_app="lotus-gateway",
+        lifecycle_status=CallerLifecycleStatus.ACTIVE,
+        description=(
+            "Gateway BFF caller for source-bounded advisor brief generation over pre-assembled "
+            "portfolio and performance facts."
+        ),
+        allowed_task_ids=["explain.v1"],
+        allowed_retrieval_source_ids=[],
+        allow_live_provider=False,
+        allow_async_control=False,
+        allow_prompt_control=False,
+        allow_provider_control=False,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        restricted_tenant_ids=[],
+    ),
+    CallerPolicyDescriptor(
         caller_app="lotus-workbench",
         lifecycle_status=CallerLifecycleStatus.ACTIVE,
         description="Workbench caller for bounded retrieval exploration.",
