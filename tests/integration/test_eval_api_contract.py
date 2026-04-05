@@ -97,13 +97,13 @@ def test_evaluation_catalog_route(client: TestClient) -> None:
     assert any(
         fixture["fixture_id"] == "provider_runtime_examples"
         and fixture["manifest_path"] == "docs/evals/fixtures/providers.runtime/basic_cases.json"
-        and fixture["case_count"] == 2
+        and fixture["case_count"] == 3
         for fixture in body["fixture_families"]
     )
     assert any(
         fixture["fixture_id"] == "provider_failure_mode_examples"
         and fixture["manifest_path"] == "docs/evals/fixtures/providers.failure/basic_cases.json"
-        and fixture["case_count"] == 2
+        and fixture["case_count"] == 5
         for fixture in body["fixture_families"]
     )
     assert any(
@@ -146,7 +146,7 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["manifest_version"] == "foundation.v1"
     assert body["evidence_category_count"] == 6
-    assert body["staged_case_count"] == 42
+    assert body["staged_case_count"] == 46
     assert [item["seam_id"] for item in body["seam_coverage"]] == [
         "async_execution",
         "task_execution",
@@ -164,7 +164,7 @@ def test_evaluation_runtime_status_route(client: TestClient) -> None:
     assert body["seam_coverage"][3]["staged_fixture_count"] == 2
     assert body["seam_coverage"][3]["staged_case_count"] == 5
     assert body["seam_coverage"][4]["staged_fixture_count"] == 6
-    assert body["seam_coverage"][4]["staged_case_count"] == 14
+    assert body["seam_coverage"][4]["staged_case_count"] == 18
     assert body["seam_coverage"][5]["staged_fixture_count"] == 2
     assert body["seam_coverage"][5]["staged_case_count"] == 6
     assert body["recorded_run_count"] == 2
