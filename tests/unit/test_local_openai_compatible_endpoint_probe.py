@@ -1,4 +1,9 @@
+from __future__ import annotations
+
+from types import TracebackType
 from urllib.error import URLError
+
+from pytest import MonkeyPatch
 
 from app.config import settings
 from app.services.local_openai_compatible_endpoint_probe import (
@@ -15,14 +20,21 @@ class _FakeResponse:
 
         return json.dumps(self._payload).encode("utf-8")
 
-    def __enter__(self):
+    def __enter__(self) -> "_FakeResponse":
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         return None
 
 
-def test_local_openai_compatible_endpoint_probe_reports_ready_model(monkeypatch) -> None:
+def test_local_openai_compatible_endpoint_probe_reports_ready_model(
+    monkeypatch: MonkeyPatch,
+) -> None:
     settings.live_text_api_base = "http://ollama:11434/v1"
     settings.live_text_model_id = "qwen3:8b"
 
@@ -38,7 +50,9 @@ def test_local_openai_compatible_endpoint_probe_reports_ready_model(monkeypatch)
     assert status.blocking_reason is None
 
 
-def test_local_openai_compatible_endpoint_probe_reports_missing_model(monkeypatch) -> None:
+def test_local_openai_compatible_endpoint_probe_reports_missing_model(
+    monkeypatch: MonkeyPatch,
+) -> None:
     settings.live_text_api_base = "http://ollama:11434/v1"
     settings.live_text_model_id = "qwen3:8b"
 
@@ -54,7 +68,9 @@ def test_local_openai_compatible_endpoint_probe_reports_missing_model(monkeypatc
     assert "not advertised" in (status.blocking_reason or "")
 
 
-def test_local_openai_compatible_endpoint_probe_reports_unreachable_endpoint(monkeypatch) -> None:
+def test_local_openai_compatible_endpoint_probe_reports_unreachable_endpoint(
+    monkeypatch: MonkeyPatch,
+) -> None:
     settings.live_text_api_base = "http://ollama:11434/v1"
     settings.live_text_model_id = "qwen3:8b"
 

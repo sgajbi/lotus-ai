@@ -36,6 +36,8 @@ def _request(**overrides: object) -> ProviderExecutionRequest:
 
 def test_execute_text_generation_routes_through_stub_provider() -> None:
     response = execute_text_generation(_request())
+    structured_output = response.structured_output
+    assert isinstance(structured_output, dict)
 
     assert response.provider_id == "text.stub"
     assert response.provider_mode == "disabled"
@@ -45,14 +47,14 @@ def test_execute_text_generation_routes_through_stub_provider() -> None:
     assert response.retry_count == 0
     assert response.max_output_tokens == 512
     assert response.stubbed is True
-    assert response.structured_output["provider_id"] == "text.stub"
-    assert response.structured_output["adapter_kind"] == "STUB"
-    assert response.structured_output["timeout_ms"] == 4000
-    assert response.structured_output["retry_count"] == 0
-    assert response.structured_output["max_output_tokens"] == 512
-    assert response.structured_output["context_keys"] == ["rule_count", "status"]
-    assert response.structured_output["output_label"] == "EXPLANATION_ONLY"
-    assert response.structured_output["redaction_posture"] == "MINIMIZATION_REQUIRED"
+    assert structured_output["provider_id"] == "text.stub"
+    assert structured_output["adapter_kind"] == "STUB"
+    assert structured_output["timeout_ms"] == 4000
+    assert structured_output["retry_count"] == 0
+    assert structured_output["max_output_tokens"] == 512
+    assert structured_output["context_keys"] == ["rule_count", "status"]
+    assert structured_output["output_label"] == "EXPLANATION_ONLY"
+    assert structured_output["redaction_posture"] == "MINIMIZATION_REQUIRED"
     assert response.message == (
         "Stub execution completed for foundation-phase task explain.v1 requested by lotus-manage."
     )
@@ -83,6 +85,8 @@ def test_execute_text_generation_returns_source_grounded_advisor_brief_stub() ->
             ],
         )
     )
+    structured_output = response.structured_output
+    assert isinstance(structured_output, dict)
 
     assert response.provider_id == "text.stub"
     assert response.stubbed is True
@@ -92,12 +96,15 @@ def test_execute_text_generation_returns_source_grounded_advisor_brief_stub() ->
         "was N/A. largest contribution came from AAPL US (N/A). largest benchmark-relative "
         "attribution effect was Asset Class / Equity (N/A)."
     )
-    assert response.structured_output["advisor_brief_status"] == "ready"
-    assert response.structured_output["coverage_state"] == "ready"
-    assert response.structured_output["talking_points"][0]["headline"] == (
+    assert structured_output["advisor_brief_status"] == "ready"
+    assert structured_output["coverage_state"] == "ready"
+    talking_points = structured_output["talking_points"]
+    assert isinstance(talking_points, list)
+    assert isinstance(talking_points[0], dict)
+    assert talking_points[0]["headline"] == (
         "YTD active return was -6.68%."
     )
-    assert response.structured_output["grounded_facts"] == [
+    assert structured_output["grounded_facts"] == [
         {
             "metric_label": "Portfolio Return",
             "metric_value": "1.25%",
@@ -410,7 +417,9 @@ def test_execute_text_generation_routes_stub_mode_through_stub_provider() -> Non
     assert response.retry_count == 0
     assert response.max_output_tokens == 512
     assert response.stubbed is True
-    assert response.structured_output["output_label"] == "DRAFT"
+    structured_output = response.structured_output
+    assert isinstance(structured_output, dict)
+    assert structured_output["output_label"] == "DRAFT"
 
     settings.provider_mode = "disabled"
 

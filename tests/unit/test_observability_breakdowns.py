@@ -13,6 +13,7 @@ from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.observability import ObservabilityCapabilityKind
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
+from app.contracts.providers import ProviderAdapterKind
 from app.contracts.safety import RedactionPosture
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.services.observability_breakdowns import (
@@ -88,9 +89,9 @@ def _record(
             else "text.openai"
         ),
         adapter_kind=(
-            "STUB"
+            ProviderAdapterKind.STUB
             if provider_mode in {"disabled", "stub"}
-            else "OPENAI_LIVE"
+            else ProviderAdapterKind.OPENAI_LIVE
             if provider_mode == "openai"
             else None
         ),

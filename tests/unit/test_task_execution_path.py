@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from pytest import MonkeyPatch
+
 from app.config import settings
 from app.contracts.tasks import CapabilityDescriptor, OutputLabel, TaskCategory
 from app.services.task_execution_path import build_task_execution_path
@@ -144,7 +148,7 @@ def test_task_execution_path_reports_live_text_when_task_is_allowlisted() -> Non
 
 
 def test_task_execution_path_reports_local_live_text_when_task_is_allowlisted(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     settings.provider_mode = "local_openai_compatible"
     settings.provider_rollout_state = "CANARY_ENABLED"

@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from pytest import MonkeyPatch
+
 from app.config import settings
 from app.services.provider_operator_profile import build_provider_operator_profile
 
@@ -13,7 +17,7 @@ def test_provider_operator_profile_reports_disabled_stub_profile() -> None:
 
 
 def test_provider_operator_profile_reports_local_ollama_profile_when_selected(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     settings.provider_mode = "local_openai_compatible"
     settings.provider_rollout_state = "CANARY_ENABLED"

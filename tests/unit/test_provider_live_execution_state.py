@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from pytest import MonkeyPatch
+
 from app.config import settings
 from app.contracts.providers import ProviderRolloutState
 from app.services.provider_live_execution_state import build_provider_live_execution_state
@@ -34,7 +38,7 @@ def test_provider_live_execution_state_allows_configured_canary_task() -> None:
 
 
 def test_provider_live_execution_state_allows_local_openai_compatible_task_without_api_key(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     settings.provider_mode = "local_openai_compatible"
     settings.provider_rollout_state = "CANARY_ENABLED"
@@ -68,7 +72,7 @@ def test_provider_live_execution_state_allows_local_openai_compatible_task_witho
 
 
 def test_provider_live_execution_state_blocks_local_mode_when_endpoint_is_unreachable(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     settings.provider_mode = "local_openai_compatible"
     settings.provider_rollout_state = "CANARY_ENABLED"

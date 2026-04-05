@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from pytest import MonkeyPatch
+
 from app.config import settings
 from app.contracts.providers import ProviderCredentialStatus, ProviderRolloutState
 from app.services.provider_activation_readiness import build_provider_activation_readiness
@@ -150,7 +154,7 @@ def test_provider_activation_readiness_reports_degraded_upstream_blocking() -> N
 
 
 def test_provider_activation_readiness_blocks_local_mode_when_model_catalog_is_unavailable(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     settings.provider_mode = "local_openai_compatible"
     settings.provider_rollout_state = "CANARY_ENABLED"

@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from pytest import MonkeyPatch
+
 from app.config import settings
 from app.contracts.providers import (
     ProviderAdapterKind,
@@ -82,7 +86,7 @@ def test_provider_catalog_marks_openai_provider_executable_when_rollout_allows_i
 
 
 def test_provider_catalog_marks_local_provider_executable_when_rollout_allows_it(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     settings.provider_mode = "local_openai_compatible"
     settings.provider_rollout_state = "CANARY_ENABLED"

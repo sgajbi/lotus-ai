@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+from types import TracebackType
+
+from pytest import MonkeyPatch
+from sqlalchemy.sql.elements import ClauseElement
+
 from app.config import settings
 from app.operations import alembic_bootstrap
 
@@ -9,10 +16,15 @@ class _FakeConnection:
     def __enter__(self) -> "_FakeConnection":
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         return None
 
-    def execute(self, statement) -> None:
+    def execute(self, statement: ClauseElement) -> None:
         self.statements.append(str(statement))
 
 
@@ -30,7 +42,7 @@ class _FakeEngine:
 
 
 def test_ensure_alembic_version_table_capacity_widens_postgres_version_column(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     settings.database_url = "postgresql+psycopg://lotus:lotus@postgres:5432/lotus_ai"
     fake_engine = _FakeEngine(dialect_name="postgresql")
@@ -50,7 +62,7 @@ def test_ensure_alembic_version_table_capacity_widens_postgres_version_column(
 
 
 def test_ensure_alembic_version_table_capacity_skips_non_postgres_engines(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     settings.database_url = "sqlite:///tmp/lotus-ai.db"
     fake_engine = _FakeEngine(dialect_name="sqlite")

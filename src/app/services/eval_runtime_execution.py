@@ -4,7 +4,7 @@ from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import json
-from typing import Iterator, cast
+from typing import Any, Iterator, cast
 
 from fastapi import HTTPException
 
@@ -1195,14 +1195,16 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
 
 
 @contextmanager
-def _patch_target(target: str, replacement):
+def _patch_target(target: str, replacement: object) -> Iterator[None]:
     from unittest.mock import patch
 
     with patch(target, replacement):
         yield
 
 
-def _raise_provider_execution_error(*, category: ProviderFailureCategory, message: str):
+def _raise_provider_execution_error(
+    *, category: ProviderFailureCategory, message: str
+) -> Any:
     from app.providers.base import ProviderExecutionError
 
     raise ProviderExecutionError(category=category, message=message)

@@ -1,5 +1,6 @@
 from email.message import Message
 from io import BytesIO
+from typing import Any, cast
 from urllib import error
 
 from pytest import MonkeyPatch
@@ -7,13 +8,12 @@ from pytest import MonkeyPatch
 from app.config import settings
 from app.contracts.providers import ProviderFailureCategory
 from app.providers.base import ProviderExecutionError
-from app.providers.openai_live_text_provider import (
-    OpenAILiveTextProvider,
-    _build_user_message,
-    _extract_output_text,
-    _extract_usage,
-    _post_openai_response,
+from app.providers.openai_compatible_text_transport import (
+    build_user_message,
+    extract_output_text,
+    extract_usage,
 )
+from app.providers.openai_live_text_provider import OpenAILiveTextProvider, _post_openai_response
 from tests.unit.test_provider_gateway import _request
 
 
@@ -92,15 +92,17 @@ def test_openai_live_text_provider_parses_advisor_brief_structured_output(
             source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
         )
     )
+    structured_output = cast(dict[str, Any], response.structured_output)
 
     assert response.provider_id == "text.openai"
     assert response.stubbed is False
     assert response.message == "Portfolio lagged benchmark on YTD."
-    assert response.structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
+    assert structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
     assert (
-        response.structured_output["talking_points"][0]["headline"] == "Active Return was -6.68%."
+        cast(list[dict[str, Any]], structured_output["talking_points"])[0]["headline"]
+        == "Active Return was -6.68%."
     )
-    assert response.structured_output["recommended_actions"][0]["label"] == (
+    assert cast(list[dict[str, Any]], structured_output["recommended_actions"])[0]["label"] == (
         "Review Attribution Drivers"
     )
 
@@ -144,8 +146,9 @@ def test_openai_live_text_provider_parses_fenced_advisor_brief_json(
         )
     )
 
-    assert response.structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
-    assert response.structured_output["talking_points"] == []
+    structured_output = cast(dict[str, Any], response.structured_output)
+    assert structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
+    assert structured_output["talking_points"] == []
 
 
 def test_openai_live_text_provider_parses_advisor_json_with_trailing_text(
@@ -182,8 +185,9 @@ def test_openai_live_text_provider_parses_advisor_json_with_trailing_text(
         )
     )
 
-    assert response.structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
-    assert response.structured_output["recommended_actions"] == []
+    structured_output = cast(dict[str, Any], response.structured_output)
+    assert structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
+    assert structured_output["recommended_actions"] == []
 
 
 def test_openai_live_text_provider_extracts_summary_from_truncated_advisor_json(
@@ -219,8 +223,9 @@ def test_openai_live_text_provider_extracts_summary_from_truncated_advisor_json(
         )
     )
 
-    assert response.structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
-    assert response.structured_output["talking_points"] == []
+    structured_output = cast(dict[str, Any], response.structured_output)
+    assert structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
+    assert structured_output["talking_points"] == []
 
 
 def test_openai_live_text_provider_requires_api_key() -> None:
@@ -237,7 +242,7 @@ def test_openai_live_text_provider_requires_api_key() -> None:
 
 
 def test_openai_live_text_provider_builds_user_message_with_context() -> None:
-    message = _build_user_message(_request())
+    message = build_user_message(_request())
 
     assert '"task_id": "explain.v1"' in message
     assert '"caller_app": "lotus-manage"' in message
@@ -245,7 +250,7 @@ def test_openai_live_text_provider_builds_user_message_with_context() -> None:
 
 
 def test_openai_live_text_provider_builds_advisor_output_contract_override() -> None:
-    message = _build_user_message(
+    message = build_user_message(
         _request(
             caller_app="lotus-gateway",
             context_payload={
@@ -304,14 +309,15 @@ def test_openai_live_text_provider_falls_back_when_advisor_summary_leaks_contrac
     )
 
     assert response.message.startswith("PB SG GLOBAL BAL 001 delivered 1.25% over YTD")
-    assert response.structured_output["advisor_brief_guardrail_triggered"] is True
-    assert response.structured_output["advisor_brief_guardrail_reason"] == (
+    structured_output = cast(dict[str, Any], response.structured_output)
+    assert structured_output["advisor_brief_guardrail_triggered"] is True
+    assert structured_output["advisor_brief_guardrail_reason"] == (
         "invalid_grounded_summary_language"
     )
 
 
 def test_openai_live_text_provider_extracts_text_from_output_fragments() -> None:
-    text = _extract_output_text(
+    text = extract_output_text(
         {
             "output": [
                 {
@@ -329,7 +335,7 @@ def test_openai_live_text_provider_extracts_text_from_output_fragments() -> None
 
 def test_openai_live_text_provider_rejects_missing_output_text() -> None:
     try:
-        _extract_output_text({"output": [{"content": [{}]}]})
+        extract_output_text({"output": [{"content": [{}]}]})
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
     else:
@@ -337,7 +343,7 @@ def test_openai_live_text_provider_rejects_missing_output_text() -> None:
 
 
 def test_openai_live_text_provider_extracts_usage_when_missing() -> None:
-    assert _extract_usage({}) == (None, None, None)
+    assert extract_usage({}) == (None, None, None)
 
 
 def test_openai_live_text_provider_maps_rate_limit_errors(monkeypatch: MonkeyPatch) -> None:
@@ -453,7 +459,8 @@ def test_openai_live_text_provider_posts_successfully_through_urlopen(
         timeout_seconds=4.0,
     )
 
-    assert payload["id"] == "resp_ok"
+    payload_dict = cast(dict[str, Any], payload)
+    assert payload_dict["id"] == "resp_ok"
 
 
 def test_openai_live_text_provider_handles_non_json_error_bodies(monkeypatch: MonkeyPatch) -> None:
@@ -483,7 +490,7 @@ def test_openai_live_text_provider_handles_non_json_error_bodies(monkeypatch: Mo
 
 
 def test_openai_live_text_provider_ignores_non_text_output_parts() -> None:
-    text = _extract_output_text(
+    text = extract_output_text(
         {
             "output": [
                 "invalid",

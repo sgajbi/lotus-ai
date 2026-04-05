@@ -6,7 +6,10 @@ from app.contracts.providers import (
     ProviderOperatorProfileDescriptor,
     ProviderOperatorProfileResponse,
 )
-from app.services.provider_live_execution_state import build_provider_live_execution_state
+from app.services.provider_live_execution_state import (
+    ProviderLiveExecutionState,
+    build_provider_live_execution_state,
+)
 
 
 def build_provider_operator_profile() -> ProviderOperatorProfileResponse:
@@ -128,7 +131,11 @@ def _resolve_selected_profile_id() -> str:
     return "stubbed_disabled"
 
 
-def _build_current_readiness_note(*, selected_profile_id: str, live_execution_state) -> str:
+def _build_current_readiness_note(
+    *,
+    selected_profile_id: str,
+    live_execution_state: ProviderLiveExecutionState,
+) -> str:
     if live_execution_state.live_execution_enabled:
         if selected_profile_id.startswith("local_"):
             return (
@@ -139,5 +146,5 @@ def _build_current_readiness_note(*, selected_profile_id: str, live_execution_st
             return "Managed OpenAI execution is active for the configured allowlisted task path."
         return "Deterministic stub execution is active."
     if live_execution_state.blocking_reason is not None:
-        return live_execution_state.blocking_reason
+        return str(live_execution_state.blocking_reason)
     return "Provider posture is configured but not yet active."

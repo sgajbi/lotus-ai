@@ -11,6 +11,7 @@ from app.contracts.access_control import (
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
+from app.contracts.providers import ProviderAdapterKind
 from app.contracts.safety import RedactionPosture, SafetyExecutionDisposition
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.repositories.sqlalchemy_audit_repository import SqlAlchemyAuditRepository
@@ -69,7 +70,7 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
         prompt_selection=_prompt_selection("foundation.explain.v1"),
         provider_mode="disabled",
         provider_id="text.stub",
-        adapter_kind="STUB",
+        adapter_kind=ProviderAdapterKind.STUB,
         model_id=None,
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
@@ -139,7 +140,7 @@ def test_sqlalchemy_audit_repository_list_filters_and_orders_latest_first(
         prompt_selection=_prompt_selection("foundation.explain.v1"),
         provider_mode="disabled",
         provider_id="text.stub",
-        adapter_kind="STUB",
+        adapter_kind=ProviderAdapterKind.STUB,
         model_id=None,
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
@@ -237,7 +238,7 @@ def test_sqlalchemy_audit_repository_round_trips_exact_blocked_safety_outcome(
         prompt_selection=_prompt_selection("foundation.explain.v1"),
         provider_mode="stub",
         provider_id="text.stub",
-        adapter_kind="STUB",
+        adapter_kind=ProviderAdapterKind.STUB,
         model_id=None,
         safety_mode="runtime_enforced",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
