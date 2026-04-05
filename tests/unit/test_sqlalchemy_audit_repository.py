@@ -459,11 +459,26 @@ def test_sqlalchemy_audit_repository_handles_relative_sqlite_path(
 
 def test_sqlalchemy_audit_repository_does_not_create_directory_for_memory_or_non_sqlite(
     tmp_path: Path,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     SqlAlchemyAuditRepository("sqlite:///:memory:")._engine.dispose()
+
+    configured_urls: list[str] = []
+
+    def _fake_configure_sqlalchemy(self: SqlAlchemyAuditRepository, database_url: str) -> None:
+        configured_urls.append(database_url)
+        self._engine = type("Engine", (), {"dispose": lambda self: None})()
+
+    monkeypatch.setattr(
+        SqlAlchemyAuditRepository,
+        "_configure_sqlalchemy",
+        _fake_configure_sqlalchemy,
+    )
+
     SqlAlchemyAuditRepository("postgresql://user:pass@localhost/db")._engine.dispose()
 
     assert not (tmp_path / "postgresql:").exists()
+    assert configured_urls == ["postgresql://user:pass@localhost/db"]
 
 
 def test_sqlalchemy_audit_repository_provider_defaults_cover_all_supported_modes() -> None:
