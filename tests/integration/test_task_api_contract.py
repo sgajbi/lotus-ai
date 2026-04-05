@@ -35,6 +35,9 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["task_id"] == "explain.v1"
     assert body["status"] == "COMPLETED"
     assert body["audit"]["stubbed"] is True
+    assert body["audit"]["provider_id"] == "text.stub"
+    assert body["audit"]["adapter_kind"] == "STUB"
+    assert body["audit"]["model_id"] is None
     assert body["audit"]["prompt_version"] == "foundation.explain.v1"
     assert body["audit"]["prompt_selection"]["prompt_version"] == "foundation.explain.v1"
     assert body["audit"]["prompt_selection"]["latest_control_event"] is None
@@ -288,6 +291,10 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
     assert body["output_label"] == "DRAFT"
     assert body["prompt_version"] == "foundation.summarize.v1"
     assert body["prompt_selection"]["prompt_version"] == "foundation.summarize.v1"
+    assert body["provider_mode"] == "disabled"
+    assert body["provider_id"] == "text.stub"
+    assert body["adapter_kind"] == "STUB"
+    assert body["model_id"] is None
     assert body["safety_mode"] == "documented_only"
     assert body["enforced_safety_controls"] == [
         "response_labeling",
@@ -814,6 +821,83 @@ def test_task_execute_contract_allows_lotus_gateway_live_advisor_brief(
     body = response.json()
     assert body["status"] == "COMPLETED"
     assert body["audit"]["provider_mode"] == "openai"
+    assert body["audit"]["provider_id"] == "text.openai"
+    assert body["audit"]["adapter_kind"] == "OPENAI_LIVE"
+    assert body["audit"]["model_id"] == "gpt-5.4"
     assert body["result"]["structured_output"]["grounded_summary"] == (
         "Portfolio lagged benchmark on YTD."
     )
+
+
+def test_task_execute_contract_supports_local_openai_compatible_execution(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_input_cost_per_1k_tokens = 0.0
+    settings.live_text_output_cost_per_1k_tokens = 0.0
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
+        lambda **_: {
+            "id": "resp_local_contract_001",
+            "model": "qwen3:8b",
+            "output_text": "Local governed explanation response.",
+            "usage": {"input_tokens": 120, "output_tokens": 30, "total_tokens": 150},
+        },
+    )
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-local-contract",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Explain rebalance outcome",
+                "payload": {"status": "BLOCKED", "violations": 2},
+                "source_refs": ["lotus-manage:run:reb_local_contract"],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "COMPLETED"
+    assert body["audit"]["stubbed"] is False
+    assert body["audit"]["provider_mode"] == "local_openai_compatible"
+    assert body["audit"]["provider_id"] == "text.local"
+    assert body["audit"]["adapter_kind"] == "OPENAI_COMPATIBLE_LOCAL"
+    assert body["audit"]["model_id"] == "qwen3:8b"
+    assert body["result"]["message"] == "Local governed explanation response."
+    provider_evidence = next(
+        descriptor
+        for descriptor in body["evidence"]["descriptors"]
+        if descriptor["evidence_type"] == "provider_resolution"
+    )
+    assert provider_evidence["attributes"]["provider_id"] == "text.local"
+    assert provider_evidence["attributes"]["adapter_kind"] == "OPENAI_COMPATIBLE_LOCAL"
+    assert provider_evidence["attributes"]["model_id"] == "qwen3:8b"

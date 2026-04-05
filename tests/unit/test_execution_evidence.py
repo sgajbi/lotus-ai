@@ -113,6 +113,8 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
     assert evidence.descriptors[1].attributes["active_prompt_version"] == "foundation.explain.v1"
     assert evidence.descriptors[1].attributes["latest_control_event"] is None
     assert evidence.descriptors[2].evidence_type == "provider_resolution"
+    assert evidence.descriptors[2].attributes["provider_id"] == "text.stub"
+    assert evidence.descriptors[2].attributes["provider_mode"] == "disabled"
     assert evidence.descriptors[2].attributes["adapter_kind"] == "STUB"
     assert evidence.descriptors[2].attributes["degradation_status"] == "DOCUMENTED_ONLY"
     assert evidence.descriptors[2].attributes["timeout_ms"] == 4000

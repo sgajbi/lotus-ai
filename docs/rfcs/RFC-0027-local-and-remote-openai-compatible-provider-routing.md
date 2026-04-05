@@ -31,11 +31,11 @@ Completed:
 1. Slice 1: provider abstraction normalization
 2. Slice 2: local OpenAI-compatible runtime support
 3. Slice 3: operator switching and runbooks
+4. Slice 4: evaluation and operational hardening
 
 Remaining:
 
-1. Slice 4: evaluation and operational hardening
-2. Slice 5: downstream adoption validation
+1. Slice 5: downstream adoption validation
 
 The decision is to keep one stable Lotus AI task contract and add a second live-provider mode:
 `local_openai_compatible`.

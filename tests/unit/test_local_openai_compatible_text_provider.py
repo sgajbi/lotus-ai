@@ -1,6 +1,8 @@
 from pytest import MonkeyPatch
 
 from app.config import settings
+from app.contracts.providers import ProviderFailureCategory
+from app.providers.base import ProviderExecutionError
 from app.providers.local_openai_compatible_text_provider import (
     LocalOpenAICompatibleTextProvider,
 )
@@ -36,3 +38,53 @@ def test_local_openai_compatible_text_provider_returns_usage_without_api_key(
     assert response.output_tokens == 40
     assert response.total_tokens == 160
     assert response.message == "Local provider explanation."
+
+
+def test_local_openai_compatible_text_provider_maps_missing_output_to_upstream_error(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_provider_api_key = None
+
+    monkeypatch.setattr(
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
+        lambda **_: {
+            "id": "resp_local_bad_123",
+            "model": "qwen3:8b",
+            "usage": {"input_tokens": 120, "output_tokens": 40, "total_tokens": 160},
+        },
+    )
+
+    try:
+        LocalOpenAICompatibleTextProvider().execute(_request())
+    except ProviderExecutionError as exc:
+        assert exc.category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
+        assert "did not include output text" in exc.message
+    else:
+        raise AssertionError("Expected ProviderExecutionError for malformed local response")
+
+
+def test_local_openai_compatible_text_provider_maps_timeout_failures(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_provider_api_key = None
+
+    def _raise_timeout(**_: object) -> dict[str, object]:
+        raise ProviderExecutionError(
+            category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+            message="Local provider request exceeded the configured timeout.",
+        )
+
+    monkeypatch.setattr(
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
+        _raise_timeout,
+    )
+
+    try:
+        LocalOpenAICompatibleTextProvider().execute(_request())
+    except ProviderExecutionError as exc:
+        assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
+        assert "configured timeout" in exc.message
+    else:
+        raise AssertionError("Expected ProviderExecutionError for local provider timeout")

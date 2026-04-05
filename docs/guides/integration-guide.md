@@ -166,7 +166,7 @@ Then recreate the same containers with `docker compose up -d --force-recreate lo
 Verification:
 
 1. `GET /health/ready` should return `200`,
-2. `POST /ai/tasks/execute` should return `audit.provider_mode = "openai"` and `audit.stubbed = false`
+2. `POST /ai/tasks/execute` should return `audit.provider_mode = "openai"`, `audit.provider_id = "text.openai"`, and `audit.stubbed = false`
    when the live provider key has quota,
 3. if billing must remain off, verify `audit.provider_mode` is not `openai` before using Advisor Brief.
 
@@ -190,11 +190,13 @@ Then recreate the same containers with `docker compose up -d --force-recreate lo
 Verification:
 
 1. `GET /health/ready` should return `200`,
-2. `POST /ai/tasks/execute` should return `audit.provider_mode = "local_openai_compatible"` and
-   `audit.stubbed = false`,
+2. `POST /ai/tasks/execute` should return `audit.provider_mode = "local_openai_compatible"`,
+   `audit.provider_id = "text.local"`, and `audit.stubbed = false`,
 3. `/platform/providers/policy` should list `local_openai_compatible` in the allowed text modes,
 4. `/platform/providers` should show `text.local` in the registered provider catalog,
-5. `/platform/providers/operator-profile` should identify either `local_ollama` or `local_vllm`.
+5. `/platform/providers/operator-profile` should identify either `local_ollama` or `local_vllm`,
+6. the provider-resolution evidence descriptor should show `adapter_kind = OPENAI_COMPATIBLE_LOCAL`
+   and the configured local `model_id`.
 
 ## Recommended Integration Pattern
 

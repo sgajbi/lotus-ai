@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import json
@@ -509,21 +509,65 @@ def _execute_fixture_case(
         task_id = str(case.input_payload.get("task_id", fixture_task_id))
         response, failure_category = _execute_task_case(task_id=task_id, case=case)
         if case.expected_payload["expected_outcome"] == "SUCCESS":
-            controls_present = (
-                response is not None
-                and response.result.structured_output.get("timeout_ms") is not None
+            provider_resolution = (
+                next(
+                    (
+                        descriptor
+                        for descriptor in response.evidence.descriptors
+                        if descriptor.evidence_type == "provider_resolution"
+                    ),
+                    None,
+                )
+                if response is not None
+                else None
             )
-            stubbed = response is not None and response.audit.stubbed is True
+            controls_present = (
+                provider_resolution is not None
+                and provider_resolution.attributes.get("timeout_ms") is not None
+                and provider_resolution.attributes.get("max_output_tokens") is not None
+            )
+            provider_mode_matches = (
+                response is not None
+                and response.audit.provider_mode
+                == case.expected_payload.get("provider_mode", response.audit.provider_mode)
+            )
+            provider_id_matches = (
+                response is not None
+                and response.audit.provider_id
+                == case.expected_payload.get("provider_id", response.audit.provider_id)
+            )
+            adapter_kind_matches = (
+                response is not None
+                and (
+                    response.audit.adapter_kind is not None
+                    and response.audit.adapter_kind.value
+                    == case.expected_payload.get(
+                        "adapter_kind",
+                        response.audit.adapter_kind.value,
+                    )
+                )
+            )
+            stubbed_matches = (
+                response is not None
+                and response.audit.stubbed
+                == case.expected_payload.get("stubbed", response.audit.stubbed)
+            )
             outcome = (
                 EvaluationCaseOutcome.PASS
-                if controls_present and stubbed
+                if (
+                    controls_present
+                    and provider_mode_matches
+                    and provider_id_matches
+                    and adapter_kind_matches
+                    and stubbed_matches
+                )
                 else EvaluationCaseOutcome.FAIL
             )
             return (
                 (
-                    "Task execution preserved bounded provider controls in stub runtime."
+                    "Task execution preserved bounded provider controls and explicit provider identity in runtime evidence."
                     if outcome == EvaluationCaseOutcome.PASS
-                    else "Task execution did not preserve the expected bounded provider controls."
+                    else "Task execution did not preserve the expected bounded provider controls or provider identity."
                 ),
                 outcome,
                 ["service://ai/tasks/execute"],
@@ -609,6 +653,25 @@ def _execute_fixture_case(
                 ),
                 outcome,
                 ["service://ai/tasks/execute"],
+            )
+        if case.expected_payload["expected_outcome"] == "LOCAL_UPSTREAM_FAILURE":
+            expected_failure = case.expected_payload["failure_category"]
+            outcome = (
+                EvaluationCaseOutcome.PASS
+                if failure_category == expected_failure
+                else EvaluationCaseOutcome.FAIL
+            )
+            return (
+                (
+                    f"Local OpenAI-compatible provider failure mapped cleanly to '{expected_failure}'."
+                    if outcome == EvaluationCaseOutcome.PASS
+                    else f"Local OpenAI-compatible provider failure did not map cleanly to '{expected_failure}'."
+                ),
+                outcome,
+                [
+                    "service://ai/tasks/execute",
+                    "service://platform/providers/operations-status",
+                ],
             )
         outcome = (
             EvaluationCaseOutcome.PASS
@@ -894,6 +957,7 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
         "live_text_provider_id": settings.live_text_provider_id,
         "live_text_model_id": settings.live_text_model_id,
         "live_text_provider_api_key": settings.live_text_provider_api_key,
+        "live_text_api_base": settings.live_text_api_base,
         "live_text_allowed_task_ids": settings.live_text_allowed_task_ids,
         "live_text_quota_enforced": settings.live_text_quota_enforced,
         "live_text_default_quota_limit": settings.live_text_default_quota_limit,
@@ -916,154 +980,215 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
         "live_embedding_provider_api_key": settings.live_embedding_provider_api_key,
     }
     try:
-        reset_prompt_store_cache()
-        reset_retrieval_repository()
-        reset_provider_operations_store_cache()
-        reset_provider_quota_counters()
-        reset_provider_degradation_state()
-        if "retrieval_mode" in input_payload:
-            settings.retrieval_mode = str(input_payload["retrieval_mode"])
-        if "safety_mode" in input_payload:
-            settings.safety_mode = str(input_payload["safety_mode"])
-        if "embedding_provider_mode" in input_payload:
-            settings.embedding_provider_mode = str(input_payload["embedding_provider_mode"])
-        if "live_embedding_provider_id" in input_payload:
-            settings.live_embedding_provider_id = (
-                str(input_payload["live_embedding_provider_id"])
-                if input_payload["live_embedding_provider_id"] is not None
-                else None
-            )
-        if "live_embedding_model_id" in input_payload:
-            settings.live_embedding_model_id = (
-                str(input_payload["live_embedding_model_id"])
-                if input_payload["live_embedding_model_id"] is not None
-                else None
-            )
-        if "live_embedding_provider_api_key" in input_payload:
-            settings.live_embedding_provider_api_key = (
-                str(input_payload["live_embedding_provider_api_key"])
-                if input_payload["live_embedding_provider_api_key"] is not None
-                else None
-            )
-        indexed_sources = input_payload.get("index_sources", [])
-        if isinstance(indexed_sources, list):
-            repository = get_retrieval_repository()
-            for source_id in indexed_sources:
-                if isinstance(source_id, str):
-                    repository.set_source_index_status(
-                        source_id=source_id,
-                        index_status="INDEXED",
-                    )
-        if "configured_mode" in input_payload:
-            settings.provider_mode = str(input_payload["configured_mode"])
-        if "provider_mode" in input_payload:
-            settings.provider_mode = str(input_payload["provider_mode"])
-        if "rollout_state" in input_payload:
-            settings.provider_rollout_state = str(input_payload["rollout_state"])
-        if (
-            input_payload.get("provider_operations_store_mode") == "sqlalchemy"
-            and settings.database_url
-        ):
-            settings.provider_operations_store_mode = "sqlalchemy"
+        with ExitStack() as stack:
+            reset_prompt_store_cache()
+            reset_retrieval_repository()
             reset_provider_operations_store_cache()
-        live_execution_signals = any(
-            key in input_payload
-            for key in (
-                "request_limit",
-                "hard_budget_usd",
-                "tracked_spend_usd",
-                "recorded_spend_usd",
-                "degraded_failure_count_threshold",
-                "circuit_open_seconds",
-            )
-        )
-        if settings.provider_mode == "openai" and (
-            input_payload.get("rollout_state") in {"CANARY_ENABLED", "ROLLED_OUT"}
-            or live_execution_signals
-        ):
-            if "rollout_state" not in input_payload:
-                settings.provider_rollout_state = "CANARY_ENABLED"
-            settings.live_text_provider_id = "text.openai"
-            settings.live_text_model_id = "gpt-5.4"
-            settings.live_text_provider_api_key = "eval-secret"
-            settings.live_text_allowed_task_ids = str(input_payload.get("task_id", ""))
-        if "request_limit" in input_payload and input_payload.get("quota_scope") == "task":
-            settings.live_text_quota_enforced = True
-            settings.live_text_task_quota_limits = (
-                f"{input_payload['task_id']}={int(cast(int | str, input_payload['request_limit']))}"
-            )
-            get_provider_operations_store().increment_quota_state(
-                scope=ProviderQuotaScope.TASK,
-                scope_key=str(input_payload["task_id"]),
-                amount=int(cast(int | str, input_payload["request_limit"])),
-                updated_at=_utcnow_iso(),
-            )
-        if "hard_budget_usd" in input_payload:
-            settings.live_text_budget_enforced = True
-            settings.live_text_hard_budget_usd = float(
-                cast(int | float | str, input_payload["hard_budget_usd"])
-            )
-            settings.live_text_soft_budget_usd = float(
-                cast(
-                    int | float | str,
-                    input_payload.get(
-                        "recorded_spend_usd", input_payload.get("tracked_spend_usd", 0.5)
-                    ),
+            reset_provider_quota_counters()
+            reset_provider_degradation_state()
+            if "retrieval_mode" in input_payload:
+                settings.retrieval_mode = str(input_payload["retrieval_mode"])
+            if "safety_mode" in input_payload:
+                settings.safety_mode = str(input_payload["safety_mode"])
+            if "embedding_provider_mode" in input_payload:
+                settings.embedding_provider_mode = str(input_payload["embedding_provider_mode"])
+            if "live_embedding_provider_id" in input_payload:
+                settings.live_embedding_provider_id = (
+                    str(input_payload["live_embedding_provider_id"])
+                    if input_payload["live_embedding_provider_id"] is not None
+                    else None
+                )
+            if "live_embedding_model_id" in input_payload:
+                settings.live_embedding_model_id = (
+                    str(input_payload["live_embedding_model_id"])
+                    if input_payload["live_embedding_model_id"] is not None
+                    else None
+                )
+            if "live_embedding_provider_api_key" in input_payload:
+                settings.live_embedding_provider_api_key = (
+                    str(input_payload["live_embedding_provider_api_key"])
+                    if input_payload["live_embedding_provider_api_key"] is not None
+                    else None
+                )
+            indexed_sources = input_payload.get("index_sources", [])
+            if isinstance(indexed_sources, list):
+                repository = get_retrieval_repository()
+                for source_id in indexed_sources:
+                    if isinstance(source_id, str):
+                        repository.set_source_index_status(
+                            source_id=source_id,
+                            index_status="INDEXED",
+                        )
+            if "configured_mode" in input_payload:
+                settings.provider_mode = str(input_payload["configured_mode"])
+            if "provider_mode" in input_payload:
+                settings.provider_mode = str(input_payload["provider_mode"])
+            if "rollout_state" in input_payload:
+                settings.provider_rollout_state = str(input_payload["rollout_state"])
+            if (
+                input_payload.get("provider_operations_store_mode") == "sqlalchemy"
+                and settings.database_url
+            ):
+                settings.provider_operations_store_mode = "sqlalchemy"
+                reset_provider_operations_store_cache()
+            live_execution_signals = any(
+                key in input_payload
+                for key in (
+                    "request_limit",
+                    "hard_budget_usd",
+                    "tracked_spend_usd",
+                    "recorded_spend_usd",
+                    "degraded_failure_count_threshold",
+                    "circuit_open_seconds",
                 )
             )
-            settings.live_text_input_cost_per_1k_tokens = 0.01
-            settings.live_text_output_cost_per_1k_tokens = 0.03
-            tracked_spend = float(
-                cast(
-                    int | float | str,
-                    input_payload.get(
-                        "tracked_spend_usd", input_payload.get("recorded_spend_usd", 0.0)
-                    ),
+            if settings.provider_mode == "openai" and (
+                input_payload.get("rollout_state") in {"CANARY_ENABLED", "ROLLED_OUT"}
+                or live_execution_signals
+            ):
+                if "rollout_state" not in input_payload:
+                    settings.provider_rollout_state = "CANARY_ENABLED"
+                settings.live_text_provider_id = "text.openai"
+                settings.live_text_model_id = "gpt-5.4"
+                settings.live_text_provider_api_key = "eval-secret"
+                settings.live_text_allowed_task_ids = str(input_payload.get("task_id", ""))
+            if settings.provider_mode == "local_openai_compatible":
+                if "rollout_state" not in input_payload:
+                    settings.provider_rollout_state = "CANARY_ENABLED"
+                settings.live_text_provider_id = "text.local"
+                settings.live_text_model_id = str(
+                    input_payload.get("live_text_model_id", "qwen3:8b")
                 )
-            )
-            if tracked_spend > 0:
-                get_provider_operations_store().add_budget_spend(
-                    budget_key="live_text_generation",
-                    amount_usd=tracked_spend,
+                settings.live_text_api_base = str(
+                    input_payload.get("live_text_api_base", "http://ollama:11434/v1")
+                )
+                settings.live_text_provider_api_key = (
+                    str(input_payload["live_text_provider_api_key"])
+                    if input_payload.get("live_text_provider_api_key") is not None
+                    else None
+                )
+                settings.live_text_allowed_task_ids = str(input_payload.get("task_id", ""))
+                local_probe_status = input_payload.get("local_probe_status")
+                if isinstance(local_probe_status, dict):
+                    stack.enter_context(
+                        _patch_target(
+                            "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+                            lambda: type(
+                                "ProbeStatus",
+                                (),
+                                {
+                                    "endpoint_reachable": bool(
+                                        local_probe_status.get("endpoint_reachable", False)
+                                    ),
+                                    "model_available": bool(
+                                        local_probe_status.get("model_available", False)
+                                    ),
+                                    "blocking_reason": local_probe_status.get("blocking_reason"),
+                                },
+                            )(),
+                        )
+                    )
+                local_provider_response = input_payload.get("local_provider_response")
+                if isinstance(local_provider_response, dict):
+                    stack.enter_context(
+                        _patch_target(
+                            "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
+                            lambda **_: local_provider_response,
+                        )
+                    )
+                local_provider_error = input_payload.get("local_provider_error")
+                if isinstance(local_provider_error, dict):
+                    failure_category = ProviderFailureCategory(
+                        str(local_provider_error["failure_category"])
+                    )
+                    stack.enter_context(
+                        _patch_target(
+                            "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
+                            lambda **_: (_raise_provider_execution_error(
+                                category=failure_category,
+                                message=str(local_provider_error["message"]),
+                            )),
+                        )
+                    )
+            if "request_limit" in input_payload and input_payload.get("quota_scope") == "task":
+                settings.live_text_quota_enforced = True
+                settings.live_text_task_quota_limits = (
+                    f"{input_payload['task_id']}={int(cast(int | str, input_payload['request_limit']))}"
+                )
+                get_provider_operations_store().increment_quota_state(
+                    scope=ProviderQuotaScope.TASK,
+                    scope_key=str(input_payload["task_id"]),
+                    amount=int(cast(int | str, input_payload["request_limit"])),
                     updated_at=_utcnow_iso(),
                 )
+            if "hard_budget_usd" in input_payload:
+                settings.live_text_budget_enforced = True
+                settings.live_text_hard_budget_usd = float(
+                    cast(int | float | str, input_payload["hard_budget_usd"])
+                )
+                settings.live_text_soft_budget_usd = float(
+                    cast(
+                        int | float | str,
+                        input_payload.get(
+                            "recorded_spend_usd", input_payload.get("tracked_spend_usd", 0.5)
+                        ),
+                    )
+                )
+                settings.live_text_input_cost_per_1k_tokens = 0.01
+                settings.live_text_output_cost_per_1k_tokens = 0.03
+                tracked_spend = float(
+                    cast(
+                        int | float | str,
+                        input_payload.get(
+                            "tracked_spend_usd", input_payload.get("recorded_spend_usd", 0.0)
+                        ),
+                    )
+                )
+                if tracked_spend > 0:
+                    get_provider_operations_store().add_budget_spend(
+                        budget_key="live_text_generation",
+                        amount_usd=tracked_spend,
+                        updated_at=_utcnow_iso(),
+                    )
+                    if settings.provider_operations_store_mode == "sqlalchemy":
+                        reset_provider_operations_store_cache()
+            if "degraded_failure_count_threshold" in input_payload:
+                settings.live_text_degradation_enforced = True
+                settings.live_text_degraded_failure_count_threshold = int(
+                    cast(int | str, input_payload["degraded_failure_count_threshold"])
+                )
+            if "circuit_open_failure_count_threshold" in input_payload:
+                settings.live_text_circuit_open_failure_count_threshold = int(
+                    cast(int | str, input_payload["circuit_open_failure_count_threshold"])
+                )
+            if "circuit_open_seconds" in input_payload:
+                settings.live_text_circuit_open_seconds = int(
+                    cast(int | str, input_payload["circuit_open_seconds"])
+                )
+            elif any(
+                key in input_payload
+                for key in (
+                    "degraded_failure_count_threshold",
+                    "circuit_open_failure_count_threshold",
+                )
+            ):
+                settings.live_text_circuit_open_seconds = 60
+            if "degraded_failure_count_threshold" in input_payload:
+                failure_count = int(
+                    cast(int | str, input_payload["degraded_failure_count_threshold"])
+                )
+                for _ in range(failure_count):
+                    record_provider_failure(ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR)
                 if settings.provider_operations_store_mode == "sqlalchemy":
                     reset_provider_operations_store_cache()
-        if "degraded_failure_count_threshold" in input_payload:
-            settings.live_text_degradation_enforced = True
-            settings.live_text_degraded_failure_count_threshold = int(
-                cast(int | str, input_payload["degraded_failure_count_threshold"])
-            )
-        if "circuit_open_failure_count_threshold" in input_payload:
-            settings.live_text_circuit_open_failure_count_threshold = int(
-                cast(int | str, input_payload["circuit_open_failure_count_threshold"])
-            )
-        if "circuit_open_seconds" in input_payload:
-            settings.live_text_circuit_open_seconds = int(
-                cast(int | str, input_payload["circuit_open_seconds"])
-            )
-        elif any(
-            key in input_payload
-            for key in (
-                "degraded_failure_count_threshold",
-                "circuit_open_failure_count_threshold",
-            )
-        ):
-            settings.live_text_circuit_open_seconds = 60
-        if "degraded_failure_count_threshold" in input_payload:
-            failure_count = int(cast(int | str, input_payload["degraded_failure_count_threshold"]))
-            for _ in range(failure_count):
+            elif "circuit_open_seconds" in input_payload:
+                settings.live_text_degradation_enforced = True
+                settings.live_text_degraded_failure_count_threshold = 1
+                settings.live_text_circuit_open_failure_count_threshold = 1
                 record_provider_failure(ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR)
-            if settings.provider_operations_store_mode == "sqlalchemy":
-                reset_provider_operations_store_cache()
-        elif "circuit_open_seconds" in input_payload:
-            settings.live_text_degradation_enforced = True
-            settings.live_text_degraded_failure_count_threshold = 1
-            settings.live_text_circuit_open_failure_count_threshold = 1
-            record_provider_failure(ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR)
-            if settings.provider_operations_store_mode == "sqlalchemy":
-                reset_provider_operations_store_cache()
-        yield
+                if settings.provider_operations_store_mode == "sqlalchemy":
+                    reset_provider_operations_store_cache()
+            yield
     finally:
         for key, value in original_values.items():
             setattr(settings, key, value)
@@ -1072,6 +1197,20 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
         reset_provider_operations_store_cache()
         reset_provider_quota_counters()
         reset_provider_degradation_state()
+
+
+@contextmanager
+def _patch_target(target: str, replacement):
+    from unittest.mock import patch
+
+    with patch(target, replacement):
+        yield
+
+
+def _raise_provider_execution_error(*, category: ProviderFailureCategory, message: str):
+    from app.providers.base import ProviderExecutionError
+
+    raise ProviderExecutionError(category=category, message=message)
 
 
 def _apply_prompt_transition_for_evaluation(

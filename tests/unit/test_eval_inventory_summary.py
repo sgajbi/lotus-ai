@@ -10,4 +10,4 @@ def test_summarize_evaluation_inventory_reports_fixture_and_case_counts() -> Non
     assert summary.evidence_category_count == 6
     assert summary.staged_fixture_count >= 19
     assert summary.documented_fixture_count == 0
-    assert summary.staged_case_count == 42
+    assert summary.staged_case_count == 46

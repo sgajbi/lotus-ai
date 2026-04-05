@@ -61,6 +61,10 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
     assert response.result.structured_output["output_label"] == "EXPLANATION_ONLY"
     assert response.result.structured_output["redaction_posture"] == "MINIMIZATION_REQUIRED"
     assert response.audit.stubbed is True
+    assert response.audit.provider_id == "text.stub"
+    assert response.audit.adapter_kind is not None
+    assert response.audit.adapter_kind.value == "STUB"
+    assert response.audit.model_id is None
     assert response.audit.prompt_version == "foundation.explain.v1"
     assert response.audit.prompt_selection.prompt_version == "foundation.explain.v1"
     assert response.audit.prompt_selection.latest_control_event is None
@@ -593,6 +597,10 @@ def test_execute_task_routes_allowlisted_task_through_live_provider(
     assert response.status == "COMPLETED"
     assert response.audit.stubbed is False
     assert response.audit.provider_mode == "openai"
+    assert response.audit.provider_id == "text.openai"
+    assert response.audit.adapter_kind is not None
+    assert response.audit.adapter_kind.value == "OPENAI_LIVE"
+    assert response.audit.model_id == "gpt-5.4"
     assert response.result.message == "Live explanation response."
     assert response.result.structured_output["provider_id"] == "text.openai"
     assert response.result.structured_output["model_id"] == "gpt-5.4"
@@ -659,6 +667,10 @@ def test_execute_task_routes_allowlisted_task_through_local_live_provider(
     assert response.status == "COMPLETED"
     assert response.audit.stubbed is False
     assert response.audit.provider_mode == "local_openai_compatible"
+    assert response.audit.provider_id == "text.local"
+    assert response.audit.adapter_kind is not None
+    assert response.audit.adapter_kind.value == "OPENAI_COMPATIBLE_LOCAL"
+    assert response.audit.model_id == "qwen3:8b"
     assert response.result.message == "Local live explanation response."
     assert response.result.structured_output["provider_id"] == "text.local"
     assert response.result.structured_output["model_id"] == "qwen3:8b"

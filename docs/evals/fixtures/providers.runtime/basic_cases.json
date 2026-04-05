@@ -32,6 +32,42 @@
         "must_emit_structured_rejection": true,
         "expected_outcome": "REJECTION"
       }
+    },
+    {
+      "case_id": "local_openai_compatible_provider_preserves_provider_identity_when_ready",
+      "summary": "The local OpenAI-compatible provider path should preserve provider identity, adapter kind, and bounded controls when the configured model is ready.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "local_openai_compatible",
+        "rollout_state": "CANARY_ENABLED",
+        "live_text_model_id": "qwen3:8b",
+        "live_text_api_base": "http://ollama:11434/v1",
+        "local_probe_status": {
+          "endpoint_reachable": true,
+          "model_available": true,
+          "blocking_reason": null
+        },
+        "local_provider_response": {
+          "id": "resp_local_eval_001",
+          "model": "qwen3:8b",
+          "output_text": "Local evaluation response.",
+          "usage": {
+            "input_tokens": 120,
+            "output_tokens": 30,
+            "total_tokens": 150
+          }
+        },
+        "timeout_ms": 4000,
+        "retry_limit": 0,
+        "max_output_tokens": 512
+      },
+      "expected": {
+        "provider_mode": "local_openai_compatible",
+        "provider_id": "text.local",
+        "adapter_kind": "OPENAI_COMPATIBLE_LOCAL",
+        "stubbed": false,
+        "expected_outcome": "SUCCESS"
+      }
     }
   ]
 }
