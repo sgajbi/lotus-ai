@@ -46,6 +46,177 @@ def test_openai_live_text_provider_returns_usage_and_cost(monkeypatch: MonkeyPat
     assert response.message == "Live provider explanation."
 
 
+def test_openai_live_text_provider_parses_advisor_brief_structured_output(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_input_cost_per_1k_tokens = 0.01
+    settings.live_text_output_cost_per_1k_tokens = 0.03
+
+    monkeypatch.setattr(
+        "app.providers.openai_live_text_provider._post_openai_response",
+        lambda **_: {
+            "id": "resp_advisor_123",
+            "model": "gpt-5.4",
+            "output_text": (
+                '{"grounded_summary":"Portfolio lagged benchmark on YTD.",'
+                '"talking_points":[{"headline":"Active Return was -6.68%.",'
+                '"detail":"Benchmark underperformance was visible in the supplied facts.",'
+                '"tone":"warning","evidence_refs":[{"metric_label":"Active Return",'
+                '"metric_value":"-6.68%","source_ref":"lotus-gateway:workbench:'
+                'PB_SG_GLOBAL_BAL_001:performance-summary:YTD"}]}],'
+                '"recommended_actions":[{"label":"Review Attribution Drivers",'
+                '"detail":"Open Attribution Detail before the client discussion.",'
+                '"evidence_refs":[]}],"risks_and_exceptions":[]}'
+            ),
+            "usage": {"input_tokens": 220, "output_tokens": 80, "total_tokens": 300},
+        },
+    )
+
+    response = OpenAILiveTextProvider().execute(
+        _request(
+            caller_app="lotus-gateway",
+            context_payload={
+                "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                "period": {"period": "YTD"},
+                "performance": {
+                    "portfolio_return_pct": 1.25,
+                    "benchmark_return_pct": 7.93,
+                    "active_return_pct": -6.68,
+                },
+                "supportability": [{"label": "Return History", "value": "Ready"}],
+            },
+            source_refs=[
+                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
+            ],
+        )
+    )
+
+    assert response.provider_id == "text.openai"
+    assert response.stubbed is False
+    assert response.message.startswith('{"grounded_summary"')
+    assert response.structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
+    assert response.structured_output["talking_points"][0]["headline"] == "Active Return was -6.68%."
+    assert response.structured_output["recommended_actions"][0]["label"] == (
+        "Review Attribution Drivers"
+    )
+
+
+def test_openai_live_text_provider_parses_fenced_advisor_brief_json(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.live_text_model_id = "gpt-5.4"
+    monkeypatch.setattr(
+        "app.providers.openai_live_text_provider._post_openai_response",
+        lambda **_: {
+            "id": "resp_advisor_fenced",
+            "model": "gpt-5.4",
+            "output_text": (
+                "```json\n"
+                "{\n"
+                "  \"grounded_summary\": \"Portfolio lagged benchmark on YTD.\",\n"
+                "  \"talking_points\": [],\n"
+                "  \"recommended_actions\": [],\n"
+                "  \"risks_and_exceptions\": []\n"
+                "}\n"
+                "```"
+            ),
+            "usage": {"input_tokens": 220, "output_tokens": 80, "total_tokens": 300},
+        },
+    )
+
+    response = OpenAILiveTextProvider().execute(
+        _request(
+            caller_app="lotus-gateway",
+            context_payload={
+                "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                "period": {"period": "YTD"},
+                "performance": {"active_return_pct": -6.68},
+                "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
+            },
+            source_refs=[
+                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
+            ],
+        )
+    )
+
+    assert response.structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
+    assert response.structured_output["talking_points"] == []
+
+
+def test_openai_live_text_provider_parses_advisor_json_with_trailing_text(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.live_text_model_id = "gpt-5.4"
+    monkeypatch.setattr(
+        "app.providers.openai_live_text_provider._post_openai_response",
+        lambda **_: {
+            "id": "resp_advisor_trailing_text",
+            "model": "gpt-5.4",
+            "output_text": (
+                "{\"grounded_summary\":\"Portfolio lagged benchmark on YTD.\","
+                "\"talking_points\":[],\"recommended_actions\":[],"
+                "\"risks_and_exceptions\":[]}\n\nGenerated from supplied source refs."
+            ),
+            "usage": {"input_tokens": 220, "output_tokens": 80, "total_tokens": 300},
+        },
+    )
+
+    response = OpenAILiveTextProvider().execute(
+        _request(
+            caller_app="lotus-gateway",
+            context_payload={
+                "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                "period": {"period": "YTD"},
+                "performance": {"active_return_pct": -6.68},
+                "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
+            },
+            source_refs=[
+                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
+            ],
+        )
+    )
+
+    assert response.structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
+    assert response.structured_output["recommended_actions"] == []
+
+
+def test_openai_live_text_provider_extracts_summary_from_truncated_advisor_json(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.live_text_model_id = "gpt-5.4"
+    monkeypatch.setattr(
+        "app.providers.openai_live_text_provider._post_openai_response",
+        lambda **_: {
+            "id": "resp_advisor_truncated",
+            "model": "gpt-5.4",
+            "output_text": (
+                "{\"grounded_summary\":\"Portfolio lagged benchmark on YTD.\","
+                "\"talking_points\":[{\"headline\":\"Portfolio trails benchmark YTD\""
+            ),
+            "usage": {"input_tokens": 220, "output_tokens": 80, "total_tokens": 300},
+        },
+    )
+
+    response = OpenAILiveTextProvider().execute(
+        _request(
+            caller_app="lotus-gateway",
+            context_payload={
+                "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                "period": {"period": "YTD"},
+                "performance": {"active_return_pct": -6.68},
+                "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
+            },
+            source_refs=[
+                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
+            ],
+        )
+    )
+
+    assert response.structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
+    assert "talking_points" not in response.structured_output
+
+
 def test_openai_live_text_provider_requires_api_key() -> None:
     settings.live_text_provider_api_key = None
 
@@ -65,6 +236,29 @@ def test_openai_live_text_provider_builds_user_message_with_context() -> None:
     assert '"task_id": "explain.v1"' in message
     assert '"caller_app": "lotus-manage"' in message
     assert '"rule_count": 3' in message
+
+
+def test_openai_live_text_provider_builds_advisor_output_contract_override() -> None:
+    message = _build_user_message(
+        _request(
+            caller_app="lotus-gateway",
+            context_payload={
+                "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                "period": {"period": "YTD"},
+                "performance": {"active_return_pct": -6.68},
+                "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
+            },
+            source_refs=[
+                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
+            ],
+        )
+    )
+
+    assert "Advisor Brief output contract" in message
+    assert "grounded_summary" in message
+    assert "portfolio.display_label" in message
+    assert "benchmark.benchmark_name" in message
+    assert "Never show raw portfolio_id, benchmark_code, or position_id identifiers" in message
 
 
 def test_openai_live_text_provider_extracts_text_from_output_fragments() -> None:

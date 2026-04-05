@@ -23,6 +23,17 @@ def test_memory_caller_policy_repository_returns_policy_by_caller_app() -> None:
     assert policy.restricted_tenant_ids == ["tenant-sg-001"]
 
 
+def test_memory_caller_policy_repository_allows_lotus_gateway_live_explain() -> None:
+    repository = InMemoryCallerPolicyRepository()
+
+    policy = repository.get_policy("lotus-gateway")
+
+    assert policy is not None
+    assert policy.allow_live_provider is True
+    assert policy.allowed_task_ids == ["explain.v1"]
+    assert policy.tenant_policy_mode.value == "OPTIONAL"
+
+
 def test_memory_caller_policy_repository_returns_none_for_unknown_caller() -> None:
     repository = InMemoryCallerPolicyRepository()
 

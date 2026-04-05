@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, cast
 from urllib import error, request as urllib_request
 
@@ -66,6 +67,12 @@ class OpenAILiveTextProvider(TextGenerationProviderAdapter):
             payload=payload,
             timeout_seconds=max(request.timeout_ms / 1000.0, 1.0),
         )
+        output_message = _extract_output_text(response_payload)
+        structured_output = _build_structured_output(
+            request=request,
+            response_payload=response_payload,
+            output_message=output_message,
+        )
         input_tokens, output_tokens, total_tokens = _extract_usage(response_payload)
         return ProviderExecutionResponse(
             provider_id=self.descriptor.provider_id,
@@ -85,29 +92,28 @@ class OpenAILiveTextProvider(TextGenerationProviderAdapter):
                 output_tokens=output_tokens,
             ),
             stubbed=False,
-            message=_extract_output_text(response_payload),
-            structured_output={
-                "provider_id": self.descriptor.provider_id,
-                "provider_mode": ProviderExecutionMode.OPENAI.value,
-                "adapter_kind": self.descriptor.adapter_kind.value,
-                "model_id": _as_str(response_payload.get("model")) or settings.live_text_model_id,
-                "provider_request_id": _as_str(response_payload.get("id")),
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "total_tokens": total_tokens,
-                "estimated_cost_usd": estimate_live_text_cost_usd(
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                ),
-                "output_label": request.output_label,
-                "safety_mode": request.safety_mode,
-                "redaction_posture": request.redaction_posture,
-                "source_refs": request.source_refs,
-            },
+            message=output_message,
+            structured_output=structured_output,
         )
 
 
 def _build_user_message(request: ProviderExecutionRequest) -> str:
+    advisor_contract_notes = ""
+    if _is_advisor_brief_payload(request.context_payload):
+        advisor_contract_notes = (
+            "\n\nAdvisor Brief output contract:\n"
+            "Return JSON only with keys grounded_summary, talking_points, "
+            "recommended_actions, and risks_and_exceptions. Return at most 3 talking points, "
+            "3 recommended actions, and 3 risks/exceptions. Keep grounded_summary under 450 "
+            "characters and each detail under 220 characters. Each talking point and risk item "
+            "must include headline, detail, tone, and evidence_refs. Use tone values positive, "
+            "neutral, or warning only. Each evidence ref must use metric_label, metric_value, "
+            "and source_ref from the supplied source_refs only. Each recommended action must "
+            "include label, detail, and evidence_refs. Prefer portfolio.display_label, "
+            "benchmark.benchmark_name, and position display_label fields when present. Never "
+            "show raw portfolio_id, benchmark_code, or position_id identifiers if a display "
+            "label is available. Do not invent facts that are absent from context_payload."
+        )
     return json.dumps(
         {
             "task_id": request.task_id,
@@ -115,6 +121,7 @@ def _build_user_message(request: ProviderExecutionRequest) -> str:
             "context_summary": request.context_summary,
             "context_payload": request.context_payload,
             "source_refs": request.source_refs,
+            "output_contract_override": advisor_contract_notes.strip() or None,
         },
         indent=2,
         sort_keys=True,
@@ -232,3 +239,123 @@ def _as_str(value: object) -> str | None:
 
 def _as_int(value: object) -> int | None:
     return value if isinstance(value, int) and value >= 0 else None
+
+
+def _is_advisor_brief_payload(payload: dict[str, Any]) -> bool:
+    return {"portfolio", "period", "performance", "supportability"}.issubset(payload.keys())
+
+
+def _build_structured_output(
+    *,
+    request: ProviderExecutionRequest,
+    response_payload: dict[str, Any],
+    output_message: str,
+) -> dict[str, Any]:
+    structured_output: dict[str, Any] = {
+        "provider_id": "text.openai",
+        "provider_mode": ProviderExecutionMode.OPENAI.value,
+        "adapter_kind": ProviderAdapterKind.OPENAI_LIVE.value,
+        "model_id": _as_str(response_payload.get("model")) or settings.live_text_model_id,
+        "provider_request_id": _as_str(response_payload.get("id")),
+        "output_label": request.output_label,
+        "safety_mode": request.safety_mode,
+        "redaction_posture": request.redaction_posture,
+        "source_refs": request.source_refs,
+    }
+    input_tokens, output_tokens, total_tokens = _extract_usage(response_payload)
+    structured_output.update(
+        {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens,
+            "estimated_cost_usd": estimate_live_text_cost_usd(
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            ),
+        }
+    )
+    if not _is_advisor_brief_payload(request.context_payload):
+        return structured_output
+
+    parsed = _parse_json_object(output_message)
+    if parsed is None:
+        structured_output["grounded_summary"] = (
+            _extract_grounded_summary_fragment(output_message) or output_message
+        )
+        return structured_output
+    structured_output.update(
+        {
+            "grounded_summary": _as_str(parsed.get("grounded_summary")) or output_message,
+            "talking_points": _safe_list(parsed.get("talking_points")),
+            "recommended_actions": _safe_list(parsed.get("recommended_actions")),
+            "risks_and_exceptions": _safe_list(parsed.get("risks_and_exceptions")),
+        }
+    )
+    return structured_output
+
+
+def _parse_json_object(value: str) -> dict[str, Any] | None:
+    normalized = _strip_json_code_fence(value)
+    try:
+        parsed = json.loads(normalized)
+    except json.JSONDecodeError:
+        candidate = _extract_balanced_json_object(normalized)
+        if candidate is None:
+            return None
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _extract_grounded_summary_fragment(value: str) -> str | None:
+    match = re.search(r'"grounded_summary"\s*:\s*"((?:[^"\\]|\\.)*)"', value, flags=re.S)
+    if match is None:
+        return None
+    try:
+        parsed = json.loads(f'"{match.group(1)}"')
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, str) and parsed.strip() else None
+
+
+def _strip_json_code_fence(value: str) -> str:
+    normalized = value.strip()
+    if normalized.startswith("```json"):
+        return normalized.removeprefix("```json").removesuffix("```").strip()
+    if normalized.startswith("```"):
+        return normalized.removeprefix("```").removesuffix("```").strip()
+    return normalized
+
+
+def _extract_balanced_json_object(value: str) -> str | None:
+    start = value.find("{")
+    if start < 0:
+        return None
+    depth = 0
+    in_string = False
+    escaped = False
+    for index, char in enumerate(value[start:], start=start):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == "\"":
+                in_string = False
+            continue
+        if char == "\"":
+            in_string = True
+            continue
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return value[start : index + 1]
+    return None
+
+
+def _safe_list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []

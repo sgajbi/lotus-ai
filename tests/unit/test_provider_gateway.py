@@ -88,12 +88,16 @@ def test_execute_text_generation_returns_source_grounded_advisor_brief_stub() ->
     assert response.provider_id == "text.stub"
     assert response.stubbed is True
     assert response.message == (
-        "Advisor brief for PB_SG_GLOBAL_BAL_001: YTD portfolio return is 1.25%; "
-        "benchmark return is 7.93%; active return is -6.68%; top contributor is "
-        "AAPL US; largest attribution effect is Asset Class / Equity."
+        "PB_SG_GLOBAL_BAL_001 delivered 1.25% over YTD versus 7.93% for the benchmark, "
+        "resulting in -6.68% active return. net flow was N/A and ending market value "
+        "was N/A. largest contribution came from AAPL US (N/A). largest benchmark-relative "
+        "attribution effect was Asset Class / Equity (N/A)."
     )
     assert response.structured_output["advisor_brief_status"] == "ready"
     assert response.structured_output["coverage_state"] == "ready"
+    assert response.structured_output["talking_points"][0]["headline"] == (
+        "YTD active return was -6.68%."
+    )
     assert response.structured_output["grounded_facts"] == [
         {
             "metric_label": "Portfolio Return",
@@ -108,6 +112,11 @@ def test_execute_text_generation_returns_source_grounded_advisor_brief_stub() ->
         {
             "metric_label": "Active Return",
             "metric_value": "-6.68%",
+            "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+        },
+        {
+            "metric_label": "Money-Weighted Return",
+            "metric_value": "N/A",
             "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
         },
     ]

@@ -77,7 +77,7 @@ _DEFAULT_POLICIES = [
         ),
         allowed_task_ids=["explain.v1"],
         allowed_retrieval_source_ids=[],
-        allow_live_provider=False,
+        allow_live_provider=True,
         allow_async_control=False,
         allow_prompt_control=False,
         allow_provider_control=False,
