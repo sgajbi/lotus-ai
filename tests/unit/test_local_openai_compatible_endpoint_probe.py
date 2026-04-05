@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from email.message import Message
 from types import TracebackType
 from urllib import error
 from urllib.error import URLError
@@ -134,7 +135,7 @@ def test_local_openai_compatible_endpoint_probe_reports_http_failure(
             url="http://ollama:11434/v1/models",
             code=503,
             msg="Service Unavailable",
-            hdrs=None,
+            hdrs=Message(),
             fp=None,
         )
 

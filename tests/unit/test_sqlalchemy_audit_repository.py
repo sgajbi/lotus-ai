@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from pytest import MonkeyPatch
+
 from sqlalchemy import text
 
 from app.contracts.access_control import (
@@ -446,7 +448,7 @@ def test_sqlalchemy_audit_repository_round_trips_authorization_payload(tmp_path:
 
 
 def test_sqlalchemy_audit_repository_handles_relative_sqlite_path(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
     monkeypatch.chdir(tmp_path)
     repository = SqlAlchemyAuditRepository("sqlite:///nested/db/audit.db")
