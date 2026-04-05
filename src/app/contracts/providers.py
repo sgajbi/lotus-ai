@@ -23,12 +23,14 @@ class ProviderExecutionMode(str, Enum):
     DISABLED = "disabled"
     STUB = "stub"
     OPENAI = "openai"
+    LOCAL_OPENAI_COMPATIBLE = "local_openai_compatible"
     ENABLED = "enabled"
 
 
 class ProviderAdapterKind(str, Enum):
     STUB = "STUB"
     OPENAI_LIVE = "OPENAI_LIVE"
+    OPENAI_COMPATIBLE_LOCAL = "OPENAI_COMPATIBLE_LOCAL"
     OPENAI_EMBEDDINGS_LIVE = "OPENAI_EMBEDDINGS_LIVE"
 
 

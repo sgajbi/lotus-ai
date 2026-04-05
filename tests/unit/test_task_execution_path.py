@@ -143,6 +143,24 @@ def test_task_execution_path_reports_live_text_when_task_is_allowlisted() -> Non
     assert descriptor.stubbed is False
 
 
+def test_task_execution_path_reports_local_live_text_when_task_is_allowlisted() -> None:
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_provider_api_key = None
+    settings.live_text_allowed_task_ids = "explain.v1"
+
+    descriptor = build_task_execution_path(
+        _capability("explain.v1", TaskCategory.EXPLAIN, OutputLabel.EXPLANATION_ONLY)
+    )
+
+    assert descriptor.execution_path == "provider.live_text"
+    assert descriptor.provider_mode == "local_openai_compatible"
+    assert descriptor.stubbed is False
+
+
 def test_task_execution_path_reports_unsupported_provider_mode_as_blocked() -> None:
     settings.provider_mode = "unsupported"
 

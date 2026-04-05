@@ -33,6 +33,24 @@ def test_provider_live_execution_state_allows_configured_canary_task() -> None:
     assert state.blocking_reason is None
 
 
+def test_provider_live_execution_state_allows_local_openai_compatible_task_without_api_key() -> None:
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_provider_api_key = None
+    settings.live_text_allowed_task_ids = "explain.v1"
+
+    state = build_provider_live_execution_state(task_id="explain.v1")
+
+    assert state.live_mode_requested is True
+    assert state.credentials_configured is True
+    assert state.task_allowlisted is True
+    assert state.live_execution_enabled is True
+    assert state.blocking_reason is None
+
+
 def test_provider_live_execution_state_blocks_non_allowlisted_task() -> None:
     settings.provider_mode = "openai"
     settings.provider_rollout_state = "CANARY_ENABLED"

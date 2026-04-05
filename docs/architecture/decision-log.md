@@ -172,7 +172,7 @@ Why:
 Current posture:
 
 1. provider policy is inspectable through `/platform/providers/policy`,
-2. `disabled`, `stub`, and `openai` are supported for text generation while embeddings remain `disabled` and `stub` only,
+2. `disabled`, `stub`, `openai`, and `local_openai_compatible` are supported for text generation while embeddings remain `disabled` and `stub` only,
 3. provider policy now exposes selected adapter kind and structured rejection category,
 4. unsupported modes are rejected with a service-unavailable response.
 

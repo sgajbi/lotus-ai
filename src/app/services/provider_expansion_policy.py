@@ -11,7 +11,7 @@ from app.contracts.providers import (
 from app.providers.registry import list_registered_provider_descriptors
 
 _MAX_GOVERNED_PROVIDER_COUNT: dict[ProviderCapability, int] = {
-    ProviderCapability.TEXT_GENERATION: 3,
+    ProviderCapability.TEXT_GENERATION: 4,
     ProviderCapability.EMBEDDINGS: 3,
 }
 

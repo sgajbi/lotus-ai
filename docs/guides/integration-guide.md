@@ -79,8 +79,9 @@ should assemble the performance fact bundle before invoking `POST /ai/tasks/exec
 `task_id=explain.v1`. `lotus-ai` should explain only the caller-supplied facts and preserve audit
 and evidence metadata; it should not recompute returns, attribution, or benchmark values.
 
-For live LLM-backed Advisor Brief generation in local Docker, `lotus-ai/.env` must enable the
-OpenAI text-provider path and the bounded task allowlist:
+For live LLM-backed Advisor Brief generation in local Docker, `lotus-ai/.env` must enable either
+the managed OpenAI text-provider path or the local OpenAI-compatible text-provider path, and the
+bounded task allowlist:
 
 1. `LOTUS_AI_PROVIDER_MODE=openai`
 2. `LOTUS_AI_PROVIDER_ROLLOUT_STATE=CANARY_ENABLED`
@@ -91,6 +92,31 @@ OpenAI text-provider path and the bounded task allowlist:
 
 The `lotus-gateway` caller policy must also allow live-provider execution for `explain.v1`; all
 other browser callers should continue to call `lotus-gateway` rather than `lotus-ai` directly.
+
+### Enable a local OpenAI-compatible provider
+
+Use this when `lotus-ai` should execute against a self-hosted or workstation-local model server
+that exposes an OpenAI-compatible `/v1/responses` API.
+
+```env
+LOTUS_AI_PROVIDER_MODE=local_openai_compatible
+LOTUS_AI_PROVIDER_ROLLOUT_STATE=CANARY_ENABLED
+LOTUS_AI_LIVE_TEXT_PROVIDER_ID=text.local
+LOTUS_AI_LIVE_TEXT_MODEL_ID=<local model id>
+LOTUS_AI_LIVE_TEXT_API_BASE=http://<local-provider-host>:<port>/v1
+LOTUS_AI_LIVE_TEXT_ALLOWED_TASK_IDS=explain.v1
+LOTUS_AI_PROVIDER_TIMEOUT_MS=45000
+LOTUS_AI_PROVIDER_MAX_OUTPUT_TOKENS=4096
+```
+
+Notes:
+
+1. `LOTUS_AI_LIVE_TEXT_PROVIDER_API_KEY` is optional for `local_openai_compatible` mode and should
+   be set only if the local serving layer requires it.
+2. `LOTUS_AI_LIVE_TEXT_API_BASE` must not remain the default OpenAI API base when
+   `LOTUS_AI_PROVIDER_MODE=local_openai_compatible`.
+3. The task contract, audit fields, and gateway integration remain unchanged; only the provider
+   runtime mode and backend endpoint switch.
 
 ## Local Provider Toggle
 
@@ -142,6 +168,31 @@ Verification:
 2. `POST /ai/tasks/execute` should return `audit.provider_mode = "openai"` and `audit.stubbed = false`
    when the live provider key has quota,
 3. if billing must remain off, verify `audit.provider_mode` is not `openai` before using Advisor Brief.
+
+### Switch to a local live model
+
+Set these values in `lotus-ai/.env`:
+
+```env
+LOTUS_AI_PROVIDER_MODE=local_openai_compatible
+LOTUS_AI_PROVIDER_ROLLOUT_STATE=CANARY_ENABLED
+LOTUS_AI_LIVE_TEXT_PROVIDER_ID=text.local
+LOTUS_AI_LIVE_TEXT_MODEL_ID=<local model id>
+LOTUS_AI_LIVE_TEXT_API_BASE=http://<local-provider-host>:<port>/v1
+LOTUS_AI_LIVE_TEXT_ALLOWED_TASK_IDS=explain.v1
+LOTUS_AI_PROVIDER_TIMEOUT_MS=45000
+LOTUS_AI_PROVIDER_MAX_OUTPUT_TOKENS=4096
+```
+
+Then recreate the same containers with `docker compose up -d --force-recreate lotus-ai lotus-ai-worker`.
+
+Verification:
+
+1. `GET /health/ready` should return `200`,
+2. `POST /ai/tasks/execute` should return `audit.provider_mode = "local_openai_compatible"` and
+   `audit.stubbed = false`,
+3. `/platform/providers/policy` should list `local_openai_compatible` in the allowed text modes,
+4. `/platform/providers` should show `text.local` in the registered provider catalog.
 
 ## Recommended Integration Pattern
 

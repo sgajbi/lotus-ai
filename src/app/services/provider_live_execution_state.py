@@ -33,8 +33,12 @@ def build_provider_live_execution_state(
         ProviderExecutionMode.DISABLED.value,
         ProviderExecutionMode.STUB.value,
         ProviderExecutionMode.OPENAI.value,
+        ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
     }
-    live_mode_requested = settings.provider_mode == ProviderExecutionMode.OPENAI.value
+    live_mode_requested = settings.provider_mode in {
+        ProviderExecutionMode.OPENAI.value,
+        ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
+    }
     credentials_configured = configuration.credential_status == ProviderCredentialStatus.CONFIGURED
     rollout_permits_live_execution = configuration.rollout_state in {
         ProviderRolloutState.CANARY_ENABLED,

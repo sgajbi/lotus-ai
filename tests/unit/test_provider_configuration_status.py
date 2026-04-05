@@ -56,6 +56,36 @@ def test_text_generation_configuration_rejects_unknown_provider_and_partial_valu
     )
 
 
+def test_text_generation_configuration_accepts_local_openai_compatible_mode_without_api_key() -> None:
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_provider_api_key = None
+    settings.live_text_allowed_task_ids = "explain.v1"
+
+    configuration = build_text_generation_configuration_status()
+
+    assert configuration.credential_status == ProviderCredentialStatus.CONFIGURED
+    assert configuration.configuration_valid is True
+
+
+def test_text_generation_configuration_rejects_local_mode_using_default_openai_api_base() -> None:
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "https://api.openai.com/v1"
+    settings.live_text_provider_api_key = None
+    settings.live_text_allowed_task_ids = "explain.v1"
+
+    configuration = build_text_generation_configuration_status()
+
+    assert configuration.configuration_valid is False
+    assert any("non-default local or self-hosted API base" in finding for finding in configuration.findings)
+
+
 def test_embedding_configuration_reports_stub_rollout() -> None:
     settings.embedding_provider_mode = "stub"
 

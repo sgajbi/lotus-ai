@@ -10,7 +10,7 @@ from app.contracts.production_go_live import (
     ProductionGoLiveRuntimeStatusResponse,
     ProductionGoLiveUseCaseState,
 )
-from app.contracts.providers import ProviderRolloutState
+from app.contracts.providers import ProviderExecutionMode, ProviderRolloutState
 from app.services.first_use_case_governance import build_first_use_case_governance_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
 from app.services.production_go_live_approval_domains import (
@@ -35,7 +35,11 @@ def build_production_go_live_runtime_status(
         ProductionGoLiveDomainDescriptor(
             domain_id="live_provider_governance",
             status=_provider_domain_status(provider_governance.governance_ready),
-            required_for_platform_approval=settings.provider_mode == "openai",
+            required_for_platform_approval=settings.provider_mode
+            in {
+                ProviderExecutionMode.OPENAI.value,
+                ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
+            },
             configured_mode=settings.provider_mode,
             review_surface="/platform/providers/governance-status",
             detail=(
@@ -69,7 +73,14 @@ def build_production_go_live_runtime_status(
         baseline.production_ready
         and managed_secret.status is ProductionGoLiveDomainStatus.APPROVED
         and managed_object_store.status is ProductionGoLiveDomainStatus.APPROVED
-        and (settings.provider_mode != "openai" or provider_governance.governance_ready)
+        and (
+            settings.provider_mode
+            not in {
+                ProviderExecutionMode.OPENAI.value,
+                ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
+            }
+            or provider_governance.governance_ready
+        )
     )
     use_case_production_approved = first_use_case_governance.active_production_ready
     provider_freeze_state = _resolve_provider_freeze_state(
@@ -187,7 +198,10 @@ def _resolve_use_case_state(
 def _resolve_provider_freeze_state(
     *, provider_mode: str, rollout_state: str, provider_governance_ready: bool
 ) -> ProductionGoLiveFreezeState:
-    if provider_mode != "openai":
+    if provider_mode not in {
+        ProviderExecutionMode.OPENAI.value,
+        ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
+    }:
         return ProductionGoLiveFreezeState.NOT_APPLICABLE
     if rollout_state in {
         ProviderRolloutState.DOCUMENTED_ONLY.value,

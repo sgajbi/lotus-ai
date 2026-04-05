@@ -95,7 +95,12 @@ def test_provider_policy_route(client: TestClient) -> None:
     assert body["expansion_policy"]["bounded_expansion_enabled"] is True
     assert text_policy["selected_adapter_kind"] == "STUB"
     assert text_policy["rejection_category"] == "UNSUPPORTED_MODE"
-    assert text_policy["allowed_modes"] == ["disabled", "stub", "openai"]
+    assert text_policy["allowed_modes"] == [
+        "disabled",
+        "stub",
+        "openai",
+        "local_openai_compatible",
+    ]
     assert embedding_policy["selected_adapter_kind"] == "STUB"
     assert embedding_policy["allowed_modes"] == ["disabled", "stub", "enabled"]
 

@@ -10,6 +10,7 @@ from app.contracts.production_baseline import (
     ProductionDependencyClassification,
 )
 from app.contracts.runtime_readiness import RuntimeReadinessStatus, StoreRuntimeStatusDescriptor
+from app.contracts.providers import ProviderExecutionMode
 from app.services.artifact_runtime import build_artifact_runtime_status
 from app.services.async_runtime_status import build_async_runtime_status
 from app.services.runtime_readiness import (
@@ -375,7 +376,10 @@ def _classify_migration_posture(
 
 
 def _classify_live_provider_rollout() -> ProductionBaselineDependencyDescriptor:
-    if settings.provider_mode != "openai":
+    if settings.provider_mode not in {
+        ProviderExecutionMode.OPENAI.value,
+        ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
+    }:
         return ProductionBaselineDependencyDescriptor(
             dependency_id="live_provider_rollout",
             classification=ProductionDependencyClassification.FALLBACK,

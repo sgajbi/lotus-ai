@@ -29,7 +29,12 @@ def test_provider_policy_reports_supported_modes_and_rejection_behavior() -> Non
         if policy.capability == ProviderCapability.TEXT_GENERATION
     )
     assert text_policy.configured_mode == "disabled"
-    assert [mode.value for mode in text_policy.allowed_modes] == ["disabled", "stub", "openai"]
+    assert [mode.value for mode in text_policy.allowed_modes] == [
+        "disabled",
+        "stub",
+        "openai",
+        "local_openai_compatible",
+    ]
     assert text_policy.selected_provider_id == "text.stub"
     assert text_policy.selected_adapter_kind == ProviderAdapterKind.STUB
     assert text_policy.live_execution_enabled is False
@@ -60,6 +65,26 @@ def test_provider_policy_reports_openai_selection_when_live_mode_is_requested() 
     assert text_policy.selected_adapter_kind == ProviderAdapterKind.OPENAI_LIVE
     assert text_policy.rejection_category == ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
     assert text_rule.available_expansion_slots == 1
+
+
+def test_provider_policy_reports_local_openai_compatible_selection_when_requested() -> None:
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "ALLOWLISTED_DISABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+
+    response = build_provider_policy()
+
+    text_policy = next(
+        policy
+        for policy in response.policies
+        if policy.capability == ProviderCapability.TEXT_GENERATION
+    )
+    assert text_policy.selected_provider_id == "text.local"
+    assert text_policy.selected_adapter_kind == ProviderAdapterKind.OPENAI_COMPATIBLE_LOCAL
+    assert text_policy.rejection_category == ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
 
 
 def test_provider_policy_rejects_unknown_runtime_mode() -> None:

@@ -28,6 +28,8 @@ def build_provider_policy() -> ProviderPolicyResponse:
     embedding_live_execution_state = build_embedding_live_execution_state()
     if settings.provider_mode == ProviderExecutionMode.OPENAI.value:
         rejection_category = ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
+    elif settings.provider_mode == ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value:
+        rejection_category = ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
     else:
         rejection_category = ProviderFailureCategory.UNSUPPORTED_MODE
     if settings.embedding_provider_mode == ProviderExecutionMode.ENABLED.value:
@@ -48,6 +50,7 @@ def build_provider_policy() -> ProviderPolicyResponse:
                     ProviderExecutionMode.DISABLED,
                     ProviderExecutionMode.STUB,
                     ProviderExecutionMode.OPENAI,
+                    ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE,
                 ],
                 selected_provider_id=selected_text_provider[0],
                 selected_adapter_kind=selected_text_provider[1],
@@ -85,6 +88,7 @@ def require_supported_text_generation_mode() -> ProviderExecutionMode:
         ProviderExecutionMode.DISABLED.value: ProviderExecutionMode.DISABLED,
         ProviderExecutionMode.STUB.value: ProviderExecutionMode.STUB,
         ProviderExecutionMode.OPENAI.value: ProviderExecutionMode.OPENAI,
+        ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value: ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE,
     }
     configured_mode = settings.provider_mode
     if configured_mode not in supported_modes:
@@ -122,6 +126,7 @@ def _resolve_selected_text_provider() -> tuple[str, ProviderAdapterKind]:
         ProviderExecutionMode.DISABLED.value,
         ProviderExecutionMode.STUB.value,
         ProviderExecutionMode.OPENAI.value,
+        ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
     }:
         return ("text.unresolved", ProviderAdapterKind.OPENAI_LIVE)
     adapter = resolve_text_generation_adapter(ProviderExecutionMode(configured_mode))
