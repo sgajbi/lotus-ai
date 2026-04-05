@@ -20,7 +20,7 @@ def upgrade() -> None:
     op.execute(
         """
         UPDATE retrieval_sources
-        SET enabled = 1
+        SET enabled = TRUE
         WHERE source_id IN ('lotus-platform-rfcs', 'lotus-ai-architecture')
         """
     )
@@ -30,7 +30,7 @@ def downgrade() -> None:
     op.execute(
         """
         UPDATE retrieval_sources
-        SET enabled = 0
+        SET enabled = FALSE
         WHERE source_id IN ('lotus-platform-rfcs', 'lotus-ai-architecture')
         """
     )

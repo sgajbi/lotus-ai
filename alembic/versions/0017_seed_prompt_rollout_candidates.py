@@ -61,7 +61,7 @@ def upgrade() -> None:
             """
             UPDATE prompt_rollout_state
             SET rollout_mode = 'GOVERNED_CONTROL_ACTIONS',
-                runtime_mutation_enabled = 1,
+                runtime_mutation_enabled = TRUE,
                 updated_at = '2026-03-23T00:30:00+00:00'
             """
         )
@@ -85,7 +85,7 @@ def downgrade() -> None:
             SET candidate_prompt_version = NULL,
                 previous_active_prompt_version = NULL,
                 rollout_mode = 'GOVERNED_STATE_READ_ONLY',
-                runtime_mutation_enabled = 0,
+                runtime_mutation_enabled = FALSE,
                 updated_at = '2026-03-23T00:00:00+00:00'
             """
         )
