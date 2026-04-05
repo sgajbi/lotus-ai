@@ -26,3 +26,4 @@
 - `RFC-0024-portfolio-narrative-copilot-for-lotus-performance.md` - Draft
 - `RFC-0025-operational-root-cause-copilot-for-lotus-core.md` - Draft
 - `RFC-0026-operator-control-plane-dashboard-and-observability-integration.md` - Draft
+- `RFC-0027-local-and-remote-openai-compatible-provider-routing.md` - Draft
