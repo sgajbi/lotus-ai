@@ -1,6 +1,6 @@
 # RFC-0027: Local and Remote OpenAI-Compatible Provider Routing
 
-- Status: Draft
+- Status: Active
 - Date: 2026-04-05
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers, lotus-platform maintainers, lotus-gateway maintainers
@@ -23,6 +23,19 @@ What is still missing is a production-grade way to run the same bounded task con
 3. a deterministic stub path when billing, quota, or operational posture requires it.
 
 This RFC defines that routing model.
+
+## Implementation Progress
+
+Completed:
+
+1. Slice 1: provider abstraction normalization
+2. Slice 2: local OpenAI-compatible runtime support
+
+Remaining:
+
+1. Slice 3: operator switching and runbooks
+2. Slice 4: evaluation and operational hardening
+3. Slice 5: downstream adoption validation
 
 The decision is to keep one stable Lotus AI task contract and add a second live-provider mode:
 `local_openai_compatible`.

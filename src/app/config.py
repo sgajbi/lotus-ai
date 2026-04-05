@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     secret_source_mode: str = "local_or_unspecified"
     live_text_allowed_task_ids: str = ""
     live_text_api_base: str = "https://api.openai.com/v1"
+    live_text_local_probe_timeout_ms: int = 1500
+    live_text_local_probe_cache_seconds: int = 15
     live_text_input_cost_per_1k_tokens: float | None = None
     live_text_output_cost_per_1k_tokens: float | None = None
     live_text_quota_enforced: bool = False

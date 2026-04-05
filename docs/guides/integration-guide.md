@@ -276,3 +276,28 @@ If retrieval is used:
 1. retrieval sources should be explicit,
 2. cited output should keep source references,
 3. platform docs and approved standards should be favored over ad hoc notes.
+## Local OpenAI-compatible provider via Docker
+
+`lotus-ai` supports `LOTUS_AI_PROVIDER_MODE=local_openai_compatible` for governed local or self-hosted text execution behind the same task contract used for managed OpenAI.
+
+Recommended local Docker path:
+
+1. Start the optional local model server:
+   `docker compose --profile local-llm up -d ollama`
+2. Pull the configured model into Ollama:
+   `docker compose exec ollama ollama pull qwen3:8b`
+3. Set provider runtime in `.env`:
+
+```env
+LOTUS_AI_PROVIDER_MODE=local_openai_compatible
+LOTUS_AI_LIVE_TEXT_PROVIDER_ID=text.local
+LOTUS_AI_LIVE_TEXT_MODEL_ID=qwen3:8b
+LOTUS_AI_LIVE_TEXT_API_BASE=http://ollama:11434/v1
+```
+
+Runtime truth:
+- local mode is not considered live-ready from configuration alone
+- lotus-ai probes `GET /models` on the configured endpoint
+- the configured model id must be advertised by the local endpoint before live execution is enabled
+
+This keeps supportability, provider catalog, and task execution path aligned with actual local runtime readiness rather than optimistic configuration.

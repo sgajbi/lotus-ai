@@ -8,6 +8,9 @@ from app.contracts.providers import (
     ProviderExecutionMode,
     ProviderRolloutState,
 )
+from app.services.local_openai_compatible_endpoint_probe import (
+    build_local_openai_compatible_endpoint_status,
+)
 from app.services.provider_configuration_status import build_text_generation_configuration_status
 from app.services.provider_task_allowlist import is_live_text_task_allowlisted
 
@@ -22,6 +25,8 @@ class ProviderLiveExecutionState:
     live_mode_requested: bool
     live_execution_enabled: bool
     task_allowlisted: bool
+    endpoint_reachable: bool | None
+    configured_model_available: bool | None
     blocking_reason: str | None
 
 
@@ -45,6 +50,8 @@ def build_provider_live_execution_state(
         ProviderRolloutState.ROLLED_OUT,
     }
     task_allowlisted = task_id is None or is_live_text_task_allowlisted(task_id)
+    endpoint_reachable: bool | None = None
+    configured_model_available: bool | None = None
 
     blocking_reason: str | None = None
     if not mode_supported:
@@ -61,6 +68,12 @@ def build_provider_live_execution_state(
         blocking_reason = "Live provider rollout posture does not yet permit active execution."
     elif not task_allowlisted:
         blocking_reason = f"Task '{task_id}' is not allowlisted for live text-generation execution."
+    elif settings.provider_mode == ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value:
+        endpoint_status = build_local_openai_compatible_endpoint_status()
+        endpoint_reachable = endpoint_status.endpoint_reachable
+        configured_model_available = endpoint_status.model_available
+        if endpoint_status.blocking_reason is not None:
+            blocking_reason = endpoint_status.blocking_reason
 
     return ProviderLiveExecutionState(
         provider_mode=settings.provider_mode,
@@ -71,5 +84,7 @@ def build_provider_live_execution_state(
         live_mode_requested=live_mode_requested,
         live_execution_enabled=blocking_reason is None,
         task_allowlisted=task_allowlisted,
+        endpoint_reachable=endpoint_reachable,
+        configured_model_available=configured_model_available,
         blocking_reason=blocking_reason,
     )

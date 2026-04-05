@@ -616,6 +616,54 @@ def test_execute_task_routes_allowlisted_task_through_live_provider(
     assert access_control_evidence.attributes["outcome"] == "ALLOWED"
 
 
+def test_execute_task_routes_allowlisted_task_through_local_live_provider(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_input_cost_per_1k_tokens = 0.0
+    settings.live_text_output_cost_per_1k_tokens = 0.0
+
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
+        lambda **_: {
+            "id": "resp_local_live_001",
+            "model": "qwen3:8b",
+            "output_text": "Local live explanation response.",
+            "usage": {"input_tokens": 120, "output_tokens": 30, "total_tokens": 150},
+        },
+    )
+
+    response = execute_task(
+        _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
+    )
+
+    assert response.status == "COMPLETED"
+    assert response.audit.stubbed is False
+    assert response.audit.provider_mode == "local_openai_compatible"
+    assert response.result.message == "Local live explanation response."
+    assert response.result.structured_output["provider_id"] == "text.local"
+    assert response.result.structured_output["model_id"] == "qwen3:8b"
+
+
 def test_execute_task_blocks_live_provider_for_caller_without_live_permission(
     monkeypatch: MonkeyPatch,
 ) -> None:

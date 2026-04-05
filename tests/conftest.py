@@ -11,6 +11,9 @@ from app.services.async_delivery_queue import reset_async_delivery_queue_cache
 from app.services.async_runtime_store import reset_async_runtime_store_cache
 from app.services.artifact_store import reset_artifact_store_cache
 from app.services.evaluation_runtime_store import reset_evaluation_runtime_store_cache
+from app.services.local_openai_compatible_endpoint_probe import (
+    reset_local_openai_compatible_endpoint_probe_cache,
+)
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import reset_provider_budget_state
 from app.services.provider_degradation_state import reset_provider_degradation_state
@@ -32,6 +35,8 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "live_embedding_provider_api_key": settings.live_embedding_provider_api_key,
         "live_text_allowed_task_ids": settings.live_text_allowed_task_ids,
         "live_text_api_base": settings.live_text_api_base,
+        "live_text_local_probe_timeout_ms": settings.live_text_local_probe_timeout_ms,
+        "live_text_local_probe_cache_seconds": settings.live_text_local_probe_cache_seconds,
         "live_text_input_cost_per_1k_tokens": settings.live_text_input_cost_per_1k_tokens,
         "live_text_output_cost_per_1k_tokens": settings.live_text_output_cost_per_1k_tokens,
         "live_text_quota_enforced": settings.live_text_quota_enforced,
@@ -82,6 +87,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_provider_degradation_state()
         reset_provider_quota_counters()
         reset_provider_operations_store_cache()
+        reset_local_openai_compatible_endpoint_probe_cache()
         reset_async_delivery_queue_cache()
         reset_async_runtime_store_cache()
         reset_evaluation_runtime_store_cache()

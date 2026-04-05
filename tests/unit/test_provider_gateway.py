@@ -134,6 +134,37 @@ def test_execute_text_generation_rejects_blocked_live_provider_mode() -> None:
     settings.provider_mode = "disabled"
 
 
+def test_execute_text_generation_rejects_blocked_local_live_provider_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": False,
+                "model_available": False,
+                "blocking_reason": "Local OpenAI-compatible endpoint is not reachable.",
+            },
+        )(),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        execute_text_generation(_request(context_payload={"status": "BLOCKED"}, source_refs=[]))
+
+    assert exc_info.value.status_code == 503
+    assert "LIVE_EXECUTION_NOT_ENABLED" in str(exc_info.value.detail)
+
+    settings.provider_mode = "disabled"
+
+
 def test_execute_text_generation_rejects_live_provider_when_quota_is_exceeded() -> None:
     class _LiveAdapter:
         def execute(self, request: ProviderExecutionRequest) -> object:
@@ -205,6 +236,64 @@ def test_execute_text_generation_blocks_unauthorized_live_provider_caller() -> N
     assert "not authorized for live provider execution" in str(exc_info.value.detail)
 
     settings.provider_mode = "disabled"
+
+
+def test_execute_text_generation_routes_local_provider_through_live_controls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _LocalLiveAdapter:
+        def execute(self, request: ProviderExecutionRequest) -> object:
+            return type(
+                "Response",
+                (),
+                {
+                    "provider_id": "text.local",
+                    "provider_mode": "local_openai_compatible",
+                    "adapter_kind": ProviderAdapterKind.OPENAI_COMPATIBLE_LOCAL,
+                    "failure_category": None,
+                    "timeout_ms": request.timeout_ms,
+                    "retry_count": 0,
+                    "max_output_tokens": request.max_output_tokens,
+                    "model_id": "qwen3:8b",
+                    "provider_request_id": "req_local_1",
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                    "estimated_cost_usd": 0.0,
+                    "stubbed": False,
+                    "message": "local response",
+                    "structured_output": {},
+                },
+            )()
+
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "app.services.provider_gateway.resolve_text_generation_adapter",
+        lambda mode: _LocalLiveAdapter(),
+    )
+
+    response = execute_text_generation(_request())
+
+    assert response.provider_id == "text.local"
+    assert response.provider_mode == "local_openai_compatible"
+    assert response.stubbed is False
 
 
 def test_execute_text_generation_rejects_live_provider_when_budget_is_exceeded() -> None:

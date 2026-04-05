@@ -81,13 +81,27 @@ def test_provider_catalog_marks_openai_provider_executable_when_rollout_allows_i
     assert openai_provider.enabled_for_execution is True
 
 
-def test_provider_catalog_marks_local_provider_executable_when_rollout_allows_it() -> None:
+def test_provider_catalog_marks_local_provider_executable_when_rollout_allows_it(
+    monkeypatch,
+) -> None:
     settings.provider_mode = "local_openai_compatible"
     settings.provider_rollout_state = "CANARY_ENABLED"
     settings.live_text_provider_id = "text.local"
     settings.live_text_model_id = "qwen3:8b"
     settings.live_text_api_base = "http://ollama:11434/v1"
     settings.live_text_allowed_task_ids = "explain.v1"
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+        )(),
+    )
 
     catalog = build_provider_catalog()
 
