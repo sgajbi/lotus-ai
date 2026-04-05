@@ -12,6 +12,7 @@ from app.contracts.providers import (
     ProviderOperationsControlActionResponse,
     ProviderOperationsControlHistoryResponse,
     ProviderOperationsStatusResponse,
+    ProviderOperatorProfileResponse,
     ProviderPolicyResponse,
     ProviderQuotaPolicyResponse,
     ProviderRunbookReadinessResponse,
@@ -26,6 +27,7 @@ from app.services.provider_operations_control import (
     build_provider_operations_control_history,
 )
 from app.services.provider_operations_status import build_provider_operations_status
+from app.services.provider_operator_profile import build_provider_operator_profile
 from app.services.provider_policy import build_provider_policy
 from app.services.provider_quota_policy import build_provider_quota_policy
 from app.services.provider_runbook_readiness import build_provider_runbook_readiness
@@ -67,6 +69,24 @@ async def get_provider_catalog_route() -> ProviderCatalogResponse:
 )
 async def get_provider_policy_route() -> ProviderPolicyResponse:
     return build_provider_policy()
+
+
+@router.get(
+    "/operator-profile",
+    response_model=ProviderOperatorProfileResponse,
+    operation_id="getProviderOperatorProfile",
+    summary="Get lotus-ai provider operator profile",
+    description=(
+        "Returns the current operator-facing provider profile, supported switching targets, "
+        "and the primary verification steps for confirming which live or stub path is active."
+    ),
+    responses={
+        200: {"description": "Provider operator profile returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_provider_operator_profile_route() -> ProviderOperatorProfileResponse:
+    return build_provider_operator_profile()
 
 
 @router.get(

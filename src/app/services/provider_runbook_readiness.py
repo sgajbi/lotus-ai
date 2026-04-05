@@ -14,11 +14,11 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
     items = [
         ProviderRunbookReadinessItem(
             runbook_id="provider_operational_runbook",
-            status="FOUNDATION_DOCUMENTED",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Provider operating model is documented at a foundation level, but live-provider "
-                f"activation steps are not yet finalized. {rollout_posture.notes}"
+                "Provider operating model, mode switching sequence, and verification surfaces are "
+                f"now documented in the integration guide and service operations runbook. {rollout_posture.notes}"
             ),
         ),
         ProviderRunbookReadinessItem(
@@ -32,11 +32,11 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
         ),
         ProviderRunbookReadinessItem(
             runbook_id="provider_cost_and_rate_limit_controls",
-            status="NOT_READY",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Runbooks for provider usage limits, rate-limit incidents, and cost-protection "
-                "responses are not yet documented, including how operators review and reset durable quota state safely through the control-plane action surface."
+                "Runbooks now document provider usage limits, rate-limit incidents, and cost-protection "
+                "responses, including how operators review and reset durable quota state safely through the control-plane action surface."
             ),
         ),
         ProviderRunbookReadinessItem(
@@ -50,11 +50,11 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
         ),
         ProviderRunbookReadinessItem(
             runbook_id="provider_incident_response_and_rollback",
-            status="NOT_READY",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Provider incident response, rollback, and safe reversion procedures for live "
-                "execution are not yet documented."
+                "Provider incident response, mode rollback, and safe reversion procedures for live "
+                "execution are now documented for stub, managed, and local provider profiles."
             ),
         ),
         ProviderRunbookReadinessItem(
@@ -67,11 +67,11 @@ def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
         ),
         ProviderRunbookReadinessItem(
             runbook_id="provider_degradation_and_circuit_response",
-            status="NOT_READY",
+            status="READY",
             required_for_activation=True,
             notes=(
-                "Runbooks for degraded-upstream operation, circuit-open response, cooldown review, "
-                "and safe re-enable procedures are not yet documented, including durable circuit-state recovery through the control-plane action surface."
+                "Runbooks now cover degraded-upstream operation, circuit-open response, cooldown review, "
+                "and safe re-enable procedures, including durable circuit-state recovery through the control-plane action surface."
             ),
         ),
         ProviderRunbookReadinessItem(

@@ -176,6 +176,25 @@ Current posture:
 3. provider policy now exposes selected adapter kind and structured rejection category,
 4. unsupported modes are rejected with a service-unavailable response.
 
+## Decision 11J: Provider Switching Must Be Explicit And Inspectable
+
+Decision:
+
+`lotus-ai` exposes an operator-facing provider profile surface and a dedicated runbook for switching
+between stub, managed OpenAI, and local OpenAI-compatible execution.
+
+Why:
+
+1. bank-grade operator posture should not rely on undocumented `.env` edits,
+2. switching provider backends must remain explicit, reviewable, and easy to verify,
+3. local and remote execution should stay behind one task contract while still remaining operationally distinguishable.
+
+Current posture:
+
+1. `/platform/providers/operator-profile` summarizes the active profile and supported switching targets,
+2. the service runbook now links to a dedicated provider-mode switching procedure,
+3. active provider verification requires both runtime surfaces and one bounded task execution rather than trusting configuration alone.
+
 ## Decision 11E: Provider Execution Controls Must Be Explicit Before Live Rollout
 
 Decision:

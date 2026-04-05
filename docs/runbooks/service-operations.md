@@ -47,6 +47,7 @@
 - Async governance status: /platform/async/governance-status
 - Async control-plane history: /platform/async/control-plane-actions
 - Provider activation readiness: /platform/providers/activation-readiness
+- Provider operator profile: /platform/providers/operator-profile
 - Provider quota policy: /platform/providers/quota-policy
 - Provider budget policy: /platform/providers/budget-policy
 - Provider operations status: /platform/providers/operations-status
@@ -275,6 +276,22 @@ Before any future live-provider activation slice:
 10. confirm provider-backed task runtime notes still describe the current rollout truthfully, especially when a live provider is allowlisted but intentionally disabled
 11. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
 12. only then proceed with any live-provider activation rollout review
+
+## Provider Mode Switching
+
+Authoritative procedure:
+
+1. use [provider-mode-switching.md](C:/Users/Sandeep/projects/lotus-ai/docs/runbooks/provider-mode-switching.md)
+2. treat `/platform/providers/operator-profile` as the summary-first operator surface for active mode and verification steps
+3. do not treat `.env` changes alone as a completed switch; container recreation plus task-level verification is required
+
+Mandatory verification after every mode change:
+
+1. `GET /platform/providers/operator-profile`
+2. `GET /platform/providers`
+3. `GET /platform/providers/policy`
+4. `GET /platform/providers/operations-status`
+5. one bounded `POST /ai/tasks/execute` request with review of `audit.provider_mode`, `audit.stubbed`, and `result.structured_output.provider_id`
 
 ## Durable Provider Operations Recovery
 

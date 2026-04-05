@@ -8,15 +8,16 @@ Before integrating a Lotus app with `lotus-ai`, upstream teams should inspect:
 2. `GET /platform/capabilities` for currently exposed task contracts,
 3. `GET /platform/providers` for the current provider execution posture,
 4. `GET /platform/providers/policy` for supported provider modes and rejection semantics,
-5. `GET /platform/providers/quota-policy` for configured live-provider quota scopes and typed configuration findings,
-6. `GET /platform/providers/budget-policy` for current tracked spend, configured soft and hard budgets, and budget blocking posture,
-7. `GET /platform/providers/operations-status` for one combined provider operations view across rollout, quota, budget, and degradation posture,
-8. `GET /platform/safety/policy` for task-level output-label and redaction posture,
-9. `GET /platform/safety/runtime-status` for current enforced-versus-documented safety controls,
-10. `GET /platform/safety/evidence-readiness` for runtime-backed safety approval posture,
-11. `GET /platform/safety/runbook-readiness` for operational safety rollout posture,
-12. `GET /platform/safety/governance-status` for the combined safety rollout view,
-13. `GET /platform/retrieval/runtime-status` for retrieval-specific persistence and corpus posture when retrieval features are relevant.
+5. `GET /platform/providers/operator-profile` for the active operator profile and switching verification steps,
+6. `GET /platform/providers/quota-policy` for configured live-provider quota scopes and typed configuration findings,
+7. `GET /platform/providers/budget-policy` for current tracked spend, configured soft and hard budgets, and budget blocking posture,
+8. `GET /platform/providers/operations-status` for one combined provider operations view across rollout, quota, budget, and degradation posture,
+9. `GET /platform/safety/policy` for task-level output-label and redaction posture,
+10. `GET /platform/safety/runtime-status` for current enforced-versus-documented safety controls,
+11. `GET /platform/safety/evidence-readiness` for runtime-backed safety approval posture,
+12. `GET /platform/safety/runbook-readiness` for operational safety rollout posture,
+13. `GET /platform/safety/governance-status` for the combined safety rollout view,
+14. `GET /platform/retrieval/runtime-status` for retrieval-specific persistence and corpus posture when retrieval features are relevant.
 
 This keeps downstream integration decisions grounded in actual runtime capability rather than assumptions.
 
@@ -192,7 +193,8 @@ Verification:
 2. `POST /ai/tasks/execute` should return `audit.provider_mode = "local_openai_compatible"` and
    `audit.stubbed = false`,
 3. `/platform/providers/policy` should list `local_openai_compatible` in the allowed text modes,
-4. `/platform/providers` should show `text.local` in the registered provider catalog.
+4. `/platform/providers` should show `text.local` in the registered provider catalog,
+5. `/platform/providers/operator-profile` should identify either `local_ollama` or `local_vllm`.
 
 ## Recommended Integration Pattern
 
@@ -276,28 +278,11 @@ If retrieval is used:
 1. retrieval sources should be explicit,
 2. cited output should keep source references,
 3. platform docs and approved standards should be favored over ad hoc notes.
-## Local OpenAI-compatible provider via Docker
+## Provider Switching Runbook
 
-`lotus-ai` supports `LOTUS_AI_PROVIDER_MODE=local_openai_compatible` for governed local or self-hosted text execution behind the same task contract used for managed OpenAI.
+Use [provider-mode-switching.md](C:/Users/Sandeep/projects/lotus-ai/docs/runbooks/provider-mode-switching.md) as the authoritative operator procedure for:
 
-Recommended local Docker path:
-
-1. Start the optional local model server:
-   `docker compose --profile local-llm up -d ollama`
-2. Pull the configured model into Ollama:
-   `docker compose exec ollama ollama pull qwen3:8b`
-3. Set provider runtime in `.env`:
-
-```env
-LOTUS_AI_PROVIDER_MODE=local_openai_compatible
-LOTUS_AI_LIVE_TEXT_PROVIDER_ID=text.local
-LOTUS_AI_LIVE_TEXT_MODEL_ID=qwen3:8b
-LOTUS_AI_LIVE_TEXT_API_BASE=http://ollama:11434/v1
-```
-
-Runtime truth:
-- local mode is not considered live-ready from configuration alone
-- lotus-ai probes `GET /models` on the configured endpoint
-- the configured model id must be advertised by the local endpoint before live execution is enabled
-
-This keeps supportability, provider catalog, and task execution path aligned with actual local runtime readiness rather than optimistic configuration.
+1. switching between `disabled`, `openai`, and `local_openai_compatible`,
+2. bringing up developer-local Ollama,
+3. validating stronger-host vLLM deployment,
+4. verifying the active provider path through runtime and task evidence.
