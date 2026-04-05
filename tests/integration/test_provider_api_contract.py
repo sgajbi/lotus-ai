@@ -95,9 +95,28 @@ def test_provider_policy_route(client: TestClient) -> None:
     assert body["expansion_policy"]["bounded_expansion_enabled"] is True
     assert text_policy["selected_adapter_kind"] == "STUB"
     assert text_policy["rejection_category"] == "UNSUPPORTED_MODE"
-    assert text_policy["allowed_modes"] == ["disabled", "stub", "openai"]
+    assert text_policy["allowed_modes"] == [
+        "disabled",
+        "stub",
+        "openai",
+        "local_openai_compatible",
+    ]
     assert embedding_policy["selected_adapter_kind"] == "STUB"
     assert embedding_policy["allowed_modes"] == ["disabled", "stub", "enabled"]
+
+
+def test_provider_operator_profile_route(client: TestClient) -> None:
+    response = client.get("/platform/providers/operator-profile")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["selected_profile_id"] == "stubbed_disabled"
+    assert body["provider_mode"] == "disabled"
+    assert body["live_execution_enabled"] is False
+    assert any(profile["profile_id"] == "managed_openai" for profile in body["profiles"])
+    assert any(profile["profile_id"] == "local_ollama" for profile in body["profiles"])
+    assert "/ai/tasks/execute" in body["switching_steps"][-1]
 
 
 def test_provider_policy_route_reports_live_embedding_execution_when_enabled(
@@ -344,8 +363,9 @@ def test_provider_runbook_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
     assert body["required_item_count"] == 8
-    assert body["completed_required_item_count"] == 1
+    assert body["completed_required_item_count"] == 5
     assert body["items"][0]["runbook_id"] == "provider_operational_runbook"
+    assert body["items"][0]["status"] == "READY"
     assert body["items"][1]["status"] == "NOT_READY"
     assert body["items"][3]["runbook_id"] == "provider_spend_anomaly_response"
     assert body["items"][5]["runbook_id"] == "provider_embedding_rollout_and_recovery"

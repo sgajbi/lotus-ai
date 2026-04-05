@@ -23,12 +23,14 @@ class ProviderExecutionMode(str, Enum):
     DISABLED = "disabled"
     STUB = "stub"
     OPENAI = "openai"
+    LOCAL_OPENAI_COMPATIBLE = "local_openai_compatible"
     ENABLED = "enabled"
 
 
 class ProviderAdapterKind(str, Enum):
     STUB = "STUB"
     OPENAI_LIVE = "OPENAI_LIVE"
+    OPENAI_COMPATIBLE_LOCAL = "OPENAI_COMPATIBLE_LOCAL"
     OPENAI_EMBEDDINGS_LIVE = "OPENAI_EMBEDDINGS_LIVE"
 
 
@@ -517,6 +519,64 @@ class ProviderPolicyResponse(BaseModel):
     )
     policies: list[ProviderPolicyDescriptor] = Field(
         description="Capability-specific provider execution policies."
+    )
+
+
+class ProviderOperatorProfileDescriptor(BaseModel):
+    profile_id: str = Field(description="Stable operator-facing provider profile identifier.")
+    display_name: str = Field(description="Operator-facing label for the provider profile.")
+    provider_mode: str = Field(description="Provider mode activated by this profile.")
+    provider_id: str | None = Field(
+        default=None,
+        description="Expected provider identifier for this profile when one is configured.",
+    )
+    api_base_class: str = Field(
+        description="High-level endpoint class for this profile, such as managed_openai or local_openai_compatible."
+    )
+    docker_profile: str | None = Field(
+        default=None,
+        description="Optional Docker Compose profile name associated with this operator profile.",
+    )
+    use_case: str = Field(
+        description="Human-readable explanation of when operators should choose this profile."
+    )
+    required_settings: list[str] = Field(
+        default_factory=list,
+        description="Configuration settings that must be present for this profile to operate correctly.",
+    )
+    verification_surfaces: list[str] = Field(
+        default_factory=list,
+        description="Primary inspection surfaces operators should use to verify this profile.",
+    )
+
+
+class ProviderOperatorProfileResponse(BaseModel):
+    service: str = Field(description="Service name emitting the provider operator profile view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    selected_profile_id: str = Field(
+        description="Operator profile currently implied by the active provider configuration."
+    )
+    provider_mode: str = Field(description="Configured text-generation provider mode.")
+    current_provider_id: str | None = Field(
+        default=None,
+        description="Configured current provider id for the active text-generation path.",
+    )
+    current_model_id: str | None = Field(
+        default=None,
+        description="Configured current model id for the active text-generation path.",
+    )
+    live_execution_enabled: bool = Field(
+        description="Whether the current provider profile is presently enabled for live execution."
+    )
+    current_readiness_note: str = Field(
+        description="Single operator-facing note describing the current active provider posture."
+    )
+    switching_steps: list[str] = Field(
+        default_factory=list,
+        description="Ordered operator steps to switch and verify the active provider profile.",
+    )
+    profiles: list[ProviderOperatorProfileDescriptor] = Field(
+        description="Supported provider operator profiles exposed by lotus-ai."
     )
 
 

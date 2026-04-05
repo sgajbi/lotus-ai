@@ -36,6 +36,8 @@ def _request(**overrides: object) -> ProviderExecutionRequest:
 
 def test_execute_text_generation_routes_through_stub_provider() -> None:
     response = execute_text_generation(_request())
+    structured_output = response.structured_output
+    assert isinstance(structured_output, dict)
 
     assert response.provider_id == "text.stub"
     assert response.provider_mode == "disabled"
@@ -45,18 +47,118 @@ def test_execute_text_generation_routes_through_stub_provider() -> None:
     assert response.retry_count == 0
     assert response.max_output_tokens == 512
     assert response.stubbed is True
-    assert response.structured_output["provider_id"] == "text.stub"
-    assert response.structured_output["adapter_kind"] == "STUB"
-    assert response.structured_output["timeout_ms"] == 4000
-    assert response.structured_output["retry_count"] == 0
-    assert response.structured_output["max_output_tokens"] == 512
-    assert response.structured_output["context_keys"] == ["rule_count", "status"]
-    assert response.structured_output["output_label"] == "EXPLANATION_ONLY"
-    assert response.structured_output["redaction_posture"] == "MINIMIZATION_REQUIRED"
+    assert structured_output["provider_id"] == "text.stub"
+    assert structured_output["adapter_kind"] == "STUB"
+    assert structured_output["timeout_ms"] == 4000
+    assert structured_output["retry_count"] == 0
+    assert structured_output["max_output_tokens"] == 512
+    assert structured_output["context_keys"] == ["rule_count", "status"]
+    assert structured_output["output_label"] == "EXPLANATION_ONLY"
+    assert structured_output["redaction_posture"] == "MINIMIZATION_REQUIRED"
+    assert response.message == (
+        "Stub execution completed for foundation-phase task explain.v1 requested by lotus-manage."
+    )
+
+
+def test_execute_text_generation_returns_source_grounded_advisor_brief_stub() -> None:
+    response = execute_text_generation(
+        _request(
+            caller_app="lotus-gateway",
+            context_summary="Draft client talking points from source performance facts.",
+            context_payload={
+                "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                "period": {"period": "YTD"},
+                "performance": {
+                    "portfolio_return_pct": 1.25,
+                    "benchmark_return_pct": 7.93,
+                    "active_return_pct": -6.68,
+                },
+                "supportability": [
+                    {"key": "portfolio_context", "value": "ready"},
+                    {"key": "performance_context", "value": "ready"},
+                ],
+                "contribution": {"top_positions": [{"position_id": "AAPL US"}]},
+                "attribution": {"top_effects": [{"key_label": "Asset Class / Equity"}]},
+            },
+            source_refs=[
+                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+            ],
+        )
+    )
+    structured_output = response.structured_output
+    assert isinstance(structured_output, dict)
+
+    assert response.provider_id == "text.stub"
+    assert response.stubbed is True
+    assert response.message == (
+        "PB_SG_GLOBAL_BAL_001 delivered 1.25% over YTD versus 7.93% for the benchmark, "
+        "resulting in -6.68% active return. net flow was N/A and ending market value "
+        "was N/A. largest contribution came from AAPL US (N/A). largest benchmark-relative "
+        "attribution effect was Asset Class / Equity (N/A)."
+    )
+    assert structured_output["advisor_brief_status"] == "ready"
+    assert structured_output["coverage_state"] == "ready"
+    talking_points = structured_output["talking_points"]
+    assert isinstance(talking_points, list)
+    assert isinstance(talking_points[0], dict)
+    assert talking_points[0]["headline"] == ("YTD active return was -6.68%.")
+    assert structured_output["grounded_facts"] == [
+        {
+            "metric_label": "Portfolio Return",
+            "metric_value": "1.25%",
+            "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+        },
+        {
+            "metric_label": "Benchmark Return",
+            "metric_value": "7.93%",
+            "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+        },
+        {
+            "metric_label": "Active Return",
+            "metric_value": "-6.68%",
+            "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+        },
+        {
+            "metric_label": "Money-Weighted Return",
+            "metric_value": "N/A",
+            "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+        },
+    ]
 
 
 def test_execute_text_generation_rejects_blocked_live_provider_mode() -> None:
     settings.provider_mode = "openai"
+
+    with pytest.raises(HTTPException) as exc_info:
+        execute_text_generation(_request(context_payload={"status": "BLOCKED"}, source_refs=[]))
+
+    assert exc_info.value.status_code == 503
+    assert "LIVE_EXECUTION_NOT_ENABLED" in str(exc_info.value.detail)
+
+    settings.provider_mode = "disabled"
+
+
+def test_execute_text_generation_rejects_blocked_local_live_provider_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": False,
+                "model_available": False,
+                "blocking_reason": "Local OpenAI-compatible endpoint is not reachable.",
+            },
+        )(),
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         execute_text_generation(_request(context_payload={"status": "BLOCKED"}, source_refs=[]))
@@ -138,6 +240,64 @@ def test_execute_text_generation_blocks_unauthorized_live_provider_caller() -> N
     assert "not authorized for live provider execution" in str(exc_info.value.detail)
 
     settings.provider_mode = "disabled"
+
+
+def test_execute_text_generation_routes_local_provider_through_live_controls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _LocalLiveAdapter:
+        def execute(self, request: ProviderExecutionRequest) -> object:
+            return type(
+                "Response",
+                (),
+                {
+                    "provider_id": "text.local",
+                    "provider_mode": "local_openai_compatible",
+                    "adapter_kind": ProviderAdapterKind.OPENAI_COMPATIBLE_LOCAL,
+                    "failure_category": None,
+                    "timeout_ms": request.timeout_ms,
+                    "retry_count": 0,
+                    "max_output_tokens": request.max_output_tokens,
+                    "model_id": "qwen3:8b",
+                    "provider_request_id": "req_local_1",
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                    "estimated_cost_usd": 0.0,
+                    "stubbed": False,
+                    "message": "local response",
+                    "structured_output": {},
+                },
+            )()
+
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "app.services.provider_gateway.resolve_text_generation_adapter",
+        lambda mode: _LocalLiveAdapter(),
+    )
+
+    response = execute_text_generation(_request())
+
+    assert response.provider_id == "text.local"
+    assert response.provider_mode == "local_openai_compatible"
+    assert response.stubbed is False
 
 
 def test_execute_text_generation_rejects_live_provider_when_budget_is_exceeded() -> None:
@@ -255,7 +415,9 @@ def test_execute_text_generation_routes_stub_mode_through_stub_provider() -> Non
     assert response.retry_count == 0
     assert response.max_output_tokens == 512
     assert response.stubbed is True
-    assert response.structured_output["output_label"] == "DRAFT"
+    structured_output = response.structured_output
+    assert isinstance(structured_output, dict)
+    assert structured_output["output_label"] == "DRAFT"
 
     settings.provider_mode = "disabled"
 

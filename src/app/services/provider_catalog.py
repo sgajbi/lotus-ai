@@ -33,7 +33,7 @@ def build_provider_catalog() -> ProviderCatalogResponse:
             runtime_mode=descriptor.runtime_mode.value,
             enabled_for_execution=(
                 live_execution_state.live_execution_enabled
-                if descriptor.provider_id == "text.openai"
+                if descriptor.provider_id in {"text.openai", "text.local"}
                 else (
                     embedding_live_execution_state.live_execution_enabled
                     if descriptor.provider_id == "embeddings.openai"

@@ -264,6 +264,8 @@ Examples:
 - `lotus-manage` can ask `lotus-ai` to explain why a rebalance is `BLOCKED`.
 - `lotus-advise` can ask `lotus-ai` to draft a reviewer summary for a proposal.
 - `lotus-performance` and `lotus-risk` can ask `lotus-ai` for analytics commentary.
+- `lotus-gateway` can ask `lotus-ai` for a source-grounded Performance Advisor Brief assembled
+  from Workbench performance contracts, while preserving `audit` and `evidence` metadata for the UI.
 - `lotus-core` can ask `lotus-ai` to summarize supportability anomalies.
 
 ## Initial Repository Layout

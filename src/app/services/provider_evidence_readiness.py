@@ -60,8 +60,8 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
             status="READY" if runtime_fixture_ready else "NOT_READY",
             required_for_activation=True,
             notes=(
-                "Provider runtime fixtures cover success-path control preservation and explicit "
-                "live-provider rejection posture."
+                "Provider runtime fixtures cover stub and local live-provider success posture, "
+                "preserved bounded controls, and explicit provider-identity evidence."
                 if runtime_fixture_ready
                 else "Provider runtime success and rejection fixtures are not yet staged."
             ),
@@ -71,8 +71,8 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
             status="READY" if failure_fixture_ready else "NOT_READY",
             required_for_activation=True,
             notes=(
-                "Provider failure-mode fixtures cover timeout-budget evidence and explicit "
-                "fallback-or-rejection behavior."
+                "Provider failure-mode fixtures cover timeout-budget evidence, explicit "
+                "fallback-or-rejection behavior, and local unavailable-model, timeout, and malformed-response mapping."
                 if failure_fixture_ready
                 else "Provider timeout and fallback failure-mode fixtures are not yet staged."
             ),
@@ -112,7 +112,7 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
             status="READY" if regression_baseline_ready else "NOT_READY",
             required_for_activation=True,
             notes=(
-                "A recorded evaluation run proves provider policy, runtime, failure-mode, and durable provider-operations "
+                "A recorded evaluation run proves provider policy, local and managed runtime parity, failure-mode handling, and durable provider-operations "
                 f"coverage in '{inventory.latest_recorded_provider_run_id}'."
                 if regression_baseline_ready and inventory.latest_recorded_provider_run_id
                 else "A governed recorded run proving provider policy, runtime, failure-mode, durable provider-operations, and embedding coverage is not yet present."

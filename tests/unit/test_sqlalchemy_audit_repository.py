@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from pytest import MonkeyPatch
+
 from sqlalchemy import text
 
 from app.contracts.access_control import (
@@ -11,9 +13,14 @@ from app.contracts.access_control import (
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
+from app.contracts.providers import ProviderAdapterKind
 from app.contracts.safety import RedactionPosture, SafetyExecutionDisposition
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.repositories.sqlalchemy_audit_repository import SqlAlchemyAuditRepository
+from app.repositories.sqlalchemy_audit_repository import (
+    _default_adapter_kind,
+    _default_provider_id,
+)
 from app.services.safety_runtime import build_safety_execution_outcome_from_record
 from tests.support.migration_runner import upgrade_database_to_head
 
@@ -68,6 +75,9 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
         prompt_version="foundation.explain.v1",
         prompt_selection=_prompt_selection("foundation.explain.v1"),
         provider_mode="disabled",
+        provider_id="text.stub",
+        adapter_kind=ProviderAdapterKind.STUB,
+        model_id=None,
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
         enforced_safety_controls=["response_labeling", "correlation_and_audit"],
@@ -135,6 +145,9 @@ def test_sqlalchemy_audit_repository_list_filters_and_orders_latest_first(
         prompt_version="foundation.explain.v1",
         prompt_selection=_prompt_selection("foundation.explain.v1"),
         provider_mode="disabled",
+        provider_id="text.stub",
+        adapter_kind=ProviderAdapterKind.STUB,
+        model_id=None,
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
         enforced_safety_controls=["response_labeling", "correlation_and_audit"],
@@ -230,6 +243,9 @@ def test_sqlalchemy_audit_repository_round_trips_exact_blocked_safety_outcome(
         prompt_version="foundation.explain.v1",
         prompt_selection=_prompt_selection("foundation.explain.v1"),
         provider_mode="stub",
+        provider_id="text.stub",
+        adapter_kind=ProviderAdapterKind.STUB,
+        model_id=None,
         safety_mode="runtime_enforced",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
         enforced_safety_controls=[
@@ -393,6 +409,9 @@ def test_sqlalchemy_audit_repository_round_trips_authorization_payload(tmp_path:
         prompt_version="foundation.knowledge_search.v1",
         prompt_selection=_prompt_selection("foundation.knowledge_search.v1"),
         provider_mode="catalog_only",
+        provider_id="retrieval.catalog",
+        adapter_kind=None,
+        model_id=None,
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
         enforced_safety_controls=["response_labeling", "correlation_and_audit"],
@@ -426,3 +445,56 @@ def test_sqlalchemy_audit_repository_round_trips_authorization_payload(tmp_path:
     loaded = repository.get("air_sql_authorized")
     assert loaded is not None
     assert loaded.authorization == authorization
+
+
+def test_sqlalchemy_audit_repository_handles_relative_sqlite_path(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    repository = SqlAlchemyAuditRepository("sqlite:///nested/db/audit.db")
+
+    assert (tmp_path / "nested" / "db").is_dir()
+    repository._engine.dispose()
+
+
+def test_sqlalchemy_audit_repository_does_not_create_directory_for_memory_or_non_sqlite(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    SqlAlchemyAuditRepository("sqlite:///:memory:")._engine.dispose()
+
+    configured_urls: list[str] = []
+
+    def _fake_configure_sqlalchemy(self: SqlAlchemyAuditRepository, database_url: str) -> None:
+        configured_urls.append(database_url)
+        self._engine = type("Engine", (), {"dispose": lambda self: None})()
+
+    monkeypatch.setattr(
+        SqlAlchemyAuditRepository,
+        "_configure_sqlalchemy",
+        _fake_configure_sqlalchemy,
+    )
+
+    SqlAlchemyAuditRepository("postgresql://user:pass@localhost/db")._engine.dispose()
+
+    assert not (tmp_path / "postgresql:").exists()
+    assert configured_urls == ["postgresql://user:pass@localhost/db"]
+
+
+def test_sqlalchemy_audit_repository_provider_defaults_cover_all_supported_modes() -> None:
+    assert _default_provider_id("disabled") == "text.stub"
+    assert _default_provider_id("stub") == "text.stub"
+    assert _default_provider_id("openai") == "text.openai"
+    assert _default_provider_id("local_openai_compatible") == "text.local"
+    assert _default_provider_id("catalog_only") == "retrieval.catalog"
+    assert _default_provider_id("catalog_answer") == "retrieval.answer"
+    assert _default_provider_id("live_search") == "retrieval.live_search"
+    assert _default_provider_id("unknown") == "unknown.provider"
+
+    assert _default_adapter_kind("disabled") == ProviderAdapterKind.STUB
+    assert _default_adapter_kind("stub") == ProviderAdapterKind.STUB
+    assert _default_adapter_kind("openai") == ProviderAdapterKind.OPENAI_LIVE
+    assert _default_adapter_kind("local_openai_compatible") == (
+        ProviderAdapterKind.OPENAI_COMPATIBLE_LOCAL
+    )
+    assert _default_adapter_kind("catalog_only") is None

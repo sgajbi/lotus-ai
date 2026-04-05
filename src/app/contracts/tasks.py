@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.prompts import PromptSelectionTraceDescriptor
+from app.contracts.providers import ProviderAdapterKind
 from app.contracts.safety import SafetyExecutionOutcome
 
 
@@ -99,6 +100,15 @@ class TaskAuditMetadata(BaseModel):
         description="Detailed prompt rollout selection trace associated with the execution."
     )
     provider_mode: str = Field(description="Provider mode active for the execution.")
+    provider_id: str = Field(description="Resolved provider identifier used for the execution.")
+    adapter_kind: ProviderAdapterKind | None = Field(
+        default=None,
+        description="Resolved provider adapter kind used for the execution when one is available.",
+    )
+    model_id: str | None = Field(
+        default=None,
+        description="Resolved provider model identifier used for the execution when one is available.",
+    )
     safety: SafetyExecutionOutcome = Field(description="Safety posture resolved for the execution.")
     authorization: AuthorizationDecision = Field(
         description="Caller-authorization decision recorded for the execution."

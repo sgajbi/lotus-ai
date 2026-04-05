@@ -16,6 +16,7 @@ from app.contracts.prompts import (
     PromptRolloutRole,
     PromptSelectionTraceDescriptor,
 )
+from app.contracts.providers import ProviderAdapterKind
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.db.models import AuditRecordModel
@@ -101,6 +102,7 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
     def _to_contract(self, model: AuditRecordModel) -> AuditRecordResponse:
         output_label = OutputLabel(model.output_label)
         redaction_posture = RedactionPosture(model.redaction_posture)
+        provider_id, adapter_kind, model_id = _build_provider_identity(model)
         safety_outcome = (
             SafetyExecutionOutcome.model_validate(model.safety_outcome_payload)
             if model.safety_outcome_payload is not None
@@ -128,6 +130,9 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
                 else _build_legacy_prompt_selection(model)
             ),
             provider_mode=model.provider_mode,
+            provider_id=provider_id,
+            adapter_kind=adapter_kind,
+            model_id=model_id,
             safety_mode=model.safety_mode,
             redaction_posture=redaction_posture,
             enforced_safety_controls=model.enforced_safety_controls,
@@ -192,3 +197,74 @@ def _build_legacy_authorization(model: AuditRecordModel) -> AuthorizationDecisio
             "treated as an allowed task execution record."
         ),
     )
+
+
+def _build_provider_identity(
+    model: AuditRecordModel,
+) -> tuple[str, ProviderAdapterKind | None, str | None]:
+    structured_output = model.structured_output if isinstance(model.structured_output, dict) else {}
+    evidence_bundle = ExecutionEvidenceBundle.model_validate(model.evidence)
+    provider_descriptor = next(
+        (
+            descriptor
+            for descriptor in evidence_bundle.descriptors
+            if descriptor.evidence_type == "provider_resolution"
+        ),
+        None,
+    )
+    provider_id = structured_output.get("provider_id")
+    if not isinstance(provider_id, str) or not provider_id:
+        provider_id = (
+            provider_descriptor.attributes.get("provider_id")
+            if provider_descriptor is not None
+            else None
+        )
+    if not isinstance(provider_id, str) or not provider_id:
+        provider_id = _default_provider_id(model.provider_mode)
+    adapter_kind_value = structured_output.get("adapter_kind")
+    if not isinstance(adapter_kind_value, str) or not adapter_kind_value:
+        adapter_kind_value = (
+            provider_descriptor.attributes.get("adapter_kind")
+            if provider_descriptor is not None
+            else None
+        )
+    adapter_kind = (
+        ProviderAdapterKind(adapter_kind_value)
+        if isinstance(adapter_kind_value, str) and adapter_kind_value
+        else _default_adapter_kind(model.provider_mode)
+    )
+    model_id_value = structured_output.get("model_id")
+    if not isinstance(model_id_value, str) or not model_id_value:
+        model_id_value = (
+            provider_descriptor.attributes.get("model_id")
+            if provider_descriptor is not None
+            else None
+        )
+    model_id = model_id_value if isinstance(model_id_value, str) and model_id_value else None
+    return provider_id, adapter_kind, model_id
+
+
+def _default_provider_id(provider_mode: str) -> str:
+    if provider_mode in {"disabled", "stub"}:
+        return "text.stub"
+    if provider_mode == "openai":
+        return "text.openai"
+    if provider_mode == "local_openai_compatible":
+        return "text.local"
+    if provider_mode == "catalog_only":
+        return "retrieval.catalog"
+    if provider_mode == "catalog_answer":
+        return "retrieval.answer"
+    if provider_mode == "live_search":
+        return "retrieval.live_search"
+    return "unknown.provider"
+
+
+def _default_adapter_kind(provider_mode: str) -> ProviderAdapterKind | None:
+    if provider_mode in {"disabled", "stub"}:
+        return ProviderAdapterKind.STUB
+    if provider_mode == "openai":
+        return ProviderAdapterKind.OPENAI_LIVE
+    if provider_mode == "local_openai_compatible":
+        return ProviderAdapterKind.OPENAI_COMPATIBLE_LOCAL
+    return None

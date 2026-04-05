@@ -33,6 +33,17 @@ def test_authorize_request_allows_lotus_performance_first_use_case_task() -> Non
     assert decision.outcome == AuthorizationOutcome.ALLOWED
 
 
+def test_authorize_request_allows_gateway_advisor_brief_task_without_tenant() -> None:
+    decision = authorize_request(
+        caller_app="lotus-gateway",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        task_id="explain.v1",
+    )
+
+    assert decision.allowed is True
+    assert decision.outcome == AuthorizationOutcome.ALLOWED
+
+
 def test_authorize_request_blocks_unknown_caller() -> None:
     decision = authorize_request(
         caller_app="unknown-app",
@@ -109,10 +120,9 @@ def test_authorize_request_uses_sql_backed_registry_when_configured(tmp_path: Pa
         database_url=database_url,
     ):
         decision = authorize_request(
-            caller_app="lotus-manage",
+            caller_app="lotus-gateway",
             capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
-            tenant_id="tenant-sg-001",
-            task_id="summarize.v1",
+            task_id="explain.v1",
         )
 
     assert decision.allowed is True

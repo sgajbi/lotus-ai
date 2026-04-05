@@ -29,6 +29,12 @@ def test_provider_registry_lists_text_and_embedding_descriptors() -> None:
         for descriptor in descriptors
     )
     assert any(
+        descriptor.provider_id == "text.local"
+        and descriptor.adapter_kind == ProviderAdapterKind.OPENAI_COMPATIBLE_LOCAL
+        and descriptor.failure_category_on_use == ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
+        for descriptor in descriptors
+    )
+    assert any(
         descriptor.provider_id == "embeddings.stub"
         and descriptor.adapter_kind == ProviderAdapterKind.STUB
         for descriptor in descriptors
@@ -44,9 +50,11 @@ def test_provider_registry_lists_text_and_embedding_descriptors() -> None:
 def test_provider_registry_resolves_stub_adapter_for_supported_modes() -> None:
     disabled_adapter = resolve_text_generation_adapter(ProviderExecutionMode.DISABLED)
     stub_adapter = resolve_text_generation_adapter(ProviderExecutionMode.STUB)
+    local_adapter = resolve_text_generation_adapter(ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE)
 
     assert disabled_adapter.descriptor.provider_id == "text.stub"
     assert stub_adapter.descriptor.provider_id == "text.stub"
+    assert local_adapter.descriptor.provider_id == "text.local"
 
 
 def test_provider_registry_rejects_unregistered_mode() -> None:

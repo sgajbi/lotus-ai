@@ -13,6 +13,7 @@ from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.observability import ObservabilityCapabilityKind
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
+from app.contracts.providers import ProviderAdapterKind
 from app.contracts.safety import RedactionPosture
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.services.observability_breakdowns import (
@@ -78,6 +79,23 @@ def _record(
             latest_control_event=None,
         ),
         provider_mode=provider_mode,
+        provider_id=(
+            "text.stub"
+            if provider_mode in {"disabled", "stub"}
+            else "retrieval.catalog"
+            if provider_mode == "catalog_only"
+            else "retrieval.answer"
+            if provider_mode == "catalog_answer"
+            else "text.openai"
+        ),
+        adapter_kind=(
+            ProviderAdapterKind.STUB
+            if provider_mode in {"disabled", "stub"}
+            else ProviderAdapterKind.OPENAI_LIVE
+            if provider_mode == "openai"
+            else None
+        ),
+        model_id="gpt-5.4" if provider_mode == "openai" else None,
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
         enforced_safety_controls=["response_labeling", "correlation_and_audit"],

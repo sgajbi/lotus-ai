@@ -73,14 +73,21 @@ def _build_provider_backed_task_execution_path(
         )
         stubbed = False
     elif (
-        settings.provider_mode == ProviderExecutionMode.OPENAI.value
+        settings.provider_mode
+        in {
+            ProviderExecutionMode.OPENAI.value,
+            ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
+        }
         and live_execution_state.rollout_state
         in {ProviderRolloutState.CANARY_ENABLED, ProviderRolloutState.ROLLED_OUT}
         and not live_execution_state.task_allowlisted
     ):
         execution_path = "provider.task_not_allowlisted"
         notes = live_execution_state.blocking_reason or rollout_posture.notes
-    elif settings.provider_mode == ProviderExecutionMode.OPENAI.value:
+    elif settings.provider_mode in {
+        ProviderExecutionMode.OPENAI.value,
+        ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
+    }:
         execution_path = "provider.blocked_text"
         notes = (
             "Task remains provider-backed, but live-provider execution is still blocked by "
@@ -91,6 +98,7 @@ def _build_provider_backed_task_execution_path(
         ProviderExecutionMode.DISABLED.value,
         ProviderExecutionMode.STUB.value,
         ProviderExecutionMode.OPENAI.value,
+        ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
     }:
         execution_path = "provider.blocked_text"
         notes = (

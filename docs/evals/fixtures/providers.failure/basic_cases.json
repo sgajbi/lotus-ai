@@ -29,6 +29,76 @@
         "must_not_silently_drift_to_live": true,
         "expected_outcome": "FALLBACK_OR_REJECTION"
       }
+    },
+    {
+      "case_id": "local_provider_unavailable_model_rejects_explicitly",
+      "summary": "The local OpenAI-compatible provider path should reject explicitly when the configured model is not advertised by the endpoint.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "local_openai_compatible",
+        "rollout_state": "CANARY_ENABLED",
+        "live_text_model_id": "qwen3:8b",
+        "local_probe_status": {
+          "endpoint_reachable": true,
+          "model_available": false,
+          "blocking_reason": "Configured local model 'qwen3:8b' is not currently advertised by the local OpenAI-compatible endpoint."
+        }
+      },
+      "expected": {
+        "failure_category": "LIVE_EXECUTION_NOT_ENABLED",
+        "expected_outcome": "LOCAL_UPSTREAM_FAILURE"
+      }
+    },
+    {
+      "case_id": "local_provider_timeout_maps_cleanly",
+      "summary": "The local OpenAI-compatible provider path should map upstream timeout failures cleanly without silent fallback.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "local_openai_compatible",
+        "rollout_state": "CANARY_ENABLED",
+        "live_text_model_id": "qwen3:8b",
+        "local_probe_status": {
+          "endpoint_reachable": true,
+          "model_available": true,
+          "blocking_reason": null
+        },
+        "local_provider_error": {
+          "failure_category": "PROVIDER_TIMEOUT",
+          "message": "Local provider request exceeded the configured timeout."
+        }
+      },
+      "expected": {
+        "failure_category": "PROVIDER_TIMEOUT",
+        "expected_outcome": "LOCAL_UPSTREAM_FAILURE"
+      }
+    },
+    {
+      "case_id": "local_provider_malformed_response_maps_cleanly",
+      "summary": "The local OpenAI-compatible provider path should map malformed upstream responses to a structured upstream-error category.",
+      "input": {
+        "task_id": "explain.v1",
+        "configured_mode": "local_openai_compatible",
+        "rollout_state": "CANARY_ENABLED",
+        "live_text_model_id": "qwen3:8b",
+        "local_probe_status": {
+          "endpoint_reachable": true,
+          "model_available": true,
+          "blocking_reason": null
+        },
+        "local_provider_response": {
+          "id": "resp_local_eval_bad_001",
+          "model": "qwen3:8b",
+          "usage": {
+            "input_tokens": 120,
+            "output_tokens": 30,
+            "total_tokens": 150
+          }
+        }
+      },
+      "expected": {
+        "failure_category": "PROVIDER_UPSTREAM_ERROR",
+        "expected_outcome": "LOCAL_UPSTREAM_FAILURE"
+      }
     }
   ]
 }

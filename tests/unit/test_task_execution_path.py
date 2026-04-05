@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from pytest import MonkeyPatch
+
 from app.config import settings
 from app.contracts.tasks import CapabilityDescriptor, OutputLabel, TaskCategory
 from app.services.task_execution_path import build_task_execution_path
@@ -140,6 +144,38 @@ def test_task_execution_path_reports_live_text_when_task_is_allowlisted() -> Non
 
     assert descriptor.execution_path == "provider.live_text"
     assert descriptor.provider_mode == "openai"
+    assert descriptor.stubbed is False
+
+
+def test_task_execution_path_reports_local_live_text_when_task_is_allowlisted(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_provider_api_key = None
+    settings.live_text_allowed_task_ids = "explain.v1"
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+        )(),
+    )
+
+    descriptor = build_task_execution_path(
+        _capability("explain.v1", TaskCategory.EXPLAIN, OutputLabel.EXPLANATION_ONLY)
+    )
+
+    assert descriptor.execution_path == "provider.live_text"
+    assert descriptor.provider_mode == "local_openai_compatible"
     assert descriptor.stubbed is False
 
 

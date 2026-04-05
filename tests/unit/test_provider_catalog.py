@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from pytest import MonkeyPatch
+
 from app.config import settings
 from app.contracts.providers import (
     ProviderAdapterKind,
@@ -37,6 +41,12 @@ def test_provider_catalog_exposes_documented_disabled_execution_posture() -> Non
         for provider in catalog.providers
     )
     assert any(
+        provider.provider_id == "text.local"
+        and provider.adapter_kind == ProviderAdapterKind.OPENAI_COMPATIBLE_LOCAL
+        and provider.failure_category_on_use == ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
+        for provider in catalog.providers
+    )
+    assert any(
         provider.provider_id == "embeddings.openai"
         and provider.capability == ProviderCapability.EMBEDDINGS
         and provider.adapter_kind == ProviderAdapterKind.OPENAI_EMBEDDINGS_LIVE
@@ -71,8 +81,46 @@ def test_provider_catalog_marks_openai_provider_executable_when_rollout_allows_i
         for rule in catalog.expansion_policy.capability_rules
         if rule.capability == ProviderCapability.TEXT_GENERATION
     )
-    assert text_rule.live_capable_provider_ids == ["text.openai"]
+    assert text_rule.live_capable_provider_ids == ["text.openai", "text.local"]
     assert openai_provider.enabled_for_execution is True
+
+
+def test_provider_catalog_marks_local_provider_executable_when_rollout_allows_it(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+        )(),
+    )
+
+    catalog = build_provider_catalog()
+
+    local_provider = next(
+        provider for provider in catalog.providers if provider.provider_id == "text.local"
+    )
+    assert catalog.runtime_execution_enabled is True
+    assert catalog.text_generation_runtime_execution_enabled is True
+    text_rule = next(
+        rule
+        for rule in catalog.expansion_policy.capability_rules
+        if rule.capability == ProviderCapability.TEXT_GENERATION
+    )
+    assert text_rule.live_capable_provider_ids == ["text.openai", "text.local"]
+    assert local_provider.enabled_for_execution is True
 
 
 def test_provider_catalog_exposes_live_embedding_path_without_enabling_execution() -> None:

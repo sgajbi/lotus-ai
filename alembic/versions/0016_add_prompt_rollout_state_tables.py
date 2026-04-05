@@ -123,7 +123,7 @@ def upgrade() -> None:
                 NULL,
                 NULL,
                 'GOVERNED_STATE_READ_ONLY',
-                0,
+                FALSE,
                 :updated_at
             FROM prompt_definitions
             """

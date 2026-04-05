@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from pytest import MonkeyPatch
+
 from app.config import settings
 from app.contracts.providers import ProviderCredentialStatus, ProviderRolloutState
 from app.services.provider_activation_readiness import build_provider_activation_readiness
@@ -147,3 +151,31 @@ def test_provider_activation_readiness_reports_degraded_upstream_blocking() -> N
 
     assert readiness.activation_ready is False
     assert any("currently degraded" in finding for finding in readiness.blocking_findings)
+
+
+def test_provider_activation_readiness_blocks_local_mode_when_model_catalog_is_unavailable(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": True,
+                "model_available": False,
+                "blocking_reason": "Configured local model id is not advertised by the local OpenAI-compatible endpoint.",
+            },
+        )(),
+    )
+
+    readiness = build_provider_activation_readiness()
+
+    assert readiness.activation_ready is False
+    assert any("not advertised" in finding for finding in readiness.blocking_findings)

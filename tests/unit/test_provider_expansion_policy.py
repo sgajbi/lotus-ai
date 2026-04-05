@@ -25,9 +25,9 @@ def test_provider_expansion_policy_reports_bounded_headroom_per_capability() -> 
         rule for rule in policy.capability_rules if rule.capability == ProviderCapability.EMBEDDINGS
     )
 
-    assert text_rule.registered_provider_ids == ["text.stub", "text.openai"]
-    assert text_rule.live_capable_provider_ids == ["text.openai"]
-    assert text_rule.max_governed_provider_count == 3
+    assert text_rule.registered_provider_ids == ["text.stub", "text.openai", "text.local"]
+    assert text_rule.live_capable_provider_ids == ["text.openai", "text.local"]
+    assert text_rule.max_governed_provider_count == 4
     assert text_rule.available_expansion_slots == 1
     assert text_rule.expansion_ready is True
 
@@ -77,6 +77,16 @@ def test_provider_expansion_policy_blocks_when_registered_breadth_exceeds_bounde
             ProviderAdapterDescriptor(
                 provider_id="text.alt.two",
                 display_name="Alt Two",
+                capability=ProviderCapability.TEXT_GENERATION,
+                adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
+                runtime_mode=ProviderExecutionMode.OPENAI,
+                enabled_for_execution=False,
+                source_reference="tests",
+                notes="candidate",
+            ),
+            ProviderAdapterDescriptor(
+                provider_id="text.alt.three",
+                display_name="Alt Three",
                 capability=ProviderCapability.TEXT_GENERATION,
                 adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
                 runtime_mode=ProviderExecutionMode.OPENAI,

@@ -118,6 +118,161 @@ def test_execute_fixture_case_reports_pass_for_provider_embedding_success_case()
     assert evidence_refs == ["service://platform/providers", "service://platform/providers/policy"]
 
 
+def test_execute_fixture_case_reports_pass_for_local_provider_runtime_success_case() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="local_openai_compatible_provider_preserves_provider_identity_when_ready",
+        summary="Local provider should preserve provider identity and bounded controls.",
+        input_payload={
+            "task_id": "explain.v1",
+            "configured_mode": "local_openai_compatible",
+            "rollout_state": "CANARY_ENABLED",
+            "live_text_model_id": "qwen3:8b",
+            "live_text_api_base": "http://ollama:11434/v1",
+            "local_probe_status": {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+            "local_provider_response": {
+                "id": "resp_local_eval_001",
+                "model": "qwen3:8b",
+                "output_text": "Local evaluation response.",
+                "usage": {"input_tokens": 120, "output_tokens": 30, "total_tokens": 150},
+            },
+            "timeout_ms": 4000,
+            "retry_limit": 0,
+            "max_output_tokens": 512,
+        },
+        expected_payload={
+            "provider_mode": "local_openai_compatible",
+            "provider_id": "text.local",
+            "adapter_kind": "OPENAI_COMPATIBLE_LOCAL",
+            "stubbed": False,
+            "expected_outcome": "SUCCESS",
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="provider_runtime_examples",
+            fixture_task_id="provider.runtime.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "provider identity" in summary
+    assert evidence_refs == ["service://ai/tasks/execute"]
+
+
+def test_execute_fixture_case_reports_pass_for_local_provider_unavailable_model_case() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="local_provider_unavailable_model_rejects_explicitly",
+        summary="Local provider should reject when configured model is unavailable.",
+        input_payload={
+            "task_id": "explain.v1",
+            "configured_mode": "local_openai_compatible",
+            "rollout_state": "CANARY_ENABLED",
+            "live_text_model_id": "qwen3:8b",
+            "local_probe_status": {
+                "endpoint_reachable": True,
+                "model_available": False,
+                "blocking_reason": "Configured local model 'qwen3:8b' is not currently advertised by the local OpenAI-compatible endpoint.",
+            },
+        },
+        expected_payload={
+            "failure_category": "LIVE_EXECUTION_NOT_ENABLED",
+            "expected_outcome": "LOCAL_UPSTREAM_FAILURE",
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, evidence_refs = _execute_fixture_case(
+            fixture_id="provider_failure_mode_examples",
+            fixture_task_id="provider.failure.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "mapped cleanly" in summary
+    assert evidence_refs == [
+        "service://ai/tasks/execute",
+        "service://platform/providers/operations-status",
+    ]
+
+
+def test_execute_fixture_case_reports_pass_for_local_provider_timeout_case() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="local_provider_timeout_maps_cleanly",
+        summary="Local provider timeout should map to provider timeout.",
+        input_payload={
+            "task_id": "explain.v1",
+            "configured_mode": "local_openai_compatible",
+            "rollout_state": "CANARY_ENABLED",
+            "live_text_model_id": "qwen3:8b",
+            "local_probe_status": {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+            "local_provider_error": {
+                "failure_category": "PROVIDER_TIMEOUT",
+                "message": "Local provider request exceeded the configured timeout.",
+            },
+        },
+        expected_payload={
+            "failure_category": "PROVIDER_TIMEOUT",
+            "expected_outcome": "LOCAL_UPSTREAM_FAILURE",
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, _evidence_refs = _execute_fixture_case(
+            fixture_id="provider_failure_mode_examples",
+            fixture_task_id="provider.failure.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "PROVIDER_TIMEOUT" in summary
+
+
+def test_execute_fixture_case_reports_pass_for_local_provider_malformed_response_case() -> None:
+    case = EvaluationFixtureRuntimeCase(
+        case_id="local_provider_malformed_response_maps_cleanly",
+        summary="Malformed local provider responses should map to upstream error.",
+        input_payload={
+            "task_id": "explain.v1",
+            "configured_mode": "local_openai_compatible",
+            "rollout_state": "CANARY_ENABLED",
+            "live_text_model_id": "qwen3:8b",
+            "local_probe_status": {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+            "local_provider_response": {
+                "id": "resp_local_eval_bad_001",
+                "model": "qwen3:8b",
+                "usage": {"input_tokens": 120, "output_tokens": 30, "total_tokens": 150},
+            },
+        },
+        expected_payload={
+            "failure_category": "PROVIDER_UPSTREAM_ERROR",
+            "expected_outcome": "LOCAL_UPSTREAM_FAILURE",
+        },
+    )
+
+    with _apply_case_configuration(case.input_payload):
+        summary, outcome, _evidence_refs = _execute_fixture_case(
+            fixture_id="provider_failure_mode_examples",
+            fixture_task_id="provider.failure.v1",
+            case=case,
+        )
+
+    assert outcome == EvaluationCaseOutcome.PASS
+    assert "PROVIDER_UPSTREAM_ERROR" in summary
+
+
 def test_execute_fixture_case_reports_pass_for_retrieval_embedding_stub_posture() -> None:
     case = EvaluationFixtureRuntimeCase(
         case_id="retrieval_indexing_reports_stub_embedding_posture_when_disabled",

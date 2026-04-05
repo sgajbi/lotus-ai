@@ -19,6 +19,8 @@ def build_text_generation_configuration_status() -> ProviderConfigurationStatusD
     configured_live_provider_id = settings.live_text_provider_id
     configured_live_model_id = settings.live_text_model_id
     api_key = settings.live_text_provider_api_key
+    api_base = settings.live_text_api_base
+    provider_mode = settings.provider_mode
     allowlisted_task_ids = list_live_text_allowlisted_task_ids()
     invalid_allowlisted_task_ids = list_invalid_live_text_allowlisted_task_ids()
 
@@ -36,17 +38,17 @@ def build_text_generation_configuration_status() -> ProviderConfigurationStatusD
         ProviderRolloutState.CANARY_ENABLED,
         ProviderRolloutState.ROLLED_OUT,
     }
-    live_config_values = [
-        configured_live_provider_id,
-        configured_live_model_id,
-        api_key,
-    ]
+    expected_provider_ids = _expected_live_text_provider_ids(provider_mode)
+    api_key_required = _live_text_api_key_required(provider_mode)
+    live_config_values = [configured_live_provider_id, configured_live_model_id]
+    if api_key_required:
+        live_config_values.append(api_key)
     populated_live_config_count = sum(bool(value) for value in live_config_values)
 
     if rollout_requires_live_config and populated_live_config_count < len(live_config_values):
         configuration_valid = False
         findings.append(
-            "Live-provider rollout state requires allowlisted provider id, model id, and provider credential configuration."
+            "Live-provider rollout state requires allowlisted provider id, model id, and any mandatory credential configuration."
         )
     if rollout_requires_live_config and not allowlisted_task_ids:
         configuration_valid = False
@@ -58,10 +60,17 @@ def build_text_generation_configuration_status() -> ProviderConfigurationStatusD
         findings.append(
             "Live-provider task allowlist contains unknown or retrieval-backed task ids, which are not valid for live text-generation rollout."
         )
-    if configured_live_provider_id not in {None, "text.openai"}:
+    if configured_live_provider_id not in expected_provider_ids:
         configuration_valid = False
         findings.append(
             "Configured live text provider id is not recognized by the current provider backbone."
+        )
+    if provider_mode == ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value and (
+        api_base.strip().rstrip("/") == "https://api.openai.com/v1"
+    ):
+        configuration_valid = False
+        findings.append(
+            "Local OpenAI-compatible mode requires a non-default local or self-hosted API base."
         )
 
     if not rollout_requires_live_config and populated_live_config_count > 0:
@@ -179,3 +188,13 @@ def _resolve_rollout_state() -> ProviderRolloutState | None:
         return ProviderRolloutState(configured_state)
     except ValueError:
         return None
+
+
+def _expected_live_text_provider_ids(provider_mode: str) -> set[str | None]:
+    if provider_mode == ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value:
+        return {None, "text.local"}
+    return {None, "text.openai"}
+
+
+def _live_text_api_key_required(provider_mode: str) -> bool:
+    return provider_mode != ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value

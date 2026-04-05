@@ -7,6 +7,7 @@ from app.contracts.access_control import (
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
+from app.contracts.providers import ProviderAdapterKind
 from app.contracts.safety import RedactionPosture
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.repositories.memory_audit_repository import InMemoryAuditRepository
@@ -52,6 +53,9 @@ def test_in_memory_audit_store_save_and_get() -> None:
             latest_control_event=None,
         ),
         provider_mode="disabled",
+        provider_id="text.stub",
+        adapter_kind=ProviderAdapterKind.STUB,
+        model_id=None,
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
         enforced_safety_controls=["response_labeling", "correlation_and_audit"],
@@ -110,6 +114,9 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
             latest_control_event=None,
         ),
         provider_mode="disabled",
+        provider_id="text.stub",
+        adapter_kind=ProviderAdapterKind.STUB,
+        model_id=None,
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
         enforced_safety_controls=["response_labeling", "correlation_and_audit"],

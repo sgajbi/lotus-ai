@@ -35,6 +35,9 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["task_id"] == "explain.v1"
     assert body["status"] == "COMPLETED"
     assert body["audit"]["stubbed"] is True
+    assert body["audit"]["provider_id"] == "text.stub"
+    assert body["audit"]["adapter_kind"] == "STUB"
+    assert body["audit"]["model_id"] is None
     assert body["audit"]["prompt_version"] == "foundation.explain.v1"
     assert body["audit"]["prompt_selection"]["prompt_version"] == "foundation.explain.v1"
     assert body["audit"]["prompt_selection"]["latest_control_event"] is None
@@ -47,6 +50,95 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
     assert body["evidence"]["descriptors"][5]["evidence_type"] == "access_control"
     assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"
+
+
+def test_task_execute_contract_returns_grounded_advisor_brief_for_gateway_fact_bundle(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-gateway",
+                "correlation_id": "corr-advisor-brief-001",
+            },
+            "context": {
+                "summary": "Draft advisor brief from source performance facts.",
+                "payload": {
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [
+                        {"key": "portfolio_context", "value": "ready"},
+                        {"key": "performance_context", "value": "ready"},
+                    ],
+                    "contribution": {
+                        "top_positions": [
+                            {"position_id": "AAPL US", "total_contribution_pct": 0.3}
+                        ],
+                    },
+                    "attribution": {
+                        "top_effects": [
+                            {"key_label": "Asset Class / Equity", "total_effect_pct": -4.1},
+                        ],
+                    },
+                },
+                "source_refs": [
+                    "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+                    "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-details:YTD",
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["task_id"] == "explain.v1"
+    assert body["status"] == "COMPLETED"
+    assert body["audit"]["stubbed"] is True
+    assert body["audit"]["authorization"]["caller_app"] == "lotus-gateway"
+    assert body["result"]["message"] == (
+        "PB_SG_GLOBAL_BAL_001 delivered 1.25% over YTD versus 7.93% for the benchmark, "
+        "resulting in -6.68% active return. net flow was N/A and ending market value "
+        "was N/A. largest contribution came from AAPL US (0.30%). largest benchmark-relative "
+        "attribution effect was Asset Class / Equity (-4.10%)."
+    )
+    assert body["result"]["structured_output"]["advisor_brief_status"] == "ready"
+    assert body["result"]["structured_output"]["talking_points"][0] == {
+        "headline": "YTD active return was -6.68%.",
+        "detail": (
+            "Portfolio Return was 1.25% versus Benchmark Return 7.93%. Review Return "
+            "Path for period-by-period context."
+        ),
+        "tone": "warning",
+        "evidence_refs": [
+            {
+                "metric_label": "Active Return",
+                "metric_value": "-6.68%",
+                "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+            }
+        ],
+    }
+    assert body["result"]["structured_output"]["recommended_actions"][0]["label"] == (
+        "Review Return Path"
+    )
+    assert body["result"]["structured_output"]["grounded_facts"][0] == {
+        "metric_label": "Portfolio Return",
+        "metric_value": "1.25%",
+        "source_ref": "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+    }
+    assert body["result"]["structured_output"]["source_refs"] == [
+        "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+        "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-details:YTD",
+    ]
+    assert len(body["evidence"]["descriptors"]) == 6
 
 
 def test_task_execute_contract_enforces_runtime_redaction_when_enabled(client: TestClient) -> None:
@@ -201,6 +293,10 @@ def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
     assert body["output_label"] == "DRAFT"
     assert body["prompt_version"] == "foundation.summarize.v1"
     assert body["prompt_selection"]["prompt_version"] == "foundation.summarize.v1"
+    assert body["provider_mode"] == "disabled"
+    assert body["provider_id"] == "text.stub"
+    assert body["adapter_kind"] == "STUB"
+    assert body["model_id"] is None
     assert body["safety_mode"] == "documented_only"
     assert body["enforced_safety_controls"] == [
         "response_labeling",
@@ -663,3 +759,239 @@ def test_task_execute_contract_blocks_live_provider_for_caller_without_live_perm
 
     assert response.status_code == 403
     assert "not authorized for live provider execution" in response.json()["detail"]
+
+
+def test_task_execute_contract_allows_lotus_gateway_live_advisor_brief(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_input_cost_per_1k_tokens = 0.01
+    settings.live_text_output_cost_per_1k_tokens = 0.03
+    monkeypatch.setattr(
+        "app.providers.openai_live_text_provider._post_openai_response",
+        lambda **_: {
+            "id": "resp_gateway_advisor_brief",
+            "model": "gpt-5.4",
+            "output_text": (
+                '{"grounded_summary":"Portfolio lagged benchmark on YTD.",'
+                '"talking_points":[],"recommended_actions":[],"risks_and_exceptions":[]}'
+            ),
+            "usage": {"input_tokens": 120, "output_tokens": 30, "total_tokens": 150},
+        },
+    )
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-gateway",
+                "correlation_id": "corr-live-gateway-advisor",
+            },
+            "context": {
+                "summary": "Generate Advisor Brief",
+                "payload": {
+                    "portfolio": {
+                        "portfolio_id": "PB_SG_GLOBAL_BAL_001",
+                        "display_label": "PB SG GLOBAL BAL 001",
+                    },
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [
+                        {"label": "Advisor Brief", "value": "Ready"},
+                    ],
+                },
+                "source_refs": [
+                    "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "COMPLETED"
+    assert body["audit"]["provider_mode"] == "openai"
+    assert body["audit"]["provider_id"] == "text.openai"
+    assert body["audit"]["adapter_kind"] == "OPENAI_LIVE"
+    assert body["audit"]["model_id"] == "gpt-5.4"
+    assert body["result"]["structured_output"]["grounded_summary"] == (
+        "Portfolio lagged benchmark on YTD."
+    )
+
+
+def test_task_execute_contract_supports_local_openai_compatible_execution(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen3:8b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_input_cost_per_1k_tokens = 0.0
+    settings.live_text_output_cost_per_1k_tokens = 0.0
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
+        lambda **_: {
+            "id": "resp_local_contract_001",
+            "model": "qwen3:8b",
+            "output_text": "Local governed explanation response.",
+            "usage": {"input_tokens": 120, "output_tokens": 30, "total_tokens": 150},
+        },
+    )
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-local-contract",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Explain rebalance outcome",
+                "payload": {"status": "BLOCKED", "violations": 2},
+                "source_refs": ["lotus-manage:run:reb_local_contract"],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "COMPLETED"
+    assert body["audit"]["stubbed"] is False
+    assert body["audit"]["provider_mode"] == "local_openai_compatible"
+    assert body["audit"]["provider_id"] == "text.local"
+    assert body["audit"]["adapter_kind"] == "OPENAI_COMPATIBLE_LOCAL"
+    assert body["audit"]["model_id"] == "qwen3:8b"
+    assert body["result"]["message"] == "Local governed explanation response."
+    provider_evidence = next(
+        descriptor
+        for descriptor in body["evidence"]["descriptors"]
+        if descriptor["evidence_type"] == "provider_resolution"
+    )
+    assert provider_evidence["attributes"]["provider_id"] == "text.local"
+    assert provider_evidence["attributes"]["adapter_kind"] == "OPENAI_COMPATIBLE_LOCAL"
+    assert provider_evidence["attributes"]["model_id"] == "qwen3:8b"
+
+
+def test_task_execute_contract_guards_against_local_contract_echo_output(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen2.5:1.5b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_input_cost_per_1k_tokens = 0.0
+    settings.live_text_output_cost_per_1k_tokens = 0.0
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
+        lambda **_: {
+            "id": "resp_local_contract_echo",
+            "model": "qwen2.5:1.5b",
+            "output_text": (
+                '{"grounded_summary":"The output contract for the structured Lotus domain with '
+                'the provided data and context is as follows.",'
+                '"talking_points":[],"recommended_actions":[],"risks_and_exceptions":[]}'
+            ),
+            "usage": {"input_tokens": 220, "output_tokens": 80, "total_tokens": 300},
+        },
+    )
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-gateway",
+                "correlation_id": "corr-local-echo-guardrail",
+            },
+            "context": {
+                "summary": "Generate Advisor Brief",
+                "payload": {
+                    "portfolio": {
+                        "portfolio_id": "PB_SG_GLOBAL_BAL_001",
+                        "display_label": "PB SG GLOBAL BAL 001",
+                    },
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [
+                        {"label": "Advisor Brief", "value": "Ready"},
+                    ],
+                    "contribution": {
+                        "top_positions": [{"position_id": "AAPL US", "total_contribution_pct": 0.3}]
+                    },
+                },
+                "source_refs": [
+                    "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["audit"]["provider_mode"] == "local_openai_compatible"
+    assert body["audit"]["model_id"] == "qwen2.5:1.5b"
+    assert body["result"]["message"].startswith("PB SG GLOBAL BAL 001 delivered 1.25% over YTD")
+    assert body["result"]["structured_output"]["advisor_brief_guardrail_triggered"] is True
+    assert body["result"]["structured_output"]["advisor_brief_guardrail_reason"] == (
+        "invalid_grounded_summary_language"
+    )
+    assert body["result"]["structured_output"]["talking_points"]

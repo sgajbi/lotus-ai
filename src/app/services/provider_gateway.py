@@ -23,10 +23,16 @@ from app.services.provider_live_execution_state import build_provider_live_execu
 from app.services.provider_quota_policy import enforce_provider_quota
 
 
+LIVE_TEXT_MODES = {
+    ProviderExecutionMode.OPENAI,
+    ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE,
+}
+
+
 def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecutionResponse:
     mode = require_supported_text_generation_mode()
     live_execution_state = build_provider_live_execution_state(task_id=request.task_id)
-    if mode == ProviderExecutionMode.OPENAI and not live_execution_state.live_execution_enabled:
+    if mode in LIVE_TEXT_MODES and not live_execution_state.live_execution_enabled:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
@@ -34,7 +40,7 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
                 f"{live_execution_state.blocking_reason}"
             ),
         )
-    if mode == ProviderExecutionMode.OPENAI:
+    if mode in LIVE_TEXT_MODES:
         require_authorized(
             authorize_request(
                 caller_app=request.caller_app,
@@ -55,12 +61,12 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
     adapter = resolve_text_generation_adapter(mode)
     try:
         response = adapter.execute(request)
-        if mode == ProviderExecutionMode.OPENAI:
+        if mode in LIVE_TEXT_MODES:
             record_provider_spend(response)
             record_successful_provider_execution()
         return response
     except ProviderExecutionError as exc:
-        if mode == ProviderExecutionMode.OPENAI:
+        if mode in LIVE_TEXT_MODES:
             record_provider_failure(exc.category)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
