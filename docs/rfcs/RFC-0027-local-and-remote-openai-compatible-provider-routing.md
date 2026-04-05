@@ -1,6 +1,6 @@
 # RFC-0027: Local and Remote OpenAI-Compatible Provider Routing
 
-- Status: Active
+- Status: Implemented
 - Date: 2026-04-05
 - Owners: lotus-ai
 - Requires Approval From: lotus-ai maintainers, lotus-platform maintainers, lotus-gateway maintainers
@@ -35,13 +35,54 @@ Completed:
 5. Slice 5: downstream adoption validation and local-output quality guardrails
 
 Remaining:
-1. final merge, rollout, and cross-repo acceptance closure
+1. none
 
 The decision is to keep one stable Lotus AI task contract and add a second live-provider mode:
 `local_openai_compatible`.
 
 That mode will allow `lotus-ai` to route the same task contract to a local model server such as
 Ollama or vLLM without changing `lotus-gateway` or `lotus-workbench`.
+
+## Closure Notes
+
+RFC-0027 is implemented.
+
+The implementation standard for this RFC is:
+
+1. one stable caller contract across `disabled`, `openai`, and `local_openai_compatible`,
+2. first-class operator switching and audit evidence,
+3. a documented local default that is cost-free and platform-valid,
+4. bounded fallback behavior when local generations are low quality,
+5. no downstream contract drift in `lotus-gateway` or `lotus-workbench`.
+
+This RFC does not claim that every free local model is equivalent in narrative quality to the
+managed OpenAI path. That would be false. What it does provide is the governed routing, audit,
+fallback, and operator control needed to run both local and remote execution behind the same Lotus
+contract.
+
+### Qualified Local Default
+
+The current documented local default profile is:
+
+1. `provider_mode = local_openai_compatible`
+2. `provider_id = text.local`
+3. `model_id = qwen2.5:1.5b`
+4. `api_base = http://ollama:11434/v1`
+
+Qualification outcome:
+
+1. `qwen2.5:1.5b` is accepted as the default cost-free workstation-local profile because it is the
+   best current balance of availability, latency, and contract compliance in the tested local
+   environment.
+2. `qwen2.5:3b` was slower in the tested environment without materially better advisor-brief output.
+3. `qwen3:8b` was not accepted as the default profile in the tested environment because the local
+   serving path was not stable enough for routine workstation use.
+
+This means:
+
+1. `qwen2.5:1.5b` is the qualified local default for cost-free local execution,
+2. the managed OpenAI path remains the stronger option when premium narrative quality is required,
+3. local model upgrades are an operator qualification exercise, not an automatic assumption.
 
 ## Why This RFC Exists
 
