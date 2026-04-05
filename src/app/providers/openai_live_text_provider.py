@@ -47,7 +47,7 @@ class OpenAILiveTextProvider(TextGenerationProviderAdapter):
             timeout_seconds=max(request.timeout_ms / 1000.0, 1.0),
         )
         output_message = _extract_output_text(response_payload)
-        structured_output = _build_structured_output(
+        message, structured_output = _build_structured_output(
             descriptor=self.descriptor,
             request=request,
             response_payload=response_payload,
@@ -69,7 +69,7 @@ class OpenAILiveTextProvider(TextGenerationProviderAdapter):
             total_tokens=total_tokens,
             estimated_cost_usd=structured_output.get("estimated_cost_usd"),
             stubbed=False,
-            message=output_message,
+            message=message,
             structured_output=structured_output,
         )
 

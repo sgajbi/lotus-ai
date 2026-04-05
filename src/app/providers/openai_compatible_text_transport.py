@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import Any, cast
 from urllib import error, request as urllib_request
 
@@ -15,6 +14,10 @@ from app.contracts.providers import (
     ProviderFailureCategory,
 )
 from app.providers.base import ProviderAdapterDescriptor, ProviderExecutionError
+from app.providers.advisor_brief_quality_guardrails import (
+    build_advisor_brief_user_message,
+    normalize_advisor_brief_output,
+)
 from app.services.provider_usage_accounting import estimate_live_text_cost_usd
 
 
@@ -57,7 +60,7 @@ def execute_openai_compatible_text_request(
         require_api_key=require_api_key,
     )
     output_message = extract_output_text(response_payload)
-    structured_output = build_structured_output(
+    message, structured_output = build_structured_output(
         descriptor=descriptor,
         request=request,
         response_payload=response_payload,
@@ -82,27 +85,19 @@ def execute_openai_compatible_text_request(
             output_tokens=output_tokens,
         ),
         stubbed=False,
-        message=output_message,
+        message=message,
         structured_output=structured_output,
     )
 
 
 def build_user_message(request: ProviderExecutionRequest) -> str:
-    advisor_contract_notes = ""
     if is_advisor_brief_payload(request.context_payload):
-        advisor_contract_notes = (
-            "\n\nAdvisor Brief output contract:\n"
-            "Return JSON only with keys grounded_summary, talking_points, "
-            "recommended_actions, and risks_and_exceptions. Return at most 3 talking points, "
-            "3 recommended actions, and 3 risks/exceptions. Keep grounded_summary under 450 "
-            "characters and each detail under 220 characters. Each talking point and risk item "
-            "must include headline, detail, tone, and evidence_refs. Use tone values positive, "
-            "neutral, or warning only. Each evidence ref must use metric_label, metric_value, "
-            "and source_ref from the supplied source_refs only. Each recommended action must "
-            "include label, detail, and evidence_refs. Prefer portfolio.display_label, "
-            "benchmark.benchmark_name, and position display_label fields when present. Never "
-            "show raw portfolio_id, benchmark_code, or position_id identifiers if a display "
-            "label is available. Do not invent facts that are absent from context_payload."
+        return build_advisor_brief_user_message(
+            task_id=request.task_id,
+            caller_app=request.caller_app,
+            context_summary=request.context_summary,
+            context_payload=request.context_payload,
+            source_refs=request.source_refs,
         )
     return json.dumps(
         {
@@ -111,7 +106,6 @@ def build_user_message(request: ProviderExecutionRequest) -> str:
             "context_summary": request.context_summary,
             "context_payload": request.context_payload,
             "source_refs": request.source_refs,
-            "output_contract_override": advisor_contract_notes.strip() or None,
         },
         indent=2,
         sort_keys=True,
@@ -245,7 +239,7 @@ def build_structured_output(
     request: ProviderExecutionRequest,
     response_payload: dict[str, Any],
     output_message: str,
-) -> dict[str, Any]:
+) -> tuple[str, dict[str, Any]]:
     structured_output: dict[str, Any] = {
         "provider_id": descriptor.provider_id,
         "provider_mode": descriptor.runtime_mode.value,
@@ -270,23 +264,17 @@ def build_structured_output(
         }
     )
     if not is_advisor_brief_payload(request.context_payload):
-        return structured_output
+        return output_message, structured_output
 
     parsed = parse_json_object(output_message)
-    if parsed is None:
-        structured_output["grounded_summary"] = (
-            extract_grounded_summary_fragment(output_message) or output_message
-        )
-        return structured_output
-    structured_output.update(
-        {
-            "grounded_summary": as_str(parsed.get("grounded_summary")) or output_message,
-            "talking_points": safe_list(parsed.get("talking_points")),
-            "recommended_actions": safe_list(parsed.get("recommended_actions")),
-            "risks_and_exceptions": safe_list(parsed.get("risks_and_exceptions")),
-        }
+    quality_result = normalize_advisor_brief_output(
+        parsed_output=parsed,
+        output_message=output_message,
+        context_payload=request.context_payload,
+        source_refs=request.source_refs,
     )
-    return structured_output
+    structured_output.update(quality_result.structured_output)
+    return quality_result.message, structured_output
 
 
 def parse_json_object(value: str) -> dict[str, Any] | None:
@@ -302,17 +290,6 @@ def parse_json_object(value: str) -> dict[str, Any] | None:
         except json.JSONDecodeError:
             return None
     return parsed if isinstance(parsed, dict) else None
-
-
-def extract_grounded_summary_fragment(value: str) -> str | None:
-    match = re.search(r'"grounded_summary"\s*:\s*"((?:[^"\\]|\\.)*)"', value, flags=re.S)
-    if match is None:
-        return None
-    try:
-        parsed = json.loads(f'"{match.group(1)}"')
-    except json.JSONDecodeError:
-        return None
-    return parsed if isinstance(parsed, str) and parsed.strip() else None
 
 
 def strip_json_code_fence(value: str) -> str:
@@ -350,10 +327,6 @@ def extract_balanced_json_object(value: str) -> str | None:
             if depth == 0:
                 return value[start : index + 1]
     return None
-
-
-def safe_list(value: Any) -> list[Any]:
-    return value if isinstance(value, list) else []
 
 
 OPENAI_MANAGED_TEXT_DESCRIPTOR = ProviderAdapterDescriptor(

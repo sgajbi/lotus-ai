@@ -5,6 +5,7 @@ def _advisor_context_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "portfolio": {
             "portfolio_id": "PB_SG_GLOBAL_BAL_001",
+            "display_label": "PB SG GLOBAL BAL 001",
             "portfolio_name": "PB SG Global Balanced",
         },
         "period": {"period": "YTD"},
@@ -20,6 +21,7 @@ def _advisor_context_payload(**overrides: object) -> dict[str, object]:
             "top_positions": [
                 {
                     "position_id": "PB_SG_GLOBAL_BAL_001:FO_EQ_AAPL_US",
+                    "display_label": "AAPL US",
                     "contribution_pct": 0.3,
                     "total_return_pct": 4.31,
                 },
@@ -27,6 +29,7 @@ def _advisor_context_payload(**overrides: object) -> dict[str, object]:
             "bottom_positions": [
                 {
                     "position_id": "PB_SG_GLOBAL_BAL_001:FO_CASH_USD_BOOK_OPERATING",
+                    "display_label": "USD BOOK OPERATING",
                     "contribution_pct": -0.06,
                     "total_return_pct": 0.0,
                 },
@@ -59,7 +62,7 @@ def test_build_advisor_brief_stub_result_returns_source_grounded_summary() -> No
     message, structured_output = result
 
     assert message == (
-        "PB_SG_GLOBAL_BAL_001 delivered 1.25% over YTD versus 7.93% for the benchmark, "
+        "PB SG GLOBAL BAL 001 delivered 1.25% over YTD versus 7.93% for the benchmark, "
         "resulting in -6.68% active return. net flow was $14,725 and ending market value "
         "was $1,087,461. largest contribution came from AAPL US (0.30%) while the main "
         "drag was USD BOOK OPERATING (-0.06%). largest benchmark-relative attribution "

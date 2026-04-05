@@ -798,7 +798,10 @@ def test_task_execute_contract_allows_lotus_gateway_live_advisor_brief(
             "context": {
                 "summary": "Generate Advisor Brief",
                 "payload": {
-                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "portfolio": {
+                        "portfolio_id": "PB_SG_GLOBAL_BAL_001",
+                        "display_label": "PB SG GLOBAL BAL 001",
+                    },
                     "period": {"period": "YTD"},
                     "performance": {
                         "portfolio_return_pct": 1.25,
@@ -901,3 +904,94 @@ def test_task_execute_contract_supports_local_openai_compatible_execution(
     assert provider_evidence["attributes"]["provider_id"] == "text.local"
     assert provider_evidence["attributes"]["adapter_kind"] == "OPENAI_COMPATIBLE_LOCAL"
     assert provider_evidence["attributes"]["model_id"] == "qwen3:8b"
+
+
+def test_task_execute_contract_guards_against_local_contract_echo_output(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from app.config import settings
+
+    settings.provider_mode = "local_openai_compatible"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.local"
+    settings.live_text_model_id = "qwen2.5:1.5b"
+    settings.live_text_api_base = "http://ollama:11434/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.live_text_input_cost_per_1k_tokens = 0.0
+    settings.live_text_output_cost_per_1k_tokens = 0.0
+    monkeypatch.setattr(
+        "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
+        lambda: type(
+            "ProbeStatus",
+            (),
+            {
+                "endpoint_reachable": True,
+                "model_available": True,
+                "blocking_reason": None,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
+        lambda **_: {
+            "id": "resp_local_contract_echo",
+            "model": "qwen2.5:1.5b",
+            "output_text": (
+                '{"grounded_summary":"The output contract for the structured Lotus domain with '
+                'the provided data and context is as follows.",'
+                '"talking_points":[],"recommended_actions":[],"risks_and_exceptions":[]}'
+            ),
+            "usage": {"input_tokens": 220, "output_tokens": 80, "total_tokens": 300},
+        },
+    )
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-gateway",
+                "correlation_id": "corr-local-echo-guardrail",
+            },
+            "context": {
+                "summary": "Generate Advisor Brief",
+                "payload": {
+                    "portfolio": {
+                        "portfolio_id": "PB_SG_GLOBAL_BAL_001",
+                        "display_label": "PB SG GLOBAL BAL 001",
+                    },
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [
+                        {"label": "Advisor Brief", "value": "Ready"},
+                    ],
+                    "contribution": {
+                        "top_positions": [
+                            {"position_id": "AAPL US", "total_contribution_pct": 0.3}
+                        ]
+                    },
+                },
+                "source_refs": [
+                    "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["audit"]["provider_mode"] == "local_openai_compatible"
+    assert body["audit"]["model_id"] == "qwen2.5:1.5b"
+    assert body["result"]["message"].startswith("PB SG GLOBAL BAL 001 delivered 1.25% over YTD")
+    assert body["result"]["structured_output"]["advisor_brief_guardrail_triggered"] is True
+    assert body["result"]["structured_output"]["advisor_brief_guardrail_reason"] == (
+        "invalid_grounded_summary_language"
+    )
+    assert body["result"]["structured_output"]["talking_points"]

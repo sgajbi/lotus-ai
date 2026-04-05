@@ -19,6 +19,7 @@ def build_advisor_brief_stub_result(
     attribution = _safe_dict(context_payload.get("attribution"))
 
     portfolio_id = _safe_str(portfolio.get("portfolio_id")) or "the selected portfolio"
+    portfolio_label = _safe_str(portfolio.get("display_label")) or portfolio_id
     period_label = _safe_str(period.get("period")) or "the selected period"
     portfolio_return = _format_pct(performance.get("portfolio_return_pct"))
     benchmark_return = _format_pct(performance.get("benchmark_return_pct"))
@@ -65,7 +66,7 @@ def build_advisor_brief_stub_result(
 
     summary_parts = [
         (
-            f"{portfolio_id} delivered {portfolio_return} over {period_label} versus "
+            f"{portfolio_label} delivered {portfolio_return} over {period_label} versus "
             f"{benchmark_return} for the benchmark, resulting in {active_return} active return"
         ),
         f"net flow was {net_flow} and ending market value was {end_market_value}",
@@ -351,7 +352,9 @@ def _pick_position(value: Any) -> dict[str, str] | None:
     if not rows:
         return None
     row = _safe_dict(rows[0])
-    label = _normalize_position_label(_safe_str(row.get("position_id")))
+    label = _safe_str(row.get("display_label")) or _normalize_position_label(
+        _safe_str(row.get("position_id"))
+    )
     if not label:
         return None
     return {

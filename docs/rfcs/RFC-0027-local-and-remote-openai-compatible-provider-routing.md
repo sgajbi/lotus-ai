@@ -32,10 +32,10 @@ Completed:
 2. Slice 2: local OpenAI-compatible runtime support
 3. Slice 3: operator switching and runbooks
 4. Slice 4: evaluation and operational hardening
+5. Slice 5: downstream adoption validation and local-output quality guardrails
 
 Remaining:
-
-1. Slice 5: downstream adoption validation
+1. final merge, rollout, and cross-repo acceptance closure
 
 The decision is to keep one stable Lotus AI task contract and add a second live-provider mode:
 `local_openai_compatible`.
@@ -438,12 +438,16 @@ Outcome:
    modes,
 2. `lotus-workbench` remains unchanged at the contract level,
 3. cross-repo runbooks document how to validate which provider authored the brief.
+4. low-quality local advisor-brief generations are bounded by deterministic source-grounded
+   fallback rather than leaking prompt or contract text into downstream UI.
 
 Acceptance gate:
 
 1. Gateway integration tests pass without contract drift,
 2. Workbench UI continues to render the same bounded evidence-backed brief contract,
-3. local and remote provider runs are distinguishable in support evidence.
+3. local and remote provider runs are distinguishable in support evidence,
+4. malformed or contract-echo local outputs do not reach downstream callers as visible brief
+   text.
 
 ## Testing Requirements
 

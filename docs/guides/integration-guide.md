@@ -197,6 +197,9 @@ Verification:
 5. `/platform/providers/operator-profile` should identify either `local_ollama` or `local_vllm`,
 6. the provider-resolution evidence descriptor should show `adapter_kind = OPENAI_COMPATIBLE_LOCAL`
    and the configured local `model_id`.
+7. for advisor-brief tasks, low-quality local generations that echo prompt or contract language
+   should now be replaced by a deterministic source-grounded fallback rather than being returned
+   directly to downstream callers.
 
 ## Recommended Integration Pattern
 
