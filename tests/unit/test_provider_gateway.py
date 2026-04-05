@@ -101,9 +101,7 @@ def test_execute_text_generation_returns_source_grounded_advisor_brief_stub() ->
     talking_points = structured_output["talking_points"]
     assert isinstance(talking_points, list)
     assert isinstance(talking_points[0], dict)
-    assert talking_points[0]["headline"] == (
-        "YTD active return was -6.68%."
-    )
+    assert talking_points[0]["headline"] == ("YTD active return was -6.68%.")
     assert structured_output["grounded_facts"] == [
         {
             "metric_label": "Portfolio Return",

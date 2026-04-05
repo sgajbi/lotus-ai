@@ -1202,9 +1202,7 @@ def _patch_target(target: str, replacement: object) -> Iterator[None]:
         yield
 
 
-def _raise_provider_execution_error(
-    *, category: ProviderFailureCategory, message: str
-) -> Any:
+def _raise_provider_execution_error(*, category: ProviderFailureCategory, message: str) -> Any:
     from app.providers.base import ProviderExecutionError
 
     raise ProviderExecutionError(category=category, message=message)
