@@ -148,9 +148,7 @@ def _is_advisor_brief_payload(payload: dict[str, Any]) -> bool:
 
 def _derive_coverage_state(supportability: list[Any]) -> str:
     states = {
-        str(item.get("value", "")).lower()
-        for item in supportability
-        if isinstance(item, dict)
+        str(item.get("value", "")).lower() for item in supportability if isinstance(item, dict)
     }
     if "unavailable" in states:
         return "partial"
@@ -196,8 +194,7 @@ def _build_talking_points(
         )
         if top_detractor:
             detail += (
-                f" Main drag came from {top_detractor['label']} at "
-                f"{top_detractor['contribution']}."
+                f" Main drag came from {top_detractor['label']} at {top_detractor['contribution']}."
             )
         points.append(
             {
@@ -218,8 +215,7 @@ def _build_talking_points(
         points.append(
             {
                 "headline": (
-                    f"Largest benchmark-relative attribution effect was "
-                    f"{top_effect['label']}."
+                    f"Largest benchmark-relative attribution effect was {top_effect['label']}."
                 ),
                 "detail": (
                     f"Total Effect was {top_effect['effect']}. Use Attribution Detail to "
@@ -359,9 +355,7 @@ def _pick_position(value: Any) -> dict[str, str] | None:
         return None
     return {
         "label": label,
-        "contribution": _format_pct(
-            row.get("contribution_pct", row.get("total_contribution_pct"))
-        ),
+        "contribution": _format_pct(row.get("contribution_pct", row.get("total_contribution_pct"))),
         "return": _format_pct(row.get("total_return_pct")),
     }
 
@@ -413,6 +407,6 @@ def _normalize_position_label(position_id: str | None) -> str | None:
     known_prefixes = ("FO_EQ_", "FO_FI_", "FO_CASH_", "FO_ALT_", "FO_FX_")
     for prefix in known_prefixes:
         if raw_label.startswith(prefix):
-            raw_label = raw_label[len(prefix):]
+            raw_label = raw_label[len(prefix) :]
             break
     return raw_label.replace("_", " ").strip() or None

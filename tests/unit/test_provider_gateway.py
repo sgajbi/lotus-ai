@@ -54,8 +54,7 @@ def test_execute_text_generation_routes_through_stub_provider() -> None:
     assert response.structured_output["output_label"] == "EXPLANATION_ONLY"
     assert response.structured_output["redaction_posture"] == "MINIMIZATION_REQUIRED"
     assert response.message == (
-        "Stub execution completed for foundation-phase task explain.v1 requested by "
-        "lotus-manage."
+        "Stub execution completed for foundation-phase task explain.v1 requested by lotus-manage."
     )
 
 

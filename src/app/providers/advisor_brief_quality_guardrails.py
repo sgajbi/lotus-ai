@@ -103,9 +103,7 @@ def normalize_advisor_brief_output(
     grounded_summary = _clean_text(parsed_output.get("grounded_summary"))
     talking_points = _normalize_narrative_items(parsed_output.get("talking_points"))
     recommended_actions = _normalize_action_items(parsed_output.get("recommended_actions"))
-    risks_and_exceptions = _normalize_narrative_items(
-        parsed_output.get("risks_and_exceptions")
-    )
+    risks_and_exceptions = _normalize_narrative_items(parsed_output.get("risks_and_exceptions"))
 
     if not grounded_summary:
         return _fallback_result(

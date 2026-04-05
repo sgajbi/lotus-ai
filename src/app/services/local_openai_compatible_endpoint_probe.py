@@ -109,8 +109,7 @@ def _probe_local_openai_compatible_endpoint(
             model_available=False,
             configured_model_id=configured_model_id,
             blocking_reason=(
-                "Local OpenAI-compatible endpoint is not reachable from lotus-ai: "
-                f"{exc.reason}"
+                f"Local OpenAI-compatible endpoint is not reachable from lotus-ai: {exc.reason}"
             ),
         )
     except json.JSONDecodeError:

@@ -314,10 +314,10 @@ def extract_balanced_json_object(value: str) -> str | None:
                 escaped = False
             elif char == "\\":
                 escaped = True
-            elif char == "\"":
+            elif char == '"':
                 in_string = False
             continue
-        if char == "\"":
+        if char == '"':
             in_string = True
             continue
         if char == "{":

@@ -56,7 +56,9 @@ def test_text_generation_configuration_rejects_unknown_provider_and_partial_valu
     )
 
 
-def test_text_generation_configuration_accepts_local_openai_compatible_mode_without_api_key() -> None:
+def test_text_generation_configuration_accepts_local_openai_compatible_mode_without_api_key() -> (
+    None
+):
     settings.provider_mode = "local_openai_compatible"
     settings.provider_rollout_state = "CANARY_ENABLED"
     settings.live_text_provider_id = "text.local"
@@ -83,7 +85,9 @@ def test_text_generation_configuration_rejects_local_mode_using_default_openai_a
     configuration = build_text_generation_configuration_status()
 
     assert configuration.configuration_valid is False
-    assert any("non-default local or self-hosted API base" in finding for finding in configuration.findings)
+    assert any(
+        "non-default local or self-hosted API base" in finding for finding in configuration.findings
+    )
 
 
 def test_embedding_configuration_reports_stub_rollout() -> None:

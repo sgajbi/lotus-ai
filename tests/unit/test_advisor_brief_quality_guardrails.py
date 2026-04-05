@@ -127,7 +127,9 @@ def test_normalize_advisor_brief_output_preserves_clean_structured_brief() -> No
 
     assert result.guardrail_triggered is False
     assert result.message == "Portfolio lagged benchmark on YTD because equity exposure trailed."
-    assert result.structured_output["talking_points"][0]["headline"] == "Active return was negative."
+    assert (
+        result.structured_output["talking_points"][0]["headline"] == "Active return was negative."
+    )
     assert result.structured_output["recommended_actions"][0]["label"] == (
         "Review Attribution Drivers"
     )

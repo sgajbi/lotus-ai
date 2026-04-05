@@ -20,4 +20,3 @@ class LocalOpenAICompatibleTextProvider(TextGenerationProviderAdapter):
             api_key=settings.live_text_provider_api_key,
             require_api_key=False,
         )
-

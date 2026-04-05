@@ -536,15 +536,12 @@ def _execute_fixture_case(
                 and response.audit.provider_id
                 == case.expected_payload.get("provider_id", response.audit.provider_id)
             )
-            adapter_kind_matches = (
-                response is not None
-                and (
-                    response.audit.adapter_kind is not None
-                    and response.audit.adapter_kind.value
-                    == case.expected_payload.get(
-                        "adapter_kind",
-                        response.audit.adapter_kind.value,
-                    )
+            adapter_kind_matches = response is not None and (
+                response.audit.adapter_kind is not None
+                and response.audit.adapter_kind.value
+                == case.expected_payload.get(
+                    "adapter_kind",
+                    response.audit.adapter_kind.value,
                 )
             )
             stubbed_matches = (
@@ -1104,17 +1101,15 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                     stack.enter_context(
                         _patch_target(
                             "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
-                            lambda **_: (_raise_provider_execution_error(
+                            lambda **_: _raise_provider_execution_error(
                                 category=failure_category,
                                 message=str(local_provider_error["message"]),
-                            )),
+                            ),
                         )
                     )
             if "request_limit" in input_payload and input_payload.get("quota_scope") == "task":
                 settings.live_text_quota_enforced = True
-                settings.live_text_task_quota_limits = (
-                    f"{input_payload['task_id']}={int(cast(int | str, input_payload['request_limit']))}"
-                )
+                settings.live_text_task_quota_limits = f"{input_payload['task_id']}={int(cast(int | str, input_payload['request_limit']))}"
                 get_provider_operations_store().increment_quota_state(
                     scope=ProviderQuotaScope.TASK,
                     scope_key=str(input_payload["task_id"]),

@@ -126,9 +126,7 @@ def test_local_openai_compatible_text_provider_falls_back_when_model_echoes_cont
                 },
                 "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
             },
-            source_refs=[
-                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
-            ],
+            source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
         )
     )
 

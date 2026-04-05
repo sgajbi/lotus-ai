@@ -79,7 +79,9 @@ def test_task_execute_contract_returns_grounded_advisor_brief_for_gateway_fact_b
                         {"key": "performance_context", "value": "ready"},
                     ],
                     "contribution": {
-                        "top_positions": [{"position_id": "AAPL US", "total_contribution_pct": 0.3}],
+                        "top_positions": [
+                            {"position_id": "AAPL US", "total_contribution_pct": 0.3}
+                        ],
                     },
                     "attribution": {
                         "top_effects": [
@@ -972,9 +974,7 @@ def test_task_execute_contract_guards_against_local_contract_echo_output(
                         {"label": "Advisor Brief", "value": "Ready"},
                     ],
                     "contribution": {
-                        "top_positions": [
-                            {"position_id": "AAPL US", "total_contribution_pct": 0.3}
-                        ]
+                        "top_positions": [{"position_id": "AAPL US", "total_contribution_pct": 0.3}]
                     },
                 },
                 "source_refs": [

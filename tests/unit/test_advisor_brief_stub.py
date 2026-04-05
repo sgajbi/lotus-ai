@@ -140,7 +140,9 @@ def test_build_advisor_brief_stub_result_refuses_when_source_refs_are_missing() 
     assert structured_output["grounded_facts"] == []
     assert structured_output["talking_points"] == []
     assert structured_output["recommended_actions"] == []
-    assert structured_output["risks_and_exceptions"][0]["headline"] == "Advisor Brief is unavailable."
+    assert (
+        structured_output["risks_and_exceptions"][0]["headline"] == "Advisor Brief is unavailable."
+    )
 
 
 def test_build_advisor_brief_stub_result_ignores_non_advisor_payload_shape() -> None:

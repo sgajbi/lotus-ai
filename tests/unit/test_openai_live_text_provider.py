@@ -75,23 +75,21 @@ def test_openai_live_text_provider_parses_advisor_brief_structured_output(
 
     response = OpenAILiveTextProvider().execute(
         _request(
-                caller_app="lotus-gateway",
-                context_payload={
-                    "portfolio": {
-                        "portfolio_id": "PB_SG_GLOBAL_BAL_001",
-                        "display_label": "PB SG GLOBAL BAL 001",
-                    },
-                    "period": {"period": "YTD"},
-                    "performance": {
-                        "portfolio_return_pct": 1.25,
+            caller_app="lotus-gateway",
+            context_payload={
+                "portfolio": {
+                    "portfolio_id": "PB_SG_GLOBAL_BAL_001",
+                    "display_label": "PB SG GLOBAL BAL 001",
+                },
+                "period": {"period": "YTD"},
+                "performance": {
+                    "portfolio_return_pct": 1.25,
                     "benchmark_return_pct": 7.93,
                     "active_return_pct": -6.68,
                 },
                 "supportability": [{"label": "Return History", "value": "Ready"}],
             },
-            source_refs=[
-                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
-            ],
+            source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
         )
     )
 
@@ -99,7 +97,9 @@ def test_openai_live_text_provider_parses_advisor_brief_structured_output(
     assert response.stubbed is False
     assert response.message == "Portfolio lagged benchmark on YTD."
     assert response.structured_output["grounded_summary"] == "Portfolio lagged benchmark on YTD."
-    assert response.structured_output["talking_points"][0]["headline"] == "Active Return was -6.68%."
+    assert (
+        response.structured_output["talking_points"][0]["headline"] == "Active Return was -6.68%."
+    )
     assert response.structured_output["recommended_actions"][0]["label"] == (
         "Review Attribution Drivers"
     )
@@ -117,10 +117,10 @@ def test_openai_live_text_provider_parses_fenced_advisor_brief_json(
             "output_text": (
                 "```json\n"
                 "{\n"
-                "  \"grounded_summary\": \"Portfolio lagged benchmark on YTD.\",\n"
-                "  \"talking_points\": [],\n"
-                "  \"recommended_actions\": [],\n"
-                "  \"risks_and_exceptions\": []\n"
+                '  "grounded_summary": "Portfolio lagged benchmark on YTD.",\n'
+                '  "talking_points": [],\n'
+                '  "recommended_actions": [],\n'
+                '  "risks_and_exceptions": []\n'
                 "}\n"
                 "```"
             ),
@@ -130,19 +130,17 @@ def test_openai_live_text_provider_parses_fenced_advisor_brief_json(
 
     response = OpenAILiveTextProvider().execute(
         _request(
-                caller_app="lotus-gateway",
-                context_payload={
-                    "portfolio": {
-                        "portfolio_id": "PB_SG_GLOBAL_BAL_001",
-                        "display_label": "PB SG GLOBAL BAL 001",
-                    },
-                    "period": {"period": "YTD"},
-                    "performance": {"active_return_pct": -6.68},
+            caller_app="lotus-gateway",
+            context_payload={
+                "portfolio": {
+                    "portfolio_id": "PB_SG_GLOBAL_BAL_001",
+                    "display_label": "PB SG GLOBAL BAL 001",
+                },
+                "period": {"period": "YTD"},
+                "performance": {"active_return_pct": -6.68},
                 "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
             },
-            source_refs=[
-                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
-            ],
+            source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
         )
     )
 
@@ -160,9 +158,9 @@ def test_openai_live_text_provider_parses_advisor_json_with_trailing_text(
             "id": "resp_advisor_trailing_text",
             "model": "gpt-5.4",
             "output_text": (
-                "{\"grounded_summary\":\"Portfolio lagged benchmark on YTD.\","
-                "\"talking_points\":[],\"recommended_actions\":[],"
-                "\"risks_and_exceptions\":[]}\n\nGenerated from supplied source refs."
+                '{"grounded_summary":"Portfolio lagged benchmark on YTD.",'
+                '"talking_points":[],"recommended_actions":[],'
+                '"risks_and_exceptions":[]}\n\nGenerated from supplied source refs.'
             ),
             "usage": {"input_tokens": 220, "output_tokens": 80, "total_tokens": 300},
         },
@@ -170,19 +168,17 @@ def test_openai_live_text_provider_parses_advisor_json_with_trailing_text(
 
     response = OpenAILiveTextProvider().execute(
         _request(
-                caller_app="lotus-gateway",
-                context_payload={
-                    "portfolio": {
-                        "portfolio_id": "PB_SG_GLOBAL_BAL_001",
-                        "display_label": "PB SG GLOBAL BAL 001",
-                    },
-                    "period": {"period": "YTD"},
-                    "performance": {"active_return_pct": -6.68},
+            caller_app="lotus-gateway",
+            context_payload={
+                "portfolio": {
+                    "portfolio_id": "PB_SG_GLOBAL_BAL_001",
+                    "display_label": "PB SG GLOBAL BAL 001",
+                },
+                "period": {"period": "YTD"},
+                "performance": {"active_return_pct": -6.68},
                 "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
             },
-            source_refs=[
-                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
-            ],
+            source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
         )
     )
 
@@ -200,8 +196,8 @@ def test_openai_live_text_provider_extracts_summary_from_truncated_advisor_json(
             "id": "resp_advisor_truncated",
             "model": "gpt-5.4",
             "output_text": (
-                "{\"grounded_summary\":\"Portfolio lagged benchmark on YTD.\","
-                "\"talking_points\":[{\"headline\":\"Portfolio trails benchmark YTD\""
+                '{"grounded_summary":"Portfolio lagged benchmark on YTD.",'
+                '"talking_points":[{"headline":"Portfolio trails benchmark YTD"'
             ),
             "usage": {"input_tokens": 220, "output_tokens": 80, "total_tokens": 300},
         },
@@ -209,19 +205,17 @@ def test_openai_live_text_provider_extracts_summary_from_truncated_advisor_json(
 
     response = OpenAILiveTextProvider().execute(
         _request(
-                caller_app="lotus-gateway",
-                context_payload={
-                    "portfolio": {
-                        "portfolio_id": "PB_SG_GLOBAL_BAL_001",
-                        "display_label": "PB SG GLOBAL BAL 001",
-                    },
-                    "period": {"period": "YTD"},
-                    "performance": {"active_return_pct": -6.68},
+            caller_app="lotus-gateway",
+            context_payload={
+                "portfolio": {
+                    "portfolio_id": "PB_SG_GLOBAL_BAL_001",
+                    "display_label": "PB SG GLOBAL BAL 001",
+                },
+                "period": {"period": "YTD"},
+                "performance": {"active_return_pct": -6.68},
                 "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
             },
-            source_refs=[
-                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
-            ],
+            source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
         )
     )
 
@@ -260,9 +254,7 @@ def test_openai_live_text_provider_builds_advisor_output_contract_override() -> 
                 "performance": {"active_return_pct": -6.68},
                 "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
             },
-            source_refs=[
-                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
-            ],
+            source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
         )
     )
 
@@ -293,23 +285,21 @@ def test_openai_live_text_provider_falls_back_when_advisor_summary_leaks_contrac
 
     response = OpenAILiveTextProvider().execute(
         _request(
-                caller_app="lotus-gateway",
-                context_payload={
-                    "portfolio": {
-                        "portfolio_id": "PB_SG_GLOBAL_BAL_001",
-                        "display_label": "PB SG GLOBAL BAL 001",
-                    },
-                    "period": {"period": "YTD"},
-                    "performance": {
-                        "portfolio_return_pct": 1.25,
+            caller_app="lotus-gateway",
+            context_payload={
+                "portfolio": {
+                    "portfolio_id": "PB_SG_GLOBAL_BAL_001",
+                    "display_label": "PB SG GLOBAL BAL 001",
+                },
+                "period": {"period": "YTD"},
+                "performance": {
+                    "portfolio_return_pct": 1.25,
                     "benchmark_return_pct": 7.93,
                     "active_return_pct": -6.68,
                 },
                 "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
             },
-            source_refs=[
-                "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"
-            ],
+            source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
         )
     )
 
