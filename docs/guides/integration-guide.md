@@ -79,6 +79,70 @@ should assemble the performance fact bundle before invoking `POST /ai/tasks/exec
 `task_id=explain.v1`. `lotus-ai` should explain only the caller-supplied facts and preserve audit
 and evidence metadata; it should not recompute returns, attribution, or benchmark values.
 
+For live LLM-backed Advisor Brief generation in local Docker, `lotus-ai/.env` must enable the
+OpenAI text-provider path and the bounded task allowlist:
+
+1. `LOTUS_AI_PROVIDER_MODE=openai`
+2. `LOTUS_AI_PROVIDER_ROLLOUT_STATE=CANARY_ENABLED`
+3. `LOTUS_AI_LIVE_TEXT_PROVIDER_ID=text.openai`
+4. `LOTUS_AI_LIVE_TEXT_MODEL_ID=<approved model>`
+5. `LOTUS_AI_LIVE_TEXT_PROVIDER_API_KEY=<deployment secret>`
+6. `LOTUS_AI_LIVE_TEXT_ALLOWED_TASK_IDS=explain.v1`
+
+The `lotus-gateway` caller policy must also allow live-provider execution for `explain.v1`; all
+other browser callers should continue to call `lotus-gateway` rather than `lotus-ai` directly.
+
+## Local Provider Toggle
+
+Use this when switching between cost-free deterministic mode and live OpenAI-backed generation in
+local Docker.
+
+### Disable OpenAI billing
+
+Set this in `lotus-ai/.env`:
+
+```env
+LOTUS_AI_PROVIDER_MODE=disabled
+```
+
+Then recreate the API and worker containers:
+
+```powershell
+cd C:\Users\Sandeep\projects\lotus-ai
+docker compose up -d --force-recreate lotus-ai lotus-ai-worker
+```
+
+Expected result:
+
+1. `POST /ai/tasks/execute` stays available,
+2. responses use the deterministic non-LLM provider path,
+3. OpenAI API calls and billing stop,
+4. Advisor Brief remains source-grounded but no longer uses live model generation.
+
+### Re-enable OpenAI generation
+
+Set these values in `lotus-ai/.env`:
+
+```env
+LOTUS_AI_PROVIDER_MODE=openai
+LOTUS_AI_PROVIDER_ROLLOUT_STATE=CANARY_ENABLED
+LOTUS_AI_LIVE_TEXT_PROVIDER_ID=text.openai
+LOTUS_AI_LIVE_TEXT_MODEL_ID=<approved model>
+LOTUS_AI_LIVE_TEXT_PROVIDER_API_KEY=<deployment secret>
+LOTUS_AI_LIVE_TEXT_ALLOWED_TASK_IDS=explain.v1
+LOTUS_AI_PROVIDER_TIMEOUT_MS=45000
+LOTUS_AI_PROVIDER_MAX_OUTPUT_TOKENS=4096
+```
+
+Then recreate the same containers with `docker compose up -d --force-recreate lotus-ai lotus-ai-worker`.
+
+Verification:
+
+1. `GET /health/ready` should return `200`,
+2. `POST /ai/tasks/execute` should return `audit.provider_mode = "openai"` and `audit.stubbed = false`
+   when the live provider key has quota,
+3. if billing must remain off, verify `audit.provider_mode` is not `openai` before using Advisor Brief.
+
 ## Recommended Integration Pattern
 
 1. Build a domain-owned context payload.
