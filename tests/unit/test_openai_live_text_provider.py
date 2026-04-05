@@ -9,9 +9,13 @@ from app.config import settings
 from app.contracts.providers import ProviderFailureCategory
 from app.providers.base import ProviderExecutionError
 from app.providers.openai_compatible_text_transport import (
+    build_structured_output,
     build_user_message,
+    extract_balanced_json_object,
     extract_output_text,
     extract_usage,
+    parse_json_object,
+    strip_json_code_fence,
 )
 from app.providers.openai_live_text_provider import OpenAILiveTextProvider, _post_openai_response
 from tests.unit.test_provider_gateway import _request
@@ -501,3 +505,52 @@ def test_openai_live_text_provider_ignores_non_text_output_parts() -> None:
     )
 
     assert text == "Recovered text"
+
+
+def test_openai_compatible_transport_builds_plain_json_user_message_for_non_advisor_payload() -> None:
+    message = build_user_message(
+        _request(
+            context_payload={"rule_count": 3},
+            source_refs=["lotus-manage:run:rebalance"],
+        )
+    )
+
+    assert '"rule_count": 3' in message
+    assert "Return JSON only with keys grounded_summary" not in message
+
+
+def test_openai_compatible_transport_returns_plain_structured_output_for_non_advisor_payload() -> None:
+    response_message, structured_output = build_structured_output(
+        descriptor=OpenAILiveTextProvider().descriptor,
+        request=_request(context_payload={"rule_count": 3}, source_refs=["lotus-manage:run:001"]),
+        response_payload={
+            "id": "resp_plain",
+            "model": "gpt-5.4",
+            "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15},
+        },
+        output_message="Plain explanation.",
+    )
+
+    assert response_message == "Plain explanation."
+    assert structured_output["provider_id"] == "text.openai"
+    assert structured_output["source_refs"] == ["lotus-manage:run:001"]
+    assert "grounded_summary" not in structured_output
+
+
+def test_openai_compatible_transport_parses_non_dict_json_as_none() -> None:
+    assert parse_json_object('["not", "an", "object"]') is None
+    assert parse_json_object("prefix with no braces") is None
+
+
+def test_openai_compatible_transport_strips_generic_code_fence() -> None:
+    assert strip_json_code_fence("```\n{\"a\":1}\n```") == '{"a":1}'
+
+
+def test_openai_compatible_transport_extracts_balanced_json_with_escaped_quotes() -> None:
+    value = 'prefix {"grounded_summary":"He said \\"stay disciplined\\".","talking_points":[]} suffix'
+
+    extracted = extract_balanced_json_object(value)
+
+    assert extracted == (
+        '{"grounded_summary":"He said \\"stay disciplined\\".","talking_points":[]}'
+    )

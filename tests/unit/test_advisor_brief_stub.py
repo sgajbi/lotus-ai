@@ -153,3 +153,40 @@ def test_build_advisor_brief_stub_result_ignores_non_advisor_payload_shape() -> 
         )
         is None
     )
+
+
+def test_build_advisor_brief_stub_result_normalizes_position_ids_and_ready_supportability() -> None:
+    result = build_advisor_brief_stub_result(
+        context_payload=_advisor_context_payload(
+            contribution={
+                "top_positions": [
+                    {
+                        "position_id": "PB_SG_GLOBAL_BAL_001:FO_EQ_MSFT_US",
+                        "contribution_pct": 0.17,
+                        "total_return_pct": 1.71,
+                    }
+                ],
+                "bottom_positions": [],
+            },
+            attribution={"top_effects": [{"total_effect_pct": -1.1}]},
+            supportability=[
+                {"key": "performance_context", "value": "ready"},
+                {"label": "Advisor Brief", "value": "ready"},
+            ],
+        ),
+        source_refs=[
+            "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
+            "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-details:YTD",
+        ],
+    )
+
+    assert result is not None
+    _, structured_output = result
+    assert structured_output["coverage_state"] == "ready"
+    assert structured_output["talking_points"][1]["headline"] == (
+        "Largest contribution came from MSFT US."
+    )
+    assert structured_output["recommended_actions"][-1]["label"] == "Review Return Path"
+    assert structured_output["risks_and_exceptions"][0]["headline"] == (
+        "No material supportability exception is flagged in the supplied facts."
+    )
