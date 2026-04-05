@@ -445,7 +445,9 @@ def test_sqlalchemy_audit_repository_round_trips_authorization_payload(tmp_path:
     assert loaded.authorization == authorization
 
 
-def test_sqlalchemy_audit_repository_handles_relative_sqlite_path(tmp_path: Path, monkeypatch) -> None:
+def test_sqlalchemy_audit_repository_handles_relative_sqlite_path(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     repository = SqlAlchemyAuditRepository("sqlite:///nested/db/audit.db")
 

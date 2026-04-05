@@ -152,7 +152,9 @@ def test_normalize_advisor_brief_output_uses_extracted_summary_when_json_is_trun
     assert result.structured_output["raw_output_excerpt"].startswith('{"grounded_summary"')
 
 
-def test_normalize_advisor_brief_output_falls_back_when_truncated_summary_leaks_contract_text() -> None:
+def test_normalize_advisor_brief_output_falls_back_when_truncated_summary_leaks_contract_text() -> (
+    None
+):
     result = normalize_advisor_brief_output(
         parsed_output=None,
         output_message=(

@@ -507,7 +507,9 @@ def test_openai_live_text_provider_ignores_non_text_output_parts() -> None:
     assert text == "Recovered text"
 
 
-def test_openai_compatible_transport_builds_plain_json_user_message_for_non_advisor_payload() -> None:
+def test_openai_compatible_transport_builds_plain_json_user_message_for_non_advisor_payload() -> (
+    None
+):
     message = build_user_message(
         _request(
             context_payload={"rule_count": 3},
@@ -519,7 +521,9 @@ def test_openai_compatible_transport_builds_plain_json_user_message_for_non_advi
     assert "Return JSON only with keys grounded_summary" not in message
 
 
-def test_openai_compatible_transport_returns_plain_structured_output_for_non_advisor_payload() -> None:
+def test_openai_compatible_transport_returns_plain_structured_output_for_non_advisor_payload() -> (
+    None
+):
     response_message, structured_output = build_structured_output(
         descriptor=OpenAILiveTextProvider().descriptor,
         request=_request(context_payload={"rule_count": 3}, source_refs=["lotus-manage:run:001"]),
@@ -543,11 +547,13 @@ def test_openai_compatible_transport_parses_non_dict_json_as_none() -> None:
 
 
 def test_openai_compatible_transport_strips_generic_code_fence() -> None:
-    assert strip_json_code_fence("```\n{\"a\":1}\n```") == '{"a":1}'
+    assert strip_json_code_fence('```\n{"a":1}\n```') == '{"a":1}'
 
 
 def test_openai_compatible_transport_extracts_balanced_json_with_escaped_quotes() -> None:
-    value = 'prefix {"grounded_summary":"He said \\"stay disciplined\\".","talking_points":[]} suffix'
+    value = (
+        'prefix {"grounded_summary":"He said \\"stay disciplined\\".","talking_points":[]} suffix'
+    )
 
     extracted = extract_balanced_json_object(value)
 
