@@ -200,6 +200,21 @@ Verification:
 7. for advisor-brief tasks, low-quality local generations that echo prompt or contract language
    should now be replaced by a deterministic source-grounded fallback rather than being returned
    directly to downstream callers.
+8. a small local model may still be operationally slower than the managed-provider path for a
+   full advisor-brief fact bundle. Treat local-mode model choice and serving capacity as an
+   explicit operator decision, not an assumed production-quality default.
+
+Current local default:
+
+```env
+LOTUS_AI_PROVIDER_MODE=local_openai_compatible
+LOTUS_AI_LIVE_TEXT_PROVIDER_ID=text.local
+LOTUS_AI_LIVE_TEXT_MODEL_ID=qwen2.5:1.5b
+LOTUS_AI_LIVE_TEXT_API_BASE=http://ollama:11434/v1
+```
+
+That profile is cost-free and platform-valid, but it should be qualified against actual latency and
+output-quality expectations before being treated as a private-bank-grade default for all users.
 
 ## Recommended Integration Pattern
 
