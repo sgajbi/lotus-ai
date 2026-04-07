@@ -388,6 +388,12 @@ uvicorn app.main:app --reload --port 8140
 docker compose up --build
 ```
 
+Local Docker runtime does not publish internal infrastructure ports by default:
+
+1. PostgreSQL stays internal to the Compose network on `postgres:5432`
+2. Redis stays internal to the Compose network on `redis:6379`
+3. only the application port `8140` is published for local API access
+
 The checked-in Docker stack is now a prod-shaped local baseline, not a full production-ready posture:
 
 1. PostgreSQL backs the SQL store seams instead of SQLite,
