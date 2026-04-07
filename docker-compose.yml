@@ -5,8 +5,6 @@ services:
       POSTGRES_DB: lotus_ai
       POSTGRES_USER: lotus
       POSTGRES_PASSWORD: lotus
-    ports:
-      - "5432:5432"
     volumes:
       - lotus-ai-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -17,8 +15,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
 
   lotus-ai:
     build: .
