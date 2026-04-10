@@ -1,4 +1,4 @@
-.PHONY: install lint monetary-float-guard typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke migration-apply runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
+.PHONY: install lint monetary-float-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke migration-apply runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
 
 install:
 	python -m pip install --upgrade pip
@@ -10,6 +10,9 @@ lint:
 
 monetary-float-guard:
 	python scripts/check_monetary_float_usage.py
+
+verify-dependencies:
+	python scripts/dependency_health_check.py --skip-audit
 
 typecheck:
 	python -m mypy --config-file mypy.ini
@@ -55,11 +58,11 @@ test-coverage:
 	python -m coverage report --fail-under=99
 
 security-audit:
-	python scripts/run_security_audit.py
+	python scripts/dependency_health_check.py
 
 check: lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke runtime-mode-smoke test
 
-ci: lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke runtime-mode-smoke test-integration test-e2e test-coverage security-audit
+ci: verify-dependencies lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke runtime-mode-smoke security-audit test-coverage docker-build
 
 docker-build:
 	docker build -t backend-service:ci-test .

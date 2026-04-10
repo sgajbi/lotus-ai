@@ -317,10 +317,10 @@ The service also follows a strict scalability model:
 
 The local security audit posture is also intentionally isolated:
 
-1. `make ci` runs dependency audit inside a temporary project-only virtual environment,
+1. `make ci` runs dependency health checks inside a temporary project-only virtual environment,
 2. this avoids false positives from unrelated machine-wide Python packages,
 3. the audit still fails on vulnerabilities in the actual `lotus-ai` dependency set,
-4. temporary ignores must be explicit in `scripts/run_security_audit.py` and should only be used when no patched upstream release exists yet.
+4. temporary vulnerability ignores must be explicit in `scripts/dependency_health_check.py` and should only be used when no patched upstream release exists yet.
 
 ## Framework Stance
 
