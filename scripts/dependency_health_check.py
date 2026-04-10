@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -14,10 +15,14 @@ _TEMPORARY_IGNORED_VULNERABILITIES = {
     "CVE-2026-4539",
 }
 
+_WINDOWS_DRIVE_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
+
 
 def _venv_python(venv_path: Path) -> Path:
-    scripts_dir = "Scripts" if os.name == "nt" else "bin"
-    executable_name = "python.exe" if os.name == "nt" else "python"
+    venv_path_text = str(venv_path)
+    is_windows_layout = os.name == "nt" or bool(_WINDOWS_DRIVE_PATH_RE.match(venv_path_text))
+    scripts_dir = "Scripts" if is_windows_layout else "bin"
+    executable_name = "python.exe" if is_windows_layout else "python"
     return venv_path / scripts_dir / executable_name
 
 
