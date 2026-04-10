@@ -2,6 +2,8 @@
 
 Shared AI platform service for Lotus applications.
 
+Repository-local engineering context: `REPOSITORY-ENGINEERING-CONTEXT.md`
+
 `lotus-ai` provides the reusable AI infrastructure layer for the Lotus estate. It exists to help the other Lotus apps build governed AI features without moving domain ownership out of the services that already own portfolio data, analytics, workflow state, and deterministic decision logic.
 
 ## Start Here
