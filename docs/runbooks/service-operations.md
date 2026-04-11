@@ -8,7 +8,7 @@
 - make ci
 - docker compose up --build
 
-`make ci` runs the security audit inside a temporary project-only virtual environment. This is intentional: the security gate should evaluate the `lotus-ai` dependency set, not unrelated packages installed in a shared developer workstation environment. Any temporary vulnerability ignore must remain explicit in `scripts/run_security_audit.py` with an upstream-fix note so operators can remove it once a patched release exists.
+`make ci` runs dependency health checks inside a temporary project-only virtual environment. This is intentional: the security gate should evaluate the `lotus-ai` dependency set, not unrelated packages installed in a shared developer workstation environment. Any temporary vulnerability ignore must remain explicit in `scripts/dependency_health_check.py` with an upstream-fix note so operators can remove it once a patched release exists.
 
 ## Health and Readiness
 
