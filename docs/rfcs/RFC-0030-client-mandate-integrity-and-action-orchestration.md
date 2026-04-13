@@ -294,6 +294,20 @@ The initial implementation boundary is intentionally strict:
 4. `lotus-ai` remains responsible for orchestration, evidence synthesis, audit, and evaluation,
 5. no AI-generated output may act as final approval, suitability, or execution truth.
 
+## Banking-Grade Control Rules
+
+This feature must obey the following non-negotiable rules:
+
+1. the integrity model must be typed and reviewable, not only implied through prompt text,
+2. every integrity-dimension finding must link to named evidence or be labeled as inference,
+3. AI may recommend remediation but may not establish approval, suitability, consent, or execution
+   readiness,
+4. an integrity case may not close without explicit closure evidence and human-confirmed or
+   policy-confirmed closure conditions,
+5. unresolved integrity drift must remain visible and may not be flattened into optimistic
+   narrative,
+6. every proposed downstream action must identify an owning workflow or owning team.
+
 ## Integrity Model
 
 The feature should introduce an explicit relationship-integrity model.
@@ -306,6 +320,8 @@ Illustrative integrity dimensions:
 4. `proposal_alignment`
 5. `workflow_readiness`
 6. `evidence_readiness`
+
+Version 1 should use a smaller approved subset rather than all dimensions at once.
 
 Each integrity dimension should support:
 
@@ -412,6 +428,23 @@ The feature should support:
 2. scheduled integrity scans,
 3. user-invoked integrity assessment for a relationship scope.
 
+### Initial integrity-case taxonomy
+
+The first implementation should support a deliberately narrow set of case types:
+
+1. `mandate_alignment_attention`
+2. `servicing_readiness_attention`
+3. `proposal_alignment_attention`
+4. `multi_factor_integrity_attention`
+
+Each case type must define:
+
+1. opening thresholds,
+2. required evidence families,
+3. specialist roles,
+4. closure criteria,
+5. allowed remediation categories.
+
 ### Run stages
 
 Each integrity case should progress through:
@@ -493,7 +526,8 @@ Acceptance gate:
 
 1. the integrity model is typed and reviewable,
 2. closure criteria are concrete,
-3. the initial dimension set is bounded and justified.
+3. the initial dimension set is bounded and justified,
+4. the opening and closure rules for each initial case type are explicit.
 
 ### Slice 2: Orchestration and persistent case foundation
 
@@ -508,7 +542,8 @@ Acceptance gate:
 
 1. the system can persist and refresh case state truthfully,
 2. dimension-level outputs are inspectable,
-3. degraded assessment paths are explicit.
+3. degraded assessment paths are explicit,
+4. the system can preserve unresolved drift without forcing a false closure path.
 
 ### Slice 3: Domain-tool adoption and case evidence
 
@@ -522,7 +557,9 @@ Acceptance gate:
 
 1. ownership boundaries remain clear,
 2. upstream truth does not migrate into `lotus-ai`,
-3. unsupported inputs are surfaced honestly.
+3. unsupported inputs are surfaced honestly,
+4. at least one seeded integrity case can trace each major remediation recommendation to named
+   evidence.
 
 ### Slice 4: Gateway and Workbench integrity workspace
 
@@ -536,7 +573,8 @@ Acceptance gate:
 
 1. AI output is clearly distinct from workflow truth,
 2. closure state is explicit and evidence-backed,
-3. partial or blocked dimensions are visible to the user.
+3. partial or blocked dimensions are visible to the user,
+4. defer, reject, and close actions carry explicit rationale state in the contract.
 
 ### Slice 5: Quality, rollout, and control hardening
 
@@ -550,7 +588,9 @@ Acceptance gate:
 
 1. quality is measured on drift detection usefulness, evidence quality, and remediation clarity,
 2. rollout remains bounded and inspectable,
-3. the feature improves control and servicing posture beyond a static case summary.
+3. the feature improves control and servicing posture beyond a static case summary,
+4. at least one integrity case type has explicit eval coverage for insufficient evidence,
+   contradictory evidence, and no-safe-remediation scenarios.
 
 ### Slice 6: Documentation, Agent Context, and Branch Hygiene
 
@@ -635,4 +675,6 @@ This RFC is successful when:
 3. domain truth and workflow authority remain in the owning systems,
 4. the AI layer remains evidence-backed, auditable, and human-controlled,
 5. the platform gains a genuinely banking-grade agentic workflow rather than another assistive
-   summary feature.
+   summary feature,
+6. the first release proves a credible integrity-preservation path for a bounded seeded use case
+   without overreaching into autonomous control.

@@ -280,6 +280,19 @@ The initial boundary is intentionally strict:
 4. `lotus-ai` remains the bounded orchestration and reasoning layer,
 5. humans remain responsible for action approval and final business decisions.
 
+## Banking-Grade Control Rules
+
+The Situation Room must obey the following non-negotiable rules:
+
+1. no specialist or coordinator output may be treated as approval, consent, suitability, or
+   execution truth,
+2. every materially important claim must link to named evidence or be labeled as an inference,
+3. every unresolved contradiction must remain visible until explicitly resolved or deferred,
+4. a case may not be auto-closed by AI alone,
+5. downstream action routing must remain explicit and reviewable,
+6. partial or blocked specialist state must not be hidden behind a complete-looking coordinator
+   summary.
+
 ## Specialist-Agent Model
 
 The system should use named specialist roles with bounded responsibilities.
@@ -381,6 +394,21 @@ The Situation Room should support:
 2. user-invoked case creation,
 3. later scheduled watchlist creation once an explicit rollout slice approves that posture.
 
+### Initial case taxonomy
+
+The first implementation should support a deliberately small set of case types:
+
+1. `performance_risk_attention`
+2. `review_readiness_attention`
+3. `multi_factor_attention`
+
+New case types should be added only when:
+
+1. the trigger logic is explicit,
+2. the required tool set is explicit,
+3. closure criteria are explicit,
+4. the eval coverage for that case type exists.
+
 ### Run stages
 
 Each case should progress through:
@@ -452,7 +480,8 @@ Acceptance gate:
 
 1. case lifecycle is explicit,
 2. role boundaries are clear,
-3. typed case contracts exist.
+3. typed case contracts exist,
+4. case open, defer, and close semantics are explicitly modeled.
 
 ### Slice 2: Specialist-agent orchestration foundation
 
@@ -467,7 +496,8 @@ Acceptance gate:
 
 1. specialist and coordinator paths are inspectable,
 2. failure and partial-status handling are explicit,
-3. case persistence is truthful and durable.
+3. case persistence is truthful and durable,
+4. the coordinator cannot suppress blocked or contradictory specialist findings.
 
 ### Slice 3: Domain-tool adoption
 
@@ -481,7 +511,8 @@ Acceptance gate:
 
 1. upstream ownership is clear,
 2. no business truth migrates into `lotus-ai`,
-3. partial data is surfaced honestly.
+3. partial data is surfaced honestly,
+4. at least one seeded case can trace every major recommendation back to named evidence.
 
 ### Slice 4: Gateway and Workbench Situation Room surface
 
@@ -495,7 +526,8 @@ Acceptance gate:
 
 1. AI output is distinct from workflow truth,
 2. degraded specialist states are visible,
-3. human action status is explicit.
+3. human action status is explicit,
+4. case timeline and closure rationale are visible in the UI contract.
 
 ### Slice 5: Quality, rollout, and maturity
 
@@ -509,7 +541,9 @@ Acceptance gate:
 
 1. quality is measured on evidence usage, prioritization, and closure usefulness,
 2. rollout remains bounded and inspectable,
-3. the feature is materially stronger than a static summary workflow.
+3. the feature is materially stronger than a static summary workflow,
+4. at least one case type has explicit evals for contradiction handling and insufficient-evidence
+   handling.
 
 ### Slice 6: Documentation, Agent Context, and Branch Hygiene
 
@@ -591,4 +625,6 @@ This RFC is successful when:
 1. Lotus has a persistent, case-based operating workflow for material portfolio situations,
 2. the feature can coordinate specialist cross-domain views under one governed case,
 3. the platform can keep a situation open until meaningfully resolved or deliberately deferred,
-4. the feature remains audit-safe, evidence-backed, and subordinate to human workflow authority.
+4. the feature remains audit-safe, evidence-backed, and subordinate to human workflow authority,
+5. the first release proves a materially better operating path than static dashboards plus one-shot
+   AI summaries.
