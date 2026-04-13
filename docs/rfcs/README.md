@@ -28,3 +28,5 @@
 - `RFC-0026-operator-control-plane-dashboard-and-observability-integration.md` - Draft
 - `RFC-0027-local-and-remote-openai-compatible-provider-routing.md` - Implemented
 - `RFC-0028-relationship-manager-briefing-agent-for-the-lotus-ecosystem.md` - Draft
+- `RFC-0029-portfolio-situation-room-agent.md` - Draft
+- `RFC-0030-client-mandate-integrity-and-action-orchestration.md` - Draft
