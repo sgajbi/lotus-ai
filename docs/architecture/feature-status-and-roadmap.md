@@ -195,6 +195,7 @@ The next RFCs now identified in the repo describe the expected post-foundation s
 4. `RFC-0024` portfolio narrative copilot for `lotus-performance`
 5. `RFC-0025` operational root-cause copilot for `lotus-core`
 6. `RFC-0026` operator control-plane dashboard and observability integration
+7. `RFC-0028` relationship manager briefing agent for the Lotus ecosystem
 
 Current status against that sequence:
 
@@ -204,6 +205,7 @@ Current status against that sequence:
 4. `RFC-0024` is now drafted as the first genuinely product-defining `lotus-performance` feature, explicitly extending RFC-0016 rather than replacing it; the existing commentary seed becomes the narrow rollout anchor for a richer portfolio narrative copilot grounded in TWR, benchmark, contribution, attribution, returns-series, diagnostics, and lineage-backed evidence.
 5. `RFC-0025` is now drafted as the first high-value `lotus-core` operational AI feature, turning the existing support, lineage, reconciliation, replay, transaction-state, and snapshot control-plane surfaces into a bounded root-cause copilot rather than a generic support chatbot.
 6. `RFC-0026` is now drafted to add the missing operator UI layer over the already-shipped control planes, while explicitly keeping logs, metrics, traces, and alerting in external observability tooling rather than trying to recreate Grafana or Datadog inside `lotus-ai`.
+7. `RFC-0028` is now drafted as the first cross-domain agentic front-office feature, using governed domain APIs as typed tools so `lotus-ai` can assemble banker-ready briefings and next-best-action suggestions without taking ownership of portfolio, analytics, workflow, or reporting truth.
 
 The previous likely feature areas are now implemented:
 
