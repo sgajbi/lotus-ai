@@ -195,6 +195,9 @@ The next RFCs now identified in the repo describe the expected post-foundation s
 4. `RFC-0024` portfolio narrative copilot for `lotus-performance`
 5. `RFC-0025` operational root-cause copilot for `lotus-core`
 6. `RFC-0026` operator control-plane dashboard and observability integration
+7. `RFC-0028` relationship manager briefing agent for the Lotus ecosystem
+8. `RFC-0029` portfolio situation room agent
+9. `RFC-0030` client mandate integrity and action orchestration
 
 Current status against that sequence:
 
@@ -204,6 +207,9 @@ Current status against that sequence:
 4. `RFC-0024` is now drafted as the first genuinely product-defining `lotus-performance` feature, explicitly extending RFC-0016 rather than replacing it; the existing commentary seed becomes the narrow rollout anchor for a richer portfolio narrative copilot grounded in TWR, benchmark, contribution, attribution, returns-series, diagnostics, and lineage-backed evidence.
 5. `RFC-0025` is now drafted as the first high-value `lotus-core` operational AI feature, turning the existing support, lineage, reconciliation, replay, transaction-state, and snapshot control-plane surfaces into a bounded root-cause copilot rather than a generic support chatbot.
 6. `RFC-0026` is now drafted to add the missing operator UI layer over the already-shipped control planes, while explicitly keeping logs, metrics, traces, and alerting in external observability tooling rather than trying to recreate Grafana or Datadog inside `lotus-ai`.
+7. `RFC-0028` is now drafted as the first cross-domain agentic front-office feature, using governed domain APIs as typed tools so `lotus-ai` can assemble banker-ready briefings and next-best-action suggestions without taking ownership of portfolio, analytics, workflow, or reporting truth.
+8. `RFC-0029` is now drafted as the first persistent case-based cross-domain workflow, turning a material portfolio event into a governed Situation Room with specialist views, coordinator synthesis, and closure discipline rather than a one-shot summary.
+9. `RFC-0030` is now drafted as the most banking-grade agentic control concept in the current roadmap, focusing on client relationship integrity across mandate, risk, servicing, workflow, proposal, and evidence posture rather than on narrative assistance alone.
 
 The previous likely feature areas are now implemented:
 
@@ -236,6 +242,8 @@ In practical feature terms, the roadmap is:
 4. convert the `lotus-performance` first-use-case seed into a genuinely reusable and high-value portfolio narrative capability,
 5. add an operational investigation copilot for `lotus-core` that explains likely causes from existing support and lineage truth,
 6. add an operator control-plane dashboard so the platform's many governance and rollout surfaces are operationally usable without replacing standard observability stacks.
+7. extend the cross-domain front-office path from one-shot briefings into persistent portfolio situation cases with specialist-agent coordination,
+8. evolve that case model into a relationship-integrity operating system that can detect, explain, and coordinate remediation for mandate, risk, servicing, workflow, and evidence drift.
 
 ## Recommended Reading Order
 
