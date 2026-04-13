@@ -251,6 +251,27 @@ The initial implementation boundary is intentionally strict:
    runtime,
 5. no output from this feature is allowed to masquerade as approved workflow truth.
 
+## Initial Release Boundary
+
+The first release should stay narrow and truthful.
+
+Version 1 should support:
+
+1. one seeded portfolio or client scope,
+2. read-only recommendation generation,
+3. bounded tool inputs from `lotus-core`, `lotus-performance`, `lotus-risk`, and `lotus-manage`,
+4. optional enrichment from `lotus-advise` and `lotus-report` only when the upstream capability is
+   already trustworthy and available,
+5. explicit provenance, review-state, and feedback capture,
+6. no automatic downstream execution.
+
+Version 1 should not attempt:
+
+1. RM-book-wide autonomous action routing,
+2. free-form user prompting over arbitrary client scope,
+3. hidden fallback to unsupported inferred business facts,
+4. automatic write-back into domain systems.
+
 ## Proposed Capability Shape
 
 The feature should expose one bounded briefing capability family with explicit scope, evidence, and
@@ -620,6 +641,41 @@ Acceptance gate:
 4. If the first slice tries to automate downstream actions, governance will become unnecessarily
    risky.
 5. If the scope is too broad too early, the feature will become generic instead of business-useful.
+
+## Alternatives Considered
+
+### 1. Generic chat assistant over Lotus data
+
+Rejected.
+
+Reason:
+
+1. weaker business specificity,
+2. harder to validate,
+3. easier to misuse as pseudo-authoritative workflow guidance,
+4. lower measurable value than a briefing workflow tied to explicit next actions.
+
+### 2. One monolithic agent inside `lotus-ai` with broad raw service access
+
+Rejected.
+
+Reason:
+
+1. domain boundaries become blurry,
+2. prompt logic starts substituting for product contracts,
+3. audit and entitlement posture become harder to reason about,
+4. failures become harder to isolate and harden.
+
+### 3. Separate AI summarizers built independently in each domain app
+
+Rejected.
+
+Reason:
+
+1. duplicated prompt and audit logic,
+2. inconsistent review-state and provenance posture,
+3. no cross-domain action-oriented briefing experience,
+4. weaker reuse of the shared `lotus-ai` platform.
 
 ## Success Criteria
 
