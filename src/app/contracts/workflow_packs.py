@@ -44,6 +44,19 @@ class WorkflowPackEnvironment(str, Enum):
     PRODUCTION = "PRODUCTION"
 
 
+class WorkflowPackEligibilityResult(str, Enum):
+    ALLOWED = "ALLOWED"
+    DENIED_NOT_REGISTERED = "DENIED_NOT_REGISTERED"
+    DENIED_NOT_ACTIVE = "DENIED_NOT_ACTIVE"
+    DENIED_CALLER_SCOPE = "DENIED_CALLER_SCOPE"
+    DENIED_ENVIRONMENT_SCOPE = "DENIED_ENVIRONMENT_SCOPE"
+    DENIED_TENANT_SCOPE = "DENIED_TENANT_SCOPE"
+    DENIED_SURFACE_SCOPE = "DENIED_SURFACE_SCOPE"
+    DENIED_PAUSED = "DENIED_PAUSED"
+    DENIED_RETIRED = "DENIED_RETIRED"
+    DENIED_VALIDATION_STATUS = "DENIED_VALIDATION_STATUS"
+
+
 class WorkflowPackValidationRuleDescriptor(BaseModel):
     rule_id: str = Field(description="Stable workflow-pack registration validation rule identifier.")
     description: str = Field(
@@ -171,4 +184,58 @@ class WorkflowPackRegistrationDetailResponse(BaseModel):
     )
     status_summary: list[str] = Field(
         description="Human-readable summary of the current workflow-pack registration detail posture."
+    )
+
+
+class WorkflowPackEligibilityEvaluationRequest(BaseModel):
+    pack_id: str = Field(description="Requested workflow-pack family identifier.")
+    version: str = Field(description="Requested workflow-pack version.")
+    caller_app: str = Field(description="Caller application requesting workflow-pack execution.")
+    environment: WorkflowPackEnvironment = Field(
+        description="Execution environment where the workflow-pack is being requested."
+    )
+    caller_identity_class: WorkflowPackCallerIdentityClass = Field(
+        description="Bounded caller identity class requesting workflow-pack execution."
+    )
+    tenant_id: str | None = Field(
+        default=None,
+        description="Tenant identifier when tenant-scoped activation applies.",
+    )
+    workflow_surface: str | None = Field(
+        default=None,
+        description="Named workflow surface where the pack is being requested.",
+    )
+
+
+class WorkflowPackEligibilityEvaluationResponse(BaseModel):
+    service: str = Field(description="Service name emitting the workflow-pack eligibility result.")
+    version: str = Field(description="Current lotus-ai service version.")
+    pack_id: str = Field(description="Requested workflow-pack family identifier.")
+    requested_version: str = Field(description="Requested workflow-pack version.")
+    eligibility_result: WorkflowPackEligibilityResult = Field(
+        description="Explicit workflow-pack eligibility evaluation outcome."
+    )
+    allowed: bool = Field(description="Whether the requested workflow-pack execution is allowed.")
+    evaluated_registration_ref: str | None = Field(
+        default=None,
+        description="Resolved workflow-pack registration reference when a registry record was found.",
+    )
+    caller_app: str = Field(description="Caller application evaluated by the workflow-pack policy.")
+    environment: WorkflowPackEnvironment = Field(
+        description="Environment evaluated by the workflow-pack policy."
+    )
+    caller_identity_class: WorkflowPackCallerIdentityClass = Field(
+        description="Caller identity class evaluated by the workflow-pack policy."
+    )
+    tenant_scope_applied: bool = Field(
+        description="Whether tenant-level scope was evaluated for this request."
+    )
+    workflow_surface_applied: bool = Field(
+        description="Whether workflow-surface scope was evaluated for this request."
+    )
+    denial_reasons: list[str] = Field(
+        description="Human-readable reasons explaining denied workflow-pack requests."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of the workflow-pack eligibility decision."
     )

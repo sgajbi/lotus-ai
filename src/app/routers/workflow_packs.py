@@ -3,9 +3,12 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.contracts.workflow_packs import (
+    WorkflowPackEligibilityEvaluationRequest,
+    WorkflowPackEligibilityEvaluationResponse,
     WorkflowPackRegistrationDetailResponse,
     WorkflowPackRegistryCatalogResponse,
 )
+from app.services.workflow_pack_activation import evaluate_workflow_pack_eligibility
 from app.services.workflow_pack_registry import (
     build_workflow_pack_registration_detail,
     build_workflow_pack_registry_catalog,
@@ -54,3 +57,22 @@ async def get_workflow_pack_registration_detail(
         return build_workflow_pack_registration_detail(pack_id=pack_id, version=version)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/platform/workflow-packs/eligibility/evaluate",
+    response_model=WorkflowPackEligibilityEvaluationResponse,
+    operation_id="evaluateWorkflowPackEligibility",
+    summary="Evaluate lotus-ai workflow-pack eligibility",
+    description=(
+        "Evaluates whether one workflow-pack version is currently eligible for execution under the declared caller, environment, and workflow-scope posture."
+    ),
+    responses={
+        200: {"description": "Workflow-pack eligibility evaluated successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def evaluate_workflow_pack_eligibility_route(
+    request: WorkflowPackEligibilityEvaluationRequest,
+) -> WorkflowPackEligibilityEvaluationResponse:
+    return evaluate_workflow_pack_eligibility(request)

@@ -254,6 +254,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         == "getWorkflowPackRegistrationDetail"
     )
     assert (
+        spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["operationId"]
+        == "evaluateWorkflowPackEligibility"
+    )
+    assert (
         spec["paths"]["/platform/use-cases/first-production-use-case"]["get"]["operationId"]
         == "getFirstProductionUseCaseStatus"
     )
@@ -420,6 +424,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     ]
     workflow_pack_registration_detail_schema = spec["components"]["schemas"][
         "WorkflowPackRegistrationDetailResponse"
+    ]
+    workflow_pack_eligibility_request_schema = spec["components"]["schemas"][
+        "WorkflowPackEligibilityEvaluationRequest"
+    ]
+    workflow_pack_eligibility_response_schema = spec["components"]["schemas"][
+        "WorkflowPackEligibilityEvaluationResponse"
     ]
     app_capability_rollout_catalog_schema = spec["components"]["schemas"][
         "AppCapabilityRolloutCatalogResponse"
@@ -631,6 +641,11 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "definition_ref" in workflow_pack_registration_schema["properties"]
     assert "validation_rules" in workflow_pack_registration_detail_schema["properties"]
     assert "denied_without_registration" in workflow_pack_registration_detail_schema["properties"]
+    assert "caller_app" in workflow_pack_eligibility_request_schema["properties"]
+    assert "workflow_surface" in workflow_pack_eligibility_request_schema["properties"]
+    assert "eligibility_result" in workflow_pack_eligibility_response_schema["properties"]
+    assert "evaluated_registration_ref" in workflow_pack_eligibility_response_schema["properties"]
+    assert "denial_reasons" in workflow_pack_eligibility_response_schema["properties"]
     assert "rollout_records" in app_capability_rollout_catalog_schema["properties"]
     assert "pairing_count" in app_capability_rollout_catalog_schema["properties"]
     assert "capability_pack_maturity_stage" in app_capability_rollout_schema["properties"]

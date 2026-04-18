@@ -236,6 +236,7 @@ If the selected path is evolving into a workflow-bearing pack rather than a boun
 
 1. `GET /platform/workflow-packs/registry`
 2. `GET /platform/workflow-packs/registry/{pack_id}/{version}`
+3. `POST /platform/workflow-packs/eligibility/evaluate`
 
 Then use the first-use-case surfaces as the concrete reference path when the selected pack already has one:
 

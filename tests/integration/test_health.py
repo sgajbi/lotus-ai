@@ -50,6 +50,20 @@ def test_platform_workflow_pack_registry_contract(client: TestClient) -> None:
     assert body["registrations"][0]["pack_id"] == "advisor_brief.pack"
     assert body["registrations"][0]["activation_state"] == "PILOT"
 
+    eligibility_response = client.post(
+        "/platform/workflow-packs/eligibility/evaluate",
+        json={
+            "pack_id": "advisor_brief.pack",
+            "version": "v1",
+            "caller_app": "lotus-gateway",
+            "environment": "QA",
+            "caller_identity_class": "INTERNAL_SERVICE",
+            "workflow_surface": "advisor-brief-panel",
+        },
+    )
+    assert eligibility_response.status_code == 200
+    assert eligibility_response.json()["eligibility_result"] == "ALLOWED"
+
 
 def test_platform_app_capability_rollout_catalog_contract(client: TestClient) -> None:
     response = client.get("/platform/app-capability-rollouts")
