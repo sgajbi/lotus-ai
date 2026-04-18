@@ -7,6 +7,7 @@ from app.services.task_execution_pipeline import (
     resolve_task_execution,
     validate_task_request,
 )
+from app.services.workflow_pack_run_ledger import record_workflow_pack_run_for_task_execution
 
 
 def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
@@ -14,4 +15,5 @@ def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
     resolved = resolve_task_execution(context=context)
     response = build_task_execution_response(resolved=resolved)
     persist_task_execution_audit(context=context, response=response)
+    record_workflow_pack_run_for_task_execution(context=context, response=response)
     return response

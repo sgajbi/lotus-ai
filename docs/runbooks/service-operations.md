@@ -78,6 +78,8 @@
 - Workflow-pack eligibility evaluation: /platform/workflow-packs/eligibility/evaluate
 - Workflow-pack control history: /platform/workflow-packs/control-history
 - Workflow-pack control actions: /platform/workflow-packs/control-actions
+- Workflow-pack run catalog: /platform/workflow-packs/runs
+- Workflow-pack run detail: /platform/workflow-packs/runs/{run_id}
 - First production use-case contract: /platform/use-cases/first-production-use-case
 - First production use-case readiness: /platform/use-cases/first-production-use-case/readiness
 - First production use-case runbook readiness: /platform/use-cases/first-production-use-case/runbook-readiness
@@ -222,6 +224,8 @@ Before treating any workflow-pack-enabled path as operator-ready:
    restart-safe durable truth
 8. keep workflow implementation changes in the owning repository; the `lotus-ai` control plane must
    not become a second editing surface for workflow behavior
+9. inspect `GET /platform/workflow-packs/runs` to distinguish runtime completion posture from product review posture for recorded Phase-1 pack runs
+10. inspect `GET /platform/workflow-packs/runs/{run_id}` when support needs the exact registration ref, evidence descriptors, and run-history event attached to one pack execution
 
 ## Durable Async Recovery
 

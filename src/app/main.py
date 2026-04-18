@@ -118,6 +118,7 @@ async def metadata() -> dict[str, str]:
         "artifactObjectStoreMode": settings.artifact_object_store_mode,
         "auditStoreMode": settings.audit_store_mode,
         "retrievalStoreMode": settings.retrieval_store_mode,
+        "workflowPackRunStoreMode": settings.workflow_pack_run_store_mode,
         "startupReadinessPolicy": settings.startup_readiness_policy,
         "readinessProbePolicy": settings.readiness_probe_policy,
     }
@@ -152,6 +153,7 @@ async def root() -> dict[str, object]:
         "artifactObjectStoreMode": settings.artifact_object_store_mode,
         "auditStoreMode": settings.audit_store_mode,
         "retrievalStoreMode": settings.retrieval_store_mode,
+        "workflowPackRunStoreMode": settings.workflow_pack_run_store_mode,
         "startupReadinessPolicy": settings.startup_readiness_policy,
         "readinessProbePolicy": settings.readiness_probe_policy,
         "capabilityAreas": [
@@ -161,6 +163,7 @@ async def root() -> dict[str, object]:
             "provider_catalog",
             "capability_packs",
             "workflow_packs",
+            "workflow_pack_runs",
             "prompt_registry",
             "access_control",
             "retrieval",

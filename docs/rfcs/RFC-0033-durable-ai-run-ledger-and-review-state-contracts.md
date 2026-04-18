@@ -1,6 +1,6 @@
 # RFC-0033: Durable AI Run Ledger and Review-State Contracts
 
-- Status: Draft
+- Status: In Progress
 - Date: 2026-04-18
 - Owners:
   - lotus-ai maintainers
@@ -57,13 +57,20 @@ The goal is to make every meaningful AI-assisted workflow run:
 
 ## Implementation Status
 
-This RFC remains draft-only.
+This RFC is now partially implemented.
 
 Current prerequisite foundations that now exist in `lotus-ai`:
 
 1. workflow-pack registry identity and owner-artifact grounding from `RFC-0032`,
 2. eligibility evaluation and bounded activation posture for registered workflow-pack versions,
 3. process-local operator control history and activation actions that clarify current runtime posture.
+
+Implemented on the current branch:
+
+1. workflow-pack run-ledger contract models for runtime state, review state, lineage-ready run identity, and run-history events,
+2. workflow-pack run store seam and in-memory repository implementation,
+3. read-only workflow-pack run catalog and detail APIs,
+4. Phase-1 runtime recording for `advisor_brief.pack` executions through the existing `explain.v1` task path.
 
 What is not implemented yet:
 
@@ -73,8 +80,7 @@ What is not implemented yet:
 3. durable linkage from workflow-pack execution to artifacts, review actions, and support evidence,
 4. UI and gateway consumption that renders run state and review state as separate dimensions.
 
-This RFC should remain `Draft` until at least the first ledger contract slice is implemented and
-the RFC, RFC index, and branch evidence can be kept in truthful alignment.
+This RFC now correctly moves to `In Progress`, but it should not be treated as complete until durable storage, review transitions, and downstream contract adoption are implemented and reflected in the RFC, RFC index, and branch evidence together.
 
 ## Prerequisite Evidence And Open Gaps
 

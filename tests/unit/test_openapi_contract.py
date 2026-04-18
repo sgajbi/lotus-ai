@@ -261,6 +261,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/workflow-packs/control-actions"]["post"]["operationId"] == (
         "applyWorkflowPackControlAction"
     )
+    assert spec["paths"]["/platform/workflow-packs/runs"]["get"]["operationId"] == (
+        "getWorkflowPackRunCatalog"
+    )
+    assert spec["paths"]["/platform/workflow-packs/runs/{run_id}"]["get"]["operationId"] == (
+        "getWorkflowPackRunDetail"
+    )
     assert (
         spec["paths"]["/platform/use-cases/first-production-use-case"]["get"]["operationId"]
         == "getFirstProductionUseCaseStatus"
@@ -446,6 +452,16 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     ]
     workflow_pack_control_action_response_schema = spec["components"]["schemas"][
         "WorkflowPackControlActionResponse"
+    ]
+    workflow_pack_run_catalog_schema = spec["components"]["schemas"][
+        "WorkflowPackRunCatalogResponse"
+    ]
+    workflow_pack_run_schema = spec["components"]["schemas"]["WorkflowPackRunDescriptor"]
+    workflow_pack_run_detail_schema = spec["components"]["schemas"][
+        "WorkflowPackRunDetailResponse"
+    ]
+    workflow_pack_run_event_schema = spec["components"]["schemas"][
+        "WorkflowPackRunEventDescriptor"
     ]
     app_capability_rollout_catalog_schema = spec["components"]["schemas"][
         "AppCapabilityRolloutCatalogResponse"
@@ -668,6 +684,17 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "resulting_activation_state" in workflow_pack_control_event_schema["properties"]
     assert "caller_app" in workflow_pack_control_action_request_schema["properties"]
     assert "registration" in workflow_pack_control_action_response_schema["properties"]
+    assert "run_store_mode" in workflow_pack_run_catalog_schema["properties"]
+    assert "awaiting_review_count" in workflow_pack_run_catalog_schema["properties"]
+    assert "runs" in workflow_pack_run_catalog_schema["properties"]
+    assert "registration_ref" in workflow_pack_run_schema["properties"]
+    assert "runtime_state" in workflow_pack_run_schema["properties"]
+    assert "review_state" in workflow_pack_run_schema["properties"]
+    assert "workflow_authority_owner" in workflow_pack_run_schema["properties"]
+    assert "evidence_descriptors" in workflow_pack_run_schema["properties"]
+    assert "events" in workflow_pack_run_detail_schema["properties"]
+    assert "event_type" in workflow_pack_run_event_schema["properties"]
+    assert "recorded_at" in workflow_pack_run_event_schema["properties"]
     assert "rollout_records" in app_capability_rollout_catalog_schema["properties"]
     assert "pairing_count" in app_capability_rollout_catalog_schema["properties"]
     assert "capability_pack_maturity_stage" in app_capability_rollout_schema["properties"]

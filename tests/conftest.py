@@ -21,6 +21,7 @@ from app.services.provider_operations_store import reset_provider_operations_sto
 from app.services.provider_quota_policy import reset_provider_quota_counters
 from app.services.retrieval_store import reset_retrieval_repository
 from app.services.workflow_pack_registry import reset_workflow_pack_registry_state
+from app.services.workflow_pack_run_store import reset_workflow_pack_run_store_cache
 
 
 @pytest.fixture(autouse=True)
@@ -60,6 +61,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "access_control_store_mode": settings.access_control_store_mode,
         "provider_operations_store_mode": settings.provider_operations_store_mode,
         "async_runtime_store_mode": settings.async_runtime_store_mode,
+        "workflow_pack_run_store_mode": settings.workflow_pack_run_store_mode,
         "async_cutover_state": settings.async_cutover_state,
         "async_queue_backend_mode": settings.async_queue_backend_mode,
         "async_queue_redis_url": settings.async_queue_redis_url,
@@ -94,3 +96,4 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_evaluation_runtime_store_cache()
         reset_artifact_store_cache()
         reset_workflow_pack_registry_state()
+        reset_workflow_pack_run_store_cache()

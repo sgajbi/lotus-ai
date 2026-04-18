@@ -11,11 +11,19 @@ from app.contracts.workflow_packs import (
     WorkflowPackRegistrationDetailResponse,
     WorkflowPackRegistryCatalogResponse,
 )
+from app.contracts.workflow_pack_runs import (
+    WorkflowPackRunCatalogResponse,
+    WorkflowPackRunDetailResponse,
+)
 from app.services.workflow_pack_control import (
     apply_workflow_pack_control_action,
     build_workflow_pack_control_history,
 )
 from app.services.workflow_pack_activation import evaluate_workflow_pack_eligibility
+from app.services.workflow_pack_run_ledger import (
+    build_workflow_pack_run_catalog,
+    build_workflow_pack_run_detail,
+)
 from app.services.workflow_pack_registry import (
     build_workflow_pack_registration_detail,
     build_workflow_pack_registry_catalog,
@@ -104,6 +112,43 @@ async def get_workflow_pack_control_history_route(
     limit: int = 20,
 ) -> WorkflowPackControlHistoryResponse:
     return build_workflow_pack_control_history(pack_id=pack_id, version=version, limit=limit)
+
+
+@router.get(
+    "/platform/workflow-packs/runs",
+    response_model=WorkflowPackRunCatalogResponse,
+    operation_id="getWorkflowPackRunCatalog",
+    summary="Get lotus-ai workflow-pack run catalog",
+    description=(
+        "Returns the current workflow-pack run-ledger catalog, including runtime-state and "
+        "review-state posture for recorded workflow-pack executions."
+    ),
+    responses={
+        200: {"description": "Workflow-pack run catalog returned successfully."},
+        422: {"description": "Invalid query parameters supplied."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_run_catalog_route() -> WorkflowPackRunCatalogResponse:
+    return build_workflow_pack_run_catalog()
+
+
+@router.get(
+    "/platform/workflow-packs/runs/{run_id}",
+    response_model=WorkflowPackRunDetailResponse,
+    operation_id="getWorkflowPackRunDetail",
+    summary="Get lotus-ai workflow-pack run detail",
+    description=(
+        "Returns detailed workflow-pack run-ledger state, including recorded run history events."
+    ),
+    responses={
+        200: {"description": "Workflow-pack run detail returned successfully."},
+        404: {"description": "Unknown workflow-pack run identifier."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_run_detail_route(run_id: str) -> WorkflowPackRunDetailResponse:
+    return build_workflow_pack_run_detail(run_id=run_id)
 
 
 @router.post(

@@ -28,7 +28,9 @@ def test_service_root_and_metadata_routes_expose_workflow_pack_platform_truth(
     root_body = root_response.json()
     metadata_body = metadata_response.json()
     assert "workflow_packs" in root_body["capabilityAreas"]
+    assert "workflow_pack_runs" in root_body["capabilityAreas"]
     assert metadata_body["service"] == "lotus-ai"
+    assert metadata_body["workflowPackRunStoreMode"] == "memory"
     assert "startupReadinessPolicy" in metadata_body
     assert "readinessProbePolicy" in metadata_body
 

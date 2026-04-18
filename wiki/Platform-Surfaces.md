@@ -76,12 +76,20 @@ platform programs.
    - `/platform/workflow-packs/eligibility/evaluate`
    - `/platform/workflow-packs/control-history`
    - `/platform/workflow-packs/control-actions`
+   - `/platform/workflow-packs/runs`
+   - `/platform/workflow-packs/runs/{run_id}`
 
 The workflow-pack detail route now carries structured owner-artifact references as part of the registration record:
 
 1. `definition_ref` is the primary repo-backed owner artifact,
 2. `definition_refs` enumerate the concrete contract, service, router, tests, and optional supporting RFC or UI validation evidence behind the registration,
 3. those references make the registry an onboarding and governance surface, not a second home for workflow implementation.
+
+The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 recorded runs:
+
+1. `/platform/workflow-packs/runs` exposes recorded run state with runtime and review posture kept separate,
+2. `/platform/workflow-packs/runs/{run_id}` exposes event history and evidence descriptors for one recorded run,
+3. the current slice records advisor-brief executions through the existing task path while the broader workflow-pack runtime remains future work.
 
 ## Provider Surface
 
