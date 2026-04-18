@@ -67,9 +67,7 @@ class WorkflowPackRunDescriptor(BaseModel):
     )
     provider_mode: str = Field(description="Provider mode recorded for the run.")
     stubbed: bool = Field(description="Whether the run was stub-backed.")
-    output_preview: str = Field(
-        description="Short preview of the generated workflow-pack output."
-    )
+    output_preview: str = Field(description="Short preview of the generated workflow-pack output.")
     structured_output_keys: list[str] = Field(
         description="Sorted structured-output keys observed for the run."
     )
@@ -93,9 +91,7 @@ class WorkflowPackRunDescriptor(BaseModel):
         default=None,
         description="UTC timestamp when the run reached its current terminal runtime state.",
     )
-    last_updated_at: str = Field(
-        description="UTC timestamp when the run record last changed."
-    )
+    last_updated_at: str = Field(description="UTC timestamp when the run record last changed.")
 
 
 class WorkflowPackRunEventDescriptor(BaseModel):

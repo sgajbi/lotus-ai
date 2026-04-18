@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 
 from app.config import settings
 from app.contracts.tasks import TaskExecutionResponse
+from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunCatalogResponse,
     WorkflowPackRunDescriptor,
@@ -32,9 +33,7 @@ def build_workflow_pack_run_catalog() -> WorkflowPackRunCatalogResponse:
         run_store_mode=settings.workflow_pack_run_store_mode,
         run_count=len(runs),
         awaiting_review_count=sum(
-            1
-            for run in runs
-            if run.review_state == WorkflowPackRunReviewState.AWAITING_REVIEW
+            1 for run in runs if run.review_state == WorkflowPackRunReviewState.AWAITING_REVIEW
         ),
         completed_count=sum(
             1 for run in runs if run.runtime_state == WorkflowPackRunRuntimeState.COMPLETED
@@ -138,7 +137,10 @@ def record_workflow_pack_run_for_task_execution(
     return _map_run_record(record)
 
 
-def _resolve_registration_for_task_execution(*, context: TaskExecutionContext):
+def _resolve_registration_for_task_execution(
+    *,
+    context: TaskExecutionContext,
+) -> WorkflowPackRegistrationDescriptor | None:
     if context.capability.task_id != "explain.v1":
         return None
     if context.request.caller.caller_app != "lotus-gateway":

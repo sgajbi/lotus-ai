@@ -457,12 +457,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         "WorkflowPackRunCatalogResponse"
     ]
     workflow_pack_run_schema = spec["components"]["schemas"]["WorkflowPackRunDescriptor"]
-    workflow_pack_run_detail_schema = spec["components"]["schemas"][
-        "WorkflowPackRunDetailResponse"
-    ]
-    workflow_pack_run_event_schema = spec["components"]["schemas"][
-        "WorkflowPackRunEventDescriptor"
-    ]
+    workflow_pack_run_detail_schema = spec["components"]["schemas"]["WorkflowPackRunDetailResponse"]
+    workflow_pack_run_event_schema = spec["components"]["schemas"]["WorkflowPackRunEventDescriptor"]
     app_capability_rollout_catalog_schema = spec["components"]["schemas"][
         "AppCapabilityRolloutCatalogResponse"
     ]
