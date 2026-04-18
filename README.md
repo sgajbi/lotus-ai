@@ -132,6 +132,12 @@ docker compose up --build
 
 API docs are available at `http://localhost:8140/docs`.
 
+Local Docker runtime notes:
+
+1. PostgreSQL stays internal to the Compose network on `postgres:5432`,
+2. Redis stays internal to the Compose network on `redis:6379`,
+3. only the application port `8140` is published for local API access.
+
 ## Common Commands
 
 - `make install` - install development dependencies
