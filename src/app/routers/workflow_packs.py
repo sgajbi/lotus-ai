@@ -3,10 +3,17 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.contracts.workflow_packs import (
+    WorkflowPackControlActionRequest,
+    WorkflowPackControlActionResponse,
+    WorkflowPackControlHistoryResponse,
     WorkflowPackEligibilityEvaluationRequest,
     WorkflowPackEligibilityEvaluationResponse,
     WorkflowPackRegistrationDetailResponse,
     WorkflowPackRegistryCatalogResponse,
+)
+from app.services.workflow_pack_control import (
+    apply_workflow_pack_control_action,
+    build_workflow_pack_control_history,
 )
 from app.services.workflow_pack_activation import evaluate_workflow_pack_eligibility
 from app.services.workflow_pack_registry import (
@@ -76,3 +83,50 @@ async def evaluate_workflow_pack_eligibility_route(
     request: WorkflowPackEligibilityEvaluationRequest,
 ) -> WorkflowPackEligibilityEvaluationResponse:
     return evaluate_workflow_pack_eligibility(request)
+
+
+@router.get(
+    "/platform/workflow-packs/control-history",
+    response_model=WorkflowPackControlHistoryResponse,
+    operation_id="getWorkflowPackControlHistory",
+    summary="Get lotus-ai workflow-pack control history",
+    description=(
+        "Returns recent workflow-pack pause, resume, deprecate, and retire actions recorded by the workflow-pack control plane."
+    ),
+    responses={
+        200: {"description": "Workflow-pack control history returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_control_history_route(
+    pack_id: str | None = None,
+    version: str | None = None,
+    limit: int = 20,
+) -> WorkflowPackControlHistoryResponse:
+    return build_workflow_pack_control_history(pack_id=pack_id, version=version, limit=limit)
+
+
+@router.post(
+    "/platform/workflow-packs/control-actions",
+    response_model=WorkflowPackControlActionResponse,
+    operation_id="applyWorkflowPackControlAction",
+    summary="Apply a lotus-ai workflow-pack control action",
+    description=(
+        "Applies one bounded workflow-pack pause, resume, deprecate, or retire action and records the resulting control-plane event."
+    ),
+    responses={
+        200: {"description": "Workflow-pack control action applied successfully."},
+        403: {
+            "description": "Caller is not currently authorized for workflow-pack control actions."
+        },
+        404: {"description": "Workflow-pack registration not found."},
+        409: {
+            "description": "Workflow-pack control action conflicts with the current registration state."
+        },
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def apply_workflow_pack_control_action_route(
+    request: WorkflowPackControlActionRequest,
+) -> WorkflowPackControlActionResponse:
+    return apply_workflow_pack_control_action(request)

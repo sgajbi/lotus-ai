@@ -4,6 +4,7 @@ from app.config import settings
 from app.contracts.workflow_packs import (
     WorkflowPackActivationState,
     WorkflowPackCallerIdentityClass,
+    WorkflowPackControlEventDescriptor,
     WorkflowPackEnvironment,
     WorkflowPackExecutionMode,
     WorkflowPackRegistrationDescriptor,
@@ -12,6 +13,9 @@ from app.contracts.workflow_packs import (
     WorkflowPackRegistryCatalogResponse,
     WorkflowPackValidationRuleDescriptor,
 )
+
+_REGISTRATION_STATE: list[WorkflowPackRegistrationDescriptor] | None = None
+_CONTROL_EVENTS: list[WorkflowPackControlEventDescriptor] = []
 
 
 def build_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogResponse:
@@ -73,12 +77,69 @@ def get_workflow_pack_registration(
     return None
 
 
+def save_workflow_pack_registration(registration: WorkflowPackRegistrationDescriptor) -> None:
+    registrations = _validated_registrations()
+    updated_registrations: list[WorkflowPackRegistrationDescriptor] = []
+    replaced = False
+    for existing in registrations:
+        if existing.pack_id == registration.pack_id and existing.version == registration.version:
+            updated_registrations.append(registration)
+            replaced = True
+            continue
+        updated_registrations.append(existing)
+    if not replaced:
+        updated_registrations.append(registration)
+    _set_registration_state(updated_registrations)
+
+
+def list_workflow_pack_control_events(
+    *,
+    pack_id: str | None = None,
+    version: str | None = None,
+    limit: int = 20,
+) -> list[WorkflowPackControlEventDescriptor]:
+    events = list(_CONTROL_EVENTS)
+    if pack_id is not None:
+        events = [event for event in events if event.pack_id == pack_id]
+    if version is not None:
+        events = [event for event in events if event.version == version]
+    events.sort(key=lambda event: event.recorded_at, reverse=True)
+    return events[: max(limit, 1)]
+
+
+def append_workflow_pack_control_event(event: WorkflowPackControlEventDescriptor) -> None:
+    _CONTROL_EVENTS.append(event)
+
+
+def reset_workflow_pack_registry_state() -> None:
+    global _REGISTRATION_STATE
+    _REGISTRATION_STATE = None
+    _CONTROL_EVENTS.clear()
+
+
 def _validated_registrations() -> list[WorkflowPackRegistrationDescriptor]:
-    registrations = _build_workflow_pack_registrations()
+    registrations = _get_registration_state()
     _validate_unique_registration_identity(registrations)
     _validate_registered_entries_have_scope(registrations)
     _validate_retired_entries_are_not_active(registrations)
     return registrations
+
+
+def _get_registration_state() -> list[WorkflowPackRegistrationDescriptor]:
+    global _REGISTRATION_STATE
+    if _REGISTRATION_STATE is None:
+        _REGISTRATION_STATE = _build_workflow_pack_registrations()
+    return [registration.model_copy(deep=True) for registration in _REGISTRATION_STATE]
+
+
+def _set_registration_state(
+    registrations: list[WorkflowPackRegistrationDescriptor],
+) -> None:
+    global _REGISTRATION_STATE
+    _validate_unique_registration_identity(registrations)
+    _validate_registered_entries_have_scope(registrations)
+    _validate_retired_entries_are_not_active(registrations)
+    _REGISTRATION_STATE = [registration.model_copy(deep=True) for registration in registrations]
 
 
 def _build_workflow_pack_registrations() -> list[WorkflowPackRegistrationDescriptor]:

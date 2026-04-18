@@ -57,6 +57,13 @@ class WorkflowPackEligibilityResult(str, Enum):
     DENIED_VALIDATION_STATUS = "DENIED_VALIDATION_STATUS"
 
 
+class WorkflowPackControlActionType(str, Enum):
+    PAUSE = "PAUSE"
+    RESUME = "RESUME"
+    DEPRECATE = "DEPRECATE"
+    RETIRE = "RETIRE"
+
+
 class WorkflowPackValidationRuleDescriptor(BaseModel):
     rule_id: str = Field(
         description="Stable workflow-pack registration validation rule identifier."
@@ -240,4 +247,92 @@ class WorkflowPackEligibilityEvaluationResponse(BaseModel):
     )
     status_summary: list[str] = Field(
         description="Human-readable summary of the workflow-pack eligibility decision."
+    )
+
+
+class WorkflowPackControlEventDescriptor(BaseModel):
+    event_id: str = Field(description="Stable identifier for the workflow-pack control action.")
+    pack_id: str = Field(description="Workflow-pack family identifier affected by the action.")
+    version: str = Field(description="Workflow-pack version affected by the action.")
+    action_type: WorkflowPackControlActionType = Field(
+        description="Type of workflow-pack control action that was recorded."
+    )
+    requested_by: str = Field(description="Operator or system identity requesting the action.")
+    approved_by: str = Field(description="Approver identity recorded for the action.")
+    reason: str = Field(description="Human-readable reason for the workflow-pack control action.")
+    prior_registration_status: WorkflowPackRegistrationStatus = Field(
+        description="Registration status before the workflow-pack control action ran."
+    )
+    resulting_registration_status: WorkflowPackRegistrationStatus = Field(
+        description="Registration status after the workflow-pack control action completed."
+    )
+    prior_activation_state: WorkflowPackActivationState = Field(
+        description="Activation state before the workflow-pack control action ran."
+    )
+    resulting_activation_state: WorkflowPackActivationState = Field(
+        description="Activation state after the workflow-pack control action completed."
+    )
+    caller_app: str = Field(
+        description="Caller application issuing the workflow-pack control action."
+    )
+    recorded_at: str = Field(
+        description="UTC timestamp when the workflow-pack control action was recorded."
+    )
+
+
+class WorkflowPackControlHistoryResponse(BaseModel):
+    service: str = Field(description="Service name emitting the workflow-pack control history.")
+    version: str = Field(description="Current lotus-ai service version.")
+    phase: str = Field(description="Current delivery phase for lotus-ai.")
+    control_plane_store_mode: str = Field(
+        description="Current workflow-pack control-plane store mode."
+    )
+    supported_action_types: list[WorkflowPackControlActionType] = Field(
+        description="Supported workflow-pack control action types."
+    )
+    latest_events: list[WorkflowPackControlEventDescriptor] = Field(
+        description="Most recent workflow-pack control-plane events."
+    )
+    notes: list[str] = Field(
+        description="Human-readable notes describing workflow-pack control-plane durability and scope."
+    )
+
+
+class WorkflowPackControlActionRequest(BaseModel):
+    pack_id: str = Field(description="Workflow-pack family identifier targeted by the action.")
+    version: str = Field(description="Workflow-pack version targeted by the action.")
+    action_type: WorkflowPackControlActionType = Field(
+        description="Requested workflow-pack control action."
+    )
+    caller_app: str = Field(
+        min_length=1,
+        description="Caller application issuing the workflow-pack control action.",
+    )
+    requested_by: str = Field(
+        min_length=1,
+        description="Operator or system identity requesting the action.",
+    )
+    approved_by: str = Field(
+        min_length=1,
+        description="Approver identity authorizing the action.",
+    )
+    reason: str = Field(
+        min_length=1,
+        description="Human-readable reason for the workflow-pack control action.",
+    )
+
+
+class WorkflowPackControlActionResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the workflow-pack control action response."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    event: WorkflowPackControlEventDescriptor = Field(
+        description="Recorded workflow-pack control-plane event."
+    )
+    registration: WorkflowPackRegistrationDescriptor = Field(
+        description="Workflow-pack registration state after the control action completed."
+    )
+    summary: list[str] = Field(
+        description="Human-readable summary of the applied workflow-pack control action."
     )

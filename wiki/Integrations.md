@@ -149,9 +149,10 @@ The practical sequence for a new downstream adoption is:
 2. inspect the selected pack detail and adoption template
 3. inspect `/platform/workflow-packs/registry` when the pack is intended to become a workflow-bearing runtime family
 4. evaluate `/platform/workflow-packs/eligibility/evaluate` with the caller and surface posture that will actually invoke the pack
-5. inspect `/platform/use-cases/onboarding-template`
-6. inspect `/platform/use-cases/first-production-use-case`
-7. inspect `/platform/app-capability-rollouts`
+5. inspect `/platform/workflow-packs/control-history` when operator pause, resume, deprecate, or retire posture matters
+6. inspect `/platform/use-cases/onboarding-template`
+7. inspect `/platform/use-cases/first-production-use-case`
+8. inspect `/platform/app-capability-rollouts`
 
 That sequence keeps app-facing productization separate from low-level task execution.
 

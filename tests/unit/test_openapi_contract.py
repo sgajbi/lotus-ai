@@ -255,6 +255,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["operationId"]
         == "evaluateWorkflowPackEligibility"
     )
+    assert spec["paths"]["/platform/workflow-packs/control-history"]["get"]["operationId"] == (
+        "getWorkflowPackControlHistory"
+    )
+    assert spec["paths"]["/platform/workflow-packs/control-actions"]["post"]["operationId"] == (
+        "applyWorkflowPackControlAction"
+    )
     assert (
         spec["paths"]["/platform/use-cases/first-production-use-case"]["get"]["operationId"]
         == "getFirstProductionUseCaseStatus"
@@ -428,6 +434,18 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     ]
     workflow_pack_eligibility_response_schema = spec["components"]["schemas"][
         "WorkflowPackEligibilityEvaluationResponse"
+    ]
+    workflow_pack_control_history_schema = spec["components"]["schemas"][
+        "WorkflowPackControlHistoryResponse"
+    ]
+    workflow_pack_control_event_schema = spec["components"]["schemas"][
+        "WorkflowPackControlEventDescriptor"
+    ]
+    workflow_pack_control_action_request_schema = spec["components"]["schemas"][
+        "WorkflowPackControlActionRequest"
+    ]
+    workflow_pack_control_action_response_schema = spec["components"]["schemas"][
+        "WorkflowPackControlActionResponse"
     ]
     app_capability_rollout_catalog_schema = spec["components"]["schemas"][
         "AppCapabilityRolloutCatalogResponse"
@@ -644,6 +662,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "eligibility_result" in workflow_pack_eligibility_response_schema["properties"]
     assert "evaluated_registration_ref" in workflow_pack_eligibility_response_schema["properties"]
     assert "denial_reasons" in workflow_pack_eligibility_response_schema["properties"]
+    assert "supported_action_types" in workflow_pack_control_history_schema["properties"]
+    assert "latest_events" in workflow_pack_control_history_schema["properties"]
+    assert "prior_activation_state" in workflow_pack_control_event_schema["properties"]
+    assert "resulting_activation_state" in workflow_pack_control_event_schema["properties"]
+    assert "caller_app" in workflow_pack_control_action_request_schema["properties"]
+    assert "registration" in workflow_pack_control_action_response_schema["properties"]
     assert "rollout_records" in app_capability_rollout_catalog_schema["properties"]
     assert "pairing_count" in app_capability_rollout_catalog_schema["properties"]
     assert "capability_pack_maturity_stage" in app_capability_rollout_schema["properties"]

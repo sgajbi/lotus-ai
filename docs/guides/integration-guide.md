@@ -238,6 +238,11 @@ If the selected path is evolving into a workflow-bearing pack rather than a boun
 2. `GET /platform/workflow-packs/registry/{pack_id}/{version}`
 3. `POST /platform/workflow-packs/eligibility/evaluate`
 
+For operator review or emergency posture changes, use the workflow-pack control surfaces:
+
+1. `GET /platform/workflow-packs/control-history`
+2. `POST /platform/workflow-packs/control-actions`
+
 Then use the first-use-case surfaces as the concrete reference path when the selected pack already has one:
 
 1. `GET /platform/use-cases/onboarding-template`

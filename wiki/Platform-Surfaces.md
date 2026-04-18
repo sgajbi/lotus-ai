@@ -74,6 +74,8 @@ platform programs.
    - `/platform/workflow-packs/registry`
    - `/platform/workflow-packs/registry/{pack_id}/{version}`
    - `/platform/workflow-packs/eligibility/evaluate`
+   - `/platform/workflow-packs/control-history`
+   - `/platform/workflow-packs/control-actions`
 
 ## Provider Surface
 
@@ -293,6 +295,8 @@ These are the app-facing rollout and onboarding surfaces rather than low-level r
    - `/platform/workflow-packs/registry`
    - `/platform/workflow-packs/registry/{pack_id}/{version}`
    - `/platform/workflow-packs/eligibility/evaluate`
+   - `/platform/workflow-packs/control-history`
+   - `/platform/workflow-packs/control-actions`
 3. app-capability rollouts
    - `/platform/app-capability-rollouts`
 4. first production use-case and onboarding templates

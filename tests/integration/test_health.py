@@ -64,6 +64,10 @@ def test_platform_workflow_pack_registry_contract(client: TestClient) -> None:
     assert eligibility_response.status_code == 200
     assert eligibility_response.json()["eligibility_result"] == "ALLOWED"
 
+    control_history_response = client.get("/platform/workflow-packs/control-history")
+    assert control_history_response.status_code == 200
+    assert "PAUSE" in control_history_response.json()["supported_action_types"]
+
 
 def test_platform_app_capability_rollout_catalog_contract(client: TestClient) -> None:
     response = client.get("/platform/app-capability-rollouts")

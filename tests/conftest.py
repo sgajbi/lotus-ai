@@ -20,6 +20,7 @@ from app.services.provider_degradation_state import reset_provider_degradation_s
 from app.services.provider_operations_store import reset_provider_operations_store_cache
 from app.services.provider_quota_policy import reset_provider_quota_counters
 from app.services.retrieval_store import reset_retrieval_repository
+from app.services.workflow_pack_registry import reset_workflow_pack_registry_state
 
 
 @pytest.fixture(autouse=True)
@@ -92,3 +93,4 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_async_runtime_store_cache()
         reset_evaluation_runtime_store_cache()
         reset_artifact_store_cache()
+        reset_workflow_pack_registry_state()

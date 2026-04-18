@@ -220,6 +220,7 @@ Key health and operator surfaces:
 - `/platform/async/governance-status`
 - `/platform/workflow-packs/registry`
 - `/platform/workflow-packs/eligibility/evaluate`
+- `/platform/workflow-packs/control-history`
 
 Operational guidance lives in:
 
