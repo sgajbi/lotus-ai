@@ -73,6 +73,11 @@
 - Safety runbook readiness: /platform/safety/runbook-readiness
 - Safety governance status: /platform/safety/governance-status
 - Retrieval runtime status: /platform/retrieval/runtime-status
+- Workflow-pack registry: /platform/workflow-packs/registry
+- Workflow-pack registration detail: /platform/workflow-packs/registry/{pack_id}/{version}
+- Workflow-pack eligibility evaluation: /platform/workflow-packs/eligibility/evaluate
+- Workflow-pack control history: /platform/workflow-packs/control-history
+- Workflow-pack control actions: /platform/workflow-packs/control-actions
 - First production use-case contract: /platform/use-cases/first-production-use-case
 - First production use-case readiness: /platform/use-cases/first-production-use-case/readiness
 - First production use-case runbook readiness: /platform/use-cases/first-production-use-case/runbook-readiness
@@ -198,6 +203,25 @@ Before any broader async activation slice:
 6. confirm retrieval indexing remains the only runtime-backed async consumer unless a broader rollout slice has been explicitly approved
 7. confirm observability, replay, escalation, and incident procedures are documented and approved
 8. only then proceed with any activation rollout review
+
+## Workflow-Pack Governance Review
+
+Before treating any workflow-pack-enabled path as operator-ready:
+
+1. inspect `GET /platform/workflow-packs/registry` for the current registered-versus-discovered posture
+2. inspect `GET /platform/workflow-packs/registry/{pack_id}/{version}` to confirm `owner_repository`,
+   `workflow_authority_owner`, `definition_ref`, and `definition_refs` all point to real owner artifacts
+3. treat missing or vague owner-artifact references as a registration-quality failure, not as harmless metadata drift
+4. evaluate `POST /platform/workflow-packs/eligibility/evaluate` using the real caller app,
+   identity class, environment, tenant, and workflow surface that will request the pack
+5. inspect `GET /platform/workflow-packs/control-history` before assuming a pack is currently active,
+   especially when pilot, paused, deprecated, or retired posture might have changed recently
+6. apply `POST /platform/workflow-packs/control-actions` only with an explicit operator reason and a
+   caller authorized to act on behalf of the platform control plane
+7. treat the current workflow-pack control history as process-local operational evidence rather than
+   restart-safe durable truth
+8. keep workflow implementation changes in the owning repository; the `lotus-ai` control plane must
+   not become a second editing surface for workflow behavior
 
 ## Durable Async Recovery
 

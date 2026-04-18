@@ -159,56 +159,7 @@ def _build_workflow_pack_registrations() -> list[WorkflowPackRegistrationDescrip
             workflow_authority_owner="lotus-gateway",
             default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
             definition_ref="repo://lotus-gateway/src/app/contracts/advisor_brief.py",
-            definition_refs=[
-                WorkflowPackDefinitionReferenceDescriptor(
-                    reference_id="primary_contract",
-                    repository="lotus-gateway",
-                    path="src/app/contracts/advisor_brief.py",
-                    reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
-                    required_for_registration=True,
-                    description="Source-grounded advisor-brief response contract owned by the gateway composition layer.",
-                ),
-                WorkflowPackDefinitionReferenceDescriptor(
-                    reference_id="owner_service",
-                    repository="lotus-gateway",
-                    path="src/app/services/advisor_brief_service.py",
-                    reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
-                    required_for_registration=True,
-                    description="Gateway service that assembles advisor-brief facts and invokes bounded lotus-ai generation.",
-                ),
-                WorkflowPackDefinitionReferenceDescriptor(
-                    reference_id="owner_router",
-                    repository="lotus-gateway",
-                    path="src/app/routers/workbench.py",
-                    reference_type=WorkflowPackDefinitionReferenceType.ROUTER,
-                    required_for_registration=True,
-                    description="Workbench-facing route that exposes the governed advisor-brief surface.",
-                ),
-                WorkflowPackDefinitionReferenceDescriptor(
-                    reference_id="owner_tests",
-                    repository="lotus-gateway",
-                    path="tests/unit/test_advisor_brief_service.py",
-                    reference_type=WorkflowPackDefinitionReferenceType.TEST,
-                    required_for_registration=True,
-                    description="Owner-repository regression coverage for advisor-brief contract and service behavior.",
-                ),
-                WorkflowPackDefinitionReferenceDescriptor(
-                    reference_id="ui_rfc",
-                    repository="lotus-workbench",
-                    path="docs/rfcs/RFC-0020-ai-advisor-brief-copilot.md",
-                    reference_type=WorkflowPackDefinitionReferenceType.RFC,
-                    required_for_registration=False,
-                    description="UI and product RFC describing the advisor-brief product surface that consumes the gateway contract.",
-                ),
-                WorkflowPackDefinitionReferenceDescriptor(
-                    reference_id="ui_validation",
-                    repository="lotus-workbench",
-                    path="scripts/live/validation/contract-metadata.mjs",
-                    reference_type=WorkflowPackDefinitionReferenceType.VALIDATION,
-                    required_for_registration=False,
-                    description="Canonical front-office validation metadata proving the advisor-brief surface remains visible and governed.",
-                ),
-            ],
+            definition_refs=_advisor_brief_v1_definition_refs(),
             compatibility_contract_version="workflow-pack-contract.v1",
             registration_status=WorkflowPackRegistrationStatus.REGISTERED,
             activation_state=WorkflowPackActivationState.PILOT,
@@ -249,40 +200,7 @@ def _build_workflow_pack_registrations() -> list[WorkflowPackRegistrationDescrip
             workflow_authority_owner="lotus-gateway",
             default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
             definition_ref="repo://lotus-gateway/src/app/services/advisor_brief_service.py",
-            definition_refs=[
-                WorkflowPackDefinitionReferenceDescriptor(
-                    reference_id="primary_service_candidate",
-                    repository="lotus-gateway",
-                    path="src/app/services/advisor_brief_service.py",
-                    reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
-                    required_for_registration=True,
-                    description="Current owner-service implementation that a successor advisor-brief pack version would extend or replace.",
-                ),
-                WorkflowPackDefinitionReferenceDescriptor(
-                    reference_id="contract_anchor",
-                    repository="lotus-gateway",
-                    path="src/app/contracts/advisor_brief.py",
-                    reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
-                    required_for_registration=True,
-                    description="Current owner contract that constrains discovered successor work until a version-specific contract lands.",
-                ),
-                WorkflowPackDefinitionReferenceDescriptor(
-                    reference_id="owner_tests",
-                    repository="lotus-gateway",
-                    path="tests/unit/test_advisor_brief_service.py",
-                    reference_type=WorkflowPackDefinitionReferenceType.TEST,
-                    required_for_registration=True,
-                    description="Regression suite that must stay green before a discovered successor may advance out of dark posture.",
-                ),
-                WorkflowPackDefinitionReferenceDescriptor(
-                    reference_id="ui_rfc",
-                    repository="lotus-workbench",
-                    path="docs/rfcs/RFC-0020-ai-advisor-brief-copilot.md",
-                    reference_type=WorkflowPackDefinitionReferenceType.RFC,
-                    required_for_registration=False,
-                    description="Product-level advisor-brief RFC that remains relevant while successor onboarding stays in discovery.",
-                ),
-            ],
+            definition_refs=_advisor_brief_v2_definition_refs(),
             compatibility_contract_version="workflow-pack-contract.v1",
             registration_status=WorkflowPackRegistrationStatus.DISCOVERED,
             activation_state=WorkflowPackActivationState.DARK,
@@ -308,6 +226,115 @@ def _build_workflow_pack_registrations() -> list[WorkflowPackRegistrationDescrip
             ],
         ),
     ]
+
+
+def _advisor_brief_v1_definition_refs() -> list[WorkflowPackDefinitionReferenceDescriptor]:
+    return [
+        _definition_ref(
+            reference_id="primary_contract",
+            repository="lotus-gateway",
+            path="src/app/contracts/advisor_brief.py",
+            reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
+            required_for_registration=True,
+            description="Source-grounded advisor-brief response contract owned by the gateway composition layer.",
+        ),
+        _definition_ref(
+            reference_id="owner_service",
+            repository="lotus-gateway",
+            path="src/app/services/advisor_brief_service.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description="Gateway service that assembles advisor-brief facts and invokes bounded lotus-ai generation.",
+        ),
+        _definition_ref(
+            reference_id="owner_router",
+            repository="lotus-gateway",
+            path="src/app/routers/workbench.py",
+            reference_type=WorkflowPackDefinitionReferenceType.ROUTER,
+            required_for_registration=True,
+            description="Workbench-facing route that exposes the governed advisor-brief surface.",
+        ),
+        _definition_ref(
+            reference_id="owner_tests",
+            repository="lotus-gateway",
+            path="tests/unit/test_advisor_brief_service.py",
+            reference_type=WorkflowPackDefinitionReferenceType.TEST,
+            required_for_registration=True,
+            description="Owner-repository regression coverage for advisor-brief contract and service behavior.",
+        ),
+        _definition_ref(
+            reference_id="ui_rfc",
+            repository="lotus-workbench",
+            path="docs/rfcs/RFC-0020-ai-advisor-brief-copilot.md",
+            reference_type=WorkflowPackDefinitionReferenceType.RFC,
+            required_for_registration=False,
+            description="UI and product RFC describing the advisor-brief product surface that consumes the gateway contract.",
+        ),
+        _definition_ref(
+            reference_id="ui_validation",
+            repository="lotus-workbench",
+            path="scripts/live/validation/contract-metadata.mjs",
+            reference_type=WorkflowPackDefinitionReferenceType.VALIDATION,
+            required_for_registration=False,
+            description="Canonical front-office validation metadata proving the advisor-brief surface remains visible and governed.",
+        ),
+    ]
+
+
+def _advisor_brief_v2_definition_refs() -> list[WorkflowPackDefinitionReferenceDescriptor]:
+    return [
+        _definition_ref(
+            reference_id="primary_service_candidate",
+            repository="lotus-gateway",
+            path="src/app/services/advisor_brief_service.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description="Current owner-service implementation that a successor advisor-brief pack version would extend or replace.",
+        ),
+        _definition_ref(
+            reference_id="contract_anchor",
+            repository="lotus-gateway",
+            path="src/app/contracts/advisor_brief.py",
+            reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
+            required_for_registration=True,
+            description="Current owner contract that constrains discovered successor work until a version-specific contract lands.",
+        ),
+        _definition_ref(
+            reference_id="owner_tests",
+            repository="lotus-gateway",
+            path="tests/unit/test_advisor_brief_service.py",
+            reference_type=WorkflowPackDefinitionReferenceType.TEST,
+            required_for_registration=True,
+            description="Regression suite that must stay green before a discovered successor may advance out of dark posture.",
+        ),
+        _definition_ref(
+            reference_id="ui_rfc",
+            repository="lotus-workbench",
+            path="docs/rfcs/RFC-0020-ai-advisor-brief-copilot.md",
+            reference_type=WorkflowPackDefinitionReferenceType.RFC,
+            required_for_registration=False,
+            description="Product-level advisor-brief RFC that remains relevant while successor onboarding stays in discovery.",
+        ),
+    ]
+
+
+def _definition_ref(
+    *,
+    reference_id: str,
+    repository: str,
+    path: str,
+    reference_type: WorkflowPackDefinitionReferenceType,
+    required_for_registration: bool,
+    description: str,
+) -> WorkflowPackDefinitionReferenceDescriptor:
+    return WorkflowPackDefinitionReferenceDescriptor(
+        reference_id=reference_id,
+        repository=repository,
+        path=path,
+        reference_type=reference_type,
+        required_for_registration=required_for_registration,
+        description=description,
+    )
 
 
 def _build_validation_rules() -> list[WorkflowPackValidationRuleDescriptor]:

@@ -14,7 +14,8 @@ This document is the quickest way to understand what `lotus-ai` supports today, 
 6. durable async execution with dedicated worker and queue support,
 7. caller identity and tenant-aware authorization controls,
 8. audit, evidence, and operator-facing governance surfaces,
-9. governed artifact metadata and payload-store foundation.
+9. governed artifact metadata and payload-store foundation,
+10. workflow-pack registry, eligibility, and operator-control foundations for workflow-bearing AI paths.
 
 The service is no longer only a documentation skeleton. It has real runtime control planes and durable platform state. It is still in a foundation phase because some important production-support features are intentionally deferred.
 
@@ -126,6 +127,23 @@ Supported now:
 5. authorization outcome persistence in audit, evidence, and control history,
 6. access-control runtime, activation, runbook, and governance surfaces.
 
+### Workflow-Pack Control Plane
+
+Supported now:
+
+1. workflow-pack registry catalog and detail surfaces,
+2. explicit eligibility evaluation over caller, environment, tenant, and workflow-surface posture,
+3. bounded operator control actions for pause, resume, deprecate, and retire,
+4. structured owner-artifact references that tie registry records back to real downstream repositories,
+5. deny-by-default behavior when registration truth or activation posture is missing.
+
+Important limitation:
+
+1. the current control history is still process-local rather than durable,
+2. this control plane does not execute workflow logic by itself,
+3. no default-version resolution or broad production activation exists yet,
+4. downstream owner repositories still have to carry the real workflow-bearing implementation and tests.
+
 ## Intentionally Limited or Not Yet Live
 
 These areas are important because they are visible in the platform shape, but not fully delivered yet.
@@ -206,6 +224,9 @@ The next RFCs now identified in the repo describe the expected post-foundation s
 7. `RFC-0028` relationship manager briefing agent for the Lotus ecosystem
 8. `RFC-0029` portfolio situation room agent
 9. `RFC-0030` client mandate integrity and action orchestration
+10. `RFC-0031` governed agent workflow packs and bounded AI runtime
+11. `RFC-0032` governed workflow-pack registry and activation posture
+12. `RFC-0033` durable AI run ledger and review-state contracts
 
 Current status against that sequence:
 
@@ -218,6 +239,9 @@ Current status against that sequence:
 7. `RFC-0028` is now drafted as the first cross-domain agentic front-office feature, using governed domain APIs as typed tools so `lotus-ai` can assemble banker-ready briefings and next-best-action suggestions without taking ownership of portfolio, analytics, workflow, or reporting truth.
 8. `RFC-0029` is now drafted as the first persistent case-based cross-domain workflow, turning a material portfolio event into a governed Situation Room with specialist views, coordinator synthesis, and closure discipline rather than a one-shot summary.
 9. `RFC-0030` is now drafted as the most banking-grade agentic control concept in the current roadmap, focusing on client relationship integrity across mandate, risk, servicing, workflow, proposal, and evidence posture rather than on narrative assistance alone.
+10. `RFC-0031` is now in progress through the shared workflow-pack direction and reference-family posture, but the broader bounded runtime is not implemented end to end yet.
+11. `RFC-0032` is now in progress through registry, eligibility, onboarding, and bounded operator-control slices for `advisor_brief.pack`; durable activation state and broader rollout posture remain future work.
+12. `RFC-0033` remains draft-only while the registry and onboarding model settles, because durable run-ledger and review-state contracts should build on stable workflow-pack identity and activation truth rather than racing ahead of it.
 
 The previous likely feature areas are now implemented:
 
