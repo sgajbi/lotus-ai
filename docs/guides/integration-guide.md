@@ -245,6 +245,10 @@ When reading workflow-pack registry detail, treat ownership fields as governed o
 3. `definition_refs` list the supporting contract, service, router, test, and optional product RFC or UI validation artifacts that justify the registration,
 4. a workflow-pack should not be considered properly onboarded if those references are vague, stale, or point only to `lotus-ai` placeholder docs.
 
+For a future-pack-owner checklist and the Phase-1 `advisor_brief.pack` reference pattern, use:
+
+- `docs/guides/workflow-pack-owner-onboarding.md`
+
 For operator review or emergency posture changes, use the workflow-pack control surfaces:
 
 1. `GET /platform/workflow-packs/control-history`

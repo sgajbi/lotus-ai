@@ -192,6 +192,7 @@ The core integration references are:
 
 - `docs/guides/task-execution-contract.md`
 - `docs/guides/integration-guide.md`
+- `docs/guides/workflow-pack-owner-onboarding.md`
 - `docs/guides/prompt-registry-and-audit.md`
 - `docs/guides/retrieval-and-vector-store.md`
 

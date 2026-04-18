@@ -136,7 +136,8 @@ Update this document when:
 3. repo-native commands or validation gates change,
 4. architecture or control-plane seams change materially,
 5. the service’s current phase or governance posture changes,
-6. the wiki ownership or publication workflow changes.
+6. the wiki ownership or publication workflow changes,
+7. new workflow-pack onboarding lessons become durable enough to help future pack owners or future agents.
 
 ## Cross-Links
 

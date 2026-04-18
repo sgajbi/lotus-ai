@@ -1,4 +1,8 @@
 from fastapi.testclient import TestClient
+from _pytest.monkeypatch import MonkeyPatch
+
+from app.config import settings
+from app.main import app
 
 
 def test_health_endpoints(client: TestClient) -> None:
@@ -11,6 +15,48 @@ def test_correlation_header_propagation(client: TestClient) -> None:
     response = client.get("/health", headers={"X-Correlation-Id": "corr-123"})
     assert response.status_code == 200
     assert response.headers["X-Correlation-Id"] == "corr-123"
+
+
+def test_service_root_and_metadata_routes_expose_workflow_pack_platform_truth(
+    client: TestClient,
+) -> None:
+    root_response = client.get("/")
+    metadata_response = client.get("/metadata")
+
+    assert root_response.status_code == 200
+    assert metadata_response.status_code == 200
+    root_body = root_response.json()
+    metadata_body = metadata_response.json()
+    assert "workflow_packs" in root_body["capabilityAreas"]
+    assert metadata_body["service"] == "lotus-ai"
+    assert "startupReadinessPolicy" in metadata_body
+    assert "readinessProbePolicy" in metadata_body
+
+
+def test_health_ready_returns_draining_when_service_is_draining(client: TestClient) -> None:
+    app.state.is_draining = True
+    try:
+        response = client.get("/health/ready")
+    finally:
+        app.state.is_draining = False
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "draining"
+
+
+def test_health_ready_returns_degraded_when_probe_policy_requires_it(
+    client: TestClient, monkeypatch: MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "readiness_probe_policy", "degrade")
+    prior_findings = getattr(app.state, "startup_readiness_findings", [])
+    app.state.startup_readiness_findings = ["database unavailable"]
+    try:
+        response = client.get("/health/ready")
+    finally:
+        app.state.startup_readiness_findings = prior_findings
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "degraded"
 
 
 def test_platform_capabilities_contract(client: TestClient) -> None:

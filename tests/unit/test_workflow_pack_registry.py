@@ -11,6 +11,7 @@ from app.contracts.workflow_packs import (
 from app.services.workflow_pack_registry import (
     build_workflow_pack_registration_detail,
     build_workflow_pack_registry_catalog,
+    get_workflow_pack_registration,
     save_workflow_pack_registration,
 )
 
@@ -132,3 +133,65 @@ def test_save_workflow_pack_registration_rejects_missing_owner_repository_refere
         assert "owner_repository" in str(exc)
     else:
         raise AssertionError("Expected missing owner_repository reference validation to fail")
+
+
+def test_save_workflow_pack_registration_rejects_non_repo_definition_ref() -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+
+    try:
+        save_workflow_pack_registration(
+            registration.model_copy(update={"definition_ref": "docs/advisor_brief.md"})
+        )
+    except ValueError as exc:
+        assert "repo://" in str(exc)
+    else:
+        raise AssertionError("Expected non-repo definition_ref to fail")
+
+
+def test_save_workflow_pack_registration_rejects_missing_definition_refs() -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+
+    try:
+        save_workflow_pack_registration(registration.model_copy(update={"definition_refs": []}))
+    except ValueError as exc:
+        assert "missing definition_refs" in str(exc)
+    else:
+        raise AssertionError("Expected missing definition_refs to fail")
+
+
+def test_save_workflow_pack_registration_rejects_primary_ref_not_in_definition_refs() -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+
+    try:
+        save_workflow_pack_registration(
+            registration.model_copy(
+                update={
+                    "definition_ref": "repo://lotus-gateway/src/app/routers/missing_router.py",
+                }
+            )
+        )
+    except ValueError as exc:
+        assert "must match one structured definition ref" in str(exc)
+    else:
+        raise AssertionError("Expected mismatched primary definition_ref to fail")
+
+
+def test_save_workflow_pack_registration_rejects_missing_required_owner_artifacts() -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    downgraded_refs = [
+        definition_ref.model_copy(update={"required_for_registration": False})
+        for definition_ref in registration.definition_refs
+    ]
+
+    try:
+        save_workflow_pack_registration(
+            registration.model_copy(update={"definition_refs": downgraded_refs})
+        )
+    except ValueError as exc:
+        assert "missing required owner artifacts" in str(exc)
+    else:
+        raise AssertionError("Expected missing required owner artifacts to fail")
