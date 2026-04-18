@@ -319,6 +319,29 @@ The run ledger should reference evidence bundles and generated artifacts.
 
 It should not become an uncontrolled content store.
 
+## State Authority and Invariants
+
+This RFC establishes the following authority rules.
+
+1. pack-run identity, runtime state, review state linkage, and run history must come from one
+   durable ledger in `lotus-ai`,
+2. artifact payload content must remain in the governed artifact backbone where payload size or
+   retention posture requires it,
+3. gateway and Workbench views must derive run and review truth from the shared ledger contract
+   rather than page-local reconstruction,
+4. consequence-bearing business workflow state must remain in the owning workflow system rather than
+   being mirrored as if it were runtime truth in `lotus-ai`,
+5. revision, rejection, acceptance, supersession, and expiry history must remain reconstructable
+   after restart and across deployment instances.
+
+The following invariants must hold:
+
+1. every review-bearing output maps to exactly one durable `pack_run_id`,
+2. every durable `pack_run_id` resolves to exactly one pack id, version, and registration lineage,
+3. review transitions must be actor-attributed and timestamped,
+4. supersession must preserve links between the prior and replacement output or run,
+5. no UI surface may silently collapse runtime state and review state into one ambiguous value.
+
 ## Pack-Run Identity Model
 
 Every durable workflow-pack execution should have one stable run identity.
@@ -760,14 +783,18 @@ Deliverables:
 1. update `lotus-ai` docs to reflect the run-ledger and review-state posture once implemented,
 2. update repository and platform context artifacts where implementation truth changes,
 3. update wiki-source pages for operator and onboarding guidance,
-4. keep PR evidence, branch cleanup, and implementation status truthful.
+4. update agent skills where implementation changes durable agent workflow guidance, execution
+   posture, or delivery standards,
+5. keep PR evidence, branch cleanup, and implementation status truthful.
 
 Deliverables:
 
 1. updated docs and wiki-source pages,
 2. updated context files where architecture truth changed,
-3. PR and branch-hygiene evidence,
-4. no stale documentation that implies broader implementation than was actually delivered.
+3. updated skill files where needed,
+4. PR and branch-hygiene evidence,
+5. no stale documentation or skill guidance that implies broader implementation than was actually
+   delivered.
 
 ## Risks and Mitigations
 
@@ -817,7 +844,7 @@ Mitigation:
    5. review transitions.
 4. Gateway and Workbench have one shared contract vocabulary for pack-run and review-state posture.
 5. The implementation plan includes a final slice for documentation, agent context, wiki update,
-   and branch hygiene.
+   skill update where needed, and branch hygiene.
 6. No slice under this RFC allows `lotus-ai` to assume workflow authority over approval, consent,
    booking, execution, or domain truth.
 
