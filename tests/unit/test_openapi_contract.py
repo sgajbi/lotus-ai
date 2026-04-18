@@ -268,6 +268,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         "getWorkflowPackRunDetail"
     )
     assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}/review-actions"]["post"][
+            "operationId"
+        ]
+        == "applyWorkflowPackRunReviewAction"
+    )
+    assert (
         spec["paths"]["/platform/use-cases/first-production-use-case"]["get"]["operationId"]
         == "getFirstProductionUseCaseStatus"
     )
@@ -459,6 +465,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_run_schema = spec["components"]["schemas"]["WorkflowPackRunDescriptor"]
     workflow_pack_run_detail_schema = spec["components"]["schemas"]["WorkflowPackRunDetailResponse"]
     workflow_pack_run_event_schema = spec["components"]["schemas"]["WorkflowPackRunEventDescriptor"]
+    workflow_pack_run_review_action_request_schema = spec["components"]["schemas"][
+        "WorkflowPackRunReviewActionRequest"
+    ]
+    workflow_pack_run_review_action_response_schema = spec["components"]["schemas"][
+        "WorkflowPackRunReviewActionResponse"
+    ]
     app_capability_rollout_catalog_schema = spec["components"]["schemas"][
         "AppCapabilityRolloutCatalogResponse"
     ]
@@ -693,6 +705,11 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "events" in workflow_pack_run_detail_schema["properties"]
     assert "event_type" in workflow_pack_run_event_schema["properties"]
     assert "recorded_at" in workflow_pack_run_event_schema["properties"]
+    assert "action_type" in workflow_pack_run_review_action_request_schema["properties"]
+    assert "reviewed_by" in workflow_pack_run_review_action_request_schema["properties"]
+    assert "replacement_run_id" in workflow_pack_run_review_action_request_schema["properties"]
+    assert "run" in workflow_pack_run_review_action_response_schema["properties"]
+    assert "events" in workflow_pack_run_review_action_response_schema["properties"]
     assert "rollout_records" in app_capability_rollout_catalog_schema["properties"]
     assert "pairing_count" in app_capability_rollout_catalog_schema["properties"]
     assert "capability_pack_maturity_stage" in app_capability_rollout_schema["properties"]

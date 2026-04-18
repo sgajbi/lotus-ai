@@ -33,6 +33,14 @@ class WorkflowPackRunEventType(str, Enum):
     LINEAGE_UPDATED = "LINEAGE_UPDATED"
 
 
+class WorkflowPackRunReviewActionType(str, Enum):
+    ACCEPT = "ACCEPT"
+    REJECT = "REJECT"
+    REVISE = "REVISE"
+    SUPERSEDE = "SUPERSEDE"
+    ABANDON = "ABANDON"
+
+
 class WorkflowPackRunDescriptor(BaseModel):
     run_id: str = Field(description="Stable workflow-pack run identifier.")
     pack_id: str = Field(description="Workflow-pack family identifier.")
@@ -147,4 +155,42 @@ class WorkflowPackRunDetailResponse(BaseModel):
     )
     notes: list[str] = Field(
         description="Human-readable notes describing the current workflow-pack run detail posture."
+    )
+
+
+class WorkflowPackRunReviewActionRequest(BaseModel):
+    action_type: WorkflowPackRunReviewActionType = Field(
+        description="Requested review-state action for the workflow-pack run."
+    )
+    caller_app: str = Field(
+        min_length=1,
+        description="Caller application recording the review-state action.",
+    )
+    reviewed_by: str = Field(
+        min_length=1,
+        description="Reviewer or workflow actor recording the review-state action.",
+    )
+    reason: str = Field(
+        min_length=1,
+        description="Human-readable reason for the review-state action.",
+    )
+    replacement_run_id: str | None = Field(
+        default=None,
+        description="Replacement workflow-pack run identifier when the action creates revised or superseding lineage.",
+    )
+
+
+class WorkflowPackRunReviewActionResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the workflow-pack review action response."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    run: WorkflowPackRunDescriptor = Field(
+        description="Workflow-pack run record after the review-state action completed."
+    )
+    events: list[WorkflowPackRunEventDescriptor] = Field(
+        description="New workflow-pack run events recorded by the review-state action."
+    )
+    summary: list[str] = Field(
+        description="Human-readable summary of the applied workflow-pack review-state action."
     )

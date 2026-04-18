@@ -80,6 +80,7 @@
 - Workflow-pack control actions: /platform/workflow-packs/control-actions
 - Workflow-pack run catalog: /platform/workflow-packs/runs
 - Workflow-pack run detail: /platform/workflow-packs/runs/{run_id}
+- Workflow-pack run review actions: /platform/workflow-packs/runs/{run_id}/review-actions
 - First production use-case contract: /platform/use-cases/first-production-use-case
 - First production use-case readiness: /platform/use-cases/first-production-use-case/readiness
 - First production use-case runbook readiness: /platform/use-cases/first-production-use-case/runbook-readiness
@@ -228,7 +229,9 @@ Before treating any workflow-pack-enabled path as operator-ready:
    not become a second editing surface for workflow behavior
 9. inspect `GET /platform/workflow-packs/runs` to distinguish runtime completion posture from product review posture for recorded Phase-1 pack runs
 10. inspect `GET /platform/workflow-packs/runs/{run_id}` when support needs the exact registration ref, evidence descriptors, and run-history event attached to one pack execution
-11. when `LOTUS_AI_WORKFLOW_PACK_RUN_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_run_store` block in `GET /platform/runtime-status` reports `READY` before treating the run ledger as restart-safe durable truth
+11. apply `POST /platform/workflow-packs/runs/{run_id}/review-actions` only to record bounded ledger review posture; do not treat it as business approval, consent, booking, or workflow-authority transfer
+12. when using `REVISE` or `SUPERSEDE`, confirm the replacement run id belongs to the same pack family so lineage remains reconstructable
+13. when `LOTUS_AI_WORKFLOW_PACK_RUN_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_run_store` block in `GET /platform/runtime-status` reports `READY` before treating the run ledger as restart-safe durable truth
 
 ## Durable Async Recovery
 

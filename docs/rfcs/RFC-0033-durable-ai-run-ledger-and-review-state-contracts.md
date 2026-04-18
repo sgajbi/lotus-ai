@@ -72,7 +72,8 @@ Implemented on the current branch:
 3. read-only workflow-pack run catalog and detail APIs,
 4. Phase-1 runtime recording for `advisor_brief.pack` executions through the existing `explain.v1` task path,
 5. migration-managed SQL-backed workflow-pack run and event tables plus a SQLAlchemy repository implementation,
-6. runtime-readiness, startup-policy, and platform-status integration for the workflow-pack run store so durable ledger posture is inspectable instead of implied.
+6. runtime-readiness, startup-policy, and platform-status integration for the workflow-pack run store so durable ledger posture is inspectable instead of implied,
+7. bounded review-action contracts and service seams for actor-attributed `ACCEPT`, `REJECT`, `REVISE`, `SUPERSEDE`, and `ABANDON` transitions, including lineage preservation between original and replacement runs.
 
 What is not implemented yet:
 
@@ -80,10 +81,10 @@ What is not implemented yet:
    `lotus-workbench`,
 2. durable linkage from workflow-pack execution to artifacts, review actions, and support evidence,
 3. UI and gateway consumption that renders run state and review state as separate dimensions,
-4. review-state mutation and consequence-bearing downstream review integration flows,
+4. consequence-bearing downstream review integration flows and allowed-action shaping outside the bounded lotus-ai ledger surface,
 5. broader workflow-pack runtime adoption beyond the current Phase-1 advisor-brief recording path.
 
-This RFC now correctly moves to `In Progress`, but it should not be treated as complete until review transitions, downstream contract adoption, and broader runtime integration are implemented and reflected in the RFC, RFC index, and branch evidence together.
+This RFC now correctly moves to `In Progress`, but it should not be treated as complete until downstream contract adoption, artifact and evidence linkage expansion, and broader runtime integration are implemented and reflected in the RFC, RFC index, and branch evidence together.
 
 ## Prerequisite Evidence And Open Gaps
 
@@ -815,6 +816,12 @@ Deliverables:
 1. review transition APIs or service seams,
 2. actor and timestamp history model,
 3. tests for review-state progression and supersession.
+
+Current branch status:
+
+1. bounded `lotus-ai` review-action recording is implemented through the workflow-pack run-ledger APIs and service layer,
+2. actor attribution, timestamps, invalid-transition rejection, and supersession lineage are now covered by unit and integration tests,
+3. consequence-bearing meaning, allowed-action shaping for downstream workflows, and end-to-end gateway or Workbench adoption remain future slices.
 
 ### Slice 4: Gateway and Workbench contract adoption
 

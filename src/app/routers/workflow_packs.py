@@ -14,6 +14,8 @@ from app.contracts.workflow_packs import (
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunCatalogResponse,
     WorkflowPackRunDetailResponse,
+    WorkflowPackRunReviewActionRequest,
+    WorkflowPackRunReviewActionResponse,
 )
 from app.services.workflow_pack_control import (
     apply_workflow_pack_control_action,
@@ -24,6 +26,7 @@ from app.services.workflow_pack_run_ledger import (
     build_workflow_pack_run_catalog,
     build_workflow_pack_run_detail,
 )
+from app.services.workflow_pack_run_review import apply_workflow_pack_run_review_action
 from app.services.workflow_pack_registry import (
     build_workflow_pack_registration_detail,
     build_workflow_pack_registry_catalog,
@@ -149,6 +152,35 @@ async def get_workflow_pack_run_catalog_route() -> WorkflowPackRunCatalogRespons
 )
 async def get_workflow_pack_run_detail_route(run_id: str) -> WorkflowPackRunDetailResponse:
     return build_workflow_pack_run_detail(run_id=run_id)
+
+
+@router.post(
+    "/platform/workflow-packs/runs/{run_id}/review-actions",
+    response_model=WorkflowPackRunReviewActionResponse,
+    operation_id="applyWorkflowPackRunReviewAction",
+    summary="Apply a lotus-ai workflow-pack run review action",
+    description=(
+        "Records one bounded workflow-pack review-state action while preserving the separation "
+        "between runtime execution posture and consequence-bearing downstream workflow authority."
+    ),
+    responses={
+        200: {"description": "Workflow-pack run review action applied successfully."},
+        403: {
+            "description": "Caller is not currently authorized for workflow-pack review-state actions."
+        },
+        404: {"description": "Workflow-pack run or replacement run not found."},
+        409: {
+            "description": "Workflow-pack review-state action conflicts with the current run posture."
+        },
+        422: {"description": "Invalid review-state action payload."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def apply_workflow_pack_run_review_action_route(
+    run_id: str,
+    request: WorkflowPackRunReviewActionRequest,
+) -> WorkflowPackRunReviewActionResponse:
+    return apply_workflow_pack_run_review_action(run_id=run_id, request=request)
 
 
 @router.post(

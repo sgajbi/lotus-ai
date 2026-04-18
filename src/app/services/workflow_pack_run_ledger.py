@@ -24,7 +24,9 @@ from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 
 
 def build_workflow_pack_run_catalog() -> WorkflowPackRunCatalogResponse:
-    runs = [_map_run_record(record) for record in get_workflow_pack_run_store().list_runs()]
+    runs = [
+        map_workflow_pack_run_record(record) for record in get_workflow_pack_run_store().list_runs()
+    ]
     runs.sort(key=lambda item: item.created_at, reverse=True)
     return WorkflowPackRunCatalogResponse(
         service=settings.service_name,
@@ -59,9 +61,9 @@ def build_workflow_pack_run_detail(*, run_id: str) -> WorkflowPackRunDetailRespo
         service=settings.service_name,
         version=settings.service_version,
         run_store_mode=settings.workflow_pack_run_store_mode,
-        run=_map_run_record(record),
+        run=map_workflow_pack_run_record(record),
         events=[
-            _map_event_record(event)
+            map_workflow_pack_run_event_record(event)
             for event in get_workflow_pack_run_store().list_events(run_id=run_id)
         ],
         notes=[
@@ -134,7 +136,7 @@ def record_workflow_pack_run_for_task_execution(
     store = get_workflow_pack_run_store()
     store.save_run(record)
     store.save_event(event)
-    return _map_run_record(record)
+    return map_workflow_pack_run_record(record)
 
 
 def _resolve_registration_for_task_execution(
@@ -154,7 +156,7 @@ def _is_advisor_brief_payload(payload: dict[str, object]) -> bool:
     return {"portfolio", "period", "performance", "supportability"}.issubset(payload.keys())
 
 
-def _map_run_record(record: WorkflowPackRunRecord) -> WorkflowPackRunDescriptor:
+def map_workflow_pack_run_record(record: WorkflowPackRunRecord) -> WorkflowPackRunDescriptor:
     return WorkflowPackRunDescriptor(
         run_id=record.run_id,
         pack_id=record.pack_id,
@@ -187,7 +189,9 @@ def _map_run_record(record: WorkflowPackRunRecord) -> WorkflowPackRunDescriptor:
     )
 
 
-def _map_event_record(record: WorkflowPackRunEventRecord) -> WorkflowPackRunEventDescriptor:
+def map_workflow_pack_run_event_record(
+    record: WorkflowPackRunEventRecord,
+) -> WorkflowPackRunEventDescriptor:
     return WorkflowPackRunEventDescriptor(
         event_id=record.event_id,
         run_id=record.run_id,
