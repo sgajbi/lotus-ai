@@ -248,9 +248,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         "getWorkflowPackRegistryCatalog"
     )
     assert (
-        spec["paths"]["/platform/workflow-packs/registry/{pack_id}/{version}"]["get"][
-            "operationId"
-        ]
+        spec["paths"]["/platform/workflow-packs/registry/{pack_id}/{version}"]["get"]["operationId"]
         == "getWorkflowPackRegistrationDetail"
     )
     assert (

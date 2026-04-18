@@ -28,8 +28,7 @@ def test_workflow_pack_registration_detail_route(client: TestClient) -> None:
     assert body["registration"]["workflow_authority_owner"] == "lotus-gateway"
     assert body["denied_without_registration"] is True
     assert any(
-        rule["rule_id"] == "registered_entries_require_scope"
-        for rule in body["validation_rules"]
+        rule["rule_id"] == "registered_entries_require_scope" for rule in body["validation_rules"]
     )
 
 

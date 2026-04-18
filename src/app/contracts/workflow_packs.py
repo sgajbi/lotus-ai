@@ -58,7 +58,9 @@ class WorkflowPackEligibilityResult(str, Enum):
 
 
 class WorkflowPackValidationRuleDescriptor(BaseModel):
-    rule_id: str = Field(description="Stable workflow-pack registration validation rule identifier.")
+    rule_id: str = Field(
+        description="Stable workflow-pack registration validation rule identifier."
+    )
     description: str = Field(
         description="Human-readable explanation of the registration validation rule."
     )
@@ -66,7 +68,9 @@ class WorkflowPackValidationRuleDescriptor(BaseModel):
 
 class WorkflowPackRegistrationDescriptor(BaseModel):
     pack_id: str = Field(description="Stable workflow-pack family identifier.")
-    pack_family: str = Field(description="Stable family identifier grouping related workflow packs.")
+    pack_family: str = Field(
+        description="Stable family identifier grouping related workflow packs."
+    )
     version: str = Field(description="Versioned executable contract for the workflow pack.")
     owner_repository: str = Field(
         description="Repository that owns the workflow-pack definition in code."
@@ -138,9 +142,7 @@ class WorkflowPackRegistrationDescriptor(BaseModel):
         default=None,
         description="UTC timestamp when the activation state last moved into an executing posture.",
     )
-    last_changed_at: str = Field(
-        description="UTC timestamp when the registry record last changed."
-    )
+    last_changed_at: str = Field(description="UTC timestamp when the registry record last changed.")
     status_summary: list[str] = Field(
         description="Human-readable summary of the current workflow-pack registration posture."
     )

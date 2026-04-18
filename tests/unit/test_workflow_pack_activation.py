@@ -22,6 +22,8 @@ def test_evaluate_workflow_pack_eligibility_allows_registered_pilot_scope() -> N
     assert response.allowed is True
     assert response.eligibility_result == WorkflowPackEligibilityResult.ALLOWED
     assert response.evaluated_registration_ref == "advisor_brief.pack@v1"
+    assert response.tenant_scope_applied is False
+    assert response.workflow_surface_applied is True
     assert response.denial_reasons == []
 
 
@@ -38,6 +40,7 @@ def test_evaluate_workflow_pack_eligibility_denies_unknown_registration() -> Non
 
     assert response.allowed is False
     assert response.eligibility_result == WorkflowPackEligibilityResult.DENIED_NOT_REGISTERED
+    assert response.workflow_surface_applied is False
 
 
 def test_evaluate_workflow_pack_eligibility_denies_discovered_version() -> None:
@@ -54,6 +57,7 @@ def test_evaluate_workflow_pack_eligibility_denies_discovered_version() -> None:
 
     assert response.allowed is False
     assert response.eligibility_result == WorkflowPackEligibilityResult.DENIED_VALIDATION_STATUS
+    assert response.workflow_surface_applied is True
 
 
 def test_evaluate_workflow_pack_eligibility_denies_out_of_scope_environment() -> None:
@@ -70,6 +74,7 @@ def test_evaluate_workflow_pack_eligibility_denies_out_of_scope_environment() ->
 
     assert response.allowed is False
     assert response.eligibility_result == WorkflowPackEligibilityResult.DENIED_ENVIRONMENT_SCOPE
+    assert response.workflow_surface_applied is True
 
 
 def test_evaluate_workflow_pack_eligibility_denies_out_of_scope_surface() -> None:
@@ -86,3 +91,4 @@ def test_evaluate_workflow_pack_eligibility_denies_out_of_scope_surface() -> Non
 
     assert response.allowed is False
     assert response.eligibility_result == WorkflowPackEligibilityResult.DENIED_SURFACE_SCOPE
+    assert response.workflow_surface_applied is True

@@ -30,13 +30,13 @@ def test_build_workflow_pack_registry_catalog_exposes_validation_rules() -> None
     catalog = build_workflow_pack_registry_catalog()
 
     assert len(catalog.validation_rules) == 3
-    assert any(
-        rule.rule_id == "unique_pack_version_identity" for rule in catalog.validation_rules
-    )
+    assert any(rule.rule_id == "unique_pack_version_identity" for rule in catalog.validation_rules)
     assert any("read-only and catalog-backed" in line for line in catalog.status_summary)
 
 
-def test_build_workflow_pack_registration_detail_exposes_deny_by_default_registration_truth() -> None:
+def test_build_workflow_pack_registration_detail_exposes_deny_by_default_registration_truth() -> (
+    None
+):
     detail = build_workflow_pack_registration_detail(pack_id="advisor_brief.pack", version="v1")
 
     assert detail.registration.pack_id == "advisor_brief.pack"
