@@ -1,6 +1,6 @@
 # RFC-0032: Governed Workflow-Pack Registry and Activation Posture
 
-- Status: Draft
+- Status: In Progress
 - Date: 2026-04-18
 - Owners:
   - lotus-ai maintainers
@@ -47,6 +47,25 @@ The decision is:
 
 The goal is to give Lotus a banking-grade control plane for workflow-pack availability without
 collapsing business ownership into the runtime service.
+
+## Implementation Status
+
+This RFC is now partially implemented in `lotus-ai`.
+
+Completed implementation slices on the current branch:
+
+1. registry contracts, catalog-backed services, and read-only registration APIs,
+2. explicit eligibility evaluation with bounded denial reasons,
+3. bounded control history plus pause, resume, deprecate, and retire actions,
+4. owner-grounded onboarding for the Phase-1 `advisor_brief.pack` family,
+5. documentation, repository context, wiki-source, and branch-hygiene updates.
+
+Still pending before this RFC should be considered fully implemented:
+
+1. durable workflow-pack control history and activation storage,
+2. stronger operator authorization beyond the current bounded caller checks,
+3. broader rollout posture beyond the current pilot and discovery reference family,
+4. convergence with the durable run-ledger and review-state model proposed in `RFC-0033`.
 
 ## Why This RFC Exists
 

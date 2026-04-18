@@ -1,6 +1,6 @@
 # RFC-0031: Governed Agent Workflow Packs and Bounded AI Runtime
 
-- Status: Proposed
+- Status: In Progress
 - Date: 2026-04-18
 - Owners:
   - lotus-ai maintainers
@@ -61,6 +61,24 @@ This RFC proposes a Lotus-native answer:
 
 The result should be a Lotus runtime that is more operationally useful than simple prompt calls,
 without becoming an unconstrained agent platform.
+
+## Implementation Status
+
+This RFC is now partially implemented.
+
+Foundational work is in progress through the RFC-0032 delivery slices already landed in `lotus-ai`:
+
+1. workflow-pack registry contracts exist,
+2. eligibility evaluation exists,
+3. bounded operator control actions exist,
+4. the first owner-grounded `advisor_brief.pack` family is registered as the Phase-1 reference path.
+
+Still pending under this broader RFC:
+
+1. the full bounded workflow-pack runtime,
+2. durable pack-run ledger and review-state contracts,
+3. broader multi-pack execution posture,
+4. production-grade durable workflow-pack activation history.
 
 ## Repository Fit
 
