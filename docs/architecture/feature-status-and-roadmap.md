@@ -26,15 +26,23 @@ Supported task families:
 
 1. `explain.v1`
 2. `summarize.v1`
-3. `generate_structured.v1`
-4. `knowledge_search.v1`
-5. `knowledge_answer.v1`
+3. `classify.v1`
+4. `extract.v1`
+5. `generate_structured.v1`
+6. `knowledge_search.v1`
+7. `knowledge_answer.v1`
 
 What this means:
 
 1. task contracts are stable and typed,
 2. task execution passes through validation, prompt resolution, provider routing, evidence assembly, safety handling, and audit persistence,
 3. responses include structured audit and evidence metadata.
+
+Important nuance:
+
+1. the bounded capability catalog is broader than the current live-provider allowlist,
+2. operational and evaluation depth is strongest today around explain, summarize, and retrieval-backed paths,
+3. classify and extract remain enabled bounded contracts, but they should not be read as proof of the same downstream adoption maturity as the first-use-case and retrieval-heavy paths.
 
 ### Retrieval
 

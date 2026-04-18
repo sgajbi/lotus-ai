@@ -1,424 +1,268 @@
 # lotus-ai
 
-Shared AI platform service for Lotus applications.
+Shared AI capability service for the Lotus ecosystem.
 
 Repository-local engineering context: `REPOSITORY-ENGINEERING-CONTEXT.md`
 
-`lotus-ai` provides the reusable AI infrastructure layer for the Lotus estate. It exists to help the other Lotus apps build governed AI features without moving domain ownership out of the services that already own portfolio data, analytics, workflow state, and deterministic decision logic.
+`lotus-ai` provides governed AI execution and control-plane capabilities for Lotus applications. It
+exists to let downstream services use prompts, retrieval, safety controls, evaluation gates, async
+execution, and provider-routing seams without moving portfolio, analytics, workflow, or business
+authority out of the services that already own those domains.
 
-## Start Here
+## What This Repository Owns
 
-If you are new to the repo, read these first:
+`lotus-ai` owns:
 
-1. [System Overview](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/system-overview.md)
-2. [Feature Status and Roadmap](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/feature-status-and-roadmap.md)
-3. [Phased Roadmap](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/phased-roadmap.md)
-4. [RFC Index](C:/Users/Sandeep/projects/lotus-ai/docs/rfcs/README.md)
-5. [lotus-performance First Use-Case Contract](C:/Users/Sandeep/projects/lotus-ai/docs/guides/lotus-performance-first-use-case.md)
-6. [lotus-performance First Use-Case Demo](C:/Users/Sandeep/projects/lotus-ai/demo/lotus-performance-first-use-case/README.md)
+1. bounded AI task execution contracts,
+2. prompt rollout and audit traceability,
+3. governed retrieval and citation-carrying answer paths,
+4. safety labeling, redaction posture, and safety evidence surfaces,
+5. runtime-backed evaluation and approval-gate posture,
+6. async runtime and worker-backed job execution for governed AI work,
+7. provider policy, quota, budget, and degradation control surfaces,
+8. AI-specific observability, evidence, and control-plane APIs.
 
-If you want the shortest summary:
+`lotus-ai` does not own:
 
-1. RFC-0001 through RFC-0013 are implemented,
-2. bounded task execution, retrieval, safety, prompt rollout, async workers, runtime-backed evals, caller access control, and bounded observability are real,
-3. artifact storage now has a governed metadata and payload-store foundation, with eval, async, and observability artifact cutovers plus explicit lifecycle and governance surfaces,
-4. deployment split now has governed runtime and rollout surfaces, resilience now has bounded runtime, restore-plan, drill-evidence, activation, runbook, and governance surfaces for critical continuity dependencies, RFC-0018 now exposes a governed live embedding path plus a bounded per-capability provider-expansion model, and RFC-0019 now includes durable ingestion-state, document-lineage, bounded async ingestion execution, artifact-backed ingestion diagnostics, and retrieval observability convergence while broader corpus onboarding scope still remains bounded.
-5. first-use-case onboarding is implemented with a bounded `lotus-performance` contract, limited-rollout readiness, runbook, governance, reusable onboarding-template surfaces, and a captured end-to-end demo bundle, and that limited-rollout posture now also depends on explicit resilience governance rather than only local supportability signals, while active-production rollout remains explicitly deferred.
+1. portfolio, holdings, booking, or transaction truth,
+2. performance or risk analytics truth,
+3. advisory or management workflow authority,
+4. user-facing business decisions outside the explicit task contracts it exposes.
 
-## Current Phase
+Calling systems remain responsible for assembling business context, preserving domain semantics, and
+deciding how AI output is applied or rejected.
 
-The repository is in foundation phase.
+## Current Product Shape
 
-Current goals:
+`lotus-ai` is in a governed foundation phase. This is not a placeholder repository. The service
+already has real runtime seams, durable stores, and operator-facing governance surfaces for prompt
+selection, retrieval posture, provider controls, evaluation approval, async execution, and caller
+authorization.
 
-- define the service architecture clearly,
-- document the delivery roadmap,
-- establish enterprise-grade governance expectations,
-- introduce stable task and capability contracts before integrating any model provider.
+The current supported task families are:
 
-This is deliberate. The early focus is to make `lotus-ai` understandable, testable, and governable before it becomes feature-rich.
+1. `explain.v1`
+2. `summarize.v1`
+3. `classify.v1`
+4. `extract.v1`
+5. `generate_structured.v1`
+6. `knowledge_search.v1`
+7. `knowledge_answer.v1`
 
-The current execution posture is:
+Important posture limits:
 
-- task execution flows through an explicit internal provider gateway,
-- task execution now flows through an explicit internal runtime pipeline with separate validation, resolution, response, evidence, and audit stages,
-- the provider handoff now carries resolved output-label and safety metadata rather than only raw caller context,
-- prompt runtime selection is now resolved through a shared runtime service used by both task execution and prompt-status reporting,
-- caller identity and bounded capability policy now also resolve through a dedicated access-control registry seam, and task, retrieval, live-provider, async-control, prompt-control, plus provider-control paths now enforce that registry explicitly,
-- task execution now builds a shared runtime context object so later stages consume one coherent execution model instead of duplicated fields,
-- response and audit-record assembly for task execution now live in a dedicated mapper layer instead of being embedded in pipeline orchestration,
-- provider execution requests are now assembled through a dedicated builder instead of inline payload construction,
-- capability and expected-output validation now live in a dedicated validator instead of being embedded in task context construction,
-- runtime-context construction and shared execution models now live in dedicated modules rather than inside the pipeline service,
-- task execution and audit API behavior now have their own dedicated integration module instead of relying only on the broad health suite,
-- prompt API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
-- provider API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
-- retrieval API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
-- safety API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
-- evaluation API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
-- async API behavior now also has its own dedicated integration module instead of living only inside the broad health suite,
-- standard integration API modules now share a common `client` fixture so test harness setup stays centralized while assertions remain explicit,
-- shared readiness bookkeeping now lives in one small service helper so runbook, evidence, and governance builders can focus on domain-specific content instead of repeating counting logic,
-- platform runtime-status assembly now has direct unit coverage and an isolated startup-readiness state helper, so the top-level operator summary is easier to reason about and safer to evolve,
-- prompt lifecycle counting now lives alongside prompt runtime selection, so prompt status and prompt governance builders no longer recalculate active-prompt inventory independently,
-- evaluation fixture inventory counting now lives in a dedicated summary helper, so evaluation runtime status focuses on response assembly instead of recounting manifest data inline,
-- retrieval source/runtime inventory counting now lives in a dedicated helper, so retrieval status and job builders share the same derived counts instead of recomputing document and chunk totals independently,
-- the provider gateway now resolves execution through an explicit adapter registry with typed provider-failure categories, while supported foundation-stage modes still route through the stub adapter until a governed live path exists,
-- audit records now preserve task category, output label, and execution evidence, so post-execution inspection remains useful without replaying the original task request,
-- audit records now also preserve optional caller identity fields such as `requested_by` and `tenant_id`, so operator review and downstream support flows retain full caller traceability instead of only app-level correlation metadata,
-- audit inspection now includes a bounded catalog endpoint with caller, requester, tenant, task, category, and output-label filters plus explicit limits, so downstream support and review flows can inspect recent executions without scanning by request id only,
-- retrieval search now supports a bounded live indexed-search path when `retrieval_mode=enabled`, while disabled mode still returns deterministic catalog-only hits from enabled staged sources,
-- the initial enabled catalog-only retrieval subset is intentionally small, and live retrieval now remains additionally constrained by document-level indexed eligibility rather than raw source enablement alone,
-- retrieval source governance is now exposed directly, so enabled versus staged-only corpus slices can be reviewed without reading repository fixtures or migrations,
-- retrieval document governance is now exposed directly, so live-search eligibility can be inspected at document level instead of inferred from source flags,
-- `knowledge_search.v1` is now enabled as a bounded task and routes through the same governed retrieval gateway, reporting live-search versus catalog-only posture explicitly,
-- `knowledge_answer.v1` is now enabled as a bounded, citation-carrying answer task built on the same governed retrieval gateway,
-- retrieval-backed tasks now emit explicit structured citations and `knowledge_answer.v1` refuses low-support answers instead of overstating weak retrieval matches,
-- retrieval-backed task runtime status and execution evidence now also distinguish live indexed retrieval from catalog-only fallback explicitly,
-- platform status now exposes a dedicated bounded task-runtime view so operators can distinguish stub-backed tasks from retrieval-backed tasks directly,
-- platform task APIs now also expose bounded execution-summary, evidence-summary, and retrieval-summary views built from persisted audit records, so real task usage, retrieval-answer quality, and source/refusal patterns can be measured instead of inferred,
-- the provider catalog now distinguishes the stub adapter from the allowlisted OpenAI live adapter seam, while live execution remains disabled by default unless rollout, credentials, and task allowlisting permit it,
-- provider policy now exposes selected adapter kind and structured rejection category in addition to supported runtime modes,
-- provider quota posture is now exposed through a dedicated `/platform/providers/quota-policy` surface with task, caller, tenant, and default scope visibility plus typed malformed-configuration findings,
-- provider budget posture is now exposed through a dedicated `/platform/providers/budget-policy` surface with soft-limit, hard-limit, and current-spend visibility plus typed malformed-configuration findings,
-- provider operations posture is now exposed through a dedicated `/platform/providers/operations-status` surface so rollout, quota, budget, and degradation truth are summarized in one operator-facing view,
-- provider surfaces now also expose explicit text-generation rollout state and live-provider configuration posture, so supported runtime mode and future activation posture are no longer conflated,
-- live provider requests now carry optional requester and tenant identity into the provider seam so caller-aware quota enforcement can be modeled truthfully instead of only at the outer task API,
-- provider execution requests now carry bounded timeout, retry, and output-token controls even in foundation phase, so later live rollout inherits an explicit execution-hardening seam instead of implicit SDK defaults,
-- live-provider quota enforcement now uses the configured provider-operations store so accepted request counts can remain durable across restarts when the SQL-backed provider-ops path is enabled, while still blocking over-limit execution attempts explicitly,
-- live-provider budget enforcement now uses the configured provider-operations store so tracked spend can remain durable across restarts when the SQL-backed provider-ops path is enabled, while still blocking hard-budget overflow explicitly and keeping soft-budget posture inspectable and non-blocking,
-- live-provider degradation controls now also use the configured provider-operations store so degraded-upstream and circuit-open posture can remain durable across restarts when the SQL-backed provider-ops path is enabled, while still modeling typed timeout, rate-limit, and upstream-error failure tracking plus cooldown-based reset semantics,
-- durable provider-operations mutations now happen at the repository layer for quota, spend, and tracked failure counters, which reduces read-modify-write drift in the live-provider control path,
-- provider operations now also expose a governed control-plane action history plus explicit reset actions for quota, budget, and degradation posture when the SQL-backed provider-operations store is active, so restart is no longer the only reviewable recovery story,
-- provider evidence readiness is now data-backed by staged provider runtime and failure-mode eval fixtures plus a recorded provider regression baseline, so rollout review is tied to governed evidence rather than only a placeholder checklist,
-- provider evidence readiness is now also backed by staged provider operations and degradation eval fixtures, so quota, budget, degraded-upstream, and circuit-open behavior are governed through the same file-backed evaluation model as the rest of the provider seam,
-- provider operations and degradation eval assets now also include durable restart-survival posture, so the recorded provider baseline reflects the persisted control plane rather than only process-local behavior,
-- task runtime posture now resolves through a shared task-execution-path helper, so retrieval-backed and provider-backed task paths are described in one place instead of being split across runtime-summary branches, and provider-backed tasks now distinguish plain stub-default posture from allowlisted-but-still-disabled live rollout posture in operator-facing notes,
-- provider activation readiness is now exposed through a dedicated rollout-readiness endpoint,
-- provider runbook readiness is now exposed through a dedicated operational-readiness endpoint with explicit incident-response and rollback requirements,
-- provider evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
-- provider governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
-- platform runtime status now embeds provider governance posture directly,
-- platform runtime status now also embeds provider operations posture directly,
-- safety policy exposes task-level output-label and redaction posture,
-- task audit records now persist the applied safety posture and execution outcome for every execution, with exact safety-outcome payloads stored as runtime truth instead of being reconstructed from flat fields,
-- runtime safety status now also exposes typed safety execution dispositions, and deterministic runtime minimization can be activated for bounded outputs while task responses, audit records, and evidence descriptors remain aligned on the same post-safety result,
-- safety evidence readiness is now exposed through a dedicated evidence-readiness endpoint backed by runtime-produced safety evaluation runs,
-- safety runbook readiness is now exposed through a dedicated operational-readiness endpoint, with runtime safety treated as stateless and governed through runbook, audit, and evaluation evidence rather than a separate mutable safety store,
-- safety governance status is now exposed through a dedicated review-summary endpoint so enforced-versus-documented posture and runtime approval evidence are reviewed together,
-- platform runtime status now embeds safety governance posture directly,
-- retrieval now has an explicit execution seam and runtime execution-status surface,
-- retrieval activation readiness is now exposed through a dedicated rollout-readiness endpoint,
-- retrieval runbook readiness is now exposed through a dedicated operational-readiness endpoint,
-- retrieval evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
-- retrieval governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
-- platform runtime status now embeds retrieval governance posture directly,
-- retrieval evidence readiness now uses a runtime-backed approval gate over governed retrieval evaluation runs, so staged baselines cannot silently satisfy live-search rollout posture,
-- retrieval execution status is now corpus-aware, so enabled live search reports whether searchable promoted documents currently exist or whether rollback or index-pending posture has emptied the live corpus,
-- retrieval runbook readiness now reflects documented rollout and rollback procedures separately from the still-missing observability and named on-call activation items,
-- prompts now expose runtime selection status in addition to governance posture,
-- prompt activation readiness is now exposed through a dedicated rollout-readiness endpoint,
-- prompt runbook readiness is now exposed through a dedicated operational-readiness endpoint,
-- prompt evidence readiness is now exposed through a dedicated evidence-readiness endpoint,
-- prompt governance status is now exposed through a dedicated review-summary endpoint with technical, operational, and evidence posture,
-- platform runtime status now embeds prompt governance posture directly,
-- platform runtime status now summarizes prompt runtime posture directly,
-- prompt runtime selection now resolves through an explicit durable rollout-state seam, and bounded promote/rollback actions now update that state through durable control history rather than repository-only activation,
-- task responses, execution evidence, and audit records now also preserve prompt rollout selection trace plus latest control-event lineage so prompt changes are reviewable from runtime artifacts,
-- prompt evidence readiness now also consumes a runtime-backed approval gate over governed prompt promotion and rollback evaluation fixtures, and candidate promotion is blocked unless that gate reports `RUNTIME_PASS`,
-- prompt runbook readiness now documents promotion, rollback, incident review, and audit inspection procedures explicitly, while technical activation remains restart-safe only when SQL-backed prompt and evaluation-runtime stores are active,
-- task execution responses now include structured evidence about prompt, provider, safety, and retrieval posture,
-- evaluation catalog now exposes staged evidence categories and fixture families,
-- evaluation fixture family detail is now inspectable through a dedicated read-only endpoint,
-- platform runtime status now summarizes evaluation runtime posture too,
-- evaluation fixture inventory is now backed by a versioned in-repo manifest,
-- allowlisted evaluation fixture families can now be submitted into durable runtime-backed run state, while historical file-backed run artifacts remain visible only as labeled baseline records,
-- allowlisted evaluation fixture families can now also execute through the durable async worker path, with persisted run attempts, per-case outcomes, derived pass/fail verdicts, and governed case-result artifact references recorded in the evaluation runtime store,
-- provider and retrieval evidence-readiness surfaces now expose explicit approval-gate summaries derived from runtime-backed evaluation runs, so staged baselines cannot silently satisfy current rollout posture,
-- runtime-backed evaluation replay and async lease-recovery paths now preserve explicit evaluation attempt history and replay-safe case-result records instead of overwriting prior evidence,
-- evaluation inventory now also includes an explicit async-runtime seam, so durable submission, lease recovery, and retrieval-indexing linkage are represented in the staged eval baseline instead of only in runtime tests,
-- the first real file-backed fixture family now exists for `explain.v1`,
-- a second file-backed fixture family now exists for `summarize.v1`,
-- retrieval citation and refusal examples are now staged as file-backed evaluation fixtures,
-- provider policy behavior is now staged as file-backed evaluation fixtures,
-- provider runtime and provider failure-mode behavior are now also staged as file-backed evaluation fixtures,
-- safety policy behavior is now staged as file-backed evaluation fixtures,
-- task capability and enablement behavior is now staged as file-backed evaluation fixtures,
-- evaluation fixture manifest validity is now enforced by a dedicated CI gate,
-- evaluation runtime status now summarizes staged coverage by platform seam,
-- recorded evaluation run artifacts are now exposed through read-only inspection endpoints,
-- recorded evaluation run artifacts are now validated by a dedicated gate,
-- evaluation run artifacts now model both current and superseded lifecycle states,
-- async queue and worker posture is now exposed through a dedicated runtime-status endpoint,
-- governed queue backend strategies are now exposed through a dedicated async catalog endpoint,
-- governed worker execution strategies are now exposed through a dedicated async catalog endpoint,
-- async activation readiness is now exposed through a dedicated rollout-readiness endpoint,
-- async runbook readiness is now exposed through a dedicated operational-readiness endpoint,
-- async governance status is now exposed through a dedicated review-summary endpoint,
-- platform runtime status now embeds async governance posture directly,
-- seeded async job artifacts are now exposed and validated through dedicated contracts,
-- async job submission now has a governed request/response contract with explicit foundation-phase rejection behavior,
-- async job submission now accepts a narrow allowlist of durable runtime-backed job types while still rejecting staged-only job types explicitly,
-- duplicate runtime-backed retrieval-index submissions are now rejected explicitly with the owning async job id, so duplicate client retries do not silently create ambiguous execution truth,
-- async job catalog and detail views now merge durable runtime-backed submissions with staged artifact records so current and future async posture remain distinguishable,
-- async runtime-backed job detail now exposes attempt history, active lease state, and governed terminal artifact references so claim, retry, recovery, and terminal-output review posture are inspectable instead of implicit,
-- observability incident summaries now persist bounded domain incident bundles through the governed artifact backbone and expose only artifact descriptors on the API surface,
-- async runtime now also exposes a governed control-plane history and action surface for retry, replay, requeue, and manual abandon, so operator recovery is explicit and reviewable instead of being implied by table edits,
-- async job artifacts can now reference related evaluation run artifacts for cross-seam traceability,
-- async runtime now also has an explicit repository and store seam plus migration-managed durable schema for jobs, attempts, and worker leases, even though public async execution behavior remains foundation-phase only for now,
-- async runtime now has an explicit worker-fleet cutover model, with the service database retained as authoritative job truth, managed queue delivery exposed as a separate seam, and in-process execution still the active default until dedicated workers are cut over,
-- a dedicated worker process entrypoint now exists for allowlisted async job types, consuming Redis-backed delivery messages while still claiming and updating lifecycle state through the authoritative async repository,
-- async runtime status now also exposes queue backlog, duplicate/redelivery counters, active worker identities, and explicit degraded findings so dedicated-worker rollout can be reviewed without inferring health from missing jobs alone,
-- async runtime now also supports stubbed worker claim, heartbeat, completion, failure, and lease-expiry recovery semantics for a narrow allowlist of runtime-backed job types, with retrieval indexing and allowlisted evaluation execution both active on that in-process worker path,
-- retrieval indexing is now the first runtime-backed async consumer, with concrete retrieval index jobs submitted into the durable async runtime and reflected back into retrieval job catalog/detail state,
-- async evaluation assets and runbook guidance now explicitly cover runtime-backed submission, lease-expiry recovery, and retrieval-indexing linkage, so the async control plane is no longer described as documentation-only where runtime truth already exists,
-- retrieval execution posture now distinguishes runtime-backed indexing from still-disabled live search, so indexing rollout no longer depends on staged-only retrieval job artifacts,
-- retrieval runtime-backed evaluation now covers live search, citation-backed answers, and conservative refusals, while reindex and rollback evidence still remain separate activation blockers,
-- SQL-backed retrieval tests now prove live-search eligibility survives repository restart and disappears cleanly after rollback from indexed back to staged corpus posture,
-- live model execution remains disabled until a governed provider rollout exists.
+1. live provider execution remains deliberately rollout-governed,
+2. the bounded capability catalog is broader than the current live-provider allowlist,
+3. retrieval is governed and bounded rather than a general search platform,
+4. prompt bodies remain repository-managed even though runtime prompt selection is durable,
+5. the service should be treated as a governed capability layer, not a business-domain authority.
 
-The current persistence posture is:
+## Architectural Shape
 
-- in-memory audit storage by default for simple local development,
-- in-memory prompt registry by default, with a SQLAlchemy-backed prompt adapter available behind the same repository seam,
-- prompt definitions now expose lifecycle and provenance metadata in both memory and SQL-backed modes,
-- a SQLAlchemy-backed audit adapter available behind the same repository interface for durable storage,
-- in-memory retrieval metadata by default, with a SQLAlchemy-backed retrieval adapter available behind the same repository seam,
-- explicit configuration to move between the two without changing API contracts,
-- explicit provider-operations repository seams and migration-managed SQL tables now back durable quota, budget, and degradation state when the SQL-backed provider-operations path is enabled,
-- explicit async-runtime repository seams and migration-managed SQL tables now exist for jobs, attempts, and worker leases when the SQL-backed async-runtime path is enabled in later rollout slices,
-- explicit evaluation-runtime repository seams and migration-managed SQL tables now exist for runs, attempts, and per-case outcomes when the SQL-backed evaluation-runtime path is enabled in later rollout slices, while public evaluation APIs remain artifact-backed until runtime execution cutover happens,
-- evaluation runtime-backed run detail now exposes persisted attempts and case-level outcomes directly, while historical file-backed baseline runs remain clearly labeled as non-runtime records,
-- runtime-backed async jobs and evaluation case results now persist artifact lineage through relational artifact ids, while payload bytes stay behind the governed object-store seam,
-- artifact storage now also exposes a bounded descriptor-first catalog plus activation, runbook, and governance views, so active, superseded, and archived posture are inspectable without exposing raw payload browsing,
-- artifact activation remains intentionally blocked when the payload store is only the filesystem-backed local or development fallback, so governance does not overstate production object-store readiness,
-- Alembic-managed schema migrations for relational persistence; repository adapters do not create tables at runtime.
-- prompt rollout bodies remain repository-managed, while active selection can now move through explicit durable promote and rollback actions.
-- caller access-control policy can now also move through a dedicated memory or SQL-backed registry seam, with data-plane and control-plane request blocking active and durable SQL-backed full enforcement available when the access-control store uses SQLAlchemy.
-- startup readiness policy defaults to `warn` and can be raised to `enforce` for SQL-backed enterprise environments.
-- readiness probe policy defaults to `observe` and can be raised to `degrade` when orchestration should react to readiness findings.
+The service is a FastAPI application with explicit control-plane and data-plane seams.
 
-The current retrieval-storage decision is:
+Core areas:
 
-- the first live retrieval path is now wired through the repository-owned indexed-search seam,
-- the planned first vector store is PostgreSQL with `pgvector`,
-- we are intentionally avoiding a separate vector database until scale or workload evidence justifies it.
+1. `src/app/contracts/`
+   public task and platform contract models.
+2. `src/app/services/`
+   orchestration, runtime-context assembly, evidence mapping, and audit flow.
+3. `src/app/providers/`
+   provider adapters, policy, rollout, quota, budget, and degradation handling.
+4. `src/app/prompts/`
+   prompt definitions, rollout state, and prompt governance surfaces.
+5. `src/app/retrieval/`
+   source governance, indexed-search posture, and retrieval execution seams.
+6. `src/app/safety/`
+   output-label-aware policy and runtime safety posture.
+7. `src/app/evals/`
+   evaluation inventory, runtime execution, and approval-gate evidence.
+8. `src/app/routers/`
+   public API surfaces.
 
-The current retrieval posture is:
+Task execution is intentionally explicit. A request flows through:
 
-- approved retrieval sources are registered explicitly,
-- a bounded retrieval ingestion-status surface now exposes durable document-version lineage plus recorded corpus-change requests, governed ingestion jobs can now execute through the durable async backbone for explicit corpus-change targets, artifact-backed ingestion diagnostics are now persisted for bounded corpus-change review, and retrieval runtime plus governance surfaces now distinguish index-pending, refresh-pending, and withdrawn corpus posture explicitly while only treating the posture as fully hardened once that artifact-backed review path is operational,
-- retrieval source discovery is exposed through the platform API,
-- provider posture discovery is exposed through the platform API,
-- runtime posture for retrieval and platform services is exposed through the platform API,
-- live retrieval search is now available through the bounded indexed-search seam when `retrieval_mode=enabled`, retrieval indexing can now consume a governed live embedding path when configured, and provider/retrieval runbook plus evidence surfaces now reflect that dependency explicitly, while broader provider-expansion rollout still remains gated behind the final RFC-0018 governance slice.
+1. capability and request validation,
+2. runtime-context construction,
+3. prompt and safety posture resolution,
+4. provider or retrieval execution,
+5. evidence assembly,
+6. audit persistence.
 
-## What lotus-ai Does
+Detailed architecture references:
 
-- LLM gateway and model routing
-- prompt and prompt-version management
-- retrieval over approved Lotus docs, RFCs, schemas, and standards
-- AI safety controls such as redaction, output labeling, and role-aware gating
-- AI audit logging, cost tracking, and evaluations
-- reusable AI task APIs for explanation, summarization, extraction, classification, and structured generation
-- async AI run orchestration for longer jobs
+- `docs/architecture/system-overview.md`
+- `docs/architecture/scalability-and-deployment-model.md`
+- `docs/architecture/startup-readiness-deployment-policy.md`
+- `docs/architecture/feature-status-and-roadmap.md`
 
-## Vector Store Direction
+## Repository Layout
 
-`lotus-ai` will use PostgreSQL with `pgvector` as the first vector-store architecture.
-
-Why this is the current default:
-
-1. it fits the Lotus backend posture,
-2. it keeps operations simpler,
-3. it is sufficient for the first retrieval phases,
-4. it supports metadata filtering and provenance without introducing a separate retrieval runtime too early.
-
-What this means in practice:
-
-1. canonical durable database remains PostgreSQL,
-2. vector search lives beside the rest of the governed retrieval metadata,
-3. retrieval remains a Lotus-owned layer rather than a framework-owned abstraction.
-
-## What lotus-ai Does Not Do
-
-- own portfolio or transaction truth
-- replace deterministic logic in `lotus-core`, `lotus-performance`, `lotus-risk`, `lotus-advise`, or `lotus-manage`
-- become the source of truth for approvals, consent, risk, or reporting decisions
-- own UI lifecycle orchestration from `lotus-gateway` or `lotus-workbench`
-- autonomously execute trades or workflow transitions
-
-## How Other Lotus Apps Should Use It
-
-The preferred integration model is:
-
-1. a Lotus app prepares the structured context it owns,
-2. it calls `lotus-ai` for a bounded AI task,
-3. `lotus-ai` returns a governed result with audit metadata,
-4. the calling app remains responsible for business meaning and user-facing application.
-
-Internally, `lotus-ai` now also treats task execution as a governed pipeline rather than a single
-monolithic function. That keeps the runtime easier to test, easier to audit, and easier to extend
-when live providers and retrieval execution are introduced later.
-
-Examples:
-
-- `lotus-manage` can ask `lotus-ai` to explain why a rebalance is `BLOCKED`.
-- `lotus-advise` can ask `lotus-ai` to draft a reviewer summary for a proposal.
-- `lotus-performance` and `lotus-risk` can ask `lotus-ai` for analytics commentary.
-- `lotus-gateway` can ask `lotus-ai` for a source-grounded Performance Advisor Brief assembled
-  from Workbench performance contracts, while preserving `audit` and `evidence` metadata for the UI.
-- `lotus-core` can ask `lotus-ai` to summarize supportability anomalies.
-
-## Initial Repository Layout
-
-- `src/app/providers/`: provider adapters and model routing
-- `src/app/prompts/`: prompt registry and prompt-version assets
-- `src/app/retrieval/`: knowledge indexing and retrieval services
-- `src/app/safety/`: redaction, policy checks, and output controls
-- `src/app/evals/`: evaluation and regression helpers
-- `src/app/services/`: service-layer orchestration
-- `src/app/contracts/`: request and response models
-- `src/app/routers/`: API surfaces
-- `docs/rfcs/`: service-local architecture decisions
-
-## Build Strategy
-
-We are building `lotus-ai` incrementally.
-
-1. Foundation:
-   contracts, settings, architecture docs, governance, and evaluation standards.
-2. Safe task APIs:
-   explanation, summarization, classification, extraction, and knowledge retrieval.
-3. Platform controls:
-   prompt registry, audit logging, redaction, model routing, and eval harnesses.
-4. Cross-app adoption:
-   start with one Lotus app integration, then expand based on evidence.
-5. Advanced orchestration:
-   async runs and tool-using flows only after the core safety and observability layers are solid.
-
-## Enterprise Posture
-
-`lotus-ai` is being built for an enterprise private-banking target environment, while acknowledging startup execution constraints.
-
-That means:
-
-- strong contracts,
-- explicit ownership boundaries,
-- traceability and auditability,
-- pragmatic slice-by-slice delivery,
-- no speculative overbuilding,
-- no hidden AI behavior in critical workflows.
-
-The service also follows a strict scalability model:
-
-1. API-serving components stay stateless,
-2. durable state moves to governed stores,
-3. long-running work scales through worker processes,
-4. internal seams stay clean enough to split into separate deployables later without changing external contracts.
-
-The local security audit posture is also intentionally isolated:
-
-1. `make ci` runs dependency health checks inside a temporary project-only virtual environment,
-2. this avoids false positives from unrelated machine-wide Python packages,
-3. the audit still fails on vulnerabilities in the actual `lotus-ai` dependency set,
-4. temporary vulnerability ignores must be explicit in `scripts/dependency_health_check.py` and should only be used when no patched upstream release exists yet.
-
-## Framework Stance
-
-`lotus-ai` is not being built around a large AI orchestration framework as its core architecture.
-
-The foundation remains:
-
-- `FastAPI`
-- `Pydantic`
-- `pydantic-settings`
-- normal Python service modules
-- explicit Lotus-owned contracts, routing, safety, and audit behavior
-
-We may use targeted AI libraries where they reduce plumbing, but those libraries should remain implementation helpers rather than the definition of the platform.
-
-Current default position:
-
-1. own contracts, prompts, routing, safety, and audit logic ourselves,
-2. use provider SDKs or thin wrappers first,
-3. introduce specialized AI libraries only where they clearly improve delivery without obscuring control flow.
-
-## LangGraph Position
-
-LangGraph is not part of the initial foundation of `lotus-ai`.
-
-Why:
-
-1. the first priority is contract-first, auditable platform behavior,
-2. our early use cases are explanation, retrieval, and bounded task execution rather than complex autonomous agents,
-3. we want to avoid hidden orchestration behavior before the governance model is mature.
-
-LangGraph may be considered later for tightly bounded async or tool-using workflows, but only after:
-
-1. task contracts are stable,
-2. audit logging is complete,
-3. safety and approval controls are in place,
-4. we have real evidence that graph-style orchestration is needed.
-
-Even if adopted later, LangGraph should be used as an internal orchestration helper, not as the public architecture of `lotus-ai`.
+- `src/` application code
+- `tests/` unit, integration, and e2e validation
+- `docs/architecture/` architecture and roadmap guidance
+- `docs/guides/` integration and contract guidance
+- `docs/runbooks/` service operations guidance
+- `docs/security/` security and governance posture
+- `docs/standards/` local standards
+- `docs/rfcs/` repo-local RFC inventory
+- `docs/evals/` evaluation strategy and fixtures
+- `wiki/` canonical source pages for the GitHub wiki
 
 ## Quick Start
 
+Install dependencies and run the fast local gate:
+
 ```powershell
 make install
-make lint
-make typecheck
-make openapi-gate
-make eval-manifest-gate
-make eval-run-gate
-make async-job-gate
-make migration-smoke
-make runtime-mode-smoke
-make ci
+make check
 ```
 
-## Run
+Run the API directly:
 
 ```powershell
 uvicorn app.main:app --reload --port 8140
 ```
 
-## Docker
+Run the prod-shaped local Docker stack:
 
 ```powershell
 docker compose up --build
 ```
 
-Local Docker runtime does not publish internal infrastructure ports by default:
+API docs are available at `http://localhost:8140/docs`.
 
-1. PostgreSQL stays internal to the Compose network on `postgres:5432`
-2. Redis stays internal to the Compose network on `redis:6379`
-3. only the application port `8140` is published for local API access
+Local Docker runtime notes:
 
-The checked-in Docker stack is now a prod-shaped local baseline, not a full production-ready posture:
+1. PostgreSQL stays internal to the Compose network on `postgres:5432`,
+2. Redis stays internal to the Compose network on `redis:6379`,
+3. only the application port `8140` is published for local API access.
 
-1. PostgreSQL backs the SQL store seams instead of SQLite,
-2. Redis and the dedicated worker path are active,
-3. prod-shaped local posture now requires that PostgreSQL-backed durable store seams and the dedicated async queue-plus-worker path are both active at the same time,
-4. migrations run through an explicit startup script before the API is treated as ready,
-5. artifact payload storage and secret handling still keep `production_ready=false` until a governed production object store and deployment-managed secrets are active.
+## Common Commands
 
-## Documentation
+- `make install` - install development dependencies
+- `make check` - fast local gate
+- `make ci` - PR-grade local gate
+- `make runtime-mode-smoke` - verify startup, migration, and runtime-mode posture
+- `make migration-apply` - apply Alembic migrations
+- `make docker-build` - Docker build validation
 
-- architecture overview: `docs/architecture/system-overview.md`
-- startup readiness deployment policy: `docs/architecture/startup-readiness-deployment-policy.md`
-- scalability and deployment model: `docs/architecture/scalability-and-deployment-model.md`
+## Validation and CI
+
+`lotus-ai` follows the Lotus lane model:
+
+1. `Remote Feature Lane`
+2. `Pull Request Merge Gate`
+3. `Main Releasability Gate`
+
+Repo-native validation mapping:
+
+- fast local gate: `make check`
+- PR-grade gate: `make ci`
+- runtime smoke: `make runtime-mode-smoke`
+- Docker validation: `make docker-build`
+
+The enforced gates currently include:
+
+1. lint and typecheck,
+2. OpenAPI quality,
+3. evaluation fixture manifest validation,
+4. evaluation run artifact validation,
+5. async job artifact validation,
+6. migration smoke,
+7. dependency health and security audit,
+8. coverage-backed test execution,
+9. Docker build validation.
+
+## Integration Contract
+
+The first executable public contract is:
+
+- `POST /ai/tasks/execute`
+
+Downstream teams should integrate against the contract and preserve the audit metadata rather than
+assuming unrestricted live-model behavior.
+
+The core integration references are:
+
+- `docs/guides/task-execution-contract.md`
+- `docs/guides/integration-guide.md`
+- `docs/guides/prompt-registry-and-audit.md`
+- `docs/guides/retrieval-and-vector-store.md`
+
+For a grouped map of the current execution, audit, task-runtime, and platform surfaces derived from
+the actual router layout, use the wiki page:
+
+- `wiki/Platform-Surfaces.md`
+
+Practical rule:
+
+1. calling services own business context,
+2. `lotus-ai` executes governed AI behavior against that context,
+3. downstream systems remain accountable for user-facing consequences.
+
+## Operations and Runtime Posture
+
+Key health and operator surfaces:
+
+- `/health/live`
+- `/health/ready`
+- `/platform/runtime-status`
+- `/platform/providers/operations-status`
+- `/platform/prompts/runtime-status`
+- `/platform/retrieval/runtime-status`
+- `/platform/safety/runtime-status`
+- `/platform/evals/runtime-status`
+- `/platform/async/governance-status`
+
+Operational guidance lives in:
+
+- `docs/runbooks/service-operations.md`
+- `docs/runbooks/provider-mode-switching.md`
+
+For a grouped operator-facing and control-plane view of those surfaces, use:
+
+- `wiki/Platform-Surfaces.md`
+
+## Security and Governance
+
+The service is built for a banking-oriented environment with explicit governance boundaries:
+
+1. domain apps remain accountable for business meaning,
+2. prompt changes must remain reviewable,
+3. retrieval sources must remain curated and attributable,
+4. safety, audit, and approval boundaries must stay explicit,
+5. framework adoption must not obscure runtime behavior or policy gates.
+
+Source:
+
+- `docs/security/security-and-governance.md`
+
+## Documentation Map
+
+Best starting points:
+
+- system overview: `docs/architecture/system-overview.md`
+- feature status and roadmap: `docs/architecture/feature-status-and-roadmap.md`
 - phased roadmap: `docs/architecture/phased-roadmap.md`
-- decisions and rationale: `docs/architecture/decision-log.md`
-- domain integration guide: `docs/guides/integration-guide.md`
-- task execution contract: `docs/guides/task-execution-contract.md`
-- prompt registry and audit: `docs/guides/prompt-registry-and-audit.md`
-- retrieval and vector store: `docs/guides/retrieval-and-vector-store.md`
+- first use-case guide: `docs/guides/lotus-performance-first-use-case.md`
+- service operations runbook: `docs/runbooks/service-operations.md`
 - evaluation strategy: `docs/evals/evaluation-strategy.md`
-- security and governance: `docs/security/security-and-governance.md`
-- service-local RFCs: `docs/rfcs/`
-- service standards: `docs/standards/`
-- API documentation standard: `docs/standards/api-documentation.md`
-- migration contract standard: `docs/standards/migration-contract.md`
-- platform governance source: `../lotus-platform/rfcs/RFC-0069-lotus-ai-shared-ai-platform-service.md`
+- local RFC index: `docs/rfcs/README.md`
+
+Platform governance:
+
+- `../lotus-platform/rfcs/RFC-0069-lotus-ai-shared-ai-platform-service.md`
+- `../lotus-platform/rfcs/RFC-0072-platform-wide-multi-lane-ci-validation-and-release-governance.md`
+- `../lotus-platform/context/LOTUS-ENGINEERING-CONTEXT.md`
+
+## Wiki
+
+The live GitHub wiki is:
+
+- `https://github.com/sgajbi/lotus-ai/wiki`
+
+The canonical authored source for that wiki lives under `wiki/` in this repository.
+
+If you use a separate local clone of `https://github.com/sgajbi/lotus-ai.wiki.git`, treat it only
+as a publish target for the live wiki, not as a second maintained documentation tree.

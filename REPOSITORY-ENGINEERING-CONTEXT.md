@@ -56,6 +56,8 @@ Primary areas:
    API surfaces.
 9. `docs/`
    architecture, standards, guides, and local RFCs.
+10. `wiki/`
+   canonical local source pages for the GitHub wiki and repo onboarding navigation.
 
 ## Runtime And Integration Boundaries
 
@@ -117,7 +119,10 @@ Most relevant current governance:
 1. this service has a large documented current-state posture, so context drift is a serious risk if docs are not kept current,
 2. live AI rollout must remain governed, bounded, and evidence-backed,
 3. domain ownership should stay in the calling services even when `lotus-ai` adds value,
-4. retrieval, prompt, provider, safety, and async seams should remain explicit and auditable.
+4. retrieval, prompt, provider, safety, and async seams should remain explicit and auditable,
+5. `wiki/` inside the main repo is the authored source of truth for the repository wiki,
+6. any separate local clone of `https://github.com/sgajbi/lotus-ai.wiki.git` is only a publish target
+   and must not become a second maintained documentation source.
 
 ## Context Maintenance Rule
 
@@ -127,7 +132,8 @@ Update this document when:
 2. live-provider or retrieval rollout posture changes materially,
 3. repo-native commands or validation gates change,
 4. architecture or control-plane seams change materially,
-5. the service’s current phase or governance posture changes.
+5. the service’s current phase or governance posture changes,
+6. the wiki ownership or publication workflow changes.
 
 ## Cross-Links
 
