@@ -32,3 +32,4 @@
 - `RFC-0030-client-mandate-integrity-and-action-orchestration.md` - Draft
 - `RFC-0031-governed-agent-workflow-packs-and-bounded-ai-runtime.md` - Draft
 - `RFC-0032-governed-workflow-pack-registry-and-activation-posture.md` - Draft
+- `RFC-0033-durable-ai-run-ledger-and-review-state-contracts.md` - Draft
