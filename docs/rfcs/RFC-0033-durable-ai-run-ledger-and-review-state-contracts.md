@@ -55,6 +55,27 @@ The goal is to make every meaningful AI-assisted workflow run:
 4. operationally truthful,
 5. clearly subordinate to business workflow truth.
 
+## Implementation Status
+
+This RFC remains draft-only.
+
+Current prerequisite foundations that now exist in `lotus-ai`:
+
+1. workflow-pack registry identity and owner-artifact grounding from `RFC-0032`,
+2. eligibility evaluation and bounded activation posture for registered workflow-pack versions,
+3. process-local operator control history and activation actions that clarify current runtime posture.
+
+What is not implemented yet:
+
+1. a durable pack-run ledger schema and persistence layer,
+2. shared runtime-state and review-state contracts exposed across `lotus-ai`, `lotus-gateway`, and
+   `lotus-workbench`,
+3. durable linkage from workflow-pack execution to artifacts, review actions, and support evidence,
+4. UI and gateway consumption that renders run state and review state as separate dimensions.
+
+This RFC should remain `Draft` until at least the first ledger contract slice is implemented and
+the RFC, RFC index, and branch evidence can be kept in truthful alignment.
+
 ## Why This RFC Exists
 
 Once Lotus introduces workflow packs, "request in, response out" is no longer enough for the
