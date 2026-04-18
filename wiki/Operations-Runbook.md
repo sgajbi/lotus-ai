@@ -48,7 +48,7 @@ The service exposes a broad platform surface. The main groups are:
    runtime, caller-policy catalog, and governance posture for caller authorization
 10. task-runtime inspection
    runtime status plus execution, evidence, and retrieval summaries
-11. capability packs, app-capability rollouts, and first-use-case surfaces
+11. capability packs, workflow packs, app-capability rollouts, and first-use-case surfaces
    adoption and rollout governance rather than direct execution
 
 For the grouped route map, use [Platform Surfaces](./Platform-Surfaces.md).
@@ -79,6 +79,27 @@ Good examples:
 5. evaluation posture
    - `/platform/evals/runtime-status`
    - `/platform/evals/runs`
+6. workflow-pack rollout posture
+   - `/platform/workflow-packs/registry`
+   - `/platform/workflow-packs/eligibility/evaluate`
+   - `/platform/workflow-packs/control-history`
+
+## Workflow-Pack Operator Checks
+
+When a downstream team is trying to register, pause, resume, deprecate, or retire a workflow pack,
+do not treat the registry row by itself as sufficient proof.
+
+Use this sequence:
+
+1. inspect `/platform/workflow-packs/registry`,
+2. inspect the specific workflow-pack detail route for the pack and version in question,
+3. evaluate `/platform/workflow-packs/eligibility/evaluate` with the real caller and surface posture,
+4. inspect `/platform/workflow-packs/control-history` when rollout state changed or operator action is disputed,
+5. confirm `definition_ref` and `definition_refs` still resolve to the owning repository artifacts rather than placeholder notes.
+
+The owner-facing source for that procedure is:
+
+- `docs/guides/workflow-pack-owner-onboarding.md`
 
 ## Readiness Semantics
 

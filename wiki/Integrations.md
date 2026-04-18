@@ -156,7 +156,8 @@ The practical sequence for a new downstream adoption is:
 
 That sequence keeps app-facing productization separate from low-level task execution.
 
-For workflow-pack onboarding specifically, do one more truth check before treating a registration as real:
+For workflow-pack onboarding specifically, use `docs/guides/workflow-pack-owner-onboarding.md` as
+the owner-facing procedure and do one more truth check before treating a registration as real:
 
 1. `owner_repository` should match the repo that owns the workflow-bearing code path,
 2. `definition_ref` should point at a real owner artifact, not a placeholder design note,
@@ -186,6 +187,7 @@ When the integration depends on blocked, redacted, or label-sensitive output han
 
 - `docs/guides/integration-guide.md`
 - `docs/guides/task-execution-contract.md`
+- `docs/guides/workflow-pack-owner-onboarding.md`
 - `docs/guides/prompt-registry-and-audit.md`
 - `docs/guides/retrieval-and-vector-store.md`
 - `docs/guides/lotus-performance-first-use-case.md`
@@ -195,4 +197,5 @@ When the integration depends on blocked, redacted, or label-sensitive output han
 
 1. use [Platform Surfaces](./Platform-Surfaces.md) for the grouped public route map,
 2. use [Security and Governance](./Security-and-Governance.md) for the boundary rules that constrain integrations,
-3. use [Troubleshooting](./Troubleshooting.md) when a runtime mode or provider path is not behaving as expected.
+3. use [Operations Runbook](./Operations-Runbook.md) when workflow-pack rollout or operator control posture needs a live check,
+4. use [Troubleshooting](./Troubleshooting.md) when a runtime mode or provider path is not behaving as expected.
