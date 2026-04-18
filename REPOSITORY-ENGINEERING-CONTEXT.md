@@ -34,7 +34,7 @@ Current repository posture:
 2. live provider rollout remains controlled and deliberately constrained,
 3. retrieval, prompts, provider policy, evaluation, async runtime, and governance are real first-class seams,
 4. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity, with owner-artifact references that must resolve back to the real downstream repository,
-5. workflow-pack run-ledger foundations now exist as a separate runtime seam for Phase-1 advisor-brief executions, with runtime state kept separate from review state,
+5. workflow-pack run-ledger foundations now exist as a separate runtime seam for Phase-1 advisor-brief executions, with runtime state kept separate from review state and a migration-backed SQL store now available for durable ledger posture,
 6. the service is designed to support Lotus apps without stealing domain ownership from them.
 
 ## Architecture And Module Map
@@ -69,7 +69,7 @@ Runtime model:
 1. shared FastAPI service with bounded AI control-plane and data-plane seams,
 2. consumed by other Lotus apps for governed AI tasks,
 3. workflow-pack registry records define runtime registration truth without centralizing business workflow logic,
-4. workflow-pack run records now provide bounded execution lineage for Phase-1 pack-backed flows without taking workflow authority,
+4. workflow-pack run records now provide bounded execution lineage for Phase-1 pack-backed flows without taking workflow authority, and can now move between in-memory and SQL-backed runtime posture through the same governed store-mode seam used elsewhere in the service,
 5. does not replace upstream domain logic or workflow authority.
 
 Boundary rules:

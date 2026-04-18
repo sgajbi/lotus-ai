@@ -139,10 +139,11 @@ Supported now:
 
 Important limitation:
 
-1. the current control history is still process-local rather than durable,
+1. workflow-pack control history is still process-local rather than durable even though run-ledger storage can now be durable,
 2. this control plane does not execute workflow logic by itself,
-3. no default-version resolution or broad production activation exists yet,
-4. downstream owner repositories still have to carry the real workflow-bearing implementation and tests.
+3. workflow-pack run ledger durability now exists for Phase-1 recorded runs, but review transitions and broader workflow-pack runtime adoption are still incomplete,
+4. no default-version resolution or broad production activation exists yet,
+5. downstream owner repositories still have to carry the real workflow-bearing implementation and tests.
 
 ## Intentionally Limited or Not Yet Live
 

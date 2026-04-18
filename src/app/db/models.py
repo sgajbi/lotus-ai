@@ -401,3 +401,53 @@ class EvaluationCaseResultModel(Base):
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
     run: Mapped["EvaluationRunModel"] = relationship(back_populates="case_results")
+
+
+class WorkflowPackRunModel(Base):
+    __tablename__ = "workflow_pack_runs"
+
+    run_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    pack_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    pack_family: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    pack_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    registration_ref: Mapped[str] = mapped_column(String(256), nullable=False)
+    task_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    request_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    caller_app: Mapped[str] = mapped_column(String(128), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    workflow_surface: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    workflow_authority_owner: Mapped[str] = mapped_column(String(128), nullable=False)
+    runtime_state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    review_required: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    provider_mode: Mapped[str] = mapped_column(String(64), nullable=False)
+    stubbed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    output_preview: Mapped[str] = mapped_column(Text, nullable=False)
+    structured_output_keys: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    evidence_descriptors: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
+    artifact_refs: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
+    supersedes_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    superseded_by_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    completed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    events: Mapped[list["WorkflowPackRunEventModel"]] = relationship(back_populates="run")
+
+
+class WorkflowPackRunEventModel(Base):
+    __tablename__ = "workflow_pack_run_events"
+
+    event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("workflow_pack_runs.run_id"), nullable=False, index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    runtime_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    actor: Mapped[str] = mapped_column(String(128), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    run: Mapped["WorkflowPackRunModel"] = relationship(back_populates="events")

@@ -107,11 +107,13 @@ Expected operator flow for SQL-backed stores:
 2. verify `GET /platform/runtime-status`
 3. confirm evaluation runtime posture in the embedded evaluation summary
 4. confirm prompt runtime selection in the embedded prompt runtime summary
-5. verify `GET /platform/safety/runtime-status`
-6. verify `GET /platform/safety/evidence-readiness` when runtime safety approval posture matters
-7. verify `GET /platform/safety/governance-status` when runtime safety rollout posture matters
-8. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
-9. only then proceed with rollout if readiness is `READY`
+5. confirm the embedded `workflow_pack_run_store` block reports the expected mode and readiness when workflow-pack run durability is enabled
+6. verify `GET /platform/workflow-packs/runs` when workflow-pack run persistence is part of the rollout slice
+7. verify `GET /platform/safety/runtime-status`
+8. verify `GET /platform/safety/evidence-readiness` when runtime safety approval posture matters
+9. verify `GET /platform/safety/governance-status` when runtime safety rollout posture matters
+10. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
+11. only then proceed with rollout if readiness is `READY`
 
 ## Resilience Governance
 
@@ -226,6 +228,7 @@ Before treating any workflow-pack-enabled path as operator-ready:
    not become a second editing surface for workflow behavior
 9. inspect `GET /platform/workflow-packs/runs` to distinguish runtime completion posture from product review posture for recorded Phase-1 pack runs
 10. inspect `GET /platform/workflow-packs/runs/{run_id}` when support needs the exact registration ref, evidence descriptors, and run-history event attached to one pack execution
+11. when `LOTUS_AI_WORKFLOW_PACK_RUN_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_run_store` block in `GET /platform/runtime-status` reports `READY` before treating the run ledger as restart-safe durable truth
 
 ## Durable Async Recovery
 

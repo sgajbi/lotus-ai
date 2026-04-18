@@ -70,17 +70,20 @@ Implemented on the current branch:
 1. workflow-pack run-ledger contract models for runtime state, review state, lineage-ready run identity, and run-history events,
 2. workflow-pack run store seam and in-memory repository implementation,
 3. read-only workflow-pack run catalog and detail APIs,
-4. Phase-1 runtime recording for `advisor_brief.pack` executions through the existing `explain.v1` task path.
+4. Phase-1 runtime recording for `advisor_brief.pack` executions through the existing `explain.v1` task path,
+5. migration-managed SQL-backed workflow-pack run and event tables plus a SQLAlchemy repository implementation,
+6. runtime-readiness, startup-policy, and platform-status integration for the workflow-pack run store so durable ledger posture is inspectable instead of implied.
 
 What is not implemented yet:
 
-1. a durable pack-run ledger schema and persistence layer,
-2. shared runtime-state and review-state contracts exposed across `lotus-ai`, `lotus-gateway`, and
+1. shared runtime-state and review-state contracts exposed across `lotus-ai`, `lotus-gateway`, and
    `lotus-workbench`,
-3. durable linkage from workflow-pack execution to artifacts, review actions, and support evidence,
-4. UI and gateway consumption that renders run state and review state as separate dimensions.
+2. durable linkage from workflow-pack execution to artifacts, review actions, and support evidence,
+3. UI and gateway consumption that renders run state and review state as separate dimensions,
+4. review-state mutation and consequence-bearing downstream review integration flows,
+5. broader workflow-pack runtime adoption beyond the current Phase-1 advisor-brief recording path.
 
-This RFC now correctly moves to `In Progress`, but it should not be treated as complete until durable storage, review transitions, and downstream contract adoption are implemented and reflected in the RFC, RFC index, and branch evidence together.
+This RFC now correctly moves to `In Progress`, but it should not be treated as complete until review transitions, downstream contract adoption, and broader runtime integration are implemented and reflected in the RFC, RFC index, and branch evidence together.
 
 ## Prerequisite Evidence And Open Gaps
 

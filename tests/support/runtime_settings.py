@@ -9,6 +9,7 @@ from app.services.artifact_store import reset_artifact_store_cache
 from app.services.caller_policy_store import reset_caller_policy_store_cache
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.retrieval_store import reset_retrieval_repository
+from app.services.workflow_pack_run_store import reset_workflow_pack_run_store_cache
 
 
 @contextmanager
@@ -22,6 +23,7 @@ def override_runtime_settings(**overrides: object) -> Iterator[None]:
         reset_caller_policy_store_cache()
         reset_prompt_store_cache()
         reset_retrieval_repository()
+        reset_workflow_pack_run_store_cache()
         yield
     finally:
         for key, value in original_values.items():
@@ -31,3 +33,4 @@ def override_runtime_settings(**overrides: object) -> Iterator[None]:
         reset_caller_policy_store_cache()
         reset_prompt_store_cache()
         reset_retrieval_repository()
+        reset_workflow_pack_run_store_cache()

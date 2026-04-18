@@ -1,0 +1,52 @@
+from pathlib import Path
+
+import pytest
+
+from app.config import settings
+from app.repositories.memory_workflow_pack_run_repository import InMemoryWorkflowPackRunRepository
+from app.repositories.sqlalchemy_workflow_pack_run_repository import (
+    SqlAlchemyWorkflowPackRunRepository,
+)
+from app.services.workflow_pack_run_store import (
+    get_workflow_pack_run_store,
+    reset_workflow_pack_run_store_cache,
+)
+from tests.support.migration_runner import upgrade_database_to_head
+
+
+def test_workflow_pack_run_store_returns_cached_memory_repository_and_resets() -> None:
+    settings.workflow_pack_run_store_mode = "memory"
+    reset_workflow_pack_run_store_cache()
+
+    first_repository = get_workflow_pack_run_store()
+
+    assert first_repository is get_workflow_pack_run_store()
+    assert isinstance(first_repository, InMemoryWorkflowPackRunRepository)
+
+    reset_workflow_pack_run_store_cache()
+
+    assert get_workflow_pack_run_store() is not first_repository
+
+
+def test_workflow_pack_run_store_returns_sqlalchemy_repository(tmp_path: Path) -> None:
+    settings.workflow_pack_run_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'workflow-pack-run-store.db'}"
+    upgrade_database_to_head(settings.database_url)
+    reset_workflow_pack_run_store_cache()
+
+    repository = get_workflow_pack_run_store()
+
+    assert isinstance(repository, SqlAlchemyWorkflowPackRunRepository)
+
+
+def test_workflow_pack_run_store_rejects_invalid_configuration() -> None:
+    settings.workflow_pack_run_store_mode = "sqlalchemy"
+    settings.database_url = None
+    reset_workflow_pack_run_store_cache()
+
+    with pytest.raises(RuntimeError, match="LOTUS_AI_DATABASE_URL"):
+        get_workflow_pack_run_store()
+
+    settings.workflow_pack_run_store_mode = "unsupported"
+    with pytest.raises(RuntimeError, match="Unsupported workflow-pack run store mode"):
+        get_workflow_pack_run_store()

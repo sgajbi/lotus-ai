@@ -596,6 +596,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "recovery_findings" in resilience_dependency_schema["properties"]
     assert "artifact_runtime" in platform_runtime_schema["properties"]
     assert "artifact_governance" in platform_runtime_schema["properties"]
+    assert "workflow_pack_run_store_mode" in platform_runtime_schema["properties"]
+    assert "workflow_pack_run_store" in platform_runtime_schema["properties"]
     assert "capability_pack_catalog" in platform_runtime_schema["properties"]
     assert "capability_pack_governance" in platform_runtime_schema["properties"]
     assert "app_capability_rollout_catalog" in platform_runtime_schema["properties"]

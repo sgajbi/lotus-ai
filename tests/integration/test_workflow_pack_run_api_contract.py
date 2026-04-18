@@ -1,4 +1,10 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
+
+from app.main import app
+from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.runtime_settings import override_runtime_settings
 
 
 def test_workflow_pack_run_catalog_starts_empty(client: TestClient) -> None:
@@ -68,3 +74,48 @@ def test_workflow_pack_run_detail_rejects_unknown_run(client: TestClient) -> Non
     response = client.get("/platform/workflow-packs/runs/unknown-run")
 
     assert response.status_code == 404
+
+
+def test_workflow_pack_run_catalog_supports_sqlalchemy_store_mode(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-run-api.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        workflow_pack_run_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as client:
+            execute_response = client.post(
+                "/ai/tasks/execute",
+                json={
+                    "task_id": "explain.v1",
+                    "input_mode": "STRUCTURED_CONTEXT",
+                    "caller": {
+                        "caller_app": "lotus-gateway",
+                        "correlation_id": "corr-pack-run-api-sql-001",
+                    },
+                    "context": {
+                        "summary": "Draft advisor brief from source performance facts.",
+                        "payload": {
+                            "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                            "period": {"period": "YTD"},
+                            "performance": {
+                                "portfolio_return_pct": 1.25,
+                                "benchmark_return_pct": 7.93,
+                                "active_return_pct": -6.68,
+                            },
+                            "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                        },
+                        "source_refs": ["lotus-gateway:performance-summary:YTD"],
+                    },
+                    "expected_output_label": "EXPLANATION_ONLY",
+                },
+            )
+            assert execute_response.status_code == 200
+
+            catalog_response = client.get("/platform/workflow-packs/runs")
+
+    assert catalog_response.status_code == 200
+    catalog_body = catalog_response.json()
+    assert catalog_body["run_store_mode"] == "sqlalchemy"
+    assert catalog_body["run_count"] == 1
