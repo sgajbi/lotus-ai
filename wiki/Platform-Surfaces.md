@@ -70,6 +70,9 @@ platform programs.
    - `/platform/deployment-split/*`
    - `/platform/production-baseline/*`
    - `/platform/production-go-live/*`
+4. workflow-pack runtime registration
+   - `/platform/workflow-packs/registry`
+   - `/platform/workflow-packs/registry/{pack_id}/{version}`
 
 ## Provider Surface
 
@@ -285,9 +288,12 @@ These are the app-facing rollout and onboarding surfaces rather than low-level r
    - `/platform/capability-packs/{pack_id}/activation-readiness`
    - `/platform/capability-packs/{pack_id}/runbook-readiness`
    - `/platform/capability-packs/{pack_id}/governance-status`
-2. app-capability rollouts
+2. workflow-pack registry
+   - `/platform/workflow-packs/registry`
+   - `/platform/workflow-packs/registry/{pack_id}/{version}`
+3. app-capability rollouts
    - `/platform/app-capability-rollouts`
-3. first production use-case and onboarding templates
+4. first production use-case and onboarding templates
    - `/platform/use-cases/first-production-use-case`
    - `/platform/use-cases/first-production-use-case/readiness`
    - `/platform/use-cases/first-production-use-case/runbook-readiness`

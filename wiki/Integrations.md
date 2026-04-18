@@ -84,8 +84,9 @@ For more rollout-sensitive integrations, also inspect:
 1. `/platform/tasks/runtime-status`
 2. `/platform/access-control/caller-policies`
 3. `/platform/capability-packs`
-4. `/platform/use-cases/first-production-use-case`
-5. `/platform/app-capability-rollouts`
+4. `/platform/workflow-packs/registry`
+5. `/platform/use-cases/first-production-use-case`
+6. `/platform/app-capability-rollouts`
 
 ## Gateway-First Rule
 
@@ -134,9 +135,10 @@ They should also inspect retrieval posture directly when retrieval-backed behavi
 `lotus-ai` also exposes higher-level adoption surfaces:
 
 1. `/platform/capability-packs`
-2. `/platform/use-cases/first-production-use-case`
-3. `/platform/use-cases/onboarding-template`
-4. `/platform/app-capability-rollouts`
+2. `/platform/workflow-packs/registry`
+3. `/platform/use-cases/first-production-use-case`
+4. `/platform/use-cases/onboarding-template`
+5. `/platform/app-capability-rollouts`
 
 These are useful when the integration work is about productized downstream rollout rather than only
 calling one task endpoint.
@@ -145,9 +147,10 @@ The practical sequence for a new downstream adoption is:
 
 1. inspect `/platform/capability-packs`
 2. inspect the selected pack detail and adoption template
-3. inspect `/platform/use-cases/onboarding-template`
-4. inspect `/platform/use-cases/first-production-use-case`
-5. inspect `/platform/app-capability-rollouts`
+3. inspect `/platform/workflow-packs/registry` when the pack is intended to become a workflow-bearing runtime family
+4. inspect `/platform/use-cases/onboarding-template`
+5. inspect `/platform/use-cases/first-production-use-case`
+6. inspect `/platform/app-capability-rollouts`
 
 That sequence keeps app-facing productization separate from low-level task execution.
 

@@ -17,7 +17,8 @@ Before integrating a Lotus app with `lotus-ai`, upstream teams should inspect:
 11. `GET /platform/safety/evidence-readiness` for runtime-backed safety approval posture,
 12. `GET /platform/safety/runbook-readiness` for operational safety rollout posture,
 13. `GET /platform/safety/governance-status` for the combined safety rollout view,
-14. `GET /platform/retrieval/runtime-status` for retrieval-specific persistence and corpus posture when retrieval features are relevant.
+14. `GET /platform/retrieval/runtime-status` for retrieval-specific persistence and corpus posture when retrieval features are relevant,
+15. `GET /platform/workflow-packs/registry` for workflow-pack registration truth when onboarding a workflow-bearing integration path.
 
 This keeps downstream integration decisions grounded in actual runtime capability rather than assumptions.
 
@@ -230,6 +231,11 @@ For new downstream onboarding, start with the capability-pack layer first:
 2. `GET /platform/capability-packs/{pack_id}`
 3. `GET /platform/capability-packs/{pack_id}/adoption-template`
 4. `GET /platform/capability-packs/{pack_id}/governance-status`
+
+If the selected path is evolving into a workflow-bearing pack rather than a bounded task wrapper, inspect the workflow-pack registry next:
+
+1. `GET /platform/workflow-packs/registry`
+2. `GET /platform/workflow-packs/registry/{pack_id}/{version}`
 
 Then use the first-use-case surfaces as the concrete reference path when the selected pack already has one:
 

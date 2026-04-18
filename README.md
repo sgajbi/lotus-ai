@@ -20,7 +20,8 @@ authority out of the services that already own those domains.
 5. runtime-backed evaluation and approval-gate posture,
 6. async runtime and worker-backed job execution for governed AI work,
 7. provider policy, quota, budget, and degradation control surfaces,
-8. AI-specific observability, evidence, and control-plane APIs.
+8. workflow-pack registry and activation-control discovery surfaces,
+9. AI-specific observability, evidence, and control-plane APIs.
 
 `lotus-ai` does not own:
 
@@ -55,7 +56,8 @@ Important posture limits:
 2. the bounded capability catalog is broader than the current live-provider allowlist,
 3. retrieval is governed and bounded rather than a general search platform,
 4. prompt bodies remain repository-managed even though runtime prompt selection is durable,
-5. the service should be treated as a governed capability layer, not a business-domain authority.
+5. workflow-pack registry records are control-plane metadata, not a second editable home for workflow logic,
+6. the service should be treated as a governed capability layer, not a business-domain authority.
 
 ## Architectural Shape
 
@@ -79,6 +81,8 @@ Core areas:
    evaluation inventory, runtime execution, and approval-gate evidence.
 8. `src/app/routers/`
    public API surfaces.
+9. `src/app/services/workflow_pack_registry.py`
+   workflow-pack registration catalog and validation seams.
 
 Task execution is intentionally explicit. A request flows through:
 
@@ -214,6 +218,7 @@ Key health and operator surfaces:
 - `/platform/safety/runtime-status`
 - `/platform/evals/runtime-status`
 - `/platform/async/governance-status`
+- `/platform/workflow-packs/registry`
 
 Operational guidance lives in:
 

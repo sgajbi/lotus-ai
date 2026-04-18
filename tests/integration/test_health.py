@@ -38,6 +38,19 @@ def test_platform_capability_pack_catalog_contract(client: TestClient) -> None:
     assert body["packs"][1]["pack_id"] == "decision_explanation.pack.v1"
 
 
+def test_platform_workflow_pack_registry_contract(client: TestClient) -> None:
+    response = client.get("/platform/workflow-packs/registry")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["phase"] == "foundation"
+    assert body["registration_count"] == 2
+    assert body["registered_count"] == 1
+    assert body["registrations"][0]["pack_id"] == "advisor_brief.pack"
+    assert body["registrations"][0]["activation_state"] == "PILOT"
+
+
 def test_platform_app_capability_rollout_catalog_contract(client: TestClient) -> None:
     response = client.get("/platform/app-capability-rollouts")
 

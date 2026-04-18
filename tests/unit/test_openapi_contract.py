@@ -244,6 +244,15 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/capability-packs/governance-status"]["get"]["operationId"] == (
         "getCapabilityPackCatalogGovernanceStatus"
     )
+    assert spec["paths"]["/platform/workflow-packs/registry"]["get"]["operationId"] == (
+        "getWorkflowPackRegistryCatalog"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/registry/{pack_id}/{version}"]["get"][
+            "operationId"
+        ]
+        == "getWorkflowPackRegistrationDetail"
+    )
     assert (
         spec["paths"]["/platform/use-cases/first-production-use-case"]["get"]["operationId"]
         == "getFirstProductionUseCaseStatus"
@@ -402,6 +411,15 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     ]
     capability_pack_catalog_governance_schema = spec["components"]["schemas"][
         "CapabilityPackCatalogGovernanceStatusResponse"
+    ]
+    workflow_pack_registry_catalog_schema = spec["components"]["schemas"][
+        "WorkflowPackRegistryCatalogResponse"
+    ]
+    workflow_pack_registration_schema = spec["components"]["schemas"][
+        "WorkflowPackRegistrationDescriptor"
+    ]
+    workflow_pack_registration_detail_schema = spec["components"]["schemas"][
+        "WorkflowPackRegistrationDetailResponse"
     ]
     app_capability_rollout_catalog_schema = spec["components"]["schemas"][
         "AppCapabilityRolloutCatalogResponse"
@@ -603,6 +621,16 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "activation_readiness" in capability_pack_governance_schema["properties"]
     assert "observability" in capability_pack_governance_schema["properties"]
     assert "pack_summaries" in capability_pack_catalog_governance_schema["properties"]
+    assert "registration_count" in workflow_pack_registry_catalog_schema["properties"]
+    assert "registrations" in workflow_pack_registry_catalog_schema["properties"]
+    assert "validation_rules" in workflow_pack_registry_catalog_schema["properties"]
+    assert "registration_status" in workflow_pack_registration_schema["properties"]
+    assert "activation_state" in workflow_pack_registration_schema["properties"]
+    assert "supported_identity_classes" in workflow_pack_registration_schema["properties"]
+    assert "supported_environments" in workflow_pack_registration_schema["properties"]
+    assert "definition_ref" in workflow_pack_registration_schema["properties"]
+    assert "validation_rules" in workflow_pack_registration_detail_schema["properties"]
+    assert "denied_without_registration" in workflow_pack_registration_detail_schema["properties"]
     assert "rollout_records" in app_capability_rollout_catalog_schema["properties"]
     assert "pairing_count" in app_capability_rollout_catalog_schema["properties"]
     assert "capability_pack_maturity_stage" in app_capability_rollout_schema["properties"]

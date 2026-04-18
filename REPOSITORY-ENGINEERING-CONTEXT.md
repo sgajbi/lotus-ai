@@ -12,7 +12,7 @@ For platform-wide truth, read:
 
 `lotus-ai` is the shared AI capability service for the Lotus ecosystem.
 
-It provides governed AI task execution, retrieval, prompt, safety, evaluation, and async foundations for other Lotus applications.
+It provides governed AI task execution, retrieval, prompt, safety, evaluation, async, and workflow-pack control-plane foundations for other Lotus applications.
 
 ## Business And Domain Responsibility
 
@@ -21,7 +21,8 @@ This repository owns:
 1. shared AI execution capabilities,
 2. prompt, provider, retrieval, safety, and evaluation governance,
 3. async AI run infrastructure,
-4. AI-specific observability, evidence, and control-plane surfaces.
+4. workflow-pack registration and activation control-plane seams,
+5. AI-specific observability, evidence, and control-plane surfaces.
 
 It does not own portfolio, performance, risk, advisory, or management domain truth.
 
@@ -32,7 +33,8 @@ Current repository posture:
 1. `lotus-ai` is in a governed foundation phase with many bounded capabilities already implemented,
 2. live provider rollout remains controlled and deliberately constrained,
 3. retrieval, prompts, provider policy, evaluation, async runtime, and governance are real first-class seams,
-4. the service is designed to support Lotus apps without stealing domain ownership from them.
+4. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity,
+5. the service is designed to support Lotus apps without stealing domain ownership from them.
 
 ## Architecture And Module Map
 
@@ -65,14 +67,15 @@ Runtime model:
 
 1. shared FastAPI service with bounded AI control-plane and data-plane seams,
 2. consumed by other Lotus apps for governed AI tasks,
-3. does not replace upstream domain logic or workflow authority.
+3. workflow-pack registry records define runtime registration truth without centralizing business workflow logic,
+4. does not replace upstream domain logic or workflow authority.
 
 Boundary rules:
 
 1. other Lotus apps provide structured business context and remain responsible for business meaning,
 2. `lotus-ai` provides bounded governed AI capabilities with audit and evidence,
 3. framework choices must not obscure control flow, governance, or auditability,
-4. live-provider, retrieval, and async capabilities remain rollout-governed and evidence-backed.
+4. live-provider, retrieval, async, and workflow-pack control seams remain rollout-governed and evidence-backed.
 
 ## Repo-Native Commands
 
