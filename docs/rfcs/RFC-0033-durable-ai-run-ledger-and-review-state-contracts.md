@@ -76,6 +76,29 @@ What is not implemented yet:
 This RFC should remain `Draft` until at least the first ledger contract slice is implemented and
 the RFC, RFC index, and branch evidence can be kept in truthful alignment.
 
+## Prerequisite Evidence And Open Gaps
+
+This RFC now has clearer prerequisites because the workflow-pack registry layer exists.
+
+Evidence the prerequisite layer is real:
+
+1. workflow-pack identity, owner-artifact grounding, and activation metadata in
+   `src/app/contracts/workflow_packs.py` and `src/app/services/workflow_pack_registry.py`,
+2. current registry, eligibility, and operator-control surfaces in `src/app/routers/workflow_packs.py`,
+3. branch coverage for those foundations in `tests/unit/test_workflow_pack_registry.py`,
+   `tests/unit/test_workflow_pack_activation.py`, `tests/unit/test_workflow_pack_control.py`,
+   `tests/integration/test_workflow_pack_registry_api_contract.py`,
+   `tests/integration/test_workflow_pack_activation_api_contract.py`, and
+   `tests/integration/test_workflow_pack_control_api_contract.py`.
+
+Open gaps this RFC is still meant to close:
+
+1. no durable run identity beyond current request and control-plane surfaces,
+2. no shared run-status and review-status contract family exposed for product consumption,
+3. no durable artifact, review-action, or support-evidence linkage for workflow-pack executions,
+4. no gateway or Workbench contract proving that runtime state and review state remain separate in
+   user-facing flows.
+
 ## Why This RFC Exists
 
 Once Lotus introduces workflow packs, "request in, response out" is no longer enough for the

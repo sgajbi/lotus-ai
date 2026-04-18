@@ -80,6 +80,34 @@ Still pending under this broader RFC:
 3. broader multi-pack execution posture,
 4. production-grade durable workflow-pack activation history.
 
+## Current Reality And Evidence
+
+The current branch proves only the registry and activation foundations for this broader runtime RFC.
+
+Implemented evidence now available in `lotus-ai`:
+
+1. workflow-pack contracts and seeded registration truth in `src/app/contracts/workflow_packs.py`
+   and `src/app/services/workflow_pack_registry.py`,
+2. registry, eligibility, and bounded control-plane routes in `src/app/routers/workflow_packs.py`
+   and `src/app/main.py`,
+3. eligibility and operator-control behavior in `src/app/services/workflow_pack_activation.py` and
+   `src/app/services/workflow_pack_control.py`,
+4. contract and behavior coverage in `tests/unit/test_workflow_pack_registry.py`,
+   `tests/unit/test_workflow_pack_activation.py`, `tests/unit/test_workflow_pack_control.py`,
+   `tests/integration/test_workflow_pack_registry_api_contract.py`,
+   `tests/integration/test_workflow_pack_activation_api_contract.py`,
+   `tests/integration/test_workflow_pack_control_api_contract.py`, and
+   `tests/unit/test_openapi_contract.py`,
+5. operator and integration guidance in `docs/guides/integration-guide.md`,
+   `docs/guides/workflow-pack-owner-onboarding.md`, `docs/runbooks/service-operations.md`, and
+   `wiki/`.
+
+Evidence that remains intentionally absent because this RFC is only partially implemented:
+
+1. no durable pack-run ledger schema or storage,
+2. no shared runtime-state plus review-state contract family consumed by gateway and Workbench,
+3. no workflow-pack execution engine beyond current registration and activation groundwork.
+
 ## Repository Fit
 
 This RFC is intentionally housed in `lotus-ai` because the primary architectural change is the

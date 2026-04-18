@@ -67,6 +67,37 @@ Still pending before this RFC should be considered fully implemented:
 3. broader rollout posture beyond the current pilot and discovery reference family,
 4. convergence with the durable run-ledger and review-state model proposed in `RFC-0033`.
 
+## Requirement Traceability And Evidence
+
+The implemented portions of this RFC map to concrete branch evidence as follows.
+
+1. Registry shape and owner-grounded metadata:
+   `src/app/contracts/workflow_packs.py`, `src/app/services/workflow_pack_registry.py`,
+   `tests/unit/test_workflow_pack_registry.py`,
+   `tests/integration/test_workflow_pack_registry_api_contract.py`
+2. Registration catalog and detail inspection surfaces:
+   `src/app/routers/workflow_packs.py`, `src/app/main.py`,
+   `tests/integration/test_health.py`, `tests/unit/test_openapi_contract.py`
+3. Explicit eligibility evaluation over caller, environment, tenant, and workflow surface:
+   `src/app/services/workflow_pack_activation.py`,
+   `tests/unit/test_workflow_pack_activation.py`,
+   `tests/integration/test_workflow_pack_activation_api_contract.py`
+4. Bounded operator pause, resume, deprecate, and retire controls:
+   `src/app/services/workflow_pack_control.py`,
+   `tests/unit/test_workflow_pack_control.py`,
+   `tests/integration/test_workflow_pack_control_api_contract.py`
+5. Phase-1 owner-artifact onboarding and downstream truth preservation for `advisor_brief.pack`:
+   `src/app/services/workflow_pack_registry.py`,
+   `docs/guides/workflow-pack-owner-onboarding.md`,
+   `docs/guides/integration-guide.md`, `docs/runbooks/service-operations.md`,
+   `wiki/Integrations.md`, `wiki/Operations-Runbook.md`, `wiki/Platform-Surfaces.md`
+
+Open gaps that remain consistent with this RFC's still-pending scope:
+
+1. control history is process-local rather than durable,
+2. operator authorization is bounded but not yet enterprise-strong,
+3. broader activation rollout posture and non-reference workflow-pack families are not yet onboarded.
+
 ## Why This RFC Exists
 
 Lotus now has two important truths that need to be reconciled.
