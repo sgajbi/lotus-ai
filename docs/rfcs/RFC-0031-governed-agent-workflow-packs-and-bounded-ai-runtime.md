@@ -949,6 +949,16 @@ use case truly requires a core-owned pack family.
 
 ## Implementation Plan
 
+Every completed slice under this RFC should be reviewed before the next slice begins.
+
+That review should check:
+
+1. whether the slice reduced or increased complexity,
+2. whether code, contracts, tests, docs, and context remained aligned,
+3. whether dead code, duplicate logic, or stale wording can be removed before continuing,
+4. whether any durable lesson should be promoted into repo docs, context, wiki source, or shared
+   agent guidance.
+
 ### Slice 1: Workflow-Pack Contract and Registry Foundation
 
 1. define pack metadata schema,
@@ -1185,7 +1195,8 @@ Every implementation program under this RFC should end with a final slice dedica
 1. documentation updates,
 2. agent-context and repository-context updates where implementation truth changed,
 3. wiki-source updates where operator or onboarding guidance changed,
-4. branch hygiene, truthful PR evidence, and cleanup.
+4. skill updates where implementation changed durable agent workflow guidance or delivery posture,
+5. branch hygiene, truthful PR evidence, and cleanup.
 
 That final slice is required because this RFC changes platform operating posture, not just code.
 

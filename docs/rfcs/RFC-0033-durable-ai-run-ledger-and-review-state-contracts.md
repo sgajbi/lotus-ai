@@ -760,6 +760,15 @@ Medium impact:
 
 ## Implementation Plan
 
+Every completed slice under this RFC should be reviewed before the next slice begins.
+
+That review should confirm:
+
+1. runtime state and review state are still clearly separated,
+2. the ledger remains reference-oriented rather than turning into a business workflow database,
+3. tests, docs, context, wiki source, and PR evidence still describe the same implementation truth,
+4. any repeated lesson should be promoted into durable docs, context, or skill guidance.
+
 ### Slice 1: Pack-run ledger contract and persistence
 
 1. define pack-run identity and primary ledger schema,

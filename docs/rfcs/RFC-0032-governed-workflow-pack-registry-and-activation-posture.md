@@ -806,6 +806,16 @@ Medium impact:
 
 ## Implementation Plan
 
+Every completed slice under this RFC should be reviewed before the next slice begins.
+
+That review should verify:
+
+1. the slice still keeps workflow logic out of the registry and control plane,
+2. the implementation remains simpler and more maintainable than the prior state,
+3. tests, docs, context, wiki source, and PR evidence still match the actual delivered posture,
+4. any repeated lesson is promoted into durable guidance instead of remaining trapped in chat or
+   branch-only memory.
+
 ### Slice 1: Registration contract
 
 1. define workflow-pack registration schema,
@@ -864,15 +874,19 @@ Deliverables:
    implemented truth rather than RFC intent,
 3. update the `lotus-ai` wiki source where workflow-pack ownership, registration, and activation
    posture need operator-facing explanation,
-4. ensure feature-branch work, PR description, and branch cleanup remain truthful and aligned with
+4. update shared skills where implementation changes durable agent workflow guidance, RFC review
+   standards, or delivery posture,
+5. ensure feature-branch work, PR description, and branch cleanup remain truthful and aligned with
    actual implementation evidence.
 
 Deliverables:
 
 1. updated repository docs and wiki-source pages,
 2. updated context artifacts where architecture truth changed,
-3. PR and branch-hygiene checklist evidence,
-4. no stale branch or RFC wording that implies implementation beyond what was actually delivered.
+3. updated skill files where needed,
+4. PR and branch-hygiene checklist evidence,
+5. no stale branch, skill, or RFC wording that implies implementation beyond what was actually
+   delivered.
 
 ## Risks and Mitigations
 
@@ -924,7 +938,8 @@ These questions remain intentionally open, but they do not block the core regist
    3. caller/composition ownership,
    4. workflow-authority ownership.
 5. The implementation plan includes documentation, context, wiki, and branch-hygiene closure rather
-   than treating them as optional follow-up work.
+   than treating them as optional follow-up work, with skill updates where durable agent guidance
+   changed.
 6. No slice under this RFC allows runtime execution of unregistered workflow-pack definitions or
    mutable production editing of pack logic through the registry.
 
