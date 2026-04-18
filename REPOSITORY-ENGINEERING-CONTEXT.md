@@ -33,7 +33,7 @@ Current repository posture:
 1. `lotus-ai` is in a governed foundation phase with many bounded capabilities already implemented,
 2. live provider rollout remains controlled and deliberately constrained,
 3. retrieval, prompts, provider policy, evaluation, async runtime, and governance are real first-class seams,
-4. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity,
+4. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity, with owner-artifact references that must resolve back to the real downstream repository,
 5. the service is designed to support Lotus apps without stealing domain ownership from them.
 
 ## Architecture And Module Map

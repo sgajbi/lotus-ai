@@ -5,6 +5,8 @@ from app.contracts.workflow_packs import (
     WorkflowPackActivationState,
     WorkflowPackCallerIdentityClass,
     WorkflowPackControlEventDescriptor,
+    WorkflowPackDefinitionReferenceDescriptor,
+    WorkflowPackDefinitionReferenceType,
     WorkflowPackEnvironment,
     WorkflowPackExecutionMode,
     WorkflowPackRegistrationDescriptor,
@@ -122,6 +124,7 @@ def _validated_registrations() -> list[WorkflowPackRegistrationDescriptor]:
     _validate_unique_registration_identity(registrations)
     _validate_registered_entries_have_scope(registrations)
     _validate_retired_entries_are_not_active(registrations)
+    _validate_definition_references(registrations)
     return registrations
 
 
@@ -139,6 +142,7 @@ def _set_registration_state(
     _validate_unique_registration_identity(registrations)
     _validate_registered_entries_have_scope(registrations)
     _validate_retired_entries_are_not_active(registrations)
+    _validate_definition_references(registrations)
     _REGISTRATION_STATE = [registration.model_copy(deep=True) for registration in registrations]
 
 
@@ -148,13 +152,63 @@ def _build_workflow_pack_registrations() -> list[WorkflowPackRegistrationDescrip
             pack_id="advisor_brief.pack",
             pack_family="advisor_brief",
             version="v1",
-            owner_repository="lotus-manage",
+            owner_repository="lotus-gateway",
             owner_service="lotus-gateway",
-            truth_owner_services=["lotus-manage", "lotus-performance", "lotus-risk"],
+            truth_owner_services=["lotus-gateway", "lotus-performance", "lotus-risk"],
             primary_use_case="advisor_brief",
             workflow_authority_owner="lotus-gateway",
             default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
-            definition_ref="repo://lotus-manage/docs/ai/workflow-packs/advisor_brief/v1",
+            definition_ref="repo://lotus-gateway/src/app/contracts/advisor_brief.py",
+            definition_refs=[
+                WorkflowPackDefinitionReferenceDescriptor(
+                    reference_id="primary_contract",
+                    repository="lotus-gateway",
+                    path="src/app/contracts/advisor_brief.py",
+                    reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
+                    required_for_registration=True,
+                    description="Source-grounded advisor-brief response contract owned by the gateway composition layer.",
+                ),
+                WorkflowPackDefinitionReferenceDescriptor(
+                    reference_id="owner_service",
+                    repository="lotus-gateway",
+                    path="src/app/services/advisor_brief_service.py",
+                    reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+                    required_for_registration=True,
+                    description="Gateway service that assembles advisor-brief facts and invokes bounded lotus-ai generation.",
+                ),
+                WorkflowPackDefinitionReferenceDescriptor(
+                    reference_id="owner_router",
+                    repository="lotus-gateway",
+                    path="src/app/routers/workbench.py",
+                    reference_type=WorkflowPackDefinitionReferenceType.ROUTER,
+                    required_for_registration=True,
+                    description="Workbench-facing route that exposes the governed advisor-brief surface.",
+                ),
+                WorkflowPackDefinitionReferenceDescriptor(
+                    reference_id="owner_tests",
+                    repository="lotus-gateway",
+                    path="tests/unit/test_advisor_brief_service.py",
+                    reference_type=WorkflowPackDefinitionReferenceType.TEST,
+                    required_for_registration=True,
+                    description="Owner-repository regression coverage for advisor-brief contract and service behavior.",
+                ),
+                WorkflowPackDefinitionReferenceDescriptor(
+                    reference_id="ui_rfc",
+                    repository="lotus-workbench",
+                    path="docs/rfcs/RFC-0020-ai-advisor-brief-copilot.md",
+                    reference_type=WorkflowPackDefinitionReferenceType.RFC,
+                    required_for_registration=False,
+                    description="UI and product RFC describing the advisor-brief product surface that consumes the gateway contract.",
+                ),
+                WorkflowPackDefinitionReferenceDescriptor(
+                    reference_id="ui_validation",
+                    repository="lotus-workbench",
+                    path="scripts/live/validation/contract-metadata.mjs",
+                    reference_type=WorkflowPackDefinitionReferenceType.VALIDATION,
+                    required_for_registration=False,
+                    description="Canonical front-office validation metadata proving the advisor-brief surface remains visible and governed.",
+                ),
+            ],
             compatibility_contract_version="workflow-pack-contract.v1",
             registration_status=WorkflowPackRegistrationStatus.REGISTERED,
             activation_state=WorkflowPackActivationState.PILOT,
@@ -181,20 +235,54 @@ def _build_workflow_pack_registrations() -> list[WorkflowPackRegistrationDescrip
             last_changed_at="2026-04-18T08:30:00Z",
             status_summary=[
                 "The advisor-brief workflow pack is the first bounded reference family for the governed registry path.",
-                "Activation remains pilot-scoped outside production while Lotus proves registry truth, ownership metadata, and caller scoping before broader rollout.",
+                "Activation remains pilot-scoped outside production while Lotus proves registry truth, ownership metadata, owning-repository evidence, and caller scoping before broader rollout.",
             ],
         ),
         WorkflowPackRegistrationDescriptor(
             pack_id="advisor_brief.pack",
             pack_family="advisor_brief",
             version="v2",
-            owner_repository="lotus-manage",
+            owner_repository="lotus-gateway",
             owner_service="lotus-gateway",
-            truth_owner_services=["lotus-manage", "lotus-performance", "lotus-risk"],
+            truth_owner_services=["lotus-gateway", "lotus-performance", "lotus-risk"],
             primary_use_case="advisor_brief",
             workflow_authority_owner="lotus-gateway",
             default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
-            definition_ref="repo://lotus-manage/docs/ai/workflow-packs/advisor_brief/v2",
+            definition_ref="repo://lotus-gateway/src/app/services/advisor_brief_service.py",
+            definition_refs=[
+                WorkflowPackDefinitionReferenceDescriptor(
+                    reference_id="primary_service_candidate",
+                    repository="lotus-gateway",
+                    path="src/app/services/advisor_brief_service.py",
+                    reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+                    required_for_registration=True,
+                    description="Current owner-service implementation that a successor advisor-brief pack version would extend or replace.",
+                ),
+                WorkflowPackDefinitionReferenceDescriptor(
+                    reference_id="contract_anchor",
+                    repository="lotus-gateway",
+                    path="src/app/contracts/advisor_brief.py",
+                    reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
+                    required_for_registration=True,
+                    description="Current owner contract that constrains discovered successor work until a version-specific contract lands.",
+                ),
+                WorkflowPackDefinitionReferenceDescriptor(
+                    reference_id="owner_tests",
+                    repository="lotus-gateway",
+                    path="tests/unit/test_advisor_brief_service.py",
+                    reference_type=WorkflowPackDefinitionReferenceType.TEST,
+                    required_for_registration=True,
+                    description="Regression suite that must stay green before a discovered successor may advance out of dark posture.",
+                ),
+                WorkflowPackDefinitionReferenceDescriptor(
+                    reference_id="ui_rfc",
+                    repository="lotus-workbench",
+                    path="docs/rfcs/RFC-0020-ai-advisor-brief-copilot.md",
+                    reference_type=WorkflowPackDefinitionReferenceType.RFC,
+                    required_for_registration=False,
+                    description="Product-level advisor-brief RFC that remains relevant while successor onboarding stays in discovery.",
+                ),
+            ],
             compatibility_contract_version="workflow-pack-contract.v1",
             registration_status=WorkflowPackRegistrationStatus.DISCOVERED,
             activation_state=WorkflowPackActivationState.DARK,
@@ -216,7 +304,7 @@ def _build_workflow_pack_registrations() -> list[WorkflowPackRegistrationDescrip
             last_changed_at="2026-04-18T09:00:00Z",
             status_summary=[
                 "A discovered successor version is visible in the registry without being treated as runtime-eligible.",
-                "Keeping the candidate dark prevents implicit default-version drift before validation and broader rollout review exist.",
+                "Keeping the candidate dark prevents implicit default-version drift before version-specific owner artifacts and broader rollout review exist.",
             ],
         ),
     ]
@@ -235,6 +323,10 @@ def _build_validation_rules() -> list[WorkflowPackValidationRuleDescriptor]:
         WorkflowPackValidationRuleDescriptor(
             rule_id="retired_entries_cannot_remain_active",
             description="A RETIRED workflow-pack version cannot keep an activation state other than RETIRED.",
+        ),
+        WorkflowPackValidationRuleDescriptor(
+            rule_id="definition_refs_ground_registry_truth",
+            description="Each workflow-pack registration must declare a primary repo reference, include structured owner artifacts, and keep at least one required reference in the owning repository.",
         ),
     ]
 
@@ -273,4 +365,42 @@ def _validate_retired_entries_are_not_active(
         if registration.activation_state != WorkflowPackActivationState.RETIRED:
             raise ValueError(
                 f"Retired workflow-pack cannot remain active: {registration.pack_id}@{registration.version}"
+            )
+
+
+def _validate_definition_references(
+    registrations: list[WorkflowPackRegistrationDescriptor],
+) -> None:
+    for registration in registrations:
+        if not registration.definition_ref.startswith("repo://"):
+            raise ValueError(
+                f"Workflow-pack registration definition_ref must use repo:// form: {registration.pack_id}@{registration.version}"
+            )
+        if not registration.definition_refs:
+            raise ValueError(
+                f"Workflow-pack registration missing definition_refs: {registration.pack_id}@{registration.version}"
+            )
+        structured_refs = [
+            f"repo://{definition_ref.repository}/{definition_ref.path}"
+            for definition_ref in registration.definition_refs
+        ]
+        if registration.definition_ref not in structured_refs:
+            raise ValueError(
+                f"Workflow-pack registration primary definition_ref must match one structured definition ref: {registration.pack_id}@{registration.version}"
+            )
+        required_refs = [
+            definition_ref
+            for definition_ref in registration.definition_refs
+            if definition_ref.required_for_registration
+        ]
+        if not required_refs:
+            raise ValueError(
+                f"Workflow-pack registration missing required owner artifacts: {registration.pack_id}@{registration.version}"
+            )
+        if not any(
+            definition_ref.repository == registration.owner_repository
+            for definition_ref in required_refs
+        ):
+            raise ValueError(
+                f"Workflow-pack registration must keep at least one required owner artifact in owner_repository: {registration.pack_id}@{registration.version}"
             )

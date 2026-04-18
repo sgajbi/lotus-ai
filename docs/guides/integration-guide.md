@@ -238,6 +238,13 @@ If the selected path is evolving into a workflow-bearing pack rather than a boun
 2. `GET /platform/workflow-packs/registry/{pack_id}/{version}`
 3. `POST /platform/workflow-packs/eligibility/evaluate`
 
+When reading workflow-pack registry detail, treat ownership fields as governed onboarding evidence:
+
+1. `owner_repository` identifies the repo that still owns the workflow-bearing implementation,
+2. `definition_ref` is the primary owner artifact that anchors the registration,
+3. `definition_refs` list the supporting contract, service, router, test, and optional product RFC or UI validation artifacts that justify the registration,
+4. a workflow-pack should not be considered properly onboarded if those references are vague, stale, or point only to `lotus-ai` placeholder docs.
+
 For operator review or emergency posture changes, use the workflow-pack control surfaces:
 
 1. `GET /platform/workflow-packs/control-history`

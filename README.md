@@ -57,7 +57,8 @@ Important posture limits:
 3. retrieval is governed and bounded rather than a general search platform,
 4. prompt bodies remain repository-managed even though runtime prompt selection is durable,
 5. workflow-pack registry records are control-plane metadata, not a second editable home for workflow logic,
-6. the service should be treated as a governed capability layer, not a business-domain authority.
+6. workflow-pack registrations must point to real owning-repository artifacts rather than placeholder definitions in `lotus-ai`,
+7. the service should be treated as a governed capability layer, not a business-domain authority.
 
 ## Architectural Shape
 
@@ -82,7 +83,7 @@ Core areas:
 8. `src/app/routers/`
    public API surfaces.
 9. `src/app/services/workflow_pack_registry.py`
-   workflow-pack registration catalog and validation seams.
+   workflow-pack registration catalog, owner-artifact references, and validation seams.
 
 Task execution is intentionally explicit. A request flows through:
 
@@ -221,6 +222,12 @@ Key health and operator surfaces:
 - `/platform/workflow-packs/registry`
 - `/platform/workflow-packs/eligibility/evaluate`
 - `/platform/workflow-packs/control-history`
+
+Workflow-pack registry records should be read as control-plane onboarding truth:
+
+1. the primary `definition_ref` must resolve to a real owner artifact,
+2. `definition_refs` show the contract, service, router, tests, and optional RFC or UI evidence used to justify the registration,
+3. `lotus-ai` tracks those references for governance, but the implementation remains owned by the downstream repository.
 
 Operational guidance lives in:
 

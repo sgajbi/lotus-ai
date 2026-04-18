@@ -24,8 +24,17 @@ def test_workflow_pack_registration_detail_route(client: TestClient) -> None:
     body = response.json()
     assert body["registration"]["pack_id"] == "advisor_brief.pack"
     assert body["registration"]["version"] == "v1"
-    assert body["registration"]["owner_repository"] == "lotus-manage"
+    assert body["registration"]["owner_repository"] == "lotus-gateway"
     assert body["registration"]["workflow_authority_owner"] == "lotus-gateway"
+    assert body["registration"]["definition_ref"] == (
+        "repo://lotus-gateway/src/app/contracts/advisor_brief.py"
+    )
+    assert any(
+        definition_ref["repository"] == "lotus-gateway"
+        and definition_ref["path"] == "src/app/services/advisor_brief_service.py"
+        and definition_ref["required_for_registration"] is True
+        for definition_ref in body["registration"]["definition_refs"]
+    )
     assert body["denied_without_registration"] is True
     assert any(
         rule["rule_id"] == "registered_entries_require_scope" for rule in body["validation_rules"]

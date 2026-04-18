@@ -1,10 +1,17 @@
 from app.contracts.workflow_packs import (
     WorkflowPackActivationState,
+    WorkflowPackCallerIdentityClass,
+    WorkflowPackDefinitionReferenceDescriptor,
+    WorkflowPackDefinitionReferenceType,
+    WorkflowPackEnvironment,
+    WorkflowPackExecutionMode,
+    WorkflowPackRegistrationDescriptor,
     WorkflowPackRegistrationStatus,
 )
 from app.services.workflow_pack_registry import (
     build_workflow_pack_registration_detail,
     build_workflow_pack_registry_catalog,
+    save_workflow_pack_registration,
 )
 
 
@@ -20,8 +27,17 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     assert catalog.registrations[0].version == "v1"
     assert catalog.registrations[0].registration_status == WorkflowPackRegistrationStatus.REGISTERED
     assert catalog.registrations[0].activation_state == WorkflowPackActivationState.PILOT
-    assert catalog.registrations[0].owner_repository == "lotus-manage"
+    assert catalog.registrations[0].owner_repository == "lotus-gateway"
     assert catalog.registrations[0].workflow_authority_owner == "lotus-gateway"
+    assert catalog.registrations[0].definition_ref == (
+        "repo://lotus-gateway/src/app/contracts/advisor_brief.py"
+    )
+    assert any(
+        definition_ref.repository == "lotus-gateway"
+        and definition_ref.path == "src/app/services/advisor_brief_service.py"
+        and definition_ref.required_for_registration is True
+        for definition_ref in catalog.registrations[0].definition_refs
+    )
     assert catalog.registrations[1].version == "v2"
     assert catalog.registrations[1].registration_status == WorkflowPackRegistrationStatus.DISCOVERED
 
@@ -29,8 +45,11 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
 def test_build_workflow_pack_registry_catalog_exposes_validation_rules() -> None:
     catalog = build_workflow_pack_registry_catalog()
 
-    assert len(catalog.validation_rules) == 3
+    assert len(catalog.validation_rules) == 4
     assert any(rule.rule_id == "unique_pack_version_identity" for rule in catalog.validation_rules)
+    assert any(
+        rule.rule_id == "definition_refs_ground_registry_truth" for rule in catalog.validation_rules
+    )
     assert any("read-only and catalog-backed" in line for line in catalog.status_summary)
 
 
@@ -42,7 +61,13 @@ def test_build_workflow_pack_registration_detail_exposes_deny_by_default_registr
     assert detail.registration.pack_id == "advisor_brief.pack"
     assert detail.registration.version == "v1"
     assert detail.registration.definition_ref == (
-        "repo://lotus-manage/docs/ai/workflow-packs/advisor_brief/v1"
+        "repo://lotus-gateway/src/app/contracts/advisor_brief.py"
+    )
+    assert any(
+        definition_ref.reference_id == "owner_router"
+        and definition_ref.repository == "lotus-gateway"
+        and definition_ref.path == "src/app/routers/workbench.py"
+        for definition_ref in detail.registration.definition_refs
     )
     assert detail.denied_without_registration is True
     assert any(
@@ -57,3 +82,53 @@ def test_build_workflow_pack_registration_detail_rejects_unknown_registration() 
         assert "Unknown workflow-pack registration" in str(exc)
     else:
         raise AssertionError("Expected unknown workflow-pack registration lookup to fail")
+
+
+def test_save_workflow_pack_registration_rejects_missing_owner_repository_reference() -> None:
+    invalid_registration = WorkflowPackRegistrationDescriptor(
+        pack_id="proposal_brief.pack",
+        pack_family="proposal_brief",
+        version="v1",
+        owner_repository="lotus-advise",
+        owner_service="lotus-advise",
+        truth_owner_services=["lotus-advise"],
+        primary_use_case="proposal_brief",
+        workflow_authority_owner="lotus-advise",
+        default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
+        definition_ref="repo://lotus-workbench/docs/rfcs/RFC-0020-ai-advisor-brief-copilot.md",
+        definition_refs=[
+            WorkflowPackDefinitionReferenceDescriptor(
+                reference_id="ui_rfc",
+                repository="lotus-workbench",
+                path="docs/rfcs/RFC-0020-ai-advisor-brief-copilot.md",
+                reference_type=WorkflowPackDefinitionReferenceType.RFC,
+                required_for_registration=True,
+                description="Intentionally invalid test fixture with no owner-repository reference.",
+            )
+        ],
+        compatibility_contract_version="workflow-pack-contract.v1",
+        registration_status=WorkflowPackRegistrationStatus.REGISTERED,
+        activation_state=WorkflowPackActivationState.PILOT,
+        registered_definition_digest="sha256:test-invalid-owner-ref",
+        supported_callers=["lotus-gateway"],
+        supported_identity_classes=[WorkflowPackCallerIdentityClass.INTERNAL_SERVICE],
+        supported_environments=[WorkflowPackEnvironment.QA],
+        tenant_scope=[],
+        surface_scope=["proposal-brief-panel"],
+        default_rollout_stage="PILOT_SCOPED",
+        pause_state="NOT_PAUSED",
+        supersedes=None,
+        superseded_by=None,
+        registered_at="2026-04-18T10:00:00Z",
+        registered_by="test.fixture",
+        last_activated_at=None,
+        last_changed_at="2026-04-18T10:00:00Z",
+        status_summary=["Invalid test registration for owner-repository validation."],
+    )
+
+    try:
+        save_workflow_pack_registration(invalid_registration)
+    except ValueError as exc:
+        assert "owner_repository" in str(exc)
+    else:
+        raise AssertionError("Expected missing owner_repository reference validation to fail")

@@ -77,6 +77,12 @@ platform programs.
    - `/platform/workflow-packs/control-history`
    - `/platform/workflow-packs/control-actions`
 
+The workflow-pack detail route now carries structured owner-artifact references as part of the registration record:
+
+1. `definition_ref` is the primary repo-backed owner artifact,
+2. `definition_refs` enumerate the concrete contract, service, router, tests, and optional supporting RFC or UI validation evidence behind the registration,
+3. those references make the registry an onboarding and governance surface, not a second home for workflow implementation.
+
 ## Provider Surface
 
 Prefix:

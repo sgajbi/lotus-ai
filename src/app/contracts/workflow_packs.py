@@ -64,12 +64,39 @@ class WorkflowPackControlActionType(str, Enum):
     RETIRE = "RETIRE"
 
 
+class WorkflowPackDefinitionReferenceType(str, Enum):
+    CONTRACT = "CONTRACT"
+    SERVICE = "SERVICE"
+    ROUTER = "ROUTER"
+    TEST = "TEST"
+    RFC = "RFC"
+    UI_SURFACE = "UI_SURFACE"
+    VALIDATION = "VALIDATION"
+
+
 class WorkflowPackValidationRuleDescriptor(BaseModel):
     rule_id: str = Field(
         description="Stable workflow-pack registration validation rule identifier."
     )
     description: str = Field(
         description="Human-readable explanation of the registration validation rule."
+    )
+
+
+class WorkflowPackDefinitionReferenceDescriptor(BaseModel):
+    reference_id: str = Field(
+        description="Stable identifier for this workflow-pack definition reference."
+    )
+    repository: str = Field(description="Repository that contains the referenced artifact.")
+    path: str = Field(description="Repository-relative path to the referenced artifact.")
+    reference_type: WorkflowPackDefinitionReferenceType = Field(
+        description="Artifact type represented by this workflow-pack definition reference."
+    )
+    required_for_registration: bool = Field(
+        description="Whether this artifact is mandatory evidence for a truthful workflow-pack registration."
+    )
+    description: str = Field(
+        description="Human-readable explanation of why this artifact matters for registration truth."
     )
 
 
@@ -99,6 +126,9 @@ class WorkflowPackRegistrationDescriptor(BaseModel):
     )
     definition_ref: str = Field(
         description="Owning-repository reference pointing to the workflow-pack definition contract."
+    )
+    definition_refs: list["WorkflowPackDefinitionReferenceDescriptor"] = Field(
+        description="Structured owner-artifact references grounding this workflow-pack registration in real Lotus repositories."
     )
     compatibility_contract_version: str = Field(
         description="Version of the shared workflow-pack compatibility contract this record satisfies."

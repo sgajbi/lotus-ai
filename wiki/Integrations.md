@@ -156,6 +156,13 @@ The practical sequence for a new downstream adoption is:
 
 That sequence keeps app-facing productization separate from low-level task execution.
 
+For workflow-pack onboarding specifically, do one more truth check before treating a registration as real:
+
+1. `owner_repository` should match the repo that owns the workflow-bearing code path,
+2. `definition_ref` should point at a real owner artifact, not a placeholder design note,
+3. `definition_refs` should include enough owner-repo evidence to cover contract, service or router, and regression tests,
+4. optional cross-repo RFC or UI references are supporting evidence, not a substitute for owner-repo truth.
+
 ## Provider and Safety Expectations
 
 Callers must not assume that one successful response means unrestricted live-provider or safety
