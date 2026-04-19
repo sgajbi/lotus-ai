@@ -275,6 +275,8 @@ def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(
     ]
     assert body["review"]["latest_review_event_at"] is None
     assert body["review"]["latest_review_actor"] is None
+    assert body["review"]["review_transition_count"] == 0
+    assert body["review"]["has_review_history"] is False
     assert body["supportability"]["status"] == "ACTION_REQUIRED"
     assert body["supportability"]["review_pending"] is True
     assert body["supportability"]["superseded"] is False
@@ -315,6 +317,8 @@ def test_workflow_pack_run_consumer_view_exposes_latest_review_transition(
     assert body["review"]["state"] == "ACCEPTED"
     assert body["review"]["latest_review_event_at"] is not None
     assert body["review"]["latest_review_actor"] == "review:banker.sg.consumer.002"
+    assert body["review"]["review_transition_count"] == 1
+    assert body["review"]["has_review_history"] is True
 
 
 def test_workflow_pack_run_operator_profile_reports_supportability_posture(

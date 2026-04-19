@@ -269,6 +269,12 @@ class WorkflowPackRunConsumerReviewDescriptor(BaseModel):
         default=None,
         description="Actor recorded on the most recent review-state transition event, when available.",
     )
+    review_transition_count: int = Field(
+        description="Number of recorded review-state transition events currently linked to the run."
+    )
+    has_review_history: bool = Field(
+        description="Whether any review-state transition has already been recorded for the run."
+    )
 
 
 class WorkflowPackRunConsumerLineageDescriptor(BaseModel):

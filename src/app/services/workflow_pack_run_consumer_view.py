@@ -72,7 +72,8 @@ def _build_review_descriptor(
     events: list[WorkflowPackRunEventRecord],
 ) -> WorkflowPackRunConsumerReviewDescriptor:
     review_state = WorkflowPackRunReviewState(record.review_state)
-    latest_review_event = _resolve_latest_review_event(events)
+    review_events = _list_review_events(events)
+    latest_review_event = review_events[-1] if review_events else None
     return WorkflowPackRunConsumerReviewDescriptor(
         required=record.review_required,
         state=review_state,
@@ -84,6 +85,8 @@ def _build_review_descriptor(
             latest_review_event.recorded_at if latest_review_event is not None else None
         ),
         latest_review_actor=latest_review_event.actor if latest_review_event is not None else None,
+        review_transition_count=len(review_events),
+        has_review_history=bool(review_events),
     )
 
 
@@ -129,14 +132,11 @@ def _build_supportability_descriptor(
     )
 
 
-def _resolve_latest_review_event(
+def _list_review_events(
     events: list[WorkflowPackRunEventRecord],
-) -> WorkflowPackRunEventRecord | None:
-    review_events = [
+) -> list[WorkflowPackRunEventRecord]:
+    return [
         event
         for event in events
         if event.event_type == WorkflowPackRunEventType.REVIEW_STATE_UPDATED.value
     ]
-    if not review_events:
-        return None
-    return max(review_events, key=lambda event: event.recorded_at)

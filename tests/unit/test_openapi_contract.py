@@ -838,6 +838,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "allowed_actions" in workflow_pack_run_consumer_review_schema["properties"]
     assert "latest_review_event_at" in workflow_pack_run_consumer_review_schema["properties"]
     assert "latest_review_actor" in workflow_pack_run_consumer_review_schema["properties"]
+    assert "review_transition_count" in workflow_pack_run_consumer_review_schema["properties"]
+    assert "has_review_history" in workflow_pack_run_consumer_review_schema["properties"]
     assert "workflow_authority_owner" in workflow_pack_run_consumer_lineage_schema["properties"]
     assert "evidence_descriptors" in workflow_pack_run_consumer_provenance_schema["properties"]
     workflow_pack_run_consumer_supportability_schema = spec["components"]["schemas"][

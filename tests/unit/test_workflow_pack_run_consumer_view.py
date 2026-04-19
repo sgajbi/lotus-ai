@@ -36,6 +36,8 @@ def test_workflow_pack_run_consumer_view_groups_runtime_review_and_provenance() 
     ]
     assert consumer_view.review.latest_review_event_at is None
     assert consumer_view.review.latest_review_actor is None
+    assert consumer_view.review.review_transition_count == 0
+    assert consumer_view.review.has_review_history is False
     assert consumer_view.supportability.status.value == "ACTION_REQUIRED"
     assert consumer_view.supportability.review_pending is True
     assert consumer_view.supportability.superseded is False
@@ -74,6 +76,8 @@ def test_workflow_pack_run_consumer_view_exposes_latest_review_transition() -> N
     assert consumer_view.review.state.value == "ACCEPTED"
     assert consumer_view.review.latest_review_event_at is not None
     assert consumer_view.review.latest_review_actor == "review:banker.sg.consumer.001"
+    assert consumer_view.review.review_transition_count == 1
+    assert consumer_view.review.has_review_history is True
 
 
 def test_workflow_pack_run_consumer_view_rejects_unknown_run() -> None:
