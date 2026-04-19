@@ -364,7 +364,10 @@ class WorkflowPackRunConsumerSupportabilityDescriptor(BaseModel):
         description="Whether the workflow-pack run still requires bounded human review."
     )
     superseded: bool = Field(
-        description="Whether the workflow-pack run is now historical because a newer replacement exists."
+        description=(
+            "Whether the workflow-pack run is now historical because a newer bounded draft posture "
+            "or historical review state has superseded it."
+        )
     )
     partial_output_visible: bool = Field(
         description="Whether the workflow-pack run still exposes partial output for bounded inspection."
@@ -437,7 +440,10 @@ class WorkflowPackRunOperatorProfileResponse(BaseModel):
     failed: bool = Field(description="Whether the run is currently in failed runtime posture.")
     expired: bool = Field(description="Whether the run is currently in expired runtime posture.")
     superseded: bool = Field(
-        description="Whether the run is now historical because a newer replacement run exists."
+        description=(
+            "Whether the run is now historical because a newer bounded draft posture or "
+            "historical review state has superseded it."
+        )
     )
     partial_output_visible: bool = Field(
         description="Whether the run currently preserves some output despite not reaching a clean accepted terminal posture."

@@ -947,8 +947,18 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "superseded" in workflow_pack_run_consumer_supportability_schema["properties"]
     assert "partial_output_visible" in workflow_pack_run_consumer_supportability_schema["properties"]
     assert "summary_note" in workflow_pack_run_consumer_supportability_schema["properties"]
+    assert (
+        "historical review state"
+        in workflow_pack_run_consumer_supportability_schema["properties"]["superseded"][
+            "description"
+        ]
+    )
     assert "supportability_status" in workflow_pack_run_operator_profile_schema["properties"]
     assert "provenance" in workflow_pack_run_operator_profile_schema["properties"]
+    assert (
+        "historical review state"
+        in workflow_pack_run_operator_profile_schema["properties"]["superseded"]["description"]
+    )
     assert "latest_event_type" in workflow_pack_run_operator_profile_schema["properties"]
     assert "latest_event_actor" in workflow_pack_run_operator_profile_schema["properties"]
     assert "latest_review_event_at" in workflow_pack_run_operator_profile_schema["properties"]
