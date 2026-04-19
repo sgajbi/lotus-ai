@@ -248,21 +248,57 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         "getWorkflowPackRegistryCatalog"
     )
     assert (
+        spec["paths"]["/platform/workflow-packs/registry"]["get"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack registry store is not ready."
+    )
+    assert (
         spec["paths"]["/platform/workflow-packs/registry/{pack_id}/{version}"]["get"]["operationId"]
         == "getWorkflowPackRegistrationDetail"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/registry/{pack_id}/{version}"]["get"][
+            "responses"
+        ]["503"]["description"]
+        == "Workflow-pack registry store is not ready."
     )
     assert (
         spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["operationId"]
         == "evaluateWorkflowPackEligibility"
     )
+    assert (
+        spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["responses"][
+            "503"
+        ]["description"]
+        == "Workflow-pack registry store is not ready."
+    )
     assert spec["paths"]["/platform/workflow-packs/execute"]["post"]["operationId"] == (
         "executeWorkflowPack"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/execute"]["post"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack registry store is not ready."
     )
     assert spec["paths"]["/platform/workflow-packs/control-history"]["get"]["operationId"] == (
         "getWorkflowPackControlHistory"
     )
+    assert (
+        spec["paths"]["/platform/workflow-packs/control-history"]["get"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack registry store is not ready."
+    )
     assert spec["paths"]["/platform/workflow-packs/control-actions"]["post"]["operationId"] == (
         "applyWorkflowPackControlAction"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/control-actions"]["post"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack registry store is not ready."
     )
     assert spec["paths"]["/platform/workflow-packs/runs"]["get"]["operationId"] == (
         "getWorkflowPackRunCatalog"

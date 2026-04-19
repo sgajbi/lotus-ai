@@ -60,7 +60,9 @@ Completed implementation slices on the current branch:
 4. migration-backed durable workflow-pack registration, activation state, and control-history
    storage with memory and SQL store modes,
 5. owner-grounded onboarding for the Phase-1 `advisor_brief.pack` family,
-6. documentation, repository context, wiki-source, and branch-hygiene updates.
+6. readiness-aware degradation for registry-backed workflow-pack routes so unmigrated SQL-backed
+   registry posture returns explicit service-unavailable behavior instead of surfacing raw store failures,
+7. documentation, repository context, wiki-source, and branch-hygiene updates.
 
 Still pending before this RFC should be considered fully implemented:
 
@@ -99,6 +101,15 @@ The implemented portions of this RFC map to concrete branch evidence as follows.
    `docs/guides/workflow-pack-owner-onboarding.md`,
    `docs/guides/integration-guide.md`, `docs/runbooks/service-operations.md`,
    `wiki/Integrations.md`, `wiki/Operations-Runbook.md`, `wiki/Platform-Surfaces.md`
+7. readiness-aware API degradation for registry, control, eligibility, and execute surfaces when
+   the SQL-backed registry store is configured but not yet migration-ready:
+   `src/app/services/workflow_pack_registry.py`,
+   `src/app/routers/workflow_packs.py`,
+   `tests/integration/test_workflow_pack_registry_api_contract.py`,
+   `tests/integration/test_workflow_pack_control_api_contract.py`,
+   `tests/integration/test_workflow_pack_activation_api_contract.py`,
+   `tests/integration/test_workflow_pack_run_api_contract.py`,
+   `tests/unit/test_openapi_contract.py`
 
 Open gaps that remain consistent with this RFC's still-pending scope:
 

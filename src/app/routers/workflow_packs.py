@@ -38,6 +38,7 @@ from app.services.workflow_pack_run_ledger import (
 )
 from app.services.workflow_pack_run_review import apply_workflow_pack_run_review_action
 from app.services.workflow_pack_registry import (
+    WorkflowPackRegistryUnavailableError,
     build_workflow_pack_registration_detail,
     build_workflow_pack_registry_catalog,
 )
@@ -56,11 +57,15 @@ router = APIRouter(tags=["platform"])
     ),
     responses={
         200: {"description": "Workflow-pack registry catalog returned successfully."},
+        503: {"description": "Workflow-pack registry store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
 async def get_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogResponse:
-    return build_workflow_pack_registry_catalog()
+    try:
+        return build_workflow_pack_registry_catalog()
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get(
@@ -74,6 +79,7 @@ async def get_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogRes
     responses={
         200: {"description": "Workflow-pack registration detail returned successfully."},
         404: {"description": "Workflow-pack registration not found."},
+        503: {"description": "Workflow-pack registry store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
@@ -85,6 +91,8 @@ async def get_workflow_pack_registration_detail(
         return build_workflow_pack_registration_detail(pack_id=pack_id, version=version)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post(
@@ -97,13 +105,17 @@ async def get_workflow_pack_registration_detail(
     ),
     responses={
         200: {"description": "Workflow-pack eligibility evaluated successfully."},
+        503: {"description": "Workflow-pack registry store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
 async def evaluate_workflow_pack_eligibility_route(
     request: WorkflowPackEligibilityEvaluationRequest,
 ) -> WorkflowPackEligibilityEvaluationResponse:
-    return evaluate_workflow_pack_eligibility(request)
+    try:
+        return evaluate_workflow_pack_eligibility(request)
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post(
@@ -121,13 +133,17 @@ async def evaluate_workflow_pack_eligibility_route(
         404: {"description": "Workflow-pack registration not found."},
         409: {"description": "Workflow-pack execution binding is not available for this request."},
         422: {"description": "Workflow-pack execution payload is invalid for the requested pack."},
+        503: {"description": "Workflow-pack registry store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
 async def execute_workflow_pack_route(
     request: WorkflowPackExecutionRequest,
 ) -> WorkflowPackExecutionResponse:
-    return execute_workflow_pack(request)
+    try:
+        return execute_workflow_pack(request)
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get(
@@ -140,6 +156,7 @@ async def execute_workflow_pack_route(
     ),
     responses={
         200: {"description": "Workflow-pack control history returned successfully."},
+        503: {"description": "Workflow-pack registry store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
@@ -148,7 +165,10 @@ async def get_workflow_pack_control_history_route(
     version: str | None = None,
     limit: int = 20,
 ) -> WorkflowPackControlHistoryResponse:
-    return build_workflow_pack_control_history(pack_id=pack_id, version=version, limit=limit)
+    try:
+        return build_workflow_pack_control_history(pack_id=pack_id, version=version, limit=limit)
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get(
@@ -330,10 +350,14 @@ async def apply_workflow_pack_run_review_action_route(
         409: {
             "description": "Workflow-pack control action conflicts with the current registration state."
         },
+        503: {"description": "Workflow-pack registry store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
 async def apply_workflow_pack_control_action_route(
     request: WorkflowPackControlActionRequest,
 ) -> WorkflowPackControlActionResponse:
-    return apply_workflow_pack_control_action(request)
+    try:
+        return apply_workflow_pack_control_action(request)
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.contracts.workflow_packs import (
     WorkflowPackControlEventDescriptor,
     WorkflowPackRegistrationDescriptor,
@@ -15,6 +16,11 @@ from app.services.workflow_pack_registry_store import (
     get_workflow_pack_registry_store,
     reset_workflow_pack_registry_store_cache,
 )
+from app.services.runtime_readiness import get_workflow_pack_registry_store_runtime_status
+
+
+class WorkflowPackRegistryUnavailableError(RuntimeError):
+    pass
 
 
 def build_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogResponse:
@@ -86,14 +92,17 @@ def build_workflow_pack_registration_detail(
 def get_workflow_pack_registration(
     *, pack_id: str, version: str
 ) -> WorkflowPackRegistrationDescriptor | None:
+    _require_workflow_pack_registry_ready()
     return get_workflow_pack_registry_store().get_registration(pack_id=pack_id, version=version)
 
 
 def list_workflow_pack_registrations() -> list[WorkflowPackRegistrationDescriptor]:
+    _require_workflow_pack_registry_ready()
     return _validated_registrations()
 
 
 def save_workflow_pack_registration(registration: WorkflowPackRegistrationDescriptor) -> None:
+    _require_workflow_pack_registry_ready()
     registrations = list_workflow_pack_registrations()
     updated_registrations: list[WorkflowPackRegistrationDescriptor] = []
     replaced = False
@@ -115,6 +124,7 @@ def list_workflow_pack_control_events(
     version: str | None = None,
     limit: int = 20,
 ) -> list[WorkflowPackControlEventDescriptor]:
+    _require_workflow_pack_registry_ready()
     return get_workflow_pack_registry_store().list_control_events(
         pack_id=pack_id,
         version=version,
@@ -123,6 +133,7 @@ def list_workflow_pack_control_events(
 
 
 def append_workflow_pack_control_event(event: WorkflowPackControlEventDescriptor) -> None:
+    _require_workflow_pack_registry_ready()
     get_workflow_pack_registry_store().save_control_event(event)
 
 
@@ -137,3 +148,13 @@ def _validated_registrations() -> list[WorkflowPackRegistrationDescriptor]:
     validate_workflow_pack_registrations(registrations)
     validate_workflow_pack_execution_bindings()
     return registrations
+
+
+def _require_workflow_pack_registry_ready() -> None:
+    status_descriptor = get_workflow_pack_registry_store_runtime_status()
+    if status_descriptor.status is RuntimeReadinessStatus.READY:
+        return
+    raise WorkflowPackRegistryUnavailableError(
+        "Workflow-pack registry store is not ready. "
+        f"Current status is `{status_descriptor.status.value}`. {status_descriptor.detail}"
+    )

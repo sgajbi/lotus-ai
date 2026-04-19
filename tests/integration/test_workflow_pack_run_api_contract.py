@@ -227,6 +227,26 @@ def test_workflow_pack_execute_route_rejects_denied_surface(client: TestClient) 
     assert execute_response.status_code == 403
 
 
+def test_workflow_pack_execute_route_degrades_when_registry_store_is_unmigrated(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-execute-unmigrated-api.db'}"
+
+    with override_runtime_settings(
+        workflow_pack_registry_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            execute_response = durable_client.post(
+                "/platform/workflow-packs/execute",
+                json=advisor_brief_workflow_pack_execution_request_json(
+                    correlation_id="corr-pack-execute-unmigrated-001"
+                ),
+            )
+
+    assert execute_response.status_code == 503
+    assert "Workflow-pack registry store is not ready." in execute_response.json()["detail"]
+    assert "MIGRATION_REQUIRED" in execute_response.json()["detail"]
+
+
 def test_workflow_pack_run_detail_rejects_unknown_run(client: TestClient) -> None:
     response = client.get("/platform/workflow-packs/runs/unknown-run")
 

@@ -1,5 +1,8 @@
 from fastapi.testclient import TestClient
 
+from app.main import app
+from tests.support.runtime_settings import override_runtime_settings
+
 
 def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     response = client.get("/platform/workflow-packs/registry")
@@ -62,3 +65,24 @@ def test_workflow_pack_registration_detail_route_rejects_unknown_registration(
 
     assert response.status_code == 404
     assert "Unknown workflow-pack registration" in response.json()["detail"]
+
+
+def test_workflow_pack_registry_routes_degrade_when_sql_store_is_unmigrated(tmp_path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-registry-unmigrated-api.db'}"
+
+    with override_runtime_settings(
+        workflow_pack_registry_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            catalog_response = durable_client.get("/platform/workflow-packs/registry")
+            detail_response = durable_client.get(
+                "/platform/workflow-packs/registry/advisor_brief.pack/v1"
+            )
+
+    assert catalog_response.status_code == 503
+    assert detail_response.status_code == 503
+    assert "Workflow-pack registry store is not ready." in catalog_response.json()["detail"]
+    assert "MIGRATION_REQUIRED" in catalog_response.json()["detail"]
+    assert "workflow_pack_registrations" in catalog_response.json()["detail"]
+    assert "Workflow-pack registry store is not ready." in detail_response.json()["detail"]

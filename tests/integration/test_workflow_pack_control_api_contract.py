@@ -90,3 +90,32 @@ def test_workflow_pack_control_history_and_registration_state_support_sqlalchemy
     assert history_response.json()["control_plane_store_mode"] == "sqlalchemy"
     assert history_response.json()["latest_events"][0]["action_type"] == "PAUSE"
     assert detail_response.json()["registration"]["activation_state"] == "PAUSED"
+
+
+def test_workflow_pack_control_routes_degrade_when_sql_store_is_unmigrated(tmp_path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-control-unmigrated-api.db'}"
+
+    with override_runtime_settings(
+        workflow_pack_registry_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            history_response = durable_client.get("/platform/workflow-packs/control-history")
+            action_response = durable_client.post(
+                "/platform/workflow-packs/control-actions",
+                json={
+                    "pack_id": "advisor_brief.pack",
+                    "version": "v1",
+                    "action_type": "PAUSE",
+                    "caller_app": "lotus-platform",
+                    "requested_by": "operator-route",
+                    "approved_by": "approver-route",
+                    "reason": "Should degrade when registry store is unmigrated.",
+                },
+            )
+
+    assert history_response.status_code == 503
+    assert action_response.status_code == 503
+    assert "Workflow-pack registry store is not ready." in history_response.json()["detail"]
+    assert "MIGRATION_REQUIRED" in history_response.json()["detail"]
+    assert "Workflow-pack registry store is not ready." in action_response.json()["detail"]
