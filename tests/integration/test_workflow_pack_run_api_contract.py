@@ -68,6 +68,11 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
     assert detail_response.status_code == 200
     detail_body = detail_response.json()
     assert detail_body["run"]["run_id"] == run["run_id"]
+    assert detail_body["review"]["state"] == "AWAITING_REVIEW"
+    assert detail_body["review"]["latest_review_event_at"] is None
+    assert detail_body["review"]["latest_review_actor"] is None
+    assert detail_body["review"]["review_transition_count"] == 0
+    assert detail_body["review"]["has_review_history"] is False
     assert detail_body["supportability"]["status"] == "ACTION_REQUIRED"
     assert detail_body["supportability"]["review_pending"] is True
     assert detail_body["run"]["artifact_refs"][0]["source_object_id"] == run["run_id"]
@@ -245,7 +250,13 @@ def test_workflow_pack_run_review_action_updates_review_state(client: TestClient
     assert review_body["events"][0]["event_type"] == "REVIEW_STATE_UPDATED"
     detail_response = client.get(f"/platform/workflow-packs/runs/{run_id}")
     assert detail_response.status_code == 200
-    assert detail_response.json()["run"]["review_state"] == "ACCEPTED"
+    detail_body = detail_response.json()
+    assert detail_body["run"]["review_state"] == "ACCEPTED"
+    assert detail_body["review"]["state"] == "ACCEPTED"
+    assert detail_body["review"]["latest_review_event_at"] is not None
+    assert detail_body["review"]["latest_review_actor"] == "review:banker.sg.100"
+    assert detail_body["review"]["review_transition_count"] == 1
+    assert detail_body["review"]["has_review_history"] is True
 
 
 def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(

@@ -27,6 +27,9 @@ from app.services.workflow_pack_run_artifacts import persist_workflow_pack_run_o
 from app.services.workflow_pack_run_supportability_summary import (
     build_workflow_pack_run_supportability_descriptor_from_record,
 )
+from app.services.workflow_pack_run_review_summary import (
+    build_workflow_pack_run_review_descriptor,
+)
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from app.services.workflow_pack_run_supportability import (
@@ -129,27 +132,31 @@ def build_workflow_pack_run_catalog(
 
 
 def build_workflow_pack_run_detail(*, run_id: str) -> WorkflowPackRunDetailResponse:
-    record = get_workflow_pack_run_store().get_run(run_id=run_id)
+    store = get_workflow_pack_run_store()
+    record = store.get_run(run_id=run_id)
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Unknown workflow-pack run: {run_id}",
         )
+    events = store.list_events(run_id=run_id)
     return WorkflowPackRunDetailResponse(
         service=settings.service_name,
         version=settings.service_version,
         run_store_mode=settings.workflow_pack_run_store_mode,
         run=map_workflow_pack_run_record(record),
+        review=build_workflow_pack_run_review_descriptor(record=record, events=events),
         supportability=build_workflow_pack_run_supportability_descriptor_from_record(
             record=record,
             map_record=map_workflow_pack_run_record,
         ),
         events=[
             map_workflow_pack_run_event_record(event)
-            for event in get_workflow_pack_run_store().list_events(run_id=run_id)
+            for event in events
         ],
         notes=[
             "Runtime state and review state are modeled separately in the run detail to avoid ambiguous operator or product interpretation.",
+            "Review progression posture is summarized alongside the raw event history so callers do not need to parse review events just to understand bounded review metadata.",
             "Supportability posture is included alongside the raw run record so callers do not need a separate profile request just to understand readiness versus action-required or historical posture.",
             "This run record preserves workflow-pack registration identity and workflow-authority ownership without claiming business approval authority for lotus-ai.",
         ],

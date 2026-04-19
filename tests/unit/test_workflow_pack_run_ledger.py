@@ -120,6 +120,11 @@ def test_workflow_pack_run_catalog_and_detail_expose_recorded_history() -> None:
     assert catalog.runs[0].supportability_status.value == "ACTION_REQUIRED"
     detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
     assert detail.run.run_id == recorded.run_id
+    assert detail.review.state.value == "AWAITING_REVIEW"
+    assert detail.review.latest_review_event_at is None
+    assert detail.review.latest_review_actor is None
+    assert detail.review.review_transition_count == 0
+    assert detail.review.has_review_history is False
     assert detail.supportability.status.value == "ACTION_REQUIRED"
     assert detail.supportability.review_pending is True
     assert len(detail.run.artifact_refs) == 1
@@ -238,6 +243,11 @@ def test_accept_review_action_updates_review_state_and_records_history() -> None
     assert any("bounded downstream use" in line for line in review_response.summary)
     detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
     assert detail.run.review_state.value == "ACCEPTED"
+    assert detail.review.state.value == "ACCEPTED"
+    assert detail.review.latest_review_event_at is not None
+    assert detail.review.latest_review_actor == "review:banker.sg.001"
+    assert detail.review.review_transition_count == 1
+    assert detail.review.has_review_history is True
     assert any(event.review_state.value == "ACCEPTED" for event in detail.events)
 
 

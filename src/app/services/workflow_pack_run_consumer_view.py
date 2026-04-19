@@ -6,20 +6,18 @@ from app.config import settings
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunConsumerLineageDescriptor,
     WorkflowPackRunConsumerProvenanceDescriptor,
-    WorkflowPackRunConsumerReviewDescriptor,
     WorkflowPackRunConsumerRuntimeDescriptor,
     WorkflowPackRunConsumerSupportabilityDescriptor,
     WorkflowPackRunConsumerViewResponse,
-    WorkflowPackRunEventType,
-    WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
 )
 from app.repositories.workflow_pack_run_repository import (
-    WorkflowPackRunEventRecord,
     WorkflowPackRunRecord,
 )
-from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_ledger import map_workflow_pack_run_record
+from app.services.workflow_pack_run_review_summary import (
+    build_workflow_pack_run_review_descriptor,
+)
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from app.services.workflow_pack_run_supportability_summary import (
     build_workflow_pack_run_supportability_descriptor,
@@ -41,7 +39,7 @@ def build_workflow_pack_run_consumer_view(*, run_id: str) -> WorkflowPackRunCons
         version=settings.service_version,
         run_store_mode=settings.workflow_pack_run_store_mode,
         runtime=_build_runtime_descriptor(record),
-        review=_build_review_descriptor(record, events),
+        review=build_workflow_pack_run_review_descriptor(record=record, events=events),
         lineage=_build_lineage_descriptor(record),
         provenance=_build_provenance_descriptor(record),
         supportability=_build_supportability_descriptor(record),
@@ -65,30 +63,6 @@ def _build_runtime_descriptor(
         provider_mode=record.provider_mode,
         stubbed=record.stubbed,
     )
-
-
-def _build_review_descriptor(
-    record: WorkflowPackRunRecord,
-    events: list[WorkflowPackRunEventRecord],
-) -> WorkflowPackRunConsumerReviewDescriptor:
-    review_state = WorkflowPackRunReviewState(record.review_state)
-    review_events = _list_review_events(events)
-    latest_review_event = review_events[-1] if review_events else None
-    return WorkflowPackRunConsumerReviewDescriptor(
-        required=record.review_required,
-        state=review_state,
-        allowed_actions=resolve_allowed_review_actions(
-            review_required=record.review_required,
-            review_state=review_state,
-        ),
-        latest_review_event_at=(
-            latest_review_event.recorded_at if latest_review_event is not None else None
-        ),
-        latest_review_actor=latest_review_event.actor if latest_review_event is not None else None,
-        review_transition_count=len(review_events),
-        has_review_history=bool(review_events),
-    )
-
 
 def _build_lineage_descriptor(
     record: WorkflowPackRunRecord,
@@ -130,13 +104,3 @@ def _build_supportability_descriptor(
     return build_workflow_pack_run_supportability_descriptor(
         run=map_workflow_pack_run_record(record)
     )
-
-
-def _list_review_events(
-    events: list[WorkflowPackRunEventRecord],
-) -> list[WorkflowPackRunEventRecord]:
-    return [
-        event
-        for event in events
-        if event.event_type == WorkflowPackRunEventType.REVIEW_STATE_UPDATED.value
-    ]
