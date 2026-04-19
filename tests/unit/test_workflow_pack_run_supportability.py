@@ -10,6 +10,9 @@ from app.services.workflow_pack_run_supportability import (
     resolve_workflow_pack_run_record_supportability_status,
     resolve_workflow_pack_run_supportability_status,
 )
+from app.services.workflow_pack_run_supportability_summary import (
+    build_workflow_pack_run_supportability_descriptor,
+)
 from app.repositories.workflow_pack_run_repository import WorkflowPackRunRecord
 from tests.support.workflow_pack_run_builders import build_workflow_pack_run_descriptor
 
@@ -107,3 +110,18 @@ def test_resolve_workflow_pack_run_record_supportability_status_marks_reviewed_r
     assert resolve_workflow_pack_run_record_supportability_status(record) is (
         WorkflowPackRunSupportabilityStatus.READY
     )
+
+
+def test_supportability_descriptor_historical_note_does_not_emit_none_replacement_id() -> None:
+    run = build_workflow_pack_run_descriptor(
+        run_id="run-historical-no-replacement",
+        review_state=WorkflowPackRunReviewState.SUPERSEDED,
+        superseded_by_run_id=None,
+    )
+
+    descriptor = build_workflow_pack_run_supportability_descriptor(run=run)
+
+    assert descriptor.status is WorkflowPackRunSupportabilityStatus.HISTORICAL
+    assert descriptor.superseded is True
+    assert "None" not in descriptor.summary_note
+    assert "historical review state" in descriptor.summary_note

@@ -17,6 +17,9 @@ from app.services.workflow_pack_run_ledger import (
 from app.services.workflow_pack_run_provenance_summary import (
     build_workflow_pack_run_provenance_summary,
 )
+from app.services.workflow_pack_run_review_summary import (
+    list_workflow_pack_run_review_events,
+)
 from app.services.workflow_pack_run_supportability import (
     has_workflow_pack_run_partial_output,
     is_workflow_pack_run_historical,
@@ -32,7 +35,7 @@ def build_workflow_pack_run_operator_profile(
     run = loaded.run
     events = [map_workflow_pack_run_event_record(event) for event in loaded.events]
     latest_event = events[-1] if events else None
-    review_events = _list_review_events(events)
+    review_events = list_workflow_pack_run_review_events(loaded.events)
     latest_review_event = review_events[-1] if review_events else None
     findings = _build_findings(run=run)
     supportability_status = resolve_workflow_pack_run_supportability_status(run)
@@ -190,9 +193,14 @@ def _build_current_summary_note(
     supportability_status: WorkflowPackRunSupportabilityStatus,
 ) -> str:
     if supportability_status is WorkflowPackRunSupportabilityStatus.HISTORICAL:
+        if run.superseded_by_run_id is not None:
+            return (
+                f"Run `{run.run_id}` is now historical because a replacement run "
+                f"`{run.superseded_by_run_id}` exists."
+            )
         return (
-            f"Run `{run.run_id}` is now historical because a replacement run "
-            f"`{run.superseded_by_run_id}` exists."
+            f"Run `{run.run_id}` is now historical because a newer bounded draft posture "
+            "or historical review state has superseded it."
         )
     if run.runtime_state is WorkflowPackRunRuntimeState.FAILED:
         return (
@@ -222,11 +230,3 @@ def _build_event_type_counts(events: list[WorkflowPackRunEventDescriptor]) -> di
     for event in events:
         counts[event.event_type.value] = counts.get(event.event_type.value, 0) + 1
     return counts
-
-
-def _list_review_events(events: list[WorkflowPackRunEventDescriptor]):
-    return [
-        event
-        for event in events
-        if event.event_type.value == "REVIEW_STATE_UPDATED"
-    ]

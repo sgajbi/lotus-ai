@@ -41,9 +41,14 @@ def _build_supportability_summary_note(
     superseded_by_run_id: str | None,
 ) -> str:
     if status is WorkflowPackRunSupportabilityStatus.HISTORICAL:
+        if superseded_by_run_id is not None:
+            return (
+                f"This workflow-pack run is historical because replacement run "
+                f"`{superseded_by_run_id}` now carries the latest bounded draft posture."
+            )
         return (
-            f"This workflow-pack run is historical because replacement run "
-            f"`{superseded_by_run_id}` now carries the latest bounded draft posture."
+            "This workflow-pack run is historical because a newer bounded draft posture or "
+            "historical review state has superseded the current run."
         )
     if review_pending:
         return (

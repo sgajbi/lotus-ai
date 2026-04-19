@@ -98,6 +98,32 @@ def test_workflow_pack_run_operator_profile_marks_superseded_run_historical() ->
     assert any(finding.finding_id == "run_historical" for finding in profile.findings)
 
 
+def test_workflow_pack_run_operator_profile_historical_note_handles_missing_replacement_run() -> None:
+    context = build_task_execution_context(_build_request("corr-pack-run-operator-005"))
+    response = build_task_execution_response(resolved=resolve_task_execution(context=context))
+    recorded = record_workflow_pack_run_for_task_execution(context=context, response=response)
+    assert recorded is not None
+
+    store = get_workflow_pack_run_store()
+    stored = store.get_run(run_id=recorded.run_id)
+    assert stored is not None
+    store.save_run(
+        replace(
+            stored,
+            runtime_state=WorkflowPackRunRuntimeState.SUPERSEDED.value,
+            review_state=WorkflowPackRunReviewState.SUPERSEDED.value,
+            superseded_by_run_id=None,
+        )
+    )
+
+    profile = build_workflow_pack_run_operator_profile(run_id=recorded.run_id)
+
+    assert profile.supportability_status.value == "HISTORICAL"
+    assert profile.superseded is True
+    assert "None" not in profile.current_summary_note
+    assert "historical review state" in profile.current_summary_note
+
+
 def test_workflow_pack_run_operator_profile_marks_accepted_run_ready() -> None:
     context = build_task_execution_context(_build_request("corr-pack-run-operator-accepted-001"))
     response = build_task_execution_response(resolved=resolve_task_execution(context=context))
