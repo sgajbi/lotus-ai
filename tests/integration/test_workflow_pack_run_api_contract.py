@@ -724,3 +724,127 @@ def test_workflow_pack_run_catalog_supports_sqlalchemy_store_mode(tmp_path: Path
     assert catalog_body["run_count"] == 1
     assert len(catalog_body["runs"][0]["artifact_refs"]) == 1
     assert catalog_body["runs"][0]["artifact_refs"][0]["domain"] == "workflow_pack"
+
+
+def test_sqlalchemy_workflow_pack_run_review_and_lineage_survive_restart(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-run-review-persistence.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        workflow_pack_run_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as client:
+            original_execute_response = client.post(
+                "/ai/tasks/execute",
+                json=advisor_brief_task_execution_request_json(
+                    correlation_id="corr-pack-run-api-sql-revise-001"
+                ),
+            )
+            assert original_execute_response.status_code == 200
+
+            revised_execute_response = client.post(
+                "/ai/tasks/execute",
+                json=advisor_brief_task_execution_request_json(
+                    correlation_id="corr-pack-run-api-sql-revise-002",
+                    summary="Draft revised advisor brief from source performance facts.",
+                    portfolio_return_pct=1.55,
+                    active_return_pct=-6.38,
+                ),
+            )
+            assert revised_execute_response.status_code == 200
+
+            runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+            original_run_id = next(
+                run["run_id"]
+                for run in runs
+                if run["correlation_id"] == "corr-pack-run-api-sql-revise-001"
+            )
+            revised_run_id = next(
+                run["run_id"]
+                for run in runs
+                if run["correlation_id"] == "corr-pack-run-api-sql-revise-002"
+            )
+
+            review_response = client.post(
+                f"/platform/workflow-packs/runs/{original_run_id}/review-actions",
+                json={
+                    "action_type": "REVISE",
+                    "caller_app": "lotus-gateway",
+                    "reviewed_by": "banker.sg.sql.001",
+                    "reason": "Durable SQL-backed lineage and review-state proof.",
+                    "replacement_run_id": revised_run_id,
+                },
+            )
+            assert review_response.status_code == 200
+
+        with TestClient(app) as restarted_client:
+            catalog_response = restarted_client.get("/platform/workflow-packs/runs")
+            original_detail_response = restarted_client.get(
+                f"/platform/workflow-packs/runs/{original_run_id}"
+            )
+            revised_detail_response = restarted_client.get(
+                f"/platform/workflow-packs/runs/{revised_run_id}"
+            )
+            revised_consumer_view_response = restarted_client.get(
+                f"/platform/workflow-packs/runs/{revised_run_id}/consumer-view"
+            )
+            original_operator_profile_response = restarted_client.get(
+                f"/platform/workflow-packs/runs/{original_run_id}/operator-profile"
+            )
+            runtime_status_response = restarted_client.get("/platform/runtime-status")
+
+    assert catalog_response.status_code == 200
+    catalog_body = catalog_response.json()
+    assert catalog_body["run_store_mode"] == "sqlalchemy"
+    assert catalog_body["run_count"] == 2
+    original_catalog_run = next(run for run in catalog_body["runs"] if run["run_id"] == original_run_id)
+    revised_catalog_run = next(run for run in catalog_body["runs"] if run["run_id"] == revised_run_id)
+    assert original_catalog_run["review_state"] == "REVISED"
+    assert original_catalog_run["supportability_status"] == "HISTORICAL"
+    assert original_catalog_run["superseded_by_run_id"] == revised_run_id
+    assert original_catalog_run["review_summary"]["latest_review_actor"] == "review:banker.sg.sql.001"
+    assert original_catalog_run["review_summary"]["review_transition_count"] == 1
+    assert revised_catalog_run["review_state"] == "AWAITING_REVIEW"
+    assert revised_catalog_run["supportability_status"] == "ACTION_REQUIRED"
+    assert revised_catalog_run["supersedes_run_id"] == original_run_id
+
+    assert original_detail_response.status_code == 200
+    original_detail_body = original_detail_response.json()
+    assert original_detail_body["run"]["review_state"] == "REVISED"
+    assert original_detail_body["run"]["superseded_by_run_id"] == revised_run_id
+    assert original_detail_body["review"]["latest_review_actor"] == "review:banker.sg.sql.001"
+    assert original_detail_body["review"]["review_transition_count"] == 1
+    assert any(event["event_type"] == "LINEAGE_UPDATED" for event in original_detail_body["events"])
+
+    assert revised_detail_response.status_code == 200
+    revised_detail_body = revised_detail_response.json()
+    assert revised_detail_body["run"]["supersedes_run_id"] == original_run_id
+    assert any(event["event_type"] == "LINEAGE_UPDATED" for event in revised_detail_body["events"])
+
+    assert revised_consumer_view_response.status_code == 200
+    revised_consumer_view_body = revised_consumer_view_response.json()
+    assert revised_consumer_view_body["review"]["state"] == "AWAITING_REVIEW"
+    assert revised_consumer_view_body["review"]["review_transition_count"] == 0
+    assert revised_consumer_view_body["lineage"]["supersedes_run_id"] == original_run_id
+    assert revised_consumer_view_body["supportability"]["status"] == "ACTION_REQUIRED"
+
+    assert original_operator_profile_response.status_code == 200
+    original_operator_profile_body = original_operator_profile_response.json()
+    assert original_operator_profile_body["supportability_status"] == "HISTORICAL"
+    assert original_operator_profile_body["review_transition_count"] == 1
+    assert original_operator_profile_body["latest_review_actor"] == "review:banker.sg.sql.001"
+    assert original_operator_profile_body["replacement_run_id"] == revised_run_id
+
+    assert runtime_status_response.status_code == 200
+    runtime_status_body = runtime_status_response.json()
+    assert runtime_status_body["workflow_pack_run_store_mode"] == "sqlalchemy"
+    assert runtime_status_body["workflow_pack_run_store"]["status"] == "READY"
+    assert runtime_status_body["workflow_pack_runtime"]["run_summary"]["run_count"] == 2
+    assert runtime_status_body["workflow_pack_runtime"]["run_summary"]["awaiting_review_count"] == 1
+    assert runtime_status_body["workflow_pack_runtime"]["run_summary"]["superseded_count"] == 1
+    assert runtime_status_body["workflow_pack_runtime"]["attention_queue"]["queue_depth"] == 1
+    assert (
+        runtime_status_body["workflow_pack_runtime"]["attention_queue"]["items"][0]["run_id"]
+        == revised_run_id
+    )

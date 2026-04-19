@@ -1,5 +1,6 @@
 from _pytest.monkeypatch import MonkeyPatch
 
+from app.contracts.runtime_readiness import RuntimeReadinessStatus, StoreRuntimeStatusDescriptor
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunCatalogResponse,
     WorkflowPackRunReviewActionType,
@@ -410,3 +411,106 @@ def test_build_workflow_pack_runtime_status_summary_uses_descriptor_supportabili
     assert summary.attention_queue.queue_depth == 1
     assert summary.attention_queue.items[0].run_id == "run-accepted-action-required"
     assert summary.attention_queue.items[0].supportability_status == "ACTION_REQUIRED"
+
+
+def test_build_workflow_pack_runtime_status_summary_degrades_when_registry_store_not_ready(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    binding = get_workflow_pack_execution_binding_descriptor(
+        pack_id="advisor_brief.pack",
+        version="v1",
+    )
+    assert binding is not None
+
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.list_workflow_pack_execution_binding_descriptors",
+        lambda: [binding],
+    )
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.get_workflow_pack_registry_store_runtime_status",
+        lambda: StoreRuntimeStatusDescriptor(
+            mode="sqlalchemy",
+            status=RuntimeReadinessStatus.MIGRATION_REQUIRED,
+            database_configured=True,
+            detail="Registry tables are missing.",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.get_workflow_pack_run_store_runtime_status",
+        lambda: StoreRuntimeStatusDescriptor(
+            mode="memory",
+            status=RuntimeReadinessStatus.READY,
+            database_configured=False,
+            detail="Run store is ready.",
+        ),
+    )
+
+    summary = build_workflow_pack_runtime_status_summary()
+
+    assert summary.registration_count == 0
+    assert summary.registered_count == 0
+    assert summary.execution_binding_count == 1
+    assert summary.executable_registration_count == 0
+    assert summary.executable_registration_refs == []
+    assert any(
+        "Registry-backed execution counts are unavailable" in line
+        for line in summary.status_summary
+    )
+
+
+def test_build_workflow_pack_runtime_status_summary_degrades_when_run_store_not_ready(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    registered = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    binding = get_workflow_pack_execution_binding_descriptor(
+        pack_id="advisor_brief.pack",
+        version="v1",
+    )
+
+    assert registered is not None
+    assert binding is not None
+
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.list_workflow_pack_registrations",
+        lambda: [registered],
+    )
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.list_workflow_pack_execution_binding_descriptors",
+        lambda: [binding],
+    )
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.get_workflow_pack_registry_store_runtime_status",
+        lambda: StoreRuntimeStatusDescriptor(
+            mode="memory",
+            status=RuntimeReadinessStatus.READY,
+            database_configured=False,
+            detail="Registry store is ready.",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.get_workflow_pack_run_store_runtime_status",
+        lambda: StoreRuntimeStatusDescriptor(
+            mode="sqlalchemy",
+            status=RuntimeReadinessStatus.MIGRATION_REQUIRED,
+            database_configured=True,
+            detail="Run tables are missing.",
+        ),
+    )
+
+    summary = build_workflow_pack_runtime_status_summary()
+
+    assert summary.registration_count == 1
+    assert summary.execution_binding_count == 1
+    assert summary.executable_registration_count == 1
+    assert summary.executable_activity == []
+    assert summary.attention_queue.queue_depth == 0
+    assert summary.run_summary.run_count == 0
+    assert summary.run_summary.action_required_count == 0
+    assert any(
+        "Run-ledger-backed activity posture is unavailable" in line
+        for line in summary.status_summary
+    )
+    assert any(
+        "Current workflow-pack run store status is `MIGRATION_REQUIRED`." == line
+        for line in summary.attention_queue.status_summary
+    )

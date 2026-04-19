@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunDescriptor,
     WorkflowPackRunReviewState,
@@ -19,13 +20,23 @@ from app.services.workflow_pack_run_ledger import build_workflow_pack_run_catalo
 from app.services.workflow_pack_run_provenance_summary import (
     build_workflow_pack_run_provenance_summary,
 )
+from app.services.runtime_readiness import (
+    get_workflow_pack_registry_store_runtime_status,
+    get_workflow_pack_run_store_runtime_status,
+)
 
 WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT = 5
 
 
 def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSummaryResponse:
-    registrations = list_workflow_pack_registrations()
     execution_bindings = list_workflow_pack_execution_binding_descriptors()
+    registry_store_status = get_workflow_pack_registry_store_runtime_status()
+    run_store_status = get_workflow_pack_run_store_runtime_status()
+    registrations = (
+        list_workflow_pack_registrations()
+        if registry_store_status.status is RuntimeReadinessStatus.READY
+        else []
+    )
     binding_refs = {f"{binding.pack_id}@{binding.version}" for binding in execution_bindings}
     registered_registrations = [
         registration
@@ -52,7 +63,44 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
     executable_registration_count = len(executable_registration_refs)
     executable_review_required_count = len(executable_review_required_refs)
     registered_without_execution_binding_count = registered_count - executable_registration_count
-    run_catalog = build_workflow_pack_run_catalog()
+    if run_store_status.status is RuntimeReadinessStatus.READY:
+        run_catalog = build_workflow_pack_run_catalog()
+        executable_activity = build_workflow_pack_executable_activity_summary(
+            executable_registration_refs=executable_registration_refs,
+            run_catalog=run_catalog,
+        )
+        attention_queue = build_workflow_pack_attention_queue_summary(
+            executable_registration_refs=executable_registration_refs,
+            run_catalog=run_catalog,
+        )
+        run_summary = build_workflow_pack_run_runtime_summary(run_catalog=run_catalog)
+    else:
+        executable_activity = []
+        attention_queue = WorkflowPackAttentionQueueSummaryResponse(
+            queue_depth=0,
+            queue_limit=WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT,
+            items=[],
+            status_summary=[
+                "Workflow-pack operator attention queue is unavailable until the configured run ledger store is ready.",
+                f"Current workflow-pack run store status is `{run_store_status.status.value}`.",
+            ],
+        )
+        run_summary = WorkflowPackRunRuntimeSummaryResponse(
+            run_count=0,
+            awaiting_review_count=0,
+            accepted_count=0,
+            rejected_count=0,
+            abandoned_count=0,
+            superseded_count=0,
+            failed_count=0,
+            expired_count=0,
+            action_required_count=0,
+            latest_recorded_at=None,
+            status_summary=[
+                "Workflow-pack run posture summary is unavailable until the configured run ledger store is ready.",
+                f"Current workflow-pack run store status is `{run_store_status.status.value}`.",
+            ],
+        )
 
     return WorkflowPackRuntimeStatusSummaryResponse(
         registration_count=len(registrations),
@@ -66,15 +114,9 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
         registered_without_execution_binding_count=registered_without_execution_binding_count,
         executable_registration_refs=executable_registration_refs,
         executable_review_required_refs=executable_review_required_refs,
-        executable_activity=build_workflow_pack_executable_activity_summary(
-            executable_registration_refs=executable_registration_refs,
-            run_catalog=run_catalog,
-        ),
-        attention_queue=build_workflow_pack_attention_queue_summary(
-            executable_registration_refs=executable_registration_refs,
-            run_catalog=run_catalog,
-        ),
-        run_summary=build_workflow_pack_run_runtime_summary(run_catalog=run_catalog),
+        executable_activity=executable_activity,
+        attention_queue=attention_queue,
+        run_summary=run_summary,
         status_summary=[
             "Workflow-pack runtime readiness is narrower than catalog presence and counts only versions that are both REGISTERED and explicitly bound for lotus-ai execution.",
             "Executable workflow-pack versions are further split by whether the registered default execution mode still requires human review before downstream use.",
@@ -83,6 +125,16 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
             "The operator attention queue highlights the newest actionable workflow-pack runs across executable pack versions without duplicating the full ledger catalog.",
             "Estate-level run posture is summarized separately so operators can see review backlog and action-required run state without reading the raw ledger catalog first.",
             "Use the workflow-pack registry detail surface for owner-artifact truth and the platform runtime status summary for estate-level execution readiness posture.",
+            (
+                "Registry-backed execution counts are unavailable until the configured workflow-pack registry store is ready."
+                if registry_store_status.status is not RuntimeReadinessStatus.READY
+                else "Registry-backed execution counts are available through the configured workflow-pack registry store."
+            ),
+            (
+                "Run-ledger-backed activity posture is unavailable until the configured workflow-pack run store is ready."
+                if run_store_status.status is not RuntimeReadinessStatus.READY
+                else "Run-ledger-backed activity posture is available through the configured workflow-pack run store."
+            ),
         ],
     )
 

@@ -81,7 +81,9 @@ Implemented on the current branch:
 12. estate-level `/platform/runtime-status` workflow-pack summaries now also carry bounded artifact and evidence linkage summaries for those same actionable queue items and latest ready or actionable run pointers so operators can distinguish missing provenance from complete review-bearing outputs without opening run detail first,
 13. the bounded workflow-pack operator profile now also carries one shared provenance summary so support tooling can inspect linked artifact and evidence posture without parsing raw run detail or re-deriving type summaries locally,
 14. the workflow-pack run detail route now also carries that same bounded provenance summary so callers can inspect artifact and evidence posture without scanning the full linked descriptor arrays first,
-15. the bounded workflow-pack consumer view now also carries that same shared provenance summary so downstream composition layers can inspect linked artifact and evidence posture without scanning raw linkage arrays or re-deriving type summaries locally.
+15. the bounded workflow-pack consumer view now also carries that same shared provenance summary so downstream composition layers can inspect linked artifact and evidence posture without scanning raw linkage arrays or re-deriving type summaries locally,
+16. SQL-backed workflow-pack review-state, lineage, consumer-view, operator-profile, and estate-level runtime-summary posture are now covered through restart-safe integration proof instead of only memory-mode proof,
+17. `/platform/runtime-status` now degrades truthfully when the configured workflow-pack registry store or workflow-pack run store is not yet migration-ready, returning bounded zeroed workflow-pack runtime posture instead of raising unhandled SQL table errors.
 
 What is not implemented yet:
 
