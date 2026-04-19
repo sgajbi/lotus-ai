@@ -16,9 +16,6 @@ from app.contracts.workflow_packs import (
 from app.services.workflow_pack_bindings import list_workflow_pack_execution_binding_descriptors
 from app.services.workflow_pack_registry import list_workflow_pack_registrations
 from app.services.workflow_pack_run_ledger import build_workflow_pack_run_catalog
-from app.services.workflow_pack_run_supportability import (
-    resolve_workflow_pack_run_supportability_status,
-)
 from app.services.workflow_pack_run_provenance_summary import (
     build_workflow_pack_run_provenance_summary,
 )
@@ -119,22 +116,6 @@ def build_workflow_pack_run_runtime_summary(
     expired_count = sum(
         1 for run in runs if run.runtime_state is WorkflowPackRunRuntimeState.EXPIRED
     )
-    action_required_count = sum(
-        1
-        for run in runs
-        if run.review_state
-        in {
-            WorkflowPackRunReviewState.AWAITING_REVIEW,
-            WorkflowPackRunReviewState.REJECTED,
-            WorkflowPackRunReviewState.ABANDONED,
-        }
-        or run.runtime_state
-        in {
-            WorkflowPackRunRuntimeState.FAILED,
-            WorkflowPackRunRuntimeState.EXPIRED,
-        }
-    )
-
     return WorkflowPackRunRuntimeSummaryResponse(
         run_count=catalog.run_count,
         awaiting_review_count=catalog.awaiting_review_count,
@@ -144,7 +125,7 @@ def build_workflow_pack_run_runtime_summary(
         superseded_count=superseded_count,
         failed_count=failed_count,
         expired_count=expired_count,
-        action_required_count=action_required_count,
+        action_required_count=catalog.action_required_count,
         latest_recorded_at=catalog.latest_recorded_at,
         status_summary=[
             "Workflow-pack run posture is summarized from the bounded ledger catalog rather than from a separate estate-only store.",
@@ -167,16 +148,13 @@ def build_workflow_pack_executable_activity_summary(
     for registration_ref in executable_registration_refs:
         pack_id, version = registration_ref.split("@", maxsplit=1)
         runs = runs_by_registration_ref.get(registration_ref, [])
-        runs_with_supportability = [
-            (run, resolve_workflow_pack_run_supportability_status(run)) for run in runs
-        ]
         latest_run = max(runs, key=lambda run: run.created_at) if runs else None
         latest_action_required_run = _resolve_latest_run_by_supportability(
-            runs_with_supportability=runs_with_supportability,
+            runs=runs,
             target_status=WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED,
         )
         latest_ready_run = _resolve_latest_run_by_supportability(
-            runs_with_supportability=runs_with_supportability,
+            runs=runs,
             target_status=WorkflowPackRunSupportabilityStatus.READY,
         )
         summaries.append(
@@ -195,18 +173,19 @@ def build_workflow_pack_executable_activity_summary(
                 ),
                 ready_count=sum(
                     1
-                    for _, status in runs_with_supportability
-                    if status is WorkflowPackRunSupportabilityStatus.READY
+                    for run in runs
+                    if run.supportability_status is WorkflowPackRunSupportabilityStatus.READY
                 ),
                 action_required_count=sum(
                     1
-                    for _, status in runs_with_supportability
-                    if status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED
+                    for run in runs
+                    if run.supportability_status
+                    is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED
                 ),
                 historical_count=sum(
                     1
-                    for _, status in runs_with_supportability
-                    if status is WorkflowPackRunSupportabilityStatus.HISTORICAL
+                    for run in runs
+                    if run.supportability_status is WorkflowPackRunSupportabilityStatus.HISTORICAL
                 ),
                 latest_action_required_run_id=(
                     latest_action_required_run.run_id
@@ -254,14 +233,13 @@ def build_workflow_pack_attention_queue_summary(
     run_catalog,
 ) -> WorkflowPackAttentionQueueSummaryResponse:
     executable_registration_ref_set = set(executable_registration_refs)
-    actionable_runs = []
+    actionable_runs: list[WorkflowPackRunDescriptor] = []
     for run in run_catalog.runs:
         if run.registration_ref not in executable_registration_ref_set:
             continue
-        supportability_status = resolve_workflow_pack_run_supportability_status(run)
-        if supportability_status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED:
-            actionable_runs.append((run, supportability_status))
-    actionable_runs.sort(key=lambda item: item[0].created_at, reverse=True)
+        if run.supportability_status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED:
+            actionable_runs.append(run)
+    actionable_runs.sort(key=lambda item: item.created_at, reverse=True)
     queue_items = [
         WorkflowPackAttentionQueueItemResponse(
             run_id=run.run_id,
@@ -270,12 +248,12 @@ def build_workflow_pack_attention_queue_summary(
             workflow_authority_owner=run.workflow_authority_owner,
             review_state=run.review_state.value,
             runtime_state=run.runtime_state.value,
-            supportability_status=status.value,
+            supportability_status=run.supportability_status.value,
             review_summary=run.review_summary,
             provenance=build_workflow_pack_run_provenance_summary(run=run),
             created_at=run.created_at,
         )
-        for run, status in actionable_runs[:WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT]
+        for run in actionable_runs[:WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT]
     ]
     return WorkflowPackAttentionQueueSummaryResponse(
         queue_depth=len(queue_items),
@@ -291,13 +269,11 @@ def build_workflow_pack_attention_queue_summary(
 
 def _resolve_latest_run_by_supportability(
     *,
-    runs_with_supportability: list[
-        tuple[WorkflowPackRunDescriptor, WorkflowPackRunSupportabilityStatus]
-    ],
+    runs: list[WorkflowPackRunDescriptor],
     target_status: WorkflowPackRunSupportabilityStatus,
 ) -> WorkflowPackRunDescriptor | None:
     matching_runs = [
-        run for run, status in runs_with_supportability if status is target_status
+        run for run in runs if run.supportability_status is target_status
     ]
     if not matching_runs:
         return None

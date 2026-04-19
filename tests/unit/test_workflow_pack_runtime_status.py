@@ -5,6 +5,7 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunReviewActionType,
     WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
+    WorkflowPackRunSupportabilityStatus,
 )
 from app.contracts.workflow_packs import WorkflowPackExecutionMode, WorkflowPackRegistrationStatus
 from app.services.workflow_pack_bindings import get_workflow_pack_execution_binding_descriptor
@@ -347,3 +348,65 @@ def test_build_workflow_pack_attention_queue_summary_limits_to_latest_actionable
     assert summary.attention_queue.items[0].review_summary.has_review_history is True
     assert summary.attention_queue.items[0].provenance.artifact_ref_count == 1
     assert summary.attention_queue.items[0].provenance.evidence_descriptor_count == 1
+
+
+def test_build_workflow_pack_runtime_status_summary_uses_descriptor_supportability_posture(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    registered = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    binding = get_workflow_pack_execution_binding_descriptor(
+        pack_id="advisor_brief.pack",
+        version="v1",
+    )
+
+    assert registered is not None
+    assert binding is not None
+
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.list_workflow_pack_registrations",
+        lambda: [registered],
+    )
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.list_workflow_pack_execution_binding_descriptors",
+        lambda: [binding],
+    )
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.build_workflow_pack_run_catalog",
+        lambda: WorkflowPackRunCatalogResponse(
+            service="lotus-ai",
+            version="0.1.0",
+            phase="foundation",
+            run_store_mode="memory",
+            run_count=1,
+            awaiting_review_count=0,
+            completed_count=1,
+            ready_count=0,
+            action_required_count=1,
+            historical_count=0,
+            latest_recorded_at="2026-04-19T12:00:00Z",
+            runs=[
+                build_workflow_pack_run_descriptor(
+                    run_id="run-accepted-action-required",
+                    review_state=WorkflowPackRunReviewState.ACCEPTED,
+                    created_at="2026-04-19T12:00:00Z",
+                    evidence_descriptors_count=1,
+                    artifact_refs_count=1,
+                    supportability_status=WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED,
+                )
+            ],
+            notes=["summary"],
+        ),
+    )
+
+    summary = build_workflow_pack_runtime_status_summary()
+
+    assert summary.run_summary.action_required_count == 1
+    assert summary.executable_activity[0].ready_count == 0
+    assert summary.executable_activity[0].action_required_count == 1
+    assert summary.executable_activity[0].latest_action_required_run_id == (
+        "run-accepted-action-required"
+    )
+    assert summary.executable_activity[0].latest_ready_run_id is None
+    assert summary.attention_queue.queue_depth == 1
+    assert summary.attention_queue.items[0].run_id == "run-accepted-action-required"
+    assert summary.attention_queue.items[0].supportability_status == "ACTION_REQUIRED"
