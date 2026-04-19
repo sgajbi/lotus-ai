@@ -70,7 +70,9 @@ Still pending before this RFC should be considered fully implemented:
 
 1. broader operator authorization beyond the current bounded caller-policy control-plane posture,
 2. broader rollout posture beyond the current pilot and discovery reference family,
-3. convergence with the durable run-ledger and review-state model proposed in `RFC-0033`.
+3. additional pack-family onboarding beyond the current Phase-1 `advisor_brief.pack` reference
+   path and its bounded downstream adoption,
+4. convergence with the durable run-ledger and review-state model proposed in `RFC-0033`.
 
 ## Requirement Traceability And Evidence
 
@@ -127,7 +129,10 @@ Open gaps that remain consistent with this RFC's still-pending scope:
 
 1. operator authorization is now caller-policy-backed for bounded workflow-pack control actions but
    is not yet a broader enterprise entitlement model,
-2. broader activation rollout posture and non-reference workflow-pack families are not yet onboarded.
+2. broader activation rollout posture and non-reference workflow-pack families are not yet onboarded,
+3. the current registry and activation evidence is strong for `advisor_brief.pack`, but RFC-0032
+   should not be declared fully complete until at least one additional workflow-pack family proves
+   that the model is reusable beyond the reference path.
 
 ## Why This RFC Exists
 

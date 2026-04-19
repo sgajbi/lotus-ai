@@ -64,26 +64,33 @@ without becoming an unconstrained agent platform.
 
 ## Implementation Status
 
-This RFC is now partially implemented.
+This RFC is now partially implemented through one bounded end-to-end workflow-pack path.
 
-Foundational work is in progress through the RFC-0032 delivery slices already landed in `lotus-ai`:
+Current branch evidence now spans `lotus-ai`, `lotus-gateway`, and `lotus-workbench` for the
+Phase-1 `advisor_brief.pack` flow:
 
-1. workflow-pack registry contracts exist,
-2. eligibility evaluation exists,
-3. bounded operator control actions exist,
-4. durable registry activation state and control history now exist through a governed memory or SQL store seam,
-5. the first owner-grounded `advisor_brief.pack` family is registered as the Phase-1 reference path.
+1. workflow-pack registry contracts, eligibility evaluation, bounded operator controls, and
+   durable registry activation state exist in `lotus-ai`,
+2. explicit workflow-pack execution for `advisor_brief.pack` now records durable run identity,
+   review posture, lineage, evidence, and artifact refs through the RFC-0033 run-ledger surface,
+3. `lotus-gateway` now consumes that bounded runtime posture, records bounded review actions, and
+   returns refreshed workflow-pack run posture on the advisor-brief contract,
+4. `lotus-workbench` now renders workflow-pack provenance and lineage-aware review posture for the
+   advisor-brief flow, including replacement-run handling for `REVISE` and `SUPERSEDE`.
 
 Still pending under this broader RFC:
 
-1. the full bounded workflow-pack runtime,
-2. broader durable pack-run ledger and review-state adoption across runtime, gateway, and Workbench,
-3. broader multi-pack execution posture,
-4. stronger enterprise authorization and broader cross-app rollout posture for workflow-pack activation.
+1. broader multi-pack execution posture beyond the current Phase-1 advisor-brief path,
+2. shared lifecycle, provenance, review, and feedback primitives beyond the current advisor-brief
+   downstream slice,
+3. at least one domain-owned workflow-pack rollout outside the gateway-owned advisor-brief path,
+4. stronger enterprise authorization and broader cross-app rollout posture for workflow-pack
+   activation and review authority.
 
 ## Current Reality And Evidence
 
-The current branch proves only the registry and activation foundations for this broader runtime RFC.
+The current branch now proves the first bounded workflow-pack runtime path rather than only the
+registry foundation.
 
 Implemented evidence now available in `lotus-ai`:
 
@@ -104,15 +111,28 @@ Implemented evidence now available in `lotus-ai`:
    `tests/integration/test_workflow_pack_activation_api_contract.py`,
    `tests/integration/test_workflow_pack_control_api_contract.py`, and
    `tests/unit/test_openapi_contract.py`,
-6. operator and integration guidance in `docs/guides/integration-guide.md`,
+6. explicit workflow-pack execution, durable run-ledger, bounded review-action, lineage, and
+   readiness-aware degradation behavior in `src/app/services/workflow_pack_execution.py`,
+   `src/app/services/workflow_pack_run_ledger.py`,
+   `src/app/services/workflow_pack_run_review.py`,
+   `src/app/services/workflow_pack_run_operator_profile.py`,
+   `src/app/services/workflow_pack_run_consumer_view.py`, and
+   `tests/integration/test_workflow_pack_run_api_contract.py`,
+7. the first downstream gateway and Workbench adoption slice on the advisor-brief path, where
+   gateway consumes the bounded workflow-pack consumer and operator surfaces and Workbench renders
+   workflow-pack review posture, provenance, and replacement-lineage handling through the existing
+   advisor-brief surface,
+8. operator and integration guidance in `docs/guides/integration-guide.md`,
    `docs/guides/workflow-pack-owner-onboarding.md`, `docs/runbooks/service-operations.md`, and
    `wiki/`.
 
 Evidence that remains intentionally absent because this RFC is only partially implemented:
 
-1. no durable pack-run ledger schema or storage,
-2. no shared runtime-state plus review-state contract family consumed by gateway and Workbench,
-3. no broad multi-pack execution engine beyond the current Phase-1 explicit advisor-brief execution seam and internal binding registry.
+1. no broader workflow-pack rollout beyond the current Phase-1 advisor-brief execution seam and
+   internal binding registry,
+2. no domain-owned workflow-pack implementation outside the gateway-owned advisor-brief path,
+3. no broad shared Workbench primitive set that covers multiple pack-backed surfaces instead of the
+   current advisor-brief-specific adoption slice.
 
 ## Repository Fit
 

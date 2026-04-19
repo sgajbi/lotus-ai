@@ -90,13 +90,13 @@ Implemented on the current branch:
 
 What is not implemented yet:
 
-1. shared runtime-state and review-state contracts exposed across `lotus-ai`, `lotus-gateway`, and
-   `lotus-workbench`,
-2. broader durable linkage expansion from workflow-pack execution into downstream artifact,
+1. broader durable linkage expansion from workflow-pack execution into downstream artifact,
    review-action entitlement, and support-evidence flows beyond the current bounded Phase-1 slice,
-3. UI and gateway consumption that renders run state and review state as separate dimensions,
-4. consequence-bearing downstream review integration flows and allowed-action shaping outside the bounded lotus-ai ledger surface,
-5. broader workflow-pack runtime adoption beyond the current Phase-1 advisor-brief recording path.
+2. consequence-bearing downstream review integration flows and allowed-action shaping outside the
+   bounded advisor-brief path,
+3. broader workflow-pack runtime adoption beyond the current Phase-1 advisor-brief recording path,
+4. broader live or canonical UI proof beyond the focused repo-native contract evidence now recorded
+   on the current branches.
 
 This RFC now correctly moves to `In Progress`, but it should not be treated as complete until downstream contract adoption, artifact and evidence linkage expansion, and broader runtime integration are implemented and reflected in the RFC, RFC index, and branch evidence together.
 
@@ -874,10 +874,12 @@ Current branch status:
 
 1. the first end-to-end downstream adoption slice now exists on the advisor-brief path,
 2. `lotus-gateway` surfaces a bounded `workflow_pack_run` posture that merges lotus-ai runtime, review, lineage, and supportability facts without taking workflow authority,
-3. `lotus-workbench` renders that posture through existing supportability and review-note affordances, and appends workflow-pack run provenance into advisor-brief audit references,
+3. `lotus-workbench` renders that posture through existing supportability and review-note affordances, appends workflow-pack run provenance into advisor-brief audit references, and treats superseded runs as lineage state rather than active-ready posture,
 4. `lotus-gateway` now also exposes a bounded advisor-brief review-action seam that derives the pack-run identity from the existing advisor-brief audit trail, records ledger-compatible review transitions through `lotus-ai`, clears stale brief cache, and returns refreshed workflow-pack posture in the same advisor-brief contract,
-5. `lotus-workbench` now has a typed client seam for that bounded advisor-brief review-action route, so future UI slices can record ledger-compatible actions without inventing a parallel contract family,
-6. broader downstream adoption beyond advisor brief remains future work.
+5. `lotus-gateway` now explicitly proves `REVISE` and `SUPERSEDE` replacement lineage through the advisor-brief review-action path by forwarding `replacement_run_id` unchanged, returning refreshed historical posture with replacement lineage, and surfacing lineage conflicts truthfully,
+6. `lotus-workbench` now has a typed client seam for that bounded advisor-brief review-action route and requires replacement lineage input only for `REVISE` and `SUPERSEDE`, so future UI slices can record ledger-compatible actions without inventing a parallel contract family,
+7. `lotus-ai` now also blocks replacement lineage that crosses workflow authority owner, caller app, tenant scope, or workflow surface, so `REVISE` and `SUPERSEDE` remain inside one bounded downstream workflow rather than linking only on pack family,
+8. broader downstream adoption beyond advisor brief remains future work.
 
 ### Slice 5: Operator and supportability integration
 
