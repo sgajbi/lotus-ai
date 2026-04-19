@@ -731,6 +731,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_runtime_status_schema = spec["components"]["schemas"][
         "WorkflowPackRuntimeStatusSummaryResponse"
     ]
+    workflow_pack_run_runtime_summary_schema = spec["components"]["schemas"][
+        "WorkflowPackRunRuntimeSummaryResponse"
+    ]
     assert "task_id" in workflow_pack_execution_binding_schema["properties"]
     assert "default_workflow_surface" in workflow_pack_execution_binding_schema["properties"]
     assert "required_payload_keys" in workflow_pack_execution_binding_schema["properties"]
@@ -744,6 +747,11 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     )
     assert "executable_registration_refs" in workflow_pack_runtime_status_schema["properties"]
     assert "executable_review_required_refs" in workflow_pack_runtime_status_schema["properties"]
+    assert "run_summary" in workflow_pack_runtime_status_schema["properties"]
+    assert "run_count" in workflow_pack_run_runtime_summary_schema["properties"]
+    assert "awaiting_review_count" in workflow_pack_run_runtime_summary_schema["properties"]
+    assert "accepted_count" in workflow_pack_run_runtime_summary_schema["properties"]
+    assert "action_required_count" in workflow_pack_run_runtime_summary_schema["properties"]
     assert "validation_rules" in workflow_pack_registration_detail_schema["properties"]
     assert "execution_binding" in workflow_pack_registration_detail_schema["properties"]
     assert "denied_without_registration" in workflow_pack_registration_detail_schema["properties"]

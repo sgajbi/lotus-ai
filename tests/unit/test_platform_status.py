@@ -73,6 +73,10 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.workflow_pack_runtime.executable_review_required_refs == [
         "advisor_brief.pack@v1"
     ]
+    assert status.workflow_pack_runtime.run_summary.run_count == 0
+    assert status.workflow_pack_runtime.run_summary.awaiting_review_count == 0
+    assert status.workflow_pack_runtime.run_summary.accepted_count == 0
+    assert status.workflow_pack_runtime.run_summary.action_required_count == 0
     assert status.access_control_runtime.enforcement_state.value == "FULLY_ENFORCED"
     assert status.access_control_runtime.data_plane_enforced is True
     assert status.access_control_runtime.control_plane_enforced is True

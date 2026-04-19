@@ -257,8 +257,46 @@ class WorkflowPackRuntimeStatusSummaryResponse(BaseModel):
     executable_review_required_refs: list[str] = Field(
         description="Executable pack-version references whose default execution mode still routes through a human-review gate."
     )
+    run_summary: "WorkflowPackRunRuntimeSummaryResponse" = Field(
+        description="Estate-level workflow-pack run posture derived from the current bounded run ledger."
+    )
     status_summary: list[str] = Field(
         description="Human-readable summary of the current workflow-pack runtime posture."
+    )
+
+
+class WorkflowPackRunRuntimeSummaryResponse(BaseModel):
+    run_count: int = Field(description="Number of workflow-pack runs currently recorded in the ledger.")
+    awaiting_review_count: int = Field(
+        description="Number of workflow-pack runs currently awaiting human review."
+    )
+    accepted_count: int = Field(
+        description="Number of workflow-pack runs currently accepted for bounded downstream use."
+    )
+    rejected_count: int = Field(
+        description="Number of workflow-pack runs currently rejected by review-state posture."
+    )
+    abandoned_count: int = Field(
+        description="Number of workflow-pack runs currently abandoned by review-state posture."
+    )
+    superseded_count: int = Field(
+        description="Number of workflow-pack runs currently in revised or superseded historical posture."
+    )
+    failed_count: int = Field(
+        description="Number of workflow-pack runs currently in failed runtime posture."
+    )
+    expired_count: int = Field(
+        description="Number of workflow-pack runs currently in expired runtime posture."
+    )
+    action_required_count: int = Field(
+        description="Number of workflow-pack runs currently in an estate-level posture that still requires operator attention."
+    )
+    latest_recorded_at: str | None = Field(
+        default=None,
+        description="Most recent workflow-pack run timestamp visible through the bounded ledger summary.",
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of the current workflow-pack run posture."
     )
 
 

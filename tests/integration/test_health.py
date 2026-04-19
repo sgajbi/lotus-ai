@@ -376,6 +376,10 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["workflow_pack_runtime"]["executable_review_required_refs"] == [
         "advisor_brief.pack@v1"
     ]
+    assert body["workflow_pack_runtime"]["run_summary"]["run_count"] == 0
+    assert body["workflow_pack_runtime"]["run_summary"]["awaiting_review_count"] == 0
+    assert body["workflow_pack_runtime"]["run_summary"]["accepted_count"] == 0
+    assert body["workflow_pack_runtime"]["run_summary"]["action_required_count"] == 0
     assert body["access_control_runtime"]["store_mode"] == "memory"
     assert body["access_control_runtime"]["enforcement_state"] == "FULLY_ENFORCED"
     assert body["access_control_runtime"]["data_plane_enforced"] is True
