@@ -1,12 +1,5 @@
 from fastapi import HTTPException
 
-from app.contracts.tasks import (
-    CallerMetadata,
-    OutputLabel,
-    TaskContextEnvelope,
-    TaskExecutionRequest,
-    TaskInputMode,
-)
 from app.services.task_execution_context_builder import build_task_execution_context
 from app.services.task_execution_pipeline import (
     build_task_execution_response,
@@ -14,33 +7,12 @@ from app.services.task_execution_pipeline import (
 )
 from app.services.workflow_pack_run_consumer_view import build_workflow_pack_run_consumer_view
 from app.services.workflow_pack_run_ledger import record_workflow_pack_run_for_task_execution
+from tests.support.workflow_pack_fixtures import advisor_brief_task_execution_request
 
 
 def test_workflow_pack_run_consumer_view_groups_runtime_review_and_provenance() -> None:
     context = build_task_execution_context(
-        TaskExecutionRequest(
-            task_id="explain.v1",
-            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(
-                caller_app="lotus-gateway",
-                correlation_id="corr-pack-run-consumer-001",
-            ),
-            context=TaskContextEnvelope(
-                summary="Draft advisor brief from source performance facts.",
-                payload={
-                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
-                    "period": {"period": "YTD"},
-                    "performance": {
-                        "portfolio_return_pct": 1.25,
-                        "benchmark_return_pct": 7.93,
-                        "active_return_pct": -6.68,
-                    },
-                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
-                },
-                source_refs=["lotus-gateway:performance-summary:YTD"],
-            ),
-            expected_output_label=OutputLabel.EXPLANATION_ONLY,
-        )
+        advisor_brief_task_execution_request(correlation_id="corr-pack-run-consumer-001")
     )
     response = build_task_execution_response(resolved=resolve_task_execution(context=context))
     recorded = record_workflow_pack_run_for_task_execution(context=context, response=response)

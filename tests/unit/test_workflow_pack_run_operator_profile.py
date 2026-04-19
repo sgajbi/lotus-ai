@@ -2,13 +2,6 @@ from dataclasses import replace
 
 from fastapi import HTTPException
 
-from app.contracts.tasks import (
-    CallerMetadata,
-    OutputLabel,
-    TaskContextEnvelope,
-    TaskExecutionRequest,
-    TaskInputMode,
-)
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunReviewActionRequest,
     WorkflowPackRunReviewActionType,
@@ -24,6 +17,7 @@ from app.services.workflow_pack_run_ledger import record_workflow_pack_run_for_t
 from app.services.workflow_pack_run_operator_profile import build_workflow_pack_run_operator_profile
 from app.services.workflow_pack_run_review import apply_workflow_pack_run_review_action
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
+from tests.support.workflow_pack_fixtures import advisor_brief_task_execution_request
 
 
 def test_workflow_pack_run_operator_profile_reports_review_pending_attention() -> None:
@@ -147,27 +141,5 @@ def test_workflow_pack_run_operator_profile_rejects_unknown_run() -> None:
         raise AssertionError("Expected unknown workflow-pack run operator profile lookup to fail")
 
 
-def _build_request(correlation_id: str) -> TaskExecutionRequest:
-    return TaskExecutionRequest(
-        task_id="explain.v1",
-        input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-        caller=CallerMetadata(
-            caller_app="lotus-gateway",
-            correlation_id=correlation_id,
-        ),
-        context=TaskContextEnvelope(
-            summary="Draft advisor brief from source performance facts.",
-            payload={
-                "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
-                "period": {"period": "YTD"},
-                "performance": {
-                    "portfolio_return_pct": 1.25,
-                    "benchmark_return_pct": 7.93,
-                    "active_return_pct": -6.68,
-                },
-                "supportability": [{"key": "portfolio_context", "value": "ready"}],
-            },
-            source_refs=["lotus-gateway:performance-summary:YTD"],
-        ),
-        expected_output_label=OutputLabel.EXPLANATION_ONLY,
-    )
+def _build_request(correlation_id: str):
+    return advisor_brief_task_execution_request(correlation_id=correlation_id)
