@@ -1,8 +1,10 @@
+from dataclasses import replace
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
 from tests.support.workflow_pack_fixtures import (
@@ -404,6 +406,143 @@ def test_workflow_pack_run_review_action_revise_links_replacement_lineage(client
     assert any(
         event["event_type"] == "LINEAGE_UPDATED"
         for event in replacement_detail_body["events"]
+    )
+
+
+def test_workflow_pack_run_review_action_rejects_unknown_replacement_run(client: TestClient) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-missing-001"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "REVISE",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.revise.missing.001",
+            "reason": "Unknown replacement run id should fail through the API contract.",
+            "replacement_run_id": "packrun_advisor_brief_pack_missing",
+        },
+    )
+
+    assert review_response.status_code == 404
+    assert (
+        review_response.json()["detail"]
+        == "Unknown replacement workflow-pack run: packrun_advisor_brief_pack_missing"
+    )
+
+
+def test_workflow_pack_run_review_action_rejects_cross_family_replacement_lineage(
+    client: TestClient,
+) -> None:
+    original_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-cross-family-001"
+        ),
+    )
+    assert original_execute_response.status_code == 200
+
+    replacement_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-cross-family-002"
+        ),
+    )
+    assert replacement_execute_response.status_code == 200
+
+    runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+    original_run_id = next(
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-cross-family-001"
+    )
+    replacement_run_id = next(
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-cross-family-002"
+    )
+
+    store = get_workflow_pack_run_store()
+    replacement_record = store.get_run(run_id=replacement_run_id)
+    assert replacement_record is not None
+    store.save_run(replace(replacement_record, pack_family="different_family"))
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{original_run_id}/review-actions",
+        json={
+            "action_type": "REVISE",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.revise.cross-family.001",
+            "reason": "Cross-family lineage should remain blocked.",
+            "replacement_run_id": replacement_run_id,
+        },
+    )
+
+    assert review_response.status_code == 409
+    assert (
+        review_response.json()["detail"]
+        == "Replacement workflow-pack run must belong to the same pack family to preserve bounded review-state lineage."
+    )
+
+
+def test_workflow_pack_run_review_action_rejects_already_linked_replacement_lineage(
+    client: TestClient,
+) -> None:
+    original_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-linked-001"
+        ),
+    )
+    assert original_execute_response.status_code == 200
+
+    replacement_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-linked-002"
+        ),
+    )
+    assert replacement_execute_response.status_code == 200
+
+    runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+    original_run_id = next(
+        run["run_id"] for run in runs if run["correlation_id"] == "corr-pack-run-api-revise-linked-001"
+    )
+    replacement_run_id = next(
+        run["run_id"] for run in runs if run["correlation_id"] == "corr-pack-run-api-revise-linked-002"
+    )
+
+    store = get_workflow_pack_run_store()
+    replacement_record = store.get_run(run_id=replacement_run_id)
+    assert replacement_record is not None
+    store.save_run(
+        replace(
+            replacement_record,
+            supersedes_run_id="packrun_advisor_brief_pack_already_linked",
+        )
+    )
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{original_run_id}/review-actions",
+        json={
+            "action_type": "REVISE",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.revise.linked.001",
+            "reason": "Replacement lineage already linked elsewhere should remain blocked.",
+            "replacement_run_id": replacement_run_id,
+        },
+    )
+
+    assert review_response.status_code == 409
+    assert (
+        review_response.json()["detail"]
+        == f"Replacement workflow-pack run `{replacement_run_id}` is already linked to `packrun_advisor_brief_pack_already_linked`."
     )
 
 
