@@ -5,7 +5,6 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunDescriptor,
     WorkflowPackRunSupportabilityStatus,
 )
-from app.repositories.workflow_pack_run_repository import WorkflowPackRunRecord
 from app.services.workflow_pack_run_supportability import (
     has_workflow_pack_run_partial_output,
     is_workflow_pack_run_historical,
@@ -33,14 +32,6 @@ def build_workflow_pack_run_supportability_descriptor(
             superseded_by_run_id=run.superseded_by_run_id,
         ),
     )
-
-
-def build_workflow_pack_run_supportability_descriptor_from_record(
-    *,
-    record: WorkflowPackRunRecord,
-    map_record,
-) -> WorkflowPackRunConsumerSupportabilityDescriptor:
-    return build_workflow_pack_run_supportability_descriptor(run=map_record(record))
 
 
 def _build_supportability_summary_note(

@@ -31,7 +31,7 @@ from app.services.workflow_pack_run_provenance_summary import (
     build_workflow_pack_run_provenance_summary,
 )
 from app.services.workflow_pack_run_supportability_summary import (
-    build_workflow_pack_run_supportability_descriptor_from_record,
+    build_workflow_pack_run_supportability_descriptor,
 )
 from app.services.workflow_pack_run_review_summary import (
     build_workflow_pack_run_review_descriptor,
@@ -173,10 +173,7 @@ def build_workflow_pack_run_detail(*, run_id: str) -> WorkflowPackRunDetailRespo
             events=loaded.events,
         ),
         provenance=build_workflow_pack_run_provenance_summary(run=loaded.run),
-        supportability=build_workflow_pack_run_supportability_descriptor_from_record(
-            record=loaded.record,
-            map_record=map_workflow_pack_run_record,
-        ),
+        supportability=build_workflow_pack_run_supportability_descriptor(run=loaded.run),
         events=[
             map_workflow_pack_run_event_record(event) for event in loaded.events
         ],
