@@ -260,6 +260,9 @@ class WorkflowPackRuntimeStatusSummaryResponse(BaseModel):
     executable_activity: list["WorkflowPackExecutableActivitySummaryResponse"] = Field(
         description="Per-pack activity summary for executable workflow-pack versions as observed through the bounded run ledger."
     )
+    attention_queue: "WorkflowPackAttentionQueueSummaryResponse" = Field(
+        description="Bounded estate-level queue of workflow-pack runs that currently require operator attention."
+    )
     run_summary: "WorkflowPackRunRuntimeSummaryResponse" = Field(
         description="Estate-level workflow-pack run posture derived from the current bounded run ledger."
     )
@@ -353,6 +356,38 @@ class WorkflowPackExecutableActivitySummaryResponse(BaseModel):
     )
     has_activity: bool = Field(
         description="Whether this executable pack version has any recorded workflow-pack run activity."
+    )
+
+
+class WorkflowPackAttentionQueueItemResponse(BaseModel):
+    run_id: str = Field(description="Workflow-pack run identifier requiring operator attention.")
+    registration_ref: str = Field(
+        description="Pack-version reference associated with the actionable workflow-pack run."
+    )
+    pack_id: str = Field(description="Workflow-pack family identifier for the actionable run.")
+    workflow_authority_owner: str = Field(
+        description="Service boundary that retains consequence-bearing workflow authority for the run."
+    )
+    review_state: str = Field(description="Current review posture for the actionable run.")
+    runtime_state: str = Field(description="Current runtime posture for the actionable run.")
+    supportability_status: str = Field(
+        description="Shared supportability classification currently causing the run to appear in the queue."
+    )
+    created_at: str = Field(description="UTC timestamp when the actionable run was recorded.")
+
+
+class WorkflowPackAttentionQueueSummaryResponse(BaseModel):
+    queue_depth: int = Field(
+        description="Number of actionable workflow-pack runs currently represented in the bounded queue."
+    )
+    queue_limit: int = Field(
+        description="Maximum number of actionable workflow-pack runs returned in the bounded queue."
+    )
+    items: list[WorkflowPackAttentionQueueItemResponse] = Field(
+        description="Most recent actionable workflow-pack runs across executable pack versions."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of the current workflow-pack operator-attention queue posture."
     )
 
 

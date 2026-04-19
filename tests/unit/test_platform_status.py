@@ -84,6 +84,9 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.workflow_pack_runtime.executable_activity[0].latest_action_required_run_id is None
     assert status.workflow_pack_runtime.executable_activity[0].latest_ready_run_id is None
     assert status.workflow_pack_runtime.executable_activity[0].has_activity is False
+    assert status.workflow_pack_runtime.attention_queue.queue_depth == 0
+    assert status.workflow_pack_runtime.attention_queue.queue_limit == 5
+    assert status.workflow_pack_runtime.attention_queue.items == []
     assert status.workflow_pack_runtime.run_summary.run_count == 0
     assert status.workflow_pack_runtime.run_summary.awaiting_review_count == 0
     assert status.workflow_pack_runtime.run_summary.accepted_count == 0

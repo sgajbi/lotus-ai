@@ -7,6 +7,8 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunSupportabilityStatus,
 )
 from app.contracts.workflow_packs import (
+    WorkflowPackAttentionQueueItemResponse,
+    WorkflowPackAttentionQueueSummaryResponse,
     WorkflowPackExecutableActivitySummaryResponse,
     WorkflowPackRunRuntimeSummaryResponse,
     WorkflowPackRuntimeStatusSummaryResponse,
@@ -17,6 +19,8 @@ from app.services.workflow_pack_run_ledger import build_workflow_pack_run_catalo
 from app.services.workflow_pack_run_supportability import (
     resolve_workflow_pack_run_supportability_status,
 )
+
+WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT = 5
 
 
 def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSummaryResponse:
@@ -66,12 +70,17 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
             executable_registration_refs=executable_registration_refs,
             run_catalog=run_catalog,
         ),
+        attention_queue=build_workflow_pack_attention_queue_summary(
+            executable_registration_refs=executable_registration_refs,
+            run_catalog=run_catalog,
+        ),
         run_summary=build_workflow_pack_run_runtime_summary(run_catalog=run_catalog),
         status_summary=[
             "Workflow-pack runtime readiness is narrower than catalog presence and counts only versions that are both REGISTERED and explicitly bound for lotus-ai execution.",
             "Executable workflow-pack versions are further split by whether the registered default execution mode still requires human review before downstream use.",
             "Registered workflow-pack versions without an explicit execution binding remain visible as governed catalog entries but are not yet executable through the current bounded lotus-ai runtime path.",
             "Per-pack activity summary shows whether executable workflow-pack versions are merely wired or are actually producing ledgered runs through the current bounded path.",
+            "The operator attention queue highlights the newest actionable workflow-pack runs across executable pack versions without duplicating the full ledger catalog.",
             "Estate-level run posture is summarized separately so operators can see review backlog and action-required run state without reading the raw ledger catalog first.",
             "Use the workflow-pack registry detail surface for owner-artifact truth and the platform runtime status summary for estate-level execution readiness posture.",
         ],
@@ -216,6 +225,45 @@ def build_workflow_pack_executable_activity_summary(
             )
         )
     return summaries
+
+
+def build_workflow_pack_attention_queue_summary(
+    *,
+    executable_registration_refs: list[str],
+    run_catalog,
+) -> WorkflowPackAttentionQueueSummaryResponse:
+    executable_registration_ref_set = set(executable_registration_refs)
+    actionable_runs = []
+    for run in run_catalog.runs:
+        if run.registration_ref not in executable_registration_ref_set:
+            continue
+        supportability_status = resolve_workflow_pack_run_supportability_status(run)
+        if supportability_status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED:
+            actionable_runs.append((run, supportability_status))
+    actionable_runs.sort(key=lambda item: item[0].created_at, reverse=True)
+    queue_items = [
+        WorkflowPackAttentionQueueItemResponse(
+            run_id=run.run_id,
+            registration_ref=run.registration_ref,
+            pack_id=run.pack_id,
+            workflow_authority_owner=run.workflow_authority_owner,
+            review_state=run.review_state.value,
+            runtime_state=run.runtime_state.value,
+            supportability_status=status.value,
+            created_at=run.created_at,
+        )
+        for run, status in actionable_runs[:WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT]
+    ]
+    return WorkflowPackAttentionQueueSummaryResponse(
+        queue_depth=len(queue_items),
+        queue_limit=WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT,
+        items=queue_items,
+        status_summary=[
+            "The workflow-pack attention queue is derived from the shared run-supportability seam and only includes actionable runs from explicitly executable pack versions.",
+            "Use the queue as a pivot into run detail and operator-profile routes, not as a replacement for the full bounded run ledger.",
+            "Newest actionable runs are prioritized first so operators can address fresh review backlog or failure posture without scanning every executable pack summary.",
+        ],
+    )
 
 
 def _resolve_latest_run_by_supportability(

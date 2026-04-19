@@ -65,6 +65,9 @@ def test_build_workflow_pack_runtime_status_summary_separates_catalog_from_execu
     assert summary.executable_activity[0].latest_ready_run_id is None
     assert summary.executable_activity[0].latest_run_id is None
     assert summary.executable_activity[0].has_activity is False
+    assert summary.attention_queue.queue_depth == 0
+    assert summary.attention_queue.queue_limit == 5
+    assert summary.attention_queue.items == []
     assert summary.run_summary.run_count == 0
     assert summary.run_summary.action_required_count == 0
 
@@ -176,6 +179,12 @@ def test_build_workflow_pack_runtime_status_summary_tracks_activity_for_executab
     assert summary.executable_activity[0].latest_run_id == "run-accepted"
     assert summary.executable_activity[0].latest_recorded_at == "2026-04-19T12:00:00Z"
     assert summary.executable_activity[0].has_activity is True
+    assert summary.attention_queue.queue_depth == 1
+    assert summary.attention_queue.items[0].run_id == "run-awaiting"
+    assert summary.attention_queue.items[0].registration_ref == "advisor_brief.pack@v1"
+    assert summary.attention_queue.items[0].supportability_status == "ACTION_REQUIRED"
+    assert summary.attention_queue.items[0].review_state == "AWAITING_REVIEW"
+    assert summary.attention_queue.items[0].runtime_state == "COMPLETED"
 
 
 def test_build_workflow_pack_run_runtime_summary_counts_action_required_and_historical_posture(
@@ -232,3 +241,61 @@ def test_build_workflow_pack_run_runtime_summary_counts_action_required_and_hist
     assert summary.expired_count == 0
     assert summary.action_required_count == 3
     assert summary.latest_recorded_at == "2026-04-19T12:00:00Z"
+
+
+def test_build_workflow_pack_attention_queue_summary_limits_to_latest_actionable_runs(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    registered = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    binding = get_workflow_pack_execution_binding_descriptor(
+        pack_id="advisor_brief.pack",
+        version="v1",
+    )
+
+    assert registered is not None
+    assert binding is not None
+
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.list_workflow_pack_registrations",
+        lambda: [registered],
+    )
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.list_workflow_pack_execution_binding_descriptors",
+        lambda: [binding],
+    )
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.build_workflow_pack_run_catalog",
+        lambda: WorkflowPackRunCatalogResponse(
+            service="lotus-ai",
+            version="0.1.0",
+            phase="foundation",
+            run_store_mode="memory",
+            run_count=6,
+            awaiting_review_count=6,
+            completed_count=6,
+            latest_recorded_at="2026-04-19T16:00:00Z",
+            runs=[
+                build_workflow_pack_run_descriptor(
+                    run_id=f"run-action-{index}",
+                    review_state=WorkflowPackRunReviewState.AWAITING_REVIEW,
+                    created_at=f"2026-04-19T1{index}:00:00Z",
+                    evidence_descriptors_count=1,
+                    artifact_refs_count=1,
+                )
+                for index in range(1, 7)
+            ],
+            notes=["summary"],
+        ),
+    )
+
+    summary = build_workflow_pack_runtime_status_summary()
+
+    assert summary.attention_queue.queue_depth == 5
+    assert summary.attention_queue.queue_limit == 5
+    assert [item.run_id for item in summary.attention_queue.items] == [
+        "run-action-6",
+        "run-action-5",
+        "run-action-4",
+        "run-action-3",
+        "run-action-2",
+    ]

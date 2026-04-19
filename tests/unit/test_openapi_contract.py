@@ -731,6 +731,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_runtime_status_schema = spec["components"]["schemas"][
         "WorkflowPackRuntimeStatusSummaryResponse"
     ]
+    workflow_pack_attention_queue_schema = spec["components"]["schemas"][
+        "WorkflowPackAttentionQueueSummaryResponse"
+    ]
+    workflow_pack_attention_queue_item_schema = spec["components"]["schemas"][
+        "WorkflowPackAttentionQueueItemResponse"
+    ]
     workflow_pack_run_runtime_summary_schema = spec["components"]["schemas"][
         "WorkflowPackRunRuntimeSummaryResponse"
     ]
@@ -751,7 +757,14 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "executable_registration_refs" in workflow_pack_runtime_status_schema["properties"]
     assert "executable_review_required_refs" in workflow_pack_runtime_status_schema["properties"]
     assert "executable_activity" in workflow_pack_runtime_status_schema["properties"]
+    assert "attention_queue" in workflow_pack_runtime_status_schema["properties"]
     assert "run_summary" in workflow_pack_runtime_status_schema["properties"]
+    assert "queue_depth" in workflow_pack_attention_queue_schema["properties"]
+    assert "queue_limit" in workflow_pack_attention_queue_schema["properties"]
+    assert "items" in workflow_pack_attention_queue_schema["properties"]
+    assert "run_id" in workflow_pack_attention_queue_item_schema["properties"]
+    assert "registration_ref" in workflow_pack_attention_queue_item_schema["properties"]
+    assert "supportability_status" in workflow_pack_attention_queue_item_schema["properties"]
     assert "registration_ref" in workflow_pack_executable_activity_schema["properties"]
     assert "run_count" in workflow_pack_executable_activity_schema["properties"]
     assert "ready_count" in workflow_pack_executable_activity_schema["properties"]
