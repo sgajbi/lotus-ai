@@ -781,14 +781,29 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "items" in workflow_pack_attention_queue_schema["properties"]
     assert "run_id" in workflow_pack_attention_queue_item_schema["properties"]
     assert "registration_ref" in workflow_pack_attention_queue_item_schema["properties"]
+    assert "workflow_authority_owner" in workflow_pack_attention_queue_item_schema["properties"]
     assert "supportability_status" in workflow_pack_attention_queue_item_schema["properties"]
+    assert "review_summary" in workflow_pack_attention_queue_item_schema["properties"]
+    assert "provenance" in workflow_pack_attention_queue_item_schema["properties"]
     assert "registration_ref" in workflow_pack_executable_activity_schema["properties"]
     assert "run_count" in workflow_pack_executable_activity_schema["properties"]
+    assert "awaiting_review_count" in workflow_pack_executable_activity_schema["properties"]
+    assert "accepted_count" in workflow_pack_executable_activity_schema["properties"]
     assert "ready_count" in workflow_pack_executable_activity_schema["properties"]
     assert "action_required_count" in workflow_pack_executable_activity_schema["properties"]
     assert "historical_count" in workflow_pack_executable_activity_schema["properties"]
     assert "latest_action_required_run_id" in workflow_pack_executable_activity_schema["properties"]
+    assert (
+        "latest_action_required_review_summary"
+        in workflow_pack_executable_activity_schema["properties"]
+    )
+    assert (
+        "latest_action_required_provenance"
+        in workflow_pack_executable_activity_schema["properties"]
+    )
     assert "latest_ready_run_id" in workflow_pack_executable_activity_schema["properties"]
+    assert "latest_ready_review_summary" in workflow_pack_executable_activity_schema["properties"]
+    assert "latest_ready_provenance" in workflow_pack_executable_activity_schema["properties"]
     assert "latest_run_id" in workflow_pack_executable_activity_schema["properties"]
     assert "has_activity" in workflow_pack_executable_activity_schema["properties"]
     assert "run_count" in workflow_pack_run_runtime_summary_schema["properties"]

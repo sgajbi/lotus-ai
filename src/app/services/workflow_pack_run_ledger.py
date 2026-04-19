@@ -46,7 +46,6 @@ from app.services.workflow_pack_run_supportability import (
 
 @dataclass(frozen=True)
 class WorkflowPackRunLoadedContext:
-    store: WorkflowPackRunRepository
     record: WorkflowPackRunRecord
     run: WorkflowPackRunDescriptor
     events: list[WorkflowPackRunEventRecord]
@@ -61,7 +60,6 @@ def load_workflow_pack_run_context(*, run_id: str) -> WorkflowPackRunLoadedConte
             detail=f"Unknown workflow-pack run: {run_id}",
         )
     return WorkflowPackRunLoadedContext(
-        store=store,
         record=record,
         run=map_workflow_pack_run_record(record, store=store),
         events=store.list_events(run_id=run_id),
