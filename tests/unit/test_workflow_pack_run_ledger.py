@@ -76,6 +76,13 @@ def test_record_workflow_pack_run_for_advisor_brief_task_execution() -> None:
     assert any(
         descriptor.evidence_type == "task_contract" for descriptor in recorded.evidence_descriptors
     )
+    assert len(recorded.artifact_refs) == 1
+    artifact = recorded.artifact_refs[0]
+    assert artifact.domain == "workflow_pack"
+    assert artifact.artifact_type == "run_output_summary"
+    assert artifact.source_object_kind == "workflow_pack_run"
+    assert artifact.source_object_id == recorded.run_id
+    assert artifact.retention_posture == "retained_for_review"
 
 
 def test_record_workflow_pack_run_ignores_non_pack_task_execution() -> None:
@@ -143,8 +150,10 @@ def test_workflow_pack_run_catalog_and_detail_expose_recorded_history() -> None:
     assert catalog.run_count == 1
     assert catalog.awaiting_review_count == 1
     assert catalog.completed_count == 1
+    assert "emit governed workflow-pack artifact refs" in catalog.notes[2]
     detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
     assert detail.run.run_id == recorded.run_id
+    assert len(detail.run.artifact_refs) == 1
     assert detail.events[0].event_type.value == "RUN_RECORDED"
 
 

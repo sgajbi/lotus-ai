@@ -19,6 +19,7 @@ from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunRecord,
 )
 from app.services.task_execution_models import TaskExecutionContext
+from app.services.workflow_pack_run_artifacts import persist_workflow_pack_run_output_artifact
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
@@ -46,7 +47,7 @@ def build_workflow_pack_run_catalog() -> WorkflowPackRunCatalogResponse:
         notes=[
             "Workflow-pack run records are reference-oriented and preserve runtime state separately from review state.",
             "The current slice records Phase-1 advisor-brief executions through the existing bounded task path while the broader workflow-pack runtime remains under implementation.",
-            "Artifact references are supported in the ledger contract even when the current seeded runs do not yet emit durable workflow-pack artifacts.",
+            "Phase-1 recorded runs now emit governed workflow-pack artifact refs so support and downstream review can inspect bounded output summaries without pulling raw payloads into the ledger contract.",
         ],
     )
 
@@ -91,6 +92,16 @@ def record_workflow_pack_run_for_task_execution(
         if review_required
         else WorkflowPackRunReviewState.NOT_REVIEW_REQUIRED
     )
+    artifact_ref = persist_workflow_pack_run_output_artifact(
+        run_id=run_id,
+        context=context,
+        response=response,
+        pack_id=registration.pack_id,
+        pack_version=registration.version,
+        review_required=review_required,
+        review_state=review_state.value,
+        created_at=created_at,
+    )
     record = WorkflowPackRunRecord(
         run_id=run_id,
         pack_id=registration.pack_id,
@@ -114,7 +125,7 @@ def record_workflow_pack_run_for_task_execution(
         evidence_descriptors=[
             descriptor.model_copy(deep=True) for descriptor in response.evidence.descriptors
         ],
-        artifact_refs=[],
+        artifact_refs=[artifact_ref],
         supersedes_run_id=None,
         superseded_by_run_id=None,
         created_at=created_at,

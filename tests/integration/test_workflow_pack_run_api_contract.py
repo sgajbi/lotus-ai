@@ -68,12 +68,16 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
         "SUPERSEDE",
         "ABANDON",
     ]
+    assert len(run["artifact_refs"]) == 1
+    assert run["artifact_refs"][0]["domain"] == "workflow_pack"
+    assert run["artifact_refs"][0]["artifact_type"] == "run_output_summary"
 
     detail_response = client.get(f"/platform/workflow-packs/runs/{run['run_id']}")
 
     assert detail_response.status_code == 200
     detail_body = detail_response.json()
     assert detail_body["run"]["run_id"] == run["run_id"]
+    assert detail_body["run"]["artifact_refs"][0]["source_object_id"] == run["run_id"]
     assert detail_body["events"][0]["event_type"] == "RUN_RECORDED"
 
 
@@ -180,6 +184,8 @@ def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(
     ]
     assert body["lineage"]["workflow_authority_owner"] == "lotus-gateway"
     assert "advisor_brief_status" in body["provenance"]["structured_output_keys"]
+    assert len(body["provenance"]["artifact_refs"]) == 1
+    assert body["provenance"]["artifact_refs"][0]["domain"] == "workflow_pack"
 
 
 def test_workflow_pack_run_catalog_supports_sqlalchemy_store_mode(tmp_path: Path) -> None:
@@ -225,3 +231,5 @@ def test_workflow_pack_run_catalog_supports_sqlalchemy_store_mode(tmp_path: Path
     catalog_body = catalog_response.json()
     assert catalog_body["run_store_mode"] == "sqlalchemy"
     assert catalog_body["run_count"] == 1
+    assert len(catalog_body["runs"][0]["artifact_refs"]) == 1
+    assert catalog_body["runs"][0]["artifact_refs"][0]["domain"] == "workflow_pack"

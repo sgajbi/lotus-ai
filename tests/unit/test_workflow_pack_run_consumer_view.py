@@ -63,6 +63,8 @@ def test_workflow_pack_run_consumer_view_groups_runtime_review_and_provenance() 
         descriptor.evidence_type == "task_contract"
         for descriptor in consumer_view.provenance.evidence_descriptors
     )
+    assert len(consumer_view.provenance.artifact_refs) == 1
+    assert consumer_view.provenance.artifact_refs[0].domain == "workflow_pack"
 
 
 def test_workflow_pack_run_consumer_view_rejects_unknown_run() -> None:
