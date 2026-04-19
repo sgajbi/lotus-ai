@@ -25,6 +25,7 @@ from app.services.access_control_authorization import (
     require_authorized,
 )
 from app.services.workflow_pack_run_ledger import (
+    ensure_workflow_pack_run_store_ready,
     map_workflow_pack_run_event_record,
     map_workflow_pack_run_record,
 )
@@ -37,6 +38,7 @@ def apply_workflow_pack_run_review_action(
     run_id: str,
     request: WorkflowPackRunReviewActionRequest,
 ) -> WorkflowPackRunReviewActionResponse:
+    ensure_workflow_pack_run_store_ready()
     store = get_workflow_pack_run_store()
     run = store.get_run(run_id=run_id)
     if run is None:

@@ -242,6 +242,7 @@ Before treating any workflow-pack-enabled path as operator-ready:
 14. apply `POST /platform/workflow-packs/runs/{run_id}/review-actions` only to record bounded ledger review posture; do not treat it as business approval, consent, booking, or workflow-authority transfer, and during the current bounded rollout limit callers to the original active registered workflow caller app or a caller authorized for async control-plane actions
 15. when using `REVISE` or `SUPERSEDE`, confirm the replacement run id belongs to the same pack family so lineage remains reconstructable
 16. when `LOTUS_AI_WORKFLOW_PACK_RUN_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_run_store` block in `GET /platform/runtime-status` reports `READY` before treating the run ledger as restart-safe durable truth
+17. if the embedded `workflow_pack_run_store` block is not `READY`, treat `GET /platform/workflow-packs/runs`, `GET /platform/workflow-packs/runs/{run_id}`, `GET /platform/workflow-packs/runs/{run_id}/consumer-view`, `GET /platform/workflow-packs/runs/{run_id}/operator-profile`, `POST /platform/workflow-packs/runs/{run_id}/review-actions`, `POST /platform/workflow-packs/execute`, and pack-backed `POST /ai/tasks/execute` requests as governed `503` degraded-state signals rather than as missing data, missing runs, or transient UI-only faults
 
 ## Durable Async Recovery
 

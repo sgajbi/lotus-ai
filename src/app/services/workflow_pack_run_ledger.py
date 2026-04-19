@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.contracts.tasks import TaskExecutionResponse
 from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.contracts.workflow_pack_runs import (
@@ -42,6 +43,7 @@ from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from app.services.workflow_pack_run_supportability import (
     resolve_workflow_pack_run_record_supportability_status,
 )
+from app.services.runtime_readiness import get_workflow_pack_run_store_runtime_status
 
 
 @dataclass(frozen=True)
@@ -51,7 +53,12 @@ class WorkflowPackRunLoadedContext:
     events: list[WorkflowPackRunEventRecord]
 
 
+class WorkflowPackRunStoreUnavailableError(RuntimeError):
+    pass
+
+
 def load_workflow_pack_run_context(*, run_id: str) -> WorkflowPackRunLoadedContext:
+    ensure_workflow_pack_run_store_ready()
     store = get_workflow_pack_run_store()
     record = store.get_run(run_id=run_id)
     if record is None:
@@ -79,6 +86,7 @@ def build_workflow_pack_run_catalog(
     workflow_authority_owner: str | None = None,
     limit: int = 100,
 ) -> WorkflowPackRunCatalogResponse:
+    ensure_workflow_pack_run_store_ready()
     store = get_workflow_pack_run_store()
     runs = [map_workflow_pack_run_record(record, store=store) for record in store.list_runs()]
     filtered_runs = _filter_workflow_pack_runs(
@@ -209,6 +217,7 @@ def record_registered_workflow_pack_run(
     registration: WorkflowPackRegistrationDescriptor,
     workflow_surface: str | None,
 ) -> WorkflowPackRunDescriptor:
+    ensure_workflow_pack_run_store_ready()
     run_id = _build_workflow_pack_run_id(
         pack_family=registration.pack_family,
         request_id=context.request_id,
@@ -280,6 +289,16 @@ def record_registered_workflow_pack_run(
 
 def build_workflow_pack_run_id(*, pack_family: str, request_id: str) -> str:
     return _build_workflow_pack_run_id(pack_family=pack_family, request_id=request_id)
+
+
+def ensure_workflow_pack_run_store_ready() -> None:
+    status_descriptor = get_workflow_pack_run_store_runtime_status()
+    if status_descriptor.status is RuntimeReadinessStatus.READY:
+        return
+    raise WorkflowPackRunStoreUnavailableError(
+        "Workflow-pack run store is not ready. "
+        f"Current status is `{status_descriptor.status.value}`. {status_descriptor.detail}"
+    )
 
 
 def _build_workflow_pack_run_id(*, pack_family: str, request_id: str) -> str:

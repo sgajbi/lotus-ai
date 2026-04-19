@@ -33,6 +33,7 @@ from app.services.workflow_pack_control import (
 from app.services.workflow_pack_activation import evaluate_workflow_pack_eligibility
 from app.services.workflow_pack_execution import execute_workflow_pack
 from app.services.workflow_pack_run_ledger import (
+    WorkflowPackRunStoreUnavailableError,
     build_workflow_pack_run_catalog,
     build_workflow_pack_run_detail,
 )
@@ -133,7 +134,7 @@ async def evaluate_workflow_pack_eligibility_route(
         404: {"description": "Workflow-pack registration not found."},
         409: {"description": "Workflow-pack execution binding is not available for this request."},
         422: {"description": "Workflow-pack execution payload is invalid for the requested pack."},
-        503: {"description": "Workflow-pack registry store is not ready."},
+        503: {"description": "Workflow-pack runtime dependency store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
@@ -143,6 +144,8 @@ async def execute_workflow_pack_route(
     try:
         return execute_workflow_pack(request)
     except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except WorkflowPackRunStoreUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
@@ -183,6 +186,7 @@ async def get_workflow_pack_control_history_route(
     responses={
         200: {"description": "Workflow-pack run catalog returned successfully."},
         422: {"description": "Invalid query parameters supplied."},
+        503: {"description": "Workflow-pack run store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
@@ -230,18 +234,21 @@ async def get_workflow_pack_run_catalog_route(
         description="Maximum number of workflow-pack runs to return after filtering.",
     ),
 ) -> WorkflowPackRunCatalogResponse:
-    return build_workflow_pack_run_catalog(
-        registration_ref=registration_ref,
-        pack_id=pack_id,
-        caller_app=caller_app,
-        tenant_id=tenant_id,
-        workflow_surface=workflow_surface,
-        runtime_state=runtime_state,
-        review_state=review_state,
-        supportability_status=supportability_status,
-        workflow_authority_owner=workflow_authority_owner,
-        limit=limit,
-    )
+    try:
+        return build_workflow_pack_run_catalog(
+            registration_ref=registration_ref,
+            pack_id=pack_id,
+            caller_app=caller_app,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+            runtime_state=runtime_state,
+            review_state=review_state,
+            supportability_status=supportability_status,
+            workflow_authority_owner=workflow_authority_owner,
+            limit=limit,
+        )
+    except WorkflowPackRunStoreUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get(
@@ -255,11 +262,15 @@ async def get_workflow_pack_run_catalog_route(
     responses={
         200: {"description": "Workflow-pack run detail returned successfully."},
         404: {"description": "Unknown workflow-pack run identifier."},
+        503: {"description": "Workflow-pack run store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
 async def get_workflow_pack_run_detail_route(run_id: str) -> WorkflowPackRunDetailResponse:
-    return build_workflow_pack_run_detail(run_id=run_id)
+    try:
+        return build_workflow_pack_run_detail(run_id=run_id)
+    except WorkflowPackRunStoreUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get(
@@ -274,13 +285,17 @@ async def get_workflow_pack_run_detail_route(run_id: str) -> WorkflowPackRunDeta
     responses={
         200: {"description": "Workflow-pack run consumer view returned successfully."},
         404: {"description": "Unknown workflow-pack run identifier."},
+        503: {"description": "Workflow-pack run store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
 async def get_workflow_pack_run_consumer_view_route(
     run_id: str,
 ) -> WorkflowPackRunConsumerViewResponse:
-    return build_workflow_pack_run_consumer_view(run_id=run_id)
+    try:
+        return build_workflow_pack_run_consumer_view(run_id=run_id)
+    except WorkflowPackRunStoreUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get(
@@ -295,13 +310,17 @@ async def get_workflow_pack_run_consumer_view_route(
     responses={
         200: {"description": "Workflow-pack run operator profile returned successfully."},
         404: {"description": "Unknown workflow-pack run identifier."},
+        503: {"description": "Workflow-pack run store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
 async def get_workflow_pack_run_operator_profile_route(
     run_id: str,
 ) -> WorkflowPackRunOperatorProfileResponse:
-    return build_workflow_pack_run_operator_profile(run_id=run_id)
+    try:
+        return build_workflow_pack_run_operator_profile(run_id=run_id)
+    except WorkflowPackRunStoreUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post(
@@ -323,6 +342,7 @@ async def get_workflow_pack_run_operator_profile_route(
             "description": "Workflow-pack review-state action conflicts with the current run posture."
         },
         422: {"description": "Invalid review-state action payload."},
+        503: {"description": "Workflow-pack run store is not ready."},
         500: {"description": "Unexpected server error."},
     },
 )
@@ -330,7 +350,10 @@ async def apply_workflow_pack_run_review_action_route(
     run_id: str,
     request: WorkflowPackRunReviewActionRequest,
 ) -> WorkflowPackRunReviewActionResponse:
-    return apply_workflow_pack_run_review_action(run_id=run_id, request=request)
+    try:
+        return apply_workflow_pack_run_review_action(run_id=run_id, request=request)
+    except WorkflowPackRunStoreUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post(

@@ -247,6 +247,76 @@ def test_workflow_pack_execute_route_degrades_when_registry_store_is_unmigrated(
     assert "MIGRATION_REQUIRED" in execute_response.json()["detail"]
 
 
+def test_workflow_pack_run_routes_degrade_when_sql_run_store_is_unmigrated(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-run-unmigrated-api.db'}"
+
+    with override_runtime_settings(
+        workflow_pack_run_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            catalog_response = durable_client.get("/platform/workflow-packs/runs")
+            detail_response = durable_client.get("/platform/workflow-packs/runs/packrun_missing")
+            consumer_response = durable_client.get(
+                "/platform/workflow-packs/runs/packrun_missing/consumer-view"
+            )
+            operator_response = durable_client.get(
+                "/platform/workflow-packs/runs/packrun_missing/operator-profile"
+            )
+            review_response = durable_client.post(
+                "/platform/workflow-packs/runs/packrun_missing/review-actions",
+                json={
+                    "action_type": "ACCEPT",
+                    "caller_app": "lotus-gateway",
+                    "reviewed_by": "banker.sg.degraded",
+                    "reason": "Run-store readiness should degrade before missing-run handling.",
+                },
+            )
+
+    for response in (
+        catalog_response,
+        detail_response,
+        consumer_response,
+        operator_response,
+        review_response,
+    ):
+        assert response.status_code == 503
+        assert "Workflow-pack run store is not ready." in response.json()["detail"]
+        assert "MIGRATION_REQUIRED" in response.json()["detail"]
+
+
+def test_pack_backed_execution_routes_degrade_when_sql_run_store_is_unmigrated(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-run-execution-unmigrated-api.db'}"
+
+    with override_runtime_settings(
+        workflow_pack_run_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            task_response = durable_client.post(
+                "/ai/tasks/execute",
+                json=advisor_brief_task_execution_request_json(
+                    correlation_id="corr-pack-run-unmigrated-task-001"
+                ),
+            )
+            explicit_response = durable_client.post(
+                "/platform/workflow-packs/execute",
+                json=advisor_brief_workflow_pack_execution_request_json(
+                    correlation_id="corr-pack-run-unmigrated-explicit-001"
+                ),
+            )
+
+    assert task_response.status_code == 503
+    assert "Workflow-pack run store is not ready." in task_response.json()["detail"]
+    assert "MIGRATION_REQUIRED" in task_response.json()["detail"]
+
+    assert explicit_response.status_code == 503
+    assert "Workflow-pack run store is not ready." in explicit_response.json()["detail"]
+    assert "MIGRATION_REQUIRED" in explicit_response.json()["detail"]
+
+
 def test_workflow_pack_run_detail_rejects_unknown_run(client: TestClient) -> None:
     response = client.get("/platform/workflow-packs/runs/unknown-run")
 

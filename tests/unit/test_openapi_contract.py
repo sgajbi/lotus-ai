@@ -280,7 +280,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         spec["paths"]["/platform/workflow-packs/execute"]["post"]["responses"]["503"][
             "description"
         ]
-        == "Workflow-pack registry store is not ready."
+        == "Workflow-pack runtime dependency store is not ready."
     )
     assert spec["paths"]["/platform/workflow-packs/control-history"]["get"]["operationId"] == (
         "getWorkflowPackControlHistory"
@@ -324,6 +324,16 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         "getWorkflowPackRunDetail"
     )
     assert (
+        spec["paths"]["/platform/workflow-packs/runs"]["get"]["responses"]["503"]["description"]
+        == "Workflow-pack run store is not ready."
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}"]["get"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack run store is not ready."
+    )
+    assert (
         spec["paths"]["/platform/workflow-packs/runs/{run_id}/review-actions"]["post"][
             "operationId"
         ]
@@ -347,15 +357,30 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert workflow_pack_run_review_responses["422"]["description"] == (
         "Invalid review-state action payload."
     )
+    assert workflow_pack_run_review_responses["503"]["description"] == (
+        "Workflow-pack run store is not ready."
+    )
     assert (
         spec["paths"]["/platform/workflow-packs/runs/{run_id}/consumer-view"]["get"]["operationId"]
         == "getWorkflowPackRunConsumerView"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}/consumer-view"]["get"][
+            "responses"
+        ]["503"]["description"]
+        == "Workflow-pack run store is not ready."
     )
     assert (
         spec["paths"]["/platform/workflow-packs/runs/{run_id}/operator-profile"]["get"][
             "operationId"
         ]
         == "getWorkflowPackRunOperatorProfile"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}/operator-profile"]["get"][
+            "responses"
+        ]["503"]["description"]
+        == "Workflow-pack run store is not ready."
     )
     assert (
         spec["paths"]["/platform/use-cases/first-production-use-case"]["get"]["operationId"]
@@ -1113,6 +1138,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         "searchRetrievalSources"
     )
     assert spec["paths"]["/ai/tasks/execute"]["post"]["operationId"] == "executeTask"
+    assert (
+        spec["paths"]["/ai/tasks/execute"]["post"]["responses"]["503"]["description"]
+        == "Workflow-pack run store is not ready for this pack-backed task path."
+    )
     assert spec["paths"]["/ai/audit/{request_id}"]["get"]["operationId"] == "getAuditRecord"
     assert spec["paths"]["/ai/audit"]["get"]["operationId"] == "listAuditRecords"
     assert spec["paths"]["/metadata"]["get"]["operationId"] == "getServiceMetadata"
