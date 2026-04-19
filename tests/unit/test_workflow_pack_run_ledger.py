@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from fastapi import HTTPException
 
 from app.contracts.tasks import (
@@ -18,6 +20,7 @@ from app.services.workflow_pack_run_ledger import (
     record_workflow_pack_run_for_task_execution,
 )
 from app.services.workflow_pack_run_review import apply_workflow_pack_run_review_action
+from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunReviewActionRequest,
     WorkflowPackRunReviewActionType,
@@ -335,3 +338,396 @@ def test_review_action_rejects_invalid_transition() -> None:
         assert exc.status_code == 409
     else:
         raise AssertionError("Expected invalid review-state transition to fail")
+
+
+def test_review_action_rejects_unauthorized_caller() -> None:
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id="packrun_advisor_brief_pack_missing",
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.ACCEPT,
+                caller_app="lotus-gateway",
+                reviewed_by="banker.sg.004",
+                reason="Unknown run should fail before authorization is evaluated.",
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 404
+    else:
+        raise AssertionError("Expected unknown workflow-pack run to fail")
+
+    context = build_task_execution_context(
+        TaskExecutionRequest(
+            task_id="explain.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(
+                caller_app="lotus-gateway",
+                correlation_id="corr-pack-run-008",
+            ),
+            context=TaskContextEnvelope(
+                summary="Draft advisor brief from source performance facts.",
+                payload={
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                },
+                source_refs=["lotus-gateway:performance-summary:YTD"],
+            ),
+            expected_output_label=OutputLabel.EXPLANATION_ONLY,
+        )
+    )
+    response = build_task_execution_response(resolved=resolve_task_execution(context=context))
+    recorded = record_workflow_pack_run_for_task_execution(context=context, response=response)
+    assert recorded is not None
+
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id=recorded.run_id,
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.ACCEPT,
+                caller_app="lotus-manage",
+                reviewed_by="banker.sg.004",
+                reason="Caller mismatch should fail.",
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 403
+    else:
+        raise AssertionError("Expected unauthorized review caller to fail")
+
+
+def test_review_action_rejects_replacement_run_for_accept() -> None:
+    context = build_task_execution_context(
+        TaskExecutionRequest(
+            task_id="explain.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(
+                caller_app="lotus-gateway",
+                correlation_id="corr-pack-run-009",
+            ),
+            context=TaskContextEnvelope(
+                summary="Draft advisor brief from source performance facts.",
+                payload={
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                },
+                source_refs=["lotus-gateway:performance-summary:YTD"],
+            ),
+            expected_output_label=OutputLabel.EXPLANATION_ONLY,
+        )
+    )
+    response = build_task_execution_response(resolved=resolve_task_execution(context=context))
+    recorded = record_workflow_pack_run_for_task_execution(context=context, response=response)
+    assert recorded is not None
+
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id=recorded.run_id,
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.ACCEPT,
+                caller_app="lotus-gateway",
+                reviewed_by="banker.sg.005",
+                reason="Accept should not take replacement lineage.",
+                replacement_run_id="packrun_advisor_brief_pack_unused",
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 422
+    else:
+        raise AssertionError("Expected accept action with replacement run id to fail")
+
+
+def test_review_action_rejects_missing_or_unknown_replacement_run() -> None:
+    context = build_task_execution_context(
+        TaskExecutionRequest(
+            task_id="explain.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(
+                caller_app="lotus-gateway",
+                correlation_id="corr-pack-run-010",
+            ),
+            context=TaskContextEnvelope(
+                summary="Draft advisor brief from source performance facts.",
+                payload={
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                },
+                source_refs=["lotus-gateway:performance-summary:YTD"],
+            ),
+            expected_output_label=OutputLabel.EXPLANATION_ONLY,
+        )
+    )
+    response = build_task_execution_response(resolved=resolve_task_execution(context=context))
+    recorded = record_workflow_pack_run_for_task_execution(context=context, response=response)
+    assert recorded is not None
+
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id=recorded.run_id,
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.REVISE,
+                caller_app="lotus-gateway",
+                reviewed_by="banker.sg.006",
+                reason="Revise requires a replacement run id.",
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 422
+    else:
+        raise AssertionError("Expected revise without replacement run id to fail")
+
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id=recorded.run_id,
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.REVISE,
+                caller_app="lotus-gateway",
+                reviewed_by="banker.sg.006",
+                reason="Unknown replacement run id should fail.",
+                replacement_run_id="packrun_advisor_brief_pack_missing",
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 404
+    else:
+        raise AssertionError("Expected unknown replacement run id to fail")
+
+
+def test_review_action_rejects_invalid_replacement_lineage() -> None:
+    original_context = build_task_execution_context(
+        TaskExecutionRequest(
+            task_id="explain.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(
+                caller_app="lotus-gateway",
+                correlation_id="corr-pack-run-011",
+            ),
+            context=TaskContextEnvelope(
+                summary="Draft advisor brief from source performance facts.",
+                payload={
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                },
+                source_refs=["lotus-gateway:performance-summary:YTD"],
+            ),
+            expected_output_label=OutputLabel.EXPLANATION_ONLY,
+        )
+    )
+    original_response = build_task_execution_response(
+        resolved=resolve_task_execution(context=original_context)
+    )
+    original_run = record_workflow_pack_run_for_task_execution(
+        context=original_context,
+        response=original_response,
+    )
+    assert original_run is not None
+
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id=original_run.run_id,
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.REVISE,
+                caller_app="lotus-gateway",
+                reviewed_by="banker.sg.007",
+                reason="Self lineage should fail.",
+                replacement_run_id=original_run.run_id,
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 409
+    else:
+        raise AssertionError("Expected self replacement lineage to fail")
+
+    replacement_context = build_task_execution_context(
+        TaskExecutionRequest(
+            task_id="explain.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(
+                caller_app="lotus-gateway",
+                correlation_id="corr-pack-run-012",
+            ),
+            context=TaskContextEnvelope(
+                summary="Draft revised advisor brief from source performance facts.",
+                payload={
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.35,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.58,
+                    },
+                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                },
+                source_refs=["lotus-gateway:performance-summary:YTD"],
+            ),
+            expected_output_label=OutputLabel.EXPLANATION_ONLY,
+        )
+    )
+    replacement_response = build_task_execution_response(
+        resolved=resolve_task_execution(context=replacement_context)
+    )
+    replacement_run = record_workflow_pack_run_for_task_execution(
+        context=replacement_context,
+        response=replacement_response,
+    )
+    assert replacement_run is not None
+
+    store = get_workflow_pack_run_store()
+    replacement_record = store.get_run(run_id=replacement_run.run_id)
+    assert replacement_record is not None
+    store.save_run(replace(replacement_record, pack_family="different_family"))
+
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id=original_run.run_id,
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.REVISE,
+                caller_app="lotus-gateway",
+                reviewed_by="banker.sg.007",
+                reason="Cross-family lineage should fail.",
+                replacement_run_id=replacement_run.run_id,
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 409
+    else:
+        raise AssertionError("Expected cross-family replacement lineage to fail")
+
+    store.save_run(
+        replace(
+            replacement_record,
+            supersedes_run_id="packrun_advisor_brief_pack_already_linked",
+        )
+    )
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id=original_run.run_id,
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.REVISE,
+                caller_app="lotus-gateway",
+                reviewed_by="banker.sg.007",
+                reason="Replacement already linked should fail.",
+                replacement_run_id=replacement_run.run_id,
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 409
+    else:
+        raise AssertionError("Expected already-linked replacement lineage to fail")
+
+
+def test_review_action_allows_supersede_after_acceptance() -> None:
+    original_context = build_task_execution_context(
+        TaskExecutionRequest(
+            task_id="explain.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(
+                caller_app="lotus-gateway",
+                correlation_id="corr-pack-run-013",
+            ),
+            context=TaskContextEnvelope(
+                summary="Draft advisor brief from source performance facts.",
+                payload={
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                },
+                source_refs=["lotus-gateway:performance-summary:YTD"],
+            ),
+            expected_output_label=OutputLabel.EXPLANATION_ONLY,
+        )
+    )
+    original_response = build_task_execution_response(
+        resolved=resolve_task_execution(context=original_context)
+    )
+    original_run = record_workflow_pack_run_for_task_execution(
+        context=original_context,
+        response=original_response,
+    )
+    assert original_run is not None
+
+    replacement_context = build_task_execution_context(
+        TaskExecutionRequest(
+            task_id="explain.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(
+                caller_app="lotus-gateway",
+                correlation_id="corr-pack-run-014",
+            ),
+            context=TaskContextEnvelope(
+                summary="Draft superseding advisor brief from source performance facts.",
+                payload={
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.4,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.53,
+                    },
+                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                },
+                source_refs=["lotus-gateway:performance-summary:YTD"],
+            ),
+            expected_output_label=OutputLabel.EXPLANATION_ONLY,
+        )
+    )
+    replacement_response = build_task_execution_response(
+        resolved=resolve_task_execution(context=replacement_context)
+    )
+    replacement_run = record_workflow_pack_run_for_task_execution(
+        context=replacement_context,
+        response=replacement_response,
+    )
+    assert replacement_run is not None
+
+    apply_workflow_pack_run_review_action(
+        run_id=original_run.run_id,
+        request=WorkflowPackRunReviewActionRequest(
+            action_type=WorkflowPackRunReviewActionType.ACCEPT,
+            caller_app="lotus-gateway",
+            reviewed_by="banker.sg.008",
+            reason="Initial accepted draft.",
+        ),
+    )
+
+    review_response = apply_workflow_pack_run_review_action(
+        run_id=original_run.run_id,
+        request=WorkflowPackRunReviewActionRequest(
+            action_type=WorkflowPackRunReviewActionType.SUPERSEDE,
+            caller_app="lotus-gateway",
+            reviewed_by="banker.sg.008",
+            reason="A newer draft superseded the accepted version.",
+            replacement_run_id=replacement_run.run_id,
+        ),
+    )
+
+    assert review_response.run.review_state.value == "SUPERSEDED"
+    assert review_response.run.superseded_by_run_id == replacement_run.run_id
