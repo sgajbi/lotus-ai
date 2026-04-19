@@ -293,6 +293,24 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         ]
         == "applyWorkflowPackRunReviewAction"
     )
+    workflow_pack_run_review_responses = spec["paths"][
+        "/platform/workflow-packs/runs/{run_id}/review-actions"
+    ]["post"]["responses"]
+    assert workflow_pack_run_review_responses["200"]["description"] == (
+        "Workflow-pack run review action applied successfully."
+    )
+    assert workflow_pack_run_review_responses["403"]["description"] == (
+        "Caller is not currently authorized for workflow-pack review-state actions."
+    )
+    assert workflow_pack_run_review_responses["404"]["description"] == (
+        "Workflow-pack run or replacement run not found."
+    )
+    assert workflow_pack_run_review_responses["409"]["description"] == (
+        "Workflow-pack review-state action conflicts with the current run posture."
+    )
+    assert workflow_pack_run_review_responses["422"]["description"] == (
+        "Invalid review-state action payload."
+    )
     assert (
         spec["paths"]["/platform/workflow-packs/runs/{run_id}/consumer-view"]["get"]["operationId"]
         == "getWorkflowPackRunConsumerView"
