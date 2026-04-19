@@ -25,33 +25,12 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunReviewActionRequest,
     WorkflowPackRunReviewActionType,
 )
+from tests.support.workflow_pack_fixtures import advisor_brief_task_execution_request
 
 
 def test_record_workflow_pack_run_for_advisor_brief_task_execution() -> None:
     context = build_task_execution_context(
-        TaskExecutionRequest(
-            task_id="explain.v1",
-            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(
-                caller_app="lotus-gateway",
-                correlation_id="corr-pack-run-001",
-            ),
-            context=TaskContextEnvelope(
-                summary="Draft advisor brief from source performance facts.",
-                payload={
-                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
-                    "period": {"period": "YTD"},
-                    "performance": {
-                        "portfolio_return_pct": 1.25,
-                        "benchmark_return_pct": 7.93,
-                        "active_return_pct": -6.68,
-                    },
-                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
-                },
-                source_refs=["lotus-gateway:performance-summary:YTD"],
-            ),
-            expected_output_label=OutputLabel.EXPLANATION_ONLY,
-        )
+        advisor_brief_task_execution_request(correlation_id="corr-pack-run-001")
     )
     response = build_task_execution_response(resolved=resolve_task_execution(context=context))
 
@@ -116,29 +95,7 @@ def test_record_workflow_pack_run_ignores_non_pack_task_execution() -> None:
 
 def test_workflow_pack_run_catalog_and_detail_expose_recorded_history() -> None:
     context = build_task_execution_context(
-        TaskExecutionRequest(
-            task_id="explain.v1",
-            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(
-                caller_app="lotus-gateway",
-                correlation_id="corr-pack-run-003",
-            ),
-            context=TaskContextEnvelope(
-                summary="Draft advisor brief from source performance facts.",
-                payload={
-                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
-                    "period": {"period": "YTD"},
-                    "performance": {
-                        "portfolio_return_pct": 1.25,
-                        "benchmark_return_pct": 7.93,
-                        "active_return_pct": -6.68,
-                    },
-                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
-                },
-                source_refs=["lotus-gateway:performance-summary:YTD"],
-            ),
-            expected_output_label=OutputLabel.EXPLANATION_ONLY,
-        )
+        advisor_brief_task_execution_request(correlation_id="corr-pack-run-003")
     )
     response = build_task_execution_response(resolved=resolve_task_execution(context=context))
     recorded = record_workflow_pack_run_for_task_execution(context=context, response=response)
@@ -168,29 +125,7 @@ def test_workflow_pack_run_detail_rejects_unknown_run() -> None:
 
 def test_accept_review_action_updates_review_state_and_records_history() -> None:
     context = build_task_execution_context(
-        TaskExecutionRequest(
-            task_id="explain.v1",
-            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(
-                caller_app="lotus-gateway",
-                correlation_id="corr-pack-run-004",
-            ),
-            context=TaskContextEnvelope(
-                summary="Draft advisor brief from source performance facts.",
-                payload={
-                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
-                    "period": {"period": "YTD"},
-                    "performance": {
-                        "portfolio_return_pct": 1.25,
-                        "benchmark_return_pct": 7.93,
-                        "active_return_pct": -6.68,
-                    },
-                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
-                },
-                source_refs=["lotus-gateway:performance-summary:YTD"],
-            ),
-            expected_output_label=OutputLabel.EXPLANATION_ONLY,
-        )
+        advisor_brief_task_execution_request(correlation_id="corr-pack-run-004")
     )
     response = build_task_execution_response(resolved=resolve_task_execution(context=context))
     recorded = record_workflow_pack_run_for_task_execution(context=context, response=response)
@@ -218,29 +153,7 @@ def test_accept_review_action_updates_review_state_and_records_history() -> None
 
 def test_revise_review_action_links_replacement_run_and_preserves_lineage() -> None:
     original_context = build_task_execution_context(
-        TaskExecutionRequest(
-            task_id="explain.v1",
-            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(
-                caller_app="lotus-gateway",
-                correlation_id="corr-pack-run-005",
-            ),
-            context=TaskContextEnvelope(
-                summary="Draft advisor brief from source performance facts.",
-                payload={
-                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
-                    "period": {"period": "YTD"},
-                    "performance": {
-                        "portfolio_return_pct": 1.25,
-                        "benchmark_return_pct": 7.93,
-                        "active_return_pct": -6.68,
-                    },
-                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
-                },
-                source_refs=["lotus-gateway:performance-summary:YTD"],
-            ),
-            expected_output_label=OutputLabel.EXPLANATION_ONLY,
-        )
+        advisor_brief_task_execution_request(correlation_id="corr-pack-run-005")
     )
     original_response = build_task_execution_response(
         resolved=resolve_task_execution(context=original_context)
@@ -251,28 +164,11 @@ def test_revise_review_action_links_replacement_run_and_preserves_lineage() -> N
     assert original_run is not None
 
     revised_context = build_task_execution_context(
-        TaskExecutionRequest(
-            task_id="explain.v1",
-            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
-            caller=CallerMetadata(
-                caller_app="lotus-gateway",
-                correlation_id="corr-pack-run-006",
-            ),
-            context=TaskContextEnvelope(
-                summary="Draft revised advisor brief from source performance facts.",
-                payload={
-                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
-                    "period": {"period": "YTD"},
-                    "performance": {
-                        "portfolio_return_pct": 1.55,
-                        "benchmark_return_pct": 7.93,
-                        "active_return_pct": -6.38,
-                    },
-                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
-                },
-                source_refs=["lotus-gateway:performance-summary:YTD"],
-            ),
-            expected_output_label=OutputLabel.EXPLANATION_ONLY,
+        advisor_brief_task_execution_request(
+            correlation_id="corr-pack-run-006",
+            summary="Draft revised advisor brief from source performance facts.",
+            portfolio_return_pct=1.55,
+            active_return_pct=-6.38,
         )
     )
     revised_response = build_task_execution_response(

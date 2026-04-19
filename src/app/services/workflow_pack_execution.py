@@ -103,7 +103,7 @@ def _validate_execution_binding(
         )
     if not binding.validate_task_request_payload(payload=request.task_request.context.payload):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=(
                 f"{request.pack_id}@{request.version} requires the bound workflow-pack source "
                 "payload sections declared for its current execution binding."

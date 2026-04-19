@@ -53,7 +53,7 @@ def apply_workflow_pack_run_review_action(
         )
     elif request.replacement_run_id is not None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=(
                 "replacement_run_id is only allowed for REVISE or SUPERSEDE review-state actions."
             ),
@@ -228,7 +228,7 @@ def _require_replacement_run(
 ) -> WorkflowPackRunRecord:
     if not replacement_run_id:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="replacement_run_id is required for REVISE or SUPERSEDE review-state actions.",
         )
     replacement_run = get_workflow_pack_run_store().get_run(run_id=replacement_run_id)
