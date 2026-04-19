@@ -276,6 +276,40 @@ def test_workflow_pack_run_review_action_updates_review_state(client: TestClient
     assert detail_body["review"]["has_review_history"] is True
 
 
+def test_workflow_pack_run_review_action_allows_operator_caller(client: TestClient) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-review-operator-001"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-platform",
+            "reviewed_by": "ops.sg.platform.001",
+            "reason": "Platform operator recorded bounded review acceptance.",
+        },
+    )
+
+    assert review_response.status_code == 200
+    review_body = review_response.json()
+    assert review_body["run"]["review_state"] == "ACCEPTED"
+    assert review_body["run"]["allowed_review_actions"] == ["SUPERSEDE"]
+    assert review_body["events"][0]["event_type"] == "REVIEW_STATE_UPDATED"
+    assert review_body["events"][0]["actor"] == "review:ops.sg.platform.001"
+
+    catalog_response = client.get("/platform/workflow-packs/runs")
+    assert catalog_response.status_code == 200
+    catalog_run = catalog_response.json()["runs"][0]
+    assert catalog_run["review_summary"]["latest_review_actor"] == "review:ops.sg.platform.001"
+    assert catalog_run["review_summary"]["review_transition_count"] == 1
+
+
 def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(
     client: TestClient,
 ) -> None:
