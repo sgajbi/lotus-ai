@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
+from app.services.workflow_pack_phase1_specs import ADVISOR_BRIEF_V1_SPEC
 from app.services.task_execution_models import TaskExecutionContext
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 
@@ -45,14 +46,22 @@ class ResolvedWorkflowPackExecutionBinding:
     registration: WorkflowPackRegistrationDescriptor
 
 
+def _build_execution_binding_from_spec() -> WorkflowPackExecutionBinding:
+    if ADVISOR_BRIEF_V1_SPEC.execution_task_id is None:
+        raise ValueError("Phase-1 execution binding spec missing execution_task_id.")
+    if ADVISOR_BRIEF_V1_SPEC.default_workflow_surface is None:
+        raise ValueError("Phase-1 execution binding spec missing default_workflow_surface.")
+    return WorkflowPackExecutionBinding(
+        pack_id=ADVISOR_BRIEF_V1_SPEC.pack_id,
+        version=ADVISOR_BRIEF_V1_SPEC.version,
+        task_id=ADVISOR_BRIEF_V1_SPEC.execution_task_id,
+        required_payload_keys=ADVISOR_BRIEF_V1_SPEC.required_payload_keys,
+        default_workflow_surface=ADVISOR_BRIEF_V1_SPEC.default_workflow_surface,
+    )
+
+
 _WORKFLOW_PACK_EXECUTION_BINDINGS = (
-    WorkflowPackExecutionBinding(
-        pack_id="advisor_brief.pack",
-        version="v1",
-        task_id="explain.v1",
-        required_payload_keys=frozenset({"portfolio", "period", "performance", "supportability"}),
-        default_workflow_surface="advisor-brief-workspace",
-    ),
+    _build_execution_binding_from_spec(),
 )
 
 
