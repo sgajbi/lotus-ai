@@ -308,6 +308,10 @@ def test_revise_review_action_links_replacement_run_and_preserves_lineage() -> N
     assert review_response.run.review_state.value == "REVISED"
     assert review_response.run.allowed_review_actions == []
     assert review_response.run.superseded_by_run_id == revised_run.run_id
+    assert any(
+        f"Replacement lineage now points to `{revised_run.run_id}`" in line
+        for line in review_response.summary
+    )
     replacement_detail = build_workflow_pack_run_detail(run_id=revised_run.run_id)
     assert replacement_detail.run.supersedes_run_id == original_run.run_id
     assert any(event.event_type.value == "LINEAGE_UPDATED" for event in replacement_detail.events)

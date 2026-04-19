@@ -98,12 +98,12 @@ def apply_workflow_pack_run_review_action(
         version=settings.service_version,
         run=map_workflow_pack_run_record(updated_run, store=store),
         events=[map_workflow_pack_run_event_record(event) for event in recorded_events],
-        summary=[
-            f"Recorded workflow-pack review action `{request.action_type.value}` for `{run.run_id}`.",
-            f"Review state moved from `{run.review_state}` to `{updated_run.review_state}`.",
-            f"Review posture was recorded by `{request.reviewed_by}` for caller `{request.caller_app}`.",
-            f"Recorded reason: {request.reason}",
-        ],
+        summary=_build_review_action_summary(
+            run=run,
+            updated_run=updated_run,
+            request=request,
+            replacement_run=replacement_run,
+        ),
     )
 
 
@@ -249,6 +249,26 @@ def _require_replacement_run(
             ),
         )
     return replacement_run
+
+
+def _build_review_action_summary(
+    *,
+    run: WorkflowPackRunRecord,
+    updated_run: WorkflowPackRunRecord,
+    request: WorkflowPackRunReviewActionRequest,
+    replacement_run: WorkflowPackRunRecord | None,
+) -> list[str]:
+    summary = [
+        f"Recorded workflow-pack review action `{request.action_type.value}` for `{run.run_id}`.",
+        f"Review state moved from `{run.review_state}` to `{updated_run.review_state}`.",
+        f"Review posture was recorded by `{request.reviewed_by}` for caller `{request.caller_app}`.",
+        f"Recorded reason: {request.reason}",
+    ]
+    if replacement_run is not None:
+        summary.append(
+            f"Replacement lineage now points to `{replacement_run.run_id}` for bounded review-state traceability."
+        )
+    return summary
 
 
 def _actor_label(reviewed_by: str) -> str:

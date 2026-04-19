@@ -310,6 +310,103 @@ def test_workflow_pack_run_review_action_allows_operator_caller(client: TestClie
     assert catalog_run["review_summary"]["review_transition_count"] == 1
 
 
+def test_workflow_pack_run_review_action_rejects_unbounded_caller(client: TestClient) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-review-forbidden-001"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-manage",
+            "reviewed_by": "banker.sg.forbidden.001",
+            "reason": "Cross-app review caller should remain blocked.",
+        },
+    )
+
+    assert review_response.status_code == 403
+    assert (
+        review_response.json()["detail"]
+        == "Workflow-pack review-state actions are currently limited to the original caller app or the lotus-platform operator caller while downstream review integration remains bounded."
+    )
+
+    detail_response = client.get(f"/platform/workflow-packs/runs/{run_id}")
+    assert detail_response.status_code == 200
+    detail_body = detail_response.json()
+    assert detail_body["run"]["review_state"] == "AWAITING_REVIEW"
+    assert detail_body["review"]["review_transition_count"] == 0
+    assert len(detail_body["events"]) == 1
+    assert detail_body["events"][0]["event_type"] == "RUN_RECORDED"
+
+
+def test_workflow_pack_run_review_action_revise_links_replacement_lineage(client: TestClient) -> None:
+    original_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-001"
+        ),
+    )
+    assert original_execute_response.status_code == 200
+
+    revised_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-002",
+            summary="Draft revised advisor brief from source performance facts.",
+            portfolio_return_pct=1.55,
+            active_return_pct=-6.38,
+        ),
+    )
+    assert revised_execute_response.status_code == 200
+
+    runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+    original_run_id = next(
+        run["run_id"] for run in runs if run["correlation_id"] == "corr-pack-run-api-revise-001"
+    )
+    revised_run_id = next(
+        run["run_id"] for run in runs if run["correlation_id"] == "corr-pack-run-api-revise-002"
+    )
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{original_run_id}/review-actions",
+        json={
+            "action_type": "REVISE",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.revise.001",
+            "reason": "Reviewer requested a revised advisor brief draft.",
+            "replacement_run_id": revised_run_id,
+        },
+    )
+
+    assert review_response.status_code == 200
+    review_body = review_response.json()
+    assert review_body["run"]["review_state"] == "REVISED"
+    assert review_body["run"]["superseded_by_run_id"] == revised_run_id
+    assert review_body["run"]["allowed_review_actions"] == []
+    assert any(event["event_type"] == "LINEAGE_UPDATED" for event in review_body["events"])
+    assert any(
+        f"Replacement lineage now points to `{revised_run_id}`" in line
+        for line in review_body["summary"]
+    )
+
+    replacement_detail_response = client.get(
+        f"/platform/workflow-packs/runs/{revised_run_id}"
+    )
+    assert replacement_detail_response.status_code == 200
+    replacement_detail_body = replacement_detail_response.json()
+    assert replacement_detail_body["run"]["supersedes_run_id"] == original_run_id
+    assert any(
+        event["event_type"] == "LINEAGE_UPDATED"
+        for event in replacement_detail_body["events"]
+    )
+
+
 def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(
     client: TestClient,
 ) -> None:
