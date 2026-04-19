@@ -111,7 +111,11 @@ def test_workflow_pack_run_catalog_and_detail_expose_recorded_history() -> None:
     assert catalog.filters_applied == {"limit": 100}
     assert catalog.awaiting_review_count == 1
     assert catalog.completed_count == 1
-    assert "Phase-1 recorded runs now emit governed workflow-pack artifact refs" in catalog.notes[3]
+    assert catalog.ready_count == 0
+    assert catalog.action_required_count == 1
+    assert catalog.historical_count == 0
+    assert "shared run-supportability seam" in catalog.notes[3]
+    assert "Phase-1 recorded runs now emit governed workflow-pack artifact refs" in catalog.notes[4]
     detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
     assert detail.run.run_id == recorded.run_id
     assert len(detail.run.artifact_refs) == 1
@@ -173,6 +177,9 @@ def test_workflow_pack_run_catalog_filters_by_supportability_and_limit() -> None
     assert [run.run_id for run in filtered_catalog.runs] == [awaiting_run.run_id]
     assert filtered_catalog.awaiting_review_count == 1
     assert filtered_catalog.completed_count == 1
+    assert filtered_catalog.ready_count == 0
+    assert filtered_catalog.action_required_count == 1
+    assert filtered_catalog.historical_count == 0
 
 
 def test_workflow_pack_run_detail_rejects_unknown_run() -> None:

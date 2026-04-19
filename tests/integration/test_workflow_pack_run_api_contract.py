@@ -20,6 +20,9 @@ def test_workflow_pack_run_catalog_starts_empty(client: TestClient) -> None:
     assert body["run_store_mode"] == "memory"
     assert body["run_count"] == 0
     assert body["filters_applied"] == {"limit": 100}
+    assert body["ready_count"] == 0
+    assert body["action_required_count"] == 0
+    assert body["historical_count"] == 0
     assert body["runs"] == []
 
 
@@ -40,6 +43,9 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
     assert catalog_body["filters_applied"] == {"limit": 100}
     assert catalog_body["awaiting_review_count"] == 1
     assert catalog_body["completed_count"] == 1
+    assert catalog_body["ready_count"] == 0
+    assert catalog_body["action_required_count"] == 1
+    assert catalog_body["historical_count"] == 0
     run = catalog_body["runs"][0]
     assert run["pack_id"] == "advisor_brief.pack"
     assert run["registration_ref"] == "advisor_brief.pack@v1"
@@ -122,6 +128,9 @@ def test_workflow_pack_run_catalog_route_supports_bounded_filters(
         "workflow_authority_owner": "lotus-gateway",
     }
     assert body["run_count"] == 1
+    assert body["ready_count"] == 0
+    assert body["action_required_count"] == 1
+    assert body["historical_count"] == 0
     assert [run["run_id"] for run in body["runs"]] == [awaiting_run_id]
 
 

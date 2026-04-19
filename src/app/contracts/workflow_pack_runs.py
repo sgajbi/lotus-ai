@@ -153,6 +153,15 @@ class WorkflowPackRunCatalogResponse(BaseModel):
     completed_count: int = Field(
         description="Number of workflow-pack runs currently in completed runtime posture."
     )
+    ready_count: int = Field(
+        description="Number of returned workflow-pack runs currently in ready supportability posture."
+    )
+    action_required_count: int = Field(
+        description="Number of returned workflow-pack runs currently in action-required supportability posture."
+    )
+    historical_count: int = Field(
+        description="Number of returned workflow-pack runs currently in historical supportability posture."
+    )
     latest_recorded_at: str | None = Field(
         default=None,
         description="Most recent run-record timestamp in the returned set.",

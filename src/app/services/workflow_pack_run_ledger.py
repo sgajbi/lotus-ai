@@ -68,6 +68,9 @@ def build_workflow_pack_run_catalog(
         filters_applied["supportability_status"] = supportability_status.value
     if workflow_authority_owner is not None:
         filters_applied["workflow_authority_owner"] = workflow_authority_owner
+    runs_with_supportability = [
+        (run, resolve_workflow_pack_run_supportability_status(run)) for run in limited_runs
+    ]
     return WorkflowPackRunCatalogResponse(
         service=settings.service_name,
         version=settings.service_version,
@@ -85,12 +88,28 @@ def build_workflow_pack_run_catalog(
             for run in limited_runs
             if run.runtime_state == WorkflowPackRunRuntimeState.COMPLETED
         ),
+        ready_count=sum(
+            1
+            for _, status in runs_with_supportability
+            if status is WorkflowPackRunSupportabilityStatus.READY
+        ),
+        action_required_count=sum(
+            1
+            for _, status in runs_with_supportability
+            if status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED
+        ),
+        historical_count=sum(
+            1
+            for _, status in runs_with_supportability
+            if status is WorkflowPackRunSupportabilityStatus.HISTORICAL
+        ),
         latest_recorded_at=limited_runs[0].created_at if limited_runs else None,
         runs=limited_runs,
         notes=[
             "Workflow-pack run records are reference-oriented and preserve runtime state separately from review state.",
             "The current slice records Phase-1 workflow-pack executions through an explicit execution seam and a narrower binding-backed task fallback while the broader workflow-pack runtime remains under implementation.",
             "Catalog queries are now bounded and can be filtered by registration, workflow-authority owner, runtime state, review state, and shared supportability posture for operator triage.",
+            "Supportability counts are computed server-side from the same shared run-supportability seam used by runtime status and operator profiles.",
             "Phase-1 recorded runs now emit governed workflow-pack artifact refs so support and downstream review can inspect bounded output summaries without pulling raw payloads into the ledger contract.",
         ],
     )
