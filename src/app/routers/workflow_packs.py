@@ -8,6 +8,8 @@ from app.contracts.workflow_packs import (
     WorkflowPackControlHistoryResponse,
     WorkflowPackEligibilityEvaluationRequest,
     WorkflowPackEligibilityEvaluationResponse,
+    WorkflowPackExecutionRequest,
+    WorkflowPackExecutionResponse,
     WorkflowPackRegistrationDetailResponse,
     WorkflowPackRegistryCatalogResponse,
 )
@@ -26,6 +28,7 @@ from app.services.workflow_pack_control import (
     build_workflow_pack_control_history,
 )
 from app.services.workflow_pack_activation import evaluate_workflow_pack_eligibility
+from app.services.workflow_pack_execution import execute_workflow_pack
 from app.services.workflow_pack_run_ledger import (
     build_workflow_pack_run_catalog,
     build_workflow_pack_run_detail,
@@ -98,6 +101,30 @@ async def evaluate_workflow_pack_eligibility_route(
     request: WorkflowPackEligibilityEvaluationRequest,
 ) -> WorkflowPackEligibilityEvaluationResponse:
     return evaluate_workflow_pack_eligibility(request)
+
+
+@router.post(
+    "/platform/workflow-packs/execute",
+    response_model=WorkflowPackExecutionResponse,
+    operation_id="executeWorkflowPack",
+    summary="Execute a lotus-ai workflow pack through the explicit workflow-pack seam",
+    description=(
+        "Evaluates workflow-pack eligibility, runs the bounded lotus-ai task pipeline for the "
+        "declared pack binding, and records an explicit workflow-pack run."
+    ),
+    responses={
+        200: {"description": "Workflow-pack executed successfully."},
+        403: {"description": "Workflow-pack execution is not currently allowed."},
+        404: {"description": "Workflow-pack registration not found."},
+        409: {"description": "Workflow-pack execution binding is not available for this request."},
+        422: {"description": "Workflow-pack execution payload is invalid for the requested pack."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def execute_workflow_pack_route(
+    request: WorkflowPackExecutionRequest,
+) -> WorkflowPackExecutionResponse:
+    return execute_workflow_pack(request)
 
 
 @router.get(

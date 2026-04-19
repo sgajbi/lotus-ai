@@ -255,6 +255,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["operationId"]
         == "evaluateWorkflowPackEligibility"
     )
+    assert spec["paths"]["/platform/workflow-packs/execute"]["post"]["operationId"] == (
+        "executeWorkflowPack"
+    )
     assert spec["paths"]["/platform/workflow-packs/control-history"]["get"]["operationId"] == (
         "getWorkflowPackControlHistory"
     )
@@ -456,6 +459,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     ]
     workflow_pack_eligibility_response_schema = spec["components"]["schemas"][
         "WorkflowPackEligibilityEvaluationResponse"
+    ]
+    workflow_pack_execution_request_schema = spec["components"]["schemas"][
+        "WorkflowPackExecutionRequest"
+    ]
+    workflow_pack_execution_response_schema = spec["components"]["schemas"][
+        "WorkflowPackExecutionResponse"
     ]
     workflow_pack_control_history_schema = spec["components"]["schemas"][
         "WorkflowPackControlHistoryResponse"
@@ -727,6 +736,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "resulting_activation_state" in workflow_pack_control_event_schema["properties"]
     assert "caller_app" in workflow_pack_control_action_request_schema["properties"]
     assert "registration" in workflow_pack_control_action_response_schema["properties"]
+    assert "task_request" in workflow_pack_execution_request_schema["properties"]
+    assert "eligibility" in workflow_pack_execution_response_schema["properties"]
+    assert "execution" in workflow_pack_execution_response_schema["properties"]
+    assert "workflow_pack_run" in workflow_pack_execution_response_schema["properties"]
     assert "run_store_mode" in workflow_pack_run_catalog_schema["properties"]
     assert "awaiting_review_count" in workflow_pack_run_catalog_schema["properties"]
     assert "runs" in workflow_pack_run_catalog_schema["properties"]
@@ -806,6 +819,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     prompt_evidence_schema = spec["components"]["schemas"]["PromptEvidenceReadinessResponse"]
     assert "approval_gate" in prompt_evidence_schema["properties"]
     task_audit_schema = spec["components"]["schemas"]["TaskAuditMetadata"]
+    assert "workflow_pack_run_id" in task_audit_schema["properties"]
     assert "prompt_selection" in task_audit_schema["properties"]
     assert "authorization" in task_audit_schema["properties"]
     audit_record_schema = spec["components"]["schemas"]["AuditRecordResponse"]

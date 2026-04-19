@@ -28,11 +28,13 @@ These are the smallest public integration surfaces and the ones most downstream 
 1. `/ai/tasks/execute`
 2. `/ai/audit`
 3. `/ai/audit/{request_id}`
+4. `/platform/workflow-packs/execute`
 
 The separation matters:
 
 1. `/ai/tasks/execute` is the bounded execution contract,
-2. `/ai/audit` is the persisted execution and evidence review surface.
+2. `/platform/workflow-packs/execute` is the explicit workflow-pack execution contract when a caller needs registered-pack eligibility, run recording, and explicit run identity in one step,
+3. `/ai/audit` is the persisted execution and evidence review surface.
 
 ## Capability and Task-Runtime Surface
 
@@ -74,6 +76,7 @@ platform programs.
    - `/platform/workflow-packs/registry`
    - `/platform/workflow-packs/registry/{pack_id}/{version}`
    - `/platform/workflow-packs/eligibility/evaluate`
+   - `/platform/workflow-packs/execute`
    - `/platform/workflow-packs/control-history`
    - `/platform/workflow-packs/control-actions`
    - `/platform/workflow-packs/runs`
@@ -97,7 +100,7 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 5. `/platform/workflow-packs/runs/{run_id}/review-actions` records bounded actor-attributed review transitions without taking consequence-bearing workflow authority,
 6. `lotus-gateway` now uses that same bounded ledger seam to record advisor-brief review actions and returns refreshed workflow-pack posture through its advisor-brief contract without turning `lotus-ai` into the business-workflow owner,
 7. `lotus-workbench` now has a typed client seam for the downstream advisor-brief review-action route, while UI-triggered business authorization remains a separate future slice,
-8. the current slice records advisor-brief executions through the existing task path while the broader workflow-pack runtime remains future work,
+8. the current slice now executes the Phase-1 advisor-brief path through `/platform/workflow-packs/execute`, while broader multi-pack runtime rollout remains future work,
 9. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode` and `workflow_pack_run_store` so operators can distinguish process-local ledger posture from SQL-backed durable ledger posture.
 
 ## Provider Surface

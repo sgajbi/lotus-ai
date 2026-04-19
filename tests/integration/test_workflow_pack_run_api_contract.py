@@ -79,6 +79,93 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
     assert detail_body["run"]["run_id"] == run["run_id"]
     assert detail_body["run"]["artifact_refs"][0]["source_object_id"] == run["run_id"]
     assert detail_body["events"][0]["event_type"] == "RUN_RECORDED"
+    assert detail_body["run"]["workflow_surface"] == "advisor-brief-workspace"
+
+
+def test_workflow_pack_execute_route_records_explicit_run_and_returns_run_id(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json={
+            "pack_id": "advisor_brief.pack",
+            "version": "v1",
+            "environment": "DEVELOPMENT",
+            "caller_identity_class": "BANKER_PRODUCT",
+            "workflow_surface": "advisor-brief-workspace",
+            "task_request": {
+                "task_id": "explain.v1",
+                "input_mode": "STRUCTURED_CONTEXT",
+                "caller": {
+                    "caller_app": "lotus-gateway",
+                    "correlation_id": "corr-pack-execute-001",
+                },
+                "context": {
+                    "summary": "Draft advisor brief from source performance facts.",
+                    "payload": {
+                        "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                        "period": {"period": "YTD"},
+                        "performance": {
+                            "portfolio_return_pct": 1.25,
+                            "benchmark_return_pct": 7.93,
+                            "active_return_pct": -6.68,
+                        },
+                        "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                    },
+                    "source_refs": ["lotus-gateway:performance-summary:YTD"],
+                },
+                "expected_output_label": "EXPLANATION_ONLY",
+            },
+        },
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    assert body["eligibility"]["allowed"] is True
+    assert body["execution"]["status"] == "COMPLETED"
+    assert (
+        body["execution"]["audit"]["workflow_pack_run_id"]
+        == body["workflow_pack_run"]["run_id"]
+    )
+    assert body["workflow_pack_run"]["workflow_surface"] == "advisor-brief-workspace"
+
+
+def test_workflow_pack_execute_route_rejects_denied_surface(client: TestClient) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json={
+            "pack_id": "advisor_brief.pack",
+            "version": "v1",
+            "environment": "DEVELOPMENT",
+            "caller_identity_class": "BANKER_PRODUCT",
+            "workflow_surface": "unsupported-surface",
+            "task_request": {
+                "task_id": "explain.v1",
+                "input_mode": "STRUCTURED_CONTEXT",
+                "caller": {
+                    "caller_app": "lotus-gateway",
+                    "correlation_id": "corr-pack-execute-denied-001",
+                },
+                "context": {
+                    "summary": "Draft advisor brief from source performance facts.",
+                    "payload": {
+                        "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                        "period": {"period": "YTD"},
+                        "performance": {
+                            "portfolio_return_pct": 1.25,
+                            "benchmark_return_pct": 7.93,
+                            "active_return_pct": -6.68,
+                        },
+                        "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                    },
+                    "source_refs": ["lotus-gateway:performance-summary:YTD"],
+                },
+                "expected_output_label": "EXPLANATION_ONLY",
+            },
+        },
+    )
+
+    assert execute_response.status_code == 403
 
 
 def test_workflow_pack_run_detail_rejects_unknown_run(client: TestClient) -> None:

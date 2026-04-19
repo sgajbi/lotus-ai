@@ -70,7 +70,7 @@ Implemented on the current branch:
 1. workflow-pack run-ledger contract models for runtime state, review state, lineage-ready run identity, and run-history events,
 2. workflow-pack run store seam and in-memory repository implementation,
 3. read-only workflow-pack run catalog and detail APIs,
-4. Phase-1 runtime recording for `advisor_brief.pack` executions through the existing `explain.v1` task path,
+4. Phase-1 explicit execution for `advisor_brief.pack`, with run recording bound to a dedicated workflow-pack execution route instead of relying only on the generic task path,
 5. migration-managed SQL-backed workflow-pack run and event tables plus a SQLAlchemy repository implementation,
 6. runtime-readiness, startup-policy, and platform-status integration for the workflow-pack run store so durable ledger posture is inspectable instead of implied,
 7. bounded review-action contracts and service seams for actor-attributed `ACCEPT`, `REJECT`, `REVISE`, `SUPERSEDE`, and `ABANDON` transitions, including lineage preservation between original and replacement runs,
@@ -827,7 +827,7 @@ Current branch status:
 2. actor attribution, timestamps, invalid-transition rejection, and supersession lineage are now covered by unit and integration tests,
 3. Phase-1 advisor-brief run records now emit governed workflow-pack artifact refs through the shared artifact backbone so support and downstream reviewers can inspect bounded output-summary provenance without expanding the ledger contract into raw payload transport,
 4. a bounded workflow-pack run operator profile is now exposed for support and operator diagnosis, making review-pending, failure, expiry, supersession, partial-output, evidence, and artifact posture visible without collapsing business workflow authority into lotus-ai,
-5. `lotus-gateway` now derives the advisor-brief pack-run identity from the bounded `request_id`, reads the consumer-view and operator-profile surfaces, and emits one compact `workflow_pack_run` contract on the advisor-brief response,
+5. `lotus-gateway` now receives the advisor-brief pack-run identity directly from the explicit workflow-pack execution response, reads the consumer-view and operator-profile surfaces, and emits one compact `workflow_pack_run` contract on the advisor-brief response,
 6. `lotus-workbench` now consumes that compact `workflow_pack_run` contract through the existing advisor-brief supportability, review-notes, and audit-provenance path rather than introducing a parallel operator-only UI concept,
 7. consequence-bearing meaning, user-entitlement shaping for review actions, and broader non-reference workflow-pack runtime adoption remain future slices.
 

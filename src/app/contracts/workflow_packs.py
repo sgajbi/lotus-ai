@@ -4,6 +4,9 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
+from app.contracts.workflow_pack_runs import WorkflowPackRunDescriptor
+
 
 class WorkflowPackRegistrationStatus(str, Enum):
     DISCOVERED = "DISCOVERED"
@@ -365,4 +368,42 @@ class WorkflowPackControlActionResponse(BaseModel):
     )
     summary: list[str] = Field(
         description="Human-readable summary of the applied workflow-pack control action."
+    )
+
+
+class WorkflowPackExecutionRequest(BaseModel):
+    pack_id: str = Field(description="Workflow-pack family identifier to execute.")
+    version: str = Field(description="Workflow-pack version to execute.")
+    environment: WorkflowPackEnvironment = Field(
+        description="Execution environment where the workflow pack is being requested."
+    )
+    caller_identity_class: WorkflowPackCallerIdentityClass = Field(
+        description="Bounded caller identity class requesting workflow-pack execution."
+    )
+    workflow_surface: str | None = Field(
+        default=None,
+        description="Named workflow surface requesting the workflow-pack execution.",
+    )
+    task_request: TaskExecutionRequest = Field(
+        description=(
+            "Bounded lotus-ai task request that carries the structured execution context for the "
+            "workflow pack."
+        )
+    )
+
+
+class WorkflowPackExecutionResponse(BaseModel):
+    service: str = Field(description="Service name emitting the workflow-pack execution response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    eligibility: WorkflowPackEligibilityEvaluationResponse = Field(
+        description="Eligibility decision applied before the workflow-pack execution ran."
+    )
+    execution: TaskExecutionResponse = Field(
+        description="Bounded task execution response emitted by the workflow-pack execution path."
+    )
+    workflow_pack_run: WorkflowPackRunDescriptor = Field(
+        description="Workflow-pack run recorded for the explicit execution request."
+    )
+    summary: list[str] = Field(
+        description="Human-readable summary of the explicit workflow-pack execution posture."
     )

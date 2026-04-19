@@ -84,7 +84,26 @@ def record_workflow_pack_run_for_task_execution(
     if registration is None:
         return None
 
-    run_id = f"packrun_{registration.pack_family}_{context.request_id}"
+    workflow_surface = _resolve_workflow_surface_for_task_execution(context=context)
+    return record_registered_workflow_pack_run(
+        context=context,
+        response=response,
+        registration=registration,
+        workflow_surface=workflow_surface,
+    )
+
+
+def record_registered_workflow_pack_run(
+    *,
+    context: TaskExecutionContext,
+    response: TaskExecutionResponse,
+    registration: WorkflowPackRegistrationDescriptor,
+    workflow_surface: str | None,
+) -> WorkflowPackRunDescriptor:
+    run_id = _build_workflow_pack_run_id(
+        pack_family=registration.pack_family,
+        request_id=context.request_id,
+    )
     created_at = response.audit.generated_at
     review_required = registration.default_execution_mode.value == "REVIEW_GATED"
     review_state = (
@@ -113,7 +132,7 @@ def record_workflow_pack_run_for_task_execution(
         caller_app=context.request.caller.caller_app,
         correlation_id=context.request.caller.correlation_id,
         tenant_id=context.request.caller.tenant_id,
-        workflow_surface=None,
+        workflow_surface=workflow_surface,
         workflow_authority_owner=registration.workflow_authority_owner,
         runtime_state=WorkflowPackRunRuntimeState.COMPLETED.value,
         review_state=review_state.value,
@@ -140,8 +159,7 @@ def record_workflow_pack_run_for_task_execution(
         review_state=record.review_state,
         actor="lotus-ai.workflow-pack-run-ledger",
         message=(
-            "Workflow-pack run recorded from the Phase-1 advisor-brief task execution path with "
-            "runtime and review posture captured separately."
+            "Workflow-pack run recorded with runtime and review posture captured separately."
         ),
         recorded_at=created_at,
     )
@@ -166,6 +184,20 @@ def _resolve_registration_for_task_execution(
 
 def _is_advisor_brief_payload(payload: dict[str, object]) -> bool:
     return {"portfolio", "period", "performance", "supportability"}.issubset(payload.keys())
+
+
+def _resolve_workflow_surface_for_task_execution(*, context: TaskExecutionContext) -> str | None:
+    if _is_advisor_brief_payload(context.request.context.payload):
+        return "advisor-brief-workspace"
+    return None
+
+
+def build_workflow_pack_run_id(*, pack_family: str, request_id: str) -> str:
+    return _build_workflow_pack_run_id(pack_family=pack_family, request_id=request_id)
+
+
+def _build_workflow_pack_run_id(*, pack_family: str, request_id: str) -> str:
+    return f"packrun_{pack_family}_{request_id}"
 
 
 def map_workflow_pack_run_record(record: WorkflowPackRunRecord) -> WorkflowPackRunDescriptor:
