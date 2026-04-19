@@ -70,7 +70,7 @@ Implemented on the current branch:
 1. workflow-pack run-ledger contract models for runtime state, review state, lineage-ready run identity, and run-history events,
 2. workflow-pack run store seam and in-memory repository implementation,
 3. read-only workflow-pack run catalog and detail APIs,
-4. Phase-1 explicit execution for `advisor_brief.pack`, with run recording bound to a dedicated workflow-pack execution route instead of relying only on the generic task path,
+4. Phase-1 explicit execution for `advisor_brief.pack`, with run recording bound to a dedicated workflow-pack execution route and a reusable internal binding registry instead of relying only on the generic task path,
 5. migration-managed SQL-backed workflow-pack run and event tables plus a SQLAlchemy repository implementation,
 6. runtime-readiness, startup-policy, and platform-status integration for the workflow-pack run store so durable ledger posture is inspectable instead of implied,
 7. bounded review-action contracts and service seams for actor-attributed `ACCEPT`, `REJECT`, `REVISE`, `SUPERSEDE`, and `ABANDON` transitions, including lineage preservation between original and replacement runs,

@@ -112,7 +112,7 @@ Evidence that remains intentionally absent because this RFC is only partially im
 
 1. no durable pack-run ledger schema or storage,
 2. no shared runtime-state plus review-state contract family consumed by gateway and Workbench,
-3. no broad multi-pack execution engine beyond the current Phase-1 explicit advisor-brief execution seam.
+3. no broad multi-pack execution engine beyond the current Phase-1 explicit advisor-brief execution seam and internal binding registry.
 
 ## Repository Fit
 

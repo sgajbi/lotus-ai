@@ -19,6 +19,9 @@ from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunRecord,
 )
 from app.services.task_execution_models import TaskExecutionContext
+from app.services.workflow_pack_bindings import (
+    resolve_workflow_pack_execution_binding_for_task,
+)
 from app.services.workflow_pack_run_artifacts import persist_workflow_pack_run_output_artifact
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
@@ -46,7 +49,7 @@ def build_workflow_pack_run_catalog() -> WorkflowPackRunCatalogResponse:
         runs=runs,
         notes=[
             "Workflow-pack run records are reference-oriented and preserve runtime state separately from review state.",
-            "The current slice records Phase-1 advisor-brief executions through the existing bounded task path while the broader workflow-pack runtime remains under implementation.",
+            "The current slice records Phase-1 workflow-pack executions through an explicit execution seam and a narrower binding-backed task fallback while the broader workflow-pack runtime remains under implementation.",
             "Phase-1 recorded runs now emit governed workflow-pack artifact refs so support and downstream review can inspect bounded output summaries without pulling raw payloads into the ledger contract.",
         ],
     )
@@ -80,16 +83,18 @@ def record_workflow_pack_run_for_task_execution(
     context: TaskExecutionContext,
     response: TaskExecutionResponse,
 ) -> WorkflowPackRunDescriptor | None:
-    registration = _resolve_registration_for_task_execution(context=context)
+    binding = resolve_workflow_pack_execution_binding_for_task(context=context)
+    if binding is None:
+        return None
+    registration = get_workflow_pack_registration(pack_id=binding.pack_id, version=binding.version)
     if registration is None:
         return None
 
-    workflow_surface = _resolve_workflow_surface_for_task_execution(context=context)
     return record_registered_workflow_pack_run(
         context=context,
         response=response,
         registration=registration,
-        workflow_surface=workflow_surface,
+        workflow_surface=binding.default_workflow_surface,
     )
 
 
@@ -167,29 +172,6 @@ def record_registered_workflow_pack_run(
     store.save_run(record)
     store.save_event(event)
     return map_workflow_pack_run_record(record)
-
-
-def _resolve_registration_for_task_execution(
-    *,
-    context: TaskExecutionContext,
-) -> WorkflowPackRegistrationDescriptor | None:
-    if context.capability.task_id != "explain.v1":
-        return None
-    if context.request.caller.caller_app != "lotus-gateway":
-        return None
-    if not _is_advisor_brief_payload(context.request.context.payload):
-        return None
-    return get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
-
-
-def _is_advisor_brief_payload(payload: dict[str, object]) -> bool:
-    return {"portfolio", "period", "performance", "supportability"}.issubset(payload.keys())
-
-
-def _resolve_workflow_surface_for_task_execution(*, context: TaskExecutionContext) -> str | None:
-    if _is_advisor_brief_payload(context.request.context.payload):
-        return "advisor-brief-workspace"
-    return None
 
 
 def build_workflow_pack_run_id(*, pack_family: str, request_id: str) -> str:

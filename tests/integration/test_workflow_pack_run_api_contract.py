@@ -130,6 +130,85 @@ def test_workflow_pack_execute_route_records_explicit_run_and_returns_run_id(
     assert body["workflow_pack_run"]["workflow_surface"] == "advisor-brief-workspace"
 
 
+def test_workflow_pack_execute_route_defaults_workflow_surface_from_binding(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json={
+            "pack_id": "advisor_brief.pack",
+            "version": "v1",
+            "environment": "DEVELOPMENT",
+            "caller_identity_class": "BANKER_PRODUCT",
+            "task_request": {
+                "task_id": "explain.v1",
+                "input_mode": "STRUCTURED_CONTEXT",
+                "caller": {
+                    "caller_app": "lotus-gateway",
+                    "correlation_id": "corr-pack-execute-default-surface-001",
+                },
+                "context": {
+                    "summary": "Draft advisor brief from source performance facts.",
+                    "payload": {
+                        "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                        "period": {"period": "YTD"},
+                        "performance": {
+                            "portfolio_return_pct": 1.25,
+                            "benchmark_return_pct": 7.93,
+                            "active_return_pct": -6.68,
+                        },
+                        "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                    },
+                    "source_refs": ["lotus-gateway:performance-summary:YTD"],
+                },
+                "expected_output_label": "EXPLANATION_ONLY",
+            },
+        },
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    assert body["workflow_pack_run"]["workflow_surface"] == "advisor-brief-workspace"
+
+
+def test_workflow_pack_execute_route_rejects_wrong_task_for_binding(client: TestClient) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json={
+            "pack_id": "advisor_brief.pack",
+            "version": "v1",
+            "environment": "DEVELOPMENT",
+            "caller_identity_class": "BANKER_PRODUCT",
+            "workflow_surface": "advisor-brief-workspace",
+            "task_request": {
+                "task_id": "summarize.v1",
+                "input_mode": "STRUCTURED_CONTEXT",
+                "caller": {
+                    "caller_app": "lotus-gateway",
+                    "correlation_id": "corr-pack-execute-wrong-task-001",
+                },
+                "context": {
+                    "summary": "Draft advisor brief from source performance facts.",
+                    "payload": {
+                        "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                        "period": {"period": "YTD"},
+                        "performance": {
+                            "portfolio_return_pct": 1.25,
+                            "benchmark_return_pct": 7.93,
+                            "active_return_pct": -6.68,
+                        },
+                        "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                    },
+                    "source_refs": ["lotus-gateway:performance-summary:YTD"],
+                },
+                "expected_output_label": "EXPLANATION_ONLY",
+            },
+        },
+    )
+
+    assert execute_response.status_code == 409
+
+
 def test_workflow_pack_execute_route_rejects_denied_surface(client: TestClient) -> None:
     execute_response = client.post(
         "/platform/workflow-packs/execute",

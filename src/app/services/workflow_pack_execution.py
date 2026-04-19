@@ -17,11 +17,24 @@ from app.services.task_execution_pipeline import (
     validate_task_request,
 )
 from app.services.workflow_pack_activation import evaluate_workflow_pack_eligibility
+from app.services.workflow_pack_bindings import (
+    WorkflowPackExecutionBinding,
+    get_workflow_pack_execution_binding,
+)
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.workflow_pack_run_ledger import record_registered_workflow_pack_run
 
 
 def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPackExecutionResponse:
+    binding = get_workflow_pack_execution_binding(pack_id=request.pack_id, version=request.version)
+    if binding is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Explicit workflow-pack execution is not implemented for "
+                f"{request.pack_id}@{request.version}."
+            ),
+        )
     registration = get_workflow_pack_registration(pack_id=request.pack_id, version=request.version)
     if registration is None:
         raise HTTPException(
@@ -29,6 +42,7 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
             detail=f"Unknown workflow-pack registration: {request.pack_id}@{request.version}",
         )
 
+    workflow_surface = request.workflow_surface or binding.default_workflow_surface
     eligibility = evaluate_workflow_pack_eligibility(
         WorkflowPackEligibilityEvaluationRequest(
             pack_id=request.pack_id,
@@ -37,7 +51,7 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
             environment=request.environment,
             caller_identity_class=request.caller_identity_class,
             tenant_id=request.task_request.caller.tenant_id,
-            workflow_surface=request.workflow_surface,
+            workflow_surface=workflow_surface,
         )
     )
     if not eligibility.allowed:
@@ -46,7 +60,7 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
         )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
-    _validate_execution_binding(request=request)
+    _validate_execution_binding(request=request, binding=binding)
 
     context = validate_task_request(request.task_request)
     resolved = resolve_task_execution(context=context)
@@ -56,7 +70,7 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
         context=context,
         response=response,
         registration=registration,
-        workflow_surface=request.workflow_surface,
+        workflow_surface=workflow_surface,
     )
     response = _attach_workflow_pack_run_id(response=response, workflow_pack_run=workflow_pack_run)
 
@@ -73,31 +87,24 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
     )
 
 
-def _validate_execution_binding(*, request: WorkflowPackExecutionRequest) -> None:
-    if request.pack_id == "advisor_brief.pack" and request.version == "v1":
-        if request.task_request.task_id != "explain.v1":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="advisor_brief.pack@v1 currently binds to explain.v1 only.",
-            )
-        payload = request.task_request.context.payload
-        if not {"portfolio", "period", "performance", "supportability"}.issubset(payload.keys()):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    "advisor_brief.pack@v1 requires the advisor-brief source payload with "
-                    "portfolio, period, performance, and supportability sections."
-                ),
-            )
-        return
-
-    raise HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail=(
-            f"Explicit workflow-pack execution is not implemented for "
-            f"{request.pack_id}@{request.version}."
-        ),
-    )
+def _validate_execution_binding(
+    *,
+    request: WorkflowPackExecutionRequest,
+    binding: WorkflowPackExecutionBinding,
+) -> None:
+    if request.task_request.task_id != binding.task_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"{request.pack_id}@{request.version} currently binds to {binding.task_id} only.",
+        )
+    if not binding.validate_task_request_payload(payload=request.task_request.context.payload):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"{request.pack_id}@{request.version} requires the bound workflow-pack source "
+                "payload sections declared for its current execution binding."
+            ),
+        )
 
 
 def _attach_workflow_pack_run_id(

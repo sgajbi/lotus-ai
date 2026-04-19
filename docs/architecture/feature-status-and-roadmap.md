@@ -141,7 +141,7 @@ Important limitation:
 
 1. this control plane does not execute workflow logic by itself,
 2. workflow-pack registry activation state and control history can now run durably through the SQL-backed registry store, but broader workflow-pack runtime adoption is still incomplete,
-3. workflow-pack run ledger durability now exists for Phase-1 recorded runs, bounded review transitions are recorded durably, an explicit workflow-pack execution seam now exists for the Phase-1 advisor-brief path, run descriptors emit bounded `allowed_review_actions`, Phase-1 advisor-brief runs now carry governed workflow-pack artifact refs for bounded output-summary review, bounded operator-profile inspection is now available for run-level supportability diagnosis, and a bounded consumer-view contract is now available from lotus-ai, but broader workflow-pack runtime adoption and downstream contract consumption are still incomplete,
+3. workflow-pack run ledger durability now exists for Phase-1 recorded runs, bounded review transitions are recorded durably, an explicit workflow-pack execution seam and reusable binding registry now exist for the Phase-1 advisor-brief path, run descriptors emit bounded `allowed_review_actions`, Phase-1 advisor-brief runs now carry governed workflow-pack artifact refs for bounded output-summary review, bounded operator-profile inspection is now available for run-level supportability diagnosis, and a bounded consumer-view contract is now available from lotus-ai, but broader workflow-pack runtime adoption and downstream contract consumption are still incomplete,
 4. no default-version resolution or broad production activation exists yet,
 5. downstream owner repositories still have to carry the real workflow-bearing implementation and tests.
 
