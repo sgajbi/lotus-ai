@@ -57,15 +57,16 @@ Completed implementation slices on the current branch:
 1. registry contracts, catalog-backed services, and read-only registration APIs,
 2. explicit eligibility evaluation with bounded denial reasons,
 3. bounded control history plus pause, resume, deprecate, and retire actions,
-4. owner-grounded onboarding for the Phase-1 `advisor_brief.pack` family,
-5. documentation, repository context, wiki-source, and branch-hygiene updates.
+4. migration-backed durable workflow-pack registration, activation state, and control-history
+   storage with memory and SQL store modes,
+5. owner-grounded onboarding for the Phase-1 `advisor_brief.pack` family,
+6. documentation, repository context, wiki-source, and branch-hygiene updates.
 
 Still pending before this RFC should be considered fully implemented:
 
-1. durable workflow-pack control history and activation storage,
-2. stronger operator authorization beyond the current bounded caller checks,
-3. broader rollout posture beyond the current pilot and discovery reference family,
-4. convergence with the durable run-ledger and review-state model proposed in `RFC-0033`.
+1. stronger operator authorization beyond the current bounded caller checks,
+2. broader rollout posture beyond the current pilot and discovery reference family,
+3. convergence with the durable run-ledger and review-state model proposed in `RFC-0033`.
 
 ## Requirement Traceability And Evidence
 
@@ -86,7 +87,14 @@ The implemented portions of this RFC map to concrete branch evidence as follows.
    `src/app/services/workflow_pack_control.py`,
    `tests/unit/test_workflow_pack_control.py`,
    `tests/integration/test_workflow_pack_control_api_contract.py`
-5. Phase-1 owner-artifact onboarding and downstream truth preservation for `advisor_brief.pack`:
+5. Durable workflow-pack registration, activation state, and control history through the
+   migration-backed registry store:
+   `src/app/services/workflow_pack_registry_store.py`,
+   `src/app/repositories/sqlalchemy_workflow_pack_registry_repository.py`,
+   `alembic/versions/0029_add_workflow_pack_registry_state_tables.py`,
+   `tests/unit/test_workflow_pack_registry_store.py`,
+   `tests/integration/test_runtime_modes.py`
+6. Phase-1 owner-artifact onboarding and downstream truth preservation for `advisor_brief.pack`:
    `src/app/services/workflow_pack_registry.py`,
    `docs/guides/workflow-pack-owner-onboarding.md`,
    `docs/guides/integration-guide.md`, `docs/runbooks/service-operations.md`,
@@ -94,9 +102,8 @@ The implemented portions of this RFC map to concrete branch evidence as follows.
 
 Open gaps that remain consistent with this RFC's still-pending scope:
 
-1. control history is process-local rather than durable,
-2. operator authorization is bounded but not yet enterprise-strong,
-3. broader activation rollout posture and non-reference workflow-pack families are not yet onboarded.
+1. operator authorization is bounded but not yet enterprise-strong,
+2. broader activation rollout posture and non-reference workflow-pack families are not yet onboarded.
 
 ## Why This RFC Exists
 

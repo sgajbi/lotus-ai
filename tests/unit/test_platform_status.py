@@ -61,6 +61,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
 
     assert status.service == "lotus-ai"
     assert status.access_control_store_mode == "memory"
+    assert status.workflow_pack_registry_store_mode == "memory"
     assert status.access_control_runtime.enforcement_state.value == "FULLY_ENFORCED"
     assert status.access_control_runtime.data_plane_enforced is True
     assert status.access_control_runtime.control_plane_enforced is True
@@ -234,6 +235,7 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     settings.prompt_store_mode = "sqlalchemy"
     settings.retrieval_store_mode = "sqlalchemy"
     settings.access_control_store_mode = "sqlalchemy"
+    settings.workflow_pack_registry_store_mode = "sqlalchemy"
     settings.provider_operations_store_mode = "sqlalchemy"
     settings.async_runtime_store_mode = "sqlalchemy"
     settings.evaluation_runtime_store_mode = "sqlalchemy"

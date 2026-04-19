@@ -58,7 +58,8 @@ Important posture limits:
 4. prompt bodies remain repository-managed even though runtime prompt selection is durable,
 5. workflow-pack registry records are control-plane metadata, not a second editable home for workflow logic,
 6. workflow-pack registrations must point to real owning-repository artifacts rather than placeholder definitions in `lotus-ai`,
-7. the service should be treated as a governed capability layer, not a business-domain authority.
+7. workflow-pack registry and control state can now run either in-memory or through a SQL-backed durable store, but broader workflow-pack runtime rollout is still intentionally narrow,
+8. the service should be treated as a governed capability layer, not a business-domain authority.
 
 ## Architectural Shape
 
@@ -223,12 +224,14 @@ Key health and operator surfaces:
 - `/platform/workflow-packs/registry`
 - `/platform/workflow-packs/eligibility/evaluate`
 - `/platform/workflow-packs/control-history`
+- `/platform/workflow-packs/runs`
 
 Workflow-pack registry records should be read as control-plane onboarding truth:
 
 1. the primary `definition_ref` must resolve to a real owner artifact,
 2. `definition_refs` show the contract, service, router, tests, and optional RFC or UI evidence used to justify the registration,
-3. `lotus-ai` tracks those references for governance, but the implementation remains owned by the downstream repository.
+3. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, activation state and control history are restart-safe only after migrations are applied and `/platform/runtime-status` reports the embedded registry store as `READY`,
+4. `lotus-ai` tracks those references for governance, but the implementation remains owned by the downstream repository.
 
 Operational guidance lives in:
 

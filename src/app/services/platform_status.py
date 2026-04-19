@@ -52,6 +52,7 @@ from app.services.runtime_readiness import (
     get_artifact_store_runtime_status,
     get_audit_store_runtime_status,
     get_retrieval_store_runtime_status,
+    get_workflow_pack_registry_store_runtime_status,
     get_workflow_pack_run_store_runtime_status,
 )
 from app.services.safety_governance_status import build_safety_governance_status
@@ -116,6 +117,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     audit_store = get_audit_store_runtime_status()
     artifact_store = get_artifact_store_runtime_status()
     retrieval_store = get_retrieval_store_runtime_status()
+    workflow_pack_registry_store = get_workflow_pack_registry_store_runtime_status()
     workflow_pack_run_store = get_workflow_pack_run_store_runtime_status()
     safety_runtime = build_safety_runtime_status()
     safety_governance = build_safety_governance_status()
@@ -132,6 +134,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         safety_mode=settings.safety_mode,
         prompt_store_mode=settings.prompt_store_mode,
         access_control_store_mode=settings.access_control_store_mode,
+        workflow_pack_registry_store_mode=settings.workflow_pack_registry_store_mode,
         workflow_pack_run_store_mode=settings.workflow_pack_run_store_mode,
         artifact_store_mode=settings.artifact_store_mode,
         artifact_object_store_mode=settings.artifact_object_store_mode,
@@ -170,10 +173,12 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         production_baseline_governance=production_baseline_governance,
         audit_store=audit_store,
         retrieval_store=retrieval_store,
+        workflow_pack_registry_store=workflow_pack_registry_store,
         workflow_pack_run_store=workflow_pack_run_store,
         database_configured=(
             audit_store.database_configured
             or retrieval_store.database_configured
+            or workflow_pack_registry_store.database_configured
             or workflow_pack_run_store.database_configured
             or artifact_store.database_configured
         ),

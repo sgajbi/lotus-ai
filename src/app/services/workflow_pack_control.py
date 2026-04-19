@@ -32,11 +32,12 @@ def build_workflow_pack_control_history(
     version: str | None = None,
     limit: int = 20,
 ) -> WorkflowPackControlHistoryResponse:
+    durable_store = settings.workflow_pack_registry_store_mode == "sqlalchemy"
     return WorkflowPackControlHistoryResponse(
         service=settings.service_name,
         version=settings.service_version,
         phase=settings.delivery_phase,
-        control_plane_store_mode="memory",
+        control_plane_store_mode=settings.workflow_pack_registry_store_mode,
         supported_action_types=list(WorkflowPackControlActionType),
         latest_events=list_workflow_pack_control_events(
             pack_id=pack_id,
@@ -45,7 +46,11 @@ def build_workflow_pack_control_history(
         ),
         notes=[
             "Workflow-pack pause, resume, deprecate, and retire actions are explicit control-plane events with operator reason and approval metadata.",
-            "This slice is currently process-local and intended to prove transition semantics before durable workflow-pack control storage is introduced.",
+            (
+                "Workflow-pack activation state and control history are currently durable and restart-safe through the configured SQL-backed registry store."
+                if durable_store
+                else "Workflow-pack activation state and control history remain process-local until the registry store is switched to sqlalchemy mode."
+            ),
             "Workflow-pack control actions do not edit workflow logic; they only change runtime registration and activation posture.",
         ],
     )
@@ -221,7 +226,7 @@ def _require_operator_caller(caller_app: str) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
                 "Workflow-pack control actions are currently limited to the lotus-platform "
-                "operator caller while the control plane remains process-local."
+                "operator caller while enterprise operator authorization remains bounded."
             ),
         )
 

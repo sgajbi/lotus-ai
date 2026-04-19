@@ -111,11 +111,13 @@ Expected operator flow for SQL-backed stores:
 4. confirm prompt runtime selection in the embedded prompt runtime summary
 5. confirm the embedded `workflow_pack_run_store` block reports the expected mode and readiness when workflow-pack run durability is enabled
 6. verify `GET /platform/workflow-packs/runs` when workflow-pack run persistence is part of the rollout slice
-7. verify `GET /platform/safety/runtime-status`
-8. verify `GET /platform/safety/evidence-readiness` when runtime safety approval posture matters
-9. verify `GET /platform/safety/governance-status` when runtime safety rollout posture matters
-10. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
-11. only then proceed with rollout if readiness is `READY`
+7. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block also reports `READY` before treating workflow-pack activation state and control history as restart-safe truth
+8. verify `GET /platform/workflow-packs/control-history` when registry durability is part of the rollout slice
+9. verify `GET /platform/safety/runtime-status`
+10. verify `GET /platform/safety/evidence-readiness` when runtime safety approval posture matters
+11. verify `GET /platform/safety/governance-status` when runtime safety rollout posture matters
+12. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
+13. only then proceed with rollout if readiness is `READY`
 
 ## Resilience Governance
 
@@ -224,8 +226,10 @@ Before treating any workflow-pack-enabled path as operator-ready:
    especially when pilot, paused, deprecated, or retired posture might have changed recently
 6. apply `POST /platform/workflow-packs/control-actions` only with an explicit operator reason and a
    caller authorized to act on behalf of the platform control plane
-7. treat the current workflow-pack control history as process-local operational evidence rather than
-   restart-safe durable truth
+7. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, treat the embedded
+   `workflow_pack_registry_store` block in `GET /platform/runtime-status` as the activation gate for
+   restart-safe registry activation state and control history; if it is not `READY`, control history
+   should not be treated as durable truth
 8. keep workflow implementation changes in the owning repository; the `lotus-ai` control plane must
    not become a second editing surface for workflow behavior
 9. inspect `GET /platform/workflow-packs/runs` to distinguish runtime completion posture from product review posture for recorded Phase-1 pack runs

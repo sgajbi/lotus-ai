@@ -33,7 +33,7 @@ Current repository posture:
 1. `lotus-ai` is in a governed foundation phase with many bounded capabilities already implemented,
 2. live provider rollout remains controlled and deliberately constrained,
 3. retrieval, prompts, provider policy, evaluation, async runtime, and governance are real first-class seams,
-4. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity, with owner-artifact references that must resolve back to the real downstream repository,
+4. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity, with owner-artifact references that must resolve back to the real downstream repository and with one governed store-mode seam that can keep activation state and control history in memory or in a migration-backed SQL store,
 5. workflow-pack run-ledger foundations now exist as a separate runtime seam for Phase-1 advisor-brief executions, with runtime state kept separate from review state, bounded actor-attributed review transitions available through the ledger API, bounded ledger-compatible `allowed_review_actions` emitted for consumers, governed workflow-pack artifact refs now attached for bounded output-summary review, an operator-facing supportability profile available for run-level diagnosis, a grouped consumer-view contract available for downstream composition layers, a first cross-repo read and bounded-write adoption slice now flowing through `lotus-gateway` and `lotus-workbench` advisor-brief contracts, and a migration-backed SQL store available for durable posture,
 6. the service is designed to support Lotus apps without stealing domain ownership from them.
 
@@ -69,7 +69,7 @@ Runtime model:
 1. shared FastAPI service with bounded AI control-plane and data-plane seams,
 2. consumed by other Lotus apps for governed AI tasks,
 3. workflow-pack registry records define runtime registration truth without centralizing business workflow logic,
-4. workflow-pack run records now provide bounded execution lineage for Phase-1 pack-backed flows without taking workflow authority, can move between in-memory and SQL-backed runtime posture through the same governed store-mode seam used elsewhere in the service, and preserve review-transition lineage between original and replacement runs,
+4. workflow-pack registry records and workflow-pack run records now both provide bounded, inspectable runtime posture without taking workflow authority, and both can move between in-memory and SQL-backed runtime posture through explicit governed store-mode seams,
 5. does not replace upstream domain logic or workflow authority.
 
 Boundary rules:

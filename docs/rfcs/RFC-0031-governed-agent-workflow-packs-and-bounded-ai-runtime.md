@@ -71,14 +71,15 @@ Foundational work is in progress through the RFC-0032 delivery slices already la
 1. workflow-pack registry contracts exist,
 2. eligibility evaluation exists,
 3. bounded operator control actions exist,
-4. the first owner-grounded `advisor_brief.pack` family is registered as the Phase-1 reference path.
+4. durable registry activation state and control history now exist through a governed memory or SQL store seam,
+5. the first owner-grounded `advisor_brief.pack` family is registered as the Phase-1 reference path.
 
 Still pending under this broader RFC:
 
 1. the full bounded workflow-pack runtime,
-2. durable pack-run ledger and review-state contracts,
+2. broader durable pack-run ledger and review-state adoption across runtime, gateway, and Workbench,
 3. broader multi-pack execution posture,
-4. production-grade durable workflow-pack activation history.
+4. stronger enterprise authorization and broader cross-app rollout posture for workflow-pack activation.
 
 ## Current Reality And Evidence
 
@@ -92,13 +93,18 @@ Implemented evidence now available in `lotus-ai`:
    and `src/app/main.py`,
 3. eligibility and operator-control behavior in `src/app/services/workflow_pack_activation.py` and
    `src/app/services/workflow_pack_control.py`,
-4. contract and behavior coverage in `tests/unit/test_workflow_pack_registry.py`,
+4. durable registry activation state and control history in
+   `src/app/services/workflow_pack_registry_store.py`,
+   `src/app/repositories/sqlalchemy_workflow_pack_registry_repository.py`, and
+   `alembic/versions/0029_add_workflow_pack_registry_state_tables.py`,
+5. contract and behavior coverage in `tests/unit/test_workflow_pack_registry.py`,
    `tests/unit/test_workflow_pack_activation.py`, `tests/unit/test_workflow_pack_control.py`,
+   `tests/unit/test_workflow_pack_registry_store.py`,
    `tests/integration/test_workflow_pack_registry_api_contract.py`,
    `tests/integration/test_workflow_pack_activation_api_contract.py`,
    `tests/integration/test_workflow_pack_control_api_contract.py`, and
    `tests/unit/test_openapi_contract.py`,
-5. operator and integration guidance in `docs/guides/integration-guide.md`,
+6. operator and integration guidance in `docs/guides/integration-guide.md`,
    `docs/guides/workflow-pack-owner-onboarding.md`, `docs/runbooks/service-operations.md`, and
    `wiki/`.
 

@@ -95,7 +95,8 @@ Use this sequence:
 2. inspect the specific workflow-pack detail route for the pack and version in question,
 3. evaluate `/platform/workflow-packs/eligibility/evaluate` with the real caller and surface posture,
 4. inspect `/platform/workflow-packs/control-history` when rollout state changed or operator action is disputed,
-5. confirm `definition_ref` and `definition_refs` still resolve to the owning repository artifacts rather than placeholder notes.
+5. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block in `/platform/runtime-status` reports `READY` before treating activation state and control history as restart-safe truth,
+6. confirm `definition_ref` and `definition_refs` still resolve to the owning repository artifacts rather than placeholder notes.
 
 The owner-facing source for that procedure is:
 
@@ -168,6 +169,8 @@ detail:
 2. `/platform/access-control/runtime-status`
 3. `/platform/evals/runtime-status`
 4. `/platform/async/runtime-status`
+5. `/platform/workflow-packs/control-history`
+6. `/platform/workflow-packs/runs`
 
 ## Detailed Runbook Sources
 

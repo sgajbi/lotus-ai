@@ -63,7 +63,7 @@ Current prerequisite foundations that now exist in `lotus-ai`:
 
 1. workflow-pack registry identity and owner-artifact grounding from `RFC-0032`,
 2. eligibility evaluation and bounded activation posture for registered workflow-pack versions,
-3. process-local operator control history and activation actions that clarify current runtime posture.
+3. migration-backed registry activation state and control history that make current runtime posture durable when the SQL-backed registry store is enabled and ready.
 
 Implemented on the current branch:
 
@@ -81,7 +81,8 @@ What is not implemented yet:
 
 1. shared runtime-state and review-state contracts exposed across `lotus-ai`, `lotus-gateway`, and
    `lotus-workbench`,
-2. durable linkage from workflow-pack execution to artifacts, review actions, and support evidence,
+2. broader durable linkage expansion from workflow-pack execution into downstream artifact,
+   review-action entitlement, and support-evidence flows beyond the current bounded Phase-1 slice,
 3. UI and gateway consumption that renders run state and review state as separate dimensions,
 4. consequence-bearing downstream review integration flows and allowed-action shaping outside the bounded lotus-ai ledger surface,
 5. broader workflow-pack runtime adoption beyond the current Phase-1 advisor-brief recording path.
@@ -107,7 +108,8 @@ Open gaps this RFC is still meant to close:
 
 1. no durable run identity beyond current request and control-plane surfaces,
 2. no shared run-status and review-status contract family exposed for product consumption,
-3. no durable artifact, review-action, or support-evidence linkage for workflow-pack executions,
+3. no broad downstream contract family yet carries durable artifact, review-action entitlement, and
+   support-evidence linkage for workflow-pack executions beyond the bounded Phase-1 slice,
 4. no gateway or Workbench contract proving that runtime state and review state remain separate in
    user-facing flows.
 

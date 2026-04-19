@@ -74,6 +74,15 @@ def get_access_control_store_runtime_status() -> StoreRuntimeStatusDescriptor:
     )
 
 
+def get_workflow_pack_registry_store_runtime_status() -> StoreRuntimeStatusDescriptor:
+    return _build_store_runtime_status(
+        configured_mode=settings.workflow_pack_registry_store_mode,
+        expected_tables=["workflow_pack_registrations", "workflow_pack_control_events"],
+        memory_detail="In-memory workflow-pack registry state is active for foundation-phase control-plane work.",
+        unsupported_detail="Configured workflow-pack registry store mode is not supported by lotus-ai.",
+    )
+
+
 def get_artifact_store_runtime_status() -> StoreRuntimeStatusDescriptor:
     return _build_store_runtime_status(
         configured_mode=settings.artifact_store_mode,

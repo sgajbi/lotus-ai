@@ -59,6 +59,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "prompt_store_mode": settings.prompt_store_mode,
         "retrieval_store_mode": settings.retrieval_store_mode,
         "access_control_store_mode": settings.access_control_store_mode,
+        "workflow_pack_registry_store_mode": settings.workflow_pack_registry_store_mode,
         "provider_operations_store_mode": settings.provider_operations_store_mode,
         "async_runtime_store_mode": settings.async_runtime_store_mode,
         "workflow_pack_run_store_mode": settings.workflow_pack_run_store_mode,

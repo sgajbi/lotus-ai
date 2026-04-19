@@ -71,6 +71,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     safety_mode: str = Field(description="Current safety policy mode.")
     prompt_store_mode: str = Field(description="Current prompt registry store mode.")
     access_control_store_mode: str = Field(description="Current caller policy store mode.")
+    workflow_pack_registry_store_mode: str = Field(
+        description="Current workflow-pack registry store mode."
+    )
     workflow_pack_run_store_mode: str = Field(description="Current workflow-pack run store mode.")
     artifact_store_mode: str = Field(description="Current artifact metadata store mode.")
     artifact_object_store_mode: str = Field(description="Current artifact payload store mode.")
@@ -178,6 +181,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     retrieval_store: StoreRuntimeStatusDescriptor = Field(
         description="Current retrieval metadata runtime posture."
+    )
+    workflow_pack_registry_store: StoreRuntimeStatusDescriptor = Field(
+        description="Current workflow-pack registry and control-history runtime posture."
     )
     workflow_pack_run_store: StoreRuntimeStatusDescriptor = Field(
         description="Current workflow-pack run-ledger runtime posture."
