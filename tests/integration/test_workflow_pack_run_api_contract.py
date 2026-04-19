@@ -305,6 +305,10 @@ def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(
     assert body["review"]["latest_review_actor"] is None
     assert body["review"]["review_transition_count"] == 0
     assert body["review"]["has_review_history"] is False
+    assert body["provenance_summary"]["artifact_ref_count"] == 1
+    assert body["provenance_summary"]["artifact_types"] == ["run_output_summary"]
+    assert body["provenance_summary"]["evidence_descriptor_count"] >= 1
+    assert "task_contract" in body["provenance_summary"]["evidence_types"]
     assert body["supportability"]["status"] == "ACTION_REQUIRED"
     assert body["supportability"]["review_pending"] is True
     assert body["supportability"]["superseded"] is False
@@ -347,6 +351,8 @@ def test_workflow_pack_run_consumer_view_exposes_latest_review_transition(
     assert body["review"]["latest_review_actor"] == "review:banker.sg.consumer.002"
     assert body["review"]["review_transition_count"] == 1
     assert body["review"]["has_review_history"] is True
+    assert body["provenance_summary"]["artifact_ref_count"] == 1
+    assert "task_contract" in body["provenance_summary"]["evidence_types"]
 
 
 def test_workflow_pack_run_operator_profile_reports_supportability_posture(

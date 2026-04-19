@@ -390,6 +390,9 @@ class WorkflowPackRunConsumerViewResponse(BaseModel):
     provenance: WorkflowPackRunConsumerProvenanceDescriptor = Field(
         description="Consumer-facing provenance and output summary for the workflow-pack run."
     )
+    provenance_summary: WorkflowPackRunProvenanceSummaryDescriptor = Field(
+        description="Bounded artifact and evidence linkage summary for the workflow-pack run."
+    )
     supportability: WorkflowPackRunConsumerSupportabilityDescriptor = Field(
         description="Consumer-facing supportability posture for the workflow-pack run."
     )

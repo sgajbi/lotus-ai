@@ -9,12 +9,16 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunConsumerRuntimeDescriptor,
     WorkflowPackRunConsumerSupportabilityDescriptor,
     WorkflowPackRunConsumerViewResponse,
+    WorkflowPackRunDescriptor,
     WorkflowPackRunRuntimeState,
 )
 from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunRecord,
 )
 from app.services.workflow_pack_run_ledger import map_workflow_pack_run_record
+from app.services.workflow_pack_run_provenance_summary import (
+    build_workflow_pack_run_provenance_summary,
+)
 from app.services.workflow_pack_run_review_summary import (
     build_workflow_pack_run_review_descriptor,
 )
@@ -33,6 +37,7 @@ def build_workflow_pack_run_consumer_view(*, run_id: str) -> WorkflowPackRunCons
             detail=f"Unknown workflow-pack run: {run_id}",
         )
     events = store.list_events(run_id=run_id)
+    run = map_workflow_pack_run_record(record)
 
     return WorkflowPackRunConsumerViewResponse(
         service=settings.service_name,
@@ -42,10 +47,12 @@ def build_workflow_pack_run_consumer_view(*, run_id: str) -> WorkflowPackRunCons
         review=build_workflow_pack_run_review_descriptor(record=record, events=events),
         lineage=_build_lineage_descriptor(record),
         provenance=_build_provenance_descriptor(record),
-        supportability=_build_supportability_descriptor(record),
+        provenance_summary=build_workflow_pack_run_provenance_summary(run=run),
+        supportability=_build_supportability_descriptor(run),
         notes=[
             "This consumer view is a bounded contract candidate for downstream product surfaces and composition layers.",
             "Runtime posture and review posture remain separate so downstream consumers do not collapse AI lifecycle into one ambiguous status.",
+            "Provenance linkage is summarized explicitly so downstream consumers can understand artifact and evidence posture without scanning every linked descriptor first.",
             "Supportability posture is grouped explicitly so downstream consumers do not infer readiness or historical status from raw runtime and review states alone.",
             "Allowed review actions describe ledger-compatible transitions only and do not transfer consequence-bearing workflow authority.",
         ],
@@ -99,8 +106,6 @@ def _build_provenance_descriptor(
 
 
 def _build_supportability_descriptor(
-    record: WorkflowPackRunRecord,
+    run: WorkflowPackRunDescriptor,
 ) -> WorkflowPackRunConsumerSupportabilityDescriptor:
-    return build_workflow_pack_run_supportability_descriptor(
-        run=map_workflow_pack_run_record(record)
-    )
+    return build_workflow_pack_run_supportability_descriptor(run=run)
