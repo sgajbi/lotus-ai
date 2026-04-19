@@ -836,6 +836,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "supportability" in workflow_pack_run_consumer_view_schema["properties"]
     assert "state" in workflow_pack_run_consumer_runtime_schema["properties"]
     assert "allowed_actions" in workflow_pack_run_consumer_review_schema["properties"]
+    assert "latest_review_event_at" in workflow_pack_run_consumer_review_schema["properties"]
+    assert "latest_review_actor" in workflow_pack_run_consumer_review_schema["properties"]
     assert "workflow_authority_owner" in workflow_pack_run_consumer_lineage_schema["properties"]
     assert "evidence_descriptors" in workflow_pack_run_consumer_provenance_schema["properties"]
     workflow_pack_run_consumer_supportability_schema = spec["components"]["schemas"][

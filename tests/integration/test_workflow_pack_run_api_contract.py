@@ -273,6 +273,8 @@ def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(
         "SUPERSEDE",
         "ABANDON",
     ]
+    assert body["review"]["latest_review_event_at"] is None
+    assert body["review"]["latest_review_actor"] is None
     assert body["supportability"]["status"] == "ACTION_REQUIRED"
     assert body["supportability"]["review_pending"] is True
     assert body["supportability"]["superseded"] is False
@@ -281,6 +283,38 @@ def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(
     assert "advisor_brief_status" in body["provenance"]["structured_output_keys"]
     assert len(body["provenance"]["artifact_refs"]) == 1
     assert body["provenance"]["artifact_refs"][0]["domain"] == "workflow_pack"
+
+
+def test_workflow_pack_run_consumer_view_exposes_latest_review_transition(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-consumer-002"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.consumer.002",
+            "reason": "Accepted for consumer view review metadata coverage.",
+        },
+    )
+    assert review_response.status_code == 200
+
+    consumer_view_response = client.get(f"/platform/workflow-packs/runs/{run_id}/consumer-view")
+
+    assert consumer_view_response.status_code == 200
+    body = consumer_view_response.json()
+    assert body["review"]["state"] == "ACCEPTED"
+    assert body["review"]["latest_review_event_at"] is not None
+    assert body["review"]["latest_review_actor"] == "review:banker.sg.consumer.002"
 
 
 def test_workflow_pack_run_operator_profile_reports_supportability_posture(

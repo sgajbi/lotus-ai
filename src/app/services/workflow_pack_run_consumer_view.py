@@ -10,10 +10,14 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunConsumerRuntimeDescriptor,
     WorkflowPackRunConsumerSupportabilityDescriptor,
     WorkflowPackRunConsumerViewResponse,
+    WorkflowPackRunEventType,
     WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
 )
-from app.repositories.workflow_pack_run_repository import WorkflowPackRunRecord
+from app.repositories.workflow_pack_run_repository import (
+    WorkflowPackRunEventRecord,
+    WorkflowPackRunRecord,
+)
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_ledger import map_workflow_pack_run_record
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
@@ -23,19 +27,21 @@ from app.services.workflow_pack_run_supportability_summary import (
 
 
 def build_workflow_pack_run_consumer_view(*, run_id: str) -> WorkflowPackRunConsumerViewResponse:
-    record = get_workflow_pack_run_store().get_run(run_id=run_id)
+    store = get_workflow_pack_run_store()
+    record = store.get_run(run_id=run_id)
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Unknown workflow-pack run: {run_id}",
         )
+    events = store.list_events(run_id=run_id)
 
     return WorkflowPackRunConsumerViewResponse(
         service=settings.service_name,
         version=settings.service_version,
         run_store_mode=settings.workflow_pack_run_store_mode,
         runtime=_build_runtime_descriptor(record),
-        review=_build_review_descriptor(record),
+        review=_build_review_descriptor(record, events),
         lineage=_build_lineage_descriptor(record),
         provenance=_build_provenance_descriptor(record),
         supportability=_build_supportability_descriptor(record),
@@ -63,8 +69,10 @@ def _build_runtime_descriptor(
 
 def _build_review_descriptor(
     record: WorkflowPackRunRecord,
+    events: list[WorkflowPackRunEventRecord],
 ) -> WorkflowPackRunConsumerReviewDescriptor:
     review_state = WorkflowPackRunReviewState(record.review_state)
+    latest_review_event = _resolve_latest_review_event(events)
     return WorkflowPackRunConsumerReviewDescriptor(
         required=record.review_required,
         state=review_state,
@@ -72,6 +80,10 @@ def _build_review_descriptor(
             review_required=record.review_required,
             review_state=review_state,
         ),
+        latest_review_event_at=(
+            latest_review_event.recorded_at if latest_review_event is not None else None
+        ),
+        latest_review_actor=latest_review_event.actor if latest_review_event is not None else None,
     )
 
 
@@ -115,3 +127,16 @@ def _build_supportability_descriptor(
     return build_workflow_pack_run_supportability_descriptor(
         run=map_workflow_pack_run_record(record)
     )
+
+
+def _resolve_latest_review_event(
+    events: list[WorkflowPackRunEventRecord],
+) -> WorkflowPackRunEventRecord | None:
+    review_events = [
+        event
+        for event in events
+        if event.event_type == WorkflowPackRunEventType.REVIEW_STATE_UPDATED.value
+    ]
+    if not review_events:
+        return None
+    return max(review_events, key=lambda event: event.recorded_at)

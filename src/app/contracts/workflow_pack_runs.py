@@ -261,6 +261,14 @@ class WorkflowPackRunConsumerReviewDescriptor(BaseModel):
             "posture. These are not business-authority grants."
         ),
     )
+    latest_review_event_at: str | None = Field(
+        default=None,
+        description="UTC timestamp for the most recent recorded review-state transition, when available.",
+    )
+    latest_review_actor: str | None = Field(
+        default=None,
+        description="Actor recorded on the most recent review-state transition event, when available.",
+    )
 
 
 class WorkflowPackRunConsumerLineageDescriptor(BaseModel):
