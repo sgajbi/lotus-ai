@@ -242,11 +242,20 @@ class WorkflowPackRuntimeStatusSummaryResponse(BaseModel):
     executable_registration_count: int = Field(
         description="Number of REGISTERED workflow-pack versions that also resolve through an explicit lotus-ai execution binding."
     )
+    executable_review_required_count: int = Field(
+        description="Number of explicitly executable workflow-pack versions whose default execution mode still requires human review."
+    )
+    executable_without_review_count: int = Field(
+        description="Number of explicitly executable workflow-pack versions whose default execution mode does not require human review."
+    )
     registered_without_execution_binding_count: int = Field(
         description="Number of REGISTERED workflow-pack versions that remain cataloged but are not yet executable through an explicit lotus-ai binding."
     )
     executable_registration_refs: list[str] = Field(
         description="Pack-version references currently both registered and explicitly executable through lotus-ai."
+    )
+    executable_review_required_refs: list[str] = Field(
+        description="Executable pack-version references whose default execution mode still routes through a human-review gate."
     )
     status_summary: list[str] = Field(
         description="Human-readable summary of the current workflow-pack runtime posture."

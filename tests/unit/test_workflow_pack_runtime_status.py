@@ -1,6 +1,6 @@
 from _pytest.monkeypatch import MonkeyPatch
 
-from app.contracts.workflow_packs import WorkflowPackRegistrationStatus
+from app.contracts.workflow_packs import WorkflowPackExecutionMode, WorkflowPackRegistrationStatus
 from app.services.workflow_pack_bindings import get_workflow_pack_execution_binding_descriptor
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.workflow_pack_runtime_status import build_workflow_pack_runtime_status_summary
@@ -40,5 +40,43 @@ def test_build_workflow_pack_runtime_status_summary_separates_catalog_from_execu
     assert summary.registered_count == 2
     assert summary.execution_binding_count == 1
     assert summary.executable_registration_count == 1
+    assert summary.executable_review_required_count == 1
+    assert summary.executable_without_review_count == 0
     assert summary.registered_without_execution_binding_count == 1
     assert summary.executable_registration_refs == ["advisor_brief.pack@v1"]
+    assert summary.executable_review_required_refs == ["advisor_brief.pack@v1"]
+
+
+def test_build_workflow_pack_runtime_status_summary_tracks_non_review_gated_execution(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    registered = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    binding = get_workflow_pack_execution_binding_descriptor(
+        pack_id="advisor_brief.pack",
+        version="v1",
+    )
+
+    assert registered is not None
+    assert binding is not None
+
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.list_workflow_pack_registrations",
+        lambda: [
+            registered.model_copy(
+                update={"default_execution_mode": WorkflowPackExecutionMode.SYNCHRONOUS}
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "app.services.workflow_pack_runtime_status.list_workflow_pack_execution_binding_descriptors",
+        lambda: [binding],
+    )
+
+    summary = build_workflow_pack_runtime_status_summary()
+
+    assert summary.registration_count == 1
+    assert summary.registered_count == 1
+    assert summary.executable_registration_count == 1
+    assert summary.executable_review_required_count == 0
+    assert summary.executable_without_review_count == 1
+    assert summary.executable_review_required_refs == []

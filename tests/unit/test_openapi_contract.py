@@ -736,11 +736,14 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "required_payload_keys" in workflow_pack_execution_binding_schema["properties"]
     assert "execution_binding_count" in workflow_pack_runtime_status_schema["properties"]
     assert "executable_registration_count" in workflow_pack_runtime_status_schema["properties"]
+    assert "executable_review_required_count" in workflow_pack_runtime_status_schema["properties"]
+    assert "executable_without_review_count" in workflow_pack_runtime_status_schema["properties"]
     assert (
         "registered_without_execution_binding_count"
         in workflow_pack_runtime_status_schema["properties"]
     )
     assert "executable_registration_refs" in workflow_pack_runtime_status_schema["properties"]
+    assert "executable_review_required_refs" in workflow_pack_runtime_status_schema["properties"]
     assert "validation_rules" in workflow_pack_registration_detail_schema["properties"]
     assert "execution_binding" in workflow_pack_registration_detail_schema["properties"]
     assert "denied_without_registration" in workflow_pack_registration_detail_schema["properties"]

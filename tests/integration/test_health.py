@@ -367,8 +367,13 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["workflow_pack_runtime"]["registered_count"] == 1
     assert body["workflow_pack_runtime"]["execution_binding_count"] == 1
     assert body["workflow_pack_runtime"]["executable_registration_count"] == 1
+    assert body["workflow_pack_runtime"]["executable_review_required_count"] == 1
+    assert body["workflow_pack_runtime"]["executable_without_review_count"] == 0
     assert body["workflow_pack_runtime"]["registered_without_execution_binding_count"] == 0
     assert body["workflow_pack_runtime"]["executable_registration_refs"] == [
+        "advisor_brief.pack@v1"
+    ]
+    assert body["workflow_pack_runtime"]["executable_review_required_refs"] == [
         "advisor_brief.pack@v1"
     ]
     assert body["access_control_runtime"]["store_mode"] == "memory"
