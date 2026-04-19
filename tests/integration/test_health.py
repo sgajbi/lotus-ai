@@ -376,6 +376,11 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["workflow_pack_runtime"]["executable_review_required_refs"] == [
         "advisor_brief.pack@v1"
     ]
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["registration_ref"] == (
+        "advisor_brief.pack@v1"
+    )
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["run_count"] == 0
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["has_activity"] is False
     assert body["workflow_pack_runtime"]["run_summary"]["run_count"] == 0
     assert body["workflow_pack_runtime"]["run_summary"]["awaiting_review_count"] == 0
     assert body["workflow_pack_runtime"]["run_summary"]["accepted_count"] == 0

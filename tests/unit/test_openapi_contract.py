@@ -734,6 +734,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_run_runtime_summary_schema = spec["components"]["schemas"][
         "WorkflowPackRunRuntimeSummaryResponse"
     ]
+    workflow_pack_executable_activity_schema = spec["components"]["schemas"][
+        "WorkflowPackExecutableActivitySummaryResponse"
+    ]
     assert "task_id" in workflow_pack_execution_binding_schema["properties"]
     assert "default_workflow_surface" in workflow_pack_execution_binding_schema["properties"]
     assert "required_payload_keys" in workflow_pack_execution_binding_schema["properties"]
@@ -747,7 +750,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     )
     assert "executable_registration_refs" in workflow_pack_runtime_status_schema["properties"]
     assert "executable_review_required_refs" in workflow_pack_runtime_status_schema["properties"]
+    assert "executable_activity" in workflow_pack_runtime_status_schema["properties"]
     assert "run_summary" in workflow_pack_runtime_status_schema["properties"]
+    assert "registration_ref" in workflow_pack_executable_activity_schema["properties"]
+    assert "run_count" in workflow_pack_executable_activity_schema["properties"]
+    assert "latest_run_id" in workflow_pack_executable_activity_schema["properties"]
+    assert "has_activity" in workflow_pack_executable_activity_schema["properties"]
     assert "run_count" in workflow_pack_run_runtime_summary_schema["properties"]
     assert "awaiting_review_count" in workflow_pack_run_runtime_summary_schema["properties"]
     assert "accepted_count" in workflow_pack_run_runtime_summary_schema["properties"]

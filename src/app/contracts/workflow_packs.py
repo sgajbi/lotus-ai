@@ -257,6 +257,9 @@ class WorkflowPackRuntimeStatusSummaryResponse(BaseModel):
     executable_review_required_refs: list[str] = Field(
         description="Executable pack-version references whose default execution mode still routes through a human-review gate."
     )
+    executable_activity: list["WorkflowPackExecutableActivitySummaryResponse"] = Field(
+        description="Per-pack activity summary for executable workflow-pack versions as observed through the bounded run ledger."
+    )
     run_summary: "WorkflowPackRunRuntimeSummaryResponse" = Field(
         description="Estate-level workflow-pack run posture derived from the current bounded run ledger."
     )
@@ -297,6 +300,34 @@ class WorkflowPackRunRuntimeSummaryResponse(BaseModel):
     )
     status_summary: list[str] = Field(
         description="Human-readable summary of the current workflow-pack run posture."
+    )
+
+
+class WorkflowPackExecutableActivitySummaryResponse(BaseModel):
+    registration_ref: str = Field(
+        description="Pack-version reference currently both registered and explicitly executable through lotus-ai."
+    )
+    pack_id: str = Field(description="Workflow-pack family identifier for the executable pack.")
+    version: str = Field(description="Workflow-pack version for the executable pack.")
+    run_count: int = Field(
+        description="Number of ledgered workflow-pack runs recorded for this executable pack version."
+    )
+    awaiting_review_count: int = Field(
+        description="Number of recorded runs for this executable pack version that are still awaiting review."
+    )
+    accepted_count: int = Field(
+        description="Number of recorded runs for this executable pack version that are currently accepted."
+    )
+    latest_run_id: str | None = Field(
+        default=None,
+        description="Most recent recorded workflow-pack run identifier for this executable pack version, when available.",
+    )
+    latest_recorded_at: str | None = Field(
+        default=None,
+        description="Most recent workflow-pack run timestamp for this executable pack version, when available.",
+    )
+    has_activity: bool = Field(
+        description="Whether this executable pack version has any recorded workflow-pack run activity."
     )
 
 
