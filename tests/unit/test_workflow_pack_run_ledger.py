@@ -781,6 +781,34 @@ def test_review_action_rejects_invalid_replacement_lineage() -> None:
     store.save_run(
         replace(
             replacement_record,
+            pack_family=replacement_run.pack_family,
+            workflow_authority_owner="lotus-manage",
+        )
+    )
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id=original_run.run_id,
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.REVISE,
+                caller_app="lotus-gateway",
+                reviewed_by="banker.sg.007",
+                reason="Cross-workflow lineage should fail.",
+                replacement_run_id=replacement_run.run_id,
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 409
+        assert (
+            exc.detail
+            == "Replacement workflow-pack run must preserve workflow authority owner, caller app, tenant scope, and workflow surface to keep review-state lineage inside one bounded downstream workflow."
+        )
+    else:
+        raise AssertionError("Expected cross-workflow replacement lineage to fail")
+
+    store.save_run(
+        replace(
+            replacement_record,
+            workflow_authority_owner=replacement_run.workflow_authority_owner,
             supersedes_run_id="packrun_advisor_brief_pack_already_linked",
         )
     )

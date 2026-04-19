@@ -254,6 +254,20 @@ def _require_replacement_run(
                 "bounded review-state lineage."
             ),
         )
+    if (
+        replacement_run.workflow_authority_owner != run.workflow_authority_owner
+        or replacement_run.caller_app != run.caller_app
+        or replacement_run.tenant_id != run.tenant_id
+        or replacement_run.workflow_surface != run.workflow_surface
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Replacement workflow-pack run must preserve workflow authority owner, caller app, "
+                "tenant scope, and workflow surface to keep review-state lineage inside one bounded "
+                "downstream workflow."
+            ),
+        )
     if replacement_run.supersedes_run_id not in {None, run.run_id}:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

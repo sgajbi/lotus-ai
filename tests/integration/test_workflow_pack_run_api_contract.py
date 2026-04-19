@@ -594,6 +594,60 @@ def test_workflow_pack_run_review_action_rejects_cross_family_replacement_lineag
     )
 
 
+def test_workflow_pack_run_review_action_rejects_cross_workflow_replacement_lineage(
+    client: TestClient,
+) -> None:
+    original_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-cross-workflow-001"
+        ),
+    )
+    assert original_execute_response.status_code == 200
+
+    replacement_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-cross-workflow-002"
+        ),
+    )
+    assert replacement_execute_response.status_code == 200
+
+    runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+    original_run_id = next(
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-cross-workflow-001"
+    )
+    replacement_run_id = next(
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-cross-workflow-002"
+    )
+
+    store = get_workflow_pack_run_store()
+    replacement_record = store.get_run(run_id=replacement_run_id)
+    assert replacement_record is not None
+    store.save_run(replace(replacement_record, workflow_authority_owner="lotus-manage"))
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{original_run_id}/review-actions",
+        json={
+            "action_type": "REVISE",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.revise.cross-workflow.001",
+            "reason": "Cross-workflow lineage should remain blocked.",
+            "replacement_run_id": replacement_run_id,
+        },
+    )
+
+    assert review_response.status_code == 409
+    assert (
+        review_response.json()["detail"]
+        == "Replacement workflow-pack run must preserve workflow authority owner, caller app, tenant scope, and workflow surface to keep review-state lineage inside one bounded downstream workflow."
+    )
+
+
 def test_workflow_pack_run_review_action_rejects_already_linked_replacement_lineage(
     client: TestClient,
 ) -> None:
