@@ -278,6 +278,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         == "getWorkflowPackRunConsumerView"
     )
     assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}/operator-profile"]["get"][
+            "operationId"
+        ]
+        == "getWorkflowPackRunOperatorProfile"
+    )
+    assert (
         spec["paths"]["/platform/use-cases/first-production-use-case"]["get"]["operationId"]
         == "getFirstProductionUseCaseStatus"
     )
@@ -482,6 +488,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     ]
     workflow_pack_run_consumer_provenance_schema = spec["components"]["schemas"][
         "WorkflowPackRunConsumerProvenanceDescriptor"
+    ]
+    workflow_pack_run_operator_profile_schema = spec["components"]["schemas"][
+        "WorkflowPackRunOperatorProfileResponse"
+    ]
+    workflow_pack_run_finding_schema = spec["components"]["schemas"][
+        "WorkflowPackRunSupportabilityFinding"
     ]
     workflow_pack_run_event_schema = spec["components"]["schemas"]["WorkflowPackRunEventDescriptor"]
     workflow_pack_run_review_action_request_schema = spec["components"]["schemas"][
@@ -731,6 +743,11 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "allowed_actions" in workflow_pack_run_consumer_review_schema["properties"]
     assert "workflow_authority_owner" in workflow_pack_run_consumer_lineage_schema["properties"]
     assert "evidence_descriptors" in workflow_pack_run_consumer_provenance_schema["properties"]
+    assert "supportability_status" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "findings" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "inspection_steps" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "finding_id" in workflow_pack_run_finding_schema["properties"]
+    assert "severity" in workflow_pack_run_finding_schema["properties"]
     assert "event_type" in workflow_pack_run_event_schema["properties"]
     assert "recorded_at" in workflow_pack_run_event_schema["properties"]
     assert "action_type" in workflow_pack_run_review_action_request_schema["properties"]

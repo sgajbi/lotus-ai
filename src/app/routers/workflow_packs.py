@@ -15,10 +15,12 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunCatalogResponse,
     WorkflowPackRunConsumerViewResponse,
     WorkflowPackRunDetailResponse,
+    WorkflowPackRunOperatorProfileResponse,
     WorkflowPackRunReviewActionRequest,
     WorkflowPackRunReviewActionResponse,
 )
 from app.services.workflow_pack_run_consumer_view import build_workflow_pack_run_consumer_view
+from app.services.workflow_pack_run_operator_profile import build_workflow_pack_run_operator_profile
 from app.services.workflow_pack_control import (
     apply_workflow_pack_control_action,
     build_workflow_pack_control_history,
@@ -175,6 +177,27 @@ async def get_workflow_pack_run_consumer_view_route(
     run_id: str,
 ) -> WorkflowPackRunConsumerViewResponse:
     return build_workflow_pack_run_consumer_view(run_id=run_id)
+
+
+@router.get(
+    "/platform/workflow-packs/runs/{run_id}/operator-profile",
+    response_model=WorkflowPackRunOperatorProfileResponse,
+    operation_id="getWorkflowPackRunOperatorProfile",
+    summary="Get lotus-ai workflow-pack run operator profile",
+    description=(
+        "Returns one operator-facing workflow-pack run supportability profile, including runtime, "
+        "review, supersession, artifact, and evidence posture for diagnosis."
+    ),
+    responses={
+        200: {"description": "Workflow-pack run operator profile returned successfully."},
+        404: {"description": "Unknown workflow-pack run identifier."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_run_operator_profile_route(
+    run_id: str,
+) -> WorkflowPackRunOperatorProfileResponse:
+    return build_workflow_pack_run_operator_profile(run_id=run_id)
 
 
 @router.post(

@@ -230,10 +230,11 @@ Before treating any workflow-pack-enabled path as operator-ready:
    not become a second editing surface for workflow behavior
 9. inspect `GET /platform/workflow-packs/runs` to distinguish runtime completion posture from product review posture for recorded Phase-1 pack runs
 10. inspect `GET /platform/workflow-packs/runs/{run_id}` when support needs the exact registration ref, evidence descriptors, governed artifact refs, run-history events, and bounded `allowed_review_actions` attached to one pack execution
-11. inspect `GET /platform/workflow-packs/runs/{run_id}/consumer-view` when a downstream composition layer needs one grouped runtime-review-lineage-provenance contract candidate from lotus-ai without reconstructing those dimensions locally
-12. apply `POST /platform/workflow-packs/runs/{run_id}/review-actions` only to record bounded ledger review posture; do not treat it as business approval, consent, booking, or workflow-authority transfer
-13. when using `REVISE` or `SUPERSEDE`, confirm the replacement run id belongs to the same pack family so lineage remains reconstructable
-14. when `LOTUS_AI_WORKFLOW_PACK_RUN_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_run_store` block in `GET /platform/runtime-status` reports `READY` before treating the run ledger as restart-safe durable truth
+11. inspect `GET /platform/workflow-packs/runs/{run_id}/operator-profile` when support needs one operator-facing summary of review pending, failure, expiry, supersession, partial-output, artifact, and evidence posture for the run
+12. inspect `GET /platform/workflow-packs/runs/{run_id}/consumer-view` when a downstream composition layer needs one grouped runtime-review-lineage-provenance contract candidate from lotus-ai without reconstructing those dimensions locally
+13. apply `POST /platform/workflow-packs/runs/{run_id}/review-actions` only to record bounded ledger review posture; do not treat it as business approval, consent, booking, or workflow-authority transfer
+14. when using `REVISE` or `SUPERSEDE`, confirm the replacement run id belongs to the same pack family so lineage remains reconstructable
+15. when `LOTUS_AI_WORKFLOW_PACK_RUN_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_run_store` block in `GET /platform/runtime-status` reports `READY` before treating the run ledger as restart-safe durable truth
 
 ## Durable Async Recovery
 

@@ -824,7 +824,8 @@ Current branch status:
 1. bounded `lotus-ai` review-action recording is implemented through the workflow-pack run-ledger APIs and service layer,
 2. actor attribution, timestamps, invalid-transition rejection, and supersession lineage are now covered by unit and integration tests,
 3. Phase-1 advisor-brief run records now emit governed workflow-pack artifact refs through the shared artifact backbone so support and downstream reviewers can inspect bounded output-summary provenance without expanding the ledger contract into raw payload transport,
-4. consequence-bearing meaning, allowed-action shaping for downstream workflows, and end-to-end gateway or Workbench adoption remain future slices.
+4. a bounded workflow-pack run operator profile is now exposed for support and operator diagnosis, making review-pending, failure, expiry, supersession, partial-output, evidence, and artifact posture visible without collapsing business workflow authority into lotus-ai,
+5. consequence-bearing meaning, allowed-action shaping for downstream workflows, and end-to-end gateway or Workbench adoption remain future slices.
 
 This branch now also emits bounded ledger-compatible `allowed_review_actions` on run descriptors.
 That posture is intentionally narrower than downstream business authorization: it tells consumers

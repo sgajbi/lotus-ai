@@ -188,6 +188,55 @@ def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(
     assert body["provenance"]["artifact_refs"][0]["domain"] == "workflow_pack"
 
 
+def test_workflow_pack_run_operator_profile_reports_supportability_posture(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-gateway",
+                "correlation_id": "corr-pack-run-api-operator-001",
+            },
+            "context": {
+                "summary": "Draft advisor brief from source performance facts.",
+                "payload": {
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                },
+                "source_refs": ["lotus-gateway:performance-summary:YTD"],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    profile_response = client.get(f"/platform/workflow-packs/runs/{run_id}/operator-profile")
+
+    assert profile_response.status_code == 200
+    body = profile_response.json()
+    assert body["run_id"] == run_id
+    assert body["supportability_status"] == "ACTION_REQUIRED"
+    assert body["review_pending"] is True
+    assert body["artifact_ref_count"] == 1
+    assert any(finding["finding_id"] == "review_pending" for finding in body["findings"])
+
+
+def test_workflow_pack_run_operator_profile_rejects_unknown_run(client: TestClient) -> None:
+    response = client.get("/platform/workflow-packs/runs/unknown-run/operator-profile")
+
+    assert response.status_code == 404
+
+
 def test_workflow_pack_run_catalog_supports_sqlalchemy_store_mode(tmp_path: Path) -> None:
     database_url = f"sqlite:///{tmp_path / 'workflow-pack-run-api.db'}"
     upgrade_database_to_head(database_url)

@@ -41,6 +41,17 @@ class WorkflowPackRunReviewActionType(str, Enum):
     ABANDON = "ABANDON"
 
 
+class WorkflowPackRunSupportabilityStatus(str, Enum):
+    READY = "READY"
+    ACTION_REQUIRED = "ACTION_REQUIRED"
+    HISTORICAL = "HISTORICAL"
+
+
+class WorkflowPackRunFindingSeverity(str, Enum):
+    INFO = "INFO"
+    ACTION_REQUIRED = "ACTION_REQUIRED"
+
+
 class WorkflowPackRunDescriptor(BaseModel):
     run_id: str = Field(description="Stable workflow-pack run identifier.")
     pack_id: str = Field(description="Workflow-pack family identifier.")
@@ -298,4 +309,79 @@ class WorkflowPackRunConsumerViewResponse(BaseModel):
     )
     notes: list[str] = Field(
         description="Human-readable notes describing the bounded consumer-contract posture."
+    )
+
+
+class WorkflowPackRunSupportabilityFinding(BaseModel):
+    finding_id: str = Field(description="Stable supportability finding identifier.")
+    severity: WorkflowPackRunFindingSeverity = Field(
+        description="Operator-facing severity for the supportability finding."
+    )
+    summary: str = Field(description="Short human-readable summary of the finding.")
+    detail: str = Field(description="Expanded operator-facing explanation of the finding.")
+
+
+class WorkflowPackRunOperatorProfileResponse(BaseModel):
+    service: str = Field(description="Service name emitting the workflow-pack operator profile.")
+    version: str = Field(description="Current lotus-ai service version.")
+    run_store_mode: str = Field(description="Configured workflow-pack run-store mode.")
+    run_id: str = Field(description="Stable workflow-pack run identifier.")
+    pack_id: str = Field(description="Workflow-pack family identifier.")
+    registration_ref: str = Field(
+        description="Resolved workflow-pack registration reference used for the run."
+    )
+    runtime_state: WorkflowPackRunRuntimeState = Field(
+        description="Current runtime posture for the workflow-pack run."
+    )
+    review_state: WorkflowPackRunReviewState = Field(
+        description="Current review posture for the workflow-pack run."
+    )
+    workflow_authority_owner: str = Field(
+        description="Service boundary that retains consequence-bearing workflow authority."
+    )
+    supportability_status: WorkflowPackRunSupportabilityStatus = Field(
+        description="Overall operator-facing supportability posture for the run."
+    )
+    review_pending: bool = Field(
+        description="Whether the run still requires human review before downstream use."
+    )
+    failed: bool = Field(description="Whether the run is currently in failed runtime posture.")
+    expired: bool = Field(description="Whether the run is currently in expired runtime posture.")
+    superseded: bool = Field(
+        description="Whether the run is now historical because a newer replacement run exists."
+    )
+    partial_output_visible: bool = Field(
+        description="Whether the run currently preserves some output despite not reaching a clean accepted terminal posture."
+    )
+    artifact_ref_count: int = Field(
+        description="Number of governed artifact refs currently linked to the run."
+    )
+    evidence_descriptor_count: int = Field(
+        description="Number of evidence descriptors currently linked to the run."
+    )
+    history_event_count: int = Field(
+        description="Number of recorded workflow-pack run events currently linked to the run."
+    )
+    latest_event_at: str | None = Field(
+        default=None,
+        description="UTC timestamp for the most recent recorded workflow-pack run event.",
+    )
+    replacement_run_id: str | None = Field(
+        default=None,
+        description="Replacement workflow-pack run identifier when the current run is superseded or revised.",
+    )
+    current_summary_note: str = Field(
+        description="Single operator-facing note summarizing the current run posture."
+    )
+    findings: list[WorkflowPackRunSupportabilityFinding] = Field(
+        default_factory=list,
+        description="Supportability findings operators should use when diagnosing or triaging the run.",
+    )
+    inspection_surfaces: list[str] = Field(
+        default_factory=list,
+        description="Primary workflow-pack inspection routes operators should use for this run.",
+    )
+    inspection_steps: list[str] = Field(
+        default_factory=list,
+        description="Ordered operator steps for diagnosing or escalating this run.",
     )
