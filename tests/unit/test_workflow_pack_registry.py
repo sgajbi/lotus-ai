@@ -51,7 +51,8 @@ def test_build_workflow_pack_registry_catalog_exposes_validation_rules() -> None
     assert any(
         rule.rule_id == "definition_refs_ground_registry_truth" for rule in catalog.validation_rules
     )
-    assert any("read-only and catalog-backed" in line for line in catalog.status_summary)
+    assert any("configured registry store" in line for line in catalog.status_summary)
+    assert any("valid ownership, scope, and definition references" in line for line in catalog.status_summary)
 
 
 def test_build_workflow_pack_registration_detail_exposes_deny_by_default_registration_truth() -> (
