@@ -137,6 +137,9 @@ def test_build_workflow_pack_runtime_status_summary_tracks_activity_for_executab
             run_count=2,
             awaiting_review_count=1,
             completed_count=2,
+            ready_count=1,
+            action_required_count=1,
+            historical_count=0,
             latest_recorded_at="2026-04-19T12:00:00Z",
             runs=[
                 build_workflow_pack_run_descriptor(
@@ -174,8 +177,18 @@ def test_build_workflow_pack_runtime_status_summary_tracks_activity_for_executab
         summary.executable_activity[0].latest_action_required_recorded_at
         == "2026-04-19T11:00:00Z"
     )
+    assert (
+        summary.executable_activity[0].latest_action_required_review_summary.review_transition_count
+        == 0
+    )
+    assert (
+        summary.executable_activity[0].latest_action_required_review_summary.has_review_history
+        is False
+    )
     assert summary.executable_activity[0].latest_ready_run_id == "run-accepted"
     assert summary.executable_activity[0].latest_ready_recorded_at == "2026-04-19T12:00:00Z"
+    assert summary.executable_activity[0].latest_ready_review_summary.review_transition_count == 0
+    assert summary.executable_activity[0].latest_ready_review_summary.has_review_history is False
     assert summary.executable_activity[0].latest_run_id == "run-accepted"
     assert summary.executable_activity[0].latest_recorded_at == "2026-04-19T12:00:00Z"
     assert summary.executable_activity[0].has_activity is True
@@ -185,6 +198,8 @@ def test_build_workflow_pack_runtime_status_summary_tracks_activity_for_executab
     assert summary.attention_queue.items[0].supportability_status == "ACTION_REQUIRED"
     assert summary.attention_queue.items[0].review_state == "AWAITING_REVIEW"
     assert summary.attention_queue.items[0].runtime_state == "COMPLETED"
+    assert summary.attention_queue.items[0].review_summary.review_transition_count == 0
+    assert summary.attention_queue.items[0].review_summary.has_review_history is False
 
 
 def test_build_workflow_pack_run_runtime_summary_counts_action_required_and_historical_posture(
@@ -200,6 +215,9 @@ def test_build_workflow_pack_run_runtime_summary_counts_action_required_and_hist
             run_count=5,
             awaiting_review_count=1,
             completed_count=5,
+            ready_count=1,
+            action_required_count=3,
+            historical_count=1,
             latest_recorded_at="2026-04-19T12:00:00Z",
             runs=[
                 build_workflow_pack_run_descriptor(
@@ -273,6 +291,9 @@ def test_build_workflow_pack_attention_queue_summary_limits_to_latest_actionable
             run_count=6,
             awaiting_review_count=6,
             completed_count=6,
+            ready_count=0,
+            action_required_count=6,
+            historical_count=0,
             latest_recorded_at="2026-04-19T16:00:00Z",
             runs=[
                 build_workflow_pack_run_descriptor(
@@ -281,6 +302,11 @@ def test_build_workflow_pack_attention_queue_summary_limits_to_latest_actionable
                     created_at=f"2026-04-19T1{index}:00:00Z",
                     evidence_descriptors_count=1,
                     artifact_refs_count=1,
+                    latest_review_event_at=(
+                        f"2026-04-19T0{index}:30:00Z" if index < 6 else "2026-04-19T16:30:00Z"
+                    ),
+                    latest_review_actor=f"review:banker.sg.{index}",
+                    review_transition_count=index,
                 )
                 for index in range(1, 7)
             ],
@@ -299,3 +325,6 @@ def test_build_workflow_pack_attention_queue_summary_limits_to_latest_actionable
         "run-action-3",
         "run-action-2",
     ]
+    assert summary.attention_queue.items[0].review_summary.latest_review_actor == "review:banker.sg.6"
+    assert summary.attention_queue.items[0].review_summary.review_transition_count == 6
+    assert summary.attention_queue.items[0].review_summary.has_review_history is True

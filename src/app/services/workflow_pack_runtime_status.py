@@ -215,9 +215,17 @@ def build_workflow_pack_executable_activity_summary(
                     if latest_action_required_run is not None
                     else None
                 ),
+                latest_action_required_review_summary=(
+                    latest_action_required_run.review_summary
+                    if latest_action_required_run is not None
+                    else None
+                ),
                 latest_ready_run_id=latest_ready_run.run_id if latest_ready_run is not None else None,
                 latest_ready_recorded_at=(
                     latest_ready_run.created_at if latest_ready_run is not None else None
+                ),
+                latest_ready_review_summary=(
+                    latest_ready_run.review_summary if latest_ready_run is not None else None
                 ),
                 latest_run_id=latest_run.run_id if latest_run is not None else None,
                 latest_recorded_at=latest_run.created_at if latest_run is not None else None,
@@ -250,6 +258,7 @@ def build_workflow_pack_attention_queue_summary(
             review_state=run.review_state.value,
             runtime_state=run.runtime_state.value,
             supportability_status=status.value,
+            review_summary=run.review_summary,
             created_at=run.created_at,
         )
         for run, status in actionable_runs[:WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT]

@@ -5,6 +5,7 @@ from app.contracts.evidence import ExecutionEvidenceDescriptor
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunDescriptor,
     WorkflowPackRunReviewActionType,
+    WorkflowPackRunReviewSummaryDescriptor,
     WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
     WorkflowPackRunSupportabilityStatus,
@@ -23,6 +24,9 @@ def build_workflow_pack_run_descriptor(
     evidence_descriptors_count: int = 0,
     artifact_refs_count: int = 0,
     supportability_status: WorkflowPackRunSupportabilityStatus | None = None,
+    latest_review_event_at: str | None = None,
+    latest_review_actor: str | None = None,
+    review_transition_count: int = 0,
 ) -> WorkflowPackRunDescriptor:
     descriptor = WorkflowPackRunDescriptor(
         run_id=run_id,
@@ -41,6 +45,12 @@ def build_workflow_pack_run_descriptor(
         review_state=review_state,
         supportability_status=WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED,
         allowed_review_actions=allowed_review_actions or [],
+        review_summary=WorkflowPackRunReviewSummaryDescriptor(
+            latest_review_event_at=latest_review_event_at,
+            latest_review_actor=latest_review_actor,
+            review_transition_count=review_transition_count,
+            has_review_history=review_transition_count > 0,
+        ),
         review_required=review_state is not WorkflowPackRunReviewState.NOT_REVIEW_REQUIRED,
         provider_mode="catalog_only",
         stubbed=True,
