@@ -38,6 +38,9 @@ def build_workflow_pack_run_catalog(
     *,
     registration_ref: str | None = None,
     pack_id: str | None = None,
+    caller_app: str | None = None,
+    tenant_id: str | None = None,
+    workflow_surface: str | None = None,
     runtime_state: WorkflowPackRunRuntimeState | None = None,
     review_state: WorkflowPackRunReviewState | None = None,
     supportability_status: WorkflowPackRunSupportabilityStatus | None = None,
@@ -51,6 +54,9 @@ def build_workflow_pack_run_catalog(
         runs=runs,
         registration_ref=registration_ref,
         pack_id=pack_id,
+        caller_app=caller_app,
+        tenant_id=tenant_id,
+        workflow_surface=workflow_surface,
         runtime_state=runtime_state,
         review_state=review_state,
         supportability_status=supportability_status,
@@ -63,6 +69,12 @@ def build_workflow_pack_run_catalog(
         filters_applied["registration_ref"] = registration_ref
     if pack_id is not None:
         filters_applied["pack_id"] = pack_id
+    if caller_app is not None:
+        filters_applied["caller_app"] = caller_app
+    if tenant_id is not None:
+        filters_applied["tenant_id"] = tenant_id
+    if workflow_surface is not None:
+        filters_applied["workflow_surface"] = workflow_surface
     if runtime_state is not None:
         filters_applied["runtime_state"] = runtime_state.value
     if review_state is not None:
@@ -111,7 +123,7 @@ def build_workflow_pack_run_catalog(
         notes=[
             "Workflow-pack run records are reference-oriented and preserve runtime state separately from review state.",
             "The current slice records Phase-1 workflow-pack executions through an explicit execution seam and a narrower binding-backed task fallback while the broader workflow-pack runtime remains under implementation.",
-            "Catalog queries are now bounded and can be filtered by registration, workflow-authority owner, runtime state, review state, and shared supportability posture for operator triage.",
+            "Catalog queries are now bounded and can be filtered by registration, caller identity, workflow surface, workflow-authority owner, runtime state, review state, and shared supportability posture for operator triage.",
             "Supportability counts are computed server-side from the same shared run-supportability seam used by runtime status and operator profiles.",
             "Phase-1 recorded runs now emit governed workflow-pack artifact refs so support and downstream review can inspect bounded output summaries without pulling raw payloads into the ledger contract.",
         ],
@@ -304,6 +316,9 @@ def _filter_workflow_pack_runs(
     runs: list[WorkflowPackRunDescriptor],
     registration_ref: str | None,
     pack_id: str | None,
+    caller_app: str | None,
+    tenant_id: str | None,
+    workflow_surface: str | None,
     runtime_state: WorkflowPackRunRuntimeState | None,
     review_state: WorkflowPackRunReviewState | None,
     supportability_status: WorkflowPackRunSupportabilityStatus | None,
@@ -316,6 +331,14 @@ def _filter_workflow_pack_runs(
         ]
     if pack_id is not None:
         filtered_runs = [run for run in filtered_runs if run.pack_id == pack_id]
+    if caller_app is not None:
+        filtered_runs = [run for run in filtered_runs if run.caller_app == caller_app]
+    if tenant_id is not None:
+        filtered_runs = [run for run in filtered_runs if run.tenant_id == tenant_id]
+    if workflow_surface is not None:
+        filtered_runs = [
+            run for run in filtered_runs if run.workflow_surface == workflow_surface
+        ]
     if runtime_state is not None:
         filtered_runs = [run for run in filtered_runs if run.runtime_state is runtime_state]
     if review_state is not None:

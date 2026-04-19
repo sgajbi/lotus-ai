@@ -126,7 +126,11 @@ def test_workflow_pack_run_catalog_and_detail_expose_recorded_history() -> None:
 
 def test_workflow_pack_run_catalog_filters_by_supportability_and_limit() -> None:
     awaiting_context = build_task_execution_context(
-        advisor_brief_task_execution_request(correlation_id="corr-pack-run-filter-001")
+        advisor_brief_task_execution_request(
+            correlation_id="corr-pack-run-filter-001",
+            caller_app="lotus-gateway",
+            tenant_id="tenant-sg-001",
+        )
     )
     awaiting_response = build_task_execution_response(
         resolved=resolve_task_execution(context=awaiting_context)
@@ -138,7 +142,11 @@ def test_workflow_pack_run_catalog_filters_by_supportability_and_limit() -> None
     assert awaiting_run is not None
 
     accepted_context = build_task_execution_context(
-        advisor_brief_task_execution_request(correlation_id="corr-pack-run-filter-002")
+        advisor_brief_task_execution_request(
+            correlation_id="corr-pack-run-filter-002",
+            caller_app="lotus-gateway",
+            tenant_id="tenant-us-002",
+        )
     )
     accepted_response = build_task_execution_response(
         resolved=resolve_task_execution(context=accepted_context)
@@ -160,6 +168,9 @@ def test_workflow_pack_run_catalog_filters_by_supportability_and_limit() -> None
 
     filtered_catalog = build_workflow_pack_run_catalog(
         registration_ref="advisor_brief.pack@v1",
+        caller_app="lotus-gateway",
+        tenant_id="tenant-sg-001",
+        workflow_surface="advisor-brief-workspace",
         runtime_state=WorkflowPackRunRuntimeState.COMPLETED,
         review_state=WorkflowPackRunReviewState.AWAITING_REVIEW,
         supportability_status=WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED,
@@ -170,6 +181,9 @@ def test_workflow_pack_run_catalog_filters_by_supportability_and_limit() -> None
     assert filtered_catalog.filters_applied == {
         "limit": 1,
         "registration_ref": "advisor_brief.pack@v1",
+        "caller_app": "lotus-gateway",
+        "tenant_id": "tenant-sg-001",
+        "workflow_surface": "advisor-brief-workspace",
         "runtime_state": "COMPLETED",
         "review_state": "AWAITING_REVIEW",
         "supportability_status": "ACTION_REQUIRED",
@@ -177,6 +191,9 @@ def test_workflow_pack_run_catalog_filters_by_supportability_and_limit() -> None
     }
     assert filtered_catalog.run_count == 1
     assert [run.run_id for run in filtered_catalog.runs] == [awaiting_run.run_id]
+    assert filtered_catalog.runs[0].caller_app == "lotus-gateway"
+    assert filtered_catalog.runs[0].tenant_id == "tenant-sg-001"
+    assert filtered_catalog.runs[0].workflow_surface == "advisor-brief-workspace"
     assert filtered_catalog.awaiting_review_count == 1
     assert filtered_catalog.completed_count == 1
     assert filtered_catalog.ready_count == 0

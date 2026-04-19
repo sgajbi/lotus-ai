@@ -175,6 +175,18 @@ async def get_workflow_pack_run_catalog_route(
         default=None,
         description="Optional workflow-pack identifier filter.",
     ),
+    caller_app: str | None = Query(
+        default=None,
+        description="Optional caller-application filter for the run catalog.",
+    ),
+    tenant_id: str | None = Query(
+        default=None,
+        description="Optional tenant identifier filter for the run catalog.",
+    ),
+    workflow_surface: str | None = Query(
+        default=None,
+        description="Optional workflow-surface filter for the run catalog.",
+    ),
     runtime_state: WorkflowPackRunRuntimeState | None = Query(
         default=None,
         description="Optional runtime-state filter for the run catalog.",
@@ -201,6 +213,9 @@ async def get_workflow_pack_run_catalog_route(
     return build_workflow_pack_run_catalog(
         registration_ref=registration_ref,
         pack_id=pack_id,
+        caller_app=caller_app,
+        tenant_id=tenant_id,
+        workflow_surface=workflow_surface,
         runtime_state=runtime_state,
         review_state=review_state,
         supportability_status=supportability_status,

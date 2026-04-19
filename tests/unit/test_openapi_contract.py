@@ -275,6 +275,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     } >= {
         "registration_ref",
         "pack_id",
+        "caller_app",
+        "tenant_id",
+        "workflow_surface",
         "runtime_state",
         "review_state",
         "supportability_status",

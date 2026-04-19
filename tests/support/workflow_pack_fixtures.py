@@ -32,6 +32,7 @@ def advisor_brief_task_execution_request(
     correlation_id: str,
     task_id: str = "explain.v1",
     caller_app: str = "lotus-gateway",
+    tenant_id: str | None = "tenant-sg-001",
     summary: str = "Draft advisor brief from source performance facts.",
     source_refs: list[str] | None = None,
     portfolio_return_pct: float = 1.25,
@@ -44,6 +45,7 @@ def advisor_brief_task_execution_request(
         caller=CallerMetadata(
             caller_app=caller_app,
             correlation_id=correlation_id,
+            tenant_id=tenant_id,
         ),
         context=TaskContextEnvelope(
             summary=summary,
@@ -63,6 +65,7 @@ def advisor_brief_task_execution_request_json(
     correlation_id: str,
     task_id: str = "explain.v1",
     caller_app: str = "lotus-gateway",
+    tenant_id: str | None = "tenant-sg-001",
     summary: str = "Draft advisor brief from source performance facts.",
     source_refs: list[str] | None = None,
     portfolio_return_pct: float = 1.25,
@@ -75,6 +78,7 @@ def advisor_brief_task_execution_request_json(
         "caller": {
             "caller_app": caller_app,
             "correlation_id": correlation_id,
+            "tenant_id": tenant_id,
         },
         "context": {
             "summary": summary,

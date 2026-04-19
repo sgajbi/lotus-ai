@@ -80,14 +80,18 @@ def test_workflow_pack_run_catalog_route_supports_bounded_filters(
     first_execute_response = client.post(
         "/ai/tasks/execute",
         json=advisor_brief_task_execution_request_json(
-            correlation_id="corr-pack-run-api-filter-001"
+            correlation_id="corr-pack-run-api-filter-001",
+            caller_app="lotus-gateway",
+            tenant_id="tenant-sg-001",
         ),
     )
     assert first_execute_response.status_code == 200
     second_execute_response = client.post(
         "/ai/tasks/execute",
         json=advisor_brief_task_execution_request_json(
-            correlation_id="corr-pack-run-api-filter-002"
+            correlation_id="corr-pack-run-api-filter-002",
+            caller_app="lotus-gateway",
+            tenant_id="tenant-us-002",
         ),
     )
     assert second_execute_response.status_code == 200
@@ -111,6 +115,9 @@ def test_workflow_pack_run_catalog_route_supports_bounded_filters(
         "/platform/workflow-packs/runs",
         params={
             "registration_ref": "advisor_brief.pack@v1",
+            "caller_app": "lotus-gateway",
+            "tenant_id": "tenant-sg-001",
+            "workflow_surface": "advisor-brief-workspace",
             "runtime_state": "COMPLETED",
             "review_state": "AWAITING_REVIEW",
             "supportability_status": "ACTION_REQUIRED",
@@ -124,6 +131,9 @@ def test_workflow_pack_run_catalog_route_supports_bounded_filters(
     assert body["filters_applied"] == {
         "limit": 1,
         "registration_ref": "advisor_brief.pack@v1",
+        "caller_app": "lotus-gateway",
+        "tenant_id": "tenant-sg-001",
+        "workflow_surface": "advisor-brief-workspace",
         "runtime_state": "COMPLETED",
         "review_state": "AWAITING_REVIEW",
         "supportability_status": "ACTION_REQUIRED",
@@ -134,6 +144,9 @@ def test_workflow_pack_run_catalog_route_supports_bounded_filters(
     assert body["action_required_count"] == 1
     assert body["historical_count"] == 0
     assert [run["run_id"] for run in body["runs"]] == [awaiting_run_id]
+    assert body["runs"][0]["caller_app"] == "lotus-gateway"
+    assert body["runs"][0]["tenant_id"] == "tenant-sg-001"
+    assert body["runs"][0]["workflow_surface"] == "advisor-brief-workspace"
 
 
 def test_workflow_pack_execute_route_records_explicit_run_and_returns_run_id(
