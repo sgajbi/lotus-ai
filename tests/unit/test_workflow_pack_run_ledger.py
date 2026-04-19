@@ -118,6 +118,10 @@ def test_workflow_pack_run_catalog_and_detail_expose_recorded_history() -> None:
     assert "shared run-supportability seam" in catalog.notes[3]
     assert "Phase-1 recorded runs now emit governed workflow-pack artifact refs" in catalog.notes[4]
     assert catalog.runs[0].supportability_status.value == "ACTION_REQUIRED"
+    assert catalog.runs[0].review_summary.latest_review_event_at is None
+    assert catalog.runs[0].review_summary.latest_review_actor is None
+    assert catalog.runs[0].review_summary.review_transition_count == 0
+    assert catalog.runs[0].review_summary.has_review_history is False
     detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
     assert detail.run.run_id == recorded.run_id
     assert detail.review.state.value == "AWAITING_REVIEW"
@@ -241,6 +245,11 @@ def test_accept_review_action_updates_review_state_and_records_history() -> None
     assert review_response.events[0].event_type.value == "REVIEW_STATE_UPDATED"
     assert "bounded downstream use" in review_response.events[0].message
     assert any("bounded downstream use" in line for line in review_response.summary)
+    catalog = build_workflow_pack_run_catalog()
+    assert catalog.runs[0].review_summary.latest_review_event_at is not None
+    assert catalog.runs[0].review_summary.latest_review_actor == "review:banker.sg.001"
+    assert catalog.runs[0].review_summary.review_transition_count == 1
+    assert catalog.runs[0].review_summary.has_review_history is True
     detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
     assert detail.run.review_state.value == "ACCEPTED"
     assert detail.review.state.value == "ACCEPTED"

@@ -91,6 +91,12 @@ class WorkflowPackRunDescriptor(BaseModel):
             "These do not grant consequence-bearing workflow authority."
         ),
     )
+    review_summary: WorkflowPackRunReviewSummaryDescriptor = Field(
+        description=(
+            "Bounded review-progression summary for the workflow-pack run so catalog consumers do "
+            "not need raw event history to understand current review provenance."
+        )
+    )
     review_required: bool = Field(
         description="Whether the run is expected to enter a human-review flow."
     )
@@ -250,20 +256,7 @@ class WorkflowPackRunConsumerRuntimeDescriptor(BaseModel):
     stubbed: bool = Field(description="Whether the run was stub-backed.")
 
 
-class WorkflowPackRunConsumerReviewDescriptor(BaseModel):
-    required: bool = Field(
-        description="Whether this workflow-pack run is expected to enter a review flow."
-    )
-    state: WorkflowPackRunReviewState = Field(
-        description="Current review-state posture for the workflow-pack run."
-    )
-    allowed_actions: list[WorkflowPackRunReviewActionType] = Field(
-        default_factory=list,
-        description=(
-            "Bounded ledger-compatible review actions currently accepted by lotus-ai for the run "
-            "posture. These are not business-authority grants."
-        ),
-    )
+class WorkflowPackRunReviewSummaryDescriptor(BaseModel):
     latest_review_event_at: str | None = Field(
         default=None,
         description="UTC timestamp for the most recent recorded review-state transition, when available.",
@@ -277,6 +270,22 @@ class WorkflowPackRunConsumerReviewDescriptor(BaseModel):
     )
     has_review_history: bool = Field(
         description="Whether any review-state transition has already been recorded for the run."
+    )
+
+
+class WorkflowPackRunConsumerReviewDescriptor(WorkflowPackRunReviewSummaryDescriptor):
+    required: bool = Field(
+        description="Whether this workflow-pack run is expected to enter a review flow."
+    )
+    state: WorkflowPackRunReviewState = Field(
+        description="Current review-state posture for the workflow-pack run."
+    )
+    allowed_actions: list[WorkflowPackRunReviewActionType] = Field(
+        default_factory=list,
+        description=(
+            "Bounded ledger-compatible review actions currently accepted by lotus-ai for the run "
+            "posture. These are not business-authority grants."
+        ),
     )
 
 

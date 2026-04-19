@@ -75,7 +75,8 @@ Implemented on the current branch:
 6. runtime-readiness, startup-policy, and platform-status integration for the workflow-pack run store so durable ledger posture is inspectable instead of implied,
 7. bounded review-action contracts and service seams for actor-attributed `ACCEPT`, `REJECT`, `REVISE`, `SUPERSEDE`, and `ABANDON` transitions, including lineage preservation between original and replacement runs,
 8. bounded `allowed_review_actions` emitted on workflow-pack run descriptors so downstream consumers can render ledger-compatible next-step posture without inferring review semantics from raw state alone,
-9. a bounded workflow-pack run consumer view that groups runtime, review, lineage, and provenance into one shared contract candidate for downstream composition layers.
+9. a bounded workflow-pack run consumer view that groups runtime, review, lineage, and provenance into one shared contract candidate for downstream composition layers,
+10. a bounded `review_summary` block now emitted on workflow-pack run descriptors so catalog consumers can inspect latest review-transition provenance without fetching raw run events or full run detail.
 
 What is not implemented yet:
 

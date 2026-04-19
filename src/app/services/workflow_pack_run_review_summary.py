@@ -4,6 +4,7 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunConsumerReviewDescriptor,
     WorkflowPackRunEventType,
     WorkflowPackRunReviewState,
+    WorkflowPackRunReviewSummaryDescriptor,
 )
 from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunEventRecord,
@@ -18,8 +19,7 @@ def build_workflow_pack_run_review_descriptor(
     events: list[WorkflowPackRunEventRecord],
 ) -> WorkflowPackRunConsumerReviewDescriptor:
     review_state = WorkflowPackRunReviewState(record.review_state)
-    review_events = list_workflow_pack_run_review_events(events)
-    latest_review_event = review_events[-1] if review_events else None
+    review_summary = build_workflow_pack_run_review_summary(events=events)
     return WorkflowPackRunConsumerReviewDescriptor(
         required=record.review_required,
         state=review_state,
@@ -27,6 +27,19 @@ def build_workflow_pack_run_review_descriptor(
             review_required=record.review_required,
             review_state=review_state,
         ),
+        latest_review_event_at=review_summary.latest_review_event_at,
+        latest_review_actor=review_summary.latest_review_actor,
+        review_transition_count=review_summary.review_transition_count,
+        has_review_history=review_summary.has_review_history,
+    )
+
+
+def build_workflow_pack_run_review_summary(
+    *, events: list[WorkflowPackRunEventRecord]
+) -> WorkflowPackRunReviewSummaryDescriptor:
+    review_events = list_workflow_pack_run_review_events(events)
+    latest_review_event = review_events[-1] if review_events else None
+    return WorkflowPackRunReviewSummaryDescriptor(
         latest_review_event_at=(
             latest_review_event.recorded_at if latest_review_event is not None else None
         ),

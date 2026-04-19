@@ -59,6 +59,10 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
         "SUPERSEDE",
         "ABANDON",
     ]
+    assert run["review_summary"]["latest_review_event_at"] is None
+    assert run["review_summary"]["latest_review_actor"] is None
+    assert run["review_summary"]["review_transition_count"] == 0
+    assert run["review_summary"]["has_review_history"] is False
     assert len(run["artifact_refs"]) == 1
     assert run["artifact_refs"][0]["domain"] == "workflow_pack"
     assert run["artifact_refs"][0]["artifact_type"] == "run_output_summary"
@@ -248,6 +252,13 @@ def test_workflow_pack_run_review_action_updates_review_state(client: TestClient
     assert review_body["run"]["review_state"] == "ACCEPTED"
     assert review_body["run"]["allowed_review_actions"] == ["SUPERSEDE"]
     assert review_body["events"][0]["event_type"] == "REVIEW_STATE_UPDATED"
+    catalog_response = client.get("/platform/workflow-packs/runs")
+    assert catalog_response.status_code == 200
+    catalog_run = catalog_response.json()["runs"][0]
+    assert catalog_run["review_summary"]["latest_review_event_at"] is not None
+    assert catalog_run["review_summary"]["latest_review_actor"] == "review:banker.sg.100"
+    assert catalog_run["review_summary"]["review_transition_count"] == 1
+    assert catalog_run["review_summary"]["has_review_history"] is True
     detail_response = client.get(f"/platform/workflow-packs/runs/{run_id}")
     assert detail_response.status_code == 200
     detail_body = detail_response.json()

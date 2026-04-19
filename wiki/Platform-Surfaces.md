@@ -93,7 +93,7 @@ The workflow-pack detail route now carries structured owner-artifact references 
 
 The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 recorded runs:
 
-1. `/platform/workflow-packs/runs` exposes recorded run state with runtime and review posture kept separate,
+1. `/platform/workflow-packs/runs` exposes recorded run state with runtime and review posture kept separate and now includes a bounded `review_summary` block on each run so downstream triage can inspect latest review provenance without fetching raw event history,
 2. `/platform/workflow-packs/runs/{run_id}` exposes event history, evidence descriptors, governed artifact refs, and bounded `allowed_review_actions` for one recorded run,
 3. `/platform/workflow-packs/runs/{run_id}/operator-profile` exposes one operator-facing supportability summary for review pending, failure, expiry, supersession, partial-output, artifact, and evidence posture,
 4. `/platform/workflow-packs/runs/{run_id}/consumer-view` exposes one grouped runtime-review-lineage-provenance contract candidate for downstream composition layers, including artifact-backed provenance refs,

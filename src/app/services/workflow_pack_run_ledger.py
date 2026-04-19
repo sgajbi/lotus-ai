@@ -18,6 +18,7 @@ from app.contracts.workflow_pack_runs import (
 from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunEventRecord,
     WorkflowPackRunRecord,
+    WorkflowPackRunRepository,
 )
 from app.services.task_execution_models import TaskExecutionContext
 from app.services.workflow_pack_bindings import (
@@ -29,6 +30,7 @@ from app.services.workflow_pack_run_supportability_summary import (
 )
 from app.services.workflow_pack_run_review_summary import (
     build_workflow_pack_run_review_descriptor,
+    build_workflow_pack_run_review_summary,
 )
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
@@ -50,9 +52,8 @@ def build_workflow_pack_run_catalog(
     workflow_authority_owner: str | None = None,
     limit: int = 100,
 ) -> WorkflowPackRunCatalogResponse:
-    runs = [
-        map_workflow_pack_run_record(record) for record in get_workflow_pack_run_store().list_runs()
-    ]
+    store = get_workflow_pack_run_store()
+    runs = [map_workflow_pack_run_record(record, store=store) for record in store.list_runs()]
     filtered_runs = _filter_workflow_pack_runs(
         runs=runs,
         registration_ref=registration_ref,
@@ -144,15 +145,14 @@ def build_workflow_pack_run_detail(*, run_id: str) -> WorkflowPackRunDetailRespo
         service=settings.service_name,
         version=settings.service_version,
         run_store_mode=settings.workflow_pack_run_store_mode,
-        run=map_workflow_pack_run_record(record),
+        run=map_workflow_pack_run_record(record, store=store),
         review=build_workflow_pack_run_review_descriptor(record=record, events=events),
         supportability=build_workflow_pack_run_supportability_descriptor_from_record(
             record=record,
             map_record=map_workflow_pack_run_record,
         ),
         events=[
-            map_workflow_pack_run_event_record(event)
-            for event in events
+            map_workflow_pack_run_event_record(event) for event in events
         ],
         notes=[
             "Runtime state and review state are modeled separately in the run detail to avoid ambiguous operator or product interpretation.",
@@ -264,7 +264,15 @@ def _build_workflow_pack_run_id(*, pack_family: str, request_id: str) -> str:
     return f"packrun_{pack_family}_{request_id}"
 
 
-def map_workflow_pack_run_record(record: WorkflowPackRunRecord) -> WorkflowPackRunDescriptor:
+def map_workflow_pack_run_record(
+    record: WorkflowPackRunRecord,
+    *,
+    store: WorkflowPackRunRepository | None = None,
+) -> WorkflowPackRunDescriptor:
+    run_store = store or get_workflow_pack_run_store()
+    review_summary = build_workflow_pack_run_review_summary(
+        events=run_store.list_events(run_id=record.run_id)
+    )
     return WorkflowPackRunDescriptor(
         run_id=record.run_id,
         pack_id=record.pack_id,
@@ -285,6 +293,7 @@ def map_workflow_pack_run_record(record: WorkflowPackRunRecord) -> WorkflowPackR
             review_required=record.review_required,
             review_state=WorkflowPackRunReviewState(record.review_state),
         ),
+        review_summary=review_summary,
         review_required=record.review_required,
         provider_mode=record.provider_mode,
         stubbed=record.stubbed,
