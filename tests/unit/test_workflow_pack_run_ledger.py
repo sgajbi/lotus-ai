@@ -24,6 +24,9 @@ from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunReviewActionRequest,
     WorkflowPackRunReviewActionType,
+    WorkflowPackRunReviewState,
+    WorkflowPackRunRuntimeState,
+    WorkflowPackRunSupportabilityStatus,
 )
 from tests.support.workflow_pack_fixtures import advisor_brief_task_execution_request
 
@@ -105,13 +108,71 @@ def test_workflow_pack_run_catalog_and_detail_expose_recorded_history() -> None:
 
     assert catalog.run_store_mode == "memory"
     assert catalog.run_count == 1
+    assert catalog.filters_applied == {"limit": 100}
     assert catalog.awaiting_review_count == 1
     assert catalog.completed_count == 1
-    assert "emit governed workflow-pack artifact refs" in catalog.notes[2]
+    assert "Phase-1 recorded runs now emit governed workflow-pack artifact refs" in catalog.notes[3]
     detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
     assert detail.run.run_id == recorded.run_id
     assert len(detail.run.artifact_refs) == 1
     assert detail.events[0].event_type.value == "RUN_RECORDED"
+
+
+def test_workflow_pack_run_catalog_filters_by_supportability_and_limit() -> None:
+    awaiting_context = build_task_execution_context(
+        advisor_brief_task_execution_request(correlation_id="corr-pack-run-filter-001")
+    )
+    awaiting_response = build_task_execution_response(
+        resolved=resolve_task_execution(context=awaiting_context)
+    )
+    awaiting_run = record_workflow_pack_run_for_task_execution(
+        context=awaiting_context,
+        response=awaiting_response,
+    )
+    assert awaiting_run is not None
+
+    accepted_context = build_task_execution_context(
+        advisor_brief_task_execution_request(correlation_id="corr-pack-run-filter-002")
+    )
+    accepted_response = build_task_execution_response(
+        resolved=resolve_task_execution(context=accepted_context)
+    )
+    accepted_run = record_workflow_pack_run_for_task_execution(
+        context=accepted_context,
+        response=accepted_response,
+    )
+    assert accepted_run is not None
+    apply_workflow_pack_run_review_action(
+        run_id=accepted_run.run_id,
+        request=WorkflowPackRunReviewActionRequest(
+            action_type=WorkflowPackRunReviewActionType.ACCEPT,
+            caller_app="lotus-gateway",
+            reviewed_by="banker.sg.filter",
+            reason="Accepted for filter coverage.",
+        ),
+    )
+
+    filtered_catalog = build_workflow_pack_run_catalog(
+        registration_ref="advisor_brief.pack@v1",
+        runtime_state=WorkflowPackRunRuntimeState.COMPLETED,
+        review_state=WorkflowPackRunReviewState.AWAITING_REVIEW,
+        supportability_status=WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED,
+        workflow_authority_owner="lotus-gateway",
+        limit=1,
+    )
+
+    assert filtered_catalog.filters_applied == {
+        "limit": 1,
+        "registration_ref": "advisor_brief.pack@v1",
+        "runtime_state": "COMPLETED",
+        "review_state": "AWAITING_REVIEW",
+        "supportability_status": "ACTION_REQUIRED",
+        "workflow_authority_owner": "lotus-gateway",
+    }
+    assert filtered_catalog.run_count == 1
+    assert [run.run_id for run in filtered_catalog.runs] == [awaiting_run.run_id]
+    assert filtered_catalog.awaiting_review_count == 1
+    assert filtered_catalog.completed_count == 1
 
 
 def test_workflow_pack_run_detail_rejects_unknown_run() -> None:

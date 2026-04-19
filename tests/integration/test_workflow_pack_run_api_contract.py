@@ -19,6 +19,7 @@ def test_workflow_pack_run_catalog_starts_empty(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["run_store_mode"] == "memory"
     assert body["run_count"] == 0
+    assert body["filters_applied"] == {"limit": 100}
     assert body["runs"] == []
 
 
@@ -36,6 +37,7 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
     assert catalog_response.status_code == 200
     catalog_body = catalog_response.json()
     assert catalog_body["run_count"] == 1
+    assert catalog_body["filters_applied"] == {"limit": 100}
     assert catalog_body["awaiting_review_count"] == 1
     assert catalog_body["completed_count"] == 1
     run = catalog_body["runs"][0]
@@ -62,6 +64,65 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
     assert detail_body["run"]["artifact_refs"][0]["source_object_id"] == run["run_id"]
     assert detail_body["events"][0]["event_type"] == "RUN_RECORDED"
     assert detail_body["run"]["workflow_surface"] == "advisor-brief-workspace"
+
+
+def test_workflow_pack_run_catalog_route_supports_bounded_filters(
+    client: TestClient,
+) -> None:
+    first_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-filter-001"
+        ),
+    )
+    assert first_execute_response.status_code == 200
+    second_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-filter-002"
+        ),
+    )
+    assert second_execute_response.status_code == 200
+
+    all_runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+    accepted_run_id = all_runs[0]["run_id"]
+    awaiting_run_id = all_runs[1]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{accepted_run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.101",
+            "reason": "Accepted for catalog filter coverage.",
+        },
+    )
+    assert review_response.status_code == 200
+
+    filtered_response = client.get(
+        "/platform/workflow-packs/runs",
+        params={
+            "registration_ref": "advisor_brief.pack@v1",
+            "runtime_state": "COMPLETED",
+            "review_state": "AWAITING_REVIEW",
+            "supportability_status": "ACTION_REQUIRED",
+            "workflow_authority_owner": "lotus-gateway",
+            "limit": 1,
+        },
+    )
+
+    assert filtered_response.status_code == 200
+    body = filtered_response.json()
+    assert body["filters_applied"] == {
+        "limit": 1,
+        "registration_ref": "advisor_brief.pack@v1",
+        "runtime_state": "COMPLETED",
+        "review_state": "AWAITING_REVIEW",
+        "supportability_status": "ACTION_REQUIRED",
+        "workflow_authority_owner": "lotus-gateway",
+    }
+    assert body["run_count"] == 1
+    assert [run["run_id"] for run in body["runs"]] == [awaiting_run_id]
 
 
 def test_workflow_pack_execute_route_records_explicit_run_and_returns_run_id(

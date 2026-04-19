@@ -143,6 +143,10 @@ class WorkflowPackRunCatalogResponse(BaseModel):
     phase: str = Field(description="Current delivery phase for lotus-ai.")
     run_store_mode: str = Field(description="Configured workflow-pack run-store mode.")
     run_count: int = Field(description="Number of workflow-pack run records currently exposed.")
+    filters_applied: dict[str, str | int] = Field(
+        default_factory=dict,
+        description="Bounded query filters applied while building the workflow-pack run catalog.",
+    )
     awaiting_review_count: int = Field(
         description="Number of workflow-pack runs currently awaiting review."
     )

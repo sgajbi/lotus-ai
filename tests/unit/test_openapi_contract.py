@@ -267,6 +267,20 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/workflow-packs/runs"]["get"]["operationId"] == (
         "getWorkflowPackRunCatalog"
     )
+    workflow_pack_run_catalog_parameters = spec["paths"]["/platform/workflow-packs/runs"]["get"][
+        "parameters"
+    ]
+    assert {
+        parameter["name"] for parameter in workflow_pack_run_catalog_parameters
+    } >= {
+        "registration_ref",
+        "pack_id",
+        "runtime_state",
+        "review_state",
+        "supportability_status",
+        "workflow_authority_owner",
+        "limit",
+    }
     assert spec["paths"]["/platform/workflow-packs/runs/{run_id}"]["get"]["operationId"] == (
         "getWorkflowPackRunDetail"
     )
@@ -797,6 +811,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "execution" in workflow_pack_execution_response_schema["properties"]
     assert "workflow_pack_run" in workflow_pack_execution_response_schema["properties"]
     assert "run_store_mode" in workflow_pack_run_catalog_schema["properties"]
+    assert "filters_applied" in workflow_pack_run_catalog_schema["properties"]
     assert "awaiting_review_count" in workflow_pack_run_catalog_schema["properties"]
     assert "runs" in workflow_pack_run_catalog_schema["properties"]
     assert "registration_ref" in workflow_pack_run_schema["properties"]

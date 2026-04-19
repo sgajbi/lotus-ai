@@ -13,6 +13,7 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunEventType,
     WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
+    WorkflowPackRunSupportabilityStatus,
 )
 from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunEventRecord,
@@ -25,30 +26,71 @@ from app.services.workflow_pack_bindings import (
 from app.services.workflow_pack_run_artifacts import persist_workflow_pack_run_output_artifact
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
+from app.services.workflow_pack_run_supportability import (
+    resolve_workflow_pack_run_supportability_status,
+)
 
 
-def build_workflow_pack_run_catalog() -> WorkflowPackRunCatalogResponse:
+def build_workflow_pack_run_catalog(
+    *,
+    registration_ref: str | None = None,
+    pack_id: str | None = None,
+    runtime_state: WorkflowPackRunRuntimeState | None = None,
+    review_state: WorkflowPackRunReviewState | None = None,
+    supportability_status: WorkflowPackRunSupportabilityStatus | None = None,
+    workflow_authority_owner: str | None = None,
+    limit: int = 100,
+) -> WorkflowPackRunCatalogResponse:
     runs = [
         map_workflow_pack_run_record(record) for record in get_workflow_pack_run_store().list_runs()
     ]
-    runs.sort(key=lambda item: item.created_at, reverse=True)
+    filtered_runs = _filter_workflow_pack_runs(
+        runs=runs,
+        registration_ref=registration_ref,
+        pack_id=pack_id,
+        runtime_state=runtime_state,
+        review_state=review_state,
+        supportability_status=supportability_status,
+        workflow_authority_owner=workflow_authority_owner,
+    )
+    filtered_runs.sort(key=lambda item: item.created_at, reverse=True)
+    limited_runs = filtered_runs[:limit]
+    filters_applied: dict[str, str | int] = {"limit": limit}
+    if registration_ref is not None:
+        filters_applied["registration_ref"] = registration_ref
+    if pack_id is not None:
+        filters_applied["pack_id"] = pack_id
+    if runtime_state is not None:
+        filters_applied["runtime_state"] = runtime_state.value
+    if review_state is not None:
+        filters_applied["review_state"] = review_state.value
+    if supportability_status is not None:
+        filters_applied["supportability_status"] = supportability_status.value
+    if workflow_authority_owner is not None:
+        filters_applied["workflow_authority_owner"] = workflow_authority_owner
     return WorkflowPackRunCatalogResponse(
         service=settings.service_name,
         version=settings.service_version,
         phase=settings.delivery_phase,
         run_store_mode=settings.workflow_pack_run_store_mode,
-        run_count=len(runs),
+        run_count=len(limited_runs),
+        filters_applied=filters_applied,
         awaiting_review_count=sum(
-            1 for run in runs if run.review_state == WorkflowPackRunReviewState.AWAITING_REVIEW
+            1
+            for run in limited_runs
+            if run.review_state == WorkflowPackRunReviewState.AWAITING_REVIEW
         ),
         completed_count=sum(
-            1 for run in runs if run.runtime_state == WorkflowPackRunRuntimeState.COMPLETED
+            1
+            for run in limited_runs
+            if run.runtime_state == WorkflowPackRunRuntimeState.COMPLETED
         ),
-        latest_recorded_at=runs[0].created_at if runs else None,
-        runs=runs,
+        latest_recorded_at=limited_runs[0].created_at if limited_runs else None,
+        runs=limited_runs,
         notes=[
             "Workflow-pack run records are reference-oriented and preserve runtime state separately from review state.",
             "The current slice records Phase-1 workflow-pack executions through an explicit execution seam and a narrower binding-backed task fallback while the broader workflow-pack runtime remains under implementation.",
+            "Catalog queries are now bounded and can be filtered by registration, workflow-authority owner, runtime state, review state, and shared supportability posture for operator triage.",
             "Phase-1 recorded runs now emit governed workflow-pack artifact refs so support and downstream review can inspect bounded output summaries without pulling raw payloads into the ledger contract.",
         ],
     )
@@ -228,3 +270,40 @@ def map_workflow_pack_run_event_record(
         message=record.message,
         recorded_at=record.recorded_at,
     )
+
+
+def _filter_workflow_pack_runs(
+    *,
+    runs: list[WorkflowPackRunDescriptor],
+    registration_ref: str | None,
+    pack_id: str | None,
+    runtime_state: WorkflowPackRunRuntimeState | None,
+    review_state: WorkflowPackRunReviewState | None,
+    supportability_status: WorkflowPackRunSupportabilityStatus | None,
+    workflow_authority_owner: str | None,
+) -> list[WorkflowPackRunDescriptor]:
+    filtered_runs = runs
+    if registration_ref is not None:
+        filtered_runs = [
+            run for run in filtered_runs if run.registration_ref == registration_ref
+        ]
+    if pack_id is not None:
+        filtered_runs = [run for run in filtered_runs if run.pack_id == pack_id]
+    if runtime_state is not None:
+        filtered_runs = [run for run in filtered_runs if run.runtime_state is runtime_state]
+    if review_state is not None:
+        filtered_runs = [run for run in filtered_runs if run.review_state is review_state]
+    if supportability_status is not None:
+        filtered_runs = [
+            run
+            for run in filtered_runs
+            if resolve_workflow_pack_run_supportability_status(run).value
+            == supportability_status.value
+        ]
+    if workflow_authority_owner is not None:
+        filtered_runs = [
+            run
+            for run in filtered_runs
+            if run.workflow_authority_owner == workflow_authority_owner
+        ]
+    return filtered_runs

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.contracts.workflow_packs import (
     WorkflowPackControlActionRequest,
@@ -20,6 +20,9 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunOperatorProfileResponse,
     WorkflowPackRunReviewActionRequest,
     WorkflowPackRunReviewActionResponse,
+    WorkflowPackRunReviewState,
+    WorkflowPackRunRuntimeState,
+    WorkflowPackRunSupportabilityStatus,
 )
 from app.services.workflow_pack_run_consumer_view import build_workflow_pack_run_consumer_view
 from app.services.workflow_pack_run_operator_profile import build_workflow_pack_run_operator_profile
@@ -163,8 +166,47 @@ async def get_workflow_pack_control_history_route(
         500: {"description": "Unexpected server error."},
     },
 )
-async def get_workflow_pack_run_catalog_route() -> WorkflowPackRunCatalogResponse:
-    return build_workflow_pack_run_catalog()
+async def get_workflow_pack_run_catalog_route(
+    registration_ref: str | None = Query(
+        default=None,
+        description="Optional workflow-pack registration reference filter.",
+    ),
+    pack_id: str | None = Query(
+        default=None,
+        description="Optional workflow-pack identifier filter.",
+    ),
+    runtime_state: WorkflowPackRunRuntimeState | None = Query(
+        default=None,
+        description="Optional runtime-state filter for the run catalog.",
+    ),
+    review_state: WorkflowPackRunReviewState | None = Query(
+        default=None,
+        description="Optional review-state filter for the run catalog.",
+    ),
+    supportability_status: WorkflowPackRunSupportabilityStatus | None = Query(
+        default=None,
+        description="Optional supportability-status filter derived from the shared run posture seam.",
+    ),
+    workflow_authority_owner: str | None = Query(
+        default=None,
+        description="Optional workflow-authority owner filter for the run catalog.",
+    ),
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=200,
+        description="Maximum number of workflow-pack runs to return after filtering.",
+    ),
+) -> WorkflowPackRunCatalogResponse:
+    return build_workflow_pack_run_catalog(
+        registration_ref=registration_ref,
+        pack_id=pack_id,
+        runtime_state=runtime_state,
+        review_state=review_state,
+        supportability_status=supportability_status,
+        workflow_authority_owner=workflow_authority_owner,
+        limit=limit,
+    )
 
 
 @router.get(
