@@ -539,6 +539,64 @@ def test_review_action_rejects_missing_or_unknown_replacement_run() -> None:
         raise AssertionError("Expected unknown replacement run id to fail")
 
 
+def test_review_action_rejects_non_reviewable_posture() -> None:
+    context = build_task_execution_context(
+        TaskExecutionRequest(
+            task_id="explain.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(
+                caller_app="lotus-gateway",
+                correlation_id="corr-pack-run-nonreviewable-001",
+            ),
+            context=TaskContextEnvelope(
+                summary="Draft advisor brief from source performance facts.",
+                payload={
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                },
+                source_refs=["lotus-gateway:performance-summary:YTD"],
+            ),
+            expected_output_label=OutputLabel.EXPLANATION_ONLY,
+        )
+    )
+    response = build_task_execution_response(resolved=resolve_task_execution(context=context))
+    recorded = record_workflow_pack_run_for_task_execution(context=context, response=response)
+    assert recorded is not None
+
+    store = get_workflow_pack_run_store()
+    stored = store.get_run(run_id=recorded.run_id)
+    assert stored is not None
+    store.save_run(
+        replace(
+            stored,
+            review_required=False,
+            review_state=WorkflowPackRunReviewState.NOT_REVIEW_REQUIRED.value,
+        )
+    )
+
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id=recorded.run_id,
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.ACCEPT,
+                caller_app="lotus-gateway",
+                reviewed_by="banker.sg.006b",
+                reason="Non-reviewable posture should reject review actions.",
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 409
+        assert "not allowed" in exc.detail
+    else:
+        raise AssertionError("Expected non-reviewable workflow-pack run to reject review action")
+
+
 def test_review_action_rejects_invalid_replacement_lineage() -> None:
     original_context = build_task_execution_context(
         TaskExecutionRequest(

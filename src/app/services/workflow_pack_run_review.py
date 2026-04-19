@@ -22,6 +22,7 @@ from app.services.workflow_pack_run_ledger import (
     map_workflow_pack_run_event_record,
     map_workflow_pack_run_record,
 )
+from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 
 _OPERATOR_CALLER_APP = "lotus-platform"
@@ -114,8 +115,8 @@ def _apply_review_transition(
     current_state = WorkflowPackRunReviewState(run.review_state)
     target_state = _resolve_target_review_state(request.action_type)
     _validate_review_transition(
+        review_required=run.review_required,
         current_state=current_state,
-        target_state=target_state,
         action_type=request.action_type,
     )
 
@@ -178,33 +179,20 @@ def _resolve_target_review_state(
 
 def _validate_review_transition(
     *,
+    review_required: bool,
     current_state: WorkflowPackRunReviewState,
-    target_state: WorkflowPackRunReviewState,
     action_type: WorkflowPackRunReviewActionType,
 ) -> None:
-    allowed_from_awaiting = {
-        WorkflowPackRunReviewState.ACCEPTED,
-        WorkflowPackRunReviewState.REJECTED,
-        WorkflowPackRunReviewState.REVISED,
-        WorkflowPackRunReviewState.SUPERSEDED,
-        WorkflowPackRunReviewState.ABANDONED,
-    }
-    allowed_from_accepted = {WorkflowPackRunReviewState.SUPERSEDED}
-    if (
-        current_state == WorkflowPackRunReviewState.AWAITING_REVIEW
-        and target_state in allowed_from_awaiting
-    ):
-        return
-    if (
-        current_state == WorkflowPackRunReviewState.ACCEPTED
-        and target_state in allowed_from_accepted
+    if action_type in resolve_allowed_review_actions(
+        review_required=review_required,
+        review_state=current_state,
     ):
         return
     raise HTTPException(
         status_code=status.HTTP_409_CONFLICT,
         detail=(
-            f"Workflow-pack run review action `{action_type.value}` cannot move review state "
-            f"from `{current_state.value}` to `{target_state.value}`."
+            f"Workflow-pack run review action `{action_type.value}` is not allowed from "
+            f"review state `{current_state.value}`."
         ),
     )
 
