@@ -286,6 +286,9 @@ def test_workflow_pack_run_operator_profile_reports_supportability_posture(
     assert body["supportability_status"] == "ACTION_REQUIRED"
     assert body["review_pending"] is True
     assert body["artifact_ref_count"] == 1
+    assert body["latest_event_type"] == "RUN_RECORDED"
+    assert body["latest_event_actor"] == "lotus-ai.workflow-pack-run-ledger"
+    assert body["event_type_counts"] == {"RUN_RECORDED": 1}
     assert any(finding["finding_id"] == "review_pending" for finding in body["findings"])
 
 

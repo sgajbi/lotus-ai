@@ -23,6 +23,7 @@ def build_workflow_pack_run_operator_profile(
 ) -> WorkflowPackRunOperatorProfileResponse:
     detail = build_workflow_pack_run_detail(run_id=run_id)
     run = detail.run
+    latest_event = detail.events[-1] if detail.events else None
     findings = _build_findings(detail)
     supportability_status = resolve_workflow_pack_run_supportability_status(run)
 
@@ -45,7 +46,10 @@ def build_workflow_pack_run_operator_profile(
         artifact_ref_count=len(run.artifact_refs),
         evidence_descriptor_count=len(run.evidence_descriptors),
         history_event_count=len(detail.events),
-        latest_event_at=detail.events[-1].recorded_at if detail.events else None,
+        latest_event_at=latest_event.recorded_at if latest_event is not None else None,
+        latest_event_type=latest_event.event_type if latest_event is not None else None,
+        latest_event_actor=latest_event.actor if latest_event is not None else None,
+        event_type_counts=_build_event_type_counts(detail),
         replacement_run_id=run.superseded_by_run_id,
         current_summary_note=_build_current_summary_note(detail, supportability_status),
         findings=findings,
@@ -57,6 +61,8 @@ def build_workflow_pack_run_operator_profile(
         ],
         inspection_steps=_build_inspection_steps(detail),
     )
+
+
 def _build_findings(
     detail: WorkflowPackRunDetailResponse,
 ) -> list[WorkflowPackRunSupportabilityFinding]:
@@ -194,3 +200,10 @@ def _build_inspection_steps(detail: WorkflowPackRunDetailResponse) -> list[str]:
         ),
         "When a newer replacement run exists, move diagnosis to that replacement before asking downstream teams to act on the historical run.",
     ]
+
+
+def _build_event_type_counts(detail: WorkflowPackRunDetailResponse) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for event in detail.events:
+        counts[event.event_type.value] = counts.get(event.event_type.value, 0) + 1
+    return counts

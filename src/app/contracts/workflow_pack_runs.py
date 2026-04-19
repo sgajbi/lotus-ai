@@ -400,6 +400,18 @@ class WorkflowPackRunOperatorProfileResponse(BaseModel):
         default=None,
         description="UTC timestamp for the most recent recorded workflow-pack run event.",
     )
+    latest_event_type: WorkflowPackRunEventType | None = Field(
+        default=None,
+        description="Event type recorded by the most recent workflow-pack run event, when available.",
+    )
+    latest_event_actor: str | None = Field(
+        default=None,
+        description="Actor recorded on the most recent workflow-pack run event, when available.",
+    )
+    event_type_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Bounded per-event-type counts for the recorded workflow-pack run history.",
+    )
     replacement_run_id: str | None = Field(
         default=None,
         description="Replacement workflow-pack run identifier when the current run is superseded or revised.",
