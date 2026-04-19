@@ -61,6 +61,13 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
     assert run["registration_ref"] == "advisor_brief.pack@v1"
     assert run["runtime_state"] == "COMPLETED"
     assert run["review_state"] == "AWAITING_REVIEW"
+    assert run["allowed_review_actions"] == [
+        "ACCEPT",
+        "REJECT",
+        "REVISE",
+        "SUPERSEDE",
+        "ABANDON",
+    ]
 
     detail_response = client.get(f"/platform/workflow-packs/runs/{run['run_id']}")
 
@@ -119,6 +126,7 @@ def test_workflow_pack_run_review_action_updates_review_state(client: TestClient
     assert review_response.status_code == 200
     review_body = review_response.json()
     assert review_body["run"]["review_state"] == "ACCEPTED"
+    assert review_body["run"]["allowed_review_actions"] == ["SUPERSEDE"]
     assert review_body["events"][0]["event_type"] == "REVIEW_STATE_UPDATED"
     detail_response = client.get(f"/platform/workflow-packs/runs/{run_id}")
     assert detail_response.status_code == 200

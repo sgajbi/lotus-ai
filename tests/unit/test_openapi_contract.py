@@ -700,6 +700,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "registration_ref" in workflow_pack_run_schema["properties"]
     assert "runtime_state" in workflow_pack_run_schema["properties"]
     assert "review_state" in workflow_pack_run_schema["properties"]
+    assert "allowed_review_actions" in workflow_pack_run_schema["properties"]
     assert "workflow_authority_owner" in workflow_pack_run_schema["properties"]
     assert "evidence_descriptors" in workflow_pack_run_schema["properties"]
     assert "events" in workflow_pack_run_detail_schema["properties"]

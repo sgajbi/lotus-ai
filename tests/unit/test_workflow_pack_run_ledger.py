@@ -63,6 +63,13 @@ def test_record_workflow_pack_run_for_advisor_brief_task_execution() -> None:
     assert recorded.task_id == "explain.v1"
     assert recorded.review_required is True
     assert recorded.review_state.value == "AWAITING_REVIEW"
+    assert [action.value for action in recorded.allowed_review_actions] == [
+        "ACCEPT",
+        "REJECT",
+        "REVISE",
+        "SUPERSEDE",
+        "ABANDON",
+    ]
     assert recorded.runtime_state.value == "COMPLETED"
     assert recorded.workflow_authority_owner == "lotus-gateway"
     assert "advisor_brief_status" in recorded.structured_output_keys
@@ -191,6 +198,7 @@ def test_accept_review_action_updates_review_state_and_records_history() -> None
     )
 
     assert review_response.run.review_state.value == "ACCEPTED"
+    assert [action.value for action in review_response.run.allowed_review_actions] == ["SUPERSEDE"]
     assert review_response.events[0].event_type.value == "REVIEW_STATE_UPDATED"
     assert "bounded downstream use" in review_response.events[0].message
     assert any("bounded downstream use" in line for line in review_response.summary)
@@ -278,6 +286,7 @@ def test_revise_review_action_links_replacement_run_and_preserves_lineage() -> N
     )
 
     assert review_response.run.review_state.value == "REVISED"
+    assert review_response.run.allowed_review_actions == []
     assert review_response.run.superseded_by_run_id == revised_run.run_id
     replacement_detail = build_workflow_pack_run_detail(run_id=revised_run.run_id)
     assert replacement_detail.run.supersedes_run_id == original_run.run_id
@@ -731,3 +740,4 @@ def test_review_action_allows_supersede_after_acceptance() -> None:
 
     assert review_response.run.review_state.value == "SUPERSEDED"
     assert review_response.run.superseded_by_run_id == replacement_run.run_id
+    assert review_response.run.allowed_review_actions == []

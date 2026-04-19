@@ -20,6 +20,7 @@ from app.repositories.workflow_pack_run_repository import (
 )
 from app.services.task_execution_models import TaskExecutionContext
 from app.services.workflow_pack_registry import get_workflow_pack_registration
+from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 
 
@@ -172,6 +173,10 @@ def map_workflow_pack_run_record(record: WorkflowPackRunRecord) -> WorkflowPackR
         workflow_authority_owner=record.workflow_authority_owner,
         runtime_state=WorkflowPackRunRuntimeState(record.runtime_state),
         review_state=WorkflowPackRunReviewState(record.review_state),
+        allowed_review_actions=resolve_allowed_review_actions(
+            review_required=record.review_required,
+            review_state=WorkflowPackRunReviewState(record.review_state),
+        ),
         review_required=record.review_required,
         provider_mode=record.provider_mode,
         stubbed=record.stubbed,

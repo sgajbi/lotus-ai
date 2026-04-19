@@ -70,6 +70,13 @@ class WorkflowPackRunDescriptor(BaseModel):
     review_state: WorkflowPackRunReviewState = Field(
         description="Review-state posture for the workflow-pack run."
     )
+    allowed_review_actions: list[WorkflowPackRunReviewActionType] = Field(
+        default_factory=list,
+        description=(
+            "Bounded ledger-level review actions currently compatible with the recorded run posture. "
+            "These do not grant consequence-bearing workflow authority."
+        ),
+    )
     review_required: bool = Field(
         description="Whether the run is expected to enter a human-review flow."
     )
