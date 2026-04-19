@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
 from app.contracts.workflow_pack_runs import WorkflowPackRunDescriptor
+from app.services.workflow_pack_bindings import resolve_workflow_pack_execution_binding_for_task
 from app.services.task_execution_pipeline import (
     build_task_execution_response,
     persist_task_execution_audit,
     resolve_task_execution,
     validate_task_request,
 )
-from app.services.workflow_pack_run_ledger import record_workflow_pack_run_for_task_execution
+from app.services.workflow_pack_run_ledger import (
+    ensure_workflow_pack_run_store_ready,
+    record_workflow_pack_run_for_task_execution,
+)
 
 
 def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
@@ -20,10 +24,17 @@ def execute_task_with_optional_workflow_pack_recording(
     request: TaskExecutionRequest,
 ) -> tuple[TaskExecutionResponse, WorkflowPackRunDescriptor | None]:
     context = validate_task_request(request)
+    resolved_binding = resolve_workflow_pack_execution_binding_for_task(context=context)
+    if resolved_binding is not None:
+        ensure_workflow_pack_run_store_ready()
     resolved = resolve_task_execution(context=context)
     response = build_task_execution_response(resolved=resolved)
     persist_task_execution_audit(context=context, response=response)
-    workflow_pack_run = record_workflow_pack_run_for_task_execution(context=context, response=response)
+    workflow_pack_run = record_workflow_pack_run_for_task_execution(
+        context=context,
+        response=response,
+        resolved_binding=resolved_binding,
+    )
     return _attach_workflow_pack_run_id(response=response, workflow_pack_run=workflow_pack_run), workflow_pack_run
 
 

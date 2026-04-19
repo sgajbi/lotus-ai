@@ -22,7 +22,10 @@ from app.services.workflow_pack_bindings import (
     get_workflow_pack_execution_binding,
     get_resolved_workflow_pack_execution_binding,
 )
-from app.services.workflow_pack_run_ledger import record_registered_workflow_pack_run
+from app.services.workflow_pack_run_ledger import (
+    ensure_workflow_pack_run_store_ready,
+    record_registered_workflow_pack_run,
+)
 
 
 def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPackExecutionResponse:
@@ -67,6 +70,7 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
     _validate_execution_binding(request=request, binding=binding)
 
     context = validate_task_request(request.task_request)
+    ensure_workflow_pack_run_store_ready()
     resolved = resolve_task_execution(context=context)
     response = build_task_execution_response(resolved=resolved)
     persist_task_execution_audit(context=context, response=response)

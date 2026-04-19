@@ -25,6 +25,7 @@ from app.repositories.workflow_pack_run_repository import (
 )
 from app.services.task_execution_models import TaskExecutionContext
 from app.services.workflow_pack_bindings import (
+    ResolvedWorkflowPackExecutionBinding,
     resolve_workflow_pack_execution_binding_for_task,
 )
 from app.services.workflow_pack_run_artifacts import persist_workflow_pack_run_output_artifact
@@ -197,16 +198,17 @@ def record_workflow_pack_run_for_task_execution(
     *,
     context: TaskExecutionContext,
     response: TaskExecutionResponse,
+    resolved_binding: ResolvedWorkflowPackExecutionBinding | None = None,
 ) -> WorkflowPackRunDescriptor | None:
-    resolved_binding = resolve_workflow_pack_execution_binding_for_task(context=context)
-    if resolved_binding is None:
+    pack_binding = resolved_binding or resolve_workflow_pack_execution_binding_for_task(context=context)
+    if pack_binding is None:
         return None
 
     return record_registered_workflow_pack_run(
         context=context,
         response=response,
-        registration=resolved_binding.registration,
-        workflow_surface=resolved_binding.binding.default_workflow_surface,
+        registration=pack_binding.registration,
+        workflow_surface=pack_binding.binding.default_workflow_surface,
     )
 
 

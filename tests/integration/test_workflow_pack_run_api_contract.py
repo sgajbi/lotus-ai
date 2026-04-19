@@ -295,6 +295,10 @@ def test_pack_backed_execution_routes_degrade_when_sql_run_store_is_unmigrated(
         database_url=database_url,
     ):
         with TestClient(app) as durable_client:
+            baseline_audit_response = durable_client.get(
+                "/ai/audit",
+                params={"caller_app": "lotus-gateway", "limit": 10},
+            )
             task_response = durable_client.post(
                 "/ai/tasks/execute",
                 json=advisor_brief_task_execution_request_json(
@@ -307,6 +311,10 @@ def test_pack_backed_execution_routes_degrade_when_sql_run_store_is_unmigrated(
                     correlation_id="corr-pack-run-unmigrated-explicit-001"
                 ),
             )
+            audit_response = durable_client.get(
+                "/ai/audit",
+                params={"caller_app": "lotus-gateway", "limit": 10},
+            )
 
     assert task_response.status_code == 503
     assert "Workflow-pack run store is not ready." in task_response.json()["detail"]
@@ -315,6 +323,11 @@ def test_pack_backed_execution_routes_degrade_when_sql_run_store_is_unmigrated(
     assert explicit_response.status_code == 503
     assert "Workflow-pack run store is not ready." in explicit_response.json()["detail"]
     assert "MIGRATION_REQUIRED" in explicit_response.json()["detail"]
+    assert baseline_audit_response.status_code == 200
+    assert audit_response.status_code == 200
+    assert (
+        audit_response.json()["record_count"] == baseline_audit_response.json()["record_count"]
+    )
 
 
 def test_workflow_pack_run_detail_rejects_unknown_run(client: TestClient) -> None:

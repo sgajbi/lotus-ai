@@ -24,6 +24,7 @@ from app.services.eval_run_submission_service import submit_evaluation_run
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 from app.services.prompt_rollout_control import apply_prompt_control_action
 from app.services.task_executor import execute_task
+from app.services.workflow_pack_run_ledger import WorkflowPackRunStoreUnavailableError
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
 
@@ -204,6 +205,55 @@ def test_execute_task_persists_sorted_audit_context_keys(mocker: MockerFixture) 
     assert audit_record.correlation_id == "corr-123"
     assert audit_record.prompt_version == "foundation.explain.v1"
     assert audit_record.authorization.outcome == AuthorizationOutcome.ALLOWED
+
+
+def test_execute_task_blocks_pack_backed_execution_before_audit_when_run_store_unavailable(
+    mocker: MockerFixture,
+) -> None:
+    resolve_task_execution_mock = mocker.patch("app.services.task_executor.resolve_task_execution")
+    persist_task_execution_audit_mock = mocker.patch(
+        "app.services.task_executor.persist_task_execution_audit"
+    )
+    mocker.patch(
+        "app.services.task_executor.ensure_workflow_pack_run_store_ready",
+        side_effect=WorkflowPackRunStoreUnavailableError(
+            "Workflow-pack run store is not ready. Current status is `MIGRATION_REQUIRED`."
+        ),
+    )
+
+    try:
+        execute_task(
+            TaskExecutionRequest(
+                task_id="explain.v1",
+                input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+                caller=CallerMetadata(
+                    caller_app="lotus-gateway",
+                    correlation_id="corr-pack-preflight-001",
+                ),
+                context=TaskContextEnvelope(
+                    summary="Draft advisor brief from source performance facts.",
+                    payload={
+                        "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                        "period": {"period": "YTD"},
+                        "performance": {
+                            "portfolio_return_pct": 1.25,
+                            "benchmark_return_pct": 7.93,
+                            "active_return_pct": -6.68,
+                        },
+                        "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                    },
+                    source_refs=["lotus-gateway:performance-summary:YTD"],
+                ),
+                expected_output_label=OutputLabel.EXPLANATION_ONLY,
+            )
+        )
+    except WorkflowPackRunStoreUnavailableError as exc:
+        assert "MIGRATION_REQUIRED" in str(exc)
+    else:
+        raise AssertionError("Expected workflow-pack run store preflight to block execution")
+
+    resolve_task_execution_mock.assert_not_called()
+    persist_task_execution_audit_mock.assert_not_called()
 
 
 def test_execute_task_runs_bounded_knowledge_search() -> None:
