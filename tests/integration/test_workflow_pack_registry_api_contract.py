@@ -15,6 +15,16 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     assert body["registrations"][0]["version"] == "v1"
     assert body["registrations"][0]["registration_status"] == "REGISTERED"
     assert body["registrations"][0]["activation_state"] == "PILOT"
+    assert body["execution_bindings"][0]["pack_id"] == "advisor_brief.pack"
+    assert body["execution_bindings"][0]["version"] == "v1"
+    assert body["execution_bindings"][0]["task_id"] == "explain.v1"
+    assert body["execution_bindings"][0]["default_workflow_surface"] == "advisor-brief-workspace"
+    assert body["execution_bindings"][0]["required_payload_keys"] == [
+        "performance",
+        "period",
+        "portfolio",
+        "supportability",
+    ]
 
 
 def test_workflow_pack_registration_detail_route(client: TestClient) -> None:
@@ -35,6 +45,10 @@ def test_workflow_pack_registration_detail_route(client: TestClient) -> None:
         and definition_ref["required_for_registration"] is True
         for definition_ref in body["registration"]["definition_refs"]
     )
+    assert body["execution_binding"]["pack_id"] == "advisor_brief.pack"
+    assert body["execution_binding"]["version"] == "v1"
+    assert body["execution_binding"]["task_id"] == "explain.v1"
+    assert body["execution_binding"]["default_workflow_surface"] == "advisor-brief-workspace"
     assert body["denied_without_registration"] is True
     assert any(
         rule["rule_id"] == "registered_entries_require_scope" for rule in body["validation_rules"]

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
+from app.contracts.workflow_packs import (
+    WorkflowPackExecutionBindingDescriptor,
+    WorkflowPackRegistrationDescriptor,
+)
 from app.services.workflow_pack_phase1_specs import ADVISOR_BRIEF_V1_SPEC
 from app.services.task_execution_models import TaskExecutionContext
 from app.services.workflow_pack_registry import get_workflow_pack_registration
@@ -135,3 +138,33 @@ def validate_workflow_pack_execution_bindings() -> None:
                 "Workflow-pack execution binding default surface is outside registration scope: "
                 f"{binding.pack_id}@{binding.version}"
             )
+
+
+def list_workflow_pack_execution_binding_descriptors() -> list[WorkflowPackExecutionBindingDescriptor]:
+    return [
+        _map_workflow_pack_execution_binding_descriptor(binding)
+        for binding in _WORKFLOW_PACK_EXECUTION_BINDINGS
+    ]
+
+
+def get_workflow_pack_execution_binding_descriptor(
+    *,
+    pack_id: str,
+    version: str,
+) -> WorkflowPackExecutionBindingDescriptor | None:
+    binding = get_workflow_pack_execution_binding(pack_id=pack_id, version=version)
+    if binding is None:
+        return None
+    return _map_workflow_pack_execution_binding_descriptor(binding)
+
+
+def _map_workflow_pack_execution_binding_descriptor(
+    binding: WorkflowPackExecutionBinding,
+) -> WorkflowPackExecutionBindingDescriptor:
+    return WorkflowPackExecutionBindingDescriptor(
+        pack_id=binding.pack_id,
+        version=binding.version,
+        task_id=binding.task_id,
+        default_workflow_surface=binding.default_workflow_surface,
+        required_payload_keys=sorted(binding.required_payload_keys),
+    )

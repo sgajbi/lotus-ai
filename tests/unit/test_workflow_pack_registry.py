@@ -41,6 +41,9 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     )
     assert catalog.registrations[1].version == "v2"
     assert catalog.registrations[1].registration_status == WorkflowPackRegistrationStatus.DISCOVERED
+    assert len(catalog.execution_bindings) == 1
+    assert catalog.execution_bindings[0].pack_id == "advisor_brief.pack"
+    assert catalog.execution_bindings[0].task_id == "explain.v1"
 
 
 def test_build_workflow_pack_registry_catalog_exposes_validation_rules() -> None:
@@ -75,10 +78,21 @@ def test_build_workflow_pack_registration_detail_exposes_deny_by_default_registr
         and definition_ref.path == "src/app/routers/workbench.py"
         for definition_ref in detail.registration.definition_refs
     )
+    assert detail.execution_binding is not None
+    assert detail.execution_binding.task_id == "explain.v1"
+    assert detail.execution_binding.default_workflow_surface == "advisor-brief-workspace"
     assert detail.denied_without_registration is True
     assert any(
         rule.rule_id == "registered_entries_require_scope" for rule in detail.validation_rules
     )
+
+
+def test_build_workflow_pack_registration_detail_omits_execution_binding_for_discovery_only_version() -> (
+    None
+):
+    detail = build_workflow_pack_registration_detail(pack_id="advisor_brief.pack", version="v2")
+
+    assert detail.execution_binding is None
 
 
 def test_build_workflow_pack_registration_detail_rejects_unknown_registration() -> None:

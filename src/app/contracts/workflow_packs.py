@@ -103,6 +103,20 @@ class WorkflowPackDefinitionReferenceDescriptor(BaseModel):
     )
 
 
+class WorkflowPackExecutionBindingDescriptor(BaseModel):
+    pack_id: str = Field(description="Workflow-pack family identifier bound for explicit execution.")
+    version: str = Field(description="Workflow-pack version bound for explicit execution.")
+    task_id: str = Field(
+        description="Bounded lotus-ai task identifier used by the current explicit execution path."
+    )
+    default_workflow_surface: str = Field(
+        description="Default workflow surface applied when the explicit execution request omits one."
+    )
+    required_payload_keys: list[str] = Field(
+        description="Structured payload sections required by the current explicit execution binding."
+    )
+
+
 class WorkflowPackRegistrationDescriptor(BaseModel):
     pack_id: str = Field(description="Stable workflow-pack family identifier.")
     pack_family: str = Field(
@@ -204,6 +218,9 @@ class WorkflowPackRegistryCatalogResponse(BaseModel):
     registrations: list[WorkflowPackRegistrationDescriptor] = Field(
         description="Workflow-pack registration records currently modeled by lotus-ai."
     )
+    execution_bindings: list[WorkflowPackExecutionBindingDescriptor] = Field(
+        description="Explicit workflow-pack execution bindings currently implemented by lotus-ai."
+    )
     validation_rules: list[WorkflowPackValidationRuleDescriptor] = Field(
         description="Workflow-pack registration validation rules enforced for catalog entries."
     )
@@ -217,6 +234,10 @@ class WorkflowPackRegistrationDetailResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     registration: WorkflowPackRegistrationDescriptor = Field(
         description="Workflow-pack registration record for the requested pack version."
+    )
+    execution_binding: WorkflowPackExecutionBindingDescriptor | None = Field(
+        default=None,
+        description="Explicit execution binding currently implemented for this workflow-pack version, when available.",
     )
     validation_rules: list[WorkflowPackValidationRuleDescriptor] = Field(
         description="Registration validation rules that apply to the requested workflow-pack version."

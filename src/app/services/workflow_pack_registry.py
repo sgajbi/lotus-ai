@@ -18,6 +18,10 @@ from app.services.workflow_pack_registry_store import (
 
 
 def build_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogResponse:
+    from app.services.workflow_pack_bindings import (
+        list_workflow_pack_execution_binding_descriptors,
+    )
+
     registrations = _validated_registrations()
     registered_count = sum(
         1
@@ -37,12 +41,14 @@ def build_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogRespons
         registered_count=registered_count,
         production_eligible_count=production_eligible_count,
         registrations=registrations,
+        execution_bindings=list_workflow_pack_execution_binding_descriptors(),
         validation_rules=build_workflow_pack_validation_rules(),
         status_summary=[
             "Workflow-pack registry records are modeled separately from capability-pack maturity so runtime activation can stay explicit and auditable.",
             "Seed-owned workflow-pack definitions remain code-grounded while mutable activation state and control history now flow through the configured registry store.",
             "Only declared workflow-pack versions with valid ownership, scope, and definition references are eligible to advance into activation evaluation.",
             "Internal execution bindings are validated against the same registry scope so task-shape hints cannot silently drift away from caller or surface truth.",
+            "Registry inspection now shows which registered workflow-pack versions also have an explicit lotus-ai execution binding, including task and default surface posture.",
         ],
     )
 
@@ -51,6 +57,10 @@ def build_workflow_pack_registration_detail(
     pack_id: str,
     version: str,
 ) -> WorkflowPackRegistrationDetailResponse:
+    from app.services.workflow_pack_bindings import (
+        get_workflow_pack_execution_binding_descriptor,
+    )
+
     registration = get_workflow_pack_registration(pack_id=pack_id, version=version)
     if registration is None:
         raise ValueError(f"Unknown workflow-pack registration: {pack_id}@{version}")
@@ -59,11 +69,16 @@ def build_workflow_pack_registration_detail(
         service=settings.service_name,
         version=settings.service_version,
         registration=registration,
+        execution_binding=get_workflow_pack_execution_binding_descriptor(
+            pack_id=pack_id,
+            version=version,
+        ),
         validation_rules=build_workflow_pack_validation_rules(),
         denied_without_registration=True,
         status_summary=[
             "Workflow-pack execution remains deny-by-default for versions that do not resolve through the governed registry.",
             "This record captures activation posture and ownership metadata without duplicating business workflow logic from the owning repository.",
+            "When an explicit execution binding exists, this detail view also shows the current task and default workflow-surface mapping implemented by lotus-ai.",
         ],
     )
 
