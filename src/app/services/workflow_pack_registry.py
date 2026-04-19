@@ -42,6 +42,7 @@ def build_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogRespons
             "Workflow-pack registry records are modeled separately from capability-pack maturity so runtime activation can stay explicit and auditable.",
             "Seed-owned workflow-pack definitions remain code-grounded while mutable activation state and control history now flow through the configured registry store.",
             "Only declared workflow-pack versions with valid ownership, scope, and definition references are eligible to advance into activation evaluation.",
+            "Internal execution bindings are validated against the same registry scope so task-shape hints cannot silently drift away from caller or surface truth.",
         ],
     )
 
@@ -111,6 +112,9 @@ def reset_workflow_pack_registry_state() -> None:
 
 
 def _validated_registrations() -> list[WorkflowPackRegistrationDescriptor]:
+    from app.services.workflow_pack_bindings import validate_workflow_pack_execution_bindings
+
     registrations = get_workflow_pack_registry_store().list_registrations()
     validate_workflow_pack_registrations(registrations)
+    validate_workflow_pack_execution_bindings()
     return registrations

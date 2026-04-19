@@ -8,6 +8,7 @@ from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.task_execution_context_builder import build_task_execution_context
 from app.services.workflow_pack_bindings import (
     get_workflow_pack_execution_binding,
+    get_resolved_workflow_pack_execution_binding,
     resolve_workflow_pack_execution_binding_for_task,
     validate_workflow_pack_execution_bindings,
 )
@@ -19,6 +20,18 @@ def test_get_workflow_pack_execution_binding_returns_phase1_binding() -> None:
     assert binding is not None
     assert binding.task_id == "explain.v1"
     assert binding.default_workflow_surface == "advisor-brief-workspace"
+
+
+def test_get_resolved_workflow_pack_execution_binding_returns_binding_and_registration() -> None:
+    resolved_binding = get_resolved_workflow_pack_execution_binding(
+        pack_id="advisor_brief.pack",
+        version="v1",
+    )
+
+    assert resolved_binding is not None
+    assert resolved_binding.binding.pack_id == "advisor_brief.pack"
+    assert resolved_binding.registration.pack_id == "advisor_brief.pack"
+    assert resolved_binding.registration.version == "v1"
 
 
 def test_validate_workflow_pack_execution_bindings_accepts_registered_scope() -> None:
@@ -52,11 +65,12 @@ def test_resolve_workflow_pack_execution_binding_for_task_matches_phase1_payload
         )
     )
 
-    binding = resolve_workflow_pack_execution_binding_for_task(context=context)
+    resolved_binding = resolve_workflow_pack_execution_binding_for_task(context=context)
 
-    assert binding is not None
-    assert binding.pack_id == "advisor_brief.pack"
-    assert binding.version == "v1"
+    assert resolved_binding is not None
+    assert resolved_binding.binding.pack_id == "advisor_brief.pack"
+    assert resolved_binding.binding.version == "v1"
+    assert resolved_binding.registration.pack_id == "advisor_brief.pack"
 
 
 def test_resolve_workflow_pack_execution_binding_for_task_uses_registration_caller_scope(
@@ -97,9 +111,9 @@ def test_resolve_workflow_pack_execution_binding_for_task_uses_registration_call
         ),
     )
 
-    binding = resolve_workflow_pack_execution_binding_for_task(context=context)
+    resolved_binding = resolve_workflow_pack_execution_binding_for_task(context=context)
 
-    assert binding is None
+    assert resolved_binding is None
 
 
 def test_resolve_workflow_pack_execution_binding_for_task_rejects_nonmatching_payload() -> None:
@@ -120,9 +134,9 @@ def test_resolve_workflow_pack_execution_binding_for_task_rejects_nonmatching_pa
         )
     )
 
-    binding = resolve_workflow_pack_execution_binding_for_task(context=context)
+    resolved_binding = resolve_workflow_pack_execution_binding_for_task(context=context)
 
-    assert binding is None
+    assert resolved_binding is None
 
 
 def test_validate_workflow_pack_execution_bindings_rejects_default_surface_outside_registration_scope(

@@ -20,8 +20,8 @@ from app.services.workflow_pack_activation import evaluate_workflow_pack_eligibi
 from app.services.workflow_pack_bindings import (
     WorkflowPackExecutionBinding,
     get_workflow_pack_execution_binding,
+    get_resolved_workflow_pack_execution_binding,
 )
-from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.workflow_pack_run_ledger import record_registered_workflow_pack_run
 
 
@@ -35,12 +35,16 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
                 f"{request.pack_id}@{request.version}."
             ),
         )
-    registration = get_workflow_pack_registration(pack_id=request.pack_id, version=request.version)
-    if registration is None:
+    resolved_binding = get_resolved_workflow_pack_execution_binding(
+        pack_id=request.pack_id,
+        version=request.version,
+    )
+    if resolved_binding is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Unknown workflow-pack registration: {request.pack_id}@{request.version}",
         )
+    registration = resolved_binding.registration
 
     workflow_surface = request.workflow_surface or binding.default_workflow_surface
     eligibility = evaluate_workflow_pack_eligibility(

@@ -23,7 +23,6 @@ from app.services.workflow_pack_bindings import (
     resolve_workflow_pack_execution_binding_for_task,
 )
 from app.services.workflow_pack_run_artifacts import persist_workflow_pack_run_output_artifact
-from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 
@@ -83,18 +82,15 @@ def record_workflow_pack_run_for_task_execution(
     context: TaskExecutionContext,
     response: TaskExecutionResponse,
 ) -> WorkflowPackRunDescriptor | None:
-    binding = resolve_workflow_pack_execution_binding_for_task(context=context)
-    if binding is None:
-        return None
-    registration = get_workflow_pack_registration(pack_id=binding.pack_id, version=binding.version)
-    if registration is None:
+    resolved_binding = resolve_workflow_pack_execution_binding_for_task(context=context)
+    if resolved_binding is None:
         return None
 
     return record_registered_workflow_pack_run(
         context=context,
         response=response,
-        registration=registration,
-        workflow_surface=binding.default_workflow_surface,
+        registration=resolved_binding.registration,
+        workflow_surface=resolved_binding.binding.default_workflow_surface,
     )
 
 

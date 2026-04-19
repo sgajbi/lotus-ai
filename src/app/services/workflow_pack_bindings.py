@@ -39,6 +39,12 @@ class WorkflowPackExecutionBinding:
         )
 
 
+@dataclass(frozen=True)
+class ResolvedWorkflowPackExecutionBinding:
+    binding: WorkflowPackExecutionBinding
+    registration: WorkflowPackRegistrationDescriptor
+
+
 _WORKFLOW_PACK_EXECUTION_BINDINGS = (
     WorkflowPackExecutionBinding(
         pack_id="advisor_brief.pack",
@@ -65,23 +71,37 @@ def get_workflow_pack_execution_binding(
     )
 
 
+def get_resolved_workflow_pack_execution_binding(
+    *,
+    pack_id: str,
+    version: str,
+) -> ResolvedWorkflowPackExecutionBinding | None:
+    binding = get_workflow_pack_execution_binding(pack_id=pack_id, version=version)
+    if binding is None:
+        return None
+    registration = get_workflow_pack_registration(pack_id=pack_id, version=version)
+    if registration is None:
+        return None
+    return ResolvedWorkflowPackExecutionBinding(binding=binding, registration=registration)
+
+
 def resolve_workflow_pack_execution_binding_for_task(
     *,
     context: TaskExecutionContext,
-) -> WorkflowPackExecutionBinding | None:
+) -> ResolvedWorkflowPackExecutionBinding | None:
     return next(
         (
-            binding
+            resolved_binding
             for binding in _WORKFLOW_PACK_EXECUTION_BINDINGS
             if (
-                (registration := get_workflow_pack_registration(
+                (resolved_binding := get_resolved_workflow_pack_execution_binding(
                     pack_id=binding.pack_id,
                     version=binding.version,
                 ))
                 is not None
                 and binding.supports_task_execution_context(
                     context=context,
-                    registration=registration,
+                    registration=resolved_binding.registration,
                 )
             )
         ),
@@ -91,15 +111,17 @@ def resolve_workflow_pack_execution_binding_for_task(
 
 def validate_workflow_pack_execution_bindings() -> None:
     for binding in _WORKFLOW_PACK_EXECUTION_BINDINGS:
-        registration = get_workflow_pack_registration(
+        resolved_binding = get_resolved_workflow_pack_execution_binding(
             pack_id=binding.pack_id,
             version=binding.version,
         )
-        if registration is None:
+        if resolved_binding is None:
             raise ValueError(
                 f"Workflow-pack execution binding missing registration: {binding.pack_id}@{binding.version}"
             )
-        if not binding.supports_registration_scope(registration=registration):
+        if not binding.supports_registration_scope(
+            registration=resolved_binding.registration
+        ):
             raise ValueError(
                 "Workflow-pack execution binding default surface is outside registration scope: "
                 f"{binding.pack_id}@{binding.version}"

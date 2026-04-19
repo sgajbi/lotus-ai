@@ -52,7 +52,11 @@ def test_build_workflow_pack_registry_catalog_exposes_validation_rules() -> None
         rule.rule_id == "definition_refs_ground_registry_truth" for rule in catalog.validation_rules
     )
     assert any("configured registry store" in line for line in catalog.status_summary)
-    assert any("valid ownership, scope, and definition references" in line for line in catalog.status_summary)
+    assert any(
+        "valid ownership, scope, and definition references" in line
+        for line in catalog.status_summary
+    )
+    assert any("Internal execution bindings are validated" in line for line in catalog.status_summary)
 
 
 def test_build_workflow_pack_registration_detail_exposes_deny_by_default_registration_truth() -> (
