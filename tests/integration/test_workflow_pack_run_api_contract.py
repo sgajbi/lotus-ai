@@ -362,6 +362,10 @@ def test_workflow_pack_run_operator_profile_reports_supportability_posture(
     assert body["run_id"] == run_id
     assert body["supportability_status"] == "ACTION_REQUIRED"
     assert body["review_pending"] is True
+    assert body["provenance"]["artifact_ref_count"] == 1
+    assert body["provenance"]["artifact_types"] == ["run_output_summary"]
+    assert body["provenance"]["evidence_descriptor_count"] >= 1
+    assert "task_contract" in body["provenance"]["evidence_types"]
     assert body["artifact_ref_count"] == 1
     assert body["latest_event_type"] == "RUN_RECORDED"
     assert body["latest_event_actor"] == "lotus-ai.workflow-pack-run-ledger"
@@ -403,6 +407,8 @@ def test_workflow_pack_run_operator_profile_exposes_latest_review_transition(
     assert body["latest_review_event_at"] is not None
     assert body["latest_review_actor"] == "review:banker.sg.operator.003"
     assert body["review_transition_count"] == 1
+    assert body["provenance"]["artifact_ref_count"] == 1
+    assert "task_contract" in body["provenance"]["evidence_types"]
 
 
 def test_workflow_pack_run_operator_profile_rejects_unknown_run(client: TestClient) -> None:

@@ -10,6 +10,9 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunSupportabilityStatus,
 )
 from app.services.workflow_pack_run_ledger import build_workflow_pack_run_detail
+from app.services.workflow_pack_run_provenance_summary import (
+    build_workflow_pack_run_provenance_summary,
+)
 from app.services.workflow_pack_run_supportability import (
     has_workflow_pack_run_partial_output,
     is_workflow_pack_run_historical,
@@ -28,6 +31,7 @@ def build_workflow_pack_run_operator_profile(
     latest_review_event = review_events[-1] if review_events else None
     findings = _build_findings(detail)
     supportability_status = resolve_workflow_pack_run_supportability_status(run)
+    provenance = build_workflow_pack_run_provenance_summary(run=run)
 
     return WorkflowPackRunOperatorProfileResponse(
         service=settings.service_name,
@@ -45,8 +49,9 @@ def build_workflow_pack_run_operator_profile(
         expired=run.runtime_state is WorkflowPackRunRuntimeState.EXPIRED,
         superseded=is_workflow_pack_run_historical(run),
         partial_output_visible=has_workflow_pack_run_partial_output(run),
-        artifact_ref_count=len(run.artifact_refs),
-        evidence_descriptor_count=len(run.evidence_descriptors),
+        provenance=provenance,
+        artifact_ref_count=provenance.artifact_ref_count,
+        evidence_descriptor_count=provenance.evidence_descriptor_count,
         history_event_count=len(detail.events),
         latest_event_at=latest_event.recorded_at if latest_event is not None else None,
         latest_event_type=latest_event.event_type if latest_event is not None else None,

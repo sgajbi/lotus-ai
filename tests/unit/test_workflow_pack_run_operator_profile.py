@@ -34,6 +34,10 @@ def test_workflow_pack_run_operator_profile_reports_review_pending_attention() -
     assert profile.expired is False
     assert profile.superseded is False
     assert profile.partial_output_visible is False
+    assert profile.provenance.artifact_ref_count == 1
+    assert profile.provenance.artifact_types == ["run_output_summary"]
+    assert profile.provenance.evidence_descriptor_count >= 1
+    assert "task_contract" in profile.provenance.evidence_types
     assert profile.artifact_ref_count == 1
     assert profile.evidence_descriptor_count >= 1
     assert profile.history_event_count == 1
@@ -122,6 +126,8 @@ def test_workflow_pack_run_operator_profile_marks_accepted_run_ready() -> None:
     assert profile.review_transition_count == 1
     assert profile.event_type_counts["RUN_RECORDED"] == 1
     assert profile.event_type_counts["REVIEW_STATE_UPDATED"] == 1
+    assert profile.provenance.artifact_ref_count == 1
+    assert "task_contract" in profile.provenance.evidence_types
     assert any(finding.finding_id == "run_ready" for finding in profile.findings)
 
 
@@ -152,6 +158,8 @@ def test_workflow_pack_run_operator_profile_exposes_failed_partial_output() -> N
     assert profile.latest_review_actor is None
     assert profile.review_transition_count == 0
     assert profile.event_type_counts == {"RUN_RECORDED": 1}
+    assert profile.provenance.artifact_ref_count == 1
+    assert "task_contract" in profile.provenance.evidence_types
     assert any(finding.finding_id == "runtime_failed" for finding in profile.findings)
     assert any(finding.finding_id == "partial_output_visible" for finding in profile.findings)
 

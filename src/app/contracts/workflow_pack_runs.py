@@ -436,6 +436,9 @@ class WorkflowPackRunOperatorProfileResponse(BaseModel):
     partial_output_visible: bool = Field(
         description="Whether the run currently preserves some output despite not reaching a clean accepted terminal posture."
     )
+    provenance: WorkflowPackRunProvenanceSummaryDescriptor = Field(
+        description="Bounded artifact and evidence linkage summary for the workflow-pack run."
+    )
     artifact_ref_count: int = Field(
         description="Number of governed artifact refs currently linked to the run."
     )
