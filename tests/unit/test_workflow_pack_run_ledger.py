@@ -45,6 +45,7 @@ def test_record_workflow_pack_run_for_advisor_brief_task_execution() -> None:
     assert recorded.task_id == "explain.v1"
     assert recorded.review_required is True
     assert recorded.review_state.value == "AWAITING_REVIEW"
+    assert recorded.supportability_status.value == "ACTION_REQUIRED"
     assert [action.value for action in recorded.allowed_review_actions] == [
         "ACCEPT",
         "REJECT",
@@ -116,6 +117,7 @@ def test_workflow_pack_run_catalog_and_detail_expose_recorded_history() -> None:
     assert catalog.historical_count == 0
     assert "shared run-supportability seam" in catalog.notes[3]
     assert "Phase-1 recorded runs now emit governed workflow-pack artifact refs" in catalog.notes[4]
+    assert catalog.runs[0].supportability_status.value == "ACTION_REQUIRED"
     detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
     assert detail.run.run_id == recorded.run_id
     assert detail.supportability.status.value == "ACTION_REQUIRED"
@@ -194,6 +196,7 @@ def test_workflow_pack_run_catalog_filters_by_supportability_and_limit() -> None
     assert filtered_catalog.runs[0].caller_app == "lotus-gateway"
     assert filtered_catalog.runs[0].tenant_id == "tenant-sg-001"
     assert filtered_catalog.runs[0].workflow_surface == "advisor-brief-workspace"
+    assert filtered_catalog.runs[0].supportability_status.value == "ACTION_REQUIRED"
     assert filtered_catalog.awaiting_review_count == 1
     assert filtered_catalog.completed_count == 1
     assert filtered_catalog.ready_count == 0

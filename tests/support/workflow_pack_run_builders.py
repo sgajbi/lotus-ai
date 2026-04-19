@@ -7,7 +7,9 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunReviewActionType,
     WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
+    WorkflowPackRunSupportabilityStatus,
 )
+from app.services.workflow_pack_run_supportability import resolve_workflow_pack_run_supportability_status
 
 
 def build_workflow_pack_run_descriptor(
@@ -20,8 +22,9 @@ def build_workflow_pack_run_descriptor(
     created_at: str = "2026-04-19T10:00:00Z",
     evidence_descriptors_count: int = 0,
     artifact_refs_count: int = 0,
+    supportability_status: WorkflowPackRunSupportabilityStatus | None = None,
 ) -> WorkflowPackRunDescriptor:
-    return WorkflowPackRunDescriptor(
+    descriptor = WorkflowPackRunDescriptor(
         run_id=run_id,
         pack_id="advisor_brief.pack",
         pack_family="advisor_brief",
@@ -36,6 +39,7 @@ def build_workflow_pack_run_descriptor(
         workflow_authority_owner="lotus-gateway",
         runtime_state=runtime_state,
         review_state=review_state,
+        supportability_status=WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED,
         allowed_review_actions=allowed_review_actions or [],
         review_required=review_state is not WorkflowPackRunReviewState.NOT_REVIEW_REQUIRED,
         provider_mode="catalog_only",
@@ -75,3 +79,7 @@ def build_workflow_pack_run_descriptor(
         completed_at=created_at,
         last_updated_at=created_at,
     )
+    resolved_status = supportability_status or resolve_workflow_pack_run_supportability_status(
+        descriptor
+    )
+    return descriptor.model_copy(update={"supportability_status": resolved_status})

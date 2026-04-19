@@ -51,6 +51,7 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
     assert run["registration_ref"] == "advisor_brief.pack@v1"
     assert run["runtime_state"] == "COMPLETED"
     assert run["review_state"] == "AWAITING_REVIEW"
+    assert run["supportability_status"] == "ACTION_REQUIRED"
     assert run["allowed_review_actions"] == [
         "ACCEPT",
         "REJECT",
@@ -147,6 +148,7 @@ def test_workflow_pack_run_catalog_route_supports_bounded_filters(
     assert body["runs"][0]["caller_app"] == "lotus-gateway"
     assert body["runs"][0]["tenant_id"] == "tenant-sg-001"
     assert body["runs"][0]["workflow_surface"] == "advisor-brief-workspace"
+    assert body["runs"][0]["supportability_status"] == "ACTION_REQUIRED"
 
 
 def test_workflow_pack_execute_route_records_explicit_run_and_returns_run_id(

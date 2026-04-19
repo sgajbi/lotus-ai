@@ -30,7 +30,7 @@ from app.services.workflow_pack_run_supportability_summary import (
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from app.services.workflow_pack_run_supportability import (
-    resolve_workflow_pack_run_supportability_status,
+    resolve_workflow_pack_run_record_supportability_status,
 )
 
 
@@ -83,9 +83,7 @@ def build_workflow_pack_run_catalog(
         filters_applied["supportability_status"] = supportability_status.value
     if workflow_authority_owner is not None:
         filters_applied["workflow_authority_owner"] = workflow_authority_owner
-    runs_with_supportability = [
-        (run, resolve_workflow_pack_run_supportability_status(run)) for run in limited_runs
-    ]
+    runs_with_supportability = [(run, run.supportability_status) for run in limited_runs]
     return WorkflowPackRunCatalogResponse(
         service=settings.service_name,
         version=settings.service_version,
@@ -124,7 +122,7 @@ def build_workflow_pack_run_catalog(
             "Workflow-pack run records are reference-oriented and preserve runtime state separately from review state.",
             "The current slice records Phase-1 workflow-pack executions through an explicit execution seam and a narrower binding-backed task fallback while the broader workflow-pack runtime remains under implementation.",
             "Catalog queries are now bounded and can be filtered by registration, caller identity, workflow surface, workflow-authority owner, runtime state, review state, and shared supportability posture for operator triage.",
-            "Supportability counts are computed server-side from the same shared run-supportability seam used by runtime status and operator profiles.",
+            "Supportability counts and per-run status fields are computed server-side from the same shared run-supportability seam used by runtime status and operator profiles.",
             "Phase-1 recorded runs now emit governed workflow-pack artifact refs so support and downstream review can inspect bounded output summaries without pulling raw payloads into the ledger contract.",
         ],
     )
@@ -275,6 +273,7 @@ def map_workflow_pack_run_record(record: WorkflowPackRunRecord) -> WorkflowPackR
         workflow_authority_owner=record.workflow_authority_owner,
         runtime_state=WorkflowPackRunRuntimeState(record.runtime_state),
         review_state=WorkflowPackRunReviewState(record.review_state),
+        supportability_status=resolve_workflow_pack_run_record_supportability_status(record),
         allowed_review_actions=resolve_allowed_review_actions(
             review_required=record.review_required,
             review_state=WorkflowPackRunReviewState(record.review_state),
@@ -345,10 +344,7 @@ def _filter_workflow_pack_runs(
         filtered_runs = [run for run in filtered_runs if run.review_state is review_state]
     if supportability_status is not None:
         filtered_runs = [
-            run
-            for run in filtered_runs
-            if resolve_workflow_pack_run_supportability_status(run).value
-            == supportability_status.value
+            run for run in filtered_runs if run.supportability_status is supportability_status
         ]
     if workflow_authority_owner is not None:
         filtered_runs = [

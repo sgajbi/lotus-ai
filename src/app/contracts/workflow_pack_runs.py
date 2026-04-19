@@ -81,6 +81,9 @@ class WorkflowPackRunDescriptor(BaseModel):
     review_state: WorkflowPackRunReviewState = Field(
         description="Review-state posture for the workflow-pack run."
     )
+    supportability_status: WorkflowPackRunSupportabilityStatus = Field(
+        description="Shared supportability posture for the workflow-pack run."
+    )
     allowed_review_actions: list[WorkflowPackRunReviewActionType] = Field(
         default_factory=list,
         description=(
