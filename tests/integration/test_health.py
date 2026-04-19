@@ -383,6 +383,8 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["workflow_pack_runtime"]["executable_activity"][0]["ready_count"] == 0
     assert body["workflow_pack_runtime"]["executable_activity"][0]["action_required_count"] == 0
     assert body["workflow_pack_runtime"]["executable_activity"][0]["historical_count"] == 0
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["latest_action_required_run_id"] is None
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_run_id"] is None
     assert body["workflow_pack_runtime"]["executable_activity"][0]["has_activity"] is False
     assert body["workflow_pack_runtime"]["run_summary"]["run_count"] == 0
     assert body["workflow_pack_runtime"]["run_summary"]["awaiting_review_count"] == 0

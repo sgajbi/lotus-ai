@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.contracts.workflow_pack_runs import (
+    WorkflowPackRunDescriptor,
     WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
     WorkflowPackRunSupportabilityStatus,
@@ -154,10 +155,18 @@ def build_workflow_pack_executable_activity_summary(
     for registration_ref in executable_registration_refs:
         pack_id, version = registration_ref.split("@", maxsplit=1)
         runs = runs_by_registration_ref.get(registration_ref, [])
-        supportability_statuses = [
-            resolve_workflow_pack_run_supportability_status(run) for run in runs
+        runs_with_supportability = [
+            (run, resolve_workflow_pack_run_supportability_status(run)) for run in runs
         ]
         latest_run = max(runs, key=lambda run: run.created_at) if runs else None
+        latest_action_required_run = _resolve_latest_run_by_supportability(
+            runs_with_supportability=runs_with_supportability,
+            target_status=WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED,
+        )
+        latest_ready_run = _resolve_latest_run_by_supportability(
+            runs_with_supportability=runs_with_supportability,
+            target_status=WorkflowPackRunSupportabilityStatus.READY,
+        )
         summaries.append(
             WorkflowPackExecutableActivitySummaryResponse(
                 registration_ref=registration_ref,
@@ -173,15 +182,33 @@ def build_workflow_pack_executable_activity_summary(
                     1 for run in runs if run.review_state is WorkflowPackRunReviewState.ACCEPTED
                 ),
                 ready_count=sum(
-                    1 for status in supportability_statuses if status is WorkflowPackRunSupportabilityStatus.READY
+                    1
+                    for _, status in runs_with_supportability
+                    if status is WorkflowPackRunSupportabilityStatus.READY
                 ),
                 action_required_count=sum(
                     1
-                    for status in supportability_statuses
+                    for _, status in runs_with_supportability
                     if status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED
                 ),
                 historical_count=sum(
-                    1 for status in supportability_statuses if status is WorkflowPackRunSupportabilityStatus.HISTORICAL
+                    1
+                    for _, status in runs_with_supportability
+                    if status is WorkflowPackRunSupportabilityStatus.HISTORICAL
+                ),
+                latest_action_required_run_id=(
+                    latest_action_required_run.run_id
+                    if latest_action_required_run is not None
+                    else None
+                ),
+                latest_action_required_recorded_at=(
+                    latest_action_required_run.created_at
+                    if latest_action_required_run is not None
+                    else None
+                ),
+                latest_ready_run_id=latest_ready_run.run_id if latest_ready_run is not None else None,
+                latest_ready_recorded_at=(
+                    latest_ready_run.created_at if latest_ready_run is not None else None
                 ),
                 latest_run_id=latest_run.run_id if latest_run is not None else None,
                 latest_recorded_at=latest_run.created_at if latest_run is not None else None,
@@ -189,3 +216,18 @@ def build_workflow_pack_executable_activity_summary(
             )
         )
     return summaries
+
+
+def _resolve_latest_run_by_supportability(
+    *,
+    runs_with_supportability: list[
+        tuple[WorkflowPackRunDescriptor, WorkflowPackRunSupportabilityStatus]
+    ],
+    target_status: WorkflowPackRunSupportabilityStatus,
+) -> WorkflowPackRunDescriptor | None:
+    matching_runs = [
+        run for run, status in runs_with_supportability if status is target_status
+    ]
+    if not matching_runs:
+        return None
+    return max(matching_runs, key=lambda run: run.created_at)

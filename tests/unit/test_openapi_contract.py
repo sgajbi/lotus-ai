@@ -757,6 +757,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "ready_count" in workflow_pack_executable_activity_schema["properties"]
     assert "action_required_count" in workflow_pack_executable_activity_schema["properties"]
     assert "historical_count" in workflow_pack_executable_activity_schema["properties"]
+    assert "latest_action_required_run_id" in workflow_pack_executable_activity_schema["properties"]
+    assert "latest_ready_run_id" in workflow_pack_executable_activity_schema["properties"]
     assert "latest_run_id" in workflow_pack_executable_activity_schema["properties"]
     assert "has_activity" in workflow_pack_executable_activity_schema["properties"]
     assert "run_count" in workflow_pack_run_runtime_summary_schema["properties"]

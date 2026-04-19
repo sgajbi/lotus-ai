@@ -327,6 +327,22 @@ class WorkflowPackExecutableActivitySummaryResponse(BaseModel):
     historical_count: int = Field(
         description="Number of recorded runs for this executable pack version currently classified as historical."
     )
+    latest_action_required_run_id: str | None = Field(
+        default=None,
+        description="Most recent recorded workflow-pack run identifier for this executable pack version that still requires operator attention, when available.",
+    )
+    latest_action_required_recorded_at: str | None = Field(
+        default=None,
+        description="Most recent workflow-pack run timestamp for this executable pack version that still requires operator attention, when available.",
+    )
+    latest_ready_run_id: str | None = Field(
+        default=None,
+        description="Most recent recorded workflow-pack run identifier for this executable pack version currently classified as ready, when available.",
+    )
+    latest_ready_recorded_at: str | None = Field(
+        default=None,
+        description="Most recent workflow-pack run timestamp for this executable pack version currently classified as ready, when available.",
+    )
     latest_run_id: str | None = Field(
         default=None,
         description="Most recent recorded workflow-pack run identifier for this executable pack version, when available.",

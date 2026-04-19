@@ -61,6 +61,8 @@ def test_build_workflow_pack_runtime_status_summary_separates_catalog_from_execu
     assert summary.executable_activity[0].ready_count == 0
     assert summary.executable_activity[0].action_required_count == 0
     assert summary.executable_activity[0].historical_count == 0
+    assert summary.executable_activity[0].latest_action_required_run_id is None
+    assert summary.executable_activity[0].latest_ready_run_id is None
     assert summary.executable_activity[0].latest_run_id is None
     assert summary.executable_activity[0].has_activity is False
     assert summary.run_summary.run_count == 0
@@ -164,6 +166,13 @@ def test_build_workflow_pack_runtime_status_summary_tracks_activity_for_executab
     assert summary.executable_activity[0].ready_count == 1
     assert summary.executable_activity[0].action_required_count == 1
     assert summary.executable_activity[0].historical_count == 0
+    assert summary.executable_activity[0].latest_action_required_run_id == "run-awaiting"
+    assert (
+        summary.executable_activity[0].latest_action_required_recorded_at
+        == "2026-04-19T11:00:00Z"
+    )
+    assert summary.executable_activity[0].latest_ready_run_id == "run-accepted"
+    assert summary.executable_activity[0].latest_ready_recorded_at == "2026-04-19T12:00:00Z"
     assert summary.executable_activity[0].latest_run_id == "run-accepted"
     assert summary.executable_activity[0].latest_recorded_at == "2026-04-19T12:00:00Z"
     assert summary.executable_activity[0].has_activity is True
