@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from fastapi import HTTPException, status
 
 from app.config import settings
@@ -40,6 +42,30 @@ from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from app.services.workflow_pack_run_supportability import (
     resolve_workflow_pack_run_record_supportability_status,
 )
+
+
+@dataclass(frozen=True)
+class WorkflowPackRunLoadedContext:
+    store: WorkflowPackRunRepository
+    record: WorkflowPackRunRecord
+    run: WorkflowPackRunDescriptor
+    events: list[WorkflowPackRunEventRecord]
+
+
+def load_workflow_pack_run_context(*, run_id: str) -> WorkflowPackRunLoadedContext:
+    store = get_workflow_pack_run_store()
+    record = store.get_run(run_id=run_id)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown workflow-pack run: {run_id}",
+        )
+    return WorkflowPackRunLoadedContext(
+        store=store,
+        record=record,
+        run=map_workflow_pack_run_record(record, store=store),
+        events=store.list_events(run_id=run_id),
+    )
 
 
 def build_workflow_pack_run_catalog(
@@ -136,28 +162,23 @@ def build_workflow_pack_run_catalog(
 
 
 def build_workflow_pack_run_detail(*, run_id: str) -> WorkflowPackRunDetailResponse:
-    store = get_workflow_pack_run_store()
-    record = store.get_run(run_id=run_id)
-    if record is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Unknown workflow-pack run: {run_id}",
-        )
-    events = store.list_events(run_id=run_id)
-    run = map_workflow_pack_run_record(record, store=store)
+    loaded = load_workflow_pack_run_context(run_id=run_id)
     return WorkflowPackRunDetailResponse(
         service=settings.service_name,
         version=settings.service_version,
         run_store_mode=settings.workflow_pack_run_store_mode,
-        run=run,
-        review=build_workflow_pack_run_review_descriptor(record=record, events=events),
-        provenance=build_workflow_pack_run_provenance_summary(run=run),
+        run=loaded.run,
+        review=build_workflow_pack_run_review_descriptor(
+            record=loaded.record,
+            events=loaded.events,
+        ),
+        provenance=build_workflow_pack_run_provenance_summary(run=loaded.run),
         supportability=build_workflow_pack_run_supportability_descriptor_from_record(
-            record=record,
+            record=loaded.record,
             map_record=map_workflow_pack_run_record,
         ),
         events=[
-            map_workflow_pack_run_event_record(event) for event in events
+            map_workflow_pack_run_event_record(event) for event in loaded.events
         ],
         notes=[
             "Runtime state and review state are modeled separately in the run detail to avoid ambiguous operator or product interpretation.",

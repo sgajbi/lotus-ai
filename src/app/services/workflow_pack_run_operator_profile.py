@@ -2,14 +2,21 @@ from __future__ import annotations
 
 from app.config import settings
 from app.contracts.workflow_pack_runs import (
-    WorkflowPackRunDetailResponse,
+    WorkflowPackRunDescriptor,
+    WorkflowPackRunEventDescriptor,
     WorkflowPackRunFindingSeverity,
     WorkflowPackRunOperatorProfileResponse,
     WorkflowPackRunRuntimeState,
     WorkflowPackRunSupportabilityFinding,
     WorkflowPackRunSupportabilityStatus,
 )
-from app.services.workflow_pack_run_ledger import build_workflow_pack_run_detail
+from app.services.workflow_pack_run_ledger import (
+    load_workflow_pack_run_context,
+    map_workflow_pack_run_event_record,
+)
+from app.services.workflow_pack_run_provenance_summary import (
+    build_workflow_pack_run_provenance_summary,
+)
 from app.services.workflow_pack_run_supportability import (
     has_workflow_pack_run_partial_output,
     is_workflow_pack_run_historical,
@@ -21,14 +28,15 @@ from app.services.workflow_pack_run_supportability import (
 def build_workflow_pack_run_operator_profile(
     *, run_id: str
 ) -> WorkflowPackRunOperatorProfileResponse:
-    detail = build_workflow_pack_run_detail(run_id=run_id)
-    run = detail.run
-    latest_event = detail.events[-1] if detail.events else None
-    review_events = _list_review_events(detail)
+    loaded = load_workflow_pack_run_context(run_id=run_id)
+    run = loaded.run
+    events = [map_workflow_pack_run_event_record(event) for event in loaded.events]
+    latest_event = events[-1] if events else None
+    review_events = _list_review_events(events)
     latest_review_event = review_events[-1] if review_events else None
-    findings = _build_findings(detail)
+    findings = _build_findings(run=run)
     supportability_status = resolve_workflow_pack_run_supportability_status(run)
-    provenance = detail.provenance
+    provenance = build_workflow_pack_run_provenance_summary(run=run)
 
     return WorkflowPackRunOperatorProfileResponse(
         service=settings.service_name,
@@ -49,7 +57,7 @@ def build_workflow_pack_run_operator_profile(
         provenance=provenance,
         artifact_ref_count=provenance.artifact_ref_count,
         evidence_descriptor_count=provenance.evidence_descriptor_count,
-        history_event_count=len(detail.events),
+        history_event_count=len(events),
         latest_event_at=latest_event.recorded_at if latest_event is not None else None,
         latest_event_type=latest_event.event_type if latest_event is not None else None,
         latest_event_actor=latest_event.actor if latest_event is not None else None,
@@ -58,9 +66,9 @@ def build_workflow_pack_run_operator_profile(
         ),
         latest_review_actor=latest_review_event.actor if latest_review_event is not None else None,
         review_transition_count=len(review_events),
-        event_type_counts=_build_event_type_counts(detail),
+        event_type_counts=_build_event_type_counts(events),
         replacement_run_id=run.superseded_by_run_id,
-        current_summary_note=_build_current_summary_note(detail, supportability_status),
+        current_summary_note=_build_current_summary_note(run, supportability_status),
         findings=findings,
         inspection_surfaces=[
             "/platform/workflow-packs/runs",
@@ -68,14 +76,14 @@ def build_workflow_pack_run_operator_profile(
             f"/platform/workflow-packs/runs/{run.run_id}/consumer-view",
             f"/platform/workflow-packs/runs/{run.run_id}/operator-profile",
         ],
-        inspection_steps=_build_inspection_steps(detail),
+        inspection_steps=_build_inspection_steps(run),
     )
 
 
 def _build_findings(
-    detail: WorkflowPackRunDetailResponse,
+    *,
+    run: WorkflowPackRunDescriptor,
 ) -> list[WorkflowPackRunSupportabilityFinding]:
-    run = detail.run
     findings: list[WorkflowPackRunSupportabilityFinding] = []
 
     if is_workflow_pack_run_review_pending(run):
@@ -178,10 +186,9 @@ def _build_findings(
 
 
 def _build_current_summary_note(
-    detail: WorkflowPackRunDetailResponse,
+    run: WorkflowPackRunDescriptor,
     supportability_status: WorkflowPackRunSupportabilityStatus,
 ) -> str:
-    run = detail.run
     if supportability_status is WorkflowPackRunSupportabilityStatus.HISTORICAL:
         return (
             f"Run `{run.run_id}` is now historical because a replacement run "
@@ -198,8 +205,7 @@ def _build_current_summary_note(
     return "Run is supportable through the current bounded workflow-pack ledger posture."
 
 
-def _build_inspection_steps(detail: WorkflowPackRunDetailResponse) -> list[str]:
-    run = detail.run
+def _build_inspection_steps(run: WorkflowPackRunDescriptor) -> list[str]:
     return [
         "Inspect the workflow-pack run detail route first to verify runtime state, review state, and lineage identity.",
         "Review linked artifact refs and evidence descriptors before treating the output preview as supportable.",
@@ -211,16 +217,16 @@ def _build_inspection_steps(detail: WorkflowPackRunDetailResponse) -> list[str]:
     ]
 
 
-def _build_event_type_counts(detail: WorkflowPackRunDetailResponse) -> dict[str, int]:
+def _build_event_type_counts(events: list[WorkflowPackRunEventDescriptor]) -> dict[str, int]:
     counts: dict[str, int] = {}
-    for event in detail.events:
+    for event in events:
         counts[event.event_type.value] = counts.get(event.event_type.value, 0) + 1
     return counts
 
 
-def _list_review_events(detail: WorkflowPackRunDetailResponse):
+def _list_review_events(events: list[WorkflowPackRunEventDescriptor]):
     return [
         event
-        for event in detail.events
+        for event in events
         if event.event_type.value == "REVIEW_STATE_UPDATED"
     ]
