@@ -433,6 +433,30 @@ def test_review_action_rejects_unauthorized_caller() -> None:
     else:
         raise AssertionError("Expected unauthorized review caller to fail")
 
+    store = get_workflow_pack_run_store()
+    stored = store.get_run(run_id=recorded.run_id)
+    assert stored is not None
+    store.save_run(replace(stored, caller_app="unknown-app"))
+
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id=recorded.run_id,
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.ACCEPT,
+                caller_app="unknown-app",
+                reviewed_by="banker.sg.004",
+                reason="Unknown original caller should fail even when the run record matches it.",
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 403
+        assert (
+            exc.detail
+            == "Workflow-pack review-state actions are currently limited to the original active registered caller app or a caller authorized for async control-plane actions while downstream review integration remains bounded."
+        )
+    else:
+        raise AssertionError("Expected unknown original review caller to fail")
+
 
 def test_review_action_allows_operator_caller() -> None:
     context = build_task_execution_context(

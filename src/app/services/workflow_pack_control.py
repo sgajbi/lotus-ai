@@ -6,6 +6,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.contracts.access_control import AuthorizationCapabilityType
 from app.contracts.workflow_packs import (
     WorkflowPackActivationState,
     WorkflowPackControlActionRequest,
@@ -16,14 +17,13 @@ from app.contracts.workflow_packs import (
     WorkflowPackRegistrationDescriptor,
     WorkflowPackRegistrationStatus,
 )
+from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.workflow_pack_registry import (
     append_workflow_pack_control_event,
     get_workflow_pack_registration,
     list_workflow_pack_control_events,
     save_workflow_pack_registration,
 )
-
-_OPERATOR_CALLER_APP = "lotus-platform"
 
 
 def build_workflow_pack_control_history(
@@ -46,6 +46,7 @@ def build_workflow_pack_control_history(
         ),
         notes=[
             "Workflow-pack pause, resume, deprecate, and retire actions are explicit control-plane events with operator reason and approval metadata.",
+            "Workflow-pack control actions now flow through the shared caller-policy authorization registry instead of relying only on a hard-coded operator caller check.",
             (
                 "Workflow-pack activation state and control history are currently durable and restart-safe through the configured SQL-backed registry store."
                 if durable_store
@@ -59,7 +60,12 @@ def build_workflow_pack_control_history(
 def apply_workflow_pack_control_action(
     request: WorkflowPackControlActionRequest,
 ) -> WorkflowPackControlActionResponse:
-    _require_operator_caller(request.caller_app)
+    authorization = require_authorized(
+        authorize_request(
+            caller_app=request.caller_app,
+            capability_type=AuthorizationCapabilityType.ASYNC_CONTROL,
+        )
+    )
     registration = get_workflow_pack_registration(pack_id=request.pack_id, version=request.version)
     if registration is None:
         raise HTTPException(
@@ -81,6 +87,7 @@ def apply_workflow_pack_control_action(
         prior_activation_state=registration.activation_state,
         resulting_activation_state=updated_registration.activation_state,
         caller_app=request.caller_app,
+        authorization=authorization,
         recorded_at=_utcnow(),
     )
     save_workflow_pack_registration(updated_registration)
@@ -94,6 +101,7 @@ def apply_workflow_pack_control_action(
             f"Applied workflow-pack action `{request.action_type.value}` to `{registration.pack_id}@{registration.version}`.",
             f"Activation state moved from `{registration.activation_state.value}` to `{updated_registration.activation_state.value}`.",
             f"Action requested by `{request.requested_by}` and approved by `{request.approved_by}`.",
+            f"Caller-policy authorization outcome was `{authorization.outcome.value}` for `{request.caller_app}`.",
         ],
     )
 
@@ -218,17 +226,6 @@ def _resolve_resume_state(
             "recorded pause event to resume from."
         ),
     )
-
-
-def _require_operator_caller(caller_app: str) -> None:
-    if caller_app != _OPERATOR_CALLER_APP:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "Workflow-pack control actions are currently limited to the lotus-platform "
-                "operator caller while enterprise operator authorization remains bounded."
-            ),
-        )
 
 
 def _utcnow() -> str:

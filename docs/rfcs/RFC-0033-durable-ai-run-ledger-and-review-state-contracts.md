@@ -83,7 +83,8 @@ Implemented on the current branch:
 14. the workflow-pack run detail route now also carries that same bounded provenance summary so callers can inspect artifact and evidence posture without scanning the full linked descriptor arrays first,
 15. the bounded workflow-pack consumer view now also carries that same shared provenance summary so downstream composition layers can inspect linked artifact and evidence posture without scanning raw linkage arrays or re-deriving type summaries locally,
 16. SQL-backed workflow-pack review-state, lineage, consumer-view, operator-profile, and estate-level runtime-summary posture are now covered through restart-safe integration proof instead of only memory-mode proof,
-17. `/platform/runtime-status` now degrades truthfully when the configured workflow-pack registry store or workflow-pack run store is not yet migration-ready, returning bounded zeroed workflow-pack runtime posture instead of raising unhandled SQL table errors.
+17. `/platform/runtime-status` now degrades truthfully when the configured workflow-pack registry store or workflow-pack run store is not yet migration-ready, returning bounded zeroed workflow-pack runtime posture instead of raising unhandled SQL table errors,
+18. bounded workflow-pack review actions now also require either the original active registered caller app or a caller authorized for async control-plane actions, so cross-app review drift is blocked without collapsing business workflow authority into lotus-ai.
 
 What is not implemented yet:
 

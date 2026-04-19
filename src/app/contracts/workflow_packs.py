@@ -4,6 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.access_control import AuthorizationDecision
 from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunDescriptor,
@@ -516,6 +517,9 @@ class WorkflowPackControlEventDescriptor(BaseModel):
     )
     caller_app: str = Field(
         description="Caller application issuing the workflow-pack control action."
+    )
+    authorization: AuthorizationDecision = Field(
+        description="Caller-policy authorization decision recorded for the workflow-pack control action."
     )
     recorded_at: str = Field(
         description="UTC timestamp when the workflow-pack control action was recorded."

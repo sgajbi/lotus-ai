@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.contracts.access_control import AuthorizationCapabilityType
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunEventType,
     WorkflowPackRunReviewActionRequest,
@@ -18,14 +19,17 @@ from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunEventRecord,
     WorkflowPackRunRecord,
 )
+from app.services.access_control_authorization import (
+    authorize_request,
+    require_active_registered_caller,
+    require_authorized,
+)
 from app.services.workflow_pack_run_ledger import (
     map_workflow_pack_run_event_record,
     map_workflow_pack_run_record,
 )
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
-
-_OPERATOR_CALLER_APP = "lotus-platform"
 
 
 def apply_workflow_pack_run_review_action(
@@ -199,15 +203,23 @@ def _validate_review_transition(
 
 
 def _require_review_caller(*, run: WorkflowPackRunRecord, caller_app: str) -> None:
-    if caller_app in {run.caller_app, _OPERATOR_CALLER_APP}:
-        return
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail=(
-            "Workflow-pack review-state actions are currently limited to the original caller app "
-            "or the lotus-platform operator caller while downstream review integration remains bounded."
-        ),
+    blocked_summary = (
+        "Workflow-pack review-state actions are currently limited to the original active "
+        "registered caller app or a caller authorized for async control-plane actions while "
+        "downstream review integration remains bounded."
     )
+    if caller_app == run.caller_app:
+        require_active_registered_caller(caller_app, blocked_summary=blocked_summary)
+        return
+    try:
+        require_authorized(
+            authorize_request(
+                caller_app=caller_app,
+                capability_type=AuthorizationCapabilityType.ASYNC_CONTROL,
+            ),
+        )
+    except HTTPException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=blocked_summary) from exc
 
 
 def _require_replacement_run(

@@ -502,4 +502,5 @@ class WorkflowPackControlEventModel(Base):
     prior_activation_state: Mapped[str] = mapped_column(String(32), nullable=False)
     resulting_activation_state: Mapped[str] = mapped_column(String(32), nullable=False)
     caller_app: Mapped[str] = mapped_column(String(128), nullable=False)
+    authorization_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

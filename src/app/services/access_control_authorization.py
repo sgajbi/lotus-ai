@@ -12,6 +12,18 @@ from app.contracts.access_control import (
 from app.services.caller_policy_store import get_caller_policy_repository
 
 
+def require_active_registered_caller(
+    caller_app: str,
+    *,
+    blocked_summary: str,
+) -> None:
+    policy = get_caller_policy_repository().get_policy(caller_app)
+    if policy is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=blocked_summary)
+    if policy.lifecycle_status != CallerLifecycleStatus.ACTIVE:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=blocked_summary)
+
+
 def authorize_request(
     *,
     caller_app: str,
@@ -51,6 +63,63 @@ def authorize_request(
             summary=(
                 f"Caller '{caller_app}' is registered but currently disabled for protected "
                 "lotus-ai execution paths."
+            ),
+        )
+
+    if capability_type == AuthorizationCapabilityType.ASYNC_CONTROL:
+        return _evaluate_control_capability(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            allowed=policy.allow_async_control,
+            blocked_outcome=AuthorizationOutcome.BLOCKED_ASYNC_CONTROL_NOT_ALLOWED,
+            blocked_summary=(
+                f"Caller '{caller_app}' is not authorized for async control-plane actions."
+            ),
+            allowed_summary=(
+                f"Caller '{caller_app}' is authorized for async control-plane actions under the "
+                "current caller policy registry."
+            ),
+        )
+
+    if capability_type == AuthorizationCapabilityType.PROMPT_CONTROL:
+        return _evaluate_control_capability(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            allowed=policy.allow_prompt_control,
+            blocked_outcome=AuthorizationOutcome.BLOCKED_PROMPT_CONTROL_NOT_ALLOWED,
+            blocked_summary=(
+                f"Caller '{caller_app}' is not authorized for prompt control-plane actions."
+            ),
+            allowed_summary=(
+                f"Caller '{caller_app}' is authorized for prompt control-plane actions under the "
+                "current caller policy registry."
+            ),
+        )
+
+    if capability_type == AuthorizationCapabilityType.PROVIDER_CONTROL:
+        return _evaluate_control_capability(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            allowed=policy.allow_provider_control,
+            blocked_outcome=AuthorizationOutcome.BLOCKED_PROVIDER_CONTROL_NOT_ALLOWED,
+            blocked_summary=(
+                f"Caller '{caller_app}' is not authorized for provider control-plane actions."
+            ),
+            allowed_summary=(
+                f"Caller '{caller_app}' is authorized for provider control-plane actions under "
+                "the current caller policy registry."
             ),
         )
 
@@ -160,63 +229,6 @@ def authorize_request(
             summary=(
                 f"Caller '{caller_app}' is authorized for live provider execution under the "
                 "current caller policy registry."
-            ),
-        )
-
-    if capability_type == AuthorizationCapabilityType.ASYNC_CONTROL:
-        return _evaluate_control_capability(
-            caller_app=caller_app,
-            capability_type=capability_type,
-            task_id=task_id,
-            requested_source_ids=requested_source_ids,
-            tenant_id=tenant_id,
-            tenant_policy_mode=policy.tenant_policy_mode,
-            allowed=policy.allow_async_control,
-            blocked_outcome=AuthorizationOutcome.BLOCKED_ASYNC_CONTROL_NOT_ALLOWED,
-            blocked_summary=(
-                f"Caller '{caller_app}' is not authorized for async control-plane actions."
-            ),
-            allowed_summary=(
-                f"Caller '{caller_app}' is authorized for async control-plane actions under the "
-                "current caller policy registry."
-            ),
-        )
-
-    if capability_type == AuthorizationCapabilityType.PROMPT_CONTROL:
-        return _evaluate_control_capability(
-            caller_app=caller_app,
-            capability_type=capability_type,
-            task_id=task_id,
-            requested_source_ids=requested_source_ids,
-            tenant_id=tenant_id,
-            tenant_policy_mode=policy.tenant_policy_mode,
-            allowed=policy.allow_prompt_control,
-            blocked_outcome=AuthorizationOutcome.BLOCKED_PROMPT_CONTROL_NOT_ALLOWED,
-            blocked_summary=(
-                f"Caller '{caller_app}' is not authorized for prompt control-plane actions."
-            ),
-            allowed_summary=(
-                f"Caller '{caller_app}' is authorized for prompt control-plane actions under the "
-                "current caller policy registry."
-            ),
-        )
-
-    if capability_type == AuthorizationCapabilityType.PROVIDER_CONTROL:
-        return _evaluate_control_capability(
-            caller_app=caller_app,
-            capability_type=capability_type,
-            task_id=task_id,
-            requested_source_ids=requested_source_ids,
-            tenant_id=tenant_id,
-            tenant_policy_mode=policy.tenant_policy_mode,
-            allowed=policy.allow_provider_control,
-            blocked_outcome=AuthorizationOutcome.BLOCKED_PROVIDER_CONTROL_NOT_ALLOWED,
-            blocked_summary=(
-                f"Caller '{caller_app}' is not authorized for provider control-plane actions."
-            ),
-            allowed_summary=(
-                f"Caller '{caller_app}' is authorized for provider control-plane actions under "
-                "the current caller policy registry."
             ),
         )
 

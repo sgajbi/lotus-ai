@@ -32,6 +32,8 @@ def test_apply_workflow_pack_control_action_records_pause_and_resume_history() -
     assert pause_response.registration.activation_state == WorkflowPackActivationState.PAUSED
     assert pause_response.event.prior_activation_state == WorkflowPackActivationState.PILOT
     assert pause_response.event.resulting_activation_state == WorkflowPackActivationState.PAUSED
+    assert pause_response.event.authorization.caller_app == "lotus-platform"
+    assert pause_response.event.authorization.allowed is True
 
     resume_response = apply_workflow_pack_control_action(
         WorkflowPackControlActionRequest(
@@ -69,6 +71,7 @@ def test_apply_workflow_pack_control_action_retires_registration() -> None:
     )
 
     assert response.registration.activation_state == WorkflowPackActivationState.RETIRED
+    assert response.event.authorization.outcome.value == "ALLOWED"
     refreshed = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v2")
     assert refreshed is not None
     assert refreshed.activation_state == WorkflowPackActivationState.RETIRED
@@ -89,6 +92,7 @@ def test_apply_workflow_pack_control_action_blocks_non_operator_caller() -> None
         )
     except HTTPException as exc:
         assert exc.status_code == 403
+        assert "not authorized for async control-plane actions" in exc.detail
     else:
         raise AssertionError("Expected non-operator workflow-pack control caller to be blocked")
 

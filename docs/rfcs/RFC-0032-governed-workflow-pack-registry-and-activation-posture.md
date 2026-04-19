@@ -60,13 +60,15 @@ Completed implementation slices on the current branch:
 4. migration-backed durable workflow-pack registration, activation state, and control-history
    storage with memory and SQL store modes,
 5. owner-grounded onboarding for the Phase-1 `advisor_brief.pack` family,
-6. readiness-aware degradation for registry-backed workflow-pack routes so unmigrated SQL-backed
+6. caller-policy-backed workflow-pack control authorization plus durable control-event authorization
+   evidence for bounded operator actions,
+7. readiness-aware degradation for registry-backed workflow-pack routes so unmigrated SQL-backed
    registry posture returns explicit service-unavailable behavior instead of surfacing raw store failures,
-7. documentation, repository context, wiki-source, and branch-hygiene updates.
+8. documentation, repository context, wiki-source, and branch-hygiene updates.
 
 Still pending before this RFC should be considered fully implemented:
 
-1. stronger operator authorization beyond the current bounded caller checks,
+1. broader operator authorization beyond the current bounded caller-policy control-plane posture,
 2. broader rollout posture beyond the current pilot and discovery reference family,
 3. convergence with the durable run-ledger and review-state model proposed in `RFC-0033`.
 
@@ -110,10 +112,21 @@ The implemented portions of this RFC map to concrete branch evidence as follows.
    `tests/integration/test_workflow_pack_activation_api_contract.py`,
    `tests/integration/test_workflow_pack_run_api_contract.py`,
    `tests/unit/test_openapi_contract.py`
+8. Caller-policy-backed workflow-pack operator control authorization and durable authorization
+   evidence on workflow-pack control events:
+   `src/app/services/access_control_authorization.py`,
+   `src/app/services/workflow_pack_control.py`,
+   `src/app/contracts/workflow_packs.py`,
+   `src/app/repositories/sqlalchemy_workflow_pack_registry_repository.py`,
+   `alembic/versions/0030_add_workflow_pack_control_event_authorization_payload.py`,
+   `tests/unit/test_access_control_authorization.py`,
+   `tests/unit/test_workflow_pack_control.py`,
+   `tests/integration/test_workflow_pack_control_api_contract.py`
 
 Open gaps that remain consistent with this RFC's still-pending scope:
 
-1. operator authorization is bounded but not yet enterprise-strong,
+1. operator authorization is now caller-policy-backed for bounded workflow-pack control actions but
+   is not yet a broader enterprise entitlement model,
 2. broader activation rollout posture and non-reference workflow-pack families are not yet onboarded.
 
 ## Why This RFC Exists

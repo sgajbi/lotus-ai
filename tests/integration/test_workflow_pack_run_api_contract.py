@@ -355,7 +355,7 @@ def test_workflow_pack_run_review_action_rejects_unbounded_caller(client: TestCl
     assert review_response.status_code == 403
     assert (
         review_response.json()["detail"]
-        == "Workflow-pack review-state actions are currently limited to the original caller app or the lotus-platform operator caller while downstream review integration remains bounded."
+        == "Workflow-pack review-state actions are currently limited to the original active registered caller app or a caller authorized for async control-plane actions while downstream review integration remains bounded."
     )
 
     detail_response = client.get(f"/platform/workflow-packs/runs/{run_id}")

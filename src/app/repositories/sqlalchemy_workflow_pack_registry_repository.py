@@ -4,6 +4,12 @@ from pathlib import Path
 
 from sqlalchemy import select
 
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
 from app.contracts.workflow_packs import (
     WorkflowPackControlEventDescriptor,
     WorkflowPackRegistrationDescriptor,
@@ -92,6 +98,7 @@ class SqlAlchemyWorkflowPackRegistryRepository(
             prior_activation_state=event.prior_activation_state.value,
             resulting_activation_state=event.resulting_activation_state.value,
             caller_app=event.caller_app,
+            authorization_payload=event.authorization.model_dump(mode="json"),
             recorded_at=event.recorded_at,
         )
         with self._session_factory() as session:
@@ -203,6 +210,11 @@ class SqlAlchemyWorkflowPackRegistryRepository(
                 "prior_activation_state": model.prior_activation_state,
                 "resulting_activation_state": model.resulting_activation_state,
                 "caller_app": model.caller_app,
+                "authorization": (
+                    AuthorizationDecision.model_validate(model.authorization_payload)
+                    if model.authorization_payload is not None
+                    else _build_legacy_control_authorization(model.caller_app)
+                ),
                 "recorded_at": model.recorded_at,
             }
         )
@@ -218,3 +230,21 @@ class SqlAlchemyWorkflowPackRegistryRepository(
         if not path.is_absolute():
             path = Path.cwd() / path
         path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _build_legacy_control_authorization(caller_app: str) -> AuthorizationDecision:
+    allowed = caller_app == "lotus-platform"
+    return AuthorizationDecision(
+        caller_app=caller_app,
+        capability_type=AuthorizationCapabilityType.ASYNC_CONTROL,
+        outcome=(
+            AuthorizationOutcome.ALLOWED
+            if allowed
+            else AuthorizationOutcome.BLOCKED_ASYNC_CONTROL_NOT_ALLOWED
+        ),
+        allowed=allowed,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        summary=(
+            f"Legacy workflow-pack control event for '{caller_app}' predates durable caller-policy authorization payloads."
+        ),
+    )

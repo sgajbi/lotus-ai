@@ -32,6 +32,8 @@ def test_workflow_pack_control_action_route(client: TestClient) -> None:
     body = response.json()
     assert body["event"]["action_type"] == "PAUSE"
     assert body["registration"]["activation_state"] == "PAUSED"
+    assert body["event"]["authorization"]["caller_app"] == "lotus-platform"
+    assert body["event"]["authorization"]["outcome"] == "ALLOWED"
 
 
 def test_workflow_pack_control_action_route_blocks_non_operator_caller(
@@ -51,6 +53,7 @@ def test_workflow_pack_control_action_route_blocks_non_operator_caller(
     )
 
     assert response.status_code == 403
+    assert "not authorized for async control-plane actions" in response.json()["detail"]
 
 
 def test_workflow_pack_control_history_and_registration_state_support_sqlalchemy_store(
@@ -89,6 +92,8 @@ def test_workflow_pack_control_history_and_registration_state_support_sqlalchemy
     assert detail_response.status_code == 200
     assert history_response.json()["control_plane_store_mode"] == "sqlalchemy"
     assert history_response.json()["latest_events"][0]["action_type"] == "PAUSE"
+    assert history_response.json()["latest_events"][0]["authorization"]["caller_app"] == "lotus-platform"
+    assert history_response.json()["latest_events"][0]["authorization"]["outcome"] == "ALLOWED"
     assert detail_response.json()["registration"]["activation_state"] == "PAUSED"
 
 
