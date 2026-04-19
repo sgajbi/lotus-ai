@@ -335,7 +335,7 @@ def test_build_workflow_pack_attention_queue_summary_limits_to_latest_actionable
 
     summary = build_workflow_pack_runtime_status_summary()
 
-    assert summary.attention_queue.queue_depth == 5
+    assert summary.attention_queue.queue_depth == 6
     assert summary.attention_queue.queue_limit == 5
     assert [item.run_id for item in summary.attention_queue.items] == [
         "run-action-6",
@@ -349,6 +349,10 @@ def test_build_workflow_pack_attention_queue_summary_limits_to_latest_actionable
     assert summary.attention_queue.items[0].review_summary.has_review_history is True
     assert summary.attention_queue.items[0].provenance.artifact_ref_count == 1
     assert summary.attention_queue.items[0].provenance.evidence_descriptor_count == 1
+    assert any(
+        "use queue_depth to measure the full actionable backlog" in line
+        for line in summary.attention_queue.status_summary
+    )
 
 
 def test_build_workflow_pack_runtime_status_summary_uses_descriptor_supportability_posture(

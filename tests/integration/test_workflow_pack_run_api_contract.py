@@ -938,3 +938,28 @@ def test_sqlalchemy_workflow_pack_run_review_and_lineage_survive_restart(tmp_pat
         runtime_status_body["workflow_pack_runtime"]["attention_queue"]["items"][0]["run_id"]
         == revised_run_id
     )
+
+
+def test_runtime_status_attention_queue_reports_full_backlog_depth(client: TestClient) -> None:
+    for index in range(6):
+        execute_response = client.post(
+            "/ai/tasks/execute",
+            json=advisor_brief_task_execution_request_json(
+                correlation_id=f"corr-pack-run-api-queue-depth-00{index + 1}"
+            ),
+        )
+        assert execute_response.status_code == 200
+
+    runtime_status_response = client.get("/platform/runtime-status")
+
+    assert runtime_status_response.status_code == 200
+    runtime_status_body = runtime_status_response.json()
+    attention_queue = runtime_status_body["workflow_pack_runtime"]["attention_queue"]
+    assert attention_queue["queue_depth"] == 6
+    assert attention_queue["queue_limit"] == 5
+    assert len(attention_queue["items"]) == 5
+    assert all(item["supportability_status"] == "ACTION_REQUIRED" for item in attention_queue["items"])
+    assert any(
+        "use queue_depth to measure the full actionable backlog" in line
+        for line in attention_queue["status_summary"]
+    )

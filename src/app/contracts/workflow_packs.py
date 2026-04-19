@@ -405,7 +405,7 @@ class WorkflowPackAttentionQueueItemResponse(BaseModel):
 
 class WorkflowPackAttentionQueueSummaryResponse(BaseModel):
     queue_depth: int = Field(
-        description="Number of actionable workflow-pack runs currently represented in the bounded queue."
+        description="Total number of actionable workflow-pack runs currently awaiting operator attention across executable pack versions, even when the returned queue items are truncated by queue_limit."
     )
     queue_limit: int = Field(
         description="Maximum number of actionable workflow-pack runs returned in the bounded queue."

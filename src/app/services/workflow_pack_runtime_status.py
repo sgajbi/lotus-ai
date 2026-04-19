@@ -292,6 +292,7 @@ def build_workflow_pack_attention_queue_summary(
         if run.supportability_status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED:
             actionable_runs.append(run)
     actionable_runs.sort(key=lambda item: item.created_at, reverse=True)
+    queue_depth = len(actionable_runs)
     queue_items = [
         WorkflowPackAttentionQueueItemResponse(
             run_id=run.run_id,
@@ -307,15 +308,20 @@ def build_workflow_pack_attention_queue_summary(
         )
         for run in actionable_runs[:WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT]
     ]
+    status_summary = [
+        "The workflow-pack attention queue is derived from the shared run-supportability seam and only includes actionable runs from explicitly executable pack versions.",
+        "Use the queue as a pivot into run detail and operator-profile routes, not as a replacement for the full bounded run ledger.",
+        "Newest actionable runs are prioritized first so operators can address fresh review backlog or failure posture without scanning every executable pack summary.",
+    ]
+    if queue_depth > WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT:
+        status_summary.append(
+            "Returned queue items are truncated to the bounded queue limit; use queue_depth to measure the full actionable backlog."
+        )
     return WorkflowPackAttentionQueueSummaryResponse(
-        queue_depth=len(queue_items),
+        queue_depth=queue_depth,
         queue_limit=WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT,
         items=queue_items,
-        status_summary=[
-            "The workflow-pack attention queue is derived from the shared run-supportability seam and only includes actionable runs from explicitly executable pack versions.",
-            "Use the queue as a pivot into run detail and operator-profile routes, not as a replacement for the full bounded run ledger.",
-            "Newest actionable runs are prioritized first so operators can address fresh review backlog or failure posture without scanning every executable pack summary.",
-        ],
+        status_summary=status_summary,
     )
 
 

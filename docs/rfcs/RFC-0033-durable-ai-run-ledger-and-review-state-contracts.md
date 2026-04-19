@@ -85,7 +85,8 @@ Implemented on the current branch:
 16. SQL-backed workflow-pack review-state, lineage, consumer-view, operator-profile, and estate-level runtime-summary posture are now covered through restart-safe integration proof instead of only memory-mode proof,
 17. `/platform/runtime-status` now degrades truthfully when the configured workflow-pack registry store or workflow-pack run store is not yet migration-ready, returning bounded zeroed workflow-pack runtime posture instead of raising unhandled SQL table errors,
 18. bounded workflow-pack review actions now also require either the original active registered caller app or a caller authorized for async control-plane actions, so cross-app review drift is blocked without collapsing business workflow authority into lotus-ai,
-19. workflow-pack run catalog, detail, consumer-view, operator-profile, review-action, generic task execution, and explicit workflow-pack execution routes now fail with explicit `503` degradation when the configured SQL-backed workflow-pack run store is not migration-ready, instead of surfacing raw table errors or ambiguous missing-run responses.
+19. workflow-pack run catalog, detail, consumer-view, operator-profile, review-action, generic task execution, and explicit workflow-pack execution routes now fail with explicit `503` degradation when the configured SQL-backed workflow-pack run store is not migration-ready, instead of surfacing raw table errors or ambiguous missing-run responses,
+20. the estate-level workflow-pack attention queue now reports the full actionable backlog through `queue_depth` even when returned queue items are truncated to the bounded queue limit, so operators can distinguish a capped visible queue from the real review or support backlog.
 
 What is not implemented yet:
 
