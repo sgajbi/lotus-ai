@@ -118,6 +118,8 @@ def test_workflow_pack_run_catalog_and_detail_expose_recorded_history() -> None:
     assert "Phase-1 recorded runs now emit governed workflow-pack artifact refs" in catalog.notes[4]
     detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
     assert detail.run.run_id == recorded.run_id
+    assert detail.supportability.status.value == "ACTION_REQUIRED"
+    assert detail.supportability.review_pending is True
     assert len(detail.run.artifact_refs) == 1
     assert detail.events[0].event_type.value == "RUN_RECORDED"
 

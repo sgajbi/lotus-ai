@@ -9,21 +9,16 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunConsumerReviewDescriptor,
     WorkflowPackRunConsumerRuntimeDescriptor,
     WorkflowPackRunConsumerSupportabilityDescriptor,
-    WorkflowPackRunDescriptor,
     WorkflowPackRunConsumerViewResponse,
     WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
-    WorkflowPackRunSupportabilityStatus,
 )
 from app.repositories.workflow_pack_run_repository import WorkflowPackRunRecord
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_ledger import map_workflow_pack_run_record
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
-from app.services.workflow_pack_run_supportability import (
-    has_workflow_pack_run_partial_output,
-    is_workflow_pack_run_historical,
-    is_workflow_pack_run_review_pending,
-    resolve_workflow_pack_run_supportability_status,
+from app.services.workflow_pack_run_supportability_summary import (
+    build_workflow_pack_run_supportability_descriptor,
 )
 
 
@@ -117,43 +112,6 @@ def _build_provenance_descriptor(
 def _build_supportability_descriptor(
     record: WorkflowPackRunRecord,
 ) -> WorkflowPackRunConsumerSupportabilityDescriptor:
-    supportability_record = _build_supportability_record(record)
-    status = resolve_workflow_pack_run_supportability_status(supportability_record)
-    review_pending = is_workflow_pack_run_review_pending(supportability_record)
-    superseded = is_workflow_pack_run_historical(supportability_record)
-    partial_output_visible = has_workflow_pack_run_partial_output(supportability_record)
-    return WorkflowPackRunConsumerSupportabilityDescriptor(
-        status=status,
-        review_pending=review_pending,
-        superseded=superseded,
-        partial_output_visible=partial_output_visible,
-        summary_note=_build_supportability_summary_note(
-            status=status,
-            review_pending=review_pending,
-            superseded_by_run_id=record.superseded_by_run_id,
-        ),
+    return build_workflow_pack_run_supportability_descriptor(
+        run=map_workflow_pack_run_record(record)
     )
-
-
-def _build_supportability_record(record: WorkflowPackRunRecord) -> WorkflowPackRunDescriptor:
-    return map_workflow_pack_run_record(record)
-
-
-def _build_supportability_summary_note(
-    *,
-    status: WorkflowPackRunSupportabilityStatus,
-    review_pending: bool,
-    superseded_by_run_id: str | None,
-) -> str:
-    if status is WorkflowPackRunSupportabilityStatus.HISTORICAL:
-        return (
-            f"This workflow-pack run is historical because replacement run "
-            f"`{superseded_by_run_id}` now carries the latest bounded draft posture."
-        )
-    if review_pending:
-        return (
-            "This workflow-pack run completed execution but still requires bounded review before downstream use."
-        )
-    if status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED:
-        return "This workflow-pack run remains action-required and should be reviewed before downstream use."
-    return "This workflow-pack run is currently supportable through the bounded ledger posture."

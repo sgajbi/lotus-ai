@@ -24,6 +24,9 @@ from app.services.workflow_pack_bindings import (
     resolve_workflow_pack_execution_binding_for_task,
 )
 from app.services.workflow_pack_run_artifacts import persist_workflow_pack_run_output_artifact
+from app.services.workflow_pack_run_supportability_summary import (
+    build_workflow_pack_run_supportability_descriptor_from_record,
+)
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from app.services.workflow_pack_run_supportability import (
@@ -127,12 +130,17 @@ def build_workflow_pack_run_detail(*, run_id: str) -> WorkflowPackRunDetailRespo
         version=settings.service_version,
         run_store_mode=settings.workflow_pack_run_store_mode,
         run=map_workflow_pack_run_record(record),
+        supportability=build_workflow_pack_run_supportability_descriptor_from_record(
+            record=record,
+            map_record=map_workflow_pack_run_record,
+        ),
         events=[
             map_workflow_pack_run_event_record(event)
             for event in get_workflow_pack_run_store().list_events(run_id=run_id)
         ],
         notes=[
             "Runtime state and review state are modeled separately in the run detail to avoid ambiguous operator or product interpretation.",
+            "Supportability posture is included alongside the raw run record so callers do not need a separate profile request just to understand readiness versus action-required or historical posture.",
             "This run record preserves workflow-pack registration identity and workflow-authority ownership without claiming business approval authority for lotus-ai.",
         ],
     )

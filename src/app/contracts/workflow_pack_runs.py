@@ -181,6 +181,9 @@ class WorkflowPackRunDetailResponse(BaseModel):
     run: WorkflowPackRunDescriptor = Field(
         description="Workflow-pack run record for the requested run identifier."
     )
+    supportability: WorkflowPackRunConsumerSupportabilityDescriptor = Field(
+        description="Shared supportability posture for the requested workflow-pack run."
+    )
     events: list[WorkflowPackRunEventDescriptor] = Field(
         description="Recorded workflow-pack run history for the requested run."
     )

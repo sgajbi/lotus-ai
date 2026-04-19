@@ -67,6 +67,8 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
     assert detail_response.status_code == 200
     detail_body = detail_response.json()
     assert detail_body["run"]["run_id"] == run["run_id"]
+    assert detail_body["supportability"]["status"] == "ACTION_REQUIRED"
+    assert detail_body["supportability"]["review_pending"] is True
     assert detail_body["run"]["artifact_refs"][0]["source_object_id"] == run["run_id"]
     assert detail_body["events"][0]["event_type"] == "RUN_RECORDED"
     assert detail_body["run"]["workflow_surface"] == "advisor-brief-workspace"

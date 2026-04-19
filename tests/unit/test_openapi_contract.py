@@ -824,6 +824,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "workflow_authority_owner" in workflow_pack_run_schema["properties"]
     assert "evidence_descriptors" in workflow_pack_run_schema["properties"]
     assert "events" in workflow_pack_run_detail_schema["properties"]
+    assert "supportability" in workflow_pack_run_detail_schema["properties"]
     assert "runtime" in workflow_pack_run_consumer_view_schema["properties"]
     assert "review" in workflow_pack_run_consumer_view_schema["properties"]
     assert "lineage" in workflow_pack_run_consumer_view_schema["properties"]
