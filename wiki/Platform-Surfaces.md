@@ -95,8 +95,10 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 3. `/platform/workflow-packs/runs/{run_id}/operator-profile` exposes one operator-facing supportability summary for review pending, failure, expiry, supersession, partial-output, artifact, and evidence posture,
 4. `/platform/workflow-packs/runs/{run_id}/consumer-view` exposes one grouped runtime-review-lineage-provenance contract candidate for downstream composition layers, including artifact-backed provenance refs,
 5. `/platform/workflow-packs/runs/{run_id}/review-actions` records bounded actor-attributed review transitions without taking consequence-bearing workflow authority,
-6. the current slice records advisor-brief executions through the existing task path while the broader workflow-pack runtime remains future work,
-7. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode` and `workflow_pack_run_store` so operators can distinguish process-local ledger posture from SQL-backed durable ledger posture.
+6. `lotus-gateway` now uses that same bounded ledger seam to record advisor-brief review actions and returns refreshed workflow-pack posture through its advisor-brief contract without turning `lotus-ai` into the business-workflow owner,
+7. `lotus-workbench` now has a typed client seam for the downstream advisor-brief review-action route, while UI-triggered business authorization remains a separate future slice,
+8. the current slice records advisor-brief executions through the existing task path while the broader workflow-pack runtime remains future work,
+9. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode` and `workflow_pack_run_store` so operators can distinguish process-local ledger posture from SQL-backed durable ledger posture.
 
 ## Provider Surface
 
