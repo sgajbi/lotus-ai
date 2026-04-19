@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
+    WorkflowPackRunSupportabilityStatus,
 )
 from app.contracts.workflow_packs import (
     WorkflowPackExecutableActivitySummaryResponse,
@@ -12,6 +13,9 @@ from app.contracts.workflow_packs import (
 from app.services.workflow_pack_bindings import list_workflow_pack_execution_binding_descriptors
 from app.services.workflow_pack_registry import list_workflow_pack_registrations
 from app.services.workflow_pack_run_ledger import build_workflow_pack_run_catalog
+from app.services.workflow_pack_run_supportability import (
+    resolve_workflow_pack_run_supportability_status,
+)
 
 
 def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSummaryResponse:
@@ -150,6 +154,9 @@ def build_workflow_pack_executable_activity_summary(
     for registration_ref in executable_registration_refs:
         pack_id, version = registration_ref.split("@", maxsplit=1)
         runs = runs_by_registration_ref.get(registration_ref, [])
+        supportability_statuses = [
+            resolve_workflow_pack_run_supportability_status(run) for run in runs
+        ]
         latest_run = max(runs, key=lambda run: run.created_at) if runs else None
         summaries.append(
             WorkflowPackExecutableActivitySummaryResponse(
@@ -164,6 +171,17 @@ def build_workflow_pack_executable_activity_summary(
                 ),
                 accepted_count=sum(
                     1 for run in runs if run.review_state is WorkflowPackRunReviewState.ACCEPTED
+                ),
+                ready_count=sum(
+                    1 for status in supportability_statuses if status is WorkflowPackRunSupportabilityStatus.READY
+                ),
+                action_required_count=sum(
+                    1
+                    for status in supportability_statuses
+                    if status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED
+                ),
+                historical_count=sum(
+                    1 for status in supportability_statuses if status is WorkflowPackRunSupportabilityStatus.HISTORICAL
                 ),
                 latest_run_id=latest_run.run_id if latest_run is not None else None,
                 latest_recorded_at=latest_run.created_at if latest_run is not None else None,

@@ -318,6 +318,15 @@ class WorkflowPackExecutableActivitySummaryResponse(BaseModel):
     accepted_count: int = Field(
         description="Number of recorded runs for this executable pack version that are currently accepted."
     )
+    ready_count: int = Field(
+        description="Number of recorded runs for this executable pack version currently classified as supportable through the bounded ledger posture."
+    )
+    action_required_count: int = Field(
+        description="Number of recorded runs for this executable pack version currently classified as requiring operator attention."
+    )
+    historical_count: int = Field(
+        description="Number of recorded runs for this executable pack version currently classified as historical."
+    )
     latest_run_id: str | None = Field(
         default=None,
         description="Most recent recorded workflow-pack run identifier for this executable pack version, when available.",

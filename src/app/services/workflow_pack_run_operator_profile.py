@@ -5,12 +5,17 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunDetailResponse,
     WorkflowPackRunFindingSeverity,
     WorkflowPackRunOperatorProfileResponse,
-    WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
     WorkflowPackRunSupportabilityFinding,
     WorkflowPackRunSupportabilityStatus,
 )
 from app.services.workflow_pack_run_ledger import build_workflow_pack_run_detail
+from app.services.workflow_pack_run_supportability import (
+    has_workflow_pack_run_partial_output,
+    is_workflow_pack_run_historical,
+    is_workflow_pack_run_review_pending,
+    resolve_workflow_pack_run_supportability_status,
+)
 
 
 def build_workflow_pack_run_operator_profile(
@@ -19,7 +24,7 @@ def build_workflow_pack_run_operator_profile(
     detail = build_workflow_pack_run_detail(run_id=run_id)
     run = detail.run
     findings = _build_findings(detail)
-    supportability_status = _resolve_supportability_status(detail)
+    supportability_status = resolve_workflow_pack_run_supportability_status(run)
 
     return WorkflowPackRunOperatorProfileResponse(
         service=settings.service_name,
@@ -32,12 +37,11 @@ def build_workflow_pack_run_operator_profile(
         review_state=run.review_state,
         workflow_authority_owner=run.workflow_authority_owner,
         supportability_status=supportability_status,
-        review_pending=run.review_required
-        and run.review_state is WorkflowPackRunReviewState.AWAITING_REVIEW,
+        review_pending=is_workflow_pack_run_review_pending(run),
         failed=run.runtime_state is WorkflowPackRunRuntimeState.FAILED,
         expired=run.runtime_state is WorkflowPackRunRuntimeState.EXPIRED,
-        superseded=_is_superseded(detail),
-        partial_output_visible=_has_partial_output(detail),
+        superseded=is_workflow_pack_run_historical(run),
+        partial_output_visible=has_workflow_pack_run_partial_output(run),
         artifact_ref_count=len(run.artifact_refs),
         evidence_descriptor_count=len(run.evidence_descriptors),
         history_event_count=len(detail.events),
@@ -53,37 +57,13 @@ def build_workflow_pack_run_operator_profile(
         ],
         inspection_steps=_build_inspection_steps(detail),
     )
-
-
-def _resolve_supportability_status(
-    detail: WorkflowPackRunDetailResponse,
-) -> WorkflowPackRunSupportabilityStatus:
-    run = detail.run
-    if _is_superseded(detail):
-        return WorkflowPackRunSupportabilityStatus.HISTORICAL
-    if (
-        run.runtime_state
-        in {WorkflowPackRunRuntimeState.FAILED, WorkflowPackRunRuntimeState.EXPIRED}
-        or run.review_state
-        in {
-            WorkflowPackRunReviewState.REJECTED,
-            WorkflowPackRunReviewState.ABANDONED,
-        }
-        or (run.review_required and run.review_state is WorkflowPackRunReviewState.AWAITING_REVIEW)
-        or len(run.artifact_refs) == 0
-        or len(run.evidence_descriptors) == 0
-    ):
-        return WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED
-    return WorkflowPackRunSupportabilityStatus.READY
-
-
 def _build_findings(
     detail: WorkflowPackRunDetailResponse,
 ) -> list[WorkflowPackRunSupportabilityFinding]:
     run = detail.run
     findings: list[WorkflowPackRunSupportabilityFinding] = []
 
-    if run.review_required and run.review_state is WorkflowPackRunReviewState.AWAITING_REVIEW:
+    if is_workflow_pack_run_review_pending(run):
         findings.append(
             WorkflowPackRunSupportabilityFinding(
                 finding_id="review_pending",
@@ -119,7 +99,7 @@ def _build_findings(
                 ),
             )
         )
-    if _is_superseded(detail):
+    if is_workflow_pack_run_historical(run):
         findings.append(
             WorkflowPackRunSupportabilityFinding(
                 finding_id="run_historical",
@@ -131,7 +111,7 @@ def _build_findings(
                 ),
             )
         )
-    if _has_partial_output(detail):
+    if has_workflow_pack_run_partial_output(run):
         findings.append(
             WorkflowPackRunSupportabilityFinding(
                 finding_id="partial_output_visible",
@@ -198,7 +178,7 @@ def _build_current_summary_note(
         )
     if run.runtime_state is WorkflowPackRunRuntimeState.EXPIRED:
         return "Run expired and should be treated as stale until downstream owners reconcile it."
-    if run.review_required and run.review_state is WorkflowPackRunReviewState.AWAITING_REVIEW:
+    if is_workflow_pack_run_review_pending(run):
         return "Run completed but still requires bounded human review before downstream use."
     return "Run is supportable through the current bounded workflow-pack ledger posture."
 
@@ -214,24 +194,3 @@ def _build_inspection_steps(detail: WorkflowPackRunDetailResponse) -> list[str]:
         ),
         "When a newer replacement run exists, move diagnosis to that replacement before asking downstream teams to act on the historical run.",
     ]
-
-
-def _is_superseded(detail: WorkflowPackRunDetailResponse) -> bool:
-    run = detail.run
-    return (
-        run.superseded_by_run_id is not None
-        or run.review_state
-        in {
-            WorkflowPackRunReviewState.REVISED,
-            WorkflowPackRunReviewState.SUPERSEDED,
-        }
-        or run.runtime_state is WorkflowPackRunRuntimeState.SUPERSEDED
-    )
-
-
-def _has_partial_output(detail: WorkflowPackRunDetailResponse) -> bool:
-    run = detail.run
-    return run.runtime_state in {
-        WorkflowPackRunRuntimeState.FAILED,
-        WorkflowPackRunRuntimeState.EXPIRED,
-    } and bool(run.output_preview.strip() or run.structured_output_keys)
