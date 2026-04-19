@@ -49,6 +49,7 @@ def apply_workflow_pack_run_review_action(
         WorkflowPackRunReviewActionType.SUPERSEDE,
     }:
         replacement_run = _require_replacement_run(
+            store=store,
             run=run,
             replacement_run_id=request.replacement_run_id,
         )
@@ -95,7 +96,7 @@ def apply_workflow_pack_run_review_action(
     return WorkflowPackRunReviewActionResponse(
         service=settings.service_name,
         version=settings.service_version,
-        run=map_workflow_pack_run_record(updated_run),
+        run=map_workflow_pack_run_record(updated_run, store=store),
         events=[map_workflow_pack_run_event_record(event) for event in recorded_events],
         summary=[
             f"Recorded workflow-pack review action `{request.action_type.value}` for `{run.run_id}`.",
@@ -211,6 +212,7 @@ def _require_review_caller(*, run: WorkflowPackRunRecord, caller_app: str) -> No
 
 def _require_replacement_run(
     *,
+    store,
     run: WorkflowPackRunRecord,
     replacement_run_id: str | None,
 ) -> WorkflowPackRunRecord:
@@ -219,7 +221,7 @@ def _require_replacement_run(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="replacement_run_id is required for REVISE or SUPERSEDE review-state actions.",
         )
-    replacement_run = get_workflow_pack_run_store().get_run(run_id=replacement_run_id)
+    replacement_run = store.get_run(run_id=replacement_run_id)
     if replacement_run is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

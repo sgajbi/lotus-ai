@@ -430,6 +430,53 @@ def test_review_action_rejects_unauthorized_caller() -> None:
         raise AssertionError("Expected unauthorized review caller to fail")
 
 
+def test_review_action_allows_operator_caller() -> None:
+    context = build_task_execution_context(
+        TaskExecutionRequest(
+            task_id="explain.v1",
+            input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+            caller=CallerMetadata(
+                caller_app="lotus-gateway",
+                correlation_id="corr-pack-run-operator-caller-001",
+            ),
+            context=TaskContextEnvelope(
+                summary="Draft advisor brief from source performance facts.",
+                payload={
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                },
+                source_refs=["lotus-gateway:performance-summary:YTD"],
+            ),
+            expected_output_label=OutputLabel.EXPLANATION_ONLY,
+        )
+    )
+    response = build_task_execution_response(resolved=resolve_task_execution(context=context))
+    recorded = record_workflow_pack_run_for_task_execution(context=context, response=response)
+    assert recorded is not None
+
+    review_response = apply_workflow_pack_run_review_action(
+        run_id=recorded.run_id,
+        request=WorkflowPackRunReviewActionRequest(
+            action_type=WorkflowPackRunReviewActionType.ACCEPT,
+            caller_app="lotus-platform",
+            reviewed_by="ops.sg.platform.001",
+            reason="Platform operator recorded bounded review acceptance.",
+        ),
+    )
+
+    assert review_response.run.review_state.value == "ACCEPTED"
+    assert review_response.run.allowed_review_actions == [
+        WorkflowPackRunReviewActionType.SUPERSEDE
+    ]
+    assert review_response.events[0].actor == "review:ops.sg.platform.001"
+
+
 def test_review_action_rejects_replacement_run_for_accept() -> None:
     context = build_task_execution_context(
         TaskExecutionRequest(
