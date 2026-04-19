@@ -343,8 +343,44 @@ def test_workflow_pack_run_operator_profile_reports_supportability_posture(
     assert body["artifact_ref_count"] == 1
     assert body["latest_event_type"] == "RUN_RECORDED"
     assert body["latest_event_actor"] == "lotus-ai.workflow-pack-run-ledger"
+    assert body["latest_review_event_at"] is None
+    assert body["latest_review_actor"] is None
+    assert body["review_transition_count"] == 0
     assert body["event_type_counts"] == {"RUN_RECORDED": 1}
     assert any(finding["finding_id"] == "review_pending" for finding in body["findings"])
+
+
+def test_workflow_pack_run_operator_profile_exposes_latest_review_transition(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-operator-002"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.operator.003",
+            "reason": "Accepted for operator profile review metadata coverage.",
+        },
+    )
+    assert review_response.status_code == 200
+
+    profile_response = client.get(f"/platform/workflow-packs/runs/{run_id}/operator-profile")
+
+    assert profile_response.status_code == 200
+    body = profile_response.json()
+    assert body["latest_event_type"] == "REVIEW_STATE_UPDATED"
+    assert body["latest_review_event_at"] is not None
+    assert body["latest_review_actor"] == "review:banker.sg.operator.003"
+    assert body["review_transition_count"] == 1
 
 
 def test_workflow_pack_run_operator_profile_rejects_unknown_run(client: TestClient) -> None:

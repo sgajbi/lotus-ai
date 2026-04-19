@@ -39,6 +39,9 @@ def test_workflow_pack_run_operator_profile_reports_review_pending_attention() -
     assert profile.history_event_count == 1
     assert profile.latest_event_type.value == "RUN_RECORDED"
     assert profile.latest_event_actor == "lotus-ai.workflow-pack-run-ledger"
+    assert profile.latest_review_event_at is None
+    assert profile.latest_review_actor is None
+    assert profile.review_transition_count == 0
     assert profile.event_type_counts == {"RUN_RECORDED": 1}
     assert any(finding.finding_id == "review_pending" for finding in profile.findings)
     assert profile.inspection_surfaces[-1].endswith("/operator-profile")
@@ -83,6 +86,9 @@ def test_workflow_pack_run_operator_profile_marks_superseded_run_historical() ->
     assert profile.replacement_run_id == replacement_run.run_id
     assert profile.review_state is WorkflowPackRunReviewState.REVISED
     assert profile.latest_event_type.value == "LINEAGE_UPDATED"
+    assert profile.latest_review_event_at is not None
+    assert profile.latest_review_actor == "review:banker.sg.operator.001"
+    assert profile.review_transition_count == 1
     assert profile.event_type_counts["REVIEW_STATE_UPDATED"] == 1
     assert profile.event_type_counts["LINEAGE_UPDATED"] == 1
     assert any(finding.finding_id == "run_historical" for finding in profile.findings)
@@ -111,6 +117,9 @@ def test_workflow_pack_run_operator_profile_marks_accepted_run_ready() -> None:
     assert profile.failed is False
     assert profile.superseded is False
     assert profile.latest_event_type.value == "REVIEW_STATE_UPDATED"
+    assert profile.latest_review_event_at is not None
+    assert profile.latest_review_actor == "review:banker.sg.operator.002"
+    assert profile.review_transition_count == 1
     assert profile.event_type_counts["RUN_RECORDED"] == 1
     assert profile.event_type_counts["REVIEW_STATE_UPDATED"] == 1
     assert any(finding.finding_id == "run_ready" for finding in profile.findings)
@@ -139,6 +148,9 @@ def test_workflow_pack_run_operator_profile_exposes_failed_partial_output() -> N
     assert profile.failed is True
     assert profile.partial_output_visible is True
     assert profile.latest_event_type.value == "RUN_RECORDED"
+    assert profile.latest_review_event_at is None
+    assert profile.latest_review_actor is None
+    assert profile.review_transition_count == 0
     assert profile.event_type_counts == {"RUN_RECORDED": 1}
     assert any(finding.finding_id == "runtime_failed" for finding in profile.findings)
     assert any(finding.finding_id == "partial_output_visible" for finding in profile.findings)

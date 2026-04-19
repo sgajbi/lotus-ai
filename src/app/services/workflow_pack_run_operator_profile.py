@@ -24,6 +24,8 @@ def build_workflow_pack_run_operator_profile(
     detail = build_workflow_pack_run_detail(run_id=run_id)
     run = detail.run
     latest_event = detail.events[-1] if detail.events else None
+    review_events = _list_review_events(detail)
+    latest_review_event = review_events[-1] if review_events else None
     findings = _build_findings(detail)
     supportability_status = resolve_workflow_pack_run_supportability_status(run)
 
@@ -49,6 +51,11 @@ def build_workflow_pack_run_operator_profile(
         latest_event_at=latest_event.recorded_at if latest_event is not None else None,
         latest_event_type=latest_event.event_type if latest_event is not None else None,
         latest_event_actor=latest_event.actor if latest_event is not None else None,
+        latest_review_event_at=(
+            latest_review_event.recorded_at if latest_review_event is not None else None
+        ),
+        latest_review_actor=latest_review_event.actor if latest_review_event is not None else None,
+        review_transition_count=len(review_events),
         event_type_counts=_build_event_type_counts(detail),
         replacement_run_id=run.superseded_by_run_id,
         current_summary_note=_build_current_summary_note(detail, supportability_status),
@@ -207,3 +214,11 @@ def _build_event_type_counts(detail: WorkflowPackRunDetailResponse) -> dict[str,
     for event in detail.events:
         counts[event.event_type.value] = counts.get(event.event_type.value, 0) + 1
     return counts
+
+
+def _list_review_events(detail: WorkflowPackRunDetailResponse):
+    return [
+        event
+        for event in detail.events
+        if event.event_type.value == "REVIEW_STATE_UPDATED"
+    ]

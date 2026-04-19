@@ -428,6 +428,17 @@ class WorkflowPackRunOperatorProfileResponse(BaseModel):
         default=None,
         description="Actor recorded on the most recent workflow-pack run event, when available.",
     )
+    latest_review_event_at: str | None = Field(
+        default=None,
+        description="UTC timestamp for the most recent recorded review-state transition, when available.",
+    )
+    latest_review_actor: str | None = Field(
+        default=None,
+        description="Actor recorded on the most recent review-state transition event, when available.",
+    )
+    review_transition_count: int = Field(
+        description="Number of recorded review-state transition events currently linked to the run."
+    )
     event_type_counts: dict[str, int] = Field(
         default_factory=dict,
         description="Bounded per-event-type counts for the recorded workflow-pack run history.",
