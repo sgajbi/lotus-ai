@@ -825,7 +825,9 @@ Current branch status:
 2. actor attribution, timestamps, invalid-transition rejection, and supersession lineage are now covered by unit and integration tests,
 3. Phase-1 advisor-brief run records now emit governed workflow-pack artifact refs through the shared artifact backbone so support and downstream reviewers can inspect bounded output-summary provenance without expanding the ledger contract into raw payload transport,
 4. a bounded workflow-pack run operator profile is now exposed for support and operator diagnosis, making review-pending, failure, expiry, supersession, partial-output, evidence, and artifact posture visible without collapsing business workflow authority into lotus-ai,
-5. consequence-bearing meaning, allowed-action shaping for downstream workflows, and end-to-end gateway or Workbench adoption remain future slices.
+5. `lotus-gateway` now derives the advisor-brief pack-run identity from the bounded `request_id`, reads the consumer-view and operator-profile surfaces, and emits one compact `workflow_pack_run` contract on the advisor-brief response,
+6. `lotus-workbench` now consumes that compact `workflow_pack_run` contract through the existing advisor-brief supportability, review-notes, and audit-provenance path rather than introducing a parallel operator-only UI concept,
+7. consequence-bearing meaning, user-entitlement shaping for review actions, and broader non-reference workflow-pack runtime adoption remain future slices.
 
 This branch now also emits bounded ledger-compatible `allowed_review_actions` on run descriptors.
 That posture is intentionally narrower than downstream business authorization: it tells consumers
@@ -849,6 +851,13 @@ Deliverables:
 1. gateway response contracts,
 2. integration guidance for Workbench,
 3. first end-to-end adoption slice, likely `advisor_brief`.
+
+Current branch status:
+
+1. the first end-to-end downstream adoption slice now exists on the advisor-brief path,
+2. `lotus-gateway` surfaces a bounded `workflow_pack_run` posture that merges lotus-ai runtime, review, lineage, and supportability facts without taking workflow authority,
+3. `lotus-workbench` renders that posture through existing supportability and review-note affordances, and appends workflow-pack run provenance into advisor-brief audit references,
+4. broader downstream adoption beyond advisor brief remains future work.
 
 ### Slice 5: Operator and supportability integration
 

@@ -242,7 +242,7 @@ Current status against that sequence:
 9. `RFC-0030` is now drafted as the most banking-grade agentic control concept in the current roadmap, focusing on client relationship integrity across mandate, risk, servicing, workflow, proposal, and evidence posture rather than on narrative assistance alone.
 10. `RFC-0031` is now in progress through the shared workflow-pack direction and reference-family posture, but the broader bounded runtime is not implemented end to end yet.
 11. `RFC-0032` is now in progress through registry, eligibility, onboarding, and bounded operator-control slices for `advisor_brief.pack`; durable activation state and broader rollout posture remain future work.
-12. `RFC-0033` is now in progress through run-ledger, durable-storage, bounded review-transition, bounded next-action contract, and bounded consumer-view slices, with contract, store, inspection, actor-attributed review actions, ledger-compatible `allowed_review_actions`, consumer-view grouping, and Phase-1 advisor-brief runtime recording in place; gateway and Workbench adoption plus broader runtime rollout remain future work.
+12. `RFC-0033` is now in progress through run-ledger, durable-storage, bounded review-transition, bounded next-action contract, bounded consumer-view, and first downstream adoption slices, with contract, store, inspection, actor-attributed review actions, ledger-compatible `allowed_review_actions`, consumer-view grouping, Phase-1 advisor-brief runtime recording, gateway contract shaping, and Workbench supportability adoption in place; broader runtime rollout and wider downstream adoption remain future work.
 
 The previous likely feature areas are now implemented:
 
