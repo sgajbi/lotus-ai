@@ -29,6 +29,11 @@ def test_workflow_pack_run_consumer_view_groups_runtime_review_and_provenance() 
         "SUPERSEDE",
         "ABANDON",
     ]
+    assert consumer_view.supportability.status.value == "ACTION_REQUIRED"
+    assert consumer_view.supportability.review_pending is True
+    assert consumer_view.supportability.superseded is False
+    assert consumer_view.supportability.partial_output_visible is False
+    assert "still requires bounded review" in consumer_view.supportability.summary_note
     assert consumer_view.lineage.workflow_authority_owner == "lotus-gateway"
     assert "advisor_brief_status" in consumer_view.provenance.structured_output_keys
     assert any(

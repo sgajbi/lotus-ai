@@ -256,6 +256,10 @@ def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(
         "SUPERSEDE",
         "ABANDON",
     ]
+    assert body["supportability"]["status"] == "ACTION_REQUIRED"
+    assert body["supportability"]["review_pending"] is True
+    assert body["supportability"]["superseded"] is False
+    assert body["supportability"]["partial_output_visible"] is False
     assert body["lineage"]["workflow_authority_owner"] == "lotus-gateway"
     assert "advisor_brief_status" in body["provenance"]["structured_output_keys"]
     assert len(body["provenance"]["artifact_refs"]) == 1

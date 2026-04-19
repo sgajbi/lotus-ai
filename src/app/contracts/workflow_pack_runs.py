@@ -304,6 +304,24 @@ class WorkflowPackRunConsumerProvenanceDescriptor(BaseModel):
     )
 
 
+class WorkflowPackRunConsumerSupportabilityDescriptor(BaseModel):
+    status: WorkflowPackRunSupportabilityStatus = Field(
+        description="Shared supportability posture for the workflow-pack run."
+    )
+    review_pending: bool = Field(
+        description="Whether the workflow-pack run still requires bounded human review."
+    )
+    superseded: bool = Field(
+        description="Whether the workflow-pack run is now historical because a newer replacement exists."
+    )
+    partial_output_visible: bool = Field(
+        description="Whether the workflow-pack run still exposes partial output for bounded inspection."
+    )
+    summary_note: str = Field(
+        description="Single consumer-facing summary note for the current workflow-pack supportability posture."
+    )
+
+
 class WorkflowPackRunConsumerViewResponse(BaseModel):
     service: str = Field(description="Service name emitting the workflow-pack consumer view.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -319,6 +337,9 @@ class WorkflowPackRunConsumerViewResponse(BaseModel):
     )
     provenance: WorkflowPackRunConsumerProvenanceDescriptor = Field(
         description="Consumer-facing provenance and output summary for the workflow-pack run."
+    )
+    supportability: WorkflowPackRunConsumerSupportabilityDescriptor = Field(
+        description="Consumer-facing supportability posture for the workflow-pack run."
     )
     notes: list[str] = Field(
         description="Human-readable notes describing the bounded consumer-contract posture."
