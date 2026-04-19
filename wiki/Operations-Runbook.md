@@ -96,7 +96,10 @@ Use this sequence:
 3. evaluate `/platform/workflow-packs/eligibility/evaluate` with the real caller and surface posture,
 4. inspect `/platform/workflow-packs/control-history` when rollout state changed or operator action is disputed,
 5. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block in `/platform/runtime-status` reports `READY` before treating activation state and control history as restart-safe truth,
-6. confirm `definition_ref` and `definition_refs` still resolve to the owning repository artifacts rather than placeholder notes.
+6. confirm `definition_ref` and `definition_refs` still resolve to the owning repository artifacts rather than placeholder notes,
+7. when the issue is pack execution or review backlog rather than registration posture, inspect `/platform/workflow-packs/runs` and the embedded `workflow_pack_runtime` block in `/platform/runtime-status`,
+8. if the embedded `workflow_pack_run_store` block is not `READY`, treat pack-backed `POST /ai/tasks/execute` and `POST /platform/workflow-packs/execute` failures as preflight-blocked degraded-state signals rather than as requests that partially executed and then failed later,
+9. when reading the embedded workflow-pack attention queue, treat `queue_depth` as the full actionable backlog and `items` as only the newest bounded sample up to `queue_limit`.
 
 The owner-facing source for that procedure is:
 
