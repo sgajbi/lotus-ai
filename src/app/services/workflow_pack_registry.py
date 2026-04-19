@@ -22,7 +22,7 @@ def build_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogRespons
         list_workflow_pack_execution_binding_descriptors,
     )
 
-    registrations = _validated_registrations()
+    registrations = list_workflow_pack_registrations()
     registered_count = sum(
         1
         for registration in registrations
@@ -89,8 +89,12 @@ def get_workflow_pack_registration(
     return get_workflow_pack_registry_store().get_registration(pack_id=pack_id, version=version)
 
 
+def list_workflow_pack_registrations() -> list[WorkflowPackRegistrationDescriptor]:
+    return _validated_registrations()
+
+
 def save_workflow_pack_registration(registration: WorkflowPackRegistrationDescriptor) -> None:
-    registrations = _validated_registrations()
+    registrations = list_workflow_pack_registrations()
     updated_registrations: list[WorkflowPackRegistrationDescriptor] = []
     replaced = False
     for existing in registrations:

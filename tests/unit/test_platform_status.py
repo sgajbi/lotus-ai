@@ -62,6 +62,12 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.service == "lotus-ai"
     assert status.access_control_store_mode == "memory"
     assert status.workflow_pack_registry_store_mode == "memory"
+    assert status.workflow_pack_runtime.registration_count == 2
+    assert status.workflow_pack_runtime.registered_count == 1
+    assert status.workflow_pack_runtime.execution_binding_count == 1
+    assert status.workflow_pack_runtime.executable_registration_count == 1
+    assert status.workflow_pack_runtime.registered_without_execution_binding_count == 0
+    assert status.workflow_pack_runtime.executable_registration_refs == ["advisor_brief.pack@v1"]
     assert status.access_control_runtime.enforcement_state.value == "FULLY_ENFORCED"
     assert status.access_control_runtime.data_plane_enforced is True
     assert status.access_control_runtime.control_plane_enforced is True

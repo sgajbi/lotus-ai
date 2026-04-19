@@ -57,6 +57,7 @@ from app.contracts.use_cases import (
     FirstUseCaseGovernanceStatusResponse,
     FirstUseCaseRuntimeStatusResponse,
 )
+from app.contracts.workflow_packs import WorkflowPackRuntimeStatusSummaryResponse
 
 
 class PlatformRuntimeStatusResponse(BaseModel):
@@ -187,6 +188,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     workflow_pack_run_store: StoreRuntimeStatusDescriptor = Field(
         description="Current workflow-pack run-ledger runtime posture."
+    )
+    workflow_pack_runtime: WorkflowPackRuntimeStatusSummaryResponse = Field(
+        description="Current estate-level workflow-pack registration versus explicit execution-readiness posture."
     )
     database_configured: bool = Field(
         description="Whether a database URL is configured for durable runtime components."

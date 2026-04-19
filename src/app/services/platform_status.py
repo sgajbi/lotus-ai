@@ -58,6 +58,7 @@ from app.services.runtime_readiness import (
 from app.services.safety_governance_status import build_safety_governance_status
 from app.services.safety_status import build_safety_runtime_status
 from app.services.task_runtime_status import build_task_runtime_status
+from app.services.workflow_pack_runtime_status import build_workflow_pack_runtime_status_summary
 
 
 @dataclass(frozen=True)
@@ -119,6 +120,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     retrieval_store = get_retrieval_store_runtime_status()
     workflow_pack_registry_store = get_workflow_pack_registry_store_runtime_status()
     workflow_pack_run_store = get_workflow_pack_run_store_runtime_status()
+    workflow_pack_runtime = build_workflow_pack_runtime_status_summary()
     safety_runtime = build_safety_runtime_status()
     safety_governance = build_safety_governance_status()
     startup_state = _resolve_startup_readiness_state(app_state)
@@ -175,6 +177,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         retrieval_store=retrieval_store,
         workflow_pack_registry_store=workflow_pack_registry_store,
         workflow_pack_run_store=workflow_pack_run_store,
+        workflow_pack_runtime=workflow_pack_runtime,
         database_configured=(
             audit_store.database_configured
             or retrieval_store.database_configured

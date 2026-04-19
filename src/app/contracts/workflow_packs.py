@@ -229,6 +229,30 @@ class WorkflowPackRegistryCatalogResponse(BaseModel):
     )
 
 
+class WorkflowPackRuntimeStatusSummaryResponse(BaseModel):
+    registration_count: int = Field(
+        description="Number of workflow-pack version registrations currently described."
+    )
+    registered_count: int = Field(
+        description="Number of workflow-pack version registrations in REGISTERED posture."
+    )
+    execution_binding_count: int = Field(
+        description="Number of explicit workflow-pack execution bindings currently implemented by lotus-ai."
+    )
+    executable_registration_count: int = Field(
+        description="Number of REGISTERED workflow-pack versions that also resolve through an explicit lotus-ai execution binding."
+    )
+    registered_without_execution_binding_count: int = Field(
+        description="Number of REGISTERED workflow-pack versions that remain cataloged but are not yet executable through an explicit lotus-ai binding."
+    )
+    executable_registration_refs: list[str] = Field(
+        description="Pack-version references currently both registered and explicitly executable through lotus-ai."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of the current workflow-pack runtime posture."
+    )
+
+
 class WorkflowPackRegistrationDetailResponse(BaseModel):
     service: str = Field(description="Service name emitting the workflow-pack registry detail.")
     version: str = Field(description="Current lotus-ai service version.")
