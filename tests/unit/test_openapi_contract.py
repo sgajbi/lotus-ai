@@ -274,6 +274,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         == "applyWorkflowPackRunReviewAction"
     )
     assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}/consumer-view"]["get"]["operationId"]
+        == "getWorkflowPackRunConsumerView"
+    )
+    assert (
         spec["paths"]["/platform/use-cases/first-production-use-case"]["get"]["operationId"]
         == "getFirstProductionUseCaseStatus"
     )
@@ -464,6 +468,21 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     ]
     workflow_pack_run_schema = spec["components"]["schemas"]["WorkflowPackRunDescriptor"]
     workflow_pack_run_detail_schema = spec["components"]["schemas"]["WorkflowPackRunDetailResponse"]
+    workflow_pack_run_consumer_view_schema = spec["components"]["schemas"][
+        "WorkflowPackRunConsumerViewResponse"
+    ]
+    workflow_pack_run_consumer_runtime_schema = spec["components"]["schemas"][
+        "WorkflowPackRunConsumerRuntimeDescriptor"
+    ]
+    workflow_pack_run_consumer_review_schema = spec["components"]["schemas"][
+        "WorkflowPackRunConsumerReviewDescriptor"
+    ]
+    workflow_pack_run_consumer_lineage_schema = spec["components"]["schemas"][
+        "WorkflowPackRunConsumerLineageDescriptor"
+    ]
+    workflow_pack_run_consumer_provenance_schema = spec["components"]["schemas"][
+        "WorkflowPackRunConsumerProvenanceDescriptor"
+    ]
     workflow_pack_run_event_schema = spec["components"]["schemas"]["WorkflowPackRunEventDescriptor"]
     workflow_pack_run_review_action_request_schema = spec["components"]["schemas"][
         "WorkflowPackRunReviewActionRequest"
@@ -704,6 +723,14 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "workflow_authority_owner" in workflow_pack_run_schema["properties"]
     assert "evidence_descriptors" in workflow_pack_run_schema["properties"]
     assert "events" in workflow_pack_run_detail_schema["properties"]
+    assert "runtime" in workflow_pack_run_consumer_view_schema["properties"]
+    assert "review" in workflow_pack_run_consumer_view_schema["properties"]
+    assert "lineage" in workflow_pack_run_consumer_view_schema["properties"]
+    assert "provenance" in workflow_pack_run_consumer_view_schema["properties"]
+    assert "state" in workflow_pack_run_consumer_runtime_schema["properties"]
+    assert "allowed_actions" in workflow_pack_run_consumer_review_schema["properties"]
+    assert "workflow_authority_owner" in workflow_pack_run_consumer_lineage_schema["properties"]
+    assert "evidence_descriptors" in workflow_pack_run_consumer_provenance_schema["properties"]
     assert "event_type" in workflow_pack_run_event_schema["properties"]
     assert "recorded_at" in workflow_pack_run_event_schema["properties"]
     assert "action_type" in workflow_pack_run_review_action_request_schema["properties"]

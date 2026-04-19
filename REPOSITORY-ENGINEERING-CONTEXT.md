@@ -34,7 +34,7 @@ Current repository posture:
 2. live provider rollout remains controlled and deliberately constrained,
 3. retrieval, prompts, provider policy, evaluation, async runtime, and governance are real first-class seams,
 4. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity, with owner-artifact references that must resolve back to the real downstream repository,
-5. workflow-pack run-ledger foundations now exist as a separate runtime seam for Phase-1 advisor-brief executions, with runtime state kept separate from review state, bounded actor-attributed review transitions available through the ledger API, bounded ledger-compatible `allowed_review_actions` emitted for consumers, and a migration-backed SQL store available for durable posture,
+5. workflow-pack run-ledger foundations now exist as a separate runtime seam for Phase-1 advisor-brief executions, with runtime state kept separate from review state, bounded actor-attributed review transitions available through the ledger API, bounded ledger-compatible `allowed_review_actions` emitted for consumers, a grouped consumer-view contract available for downstream composition layers, and a migration-backed SQL store available for durable posture,
 6. the service is designed to support Lotus apps without stealing domain ownership from them.
 
 ## Architecture And Module Map

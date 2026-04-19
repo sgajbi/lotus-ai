@@ -133,6 +133,55 @@ def test_workflow_pack_run_review_action_updates_review_state(client: TestClient
     assert detail_response.json()["run"]["review_state"] == "ACCEPTED"
 
 
+def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-gateway",
+                "correlation_id": "corr-pack-run-api-consumer-001",
+            },
+            "context": {
+                "summary": "Draft advisor brief from source performance facts.",
+                "payload": {
+                    "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+                    "period": {"period": "YTD"},
+                    "performance": {
+                        "portfolio_return_pct": 1.25,
+                        "benchmark_return_pct": 7.93,
+                        "active_return_pct": -6.68,
+                    },
+                    "supportability": [{"key": "portfolio_context", "value": "ready"}],
+                },
+                "source_refs": ["lotus-gateway:performance-summary:YTD"],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    consumer_view_response = client.get(f"/platform/workflow-packs/runs/{run_id}/consumer-view")
+
+    assert consumer_view_response.status_code == 200
+    body = consumer_view_response.json()
+    assert body["runtime"]["state"] == "COMPLETED"
+    assert body["review"]["state"] == "AWAITING_REVIEW"
+    assert body["review"]["allowed_actions"] == [
+        "ACCEPT",
+        "REJECT",
+        "REVISE",
+        "SUPERSEDE",
+        "ABANDON",
+    ]
+    assert body["lineage"]["workflow_authority_owner"] == "lotus-gateway"
+    assert "advisor_brief_status" in body["provenance"]["structured_output_keys"]
+
+
 def test_workflow_pack_run_catalog_supports_sqlalchemy_store_mode(tmp_path: Path) -> None:
     database_url = f"sqlite:///{tmp_path / 'workflow-pack-run-api.db'}"
     upgrade_database_to_head(database_url)

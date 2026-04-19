@@ -78,6 +78,7 @@ platform programs.
    - `/platform/workflow-packs/control-actions`
    - `/platform/workflow-packs/runs`
    - `/platform/workflow-packs/runs/{run_id}`
+   - `/platform/workflow-packs/runs/{run_id}/consumer-view`
    - `/platform/workflow-packs/runs/{run_id}/review-actions`
 
 The workflow-pack detail route now carries structured owner-artifact references as part of the registration record:
@@ -90,9 +91,10 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 
 1. `/platform/workflow-packs/runs` exposes recorded run state with runtime and review posture kept separate,
 2. `/platform/workflow-packs/runs/{run_id}` exposes event history, evidence descriptors, and bounded `allowed_review_actions` for one recorded run,
-3. `/platform/workflow-packs/runs/{run_id}/review-actions` records bounded actor-attributed review transitions without taking consequence-bearing workflow authority,
-4. the current slice records advisor-brief executions through the existing task path while the broader workflow-pack runtime remains future work,
-5. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode` and `workflow_pack_run_store` so operators can distinguish process-local ledger posture from SQL-backed durable ledger posture.
+3. `/platform/workflow-packs/runs/{run_id}/consumer-view` exposes one grouped runtime-review-lineage-provenance contract candidate for downstream composition layers,
+4. `/platform/workflow-packs/runs/{run_id}/review-actions` records bounded actor-attributed review transitions without taking consequence-bearing workflow authority,
+5. the current slice records advisor-brief executions through the existing task path while the broader workflow-pack runtime remains future work,
+6. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode` and `workflow_pack_run_store` so operators can distinguish process-local ledger posture from SQL-backed durable ledger posture.
 
 ## Provider Surface
 

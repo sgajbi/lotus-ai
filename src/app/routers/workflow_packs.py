@@ -13,10 +13,12 @@ from app.contracts.workflow_packs import (
 )
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunCatalogResponse,
+    WorkflowPackRunConsumerViewResponse,
     WorkflowPackRunDetailResponse,
     WorkflowPackRunReviewActionRequest,
     WorkflowPackRunReviewActionResponse,
 )
+from app.services.workflow_pack_run_consumer_view import build_workflow_pack_run_consumer_view
 from app.services.workflow_pack_control import (
     apply_workflow_pack_control_action,
     build_workflow_pack_control_history,
@@ -152,6 +154,27 @@ async def get_workflow_pack_run_catalog_route() -> WorkflowPackRunCatalogRespons
 )
 async def get_workflow_pack_run_detail_route(run_id: str) -> WorkflowPackRunDetailResponse:
     return build_workflow_pack_run_detail(run_id=run_id)
+
+
+@router.get(
+    "/platform/workflow-packs/runs/{run_id}/consumer-view",
+    response_model=WorkflowPackRunConsumerViewResponse,
+    operation_id="getWorkflowPackRunConsumerView",
+    summary="Get lotus-ai workflow-pack run consumer view",
+    description=(
+        "Returns a bounded consumer-facing contract for one workflow-pack run, grouping runtime, "
+        "review, lineage, and provenance posture without transferring downstream workflow authority."
+    ),
+    responses={
+        200: {"description": "Workflow-pack run consumer view returned successfully."},
+        404: {"description": "Unknown workflow-pack run identifier."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_run_consumer_view_route(
+    run_id: str,
+) -> WorkflowPackRunConsumerViewResponse:
+    return build_workflow_pack_run_consumer_view(run_id=run_id)
 
 
 @router.post(

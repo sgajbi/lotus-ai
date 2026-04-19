@@ -201,3 +201,101 @@ class WorkflowPackRunReviewActionResponse(BaseModel):
     summary: list[str] = Field(
         description="Human-readable summary of the applied workflow-pack review-state action."
     )
+
+
+class WorkflowPackRunConsumerRuntimeDescriptor(BaseModel):
+    state: WorkflowPackRunRuntimeState = Field(
+        description="Runtime execution posture for the workflow-pack run."
+    )
+    created_at: str = Field(description="UTC timestamp when the run record was created.")
+    completed_at: str | None = Field(
+        default=None,
+        description="UTC timestamp when the run reached a terminal runtime posture, when available.",
+    )
+    last_updated_at: str = Field(description="UTC timestamp when the run record last changed.")
+    provider_mode: str = Field(description="Provider mode recorded for the run.")
+    stubbed: bool = Field(description="Whether the run was stub-backed.")
+
+
+class WorkflowPackRunConsumerReviewDescriptor(BaseModel):
+    required: bool = Field(
+        description="Whether this workflow-pack run is expected to enter a review flow."
+    )
+    state: WorkflowPackRunReviewState = Field(
+        description="Current review-state posture for the workflow-pack run."
+    )
+    allowed_actions: list[WorkflowPackRunReviewActionType] = Field(
+        default_factory=list,
+        description=(
+            "Bounded ledger-compatible review actions currently accepted by lotus-ai for the run "
+            "posture. These are not business-authority grants."
+        ),
+    )
+
+
+class WorkflowPackRunConsumerLineageDescriptor(BaseModel):
+    run_id: str = Field(description="Stable workflow-pack run identifier.")
+    pack_id: str = Field(description="Workflow-pack family identifier.")
+    pack_family: str = Field(description="Stable workflow-pack family grouping.")
+    pack_version: str = Field(description="Workflow-pack version used for the run.")
+    registration_ref: str = Field(
+        description="Resolved workflow-pack registration reference used for the run."
+    )
+    task_id: str = Field(description="Lotus AI task identifier that produced the run.")
+    request_id: str = Field(description="Stable lotus-ai request identifier for the run.")
+    caller_app: str = Field(description="Calling Lotus application associated with the run.")
+    correlation_id: str = Field(description="Caller-provided correlation identifier.")
+    tenant_id: str | None = Field(
+        default=None,
+        description="Optional tenant identifier associated with the run.",
+    )
+    workflow_surface: str | None = Field(
+        default=None,
+        description="Named workflow surface associated with the run when one is known.",
+    )
+    workflow_authority_owner: str = Field(
+        description="Service boundary that retains consequence-bearing workflow authority."
+    )
+    supersedes_run_id: str | None = Field(
+        default=None,
+        description="Prior workflow-pack run superseded by this run, when applicable.",
+    )
+    superseded_by_run_id: str | None = Field(
+        default=None,
+        description="Newer workflow-pack run that superseded this run, when applicable.",
+    )
+
+
+class WorkflowPackRunConsumerProvenanceDescriptor(BaseModel):
+    output_preview: str = Field(description="Short preview of the generated workflow-pack output.")
+    structured_output_keys: list[str] = Field(
+        description="Sorted structured-output keys observed for the run."
+    )
+    evidence_descriptors: list[ExecutionEvidenceDescriptor] = Field(
+        description="Reference-oriented execution evidence descriptors recorded for the run."
+    )
+    artifact_refs: list[ArtifactDescriptor] = Field(
+        default_factory=list,
+        description="Governed artifact references currently linked to the run.",
+    )
+
+
+class WorkflowPackRunConsumerViewResponse(BaseModel):
+    service: str = Field(description="Service name emitting the workflow-pack consumer view.")
+    version: str = Field(description="Current lotus-ai service version.")
+    run_store_mode: str = Field(description="Configured workflow-pack run-store mode.")
+    runtime: WorkflowPackRunConsumerRuntimeDescriptor = Field(
+        description="Consumer-facing runtime posture for the workflow-pack run."
+    )
+    review: WorkflowPackRunConsumerReviewDescriptor = Field(
+        description="Consumer-facing review posture for the workflow-pack run."
+    )
+    lineage: WorkflowPackRunConsumerLineageDescriptor = Field(
+        description="Consumer-facing lineage and ownership identity for the workflow-pack run."
+    )
+    provenance: WorkflowPackRunConsumerProvenanceDescriptor = Field(
+        description="Consumer-facing provenance and output summary for the workflow-pack run."
+    )
+    notes: list[str] = Field(
+        description="Human-readable notes describing the bounded consumer-contract posture."
+    )

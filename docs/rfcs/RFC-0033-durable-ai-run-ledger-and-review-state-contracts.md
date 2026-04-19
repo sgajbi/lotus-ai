@@ -74,7 +74,8 @@ Implemented on the current branch:
 5. migration-managed SQL-backed workflow-pack run and event tables plus a SQLAlchemy repository implementation,
 6. runtime-readiness, startup-policy, and platform-status integration for the workflow-pack run store so durable ledger posture is inspectable instead of implied,
 7. bounded review-action contracts and service seams for actor-attributed `ACCEPT`, `REJECT`, `REVISE`, `SUPERSEDE`, and `ABANDON` transitions, including lineage preservation between original and replacement runs,
-8. bounded `allowed_review_actions` emitted on workflow-pack run descriptors so downstream consumers can render ledger-compatible next-step posture without inferring review semantics from raw state alone.
+8. bounded `allowed_review_actions` emitted on workflow-pack run descriptors so downstream consumers can render ledger-compatible next-step posture without inferring review semantics from raw state alone,
+9. a bounded workflow-pack run consumer view that groups runtime, review, lineage, and provenance into one shared contract candidate for downstream composition layers.
 
 What is not implemented yet:
 
@@ -828,6 +829,12 @@ This branch now also emits bounded ledger-compatible `allowed_review_actions` on
 That posture is intentionally narrower than downstream business authorization: it tells consumers
 which transitions the ledger can accept from the current run posture, not which actions a product
 surface is entitled to execute for a given user or workflow.
+
+This branch also now exposes a bounded workflow-pack run consumer view in `lotus-ai`. That view is
+meant to act as a shared contract candidate for composition layers by grouping runtime posture,
+review posture, lineage identity, and provenance summary into one response. It is still a
+foundation-layer contract: downstream gateway shaping, UI rendering, and business-authority rules
+remain separate work.
 
 ### Slice 4: Gateway and Workbench contract adoption
 
