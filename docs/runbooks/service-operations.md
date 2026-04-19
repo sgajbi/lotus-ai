@@ -110,7 +110,7 @@ Expected operator flow for SQL-backed stores:
 3. confirm evaluation runtime posture in the embedded evaluation summary
 4. confirm prompt runtime selection in the embedded prompt runtime summary
 5. confirm the embedded `workflow_pack_run_store` block reports the expected mode and readiness when workflow-pack run durability is enabled
-6. when workflow-pack runtime triage matters, inspect the embedded `workflow_pack_runtime` block for latest ready and latest actionable run pointers plus bounded review provenance before pivoting into the full ledger
+6. when workflow-pack runtime triage matters, inspect the embedded `workflow_pack_runtime` block for latest ready and latest actionable run pointers plus bounded review provenance and bounded artifact or evidence linkage summaries before pivoting into the full ledger
 7. verify `GET /platform/workflow-packs/runs` when workflow-pack run persistence is part of the rollout slice
 8. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block also reports `READY` before treating workflow-pack activation state and control history as restart-safe truth
 9. verify `GET /platform/workflow-packs/control-history` when registry durability is part of the rollout slice

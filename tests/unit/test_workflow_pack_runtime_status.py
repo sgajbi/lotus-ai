@@ -185,10 +185,23 @@ def test_build_workflow_pack_runtime_status_summary_tracks_activity_for_executab
         summary.executable_activity[0].latest_action_required_review_summary.has_review_history
         is False
     )
+    assert summary.executable_activity[0].latest_action_required_provenance.artifact_ref_count == 1
+    assert summary.executable_activity[0].latest_action_required_provenance.artifact_types == [
+        "run_output_summary"
+    ]
+    assert (
+        summary.executable_activity[0].latest_action_required_provenance.evidence_descriptor_count
+        == 1
+    )
+    assert summary.executable_activity[0].latest_action_required_provenance.evidence_types == [
+        "evidence_0"
+    ]
     assert summary.executable_activity[0].latest_ready_run_id == "run-accepted"
     assert summary.executable_activity[0].latest_ready_recorded_at == "2026-04-19T12:00:00Z"
     assert summary.executable_activity[0].latest_ready_review_summary.review_transition_count == 0
     assert summary.executable_activity[0].latest_ready_review_summary.has_review_history is False
+    assert summary.executable_activity[0].latest_ready_provenance.artifact_ref_count == 1
+    assert summary.executable_activity[0].latest_ready_provenance.evidence_descriptor_count == 1
     assert summary.executable_activity[0].latest_run_id == "run-accepted"
     assert summary.executable_activity[0].latest_recorded_at == "2026-04-19T12:00:00Z"
     assert summary.executable_activity[0].has_activity is True
@@ -200,6 +213,10 @@ def test_build_workflow_pack_runtime_status_summary_tracks_activity_for_executab
     assert summary.attention_queue.items[0].runtime_state == "COMPLETED"
     assert summary.attention_queue.items[0].review_summary.review_transition_count == 0
     assert summary.attention_queue.items[0].review_summary.has_review_history is False
+    assert summary.attention_queue.items[0].provenance.artifact_ref_count == 1
+    assert summary.attention_queue.items[0].provenance.artifact_types == ["run_output_summary"]
+    assert summary.attention_queue.items[0].provenance.evidence_descriptor_count == 1
+    assert summary.attention_queue.items[0].provenance.evidence_types == ["evidence_0"]
 
 
 def test_build_workflow_pack_run_runtime_summary_counts_action_required_and_historical_posture(
@@ -328,3 +345,5 @@ def test_build_workflow_pack_attention_queue_summary_limits_to_latest_actionable
     assert summary.attention_queue.items[0].review_summary.latest_review_actor == "review:banker.sg.6"
     assert summary.attention_queue.items[0].review_summary.review_transition_count == 6
     assert summary.attention_queue.items[0].review_summary.has_review_history is True
+    assert summary.attention_queue.items[0].provenance.artifact_ref_count == 1
+    assert summary.attention_queue.items[0].provenance.evidence_descriptor_count == 1

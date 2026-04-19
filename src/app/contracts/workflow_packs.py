@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunDescriptor,
+    WorkflowPackRunProvenanceSummaryDescriptor,
     WorkflowPackRunReviewSummaryDescriptor,
 )
 
@@ -345,6 +346,10 @@ class WorkflowPackExecutableActivitySummaryResponse(BaseModel):
         default=None,
         description="Bounded review provenance for the most recent actionable run, when available.",
     )
+    latest_action_required_provenance: WorkflowPackRunProvenanceSummaryDescriptor | None = Field(
+        default=None,
+        description="Bounded artifact and evidence linkage summary for the most recent actionable run, when available.",
+    )
     latest_ready_run_id: str | None = Field(
         default=None,
         description="Most recent recorded workflow-pack run identifier for this executable pack version currently classified as ready, when available.",
@@ -356,6 +361,10 @@ class WorkflowPackExecutableActivitySummaryResponse(BaseModel):
     latest_ready_review_summary: WorkflowPackRunReviewSummaryDescriptor | None = Field(
         default=None,
         description="Bounded review provenance for the most recent ready run, when available.",
+    )
+    latest_ready_provenance: WorkflowPackRunProvenanceSummaryDescriptor | None = Field(
+        default=None,
+        description="Bounded artifact and evidence linkage summary for the most recent ready run, when available.",
     )
     latest_run_id: str | None = Field(
         default=None,
@@ -386,6 +395,9 @@ class WorkflowPackAttentionQueueItemResponse(BaseModel):
     )
     review_summary: WorkflowPackRunReviewSummaryDescriptor = Field(
         description="Bounded review provenance for the actionable workflow-pack run."
+    )
+    provenance: WorkflowPackRunProvenanceSummaryDescriptor = Field(
+        description="Bounded artifact and evidence linkage summary for the actionable workflow-pack run."
     )
     created_at: str = Field(description="UTC timestamp when the actionable run was recorded.")
 

@@ -19,6 +19,9 @@ from app.services.workflow_pack_run_ledger import build_workflow_pack_run_catalo
 from app.services.workflow_pack_run_supportability import (
     resolve_workflow_pack_run_supportability_status,
 )
+from app.services.workflow_pack_run_provenance_summary import (
+    build_workflow_pack_run_provenance_summary,
+)
 
 WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT = 5
 
@@ -220,12 +223,22 @@ def build_workflow_pack_executable_activity_summary(
                     if latest_action_required_run is not None
                     else None
                 ),
+                latest_action_required_provenance=(
+                    build_workflow_pack_run_provenance_summary(run=latest_action_required_run)
+                    if latest_action_required_run is not None
+                    else None
+                ),
                 latest_ready_run_id=latest_ready_run.run_id if latest_ready_run is not None else None,
                 latest_ready_recorded_at=(
                     latest_ready_run.created_at if latest_ready_run is not None else None
                 ),
                 latest_ready_review_summary=(
                     latest_ready_run.review_summary if latest_ready_run is not None else None
+                ),
+                latest_ready_provenance=(
+                    build_workflow_pack_run_provenance_summary(run=latest_ready_run)
+                    if latest_ready_run is not None
+                    else None
                 ),
                 latest_run_id=latest_run.run_id if latest_run is not None else None,
                 latest_recorded_at=latest_run.created_at if latest_run is not None else None,
@@ -259,6 +272,7 @@ def build_workflow_pack_attention_queue_summary(
             runtime_state=run.runtime_state.value,
             supportability_status=status.value,
             review_summary=run.review_summary,
+            provenance=build_workflow_pack_run_provenance_summary(run=run),
             created_at=run.created_at,
         )
         for run, status in actionable_runs[:WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT]

@@ -336,6 +336,23 @@ class WorkflowPackRunConsumerProvenanceDescriptor(BaseModel):
     )
 
 
+class WorkflowPackRunProvenanceSummaryDescriptor(BaseModel):
+    artifact_ref_count: int = Field(
+        description="Number of governed artifact refs currently linked to the run."
+    )
+    artifact_types: list[str] = Field(
+        default_factory=list,
+        description="Sorted distinct governed artifact types currently linked to the run.",
+    )
+    evidence_descriptor_count: int = Field(
+        description="Number of execution evidence descriptors currently linked to the run."
+    )
+    evidence_types: list[str] = Field(
+        default_factory=list,
+        description="Sorted distinct evidence types currently linked to the run.",
+    )
+
+
 class WorkflowPackRunConsumerSupportabilityDescriptor(BaseModel):
     status: WorkflowPackRunSupportabilityStatus = Field(
         description="Shared supportability posture for the workflow-pack run."
