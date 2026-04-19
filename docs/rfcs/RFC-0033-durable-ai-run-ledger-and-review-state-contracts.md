@@ -79,7 +79,8 @@ Implemented on the current branch:
 10. a bounded `review_summary` block now emitted on workflow-pack run descriptors so catalog consumers can inspect latest review-transition provenance without fetching raw run events or full run detail,
 11. estate-level `/platform/runtime-status` workflow-pack summaries now also carry bounded review provenance on actionable queue items and latest ready or actionable run pointers so operators can triage review posture without opening the full ledger first,
 12. estate-level `/platform/runtime-status` workflow-pack summaries now also carry bounded artifact and evidence linkage summaries for those same actionable queue items and latest ready or actionable run pointers so operators can distinguish missing provenance from complete review-bearing outputs without opening run detail first,
-13. the bounded workflow-pack operator profile now also carries one shared provenance summary so support tooling can inspect linked artifact and evidence posture without parsing raw run detail or re-deriving type summaries locally.
+13. the bounded workflow-pack operator profile now also carries one shared provenance summary so support tooling can inspect linked artifact and evidence posture without parsing raw run detail or re-deriving type summaries locally,
+14. the workflow-pack run detail route now also carries that same bounded provenance summary so callers can inspect artifact and evidence posture without scanning the full linked descriptor arrays first.
 
 What is not implemented yet:
 
@@ -835,8 +836,9 @@ Current branch status:
 6. `lotus-workbench` now consumes that compact `workflow_pack_run` contract through the existing advisor-brief supportability, review-notes, and audit-provenance path rather than introducing a parallel operator-only UI concept,
 7. estate-level runtime-status workflow-pack summaries now also carry bounded review provenance for executable activity and attention-queue posture so operators can triage latest review movement without opening the full ledger first,
 8. those same runtime-status workflow-pack summaries now also carry bounded artifact and evidence linkage summaries for executable activity and attention-queue posture,
-9. the bounded workflow-pack operator profile now also carries one shared provenance summary for run-level support triage, and
-10. consequence-bearing meaning, user-entitlement shaping for review actions, and broader non-reference workflow-pack runtime adoption remain future slices.
+9. the bounded workflow-pack operator profile now also carries one shared provenance summary for run-level support triage,
+10. the workflow-pack run detail route now also carries that same bounded provenance summary, and
+11. consequence-bearing meaning, user-entitlement shaping for review actions, and broader non-reference workflow-pack runtime adoption remain future slices.
 
 This branch now also emits bounded ledger-compatible `allowed_review_actions` on run descriptors.
 That posture is intentionally narrower than downstream business authorization: it tells consumers

@@ -129,6 +129,10 @@ def test_workflow_pack_run_catalog_and_detail_expose_recorded_history() -> None:
     assert detail.review.latest_review_actor is None
     assert detail.review.review_transition_count == 0
     assert detail.review.has_review_history is False
+    assert detail.provenance.artifact_ref_count == 1
+    assert detail.provenance.artifact_types == ["run_output_summary"]
+    assert detail.provenance.evidence_descriptor_count >= 1
+    assert "task_contract" in detail.provenance.evidence_types
     assert detail.supportability.status.value == "ACTION_REQUIRED"
     assert detail.supportability.review_pending is True
     assert len(detail.run.artifact_refs) == 1
@@ -251,6 +255,8 @@ def test_accept_review_action_updates_review_state_and_records_history() -> None
     assert catalog.runs[0].review_summary.review_transition_count == 1
     assert catalog.runs[0].review_summary.has_review_history is True
     detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
+    assert detail.provenance.artifact_ref_count == 1
+    assert "task_contract" in detail.provenance.evidence_types
     assert detail.run.review_state.value == "ACCEPTED"
     assert detail.review.state.value == "ACCEPTED"
     assert detail.review.latest_review_event_at is not None

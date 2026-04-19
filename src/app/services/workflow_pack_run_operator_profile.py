@@ -10,9 +10,6 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunSupportabilityStatus,
 )
 from app.services.workflow_pack_run_ledger import build_workflow_pack_run_detail
-from app.services.workflow_pack_run_provenance_summary import (
-    build_workflow_pack_run_provenance_summary,
-)
 from app.services.workflow_pack_run_supportability import (
     has_workflow_pack_run_partial_output,
     is_workflow_pack_run_historical,
@@ -31,7 +28,7 @@ def build_workflow_pack_run_operator_profile(
     latest_review_event = review_events[-1] if review_events else None
     findings = _build_findings(detail)
     supportability_status = resolve_workflow_pack_run_supportability_status(run)
-    provenance = build_workflow_pack_run_provenance_summary(run=run)
+    provenance = detail.provenance
 
     return WorkflowPackRunOperatorProfileResponse(
         service=settings.service_name,

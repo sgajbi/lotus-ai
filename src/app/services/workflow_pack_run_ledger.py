@@ -25,6 +25,9 @@ from app.services.workflow_pack_bindings import (
     resolve_workflow_pack_execution_binding_for_task,
 )
 from app.services.workflow_pack_run_artifacts import persist_workflow_pack_run_output_artifact
+from app.services.workflow_pack_run_provenance_summary import (
+    build_workflow_pack_run_provenance_summary,
+)
 from app.services.workflow_pack_run_supportability_summary import (
     build_workflow_pack_run_supportability_descriptor_from_record,
 )
@@ -141,12 +144,14 @@ def build_workflow_pack_run_detail(*, run_id: str) -> WorkflowPackRunDetailRespo
             detail=f"Unknown workflow-pack run: {run_id}",
         )
     events = store.list_events(run_id=run_id)
+    run = map_workflow_pack_run_record(record, store=store)
     return WorkflowPackRunDetailResponse(
         service=settings.service_name,
         version=settings.service_version,
         run_store_mode=settings.workflow_pack_run_store_mode,
-        run=map_workflow_pack_run_record(record, store=store),
+        run=run,
         review=build_workflow_pack_run_review_descriptor(record=record, events=events),
+        provenance=build_workflow_pack_run_provenance_summary(run=run),
         supportability=build_workflow_pack_run_supportability_descriptor_from_record(
             record=record,
             map_record=map_workflow_pack_run_record,
@@ -157,6 +162,7 @@ def build_workflow_pack_run_detail(*, run_id: str) -> WorkflowPackRunDetailRespo
         notes=[
             "Runtime state and review state are modeled separately in the run detail to avoid ambiguous operator or product interpretation.",
             "Review progression posture is summarized alongside the raw event history so callers do not need to parse review events just to understand bounded review metadata.",
+            "Artifact and evidence linkage are summarized alongside the raw run record so callers can understand provenance posture without scanning every linked descriptor first.",
             "Supportability posture is included alongside the raw run record so callers do not need a separate profile request just to understand readiness versus action-required or historical posture.",
             "This run record preserves workflow-pack registration identity and workflow-authority ownership without claiming business approval authority for lotus-ai.",
         ],

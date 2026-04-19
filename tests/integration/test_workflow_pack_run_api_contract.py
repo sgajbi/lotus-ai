@@ -77,6 +77,10 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
     assert detail_body["review"]["latest_review_actor"] is None
     assert detail_body["review"]["review_transition_count"] == 0
     assert detail_body["review"]["has_review_history"] is False
+    assert detail_body["provenance"]["artifact_ref_count"] == 1
+    assert detail_body["provenance"]["artifact_types"] == ["run_output_summary"]
+    assert detail_body["provenance"]["evidence_descriptor_count"] >= 1
+    assert "task_contract" in detail_body["provenance"]["evidence_types"]
     assert detail_body["supportability"]["status"] == "ACTION_REQUIRED"
     assert detail_body["supportability"]["review_pending"] is True
     assert detail_body["run"]["artifact_refs"][0]["source_object_id"] == run["run_id"]
@@ -264,6 +268,8 @@ def test_workflow_pack_run_review_action_updates_review_state(client: TestClient
     detail_body = detail_response.json()
     assert detail_body["run"]["review_state"] == "ACCEPTED"
     assert detail_body["review"]["state"] == "ACCEPTED"
+    assert detail_body["provenance"]["artifact_ref_count"] == 1
+    assert "task_contract" in detail_body["provenance"]["evidence_types"]
     assert detail_body["review"]["latest_review_event_at"] is not None
     assert detail_body["review"]["latest_review_actor"] == "review:banker.sg.100"
     assert detail_body["review"]["review_transition_count"] == 1

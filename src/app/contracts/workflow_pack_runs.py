@@ -193,6 +193,9 @@ class WorkflowPackRunDetailResponse(BaseModel):
     review: WorkflowPackRunConsumerReviewDescriptor = Field(
         description="Shared review-progression posture for the requested workflow-pack run."
     )
+    provenance: WorkflowPackRunProvenanceSummaryDescriptor = Field(
+        description="Bounded artifact and evidence linkage summary for the requested workflow-pack run."
+    )
     supportability: WorkflowPackRunConsumerSupportabilityDescriptor = Field(
         description="Shared supportability posture for the requested workflow-pack run."
     )
