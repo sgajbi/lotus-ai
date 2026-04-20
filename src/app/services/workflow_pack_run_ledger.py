@@ -138,9 +138,7 @@ def build_workflow_pack_run_catalog(
             if run.review_state == WorkflowPackRunReviewState.AWAITING_REVIEW
         ),
         completed_count=sum(
-            1
-            for run in limited_runs
-            if run.runtime_state == WorkflowPackRunRuntimeState.COMPLETED
+            1 for run in limited_runs if run.runtime_state == WorkflowPackRunRuntimeState.COMPLETED
         ),
         ready_count=sum(
             1
@@ -182,9 +180,7 @@ def build_workflow_pack_run_detail(*, run_id: str) -> WorkflowPackRunDetailRespo
         ),
         provenance=build_workflow_pack_run_provenance_summary(run=loaded.run),
         supportability=build_workflow_pack_run_supportability_descriptor(run=loaded.run),
-        events=[
-            map_workflow_pack_run_event_record(event) for event in loaded.events
-        ],
+        events=[map_workflow_pack_run_event_record(event) for event in loaded.events],
         notes=[
             "Runtime state and review state are modeled separately in the run detail to avoid ambiguous operator or product interpretation.",
             "Review progression posture is summarized alongside the raw event history so callers do not need to parse review events just to understand bounded review metadata.",
@@ -201,7 +197,9 @@ def record_workflow_pack_run_for_task_execution(
     response: TaskExecutionResponse,
     resolved_binding: ResolvedWorkflowPackExecutionBinding | None = None,
 ) -> WorkflowPackRunDescriptor | None:
-    pack_binding = resolved_binding or resolve_workflow_pack_execution_binding_for_task(context=context)
+    pack_binding = resolved_binding or resolve_workflow_pack_execution_binding_for_task(
+        context=context
+    )
     if pack_binding is None:
         return None
 
@@ -279,9 +277,7 @@ def record_registered_workflow_pack_run(
         runtime_state=record.runtime_state,
         review_state=record.review_state,
         actor="lotus-ai.workflow-pack-run-ledger",
-        message=(
-            "Workflow-pack run recorded with runtime and review posture captured separately."
-        ),
+        message=("Workflow-pack run recorded with runtime and review posture captured separately."),
         recorded_at=created_at,
     )
     store = get_workflow_pack_run_store()
@@ -355,6 +351,7 @@ def map_workflow_pack_run_record(
         artifact_refs=[artifact.model_copy(deep=True) for artifact in record.artifact_refs],
         supersedes_run_id=record.supersedes_run_id,
         superseded_by_run_id=record.superseded_by_run_id,
+        replacement_run_id=record.superseded_by_run_id,
         created_at=record.created_at,
         completed_at=record.completed_at,
         last_updated_at=record.last_updated_at,
@@ -391,9 +388,7 @@ def _filter_workflow_pack_runs(
 ) -> list[WorkflowPackRunDescriptor]:
     filtered_runs = runs
     if registration_ref is not None:
-        filtered_runs = [
-            run for run in filtered_runs if run.registration_ref == registration_ref
-        ]
+        filtered_runs = [run for run in filtered_runs if run.registration_ref == registration_ref]
     if pack_id is not None:
         filtered_runs = [run for run in filtered_runs if run.pack_id == pack_id]
     if caller_app is not None:
@@ -401,9 +396,7 @@ def _filter_workflow_pack_runs(
     if tenant_id is not None:
         filtered_runs = [run for run in filtered_runs if run.tenant_id == tenant_id]
     if workflow_surface is not None:
-        filtered_runs = [
-            run for run in filtered_runs if run.workflow_surface == workflow_surface
-        ]
+        filtered_runs = [run for run in filtered_runs if run.workflow_surface == workflow_surface]
     if runtime_state is not None:
         filtered_runs = [run for run in filtered_runs if run.runtime_state is runtime_state]
     if review_state is not None:
@@ -414,8 +407,6 @@ def _filter_workflow_pack_runs(
         ]
     if workflow_authority_owner is not None:
         filtered_runs = [
-            run
-            for run in filtered_runs
-            if run.workflow_authority_owner == workflow_authority_owner
+            run for run in filtered_runs if run.workflow_authority_owner == workflow_authority_owner
         ]
     return filtered_runs

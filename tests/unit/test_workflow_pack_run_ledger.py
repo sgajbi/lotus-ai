@@ -341,6 +341,7 @@ def test_revise_review_action_links_replacement_run_and_preserves_lineage() -> N
     assert review_response.run.review_state.value == "REVISED"
     assert review_response.run.allowed_review_actions == []
     assert review_response.run.superseded_by_run_id == revised_run.run_id
+    assert review_response.run.replacement_run_id == revised_run.run_id
     assert any(
         f"Replacement lineage now points to `{revised_run.run_id}`" in line
         for line in review_response.summary
@@ -532,9 +533,7 @@ def test_review_action_allows_operator_caller() -> None:
     )
 
     assert review_response.run.review_state.value == "ACCEPTED"
-    assert review_response.run.allowed_review_actions == [
-        WorkflowPackRunReviewActionType.SUPERSEDE
-    ]
+    assert review_response.run.allowed_review_actions == [WorkflowPackRunReviewActionType.SUPERSEDE]
     assert review_response.events[0].actor == "review:ops.sg.platform.001"
 
 

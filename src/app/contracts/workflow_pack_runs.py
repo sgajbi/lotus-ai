@@ -121,6 +121,10 @@ class WorkflowPackRunDescriptor(BaseModel):
         default=None,
         description="Newer workflow-pack run that superseded this run, when applicable.",
     )
+    replacement_run_id: str | None = Field(
+        default=None,
+        description="Replacement workflow-pack run identifier when the current run is revised or superseded.",
+    )
     created_at: str = Field(description="UTC timestamp when the run record was created.")
     completed_at: str | None = Field(
         default=None,

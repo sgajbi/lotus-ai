@@ -184,10 +184,7 @@ def test_workflow_pack_execute_route_records_explicit_run_and_returns_run_id(
     body = execute_response.json()
     assert body["eligibility"]["allowed"] is True
     assert body["execution"]["status"] == "COMPLETED"
-    assert (
-        body["execution"]["audit"]["workflow_pack_run_id"]
-        == body["workflow_pack_run"]["run_id"]
-    )
+    assert body["execution"]["audit"]["workflow_pack_run_id"] == body["workflow_pack_run"]["run_id"]
     assert body["workflow_pack_run"]["workflow_surface"] == "advisor-brief-workspace"
 
 
@@ -244,10 +241,7 @@ def test_workflow_pack_execute_route_records_twr_inspection_support_brief_run(
     assert body["eligibility"]["allowed"] is True
     assert body["execution"]["status"] == "COMPLETED"
     assert body["workflow_pack_run"]["pack_id"] == "twr_inspection_support_brief.pack"
-    assert (
-        body["workflow_pack_run"]["registration_ref"]
-        == "twr_inspection_support_brief.pack@v1"
-    )
+    assert body["workflow_pack_run"]["registration_ref"] == "twr_inspection_support_brief.pack@v1"
     assert body["workflow_pack_run"]["caller_app"] == "lotus-performance"
     assert body["workflow_pack_run"]["workflow_surface"] == "twr-supportability-inspection"
     assert body["workflow_pack_run"]["workflow_authority_owner"] == "lotus-performance"
@@ -299,9 +293,7 @@ def test_workflow_pack_execute_route_records_failed_run_when_runtime_execution_i
     operator_body = operator_response.json()
     assert operator_body["runtime_state"] == "FAILED"
     assert operator_body["supportability_status"] == "ACTION_REQUIRED"
-    assert any(
-        finding["finding_id"] == "runtime_failed" for finding in operator_body["findings"]
-    )
+    assert any(finding["finding_id"] == "runtime_failed" for finding in operator_body["findings"])
 
 
 def test_workflow_pack_execute_route_rejects_wrong_task_for_binding(client: TestClient) -> None:
@@ -328,7 +320,9 @@ def test_workflow_pack_execute_route_rejects_denied_surface(client: TestClient) 
     assert execute_response.status_code == 403
 
 
-def test_workflow_pack_execute_route_degrades_when_registry_store_is_unmigrated(tmp_path: Path) -> None:
+def test_workflow_pack_execute_route_degrades_when_registry_store_is_unmigrated(
+    tmp_path: Path,
+) -> None:
     database_url = f"sqlite:///{tmp_path / 'workflow-pack-execute-unmigrated-api.db'}"
 
     with override_runtime_settings(
@@ -426,9 +420,7 @@ def test_pack_backed_execution_routes_degrade_when_sql_run_store_is_unmigrated(
     assert "MIGRATION_REQUIRED" in explicit_response.json()["detail"]
     assert baseline_audit_response.status_code == 200
     assert audit_response.status_code == 200
-    assert (
-        audit_response.json()["record_count"] == baseline_audit_response.json()["record_count"]
-    )
+    assert audit_response.json()["record_count"] == baseline_audit_response.json()["record_count"]
 
 
 def test_workflow_pack_run_detail_rejects_unknown_run(client: TestClient) -> None:
@@ -551,7 +543,9 @@ def test_workflow_pack_run_review_action_rejects_unbounded_caller(client: TestCl
     assert detail_body["events"][0]["event_type"] == "RUN_RECORDED"
 
 
-def test_workflow_pack_run_review_action_revise_links_replacement_lineage(client: TestClient) -> None:
+def test_workflow_pack_run_review_action_revise_links_replacement_lineage(
+    client: TestClient,
+) -> None:
     original_execute_response = client.post(
         "/ai/tasks/execute",
         json=advisor_brief_task_execution_request_json(
@@ -594,6 +588,7 @@ def test_workflow_pack_run_review_action_revise_links_replacement_lineage(client
     review_body = review_response.json()
     assert review_body["run"]["review_state"] == "REVISED"
     assert review_body["run"]["superseded_by_run_id"] == revised_run_id
+    assert review_body["run"]["replacement_run_id"] == revised_run_id
     assert review_body["run"]["allowed_review_actions"] == []
     assert any(event["event_type"] == "LINEAGE_UPDATED" for event in review_body["events"])
     assert any(
@@ -601,19 +596,18 @@ def test_workflow_pack_run_review_action_revise_links_replacement_lineage(client
         for line in review_body["summary"]
     )
 
-    replacement_detail_response = client.get(
-        f"/platform/workflow-packs/runs/{revised_run_id}"
-    )
+    replacement_detail_response = client.get(f"/platform/workflow-packs/runs/{revised_run_id}")
     assert replacement_detail_response.status_code == 200
     replacement_detail_body = replacement_detail_response.json()
     assert replacement_detail_body["run"]["supersedes_run_id"] == original_run_id
     assert any(
-        event["event_type"] == "LINEAGE_UPDATED"
-        for event in replacement_detail_body["events"]
+        event["event_type"] == "LINEAGE_UPDATED" for event in replacement_detail_body["events"]
     )
 
 
-def test_workflow_pack_run_review_action_rejects_unknown_replacement_run(client: TestClient) -> None:
+def test_workflow_pack_run_review_action_rejects_unknown_replacement_run(
+    client: TestClient,
+) -> None:
     execute_response = client.post(
         "/ai/tasks/execute",
         json=advisor_brief_task_execution_request_json(
@@ -770,10 +764,14 @@ def test_workflow_pack_run_review_action_rejects_already_linked_replacement_line
 
     runs = client.get("/platform/workflow-packs/runs").json()["runs"]
     original_run_id = next(
-        run["run_id"] for run in runs if run["correlation_id"] == "corr-pack-run-api-revise-linked-001"
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-linked-001"
     )
     replacement_run_id = next(
-        run["run_id"] for run in runs if run["correlation_id"] == "corr-pack-run-api-revise-linked-002"
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-linked-002"
     )
 
     store = get_workflow_pack_run_store()
@@ -1056,12 +1054,18 @@ def test_sqlalchemy_workflow_pack_run_review_and_lineage_survive_restart(tmp_pat
     catalog_body = catalog_response.json()
     assert catalog_body["run_store_mode"] == "sqlalchemy"
     assert catalog_body["run_count"] == 2
-    original_catalog_run = next(run for run in catalog_body["runs"] if run["run_id"] == original_run_id)
-    revised_catalog_run = next(run for run in catalog_body["runs"] if run["run_id"] == revised_run_id)
+    original_catalog_run = next(
+        run for run in catalog_body["runs"] if run["run_id"] == original_run_id
+    )
+    revised_catalog_run = next(
+        run for run in catalog_body["runs"] if run["run_id"] == revised_run_id
+    )
     assert original_catalog_run["review_state"] == "REVISED"
     assert original_catalog_run["supportability_status"] == "HISTORICAL"
     assert original_catalog_run["superseded_by_run_id"] == revised_run_id
-    assert original_catalog_run["review_summary"]["latest_review_actor"] == "review:banker.sg.sql.001"
+    assert (
+        original_catalog_run["review_summary"]["latest_review_actor"] == "review:banker.sg.sql.001"
+    )
     assert original_catalog_run["review_summary"]["review_transition_count"] == 1
     assert revised_catalog_run["review_state"] == "AWAITING_REVIEW"
     assert revised_catalog_run["supportability_status"] == "ACTION_REQUIRED"
@@ -1126,7 +1130,9 @@ def test_runtime_status_attention_queue_reports_full_backlog_depth(client: TestC
     assert attention_queue["queue_depth"] == 6
     assert attention_queue["queue_limit"] == 5
     assert len(attention_queue["items"]) == 5
-    assert all(item["supportability_status"] == "ACTION_REQUIRED" for item in attention_queue["items"])
+    assert all(
+        item["supportability_status"] == "ACTION_REQUIRED" for item in attention_queue["items"]
+    )
     assert any(
         "use queue_depth to measure the full actionable backlog" in line
         for line in attention_queue["status_summary"]
