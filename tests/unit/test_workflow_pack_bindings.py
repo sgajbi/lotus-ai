@@ -22,6 +22,17 @@ def test_get_workflow_pack_execution_binding_returns_phase1_binding() -> None:
     assert binding.default_workflow_surface == "advisor-brief-workspace"
 
 
+def test_get_workflow_pack_execution_binding_returns_twr_inspection_support_brief_binding() -> None:
+    binding = get_workflow_pack_execution_binding(
+        pack_id="twr_inspection_support_brief.pack",
+        version="v1",
+    )
+
+    assert binding is not None
+    assert binding.task_id == "explain.v1"
+    assert binding.default_workflow_surface == "twr-supportability-inspection"
+
+
 def test_get_resolved_workflow_pack_execution_binding_returns_binding_and_registration() -> None:
     resolved_binding = get_resolved_workflow_pack_execution_binding(
         pack_id="advisor_brief.pack",

@@ -194,3 +194,95 @@ def workspace_rationale_workflow_pack_execution_request_json(
     if workflow_surface is not None:
         request["workflow_surface"] = workflow_surface
     return request
+
+
+def twr_inspection_support_brief_payload(
+    *,
+    inspection_id: str = "9d000001-1111-4222-8333-abcdefabcdef",
+    portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
+    verdict: str = "supportable_with_warnings",
+) -> dict[str, object]:
+    return {
+        "inspection": {
+            "inspection_id": inspection_id,
+            "portfolio_id": portfolio_id,
+            "verdict": verdict,
+            "inspection_profile": "support_triage",
+        },
+        "findings": [
+            {
+                "code": "EXTERNAL_CASHFLOW_NORMALIZATION_MISMATCH",
+                "severity": "high",
+                "category": "cashflow_classification",
+                "owner_repo": "lotus-performance",
+                "summary": "External cash-flow economics do not tie to served TWR valuation points.",
+                "recommended_action": (
+                    "Review the source-economics artifact and fix the normalization path or upstream payload."
+                ),
+            }
+        ],
+        "owner_summary": {
+            "primary_owner_repo": "lotus-performance",
+            "secondary_owner_repos": ["lotus-core"],
+        },
+        "evidence_summary": {
+            "completed_check_families": 5,
+            "reconciliation_gap_date_count": 0,
+        },
+        "check_coverage": {
+            "completed_check_families": [
+                "calculation_consistency",
+                "source_quality",
+                "economic_plausibility",
+                "reconciliation",
+                "cashflow_classification",
+            ],
+            "pending_check_families": [],
+        },
+    }
+
+
+def twr_inspection_support_brief_workflow_pack_execution_request_json(
+    *,
+    correlation_id: str,
+    task_id: str = "explain.v1",
+    workflow_surface: str | None = "twr-supportability-inspection",
+    environment: str = "DEVELOPMENT",
+    caller_identity_class: str = "INTERNAL_SERVICE",
+    inspection_id: str = "9d000001-1111-4222-8333-abcdefabcdef",
+    portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
+    verdict: str = "supportable_with_warnings",
+) -> dict[str, object]:
+    request: dict[str, object] = {
+        "pack_id": "twr_inspection_support_brief.pack",
+        "version": "v1",
+        "environment": environment,
+        "caller_identity_class": caller_identity_class,
+        "task_request": {
+            "task_id": task_id,
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-performance",
+                "correlation_id": correlation_id,
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": (
+                    f"TWR inspection support brief request for inspection {inspection_id}."
+                ),
+                "payload": twr_inspection_support_brief_payload(
+                    inspection_id=inspection_id,
+                    portfolio_id=portfolio_id,
+                    verdict=verdict,
+                ),
+                "source_refs": [
+                    f"lotus-performance:twr-inspection:{inspection_id}",
+                    f"lotus-performance:portfolio:{portfolio_id}",
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    }
+    if workflow_surface is not None:
+        request["workflow_surface"] = workflow_surface
+    return request

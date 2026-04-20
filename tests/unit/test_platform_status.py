@@ -62,24 +62,27 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.service == "lotus-ai"
     assert status.access_control_store_mode == "memory"
     assert status.workflow_pack_registry_store_mode == "memory"
-    assert status.workflow_pack_runtime.registration_count == 3
-    assert status.workflow_pack_runtime.registered_count == 2
-    assert status.workflow_pack_runtime.execution_binding_count == 2
-    assert status.workflow_pack_runtime.executable_registration_count == 2
-    assert status.workflow_pack_runtime.executable_review_required_count == 2
+    assert status.workflow_pack_runtime.registration_count == 4
+    assert status.workflow_pack_runtime.registered_count == 3
+    assert status.workflow_pack_runtime.execution_binding_count == 3
+    assert status.workflow_pack_runtime.executable_registration_count == 3
+    assert status.workflow_pack_runtime.executable_review_required_count == 3
     assert status.workflow_pack_runtime.executable_without_review_count == 0
     assert status.workflow_pack_runtime.registered_without_execution_binding_count == 0
     assert status.workflow_pack_runtime.executable_registration_refs == [
         "advisor_brief.pack@v1",
+        "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
     ]
     assert status.workflow_pack_runtime.executable_review_required_refs == [
         "advisor_brief.pack@v1",
+        "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
     ]
-    assert len(status.workflow_pack_runtime.executable_activity) == 2
+    assert len(status.workflow_pack_runtime.executable_activity) == 3
     assert [item.registration_ref for item in status.workflow_pack_runtime.executable_activity] == [
         "advisor_brief.pack@v1",
+        "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
     ]
     for item in status.workflow_pack_runtime.executable_activity:

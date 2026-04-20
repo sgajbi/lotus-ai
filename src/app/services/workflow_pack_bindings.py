@@ -8,6 +8,7 @@ from app.contracts.workflow_packs import (
 )
 from app.services.workflow_pack_phase1_specs import (
     ADVISOR_BRIEF_V1_SPEC,
+    TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC,
     WORKSPACE_RATIONALE_V1_SPEC,
     WorkflowPackPhase1VersionSpec,
 )
@@ -72,6 +73,7 @@ def _build_execution_binding_from_spec(
 _WORKFLOW_PACK_EXECUTION_BINDINGS = (
     _build_execution_binding_from_spec(ADVISOR_BRIEF_V1_SPEC),
     _build_execution_binding_from_spec(WORKSPACE_RATIONALE_V1_SPEC),
+    _build_execution_binding_from_spec(TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC),
 )
 
 

@@ -14,6 +14,7 @@ from app.contracts.workflow_packs import (
 from app.services.workflow_pack_phase1_specs import (
     ADVISOR_BRIEF_V1_SPEC,
     ADVISOR_BRIEF_V2_SPEC,
+    TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC,
     WORKSPACE_RATIONALE_V1_SPEC,
 )
 
@@ -135,6 +136,46 @@ def build_seed_workflow_pack_registrations() -> list[WorkflowPackRegistrationDes
             status_summary=[
                 "The advisory workspace rationale workflow pack extends executable workflow-pack proof into a domain-owned advisory surface.",
                 "Activation remains pilot-scoped while Lotus validates the lotus-advise-owned rationale seam against explicit run-ledger and registration truth.",
+            ],
+        ),
+        WorkflowPackRegistrationDescriptor(
+            pack_id=TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.pack_id,
+            pack_family=TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.pack_family,
+            version=TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.version,
+            owner_repository=TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.owner_repository,
+            owner_service=TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.owner_service,
+            truth_owner_services=list(TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.truth_owner_services),
+            primary_use_case=TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.primary_use_case,
+            workflow_authority_owner=TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.workflow_authority_owner,
+            default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
+            definition_ref="repo://lotus-performance/app/api/endpoints/inspections.py",
+            definition_refs=_twr_inspection_support_brief_v1_definition_refs(),
+            compatibility_contract_version="workflow-pack-contract.v1",
+            registration_status=WorkflowPackRegistrationStatus.REGISTERED,
+            activation_state=WorkflowPackActivationState.PILOT,
+            registered_definition_digest="sha256:twr-inspection-support-brief-v1-registered-digest",
+            supported_callers=list(TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.supported_callers),
+            supported_identity_classes=[
+                WorkflowPackCallerIdentityClass.INTERNAL_SERVICE,
+            ],
+            supported_environments=[
+                WorkflowPackEnvironment.DEVELOPMENT,
+                WorkflowPackEnvironment.QA,
+                WorkflowPackEnvironment.UAT,
+            ],
+            tenant_scope=[],
+            surface_scope=list(TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.surface_scope),
+            default_rollout_stage="PILOT_SCOPED",
+            pause_state="NOT_PAUSED",
+            supersedes=None,
+            superseded_by=None,
+            registered_at="2026-04-20T18:00:00Z",
+            registered_by="lotus-ai.workflow-pack-registry.seed",
+            last_activated_at="2026-04-20T18:20:00Z",
+            last_changed_at="2026-04-20T18:20:00Z",
+            status_summary=[
+                "The TWR inspection support-brief workflow pack extends executable workflow-pack proof into a domain-owned performance supportability surface.",
+                "Activation remains pilot-scoped while Lotus validates support-brief generation against the inspection evidence contract and bounded run-ledger posture.",
             ],
         ),
     ]
@@ -301,6 +342,51 @@ def _workspace_rationale_v1_definition_refs() -> list[WorkflowPackDefinitionRefe
             reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
             required_for_registration=False,
             description="Repository-local engineering context describing advisory ownership and runtime boundaries for the rationale surface.",
+        ),
+    ]
+
+
+def _twr_inspection_support_brief_v1_definition_refs() -> list[WorkflowPackDefinitionReferenceDescriptor]:
+    return [
+        _definition_ref(
+            reference_id="owner_router",
+            repository="lotus-performance",
+            path="app/api/endpoints/inspections.py",
+            reference_type=WorkflowPackDefinitionReferenceType.ROUTER,
+            required_for_registration=True,
+            description="TWR inspection endpoint family that owns the supportability inspection product surface.",
+        ),
+        _definition_ref(
+            reference_id="owner_service",
+            repository="lotus-performance",
+            path="app/services/inspection/twr_inspection_service.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description="Inspection service that synthesizes findings, artifacts, and the optional support brief.",
+        ),
+        _definition_ref(
+            reference_id="owner_artifact_service",
+            repository="lotus-performance",
+            path="app/services/inspection/artifact_service.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description="Inspection artifact service that persists supportability evidence artifacts including support-brief payloads.",
+        ),
+        _definition_ref(
+            reference_id="owner_tests",
+            repository="lotus-performance",
+            path="tests/integration/test_inspections_api.py",
+            reference_type=WorkflowPackDefinitionReferenceType.TEST,
+            required_for_registration=True,
+            description="Owner-repository regression coverage for TWR inspection contract and artifact behavior.",
+        ),
+        _definition_ref(
+            reference_id="owner_rfc",
+            repository="lotus-performance",
+            path="docs/RFCs/RFC 045 - TWR Inspection and Supportability Contract.md",
+            reference_type=WorkflowPackDefinitionReferenceType.RFC,
+            required_for_registration=False,
+            description="TWR inspection RFC that defines optional support-brief artifacts within the inspection contract family.",
         ),
     ]
 

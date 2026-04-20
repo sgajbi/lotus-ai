@@ -11,8 +11,8 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["phase"] == "foundation"
-    assert body["registration_count"] == 3
-    assert body["registered_count"] == 2
+    assert body["registration_count"] == 4
+    assert body["registered_count"] == 3
     assert body["production_eligible_count"] == 0
     advisor_brief_registration = next(
         registration
@@ -33,6 +33,11 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         binding
         for binding in body["execution_bindings"]
         if binding["pack_id"] == "workspace_rationale.pack"
+    )
+    twr_inspection_binding = next(
+        binding
+        for binding in body["execution_bindings"]
+        if binding["pack_id"] == "twr_inspection_support_brief.pack"
     )
 
     assert advisor_brief_registration["registration_status"] == "REGISTERED"
@@ -60,6 +65,19 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         "instruction",
         "proposal_status",
         "workspace",
+    ]
+    assert twr_inspection_binding["version"] == "v1"
+    assert twr_inspection_binding["task_id"] == "explain.v1"
+    assert (
+        twr_inspection_binding["default_workflow_surface"]
+        == "twr-supportability-inspection"
+    )
+    assert twr_inspection_binding["required_payload_keys"] == [
+        "check_coverage",
+        "evidence_summary",
+        "findings",
+        "inspection",
+        "owner_summary",
     ]
 
 
@@ -115,6 +133,33 @@ def test_workspace_rationale_registration_detail_route(client: TestClient) -> No
     assert (
         body["execution_binding"]["default_workflow_surface"]
         == "advisory-workspace-assistant"
+    )
+
+
+def test_twr_inspection_support_brief_registration_detail_route(client: TestClient) -> None:
+    response = client.get("/platform/workflow-packs/registry/twr_inspection_support_brief.pack/v1")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["registration"]["pack_id"] == "twr_inspection_support_brief.pack"
+    assert body["registration"]["version"] == "v1"
+    assert body["registration"]["owner_repository"] == "lotus-performance"
+    assert body["registration"]["workflow_authority_owner"] == "lotus-performance"
+    assert body["registration"]["definition_ref"] == (
+        "repo://lotus-performance/app/api/endpoints/inspections.py"
+    )
+    assert any(
+        definition_ref["repository"] == "lotus-performance"
+        and definition_ref["path"] == "app/services/inspection/twr_inspection_service.py"
+        and definition_ref["required_for_registration"] is True
+        for definition_ref in body["registration"]["definition_refs"]
+    )
+    assert body["execution_binding"]["pack_id"] == "twr_inspection_support_brief.pack"
+    assert body["execution_binding"]["version"] == "v1"
+    assert body["execution_binding"]["task_id"] == "explain.v1"
+    assert (
+        body["execution_binding"]["default_workflow_surface"]
+        == "twr-supportability-inspection"
     )
 
 

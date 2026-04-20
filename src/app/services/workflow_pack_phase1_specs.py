@@ -68,3 +68,22 @@ WORKSPACE_RATIONALE_V1_SPEC = WorkflowPackPhase1VersionSpec(
         {"workspace", "evaluation_summary", "proposal_status", "instruction"}
     ),
 )
+
+
+TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC = WorkflowPackPhase1VersionSpec(
+    pack_id="twr_inspection_support_brief.pack",
+    pack_family="twr_inspection_support_brief",
+    version="v1",
+    owner_repository="lotus-performance",
+    owner_service="lotus-performance",
+    truth_owner_services=("lotus-performance", "lotus-core"),
+    primary_use_case="twr_inspection_support_brief",
+    workflow_authority_owner="lotus-performance",
+    supported_callers=("lotus-performance",),
+    surface_scope=("twr-supportability-inspection",),
+    default_workflow_surface="twr-supportability-inspection",
+    execution_task_id="explain.v1",
+    required_payload_keys=frozenset(
+        {"inspection", "findings", "owner_summary", "evidence_summary", "check_coverage"}
+    ),
+)
