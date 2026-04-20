@@ -23,6 +23,7 @@ from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunRecord,
     WorkflowPackRunRepository,
 )
+from app.contracts.tasks import TaskExecutionStatus
 from app.services.task_execution_models import TaskExecutionContext
 from app.services.workflow_pack_bindings import (
     ResolvedWorkflowPackExecutionBinding,
@@ -254,7 +255,7 @@ def record_registered_workflow_pack_run(
         tenant_id=context.request.caller.tenant_id,
         workflow_surface=workflow_surface,
         workflow_authority_owner=registration.workflow_authority_owner,
-        runtime_state=WorkflowPackRunRuntimeState.COMPLETED.value,
+        runtime_state=_resolve_runtime_state(response).value,
         review_state=review_state.value,
         review_required=review_required,
         provider_mode=response.audit.provider_mode,
@@ -305,6 +306,12 @@ def ensure_workflow_pack_run_store_ready() -> None:
 
 def _build_workflow_pack_run_id(*, pack_family: str, request_id: str) -> str:
     return f"packrun_{pack_family}_{request_id}"
+
+
+def _resolve_runtime_state(response: TaskExecutionResponse) -> WorkflowPackRunRuntimeState:
+    if response.status is TaskExecutionStatus.FAILED:
+        return WorkflowPackRunRuntimeState.FAILED
+    return WorkflowPackRunRuntimeState.COMPLETED
 
 
 def map_workflow_pack_run_record(

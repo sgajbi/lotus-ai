@@ -36,6 +36,7 @@ class TaskInputMode(str, Enum):
 class TaskExecutionStatus(str, Enum):
     COMPLETED = "COMPLETED"
     REJECTED = "REJECTED"
+    FAILED = "FAILED"
 
 
 class CapabilityDescriptor(BaseModel):

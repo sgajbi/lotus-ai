@@ -11,6 +11,7 @@ from app.contracts.tasks import (
 )
 from app.services.task_execution_context_builder import build_task_execution_context
 from app.services.task_execution_pipeline import (
+    build_failed_task_execution_response,
     build_task_execution_response,
     resolve_task_execution,
 )
@@ -66,6 +67,38 @@ def test_record_workflow_pack_run_for_advisor_brief_task_execution() -> None:
     assert artifact.source_object_kind == "workflow_pack_run"
     assert artifact.source_object_id == recorded.run_id
     assert artifact.retention_posture == "retained_for_review"
+
+
+def test_record_workflow_pack_run_preserves_failed_runtime_posture() -> None:
+    context = build_task_execution_context(
+        advisor_brief_task_execution_request(correlation_id="corr-pack-run-failed-001")
+    )
+    response = build_failed_task_execution_response(
+        context=context,
+        exc=HTTPException(
+            status_code=503,
+            detail=(
+                "LIVE_EXECUTION_NOT_ENABLED: Local OpenAI-compatible endpoint is not reachable "
+                "from lotus-ai."
+            ),
+        ),
+    )
+
+    recorded = record_workflow_pack_run_for_task_execution(context=context, response=response)
+
+    assert recorded is not None
+    assert recorded.runtime_state.value == "FAILED"
+    assert recorded.review_state.value == "AWAITING_REVIEW"
+    assert recorded.supportability_status.value == "ACTION_REQUIRED"
+    assert recorded.output_preview.startswith("LIVE_EXECUTION_NOT_ENABLED:")
+    assert "failure_category" in recorded.structured_output_keys
+    assert any(
+        descriptor.evidence_type == "workflow_pack_execution_failure"
+        for descriptor in recorded.evidence_descriptors
+    )
+    detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
+    assert detail.run.runtime_state.value == "FAILED"
+    assert detail.supportability.partial_output_visible is True
 
 
 def test_record_workflow_pack_run_ignores_non_pack_task_execution() -> None:

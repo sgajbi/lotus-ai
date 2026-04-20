@@ -1,7 +1,9 @@
 from dataclasses import replace
 from pathlib import Path
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from pytest import MonkeyPatch
 
 from app.main import app
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
@@ -201,6 +203,56 @@ def test_workflow_pack_execute_route_defaults_workflow_surface_from_binding(
     assert execute_response.status_code == 200
     body = execute_response.json()
     assert body["workflow_pack_run"]["workflow_surface"] == "advisor-brief-workspace"
+
+
+def test_workflow_pack_execute_route_records_failed_run_when_runtime_execution_is_unavailable(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.workflow_pack_execution.resolve_task_execution",
+        lambda **_: (_ for _ in ()).throw(
+            HTTPException(
+                status_code=503,
+                detail=(
+                    "LIVE_EXECUTION_NOT_ENABLED: Local OpenAI-compatible endpoint is not "
+                    "reachable from lotus-ai."
+                ),
+            )
+        ),
+    )
+
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=advisor_brief_workflow_pack_execution_request_json(
+            correlation_id="corr-pack-execute-failed-001"
+        ),
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    run_id = body["workflow_pack_run"]["run_id"]
+    assert body["execution"]["status"] == "FAILED"
+    assert body["execution"]["result"]["message"].startswith("LIVE_EXECUTION_NOT_ENABLED:")
+    assert body["execution"]["audit"]["workflow_pack_run_id"] == run_id
+    assert body["workflow_pack_run"]["runtime_state"] == "FAILED"
+    assert body["workflow_pack_run"]["supportability_status"] == "ACTION_REQUIRED"
+
+    consumer_response = client.get(f"/platform/workflow-packs/runs/{run_id}/consumer-view")
+    assert consumer_response.status_code == 200
+    consumer_body = consumer_response.json()
+    assert consumer_body["runtime"]["state"] == "FAILED"
+    assert consumer_body["supportability"]["status"] == "ACTION_REQUIRED"
+    assert consumer_body["supportability"]["partial_output_visible"] is True
+
+    operator_response = client.get(f"/platform/workflow-packs/runs/{run_id}/operator-profile")
+    assert operator_response.status_code == 200
+    operator_body = operator_response.json()
+    assert operator_body["runtime_state"] == "FAILED"
+    assert operator_body["supportability_status"] == "ACTION_REQUIRED"
+    assert any(
+        finding["finding_id"] == "runtime_failed" for finding in operator_body["findings"]
+    )
 
 
 def test_workflow_pack_execute_route_rejects_wrong_task_for_binding(client: TestClient) -> None:

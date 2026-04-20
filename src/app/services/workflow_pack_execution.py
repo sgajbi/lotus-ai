@@ -11,6 +11,7 @@ from app.contracts.workflow_packs import (
 )
 from app.contracts.workflow_pack_runs import WorkflowPackRunDescriptor
 from app.services.task_execution_pipeline import (
+    build_failed_task_execution_response,
     build_task_execution_response,
     persist_task_execution_audit,
     resolve_task_execution,
@@ -71,8 +72,11 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
 
     context = validate_task_request(request.task_request)
     ensure_workflow_pack_run_store_ready()
-    resolved = resolve_task_execution(context=context)
-    response = build_task_execution_response(resolved=resolved)
+    try:
+        resolved = resolve_task_execution(context=context)
+        response = build_task_execution_response(resolved=resolved)
+    except HTTPException as exc:
+        response = build_failed_task_execution_response(context=context, exc=exc)
     persist_task_execution_audit(context=context, response=response)
     workflow_pack_run = record_registered_workflow_pack_run(
         context=context,
