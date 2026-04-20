@@ -64,8 +64,8 @@ without becoming an unconstrained agent platform.
 
 ## Implementation Status
 
-This RFC is now partially implemented through three bounded workflow-pack adoption paths, with two
-governed live proofs.
+This RFC is now partially implemented through three bounded workflow-pack adoption paths, with
+three governed live proofs.
 
 Current branch evidence now spans `lotus-ai`, `lotus-gateway`, and `lotus-workbench` for the
 Phase-1 `advisor_brief.pack` flow:
@@ -85,7 +85,12 @@ Phase-1 `advisor_brief.pack` flow:
 6. the governed canonical TWR inspection validator in `lotus-performance` now also proves the
    domain-owned `twr_inspection_support_brief.pack` path live against the current
    `lotus-performance` -> `lotus-ai` stack, including bounded `workflow_pack_run` posture and
-   retrievable `support_brief.md` artifact evidence.
+   retrievable `support_brief.md` artifact evidence, and
+7. the governed live cross-service parity and workspace rationale review proof in `lotus-advise`
+   now proves the domain-owned `workspace_rationale.pack` path live against the current
+   `lotus-advise` -> `lotus-ai` stack, including bounded `REVISE` and `SUPERSEDE` lineage,
+   truthful blocked and deferred alternatives posture, and parity-safe stateful simulation
+   requests.
 
 Still pending under this broader RFC:
 
@@ -144,10 +149,7 @@ Evidence that remains intentionally absent because this RFC is only partially im
 1. no broader workflow-pack rollout beyond the current Phase-1 `advisor_brief.pack`,
    `workspace_rationale.pack`, and `twr_inspection_support_brief.pack` seams plus the internal
    binding registry,
-2. no governed live proof yet exists for the `workspace_rationale.pack` downstream family, even
-   though the advisor-brief and `twr_inspection_support_brief.pack` paths are now proven live and
-   `workspace_rationale.pack` remains implemented and locally proven,
-3. no broad shared Workbench primitive set yet covers multiple pack-backed surfaces instead of the
+2. no broad shared Workbench primitive set yet covers multiple pack-backed surfaces instead of the
    current advisor-brief-specific live adoption slice.
 
 ## Repository Fit

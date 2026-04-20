@@ -110,7 +110,8 @@ What is not implemented yet:
 1. broader durable linkage expansion from workflow-pack execution into downstream artifact,
    review-action entitlement, and support-evidence flows beyond the current bounded Phase-1 slice,
 2. governed live canonical proof and broader allowed-action shaping for consequence-bearing
-   downstream review integration beyond the bounded advisor-brief path,
+   downstream review integration beyond the bounded Phase-1 advisor-brief, workspace-rationale,
+   and TWR-inspection paths,
 3. broader workflow-pack runtime adoption and downstream review integration beyond the current
    Phase-1 `advisor_brief.pack`, `workspace_rationale.pack`, and
    `twr_inspection_support_brief.pack` recording paths,
@@ -138,14 +139,12 @@ Open gaps this RFC is still meant to close:
 
 1. no broad downstream contract family yet carries durable artifact, review-action entitlement, and
    support-evidence linkage for workflow-pack executions beyond the bounded Phase-1 slice,
-2. no governed live proof yet exists for the `workspace_rationale.pack` downstream review-bearing
-   family, even though the advisor-brief and `twr_inspection_support_brief.pack` paths are now
-   proven live and `workspace_rationale.pack` remains implemented and locally proven,
-3. no broader shared downstream primitive set yet proves that the durable ledger and shared
+2. no broader shared downstream primitive set yet proves that the durable ledger and shared
    review-state model can be consumed consistently across multiple product surfaces without
    per-surface specialization,
-4. the current green canonical live proof covers the advisor-brief path only and should not be
-   mistaken for broader pack-family closure.
+3. the current green live proof now covers all three current Phase-1 pack families, but it should
+   not be mistaken for broader pack-family closure or a claim that more generalized downstream
+   review primitives already exist.
 
 ## Why This RFC Exists
 

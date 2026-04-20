@@ -69,7 +69,9 @@ Completed implementation slices on the current branch:
    `lotus-workbench` -> `lotus-gateway` -> `lotus-ai` path, showing that the registry-backed
    reference family now executes and reviews truthfully in the real front-office runtime,
 10. owner-grounded onboarding and explicit execution binding for the domain-owned
-    `workspace_rationale.pack` family used by the `lotus-advise` workspace rationale seam, and
+    `workspace_rationale.pack` family used by the `lotus-advise` workspace rationale seam,
+    including governed live parity and lineage proof through the `lotus-advise` -> `lotus-ai`
+    path, and
 11. owner-grounded onboarding and explicit execution binding for the domain-owned
     `twr_inspection_support_brief.pack` family used by the `lotus-performance` TWR inspection
     supportability seam, including governed live validator proof through the
@@ -142,9 +144,10 @@ Open gaps that remain consistent with this RFC's still-pending scope:
 2. broader activation rollout posture beyond the current Phase-1 `advisor_brief.pack`,
    `workspace_rationale.pack`, and `twr_inspection_support_brief.pack` families is not yet
    onboarded,
-3. the current registry and activation evidence now proves reuse beyond the reference path across
-   three Phase-1 families, but RFC-0032 still should not be declared fully complete until operator
-   rollout and downstream adoption are broader than the current bounded Phase-1 slice.
+3. the current registry and activation evidence now proves governed live reuse beyond the
+   reference path across all three current Phase-1 families, but RFC-0032 still should not be
+   declared fully complete until operator rollout and downstream adoption are broader than the
+   current bounded Phase-1 slice.
 
 ## Why This RFC Exists
 
