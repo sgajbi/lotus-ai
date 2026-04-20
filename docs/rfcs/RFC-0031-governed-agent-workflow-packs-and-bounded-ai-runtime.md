@@ -64,7 +64,7 @@ without becoming an unconstrained agent platform.
 
 ## Implementation Status
 
-This RFC is now partially implemented through two bounded workflow-pack adoption paths, with one
+This RFC is now partially implemented through three bounded workflow-pack adoption paths, with one
 governed live canonical proof.
 
 Current branch evidence now spans `lotus-ai`, `lotus-gateway`, and `lotus-workbench` for the
@@ -85,8 +85,9 @@ Phase-1 `advisor_brief.pack` flow:
 
 Still pending under this broader RFC:
 
-1. broader multi-pack execution posture and downstream proof beyond the current `advisor_brief.pack`
-   and `workspace_rationale.pack` Phase-1 families,
+1. broader multi-pack execution posture and downstream proof beyond the current
+   `advisor_brief.pack`, `workspace_rationale.pack`, and
+   `twr_inspection_support_brief.pack` Phase-1 families,
 2. shared lifecycle, provenance, review, and feedback primitives beyond the current advisor-brief
    downstream slice,
 3. stronger enterprise authorization and broader cross-app rollout posture for workflow-pack
@@ -136,10 +137,12 @@ Implemented evidence now available in `lotus-ai`:
 
 Evidence that remains intentionally absent because this RFC is only partially implemented:
 
-1. no broader workflow-pack rollout beyond the current Phase-1 `advisor_brief.pack` and
-   `workspace_rationale.pack` seams plus the internal binding registry,
+1. no broader workflow-pack rollout beyond the current Phase-1 `advisor_brief.pack`,
+   `workspace_rationale.pack`, and `twr_inspection_support_brief.pack` seams plus the internal
+   binding registry,
 2. no governed live canonical proof yet exists for a second downstream workflow-pack family beyond
-   the flagship advisor-brief path,
+   the flagship advisor-brief path, even though the additional `workspace_rationale.pack` and
+   `twr_inspection_support_brief.pack` adopters are now implemented and locally proven,
 3. no broad shared Workbench primitive set yet covers multiple pack-backed surfaces instead of the
    current advisor-brief-specific live adoption slice.
 

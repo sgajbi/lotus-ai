@@ -94,7 +94,12 @@ Implemented on the current branch:
     `workspace_rationale.pack` that preserves `replacement_run_id` lineage for `REVISE` and
     `SUPERSEDE`, returns refreshed run posture without rewriting the rationale narrative, and
     proves a second downstream adoption slice for lineage-aware review behavior outside the
-    advisor-brief flagship path.
+    advisor-brief flagship path,
+23. explicit execution and durable run-posture preservation are now also proven for the
+    domain-owned `twr_inspection_support_brief.pack` family consumed by the `lotus-performance`
+    TWR inspection supportability flow, including optional `support_brief.md` artifact generation
+    and bounded `workflow_pack_run` posture on the inspection response without making the
+    inspection verdict depend on Lotus AI availability.
 
 What is not implemented yet:
 
@@ -103,9 +108,10 @@ What is not implemented yet:
 2. governed live canonical proof and broader allowed-action shaping for consequence-bearing
    downstream review integration beyond the bounded advisor-brief path,
 3. broader workflow-pack runtime adoption and downstream review integration beyond the current
-   Phase-1 `advisor_brief.pack` and `workspace_rationale.pack` recording paths,
+   Phase-1 `advisor_brief.pack`, `workspace_rationale.pack`, and
+   `twr_inspection_support_brief.pack` recording paths,
 4. broader shared downstream consumption primitives that make the ledger model reusable across more
-   than the current advisor-brief and workspace-rationale product-specific seams.
+   than the current advisor-brief, workspace-rationale, and TWR-inspection product-specific seams.
 
 This RFC now correctly moves to `In Progress`, but it should not be treated as complete until downstream contract adoption, artifact and evidence linkage expansion, and broader runtime integration are implemented and reflected in the RFC, RFC index, and branch evidence together.
 
@@ -129,7 +135,8 @@ Open gaps this RFC is still meant to close:
 1. no broad downstream contract family yet carries durable artifact, review-action entitlement, and
    support-evidence linkage for workflow-pack executions beyond the bounded Phase-1 slice,
 2. no governed live canonical proof yet exists for a second downstream review-bearing family beyond
-   the bounded advisor-brief path,
+   the bounded advisor-brief path, even though `workspace_rationale.pack` and
+   `twr_inspection_support_brief.pack` are now implemented and locally proven downstream adopters,
 3. no broader shared downstream primitive set yet proves that the durable ledger and shared
    review-state model can be consumed consistently across multiple product surfaces without
    per-surface specialization,

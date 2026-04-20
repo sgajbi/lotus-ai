@@ -69,14 +69,18 @@ Completed implementation slices on the current branch:
    `lotus-workbench` -> `lotus-gateway` -> `lotus-ai` path, showing that the registry-backed
    reference family now executes and reviews truthfully in the real front-office runtime,
 10. owner-grounded onboarding and explicit execution binding for the domain-owned
-    `workspace_rationale.pack` family used by the `lotus-advise` workspace rationale seam.
+    `workspace_rationale.pack` family used by the `lotus-advise` workspace rationale seam, and
+11. owner-grounded onboarding and explicit execution binding for the domain-owned
+    `twr_inspection_support_brief.pack` family used by the `lotus-performance` TWR inspection
+    supportability seam.
 
 Still pending before this RFC should be considered fully implemented:
 
 1. broader operator authorization beyond the current bounded caller-policy control-plane posture,
 2. broader rollout posture beyond the current pilot and discovery reference family,
 3. broader downstream proof and operator rollout posture beyond the current Phase-1
-   `advisor_brief.pack` and `workspace_rationale.pack` families,
+   `advisor_brief.pack`, `workspace_rationale.pack`, and
+   `twr_inspection_support_brief.pack` families,
 4. convergence with the durable run-ledger and review-state model proposed in `RFC-0033`.
 
 ## Requirement Traceability And Evidence
@@ -134,11 +138,12 @@ Open gaps that remain consistent with this RFC's still-pending scope:
 
 1. operator authorization is now caller-policy-backed for bounded workflow-pack control actions but
    is not yet a broader enterprise entitlement model,
-2. broader activation rollout posture beyond the current Phase-1 `advisor_brief.pack` and
-   `workspace_rationale.pack` families is not yet onboarded,
-3. the current registry and activation evidence now proves reuse beyond the reference path, but
-   RFC-0032 still should not be declared fully complete until operator rollout and downstream
-   adoption are broader than the current two-family Phase-1 slice.
+2. broader activation rollout posture beyond the current Phase-1 `advisor_brief.pack`,
+   `workspace_rationale.pack`, and `twr_inspection_support_brief.pack` families is not yet
+   onboarded,
+3. the current registry and activation evidence now proves reuse beyond the reference path across
+   three Phase-1 families, but RFC-0032 still should not be declared fully complete until operator
+   rollout and downstream adoption are broader than the current bounded Phase-1 slice.
 
 ## Why This RFC Exists
 
