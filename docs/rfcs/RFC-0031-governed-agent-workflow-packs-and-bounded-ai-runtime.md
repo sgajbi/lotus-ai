@@ -84,11 +84,11 @@ Phase-1 `advisor_brief.pack` flow:
 
 Still pending under this broader RFC:
 
-1. broader multi-pack execution posture beyond the current Phase-1 advisor-brief path,
+1. broader multi-pack execution posture and downstream proof beyond the current `advisor_brief.pack`
+   and `workspace_rationale.pack` Phase-1 families,
 2. shared lifecycle, provenance, review, and feedback primitives beyond the current advisor-brief
    downstream slice,
-3. at least one domain-owned workflow-pack rollout outside the gateway-owned advisor-brief path,
-4. stronger enterprise authorization and broader cross-app rollout posture for workflow-pack
+3. stronger enterprise authorization and broader cross-app rollout posture for workflow-pack
    activation and review authority.
 
 ## Current Reality And Evidence

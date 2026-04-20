@@ -14,6 +14,7 @@ from app.contracts.workflow_packs import (
 from app.services.workflow_pack_phase1_specs import (
     ADVISOR_BRIEF_V1_SPEC,
     ADVISOR_BRIEF_V2_SPEC,
+    WORKSPACE_RATIONALE_V1_SPEC,
 )
 
 
@@ -94,6 +95,46 @@ def build_seed_workflow_pack_registrations() -> list[WorkflowPackRegistrationDes
             status_summary=[
                 "A discovered successor version is visible in the registry without being treated as runtime-eligible.",
                 "Keeping the candidate dark prevents implicit default-version drift before version-specific owner artifacts and broader rollout review exist.",
+            ],
+        ),
+        WorkflowPackRegistrationDescriptor(
+            pack_id=WORKSPACE_RATIONALE_V1_SPEC.pack_id,
+            pack_family=WORKSPACE_RATIONALE_V1_SPEC.pack_family,
+            version=WORKSPACE_RATIONALE_V1_SPEC.version,
+            owner_repository=WORKSPACE_RATIONALE_V1_SPEC.owner_repository,
+            owner_service=WORKSPACE_RATIONALE_V1_SPEC.owner_service,
+            truth_owner_services=list(WORKSPACE_RATIONALE_V1_SPEC.truth_owner_services),
+            primary_use_case=WORKSPACE_RATIONALE_V1_SPEC.primary_use_case,
+            workflow_authority_owner=WORKSPACE_RATIONALE_V1_SPEC.workflow_authority_owner,
+            default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
+            definition_ref="repo://lotus-advise/src/api/workspaces/router.py",
+            definition_refs=_workspace_rationale_v1_definition_refs(),
+            compatibility_contract_version="workflow-pack-contract.v1",
+            registration_status=WorkflowPackRegistrationStatus.REGISTERED,
+            activation_state=WorkflowPackActivationState.PILOT,
+            registered_definition_digest="sha256:workspace-rationale-v1-registered-digest",
+            supported_callers=list(WORKSPACE_RATIONALE_V1_SPEC.supported_callers),
+            supported_identity_classes=[
+                WorkflowPackCallerIdentityClass.INTERNAL_SERVICE,
+            ],
+            supported_environments=[
+                WorkflowPackEnvironment.DEVELOPMENT,
+                WorkflowPackEnvironment.QA,
+                WorkflowPackEnvironment.UAT,
+            ],
+            tenant_scope=[],
+            surface_scope=list(WORKSPACE_RATIONALE_V1_SPEC.surface_scope),
+            default_rollout_stage="PILOT_SCOPED",
+            pause_state="NOT_PAUSED",
+            supersedes=None,
+            superseded_by=None,
+            registered_at="2026-04-20T10:00:00Z",
+            registered_by="lotus-ai.workflow-pack-registry.seed",
+            last_activated_at="2026-04-20T10:15:00Z",
+            last_changed_at="2026-04-20T10:15:00Z",
+            status_summary=[
+                "The advisory workspace rationale workflow pack extends executable workflow-pack proof into a domain-owned advisory surface.",
+                "Activation remains pilot-scoped while Lotus validates the lotus-advise-owned rationale seam against explicit run-ledger and registration truth.",
             ],
         ),
     ]
@@ -215,6 +256,51 @@ def _advisor_brief_v2_definition_refs() -> list[WorkflowPackDefinitionReferenceD
             reference_type=WorkflowPackDefinitionReferenceType.RFC,
             required_for_registration=False,
             description="Product-level advisor-brief RFC that remains relevant while successor onboarding stays in discovery.",
+        ),
+    ]
+
+
+def _workspace_rationale_v1_definition_refs() -> list[WorkflowPackDefinitionReferenceDescriptor]:
+    return [
+        _definition_ref(
+            reference_id="owner_router",
+            repository="lotus-advise",
+            path="src/api/workspaces/router.py",
+            reference_type=WorkflowPackDefinitionReferenceType.ROUTER,
+            required_for_registration=True,
+            description="Advisory workspace route that owns the rationale product surface.",
+        ),
+        _definition_ref(
+            reference_id="owner_service",
+            repository="lotus-advise",
+            path="src/api/services/workspace_ai_service.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description="Advisory service that assembles the bounded evidence bundle and calls lotus-ai.",
+        ),
+        _definition_ref(
+            reference_id="owner_integration",
+            repository="lotus-advise",
+            path="src/integrations/lotus_ai/rationale.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description="Lotus-advise integration seam that maps the workspace rationale flow onto the explicit workflow-pack execution route.",
+        ),
+        _definition_ref(
+            reference_id="owner_tests",
+            repository="lotus-advise",
+            path="tests/unit/advisory/api/test_api_workspace.py",
+            reference_type=WorkflowPackDefinitionReferenceType.TEST,
+            required_for_registration=True,
+            description="Owner-repository regression coverage for advisory workspace rationale behavior and degraded paths.",
+        ),
+        _definition_ref(
+            reference_id="owner_context",
+            repository="lotus-advise",
+            path="REPOSITORY-ENGINEERING-CONTEXT.md",
+            reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
+            required_for_registration=False,
+            description="Repository-local engineering context describing advisory ownership and runtime boundaries for the rationale surface.",
         ),
     ]
 

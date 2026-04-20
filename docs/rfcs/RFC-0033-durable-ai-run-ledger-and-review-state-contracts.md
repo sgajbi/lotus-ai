@@ -86,7 +86,10 @@ Implemented on the current branch:
 17. `/platform/runtime-status` now degrades truthfully when the configured workflow-pack registry store or workflow-pack run store is not yet migration-ready, returning bounded zeroed workflow-pack runtime posture instead of raising unhandled SQL table errors,
 18. bounded workflow-pack review actions now also require either the original active registered caller app or a caller authorized for async control-plane actions, so cross-app review drift is blocked without collapsing business workflow authority into lotus-ai,
 19. workflow-pack run catalog, detail, consumer-view, operator-profile, review-action, generic task execution, and explicit workflow-pack execution routes now fail with explicit `503` degradation when the configured SQL-backed workflow-pack run store is not migration-ready, and pack-backed execution now blocks before task execution or audit persistence instead of surfacing raw table errors, ambiguous missing-run responses, or post-failure side effects,
-20. the estate-level workflow-pack attention queue now reports the full actionable backlog through `queue_depth` even when returned queue items are truncated to the bounded queue limit, so operators can distinguish a capped visible queue from the real review or support backlog.
+20. the estate-level workflow-pack attention queue now reports the full actionable backlog through `queue_depth` even when returned queue items are truncated to the bounded queue limit, so operators can distinguish a capped visible queue from the real review or support backlog,
+21. explicit execution and durable run recording are now also proven for the domain-owned
+    `workspace_rationale.pack` family consumed by `lotus-advise`, so the ledger model is no
+    longer exercised only by the advisor-brief reference path.
 
 What is not implemented yet:
 
@@ -94,9 +97,10 @@ What is not implemented yet:
    review-action entitlement, and support-evidence flows beyond the current bounded Phase-1 slice,
 2. consequence-bearing downstream review integration flows and allowed-action shaping outside the
    bounded advisor-brief path,
-3. broader workflow-pack runtime adoption beyond the current Phase-1 advisor-brief recording path,
-4. at least one additional non-reference workflow-pack adoption slice beyond the current
-   advisor-brief path so the ledger model is proven reusable outside the flagship surface.
+3. broader workflow-pack runtime adoption and downstream review integration beyond the current
+   Phase-1 `advisor_brief.pack` and `workspace_rationale.pack` recording paths,
+4. at least one additional downstream adoption slice that exercises bounded review-action and
+   lineage behavior outside the advisor-brief flagship surface.
 
 This RFC now correctly moves to `In Progress`, but it should not be treated as complete until downstream contract adoption, artifact and evidence linkage expansion, and broader runtime integration are implemented and reflected in the RFC, RFC index, and branch evidence together.
 

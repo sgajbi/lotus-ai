@@ -21,29 +21,46 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
 
     assert catalog.service == "lotus-ai"
     assert catalog.phase == "foundation"
-    assert catalog.registration_count == 2
-    assert catalog.registered_count == 1
+    assert catalog.registration_count == 3
+    assert catalog.registered_count == 2
     assert catalog.production_eligible_count == 0
-    assert catalog.registrations[0].pack_id == "advisor_brief.pack"
-    assert catalog.registrations[0].version == "v1"
-    assert catalog.registrations[0].registration_status == WorkflowPackRegistrationStatus.REGISTERED
-    assert catalog.registrations[0].activation_state == WorkflowPackActivationState.PILOT
-    assert catalog.registrations[0].owner_repository == "lotus-gateway"
-    assert catalog.registrations[0].workflow_authority_owner == "lotus-gateway"
-    assert catalog.registrations[0].definition_ref == (
+    advisor_brief_registration = next(
+        registration
+        for registration in catalog.registrations
+        if registration.pack_id == "advisor_brief.pack" and registration.version == "v1"
+    )
+    workspace_rationale_registration = next(
+        registration
+        for registration in catalog.registrations
+        if registration.pack_id == "workspace_rationale.pack"
+    )
+    assert advisor_brief_registration.registration_status == WorkflowPackRegistrationStatus.REGISTERED
+    assert advisor_brief_registration.activation_state == WorkflowPackActivationState.PILOT
+    assert advisor_brief_registration.owner_repository == "lotus-gateway"
+    assert advisor_brief_registration.workflow_authority_owner == "lotus-gateway"
+    assert advisor_brief_registration.definition_ref == (
         "repo://lotus-gateway/src/app/contracts/advisor_brief.py"
     )
     assert any(
         definition_ref.repository == "lotus-gateway"
         and definition_ref.path == "src/app/services/advisor_brief_service.py"
         and definition_ref.required_for_registration is True
-        for definition_ref in catalog.registrations[0].definition_refs
+        for definition_ref in advisor_brief_registration.definition_refs
     )
-    assert catalog.registrations[1].version == "v2"
-    assert catalog.registrations[1].registration_status == WorkflowPackRegistrationStatus.DISCOVERED
-    assert len(catalog.execution_bindings) == 1
-    assert catalog.execution_bindings[0].pack_id == "advisor_brief.pack"
-    assert catalog.execution_bindings[0].task_id == "explain.v1"
+    assert workspace_rationale_registration.registration_status == (
+        WorkflowPackRegistrationStatus.REGISTERED
+    )
+    assert workspace_rationale_registration.owner_repository == "lotus-advise"
+    assert workspace_rationale_registration.workflow_authority_owner == "lotus-advise"
+    assert len(catalog.execution_bindings) == 2
+    assert any(
+        binding.pack_id == "advisor_brief.pack" and binding.task_id == "explain.v1"
+        for binding in catalog.execution_bindings
+    )
+    assert any(
+        binding.pack_id == "workspace_rationale.pack" and binding.task_id == "explain.v1"
+        for binding in catalog.execution_bindings
+    )
 
 
 def test_build_workflow_pack_registry_catalog_exposes_validation_rules() -> None:
@@ -93,6 +110,19 @@ def test_build_workflow_pack_registration_detail_omits_execution_binding_for_dis
     detail = build_workflow_pack_registration_detail(pack_id="advisor_brief.pack", version="v2")
 
     assert detail.execution_binding is None
+
+
+def test_build_workspace_rationale_registration_detail_exposes_advise_owned_binding() -> None:
+    detail = build_workflow_pack_registration_detail(
+        pack_id="workspace_rationale.pack",
+        version="v1",
+    )
+
+    assert detail.registration.owner_repository == "lotus-advise"
+    assert detail.registration.workflow_authority_owner == "lotus-advise"
+    assert detail.execution_binding is not None
+    assert detail.execution_binding.task_id == "explain.v1"
+    assert detail.execution_binding.default_workflow_surface == "advisory-workspace-assistant"
 
 
 def test_build_workflow_pack_registration_detail_rejects_unknown_registration() -> None:

@@ -49,3 +49,22 @@ ADVISOR_BRIEF_V2_SPEC = WorkflowPackPhase1VersionSpec(
     supported_callers=("lotus-gateway",),
     surface_scope=("advisor-brief-panel",),
 )
+
+
+WORKSPACE_RATIONALE_V1_SPEC = WorkflowPackPhase1VersionSpec(
+    pack_id="workspace_rationale.pack",
+    pack_family="workspace_rationale",
+    version="v1",
+    owner_repository="lotus-advise",
+    owner_service="lotus-advise",
+    truth_owner_services=("lotus-advise", "lotus-core", "lotus-risk"),
+    primary_use_case="advisory_workspace_rationale",
+    workflow_authority_owner="lotus-advise",
+    supported_callers=("lotus-advise",),
+    surface_scope=("advisory-workspace-assistant",),
+    default_workflow_surface="advisory-workspace-assistant",
+    execution_task_id="explain.v1",
+    required_payload_keys=frozenset(
+        {"workspace", "evaluation_summary", "proposal_status", "instruction"}
+    ),
+)

@@ -94,10 +94,18 @@ def test_platform_workflow_pack_registry_contract(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["phase"] == "foundation"
-    assert body["registration_count"] == 2
-    assert body["registered_count"] == 1
-    assert body["registrations"][0]["pack_id"] == "advisor_brief.pack"
-    assert body["registrations"][0]["activation_state"] == "PILOT"
+    assert body["registration_count"] == 3
+    assert body["registered_count"] == 2
+    assert any(
+        registration["pack_id"] == "advisor_brief.pack"
+        and registration["activation_state"] == "PILOT"
+        for registration in body["registrations"]
+    )
+    assert any(
+        registration["pack_id"] == "workspace_rationale.pack"
+        and registration["owner_repository"] == "lotus-advise"
+        for registration in body["registrations"]
+    )
 
     eligibility_response = client.post(
         "/platform/workflow-packs/eligibility/evaluate",
@@ -363,18 +371,20 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["workflow_pack_registry_store"]["status"] == "READY"
     assert body["workflow_pack_run_store"]["mode"] == "memory"
     assert body["workflow_pack_run_store"]["status"] == "READY"
-    assert body["workflow_pack_runtime"]["registration_count"] == 2
-    assert body["workflow_pack_runtime"]["registered_count"] == 1
-    assert body["workflow_pack_runtime"]["execution_binding_count"] == 1
-    assert body["workflow_pack_runtime"]["executable_registration_count"] == 1
-    assert body["workflow_pack_runtime"]["executable_review_required_count"] == 1
+    assert body["workflow_pack_runtime"]["registration_count"] == 3
+    assert body["workflow_pack_runtime"]["registered_count"] == 2
+    assert body["workflow_pack_runtime"]["execution_binding_count"] == 2
+    assert body["workflow_pack_runtime"]["executable_registration_count"] == 2
+    assert body["workflow_pack_runtime"]["executable_review_required_count"] == 2
     assert body["workflow_pack_runtime"]["executable_without_review_count"] == 0
     assert body["workflow_pack_runtime"]["registered_without_execution_binding_count"] == 0
     assert body["workflow_pack_runtime"]["executable_registration_refs"] == [
-        "advisor_brief.pack@v1"
+        "advisor_brief.pack@v1",
+        "workspace_rationale.pack@v1",
     ]
     assert body["workflow_pack_runtime"]["executable_review_required_refs"] == [
-        "advisor_brief.pack@v1"
+        "advisor_brief.pack@v1",
+        "workspace_rationale.pack@v1",
     ]
     assert body["workflow_pack_runtime"]["executable_activity"][0]["registration_ref"] == (
         "advisor_brief.pack@v1"
@@ -398,6 +408,10 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     )
     assert body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_run_id"] is None
     assert body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_review_summary"] is None
+    assert body["workflow_pack_runtime"]["executable_activity"][1]["registration_ref"] == (
+        "workspace_rationale.pack@v1"
+    )
+    assert body["workflow_pack_runtime"]["executable_activity"][1]["run_count"] == 0
     assert body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_provenance"] is None
     assert body["workflow_pack_runtime"]["executable_activity"][0]["has_activity"] is False
     assert body["workflow_pack_runtime"]["attention_queue"]["queue_depth"] == 0

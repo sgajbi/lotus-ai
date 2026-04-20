@@ -221,6 +221,27 @@ def test_build_workflow_pack_runtime_status_summary_tracks_activity_for_executab
     assert summary.attention_queue.items[0].provenance.evidence_types == ["evidence_0"]
 
 
+def test_build_workflow_pack_runtime_status_summary_defaults_include_both_executable_phase1_packs() -> (
+    None
+):
+    summary = build_workflow_pack_runtime_status_summary()
+
+    assert summary.registration_count == 3
+    assert summary.registered_count == 2
+    assert summary.execution_binding_count == 2
+    assert summary.executable_registration_count == 2
+    assert summary.executable_review_required_count == 2
+    assert summary.registered_without_execution_binding_count == 0
+    assert summary.executable_registration_refs == [
+        "advisor_brief.pack@v1",
+        "workspace_rationale.pack@v1",
+    ]
+    assert summary.executable_review_required_refs == [
+        "advisor_brief.pack@v1",
+        "workspace_rationale.pack@v1",
+    ]
+
+
 def test_build_workflow_pack_run_runtime_summary_counts_action_required_and_historical_posture(
     monkeypatch: MonkeyPatch,
 ) -> None:

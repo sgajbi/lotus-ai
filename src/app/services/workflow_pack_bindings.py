@@ -6,7 +6,11 @@ from app.contracts.workflow_packs import (
     WorkflowPackExecutionBindingDescriptor,
     WorkflowPackRegistrationDescriptor,
 )
-from app.services.workflow_pack_phase1_specs import ADVISOR_BRIEF_V1_SPEC
+from app.services.workflow_pack_phase1_specs import (
+    ADVISOR_BRIEF_V1_SPEC,
+    WORKSPACE_RATIONALE_V1_SPEC,
+    WorkflowPackPhase1VersionSpec,
+)
 from app.services.task_execution_models import TaskExecutionContext
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 
@@ -49,22 +53,25 @@ class ResolvedWorkflowPackExecutionBinding:
     registration: WorkflowPackRegistrationDescriptor
 
 
-def _build_execution_binding_from_spec() -> WorkflowPackExecutionBinding:
-    if ADVISOR_BRIEF_V1_SPEC.execution_task_id is None:
+def _build_execution_binding_from_spec(
+    spec: WorkflowPackPhase1VersionSpec,
+) -> WorkflowPackExecutionBinding:
+    if spec.execution_task_id is None:
         raise ValueError("Phase-1 execution binding spec missing execution_task_id.")
-    if ADVISOR_BRIEF_V1_SPEC.default_workflow_surface is None:
+    if spec.default_workflow_surface is None:
         raise ValueError("Phase-1 execution binding spec missing default_workflow_surface.")
     return WorkflowPackExecutionBinding(
-        pack_id=ADVISOR_BRIEF_V1_SPEC.pack_id,
-        version=ADVISOR_BRIEF_V1_SPEC.version,
-        task_id=ADVISOR_BRIEF_V1_SPEC.execution_task_id,
-        required_payload_keys=ADVISOR_BRIEF_V1_SPEC.required_payload_keys,
-        default_workflow_surface=ADVISOR_BRIEF_V1_SPEC.default_workflow_surface,
+        pack_id=spec.pack_id,
+        version=spec.version,
+        task_id=spec.execution_task_id,
+        required_payload_keys=spec.required_payload_keys,
+        default_workflow_surface=spec.default_workflow_surface,
     )
 
 
 _WORKFLOW_PACK_EXECUTION_BINDINGS = (
-    _build_execution_binding_from_spec(),
+    _build_execution_binding_from_spec(ADVISOR_BRIEF_V1_SPEC),
+    _build_execution_binding_from_spec(WORKSPACE_RATIONALE_V1_SPEC),
 )
 
 

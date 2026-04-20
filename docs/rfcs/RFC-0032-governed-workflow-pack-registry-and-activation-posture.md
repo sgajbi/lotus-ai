@@ -67,14 +67,16 @@ Completed implementation slices on the current branch:
 8. documentation, repository context, wiki-source, and branch-hygiene updates,
 9. green canonical live proof for the registered `advisor_brief.pack` family through the governed
    `lotus-workbench` -> `lotus-gateway` -> `lotus-ai` path, showing that the registry-backed
-   reference family now executes and reviews truthfully in the real front-office runtime.
+   reference family now executes and reviews truthfully in the real front-office runtime,
+10. owner-grounded onboarding and explicit execution binding for the domain-owned
+    `workspace_rationale.pack` family used by the `lotus-advise` workspace rationale seam.
 
 Still pending before this RFC should be considered fully implemented:
 
 1. broader operator authorization beyond the current bounded caller-policy control-plane posture,
 2. broader rollout posture beyond the current pilot and discovery reference family,
-3. additional pack-family onboarding beyond the current Phase-1 `advisor_brief.pack` reference
-   path and its bounded downstream adoption,
+3. broader downstream proof and operator rollout posture beyond the current Phase-1
+   `advisor_brief.pack` and `workspace_rationale.pack` families,
 4. convergence with the durable run-ledger and review-state model proposed in `RFC-0033`.
 
 ## Requirement Traceability And Evidence

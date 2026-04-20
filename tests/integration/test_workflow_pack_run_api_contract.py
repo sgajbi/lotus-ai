@@ -12,6 +12,7 @@ from tests.support.runtime_settings import override_runtime_settings
 from tests.support.workflow_pack_fixtures import (
     advisor_brief_task_execution_request_json,
     advisor_brief_workflow_pack_execution_request_json,
+    workspace_rationale_workflow_pack_execution_request_json,
 )
 
 
@@ -203,6 +204,28 @@ def test_workflow_pack_execute_route_defaults_workflow_surface_from_binding(
     assert execute_response.status_code == 200
     body = execute_response.json()
     assert body["workflow_pack_run"]["workflow_surface"] == "advisor-brief-workspace"
+
+
+def test_workflow_pack_execute_route_records_workspace_rationale_run(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=workspace_rationale_workflow_pack_execution_request_json(
+            correlation_id="corr-workspace-rationale-pack-001"
+        ),
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    assert body["eligibility"]["allowed"] is True
+    assert body["execution"]["status"] == "COMPLETED"
+    assert body["workflow_pack_run"]["pack_id"] == "workspace_rationale.pack"
+    assert body["workflow_pack_run"]["registration_ref"] == "workspace_rationale.pack@v1"
+    assert body["workflow_pack_run"]["caller_app"] == "lotus-advise"
+    assert body["workflow_pack_run"]["workflow_surface"] == "advisory-workspace-assistant"
+    assert body["workflow_pack_run"]["workflow_authority_owner"] == "lotus-advise"
+    assert body["execution"]["audit"]["workflow_pack_run_id"] == body["workflow_pack_run"]["run_id"]
 
 
 def test_workflow_pack_execute_route_records_failed_run_when_runtime_execution_is_unavailable(

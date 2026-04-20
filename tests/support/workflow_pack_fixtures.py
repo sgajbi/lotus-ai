@@ -120,3 +120,77 @@ def advisor_brief_workflow_pack_execution_request_json(
     if workflow_surface is not None:
         request["workflow_surface"] = workflow_surface
     return request
+
+
+def workspace_rationale_payload(
+    *,
+    workspace_id: str = "aws_001",
+    proposal_status: str = "READY",
+    instruction: str = "Summarize the proposal rationale for an advisor review note.",
+) -> dict[str, object]:
+    return {
+        "workspace": {
+            "workspace_id": workspace_id,
+            "input_mode": "stateless",
+            "requested_by": "advisor_123",
+        },
+        "evaluation_summary": {
+            "status": proposal_status,
+            "impact_summary": {
+                "trade_count": 1,
+                "cash_flow_count": 0,
+            },
+        },
+        "proposal_status": {"value": proposal_status},
+        "instruction": {"text": instruction},
+        "resolved_context": {
+            "portfolio_id": "pf_advisory_01",
+            "as_of": "2026-03-25",
+        },
+    }
+
+
+def workspace_rationale_workflow_pack_execution_request_json(
+    *,
+    correlation_id: str,
+    task_id: str = "explain.v1",
+    workflow_surface: str | None = "advisory-workspace-assistant",
+    environment: str = "DEVELOPMENT",
+    caller_identity_class: str = "INTERNAL_SERVICE",
+    workspace_id: str = "aws_001",
+    proposal_status: str = "READY",
+    instruction: str = "Summarize the proposal rationale for an advisor review note.",
+) -> dict[str, object]:
+    request: dict[str, object] = {
+        "pack_id": "workspace_rationale.pack",
+        "version": "v1",
+        "environment": environment,
+        "caller_identity_class": caller_identity_class,
+        "task_request": {
+            "task_id": task_id,
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-advise",
+                "correlation_id": correlation_id,
+                "tenant_id": "tenant-us-002",
+            },
+            "context": {
+                "summary": (
+                    f"Advisory workspace rationale request for workspace {workspace_id}."
+                ),
+                "payload": workspace_rationale_payload(
+                    workspace_id=workspace_id,
+                    proposal_status=proposal_status,
+                    instruction=instruction,
+                ),
+                "source_refs": [
+                    f"lotus-advise:workspace:{workspace_id}",
+                    "lotus-advise:proposal-decision-summary",
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    }
+    if workflow_surface is not None:
+        request["workflow_surface"] = workflow_surface
+    return request
