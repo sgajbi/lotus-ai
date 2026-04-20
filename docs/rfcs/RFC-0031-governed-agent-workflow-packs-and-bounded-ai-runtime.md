@@ -64,7 +64,8 @@ without becoming an unconstrained agent platform.
 
 ## Implementation Status
 
-This RFC is now partially implemented through one bounded end-to-end workflow-pack path.
+This RFC is now partially implemented through two bounded workflow-pack adoption paths, with one
+governed live canonical proof.
 
 Current branch evidence now spans `lotus-ai`, `lotus-gateway`, and `lotus-workbench` for the
 Phase-1 `advisor_brief.pack` flow:
@@ -135,11 +136,12 @@ Implemented evidence now available in `lotus-ai`:
 
 Evidence that remains intentionally absent because this RFC is only partially implemented:
 
-1. no broader workflow-pack rollout beyond the current Phase-1 advisor-brief execution seam and
-   internal binding registry,
-2. no domain-owned workflow-pack implementation outside the gateway-owned advisor-brief path,
-3. no broad shared Workbench primitive set that covers multiple pack-backed surfaces instead of the
-   current advisor-brief-specific adoption slice.
+1. no broader workflow-pack rollout beyond the current Phase-1 `advisor_brief.pack` and
+   `workspace_rationale.pack` seams plus the internal binding registry,
+2. no governed live canonical proof yet exists for a second downstream workflow-pack family beyond
+   the flagship advisor-brief path,
+3. no broad shared Workbench primitive set yet covers multiple pack-backed surfaces instead of the
+   current advisor-brief-specific live adoption slice.
 
 ## Repository Fit
 

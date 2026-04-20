@@ -134,10 +134,11 @@ Open gaps that remain consistent with this RFC's still-pending scope:
 
 1. operator authorization is now caller-policy-backed for bounded workflow-pack control actions but
    is not yet a broader enterprise entitlement model,
-2. broader activation rollout posture and non-reference workflow-pack families are not yet onboarded,
-3. the current registry and activation evidence is strong for `advisor_brief.pack`, but RFC-0032
-   should not be declared fully complete until at least one additional workflow-pack family proves
-   that the model is reusable beyond the reference path.
+2. broader activation rollout posture beyond the current Phase-1 `advisor_brief.pack` and
+   `workspace_rationale.pack` families is not yet onboarded,
+3. the current registry and activation evidence now proves reuse beyond the reference path, but
+   RFC-0032 still should not be declared fully complete until operator rollout and downstream
+   adoption are broader than the current two-family Phase-1 slice.
 
 ## Why This RFC Exists
 
