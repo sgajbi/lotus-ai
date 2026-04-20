@@ -99,7 +99,11 @@ Implemented on the current branch:
     domain-owned `twr_inspection_support_brief.pack` family consumed by the `lotus-performance`
     TWR inspection supportability flow, including optional `support_brief.md` artifact generation
     and bounded `workflow_pack_run` posture on the inspection response without making the
-    inspection verdict depend on Lotus AI availability.
+    inspection verdict depend on Lotus AI availability, and
+24. the governed canonical TWR inspection validator now proves that same
+    `twr_inspection_support_brief.pack` path live against the current
+    `lotus-performance` -> `lotus-ai` stack, including retrievable `support_brief.md` artifact
+    evidence and bounded workflow-pack run posture.
 
 What is not implemented yet:
 
@@ -134,9 +138,9 @@ Open gaps this RFC is still meant to close:
 
 1. no broad downstream contract family yet carries durable artifact, review-action entitlement, and
    support-evidence linkage for workflow-pack executions beyond the bounded Phase-1 slice,
-2. no governed live canonical proof yet exists for a second downstream review-bearing family beyond
-   the bounded advisor-brief path, even though `workspace_rationale.pack` and
-   `twr_inspection_support_brief.pack` are now implemented and locally proven downstream adopters,
+2. no governed live proof yet exists for the `workspace_rationale.pack` downstream review-bearing
+   family, even though the advisor-brief and `twr_inspection_support_brief.pack` paths are now
+   proven live and `workspace_rationale.pack` remains implemented and locally proven,
 3. no broader shared downstream primitive set yet proves that the durable ledger and shared
    review-state model can be consumed consistently across multiple product surfaces without
    per-surface specialization,

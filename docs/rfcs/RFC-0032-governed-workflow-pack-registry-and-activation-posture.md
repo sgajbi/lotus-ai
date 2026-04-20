@@ -72,7 +72,8 @@ Completed implementation slices on the current branch:
     `workspace_rationale.pack` family used by the `lotus-advise` workspace rationale seam, and
 11. owner-grounded onboarding and explicit execution binding for the domain-owned
     `twr_inspection_support_brief.pack` family used by the `lotus-performance` TWR inspection
-    supportability seam.
+    supportability seam, including governed live validator proof through the
+    `lotus-performance` -> `lotus-ai` path.
 
 Still pending before this RFC should be considered fully implemented:
 

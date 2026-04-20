@@ -64,8 +64,8 @@ without becoming an unconstrained agent platform.
 
 ## Implementation Status
 
-This RFC is now partially implemented through three bounded workflow-pack adoption paths, with one
-governed live canonical proof.
+This RFC is now partially implemented through three bounded workflow-pack adoption paths, with two
+governed live proofs.
 
 Current branch evidence now spans `lotus-ai`, `lotus-gateway`, and `lotus-workbench` for the
 Phase-1 `advisor_brief.pack` flow:
@@ -81,7 +81,11 @@ Phase-1 `advisor_brief.pack` flow:
 5. the governed canonical front-office live validation lane now proves that Phase-1 path end to
    end through `npm run live:validate` in `lotus-workbench`, including portfolio-panel truth plus
    advisor-brief workflow-pack `ACCEPT`, `REVISE`, and `SUPERSEDE` proof against the live
-   `lotus-workbench` -> `lotus-gateway` -> `lotus-ai` stack.
+   `lotus-workbench` -> `lotus-gateway` -> `lotus-ai` stack,
+6. the governed canonical TWR inspection validator in `lotus-performance` now also proves the
+   domain-owned `twr_inspection_support_brief.pack` path live against the current
+   `lotus-performance` -> `lotus-ai` stack, including bounded `workflow_pack_run` posture and
+   retrievable `support_brief.md` artifact evidence.
 
 Still pending under this broader RFC:
 
@@ -140,9 +144,9 @@ Evidence that remains intentionally absent because this RFC is only partially im
 1. no broader workflow-pack rollout beyond the current Phase-1 `advisor_brief.pack`,
    `workspace_rationale.pack`, and `twr_inspection_support_brief.pack` seams plus the internal
    binding registry,
-2. no governed live canonical proof yet exists for a second downstream workflow-pack family beyond
-   the flagship advisor-brief path, even though the additional `workspace_rationale.pack` and
-   `twr_inspection_support_brief.pack` adopters are now implemented and locally proven,
+2. no governed live proof yet exists for the `workspace_rationale.pack` downstream family, even
+   though the advisor-brief and `twr_inspection_support_brief.pack` paths are now proven live and
+   `workspace_rationale.pack` remains implemented and locally proven,
 3. no broad shared Workbench primitive set yet covers multiple pack-backed surfaces instead of the
    current advisor-brief-specific live adoption slice.
 
