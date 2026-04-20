@@ -100,7 +100,9 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 5. `/platform/workflow-packs/runs/{run_id}/review-actions` records bounded actor-attributed review transitions without taking consequence-bearing workflow authority,
 6. `lotus-gateway` now uses that same bounded ledger seam to record advisor-brief review actions and returns refreshed workflow-pack posture through its advisor-brief contract without turning `lotus-ai` into the business-workflow owner,
 7. `lotus-workbench` now has a typed client seam for the downstream advisor-brief review-action route, while UI-triggered business authorization remains a separate future slice,
-8. the current slice now executes the Phase-1 advisor-brief path through `/platform/workflow-packs/execute`, while broader multi-pack runtime rollout remains future work,
+8. the current Phase-1 slice now has governed live downstream proof for `advisor_brief.pack`,
+   `workspace_rationale.pack`, and `twr_inspection_support_brief.pack`, while broader multi-pack
+   runtime rollout and more generalized downstream primitives remain future work,
 9. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode` and `workflow_pack_run_store` so operators can distinguish process-local ledger posture from SQL-backed durable ledger posture,
 10. the embedded `workflow_pack_runtime` block now also carries bounded review provenance on executable-pack latest ready and latest actionable run pointers plus the cross-pack attention queue, and now also carries bounded artifact and evidence linkage summaries for those same runtime-status items, so estate-level triage does not need a raw ledger fetch just to understand latest review movement or missing provenance posture,
 11. pack-backed `503` degraded-state failures now preflight the workflow-pack run store before task execution and audit persistence, so callers should not expect new audit records or partial run-side effects when the run-ledger store is not ready,
