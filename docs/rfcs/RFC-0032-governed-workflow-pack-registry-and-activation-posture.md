@@ -64,7 +64,10 @@ Completed implementation slices on the current branch:
    evidence for bounded operator actions,
 7. readiness-aware degradation for registry-backed workflow-pack routes so unmigrated SQL-backed
    registry posture returns explicit service-unavailable behavior instead of surfacing raw store failures,
-8. documentation, repository context, wiki-source, and branch-hygiene updates.
+8. documentation, repository context, wiki-source, and branch-hygiene updates,
+9. green canonical live proof for the registered `advisor_brief.pack` family through the governed
+   `lotus-workbench` -> `lotus-gateway` -> `lotus-ai` path, showing that the registry-backed
+   reference family now executes and reviews truthfully in the real front-office runtime.
 
 Still pending before this RFC should be considered fully implemented:
 

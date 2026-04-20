@@ -76,7 +76,11 @@ Phase-1 `advisor_brief.pack` flow:
 3. `lotus-gateway` now consumes that bounded runtime posture, records bounded review actions, and
    returns refreshed workflow-pack run posture on the advisor-brief contract,
 4. `lotus-workbench` now renders workflow-pack provenance and lineage-aware review posture for the
-   advisor-brief flow, including replacement-run handling for `REVISE` and `SUPERSEDE`.
+   advisor-brief flow, including replacement-run handling for `REVISE` and `SUPERSEDE`,
+5. the governed canonical front-office live validation lane now proves that Phase-1 path end to
+   end through `npm run live:validate` in `lotus-workbench`, including portfolio-panel truth plus
+   advisor-brief workflow-pack `ACCEPT`, `REVISE`, and `SUPERSEDE` proof against the live
+   `lotus-workbench` -> `lotus-gateway` -> `lotus-ai` stack.
 
 Still pending under this broader RFC:
 
@@ -122,7 +126,10 @@ Implemented evidence now available in `lotus-ai`:
    gateway consumes the bounded workflow-pack consumer and operator surfaces and Workbench renders
    workflow-pack review posture, provenance, and replacement-lineage handling through the existing
    advisor-brief surface,
-8. operator and integration guidance in `docs/guides/integration-guide.md`,
+8. governed live proof from `lotus-workbench/output/playwright/live-canonical/live-validation-summary.json`,
+   which now records the canonical RFC-0076 front-office contract identity, panel evidence, and
+   bounded workflow-pack review-chain proof for the advisor-brief path,
+9. operator and integration guidance in `docs/guides/integration-guide.md`,
    `docs/guides/workflow-pack-owner-onboarding.md`, `docs/runbooks/service-operations.md`, and
    `wiki/`.
 

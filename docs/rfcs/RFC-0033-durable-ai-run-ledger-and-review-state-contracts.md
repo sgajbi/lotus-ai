@@ -95,8 +95,8 @@ What is not implemented yet:
 2. consequence-bearing downstream review integration flows and allowed-action shaping outside the
    bounded advisor-brief path,
 3. broader workflow-pack runtime adoption beyond the current Phase-1 advisor-brief recording path,
-4. broader live or canonical UI proof beyond the focused repo-native contract evidence now recorded
-   on the current branches.
+4. at least one additional non-reference workflow-pack adoption slice beyond the current
+   advisor-brief path so the ledger model is proven reusable outside the flagship surface.
 
 This RFC now correctly moves to `In Progress`, but it should not be treated as complete until downstream contract adoption, artifact and evidence linkage expansion, and broader runtime integration are implemented and reflected in the RFC, RFC index, and branch evidence together.
 
@@ -117,12 +117,14 @@ Evidence the prerequisite layer is real:
 
 Open gaps this RFC is still meant to close:
 
-1. no durable run identity beyond current request and control-plane surfaces,
-2. no shared run-status and review-status contract family exposed for product consumption,
-3. no broad downstream contract family yet carries durable artifact, review-action entitlement, and
+1. no broad downstream contract family yet carries durable artifact, review-action entitlement, and
    support-evidence linkage for workflow-pack executions beyond the bounded Phase-1 slice,
-4. no gateway or Workbench contract proving that runtime state and review state remain separate in
-   user-facing flows.
+2. no broader consequence-bearing downstream review integration flow exists outside the bounded
+   advisor-brief path,
+3. no additional workflow-pack family yet proves that the durable ledger and shared review-state
+   model are reusable beyond the flagship advisor-brief implementation,
+4. the current green canonical live proof covers the advisor-brief path only and should not be
+   mistaken for broader pack-family closure.
 
 ## Why This RFC Exists
 
@@ -845,7 +847,8 @@ Current branch status:
 9. the bounded workflow-pack operator profile now also carries one shared provenance summary for run-level support triage,
 10. the workflow-pack run detail route now also carries that same bounded provenance summary,
 11. the bounded workflow-pack consumer view now also carries that same shared provenance summary for downstream composition layers, and
-12. consequence-bearing meaning, user-entitlement shaping for review actions, and broader non-reference workflow-pack runtime adoption remain future slices.
+12. the governed canonical `lotus-workbench` live-validation lane now proves this Phase-1 advisor-brief path end to end, including `ACCEPT`, `REVISE`, and `SUPERSEDE` review proof plus lineage-aware Workbench rendering through the live `lotus-workbench` -> `lotus-gateway` -> `lotus-ai` stack, and
+13. consequence-bearing meaning, user-entitlement shaping for review actions, and broader non-reference workflow-pack runtime adoption remain future slices.
 
 This branch now also emits bounded ledger-compatible `allowed_review_actions` on run descriptors.
 That posture is intentionally narrower than downstream business authorization: it tells consumers
