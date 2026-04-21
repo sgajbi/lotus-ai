@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
 from app.services.task_executor import execute_task
+from app.services.workflow_pack_run_ledger import WorkflowPackRunStoreUnavailableError
 
 router = APIRouter(prefix="/ai/tasks", tags=["tasks"])
 
@@ -24,8 +25,14 @@ router = APIRouter(prefix="/ai/tasks", tags=["tasks"])
         403: {"description": "Caller is not authorized for the protected task execution path."},
         404: {"description": "Unknown task id."},
         409: {"description": "Task disabled or request conflicts with task policy."},
+        503: {
+            "description": "Workflow-pack run store is not ready for this pack-backed task path."
+        },
         500: {"description": "Unexpected server error."},
     },
 )
 async def execute_task_route(request: TaskExecutionRequest) -> TaskExecutionResponse:
-    return execute_task(request)
+    try:
+        return execute_task(request)
+    except WorkflowPackRunStoreUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc

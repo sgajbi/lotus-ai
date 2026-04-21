@@ -159,3 +159,13 @@ def test_authorize_request_blocks_provider_control_for_unknown_caller() -> None:
 
     assert decision.allowed is False
     assert decision.outcome == AuthorizationOutcome.BLOCKED_UNKNOWN_CALLER
+
+
+def test_authorize_request_blocks_async_control_without_tenant_noise_for_non_operator() -> None:
+    decision = authorize_request(
+        caller_app="lotus-manage",
+        capability_type=AuthorizationCapabilityType.ASYNC_CONTROL,
+    )
+
+    assert decision.allowed is False
+    assert decision.outcome == AuthorizationOutcome.BLOCKED_ASYNC_CONTROL_NOT_ALLOWED

@@ -401,3 +401,106 @@ class EvaluationCaseResultModel(Base):
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
     run: Mapped["EvaluationRunModel"] = relationship(back_populates="case_results")
+
+
+class WorkflowPackRunModel(Base):
+    __tablename__ = "workflow_pack_runs"
+
+    run_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    pack_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    pack_family: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    pack_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    registration_ref: Mapped[str] = mapped_column(String(256), nullable=False)
+    task_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    request_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    caller_app: Mapped[str] = mapped_column(String(128), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    workflow_surface: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    workflow_authority_owner: Mapped[str] = mapped_column(String(128), nullable=False)
+    runtime_state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    review_required: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    provider_mode: Mapped[str] = mapped_column(String(64), nullable=False)
+    stubbed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    output_preview: Mapped[str] = mapped_column(Text, nullable=False)
+    structured_output_keys: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    evidence_descriptors: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
+    artifact_refs: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
+    supersedes_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    superseded_by_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    completed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    events: Mapped[list["WorkflowPackRunEventModel"]] = relationship(back_populates="run")
+
+
+class WorkflowPackRunEventModel(Base):
+    __tablename__ = "workflow_pack_run_events"
+
+    event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("workflow_pack_runs.run_id"), nullable=False, index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    runtime_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    actor: Mapped[str] = mapped_column(String(128), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    run: Mapped["WorkflowPackRunModel"] = relationship(back_populates="events")
+
+
+class WorkflowPackRegistrationModel(Base):
+    __tablename__ = "workflow_pack_registrations"
+
+    pack_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    version: Mapped[str] = mapped_column(String(64), primary_key=True)
+    pack_family: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    owner_repository: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    owner_service: Mapped[str] = mapped_column(String(128), nullable=False)
+    truth_owner_services: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    primary_use_case: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    workflow_authority_owner: Mapped[str] = mapped_column(String(128), nullable=False)
+    default_execution_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    definition_ref: Mapped[str] = mapped_column(Text, nullable=False)
+    definition_refs: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
+    compatibility_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    registration_status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    activation_state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    registered_definition_digest: Mapped[str] = mapped_column(String(128), nullable=False)
+    supported_callers: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    supported_identity_classes: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    supported_environments: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    tenant_scope: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    surface_scope: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    default_rollout_stage: Mapped[str] = mapped_column(String(64), nullable=False)
+    pause_state: Mapped[str] = mapped_column(String(64), nullable=False)
+    supersedes: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    superseded_by: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    registered_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    registered_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    last_activated_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_changed_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    status_summary: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+
+
+class WorkflowPackControlEventModel(Base):
+    __tablename__ = "workflow_pack_control_events"
+
+    event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    pack_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    version: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    action_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    requested_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    prior_registration_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    resulting_registration_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    prior_activation_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    resulting_activation_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    caller_app: Mapped[str] = mapped_column(String(128), nullable=False)
+    authorization_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

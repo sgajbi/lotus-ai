@@ -36,6 +36,7 @@ class TaskInputMode(str, Enum):
 class TaskExecutionStatus(str, Enum):
     COMPLETED = "COMPLETED"
     REJECTED = "REJECTED"
+    FAILED = "FAILED"
 
 
 class CapabilityDescriptor(BaseModel):
@@ -93,6 +94,13 @@ class TaskExecutionRequest(BaseModel):
 
 class TaskAuditMetadata(BaseModel):
     request_id: str = Field(description="Generated task execution request identifier.")
+    workflow_pack_run_id: str | None = Field(
+        default=None,
+        description=(
+            "Optional workflow-pack run identifier when the task execution is bound to an "
+            "explicit or inferred workflow-pack execution path."
+        ),
+    )
     task_id: str = Field(description="Task identifier evaluated for this execution.")
     output_label: OutputLabel = Field(description="Output label attached to the execution.")
     prompt_version: str = Field(description="Prompt version associated with the execution.")

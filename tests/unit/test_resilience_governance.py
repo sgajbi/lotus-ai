@@ -149,3 +149,37 @@ def test_resilience_drill_evidence_marks_runtime_backed_provider_and_retrieval_a
         and item.status is ResilienceDrillEvidenceState.READY
         for item in evidence.items
     )
+
+
+def test_resilience_drill_evidence_marks_provider_and_retrieval_as_foundation_staged_when_only_staged(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.resilience_drill_evidence.build_provider_approval_gate_summary",
+        lambda: type(
+            "ProviderApprovalGate",
+            (),
+            {"evidence_state": EvaluationApprovalEvidenceState.STAGED_ONLY},
+        )(),
+    )
+    monkeypatch.setattr(
+        "app.services.resilience_drill_evidence.build_retrieval_approval_gate_summary",
+        lambda: type(
+            "RetrievalApprovalGate",
+            (),
+            {"evidence_state": EvaluationApprovalEvidenceState.NO_EVIDENCE},
+        )(),
+    )
+
+    evidence = build_resilience_drill_evidence()
+
+    assert any(
+        item.drill_id == "provider_recovery_drill"
+        and item.status is ResilienceDrillEvidenceState.FOUNDATION_STAGED
+        for item in evidence.items
+    )
+    assert any(
+        item.drill_id == "retrieval_recovery_drill"
+        and item.status is ResilienceDrillEvidenceState.FOUNDATION_STAGED
+        for item in evidence.items
+    )

@@ -57,6 +57,7 @@ from app.contracts.use_cases import (
     FirstUseCaseGovernanceStatusResponse,
     FirstUseCaseRuntimeStatusResponse,
 )
+from app.contracts.workflow_packs import WorkflowPackRuntimeStatusSummaryResponse
 
 
 class PlatformRuntimeStatusResponse(BaseModel):
@@ -71,6 +72,10 @@ class PlatformRuntimeStatusResponse(BaseModel):
     safety_mode: str = Field(description="Current safety policy mode.")
     prompt_store_mode: str = Field(description="Current prompt registry store mode.")
     access_control_store_mode: str = Field(description="Current caller policy store mode.")
+    workflow_pack_registry_store_mode: str = Field(
+        description="Current workflow-pack registry store mode."
+    )
+    workflow_pack_run_store_mode: str = Field(description="Current workflow-pack run store mode.")
     artifact_store_mode: str = Field(description="Current artifact metadata store mode.")
     artifact_object_store_mode: str = Field(description="Current artifact payload store mode.")
     async_runtime: AsyncRuntimeStatusResponse = Field(
@@ -177,6 +182,15 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     retrieval_store: StoreRuntimeStatusDescriptor = Field(
         description="Current retrieval metadata runtime posture."
+    )
+    workflow_pack_registry_store: StoreRuntimeStatusDescriptor = Field(
+        description="Current workflow-pack registry and control-history runtime posture."
+    )
+    workflow_pack_run_store: StoreRuntimeStatusDescriptor = Field(
+        description="Current workflow-pack run-ledger runtime posture."
+    )
+    workflow_pack_runtime: WorkflowPackRuntimeStatusSummaryResponse = Field(
+        description="Current estate-level workflow-pack registration versus explicit execution-readiness posture."
     )
     database_configured: bool = Field(
         description="Whether a database URL is configured for durable runtime components."

@@ -84,8 +84,9 @@ For more rollout-sensitive integrations, also inspect:
 1. `/platform/tasks/runtime-status`
 2. `/platform/access-control/caller-policies`
 3. `/platform/capability-packs`
-4. `/platform/use-cases/first-production-use-case`
-5. `/platform/app-capability-rollouts`
+4. `/platform/workflow-packs/registry`
+5. `/platform/use-cases/first-production-use-case`
+6. `/platform/app-capability-rollouts`
 
 ## Gateway-First Rule
 
@@ -134,9 +135,10 @@ They should also inspect retrieval posture directly when retrieval-backed behavi
 `lotus-ai` also exposes higher-level adoption surfaces:
 
 1. `/platform/capability-packs`
-2. `/platform/use-cases/first-production-use-case`
-3. `/platform/use-cases/onboarding-template`
-4. `/platform/app-capability-rollouts`
+2. `/platform/workflow-packs/registry`
+3. `/platform/use-cases/first-production-use-case`
+4. `/platform/use-cases/onboarding-template`
+5. `/platform/app-capability-rollouts`
 
 These are useful when the integration work is about productized downstream rollout rather than only
 calling one task endpoint.
@@ -145,11 +147,22 @@ The practical sequence for a new downstream adoption is:
 
 1. inspect `/platform/capability-packs`
 2. inspect the selected pack detail and adoption template
-3. inspect `/platform/use-cases/onboarding-template`
-4. inspect `/platform/use-cases/first-production-use-case`
-5. inspect `/platform/app-capability-rollouts`
+3. inspect `/platform/workflow-packs/registry` when the pack is intended to become a workflow-bearing runtime family
+4. evaluate `/platform/workflow-packs/eligibility/evaluate` with the caller and surface posture that will actually invoke the pack
+5. inspect `/platform/workflow-packs/control-history` when operator pause, resume, deprecate, or retire posture matters
+6. inspect `/platform/use-cases/onboarding-template`
+7. inspect `/platform/use-cases/first-production-use-case`
+8. inspect `/platform/app-capability-rollouts`
 
 That sequence keeps app-facing productization separate from low-level task execution.
+
+For workflow-pack onboarding specifically, use `docs/guides/workflow-pack-owner-onboarding.md` as
+the owner-facing procedure and do one more truth check before treating a registration as real:
+
+1. `owner_repository` should match the repo that owns the workflow-bearing code path,
+2. `definition_ref` should point at a real owner artifact, not a placeholder design note,
+3. `definition_refs` should include enough owner-repo evidence to cover contract, service or router, and regression tests,
+4. optional cross-repo RFC or UI references are supporting evidence, not a substitute for owner-repo truth.
 
 ## Provider and Safety Expectations
 
@@ -174,6 +187,7 @@ When the integration depends on blocked, redacted, or label-sensitive output han
 
 - `docs/guides/integration-guide.md`
 - `docs/guides/task-execution-contract.md`
+- `docs/guides/workflow-pack-owner-onboarding.md`
 - `docs/guides/prompt-registry-and-audit.md`
 - `docs/guides/retrieval-and-vector-store.md`
 - `docs/guides/lotus-performance-first-use-case.md`
@@ -183,4 +197,5 @@ When the integration depends on blocked, redacted, or label-sensitive output han
 
 1. use [Platform Surfaces](./Platform-Surfaces.md) for the grouped public route map,
 2. use [Security and Governance](./Security-and-Governance.md) for the boundary rules that constrain integrations,
-3. use [Troubleshooting](./Troubleshooting.md) when a runtime mode or provider path is not behaving as expected.
+3. use [Operations Runbook](./Operations-Runbook.md) when workflow-pack rollout or operator control posture needs a live check,
+4. use [Troubleshooting](./Troubleshooting.md) when a runtime mode or provider path is not behaving as expected.

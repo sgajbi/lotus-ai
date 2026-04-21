@@ -20,7 +20,8 @@ authority out of the services that already own those domains.
 5. runtime-backed evaluation and approval-gate posture,
 6. async runtime and worker-backed job execution for governed AI work,
 7. provider policy, quota, budget, and degradation control surfaces,
-8. AI-specific observability, evidence, and control-plane APIs.
+8. workflow-pack registry and activation-control discovery surfaces,
+9. AI-specific observability, evidence, and control-plane APIs.
 
 `lotus-ai` does not own:
 
@@ -55,7 +56,10 @@ Important posture limits:
 2. the bounded capability catalog is broader than the current live-provider allowlist,
 3. retrieval is governed and bounded rather than a general search platform,
 4. prompt bodies remain repository-managed even though runtime prompt selection is durable,
-5. the service should be treated as a governed capability layer, not a business-domain authority.
+5. workflow-pack registry records are control-plane metadata, not a second editable home for workflow logic,
+6. workflow-pack registrations must point to real owning-repository artifacts rather than placeholder definitions in `lotus-ai`,
+7. workflow-pack registry and control state can now run either in-memory or through a SQL-backed durable store, but broader workflow-pack runtime rollout is still intentionally narrow,
+8. the service should be treated as a governed capability layer, not a business-domain authority.
 
 ## Architectural Shape
 
@@ -79,6 +83,8 @@ Core areas:
    evaluation inventory, runtime execution, and approval-gate evidence.
 8. `src/app/routers/`
    public API surfaces.
+9. `src/app/services/workflow_pack_registry.py`
+   workflow-pack registration catalog, owner-artifact references, and validation seams.
 
 Task execution is intentionally explicit. A request flows through:
 
@@ -187,6 +193,7 @@ The core integration references are:
 
 - `docs/guides/task-execution-contract.md`
 - `docs/guides/integration-guide.md`
+- `docs/guides/workflow-pack-owner-onboarding.md`
 - `docs/guides/prompt-registry-and-audit.md`
 - `docs/guides/retrieval-and-vector-store.md`
 
@@ -214,6 +221,17 @@ Key health and operator surfaces:
 - `/platform/safety/runtime-status`
 - `/platform/evals/runtime-status`
 - `/platform/async/governance-status`
+- `/platform/workflow-packs/registry`
+- `/platform/workflow-packs/eligibility/evaluate`
+- `/platform/workflow-packs/control-history`
+- `/platform/workflow-packs/runs`
+
+Workflow-pack registry records should be read as control-plane onboarding truth:
+
+1. the primary `definition_ref` must resolve to a real owner artifact,
+2. `definition_refs` show the contract, service, router, tests, and optional RFC or UI evidence used to justify the registration,
+3. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, activation state and control history are restart-safe only after migrations are applied and `/platform/runtime-status` reports the embedded registry store as `READY`,
+4. `lotus-ai` tracks those references for governance, but the implementation remains owned by the downstream repository.
 
 Operational guidance lives in:
 

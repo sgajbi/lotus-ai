@@ -48,7 +48,7 @@ The service exposes a broad platform surface. The main groups are:
    runtime, caller-policy catalog, and governance posture for caller authorization
 10. task-runtime inspection
    runtime status plus execution, evidence, and retrieval summaries
-11. capability packs, app-capability rollouts, and first-use-case surfaces
+11. capability packs, workflow packs, app-capability rollouts, and first-use-case surfaces
    adoption and rollout governance rather than direct execution
 
 For the grouped route map, use [Platform Surfaces](./Platform-Surfaces.md).
@@ -79,6 +79,31 @@ Good examples:
 5. evaluation posture
    - `/platform/evals/runtime-status`
    - `/platform/evals/runs`
+6. workflow-pack rollout posture
+   - `/platform/workflow-packs/registry`
+   - `/platform/workflow-packs/eligibility/evaluate`
+   - `/platform/workflow-packs/control-history`
+
+## Workflow-Pack Operator Checks
+
+When a downstream team is trying to register, pause, resume, deprecate, or retire a workflow pack,
+do not treat the registry row by itself as sufficient proof.
+
+Use this sequence:
+
+1. inspect `/platform/workflow-packs/registry`,
+2. inspect the specific workflow-pack detail route for the pack and version in question,
+3. evaluate `/platform/workflow-packs/eligibility/evaluate` with the real caller and surface posture,
+4. inspect `/platform/workflow-packs/control-history` when rollout state changed or operator action is disputed,
+5. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block in `/platform/runtime-status` reports `READY` before treating activation state and control history as restart-safe truth,
+6. confirm `definition_ref` and `definition_refs` still resolve to the owning repository artifacts rather than placeholder notes,
+7. when the issue is pack execution or review backlog rather than registration posture, inspect `/platform/workflow-packs/runs` and the embedded `workflow_pack_runtime` block in `/platform/runtime-status`,
+8. if the embedded `workflow_pack_run_store` block is not `READY`, treat pack-backed `POST /ai/tasks/execute` and `POST /platform/workflow-packs/execute` failures as preflight-blocked degraded-state signals rather than as requests that partially executed and then failed later,
+9. when reading the embedded workflow-pack attention queue, treat `queue_depth` as the full actionable backlog and `items` as only the newest bounded sample up to `queue_limit`.
+
+The owner-facing source for that procedure is:
+
+- `docs/guides/workflow-pack-owner-onboarding.md`
 
 ## Readiness Semantics
 
@@ -147,6 +172,8 @@ detail:
 2. `/platform/access-control/runtime-status`
 3. `/platform/evals/runtime-status`
 4. `/platform/async/runtime-status`
+5. `/platform/workflow-packs/control-history`
+6. `/platform/workflow-packs/runs`
 
 ## Detailed Runbook Sources
 

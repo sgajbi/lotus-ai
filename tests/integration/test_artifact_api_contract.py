@@ -22,6 +22,7 @@ def test_artifact_runtime_status_route(client: TestClient) -> None:
     assert body["metadata_store"]["status"] == "READY"
     assert body["object_store"]["status"] == "READY"
     assert "evaluation" in body["supported_domains"]
+    assert "workflow_pack" in body["supported_domains"]
 
 
 def test_artifact_catalog_and_governance_routes(client: TestClient) -> None:

@@ -23,7 +23,7 @@ def test_artifact_runtime_status_reports_memory_foundation_posture() -> None:
     assert status.object_store.durable is False
     assert status.artifact_count == 0
     assert "evaluation" in status.supported_domains
-    assert "Evaluation, async, observability, and retrieval" in status.status_summary[1]
+    assert "workflow-pack runtime" in status.status_summary[1]
 
 
 def test_artifact_runtime_status_reports_sql_and_filesystem_posture(tmp_path: Path) -> None:

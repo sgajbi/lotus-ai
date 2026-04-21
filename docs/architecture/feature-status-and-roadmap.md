@@ -14,7 +14,8 @@ This document is the quickest way to understand what `lotus-ai` supports today, 
 6. durable async execution with dedicated worker and queue support,
 7. caller identity and tenant-aware authorization controls,
 8. audit, evidence, and operator-facing governance surfaces,
-9. governed artifact metadata and payload-store foundation.
+9. governed artifact metadata and payload-store foundation,
+10. workflow-pack registry, eligibility, and operator-control foundations for workflow-bearing AI paths.
 
 The service is no longer only a documentation skeleton. It has real runtime control planes and durable platform state. It is still in a foundation phase because some important production-support features are intentionally deferred.
 
@@ -126,6 +127,24 @@ Supported now:
 5. authorization outcome persistence in audit, evidence, and control history,
 6. access-control runtime, activation, runbook, and governance surfaces.
 
+### Workflow-Pack Control Plane
+
+Supported now:
+
+1. workflow-pack registry catalog and detail surfaces,
+2. explicit eligibility evaluation over caller, environment, tenant, and workflow-surface posture,
+3. bounded operator control actions for pause, resume, deprecate, and retire,
+4. structured owner-artifact references that tie registry records back to real downstream repositories,
+5. deny-by-default behavior when registration truth or activation posture is missing.
+
+Important limitation:
+
+1. this control plane does not execute workflow logic by itself,
+2. workflow-pack registry activation state and control history can now run durably through the SQL-backed registry store, the registry inspection surfaces now also expose bounded explicit execution-binding metadata for implemented pack versions, and `/platform/runtime-status` now distinguishes cataloged workflow-pack registrations from the subset that are explicitly executable through lotus-ai plus the subset that remain review-gated by registered execution mode, but broader workflow-pack runtime adoption is still incomplete,
+3. workflow-pack run ledger durability now exists for Phase-1 recorded runs, bounded review transitions are recorded durably, an explicit workflow-pack execution seam and reusable binding registry now exist for the Phase-1 advisor-brief path, registration records remain the source of caller and workflow-surface scope while bindings stay limited to task-shape truth and are validated through the registry path, one shared internal Phase-1 advisor-brief spec now grounds both registry seed metadata and execution-binding metadata, run descriptors emit bounded `allowed_review_actions` plus bounded `review_summary` provenance, Phase-1 advisor-brief runs now carry governed workflow-pack artifact refs for bounded output-summary review, bounded operator-profile inspection is now available for run-level supportability diagnosis, a shared supportability seam now grounds both operator-profile posture and estate-level activity posture, a bounded consumer-view contract is now available from lotus-ai and now also carries one shared bounded provenance summary for linked artifact and evidence posture, and the estate-level platform runtime surface now reports both how many registered workflow-pack versions are truly executable through the explicit runtime path, a bounded workflow-pack run summary covering review backlog, accepted posture, historical supersession, and action-required run state, per-pack activity plus supportability counts for executable workflow-pack versions including direct latest-ready and latest-action-required run pointers plus bounded review provenance and bounded artifact or evidence linkage summaries, and a bounded cross-pack attention queue for the newest actionable runs now also carrying review provenance and bounded artifact or evidence linkage summaries, but broader workflow-pack runtime adoption and downstream contract consumption are still incomplete,
+4. no default-version resolution or broad production activation exists yet,
+5. downstream owner repositories still have to carry the real workflow-bearing implementation and tests.
+
 ## Intentionally Limited or Not Yet Live
 
 These areas are important because they are visible in the platform shape, but not fully delivered yet.
@@ -206,6 +225,9 @@ The next RFCs now identified in the repo describe the expected post-foundation s
 7. `RFC-0028` relationship manager briefing agent for the Lotus ecosystem
 8. `RFC-0029` portfolio situation room agent
 9. `RFC-0030` client mandate integrity and action orchestration
+10. `RFC-0031` governed agent workflow packs and bounded AI runtime
+11. `RFC-0032` governed workflow-pack registry and activation posture
+12. `RFC-0033` durable AI run ledger and review-state contracts
 
 Current status against that sequence:
 
@@ -218,6 +240,9 @@ Current status against that sequence:
 7. `RFC-0028` is now drafted as the first cross-domain agentic front-office feature, using governed domain APIs as typed tools so `lotus-ai` can assemble banker-ready briefings and next-best-action suggestions without taking ownership of portfolio, analytics, workflow, or reporting truth.
 8. `RFC-0029` is now drafted as the first persistent case-based cross-domain workflow, turning a material portfolio event into a governed Situation Room with specialist views, coordinator synthesis, and closure discipline rather than a one-shot summary.
 9. `RFC-0030` is now drafted as the most banking-grade agentic control concept in the current roadmap, focusing on client relationship integrity across mandate, risk, servicing, workflow, proposal, and evidence posture rather than on narrative assistance alone.
+10. `RFC-0031` is now in progress through the shared workflow-pack direction, reference-family posture, and durable registry-control foundation, but the broader bounded runtime is not implemented end to end yet.
+11. `RFC-0032` is now in progress through registry, eligibility, onboarding, bounded operator-control slices, and migration-backed durable registry state for `advisor_brief.pack`; broader rollout posture and stronger enterprise authorization remain future work.
+12. `RFC-0033` is now in progress through run-ledger, durable-storage, explicit Phase-1 execution, bounded review-transition, bounded next-action contract, bounded consumer-view, and first downstream adoption slices, with contract, store, inspection, actor-attributed review actions, ledger-compatible `allowed_review_actions`, consumer-view grouping, explicit advisor-brief workflow-pack execution, gateway contract shaping, gateway review-action forwarding, and Workbench supportability plus client adoption in place; broader runtime rollout and wider downstream adoption remain future work.
 
 The previous likely feature areas are now implemented:
 

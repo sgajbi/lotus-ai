@@ -73,6 +73,15 @@
 - Safety runbook readiness: /platform/safety/runbook-readiness
 - Safety governance status: /platform/safety/governance-status
 - Retrieval runtime status: /platform/retrieval/runtime-status
+- Workflow-pack registry: /platform/workflow-packs/registry
+- Workflow-pack registration detail: /platform/workflow-packs/registry/{pack_id}/{version}
+- Workflow-pack eligibility evaluation: /platform/workflow-packs/eligibility/evaluate
+- Workflow-pack control history: /platform/workflow-packs/control-history
+- Workflow-pack control actions: /platform/workflow-packs/control-actions
+- Workflow-pack run catalog: /platform/workflow-packs/runs
+- Workflow-pack run detail: /platform/workflow-packs/runs/{run_id}
+- Workflow-pack run consumer view: /platform/workflow-packs/runs/{run_id}/consumer-view
+- Workflow-pack run review actions: /platform/workflow-packs/runs/{run_id}/review-actions
 - First production use-case contract: /platform/use-cases/first-production-use-case
 - First production use-case readiness: /platform/use-cases/first-production-use-case/readiness
 - First production use-case runbook readiness: /platform/use-cases/first-production-use-case/runbook-readiness
@@ -100,11 +109,16 @@ Expected operator flow for SQL-backed stores:
 2. verify `GET /platform/runtime-status`
 3. confirm evaluation runtime posture in the embedded evaluation summary
 4. confirm prompt runtime selection in the embedded prompt runtime summary
-5. verify `GET /platform/safety/runtime-status`
-6. verify `GET /platform/safety/evidence-readiness` when runtime safety approval posture matters
-7. verify `GET /platform/safety/governance-status` when runtime safety rollout posture matters
-8. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
-9. only then proceed with rollout if readiness is `READY`
+5. confirm the embedded `workflow_pack_run_store` block reports the expected mode and readiness when workflow-pack run durability is enabled
+6. when workflow-pack runtime triage matters, inspect the embedded `workflow_pack_runtime` block for latest ready and latest actionable run pointers plus bounded review provenance and bounded artifact or evidence linkage summaries before pivoting into the full ledger
+7. verify `GET /platform/workflow-packs/runs` when workflow-pack run persistence is part of the rollout slice
+8. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block also reports `READY` before treating workflow-pack activation state and control history as restart-safe truth
+9. verify `GET /platform/workflow-packs/control-history` when registry durability is part of the rollout slice
+10. verify `GET /platform/safety/runtime-status`
+11. verify `GET /platform/safety/evidence-readiness` when runtime safety approval posture matters
+12. verify `GET /platform/safety/governance-status` when runtime safety rollout posture matters
+13. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
+14. only then proceed with rollout if readiness is `READY`
 
 ## Resilience Governance
 
@@ -198,6 +212,38 @@ Before any broader async activation slice:
 6. confirm retrieval indexing remains the only runtime-backed async consumer unless a broader rollout slice has been explicitly approved
 7. confirm observability, replay, escalation, and incident procedures are documented and approved
 8. only then proceed with any activation rollout review
+
+## Workflow-Pack Governance Review
+
+Before treating any workflow-pack-enabled path as operator-ready:
+
+1. inspect `GET /platform/workflow-packs/registry` for the current registered-versus-discovered posture
+2. inspect `GET /platform/workflow-packs/registry/{pack_id}/{version}` to confirm `owner_repository`,
+   `workflow_authority_owner`, `definition_ref`, and `definition_refs` all point to real owner artifacts
+3. treat missing or vague owner-artifact references as a registration-quality failure, not as harmless metadata drift
+4. evaluate `POST /platform/workflow-packs/eligibility/evaluate` using the real caller app,
+   identity class, environment, tenant, and workflow surface that will request the pack
+5. inspect `GET /platform/workflow-packs/control-history` before assuming a pack is currently active,
+   especially when pilot, paused, deprecated, or retired posture might have changed recently
+6. apply `POST /platform/workflow-packs/control-actions` only with an explicit operator reason and a
+   caller authorized to act on behalf of the platform control plane through the shared caller-policy registry
+7. inspect the recorded `authorization` block on workflow-pack control events before treating a
+   pause, resume, deprecate, or retire action as audit-complete, especially after policy changes or store migrations
+8. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, treat the embedded
+   `workflow_pack_registry_store` block in `GET /platform/runtime-status` as the activation gate for
+   restart-safe registry activation state and control history; if it is not `READY`, control history
+   should not be treated as durable truth
+9. keep workflow implementation changes in the owning repository; the `lotus-ai` control plane must
+   not become a second editing surface for workflow behavior
+10. inspect `GET /platform/workflow-packs/runs` to distinguish runtime completion posture from product review posture for recorded Phase-1 pack runs, use bounded query filters such as `registration_ref`, `caller_app`, `tenant_id`, `workflow_surface`, `runtime_state`, `review_state`, `supportability_status`, `workflow_authority_owner`, and `limit` when operator triage should stay focused on one backlog slice, use the returned `ready_count`, `action_required_count`, and `historical_count` fields instead of recomputing supportability cohorts client-side, and rely on each run descriptor's `review_summary` block for latest review-transition actor, timestamp, and bounded history counts instead of reconstructing that provenance from raw event arrays
+11. inspect `GET /platform/workflow-packs/runs/{run_id}` when support needs the exact registration ref, evidence descriptors, governed artifact refs, run-history events, bounded `allowed_review_actions`, shared review-progression posture, shared supportability posture, and bounded provenance summary attached to one pack execution; the run descriptor itself now also carries `supportability_status`, and the detail route now surfaces the same bounded review summary and bounded provenance summary used by downstream support contracts so callers do not need to parse review events or raw linkage sets just to understand review progression and provenance posture
+12. inspect `GET /platform/workflow-packs/runs/{run_id}/operator-profile` when support needs one operator-facing summary of review pending, failure, expiry, supersession, partial-output, artifact, evidence, and bounded event-history posture for the run; the profile now also surfaces the latest recorded review-transition timestamp, actor, transition count, and a bounded provenance summary covering linked artifact and evidence types so support tooling does not need to parse raw event arrays or raw linkage sets just to understand review progression and provenance posture
+13. inspect `GET /platform/workflow-packs/runs/{run_id}/consumer-view` when a downstream composition layer needs one grouped runtime-review-lineage-provenance-supportability contract candidate from lotus-ai without reconstructing those dimensions locally; the review block now also surfaces the latest recorded review-transition timestamp, actor, and bounded review-history counts so downstream product surfaces can render review provenance without parsing raw event history, and the `provenance_summary` block now exposes bounded linked artifact and evidence counts and types so downstream callers do not need to scan raw linkage arrays just to understand provenance posture
+14. apply `POST /platform/workflow-packs/runs/{run_id}/review-actions` only to record bounded ledger review posture; do not treat it as business approval, consent, booking, or workflow-authority transfer, and during the current bounded rollout limit callers to the original active registered workflow caller app or a caller authorized for async control-plane actions
+15. when using `REVISE` or `SUPERSEDE`, confirm the replacement run id belongs to the same pack family so lineage remains reconstructable
+16. when `LOTUS_AI_WORKFLOW_PACK_RUN_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_run_store` block in `GET /platform/runtime-status` reports `READY` before treating the run ledger as restart-safe durable truth
+17. if the embedded `workflow_pack_run_store` block is not `READY`, treat `GET /platform/workflow-packs/runs`, `GET /platform/workflow-packs/runs/{run_id}`, `GET /platform/workflow-packs/runs/{run_id}/consumer-view`, `GET /platform/workflow-packs/runs/{run_id}/operator-profile`, `POST /platform/workflow-packs/runs/{run_id}/review-actions`, `POST /platform/workflow-packs/execute`, and pack-backed `POST /ai/tasks/execute` requests as governed `503` degraded-state signals rather than as missing data, missing runs, or transient UI-only faults; the current bounded runtime now blocks those pack-backed execution paths before task execution and audit persistence so a failed preflight does not leave misleading post-failure run-side effects
+18. when inspecting the embedded `workflow_pack_runtime.attention_queue` block in `GET /platform/runtime-status`, treat `queue_depth` as the full actionable backlog across executable pack versions and `items` as only the newest bounded sample up to `queue_limit`; if `queue_depth` exceeds `queue_limit`, continue triage through the ledger catalog rather than assuming the visible queue is the full backlog
 
 ## Durable Async Recovery
 

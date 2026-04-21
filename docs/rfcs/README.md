@@ -30,3 +30,6 @@
 - `RFC-0028-relationship-manager-briefing-agent-for-the-lotus-ecosystem.md` - Draft
 - `RFC-0029-portfolio-situation-room-agent.md` - Draft
 - `RFC-0030-client-mandate-integrity-and-action-orchestration.md` - Draft
+- `RFC-0031-governed-agent-workflow-packs-and-bounded-ai-runtime.md` - In Progress
+- `RFC-0032-governed-workflow-pack-registry-and-activation-posture.md` - In Progress
+- `RFC-0033-durable-ai-run-ledger-and-review-state-contracts.md` - In Progress

@@ -11,6 +11,7 @@ Its role is to provide:
 5. caller identity and access control,
 6. auditability,
 7. reusable AI task execution.
+8. workflow-pack registration, activation, and operator control-plane seams for workflow-bearing downstream integrations.
 
 The other Lotus applications remain responsible for:
 
@@ -63,9 +64,22 @@ Owns:
 3. prompt and provider orchestration,
 4. task execution pipeline stages for validation, resolution, response assembly, and audit persistence,
 5. caller access-control policy resolution and platform-facing posture summaries.
+6. workflow-pack registration truth, eligibility evaluation, and bounded operator control actions.
 
 The API-facing service layer should remain stateless so multiple replicas can serve the same
 contracts without hidden node-local behavior.
+
+Workflow-pack control-plane posture now sits beside prompts, providers, retrieval, safety, and
+async runtime as another explicit governed seam:
+
+1. owning repositories still define workflow-bearing code and product behavior,
+2. `lotus-ai` stores narrow registration and activation metadata rather than workflow logic,
+3. registration records must point back to real owner artifacts through `definition_ref` and
+   structured `definition_refs`,
+4. execution eligibility is deny-by-default when registry lookup, activation posture, or caller
+   scope do not pass,
+5. operator actions such as pause, resume, deprecate, and retire are bounded control-plane events,
+   not editable workflow definitions.
 
 Current task execution runtime is intentionally split into small pipeline stages:
 

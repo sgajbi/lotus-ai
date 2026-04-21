@@ -1,6 +1,17 @@
 from __future__ import annotations
 
-from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
+from fastapi import HTTPException
+
+from app.config import settings
+from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
+from app.contracts.providers import ProviderFailureCategory
+from app.contracts.tasks import (
+    TaskAuditMetadata,
+    TaskExecutionRequest,
+    TaskExecutionResponse,
+    TaskExecutionResult,
+    TaskExecutionStatus,
+)
 from app.services.audit_store import get_audit_store
 from app.services.knowledge_answer_execution import execute_knowledge_answer
 from app.services.knowledge_search_execution import execute_knowledge_search
@@ -50,9 +61,91 @@ def build_task_execution_response(
     return map_task_execution_response(resolved=resolved)
 
 
+def build_failed_task_execution_response(
+    *,
+    context: TaskExecutionContext,
+    exc: HTTPException,
+) -> TaskExecutionResponse:
+    detail = _http_exception_detail(exc)
+    return TaskExecutionResponse(
+        status=TaskExecutionStatus.FAILED,
+        task_id=context.capability.task_id,
+        category=context.capability.category,
+        output_label=context.capability.output_label,
+        result=TaskExecutionResult(
+            message=detail,
+            structured_output={
+                "failure_detail": detail,
+                "failure_status_code": exc.status_code,
+                "failure_category": _infer_failure_category(detail),
+                "input_mode": context.request.input_mode,
+                "caller_app": context.request.caller.caller_app,
+            },
+        ),
+        audit=TaskAuditMetadata(
+            request_id=context.request_id,
+            task_id=context.capability.task_id,
+            output_label=context.capability.output_label,
+            prompt_version=context.prompt.prompt_version,
+            prompt_selection=context.prompt_selection,
+            provider_mode=settings.provider_mode,
+            provider_id=settings.live_text_provider_id or "provider.unavailable",
+            adapter_kind=None,
+            model_id=settings.live_text_model_id,
+            safety=context.safety_outcome,
+            authorization=context.authorization,
+            generated_at=context.generated_at,
+            stubbed=False,
+        ),
+        evidence=ExecutionEvidenceBundle(
+            descriptors=[
+                ExecutionEvidenceDescriptor(
+                    evidence_type="task_contract",
+                    summary="Workflow-pack execution retained the bounded task contract despite runtime failure.",
+                    attributes={
+                        "task_id": context.capability.task_id,
+                        "output_label": context.capability.output_label.value,
+                    },
+                ),
+                ExecutionEvidenceDescriptor(
+                    evidence_type="workflow_pack_execution_failure",
+                    summary="The explicit workflow-pack execution seam recorded the runtime failure into the durable run ledger.",
+                    attributes={
+                        "status_code": exc.status_code,
+                        "detail": detail,
+                        "failure_category": _infer_failure_category(detail),
+                    },
+                ),
+                ExecutionEvidenceDescriptor(
+                    evidence_type="access_control",
+                    summary="The caller authorization posture was resolved before the runtime failure occurred.",
+                    attributes={
+                        "outcome": context.authorization.outcome.value,
+                        "caller_app": context.request.caller.caller_app,
+                    },
+                ),
+            ]
+        ),
+    )
+
+
 def persist_task_execution_audit(
     *,
     context: TaskExecutionContext,
     response: TaskExecutionResponse,
 ) -> None:
     get_audit_store().save(map_audit_record(context=context, response=response))
+
+
+def _http_exception_detail(exc: HTTPException) -> str:
+    if isinstance(exc.detail, str) and exc.detail.strip():
+        return exc.detail.strip()
+    return "Workflow-pack execution failed before lotus-ai could produce a completed task result."
+
+
+def _infer_failure_category(detail: str) -> str | None:
+    prefix, _, _ = detail.partition(":")
+    try:
+        return ProviderFailureCategory(prefix).value
+    except ValueError:
+        return None

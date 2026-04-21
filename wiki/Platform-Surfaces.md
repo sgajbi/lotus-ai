@@ -28,11 +28,13 @@ These are the smallest public integration surfaces and the ones most downstream 
 1. `/ai/tasks/execute`
 2. `/ai/audit`
 3. `/ai/audit/{request_id}`
+4. `/platform/workflow-packs/execute`
 
 The separation matters:
 
 1. `/ai/tasks/execute` is the bounded execution contract,
-2. `/ai/audit` is the persisted execution and evidence review surface.
+2. `/platform/workflow-packs/execute` is the explicit workflow-pack execution contract when a caller needs registered-pack eligibility, run recording, and explicit run identity in one step,
+3. `/ai/audit` is the persisted execution and evidence review surface.
 
 ## Capability and Task-Runtime Surface
 
@@ -70,6 +72,41 @@ platform programs.
    - `/platform/deployment-split/*`
    - `/platform/production-baseline/*`
    - `/platform/production-go-live/*`
+4. workflow-pack runtime registration
+   - `/platform/workflow-packs/registry`
+   - `/platform/workflow-packs/registry/{pack_id}/{version}`
+   - `/platform/workflow-packs/eligibility/evaluate`
+   - `/platform/workflow-packs/execute`
+   - `/platform/workflow-packs/control-history`
+   - `/platform/workflow-packs/control-actions`
+   - `/platform/workflow-packs/runs`
+   - `/platform/workflow-packs/runs/{run_id}`
+   - `/platform/workflow-packs/runs/{run_id}/operator-profile`
+   - `/platform/workflow-packs/runs/{run_id}/consumer-view`
+   - `/platform/workflow-packs/runs/{run_id}/review-actions`
+
+The workflow-pack detail route now carries structured owner-artifact references as part of the registration record:
+
+1. `definition_ref` is the primary repo-backed owner artifact,
+2. `definition_refs` enumerate the concrete contract, service, router, tests, and optional supporting RFC or UI validation evidence behind the registration,
+3. those references make the registry an onboarding and governance surface, not a second home for workflow implementation.
+
+The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 recorded runs:
+
+1. `/platform/workflow-packs/runs` exposes recorded run state with runtime and review posture kept separate and now includes a bounded `review_summary` block on each run so downstream triage can inspect latest review provenance without fetching raw event history,
+2. `/platform/workflow-packs/runs/{run_id}` exposes event history, evidence descriptors, governed artifact refs, bounded `allowed_review_actions`, and one bounded provenance summary for one recorded run,
+3. `/platform/workflow-packs/runs/{run_id}/operator-profile` exposes one operator-facing supportability summary for review pending, failure, expiry, supersession, partial-output, artifact, and evidence posture, and now also carries one bounded provenance summary so support tools can inspect linked artifact and evidence types without fetching raw run detail,
+4. `/platform/workflow-packs/runs/{run_id}/consumer-view` exposes one grouped runtime-review-lineage-provenance contract candidate for downstream composition layers, including artifact-backed provenance refs plus one bounded provenance summary for linked artifact and evidence posture,
+5. `/platform/workflow-packs/runs/{run_id}/review-actions` records bounded actor-attributed review transitions without taking consequence-bearing workflow authority,
+6. `lotus-gateway` now uses that same bounded ledger seam to record advisor-brief review actions and returns refreshed workflow-pack posture through its advisor-brief contract without turning `lotus-ai` into the business-workflow owner,
+7. `lotus-workbench` now has a typed client seam for the downstream advisor-brief review-action route, while UI-triggered business authorization remains a separate future slice,
+8. the current Phase-1 slice now has governed live downstream proof for `advisor_brief.pack`,
+   `workspace_rationale.pack`, and `twr_inspection_support_brief.pack`, while broader multi-pack
+   runtime rollout and more generalized downstream primitives remain future work,
+9. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode` and `workflow_pack_run_store` so operators can distinguish process-local ledger posture from SQL-backed durable ledger posture,
+10. the embedded `workflow_pack_runtime` block now also carries bounded review provenance on executable-pack latest ready and latest actionable run pointers plus the cross-pack attention queue, and now also carries bounded artifact and evidence linkage summaries for those same runtime-status items, so estate-level triage does not need a raw ledger fetch just to understand latest review movement or missing provenance posture,
+11. pack-backed `503` degraded-state failures now preflight the workflow-pack run store before task execution and audit persistence, so callers should not expect new audit records or partial run-side effects when the run-ledger store is not ready,
+12. the embedded workflow-pack attention queue now treats `queue_depth` as the full actionable backlog across executable pack versions, while `items` stays bounded by `queue_limit` as the newest visible sample.
 
 ## Provider Surface
 
@@ -285,9 +322,15 @@ These are the app-facing rollout and onboarding surfaces rather than low-level r
    - `/platform/capability-packs/{pack_id}/activation-readiness`
    - `/platform/capability-packs/{pack_id}/runbook-readiness`
    - `/platform/capability-packs/{pack_id}/governance-status`
-2. app-capability rollouts
+2. workflow-pack registry
+   - `/platform/workflow-packs/registry`
+   - `/platform/workflow-packs/registry/{pack_id}/{version}`
+   - `/platform/workflow-packs/eligibility/evaluate`
+   - `/platform/workflow-packs/control-history`
+   - `/platform/workflow-packs/control-actions`
+3. app-capability rollouts
    - `/platform/app-capability-rollouts`
-3. first production use-case and onboarding templates
+4. first production use-case and onboarding templates
    - `/platform/use-cases/first-production-use-case`
    - `/platform/use-cases/first-production-use-case/readiness`
    - `/platform/use-cases/first-production-use-case/runbook-readiness`

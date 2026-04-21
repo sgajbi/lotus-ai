@@ -244,6 +244,138 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/capability-packs/governance-status"]["get"]["operationId"] == (
         "getCapabilityPackCatalogGovernanceStatus"
     )
+    assert spec["paths"]["/platform/workflow-packs/registry"]["get"]["operationId"] == (
+        "getWorkflowPackRegistryCatalog"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/registry"]["get"]["responses"]["503"]["description"]
+        == "Workflow-pack registry store is not ready."
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/registry/{pack_id}/{version}"]["get"]["operationId"]
+        == "getWorkflowPackRegistrationDetail"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/registry/{pack_id}/{version}"]["get"]["responses"][
+            "503"
+        ]["description"]
+        == "Workflow-pack registry store is not ready."
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["operationId"]
+        == "evaluateWorkflowPackEligibility"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack registry store is not ready."
+    )
+    assert spec["paths"]["/platform/workflow-packs/execute"]["post"]["operationId"] == (
+        "executeWorkflowPack"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/execute"]["post"]["responses"]["503"]["description"]
+        == "Workflow-pack runtime dependency store is not ready."
+    )
+    assert spec["paths"]["/platform/workflow-packs/control-history"]["get"]["operationId"] == (
+        "getWorkflowPackControlHistory"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/control-history"]["get"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack registry store is not ready."
+    )
+    assert spec["paths"]["/platform/workflow-packs/control-actions"]["post"]["operationId"] == (
+        "applyWorkflowPackControlAction"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/control-actions"]["post"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack registry store is not ready."
+    )
+    assert spec["paths"]["/platform/workflow-packs/runs"]["get"]["operationId"] == (
+        "getWorkflowPackRunCatalog"
+    )
+    workflow_pack_run_catalog_parameters = spec["paths"]["/platform/workflow-packs/runs"]["get"][
+        "parameters"
+    ]
+    assert {parameter["name"] for parameter in workflow_pack_run_catalog_parameters} >= {
+        "registration_ref",
+        "pack_id",
+        "caller_app",
+        "tenant_id",
+        "workflow_surface",
+        "runtime_state",
+        "review_state",
+        "supportability_status",
+        "workflow_authority_owner",
+        "limit",
+    }
+    assert spec["paths"]["/platform/workflow-packs/runs/{run_id}"]["get"]["operationId"] == (
+        "getWorkflowPackRunDetail"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/runs"]["get"]["responses"]["503"]["description"]
+        == "Workflow-pack run store is not ready."
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}"]["get"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack run store is not ready."
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}/review-actions"]["post"][
+            "operationId"
+        ]
+        == "applyWorkflowPackRunReviewAction"
+    )
+    workflow_pack_run_review_responses = spec["paths"][
+        "/platform/workflow-packs/runs/{run_id}/review-actions"
+    ]["post"]["responses"]
+    assert workflow_pack_run_review_responses["200"]["description"] == (
+        "Workflow-pack run review action applied successfully."
+    )
+    assert workflow_pack_run_review_responses["403"]["description"] == (
+        "Caller is not currently authorized for workflow-pack review-state actions."
+    )
+    assert workflow_pack_run_review_responses["404"]["description"] == (
+        "Workflow-pack run or replacement run not found."
+    )
+    assert workflow_pack_run_review_responses["409"]["description"] == (
+        "Workflow-pack review-state action conflicts with the current run posture."
+    )
+    assert workflow_pack_run_review_responses["422"]["description"] == (
+        "Invalid review-state action payload."
+    )
+    assert workflow_pack_run_review_responses["503"]["description"] == (
+        "Workflow-pack run store is not ready."
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}/consumer-view"]["get"]["operationId"]
+        == "getWorkflowPackRunConsumerView"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}/consumer-view"]["get"]["responses"][
+            "503"
+        ]["description"]
+        == "Workflow-pack run store is not ready."
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}/operator-profile"]["get"][
+            "operationId"
+        ]
+        == "getWorkflowPackRunOperatorProfile"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}/operator-profile"]["get"][
+            "responses"
+        ]["503"]["description"]
+        == "Workflow-pack run store is not ready."
+    )
     assert (
         spec["paths"]["/platform/use-cases/first-production-use-case"]["get"]["operationId"]
         == "getFirstProductionUseCaseStatus"
@@ -403,6 +535,72 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     capability_pack_catalog_governance_schema = spec["components"]["schemas"][
         "CapabilityPackCatalogGovernanceStatusResponse"
     ]
+    workflow_pack_registry_catalog_schema = spec["components"]["schemas"][
+        "WorkflowPackRegistryCatalogResponse"
+    ]
+    workflow_pack_registration_schema = spec["components"]["schemas"][
+        "WorkflowPackRegistrationDescriptor"
+    ]
+    workflow_pack_registration_detail_schema = spec["components"]["schemas"][
+        "WorkflowPackRegistrationDetailResponse"
+    ]
+    workflow_pack_eligibility_request_schema = spec["components"]["schemas"][
+        "WorkflowPackEligibilityEvaluationRequest"
+    ]
+    workflow_pack_eligibility_response_schema = spec["components"]["schemas"][
+        "WorkflowPackEligibilityEvaluationResponse"
+    ]
+    workflow_pack_execution_request_schema = spec["components"]["schemas"][
+        "WorkflowPackExecutionRequest"
+    ]
+    workflow_pack_execution_response_schema = spec["components"]["schemas"][
+        "WorkflowPackExecutionResponse"
+    ]
+    workflow_pack_control_history_schema = spec["components"]["schemas"][
+        "WorkflowPackControlHistoryResponse"
+    ]
+    workflow_pack_control_event_schema = spec["components"]["schemas"][
+        "WorkflowPackControlEventDescriptor"
+    ]
+    workflow_pack_control_action_request_schema = spec["components"]["schemas"][
+        "WorkflowPackControlActionRequest"
+    ]
+    workflow_pack_control_action_response_schema = spec["components"]["schemas"][
+        "WorkflowPackControlActionResponse"
+    ]
+    workflow_pack_run_catalog_schema = spec["components"]["schemas"][
+        "WorkflowPackRunCatalogResponse"
+    ]
+    workflow_pack_run_schema = spec["components"]["schemas"]["WorkflowPackRunDescriptor"]
+    workflow_pack_run_detail_schema = spec["components"]["schemas"]["WorkflowPackRunDetailResponse"]
+    workflow_pack_run_consumer_view_schema = spec["components"]["schemas"][
+        "WorkflowPackRunConsumerViewResponse"
+    ]
+    workflow_pack_run_consumer_runtime_schema = spec["components"]["schemas"][
+        "WorkflowPackRunConsumerRuntimeDescriptor"
+    ]
+    workflow_pack_run_consumer_review_schema = spec["components"]["schemas"][
+        "WorkflowPackRunConsumerReviewDescriptor"
+    ]
+    workflow_pack_run_consumer_lineage_schema = spec["components"]["schemas"][
+        "WorkflowPackRunConsumerLineageDescriptor"
+    ]
+    workflow_pack_run_consumer_provenance_schema = spec["components"]["schemas"][
+        "WorkflowPackRunConsumerProvenanceDescriptor"
+    ]
+    workflow_pack_run_operator_profile_schema = spec["components"]["schemas"][
+        "WorkflowPackRunOperatorProfileResponse"
+    ]
+    workflow_pack_run_finding_schema = spec["components"]["schemas"][
+        "WorkflowPackRunSupportabilityFinding"
+    ]
+    workflow_pack_run_event_schema = spec["components"]["schemas"]["WorkflowPackRunEventDescriptor"]
+    workflow_pack_run_review_action_request_schema = spec["components"]["schemas"][
+        "WorkflowPackRunReviewActionRequest"
+    ]
+    workflow_pack_run_review_action_response_schema = spec["components"]["schemas"][
+        "WorkflowPackRunReviewActionResponse"
+    ]
     app_capability_rollout_catalog_schema = spec["components"]["schemas"][
         "AppCapabilityRolloutCatalogResponse"
     ]
@@ -540,6 +738,11 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "recovery_findings" in resilience_dependency_schema["properties"]
     assert "artifact_runtime" in platform_runtime_schema["properties"]
     assert "artifact_governance" in platform_runtime_schema["properties"]
+    assert "workflow_pack_registry_store_mode" in platform_runtime_schema["properties"]
+    assert "workflow_pack_run_store_mode" in platform_runtime_schema["properties"]
+    assert "workflow_pack_registry_store" in platform_runtime_schema["properties"]
+    assert "workflow_pack_run_store" in platform_runtime_schema["properties"]
+    assert "workflow_pack_runtime" in platform_runtime_schema["properties"]
     assert "capability_pack_catalog" in platform_runtime_schema["properties"]
     assert "capability_pack_governance" in platform_runtime_schema["properties"]
     assert "app_capability_rollout_catalog" in platform_runtime_schema["properties"]
@@ -603,6 +806,172 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "activation_readiness" in capability_pack_governance_schema["properties"]
     assert "observability" in capability_pack_governance_schema["properties"]
     assert "pack_summaries" in capability_pack_catalog_governance_schema["properties"]
+    assert "registration_count" in workflow_pack_registry_catalog_schema["properties"]
+    assert "registrations" in workflow_pack_registry_catalog_schema["properties"]
+    assert "execution_bindings" in workflow_pack_registry_catalog_schema["properties"]
+    assert "validation_rules" in workflow_pack_registry_catalog_schema["properties"]
+    assert "registration_status" in workflow_pack_registration_schema["properties"]
+    assert "activation_state" in workflow_pack_registration_schema["properties"]
+    assert "supported_identity_classes" in workflow_pack_registration_schema["properties"]
+    assert "supported_environments" in workflow_pack_registration_schema["properties"]
+    assert "definition_ref" in workflow_pack_registration_schema["properties"]
+    workflow_pack_execution_binding_schema = spec["components"]["schemas"][
+        "WorkflowPackExecutionBindingDescriptor"
+    ]
+    workflow_pack_runtime_status_schema = spec["components"]["schemas"][
+        "WorkflowPackRuntimeStatusSummaryResponse"
+    ]
+    workflow_pack_attention_queue_schema = spec["components"]["schemas"][
+        "WorkflowPackAttentionQueueSummaryResponse"
+    ]
+    workflow_pack_attention_queue_item_schema = spec["components"]["schemas"][
+        "WorkflowPackAttentionQueueItemResponse"
+    ]
+    workflow_pack_run_runtime_summary_schema = spec["components"]["schemas"][
+        "WorkflowPackRunRuntimeSummaryResponse"
+    ]
+    workflow_pack_executable_activity_schema = spec["components"]["schemas"][
+        "WorkflowPackExecutableActivitySummaryResponse"
+    ]
+    assert "task_id" in workflow_pack_execution_binding_schema["properties"]
+    assert "default_workflow_surface" in workflow_pack_execution_binding_schema["properties"]
+    assert "required_payload_keys" in workflow_pack_execution_binding_schema["properties"]
+    assert "execution_binding_count" in workflow_pack_runtime_status_schema["properties"]
+    assert "executable_registration_count" in workflow_pack_runtime_status_schema["properties"]
+    assert "executable_review_required_count" in workflow_pack_runtime_status_schema["properties"]
+    assert "executable_without_review_count" in workflow_pack_runtime_status_schema["properties"]
+    assert (
+        "registered_without_execution_binding_count"
+        in workflow_pack_runtime_status_schema["properties"]
+    )
+    assert "executable_registration_refs" in workflow_pack_runtime_status_schema["properties"]
+    assert "executable_review_required_refs" in workflow_pack_runtime_status_schema["properties"]
+    assert "executable_activity" in workflow_pack_runtime_status_schema["properties"]
+    assert "attention_queue" in workflow_pack_runtime_status_schema["properties"]
+    assert "run_summary" in workflow_pack_runtime_status_schema["properties"]
+    assert "queue_depth" in workflow_pack_attention_queue_schema["properties"]
+    assert "queue_limit" in workflow_pack_attention_queue_schema["properties"]
+    assert "items" in workflow_pack_attention_queue_schema["properties"]
+    assert "run_id" in workflow_pack_attention_queue_item_schema["properties"]
+    assert "registration_ref" in workflow_pack_attention_queue_item_schema["properties"]
+    assert "workflow_authority_owner" in workflow_pack_attention_queue_item_schema["properties"]
+    assert "supportability_status" in workflow_pack_attention_queue_item_schema["properties"]
+    assert "review_summary" in workflow_pack_attention_queue_item_schema["properties"]
+    assert "provenance" in workflow_pack_attention_queue_item_schema["properties"]
+    assert "registration_ref" in workflow_pack_executable_activity_schema["properties"]
+    assert "run_count" in workflow_pack_executable_activity_schema["properties"]
+    assert "awaiting_review_count" in workflow_pack_executable_activity_schema["properties"]
+    assert "accepted_count" in workflow_pack_executable_activity_schema["properties"]
+    assert "ready_count" in workflow_pack_executable_activity_schema["properties"]
+    assert "action_required_count" in workflow_pack_executable_activity_schema["properties"]
+    assert "historical_count" in workflow_pack_executable_activity_schema["properties"]
+    assert "latest_action_required_run_id" in workflow_pack_executable_activity_schema["properties"]
+    assert (
+        "latest_action_required_review_summary"
+        in workflow_pack_executable_activity_schema["properties"]
+    )
+    assert (
+        "latest_action_required_provenance"
+        in workflow_pack_executable_activity_schema["properties"]
+    )
+    assert "latest_ready_run_id" in workflow_pack_executable_activity_schema["properties"]
+    assert "latest_ready_review_summary" in workflow_pack_executable_activity_schema["properties"]
+    assert "latest_ready_provenance" in workflow_pack_executable_activity_schema["properties"]
+    assert "latest_run_id" in workflow_pack_executable_activity_schema["properties"]
+    assert "has_activity" in workflow_pack_executable_activity_schema["properties"]
+    assert "run_count" in workflow_pack_run_runtime_summary_schema["properties"]
+    assert "awaiting_review_count" in workflow_pack_run_runtime_summary_schema["properties"]
+    assert "accepted_count" in workflow_pack_run_runtime_summary_schema["properties"]
+    assert "action_required_count" in workflow_pack_run_runtime_summary_schema["properties"]
+    assert "validation_rules" in workflow_pack_registration_detail_schema["properties"]
+    assert "execution_binding" in workflow_pack_registration_detail_schema["properties"]
+    assert "denied_without_registration" in workflow_pack_registration_detail_schema["properties"]
+    assert "caller_app" in workflow_pack_eligibility_request_schema["properties"]
+    assert "workflow_surface" in workflow_pack_eligibility_request_schema["properties"]
+    assert "eligibility_result" in workflow_pack_eligibility_response_schema["properties"]
+    assert "evaluated_registration_ref" in workflow_pack_eligibility_response_schema["properties"]
+    assert "denial_reasons" in workflow_pack_eligibility_response_schema["properties"]
+    assert "supported_action_types" in workflow_pack_control_history_schema["properties"]
+    assert "latest_events" in workflow_pack_control_history_schema["properties"]
+    assert "prior_activation_state" in workflow_pack_control_event_schema["properties"]
+    assert "resulting_activation_state" in workflow_pack_control_event_schema["properties"]
+    assert "caller_app" in workflow_pack_control_action_request_schema["properties"]
+    assert "registration" in workflow_pack_control_action_response_schema["properties"]
+    assert "task_request" in workflow_pack_execution_request_schema["properties"]
+    assert "eligibility" in workflow_pack_execution_response_schema["properties"]
+    assert "execution" in workflow_pack_execution_response_schema["properties"]
+    assert "workflow_pack_run" in workflow_pack_execution_response_schema["properties"]
+    assert "run_store_mode" in workflow_pack_run_catalog_schema["properties"]
+    assert "filters_applied" in workflow_pack_run_catalog_schema["properties"]
+    assert "awaiting_review_count" in workflow_pack_run_catalog_schema["properties"]
+    assert "ready_count" in workflow_pack_run_catalog_schema["properties"]
+    assert "action_required_count" in workflow_pack_run_catalog_schema["properties"]
+    assert "historical_count" in workflow_pack_run_catalog_schema["properties"]
+    assert "runs" in workflow_pack_run_catalog_schema["properties"]
+    assert "registration_ref" in workflow_pack_run_schema["properties"]
+    assert "runtime_state" in workflow_pack_run_schema["properties"]
+    assert "review_state" in workflow_pack_run_schema["properties"]
+    assert "supportability_status" in workflow_pack_run_schema["properties"]
+    assert "allowed_review_actions" in workflow_pack_run_schema["properties"]
+    assert "workflow_authority_owner" in workflow_pack_run_schema["properties"]
+    assert "evidence_descriptors" in workflow_pack_run_schema["properties"]
+    assert "events" in workflow_pack_run_detail_schema["properties"]
+    assert "review" in workflow_pack_run_detail_schema["properties"]
+    assert "provenance" in workflow_pack_run_detail_schema["properties"]
+    assert "supportability" in workflow_pack_run_detail_schema["properties"]
+    assert "runtime" in workflow_pack_run_consumer_view_schema["properties"]
+    assert "review" in workflow_pack_run_consumer_view_schema["properties"]
+    assert "lineage" in workflow_pack_run_consumer_view_schema["properties"]
+    assert "provenance" in workflow_pack_run_consumer_view_schema["properties"]
+    assert "provenance_summary" in workflow_pack_run_consumer_view_schema["properties"]
+    assert "supportability" in workflow_pack_run_consumer_view_schema["properties"]
+    assert "state" in workflow_pack_run_consumer_runtime_schema["properties"]
+    assert "allowed_actions" in workflow_pack_run_consumer_review_schema["properties"]
+    assert "latest_review_event_at" in workflow_pack_run_consumer_review_schema["properties"]
+    assert "latest_review_actor" in workflow_pack_run_consumer_review_schema["properties"]
+    assert "review_transition_count" in workflow_pack_run_consumer_review_schema["properties"]
+    assert "has_review_history" in workflow_pack_run_consumer_review_schema["properties"]
+    assert "workflow_authority_owner" in workflow_pack_run_consumer_lineage_schema["properties"]
+    assert "evidence_descriptors" in workflow_pack_run_consumer_provenance_schema["properties"]
+    workflow_pack_run_consumer_supportability_schema = spec["components"]["schemas"][
+        "WorkflowPackRunConsumerSupportabilityDescriptor"
+    ]
+    assert "status" in workflow_pack_run_consumer_supportability_schema["properties"]
+    assert "review_pending" in workflow_pack_run_consumer_supportability_schema["properties"]
+    assert "superseded" in workflow_pack_run_consumer_supportability_schema["properties"]
+    assert (
+        "partial_output_visible" in workflow_pack_run_consumer_supportability_schema["properties"]
+    )
+    assert "summary_note" in workflow_pack_run_consumer_supportability_schema["properties"]
+    assert (
+        "historical review state"
+        in workflow_pack_run_consumer_supportability_schema["properties"]["superseded"][
+            "description"
+        ]
+    )
+    assert "supportability_status" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "provenance" in workflow_pack_run_operator_profile_schema["properties"]
+    assert (
+        "historical review state"
+        in workflow_pack_run_operator_profile_schema["properties"]["superseded"]["description"]
+    )
+    assert "latest_event_type" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "latest_event_actor" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "latest_review_event_at" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "latest_review_actor" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "review_transition_count" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "event_type_counts" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "findings" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "inspection_steps" in workflow_pack_run_operator_profile_schema["properties"]
+    assert "finding_id" in workflow_pack_run_finding_schema["properties"]
+    assert "severity" in workflow_pack_run_finding_schema["properties"]
+    assert "event_type" in workflow_pack_run_event_schema["properties"]
+    assert "recorded_at" in workflow_pack_run_event_schema["properties"]
+    assert "action_type" in workflow_pack_run_review_action_request_schema["properties"]
+    assert "reviewed_by" in workflow_pack_run_review_action_request_schema["properties"]
+    assert "replacement_run_id" in workflow_pack_run_review_action_request_schema["properties"]
+    assert "run" in workflow_pack_run_review_action_response_schema["properties"]
+    assert "events" in workflow_pack_run_review_action_response_schema["properties"]
     assert "rollout_records" in app_capability_rollout_catalog_schema["properties"]
     assert "pairing_count" in app_capability_rollout_catalog_schema["properties"]
     assert "capability_pack_maturity_stage" in app_capability_rollout_schema["properties"]
@@ -652,6 +1021,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     prompt_evidence_schema = spec["components"]["schemas"]["PromptEvidenceReadinessResponse"]
     assert "approval_gate" in prompt_evidence_schema["properties"]
     task_audit_schema = spec["components"]["schemas"]["TaskAuditMetadata"]
+    assert "workflow_pack_run_id" in task_audit_schema["properties"]
     assert "prompt_selection" in task_audit_schema["properties"]
     assert "authorization" in task_audit_schema["properties"]
     audit_record_schema = spec["components"]["schemas"]["AuditRecordResponse"]
@@ -774,6 +1144,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         "searchRetrievalSources"
     )
     assert spec["paths"]["/ai/tasks/execute"]["post"]["operationId"] == "executeTask"
+    assert (
+        spec["paths"]["/ai/tasks/execute"]["post"]["responses"]["503"]["description"]
+        == "Workflow-pack run store is not ready for this pack-backed task path."
+    )
     assert spec["paths"]["/ai/audit/{request_id}"]["get"]["operationId"] == "getAuditRecord"
     assert spec["paths"]["/ai/audit"]["get"]["operationId"] == "listAuditRecords"
     assert spec["paths"]["/metadata"]["get"]["operationId"] == "getServiceMetadata"

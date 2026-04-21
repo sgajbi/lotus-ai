@@ -1,4 +1,8 @@
 from fastapi.testclient import TestClient
+from _pytest.monkeypatch import MonkeyPatch
+
+from app.config import settings
+from app.main import app
 
 
 def test_health_endpoints(client: TestClient) -> None:
@@ -11,6 +15,51 @@ def test_correlation_header_propagation(client: TestClient) -> None:
     response = client.get("/health", headers={"X-Correlation-Id": "corr-123"})
     assert response.status_code == 200
     assert response.headers["X-Correlation-Id"] == "corr-123"
+
+
+def test_service_root_and_metadata_routes_expose_workflow_pack_platform_truth(
+    client: TestClient,
+) -> None:
+    root_response = client.get("/")
+    metadata_response = client.get("/metadata")
+
+    assert root_response.status_code == 200
+    assert metadata_response.status_code == 200
+    root_body = root_response.json()
+    metadata_body = metadata_response.json()
+    assert "workflow_packs" in root_body["capabilityAreas"]
+    assert "workflow_pack_runs" in root_body["capabilityAreas"]
+    assert metadata_body["service"] == "lotus-ai"
+    assert metadata_body["workflowPackRegistryStoreMode"] == "memory"
+    assert metadata_body["workflowPackRunStoreMode"] == "memory"
+    assert "startupReadinessPolicy" in metadata_body
+    assert "readinessProbePolicy" in metadata_body
+
+
+def test_health_ready_returns_draining_when_service_is_draining(client: TestClient) -> None:
+    app.state.is_draining = True
+    try:
+        response = client.get("/health/ready")
+    finally:
+        app.state.is_draining = False
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "draining"
+
+
+def test_health_ready_returns_degraded_when_probe_policy_requires_it(
+    client: TestClient, monkeypatch: MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "readiness_probe_policy", "degrade")
+    prior_findings = getattr(app.state, "startup_readiness_findings", [])
+    app.state.startup_readiness_findings = ["database unavailable"]
+    try:
+        response = client.get("/health/ready")
+    finally:
+        app.state.startup_readiness_findings = prior_findings
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "degraded"
 
 
 def test_platform_capabilities_contract(client: TestClient) -> None:
@@ -36,6 +85,50 @@ def test_platform_capability_pack_catalog_contract(client: TestClient) -> None:
     assert body["packs"][0]["pack_id"] == "analytics_commentary.pack.v1"
     assert body["packs"][0]["maturity_stage"] == "REUSABLE"
     assert body["packs"][1]["pack_id"] == "decision_explanation.pack.v1"
+
+
+def test_platform_workflow_pack_registry_contract(client: TestClient) -> None:
+    response = client.get("/platform/workflow-packs/registry")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["phase"] == "foundation"
+    assert body["registration_count"] == 4
+    assert body["registered_count"] == 3
+    assert any(
+        registration["pack_id"] == "advisor_brief.pack"
+        and registration["activation_state"] == "PILOT"
+        for registration in body["registrations"]
+    )
+    assert any(
+        registration["pack_id"] == "workspace_rationale.pack"
+        and registration["owner_repository"] == "lotus-advise"
+        for registration in body["registrations"]
+    )
+    assert any(
+        registration["pack_id"] == "twr_inspection_support_brief.pack"
+        and registration["owner_repository"] == "lotus-performance"
+        for registration in body["registrations"]
+    )
+
+    eligibility_response = client.post(
+        "/platform/workflow-packs/eligibility/evaluate",
+        json={
+            "pack_id": "advisor_brief.pack",
+            "version": "v1",
+            "caller_app": "lotus-gateway",
+            "environment": "QA",
+            "caller_identity_class": "INTERNAL_SERVICE",
+            "workflow_surface": "advisor-brief-panel",
+        },
+    )
+    assert eligibility_response.status_code == 200
+    assert eligibility_response.json()["eligibility_result"] == "ALLOWED"
+
+    control_history_response = client.get("/platform/workflow-packs/control-history")
+    assert control_history_response.status_code == 200
+    assert "PAUSE" in control_history_response.json()["supported_action_types"]
 
 
 def test_platform_app_capability_rollout_catalog_contract(client: TestClient) -> None:
@@ -277,6 +370,74 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["retrieval_store"]["mode"] == "memory"
     assert body["retrieval_store"]["status"] == "READY"
     assert body["access_control_store_mode"] == "memory"
+    assert body["workflow_pack_registry_store_mode"] == "memory"
+    assert body["workflow_pack_run_store_mode"] == "memory"
+    assert body["workflow_pack_registry_store"]["mode"] == "memory"
+    assert body["workflow_pack_registry_store"]["status"] == "READY"
+    assert body["workflow_pack_run_store"]["mode"] == "memory"
+    assert body["workflow_pack_run_store"]["status"] == "READY"
+    assert body["workflow_pack_runtime"]["registration_count"] == 4
+    assert body["workflow_pack_runtime"]["registered_count"] == 3
+    assert body["workflow_pack_runtime"]["execution_binding_count"] == 3
+    assert body["workflow_pack_runtime"]["executable_registration_count"] == 3
+    assert body["workflow_pack_runtime"]["executable_review_required_count"] == 3
+    assert body["workflow_pack_runtime"]["executable_without_review_count"] == 0
+    assert body["workflow_pack_runtime"]["registered_without_execution_binding_count"] == 0
+    assert body["workflow_pack_runtime"]["executable_registration_refs"] == [
+        "advisor_brief.pack@v1",
+        "twr_inspection_support_brief.pack@v1",
+        "workspace_rationale.pack@v1",
+    ]
+    assert body["workflow_pack_runtime"]["executable_review_required_refs"] == [
+        "advisor_brief.pack@v1",
+        "twr_inspection_support_brief.pack@v1",
+        "workspace_rationale.pack@v1",
+    ]
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["registration_ref"] == (
+        "advisor_brief.pack@v1"
+    )
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["run_count"] == 0
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["ready_count"] == 0
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["action_required_count"] == 0
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["historical_count"] == 0
+    assert (
+        body["workflow_pack_runtime"]["executable_activity"][0]["latest_action_required_run_id"]
+        is None
+    )
+    assert (
+        body["workflow_pack_runtime"]["executable_activity"][0][
+            "latest_action_required_review_summary"
+        ]
+        is None
+    )
+    assert (
+        body["workflow_pack_runtime"]["executable_activity"][0]["latest_action_required_provenance"]
+        is None
+    )
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_run_id"] is None
+    assert (
+        body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_review_summary"]
+        is None
+    )
+    assert body["workflow_pack_runtime"]["executable_activity"][1]["registration_ref"] == (
+        "twr_inspection_support_brief.pack@v1"
+    )
+    assert body["workflow_pack_runtime"]["executable_activity"][1]["run_count"] == 0
+    assert body["workflow_pack_runtime"]["executable_activity"][2]["registration_ref"] == (
+        "workspace_rationale.pack@v1"
+    )
+    assert body["workflow_pack_runtime"]["executable_activity"][2]["run_count"] == 0
+    assert (
+        body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_provenance"] is None
+    )
+    assert body["workflow_pack_runtime"]["executable_activity"][0]["has_activity"] is False
+    assert body["workflow_pack_runtime"]["attention_queue"]["queue_depth"] == 0
+    assert body["workflow_pack_runtime"]["attention_queue"]["queue_limit"] == 5
+    assert body["workflow_pack_runtime"]["attention_queue"]["items"] == []
+    assert body["workflow_pack_runtime"]["run_summary"]["run_count"] == 0
+    assert body["workflow_pack_runtime"]["run_summary"]["awaiting_review_count"] == 0
+    assert body["workflow_pack_runtime"]["run_summary"]["accepted_count"] == 0
+    assert body["workflow_pack_runtime"]["run_summary"]["action_required_count"] == 0
     assert body["access_control_runtime"]["store_mode"] == "memory"
     assert body["access_control_runtime"]["enforcement_state"] == "FULLY_ENFORCED"
     assert body["access_control_runtime"]["data_plane_enforced"] is True
@@ -445,5 +606,7 @@ def test_service_metadata_exposes_store_modes(client: TestClient) -> None:
     assert body["promptStoreMode"] == "memory"
     assert body["retrievalStoreMode"] == "memory"
     assert body["accessControlStoreMode"] == "memory"
+    assert body["workflowPackRegistryStoreMode"] == "memory"
+    assert body["workflowPackRunStoreMode"] == "memory"
     assert body["startupReadinessPolicy"] == "warn"
     assert body["readinessProbePolicy"] == "observe"

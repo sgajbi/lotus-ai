@@ -1,0 +1,1139 @@
+from dataclasses import replace
+from pathlib import Path
+
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+from pytest import MonkeyPatch
+
+from app.main import app
+from app.services.workflow_pack_run_store import get_workflow_pack_run_store
+from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.runtime_settings import override_runtime_settings
+from tests.support.workflow_pack_fixtures import (
+    advisor_brief_task_execution_request_json,
+    advisor_brief_workflow_pack_execution_request_json,
+    twr_inspection_support_brief_workflow_pack_execution_request_json,
+    workspace_rationale_workflow_pack_execution_request_json,
+)
+
+
+def test_workflow_pack_run_catalog_starts_empty(client: TestClient) -> None:
+    response = client.get("/platform/workflow-packs/runs")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["run_store_mode"] == "memory"
+    assert body["run_count"] == 0
+    assert body["filters_applied"] == {"limit": 100}
+    assert body["ready_count"] == 0
+    assert body["action_required_count"] == 0
+    assert body["historical_count"] == 0
+    assert body["runs"] == []
+
+
+def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(correlation_id="corr-pack-run-api-001"),
+    )
+    assert execute_response.status_code == 200
+
+    catalog_response = client.get("/platform/workflow-packs/runs")
+
+    assert catalog_response.status_code == 200
+    catalog_body = catalog_response.json()
+    assert catalog_body["run_count"] == 1
+    assert catalog_body["filters_applied"] == {"limit": 100}
+    assert catalog_body["awaiting_review_count"] == 1
+    assert catalog_body["completed_count"] == 1
+    assert catalog_body["ready_count"] == 0
+    assert catalog_body["action_required_count"] == 1
+    assert catalog_body["historical_count"] == 0
+    run = catalog_body["runs"][0]
+    assert run["pack_id"] == "advisor_brief.pack"
+    assert run["registration_ref"] == "advisor_brief.pack@v1"
+    assert run["runtime_state"] == "COMPLETED"
+    assert run["review_state"] == "AWAITING_REVIEW"
+    assert run["supportability_status"] == "ACTION_REQUIRED"
+    assert run["allowed_review_actions"] == [
+        "ACCEPT",
+        "REJECT",
+        "REVISE",
+        "SUPERSEDE",
+        "ABANDON",
+    ]
+    assert run["review_summary"]["latest_review_event_at"] is None
+    assert run["review_summary"]["latest_review_actor"] is None
+    assert run["review_summary"]["review_transition_count"] == 0
+    assert run["review_summary"]["has_review_history"] is False
+    assert len(run["artifact_refs"]) == 1
+    assert run["artifact_refs"][0]["domain"] == "workflow_pack"
+    assert run["artifact_refs"][0]["artifact_type"] == "run_output_summary"
+
+    detail_response = client.get(f"/platform/workflow-packs/runs/{run['run_id']}")
+
+    assert detail_response.status_code == 200
+    detail_body = detail_response.json()
+    assert detail_body["run"]["run_id"] == run["run_id"]
+    assert detail_body["review"]["state"] == "AWAITING_REVIEW"
+    assert detail_body["review"]["latest_review_event_at"] is None
+    assert detail_body["review"]["latest_review_actor"] is None
+    assert detail_body["review"]["review_transition_count"] == 0
+    assert detail_body["review"]["has_review_history"] is False
+    assert detail_body["provenance"]["artifact_ref_count"] == 1
+    assert detail_body["provenance"]["artifact_types"] == ["run_output_summary"]
+    assert detail_body["provenance"]["evidence_descriptor_count"] >= 1
+    assert "task_contract" in detail_body["provenance"]["evidence_types"]
+    assert detail_body["supportability"]["status"] == "ACTION_REQUIRED"
+    assert detail_body["supportability"]["review_pending"] is True
+    assert detail_body["run"]["artifact_refs"][0]["source_object_id"] == run["run_id"]
+    assert detail_body["events"][0]["event_type"] == "RUN_RECORDED"
+    assert detail_body["run"]["workflow_surface"] == "advisor-brief-workspace"
+
+
+def test_workflow_pack_run_catalog_route_supports_bounded_filters(
+    client: TestClient,
+) -> None:
+    first_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-filter-001",
+            caller_app="lotus-gateway",
+            tenant_id="tenant-sg-001",
+        ),
+    )
+    assert first_execute_response.status_code == 200
+    second_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-filter-002",
+            caller_app="lotus-gateway",
+            tenant_id="tenant-us-002",
+        ),
+    )
+    assert second_execute_response.status_code == 200
+
+    all_runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+    accepted_run_id = all_runs[0]["run_id"]
+    awaiting_run_id = all_runs[1]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{accepted_run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.101",
+            "reason": "Accepted for catalog filter coverage.",
+        },
+    )
+    assert review_response.status_code == 200
+
+    filtered_response = client.get(
+        "/platform/workflow-packs/runs",
+        params={
+            "registration_ref": "advisor_brief.pack@v1",
+            "caller_app": "lotus-gateway",
+            "tenant_id": "tenant-sg-001",
+            "workflow_surface": "advisor-brief-workspace",
+            "runtime_state": "COMPLETED",
+            "review_state": "AWAITING_REVIEW",
+            "supportability_status": "ACTION_REQUIRED",
+            "workflow_authority_owner": "lotus-gateway",
+            "limit": 1,
+        },
+    )
+
+    assert filtered_response.status_code == 200
+    body = filtered_response.json()
+    assert body["filters_applied"] == {
+        "limit": 1,
+        "registration_ref": "advisor_brief.pack@v1",
+        "caller_app": "lotus-gateway",
+        "tenant_id": "tenant-sg-001",
+        "workflow_surface": "advisor-brief-workspace",
+        "runtime_state": "COMPLETED",
+        "review_state": "AWAITING_REVIEW",
+        "supportability_status": "ACTION_REQUIRED",
+        "workflow_authority_owner": "lotus-gateway",
+    }
+    assert body["run_count"] == 1
+    assert body["ready_count"] == 0
+    assert body["action_required_count"] == 1
+    assert body["historical_count"] == 0
+    assert [run["run_id"] for run in body["runs"]] == [awaiting_run_id]
+    assert body["runs"][0]["caller_app"] == "lotus-gateway"
+    assert body["runs"][0]["tenant_id"] == "tenant-sg-001"
+    assert body["runs"][0]["workflow_surface"] == "advisor-brief-workspace"
+    assert body["runs"][0]["supportability_status"] == "ACTION_REQUIRED"
+
+
+def test_workflow_pack_execute_route_records_explicit_run_and_returns_run_id(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=advisor_brief_workflow_pack_execution_request_json(
+            correlation_id="corr-pack-execute-001"
+        ),
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    assert body["eligibility"]["allowed"] is True
+    assert body["execution"]["status"] == "COMPLETED"
+    assert body["execution"]["audit"]["workflow_pack_run_id"] == body["workflow_pack_run"]["run_id"]
+    assert body["workflow_pack_run"]["workflow_surface"] == "advisor-brief-workspace"
+
+
+def test_workflow_pack_execute_route_defaults_workflow_surface_from_binding(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=advisor_brief_workflow_pack_execution_request_json(
+            correlation_id="corr-pack-execute-default-surface-001",
+            workflow_surface=None,
+        ),
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    assert body["workflow_pack_run"]["workflow_surface"] == "advisor-brief-workspace"
+
+
+def test_workflow_pack_execute_route_records_workspace_rationale_run(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=workspace_rationale_workflow_pack_execution_request_json(
+            correlation_id="corr-workspace-rationale-pack-001"
+        ),
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    assert body["eligibility"]["allowed"] is True
+    assert body["execution"]["status"] == "COMPLETED"
+    assert body["workflow_pack_run"]["pack_id"] == "workspace_rationale.pack"
+    assert body["workflow_pack_run"]["registration_ref"] == "workspace_rationale.pack@v1"
+    assert body["workflow_pack_run"]["caller_app"] == "lotus-advise"
+    assert body["workflow_pack_run"]["workflow_surface"] == "advisory-workspace-assistant"
+    assert body["workflow_pack_run"]["workflow_authority_owner"] == "lotus-advise"
+    assert body["execution"]["audit"]["workflow_pack_run_id"] == body["workflow_pack_run"]["run_id"]
+
+
+def test_workflow_pack_execute_route_records_twr_inspection_support_brief_run(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=twr_inspection_support_brief_workflow_pack_execution_request_json(
+            correlation_id="corr-twr-inspection-support-brief-pack-001"
+        ),
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    assert body["eligibility"]["allowed"] is True
+    assert body["execution"]["status"] == "COMPLETED"
+    assert body["workflow_pack_run"]["pack_id"] == "twr_inspection_support_brief.pack"
+    assert body["workflow_pack_run"]["registration_ref"] == "twr_inspection_support_brief.pack@v1"
+    assert body["workflow_pack_run"]["caller_app"] == "lotus-performance"
+    assert body["workflow_pack_run"]["workflow_surface"] == "twr-supportability-inspection"
+    assert body["workflow_pack_run"]["workflow_authority_owner"] == "lotus-performance"
+    assert body["execution"]["audit"]["workflow_pack_run_id"] == body["workflow_pack_run"]["run_id"]
+
+
+def test_workflow_pack_execute_route_records_failed_run_when_runtime_execution_is_unavailable(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.workflow_pack_execution.resolve_task_execution",
+        lambda **_: (_ for _ in ()).throw(
+            HTTPException(
+                status_code=503,
+                detail=(
+                    "LIVE_EXECUTION_NOT_ENABLED: Local OpenAI-compatible endpoint is not "
+                    "reachable from lotus-ai."
+                ),
+            )
+        ),
+    )
+
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=advisor_brief_workflow_pack_execution_request_json(
+            correlation_id="corr-pack-execute-failed-001"
+        ),
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    run_id = body["workflow_pack_run"]["run_id"]
+    assert body["execution"]["status"] == "FAILED"
+    assert body["execution"]["result"]["message"].startswith("LIVE_EXECUTION_NOT_ENABLED:")
+    assert body["execution"]["audit"]["workflow_pack_run_id"] == run_id
+    assert body["workflow_pack_run"]["runtime_state"] == "FAILED"
+    assert body["workflow_pack_run"]["supportability_status"] == "ACTION_REQUIRED"
+
+    consumer_response = client.get(f"/platform/workflow-packs/runs/{run_id}/consumer-view")
+    assert consumer_response.status_code == 200
+    consumer_body = consumer_response.json()
+    assert consumer_body["runtime"]["state"] == "FAILED"
+    assert consumer_body["supportability"]["status"] == "ACTION_REQUIRED"
+    assert consumer_body["supportability"]["partial_output_visible"] is True
+
+    operator_response = client.get(f"/platform/workflow-packs/runs/{run_id}/operator-profile")
+    assert operator_response.status_code == 200
+    operator_body = operator_response.json()
+    assert operator_body["runtime_state"] == "FAILED"
+    assert operator_body["supportability_status"] == "ACTION_REQUIRED"
+    assert any(finding["finding_id"] == "runtime_failed" for finding in operator_body["findings"])
+
+
+def test_workflow_pack_execute_route_rejects_wrong_task_for_binding(client: TestClient) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=advisor_brief_workflow_pack_execution_request_json(
+            correlation_id="corr-pack-execute-wrong-task-001",
+            task_id="summarize.v1",
+        ),
+    )
+
+    assert execute_response.status_code == 409
+
+
+def test_workflow_pack_execute_route_rejects_denied_surface(client: TestClient) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=advisor_brief_workflow_pack_execution_request_json(
+            correlation_id="corr-pack-execute-denied-001",
+            workflow_surface="unsupported-surface",
+        ),
+    )
+
+    assert execute_response.status_code == 403
+
+
+def test_workflow_pack_execute_route_degrades_when_registry_store_is_unmigrated(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-execute-unmigrated-api.db'}"
+
+    with override_runtime_settings(
+        workflow_pack_registry_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            execute_response = durable_client.post(
+                "/platform/workflow-packs/execute",
+                json=advisor_brief_workflow_pack_execution_request_json(
+                    correlation_id="corr-pack-execute-unmigrated-001"
+                ),
+            )
+
+    assert execute_response.status_code == 503
+    assert "Workflow-pack registry store is not ready." in execute_response.json()["detail"]
+    assert "MIGRATION_REQUIRED" in execute_response.json()["detail"]
+
+
+def test_workflow_pack_run_routes_degrade_when_sql_run_store_is_unmigrated(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-run-unmigrated-api.db'}"
+
+    with override_runtime_settings(
+        workflow_pack_run_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            catalog_response = durable_client.get("/platform/workflow-packs/runs")
+            detail_response = durable_client.get("/platform/workflow-packs/runs/packrun_missing")
+            consumer_response = durable_client.get(
+                "/platform/workflow-packs/runs/packrun_missing/consumer-view"
+            )
+            operator_response = durable_client.get(
+                "/platform/workflow-packs/runs/packrun_missing/operator-profile"
+            )
+            review_response = durable_client.post(
+                "/platform/workflow-packs/runs/packrun_missing/review-actions",
+                json={
+                    "action_type": "ACCEPT",
+                    "caller_app": "lotus-gateway",
+                    "reviewed_by": "banker.sg.degraded",
+                    "reason": "Run-store readiness should degrade before missing-run handling.",
+                },
+            )
+
+    for response in (
+        catalog_response,
+        detail_response,
+        consumer_response,
+        operator_response,
+        review_response,
+    ):
+        assert response.status_code == 503
+        assert "Workflow-pack run store is not ready." in response.json()["detail"]
+        assert "MIGRATION_REQUIRED" in response.json()["detail"]
+
+
+def test_pack_backed_execution_routes_degrade_when_sql_run_store_is_unmigrated(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-run-execution-unmigrated-api.db'}"
+
+    with override_runtime_settings(
+        workflow_pack_run_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            baseline_audit_response = durable_client.get(
+                "/ai/audit",
+                params={"caller_app": "lotus-gateway", "limit": 10},
+            )
+            task_response = durable_client.post(
+                "/ai/tasks/execute",
+                json=advisor_brief_task_execution_request_json(
+                    correlation_id="corr-pack-run-unmigrated-task-001"
+                ),
+            )
+            explicit_response = durable_client.post(
+                "/platform/workflow-packs/execute",
+                json=advisor_brief_workflow_pack_execution_request_json(
+                    correlation_id="corr-pack-run-unmigrated-explicit-001"
+                ),
+            )
+            audit_response = durable_client.get(
+                "/ai/audit",
+                params={"caller_app": "lotus-gateway", "limit": 10},
+            )
+
+    assert task_response.status_code == 503
+    assert "Workflow-pack run store is not ready." in task_response.json()["detail"]
+    assert "MIGRATION_REQUIRED" in task_response.json()["detail"]
+
+    assert explicit_response.status_code == 503
+    assert "Workflow-pack run store is not ready." in explicit_response.json()["detail"]
+    assert "MIGRATION_REQUIRED" in explicit_response.json()["detail"]
+    assert baseline_audit_response.status_code == 200
+    assert audit_response.status_code == 200
+    assert audit_response.json()["record_count"] == baseline_audit_response.json()["record_count"]
+
+
+def test_workflow_pack_run_detail_rejects_unknown_run(client: TestClient) -> None:
+    response = client.get("/platform/workflow-packs/runs/unknown-run")
+
+    assert response.status_code == 404
+
+
+def test_workflow_pack_run_review_action_updates_review_state(client: TestClient) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-review-001"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.100",
+            "reason": "Advisor brief accepted for bounded downstream workflow use.",
+        },
+    )
+
+    assert review_response.status_code == 200
+    review_body = review_response.json()
+    assert review_body["run"]["review_state"] == "ACCEPTED"
+    assert review_body["run"]["allowed_review_actions"] == ["SUPERSEDE"]
+    assert review_body["events"][0]["event_type"] == "REVIEW_STATE_UPDATED"
+    catalog_response = client.get("/platform/workflow-packs/runs")
+    assert catalog_response.status_code == 200
+    catalog_run = catalog_response.json()["runs"][0]
+    assert catalog_run["review_summary"]["latest_review_event_at"] is not None
+    assert catalog_run["review_summary"]["latest_review_actor"] == "review:banker.sg.100"
+    assert catalog_run["review_summary"]["review_transition_count"] == 1
+    assert catalog_run["review_summary"]["has_review_history"] is True
+    detail_response = client.get(f"/platform/workflow-packs/runs/{run_id}")
+    assert detail_response.status_code == 200
+    detail_body = detail_response.json()
+    assert detail_body["run"]["review_state"] == "ACCEPTED"
+    assert detail_body["review"]["state"] == "ACCEPTED"
+    assert detail_body["provenance"]["artifact_ref_count"] == 1
+    assert "task_contract" in detail_body["provenance"]["evidence_types"]
+    assert detail_body["review"]["latest_review_event_at"] is not None
+    assert detail_body["review"]["latest_review_actor"] == "review:banker.sg.100"
+    assert detail_body["review"]["review_transition_count"] == 1
+    assert detail_body["review"]["has_review_history"] is True
+
+
+def test_workflow_pack_run_review_action_allows_operator_caller(client: TestClient) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-review-operator-001"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-platform",
+            "reviewed_by": "ops.sg.platform.001",
+            "reason": "Platform operator recorded bounded review acceptance.",
+        },
+    )
+
+    assert review_response.status_code == 200
+    review_body = review_response.json()
+    assert review_body["run"]["review_state"] == "ACCEPTED"
+    assert review_body["run"]["allowed_review_actions"] == ["SUPERSEDE"]
+    assert review_body["events"][0]["event_type"] == "REVIEW_STATE_UPDATED"
+    assert review_body["events"][0]["actor"] == "review:ops.sg.platform.001"
+
+    catalog_response = client.get("/platform/workflow-packs/runs")
+    assert catalog_response.status_code == 200
+    catalog_run = catalog_response.json()["runs"][0]
+    assert catalog_run["review_summary"]["latest_review_actor"] == "review:ops.sg.platform.001"
+    assert catalog_run["review_summary"]["review_transition_count"] == 1
+
+
+def test_workflow_pack_run_review_action_rejects_unbounded_caller(client: TestClient) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-review-forbidden-001"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-manage",
+            "reviewed_by": "banker.sg.forbidden.001",
+            "reason": "Cross-app review caller should remain blocked.",
+        },
+    )
+
+    assert review_response.status_code == 403
+    assert (
+        review_response.json()["detail"]
+        == "Workflow-pack review-state actions are currently limited to the original active registered caller app or a caller authorized for async control-plane actions while downstream review integration remains bounded."
+    )
+
+    detail_response = client.get(f"/platform/workflow-packs/runs/{run_id}")
+    assert detail_response.status_code == 200
+    detail_body = detail_response.json()
+    assert detail_body["run"]["review_state"] == "AWAITING_REVIEW"
+    assert detail_body["review"]["review_transition_count"] == 0
+    assert len(detail_body["events"]) == 1
+    assert detail_body["events"][0]["event_type"] == "RUN_RECORDED"
+
+
+def test_workflow_pack_run_review_action_revise_links_replacement_lineage(
+    client: TestClient,
+) -> None:
+    original_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-001"
+        ),
+    )
+    assert original_execute_response.status_code == 200
+
+    revised_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-002",
+            summary="Draft revised advisor brief from source performance facts.",
+            portfolio_return_pct=1.55,
+            active_return_pct=-6.38,
+        ),
+    )
+    assert revised_execute_response.status_code == 200
+
+    runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+    original_run_id = next(
+        run["run_id"] for run in runs if run["correlation_id"] == "corr-pack-run-api-revise-001"
+    )
+    revised_run_id = next(
+        run["run_id"] for run in runs if run["correlation_id"] == "corr-pack-run-api-revise-002"
+    )
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{original_run_id}/review-actions",
+        json={
+            "action_type": "REVISE",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.revise.001",
+            "reason": "Reviewer requested a revised advisor brief draft.",
+            "replacement_run_id": revised_run_id,
+        },
+    )
+
+    assert review_response.status_code == 200
+    review_body = review_response.json()
+    assert review_body["run"]["review_state"] == "REVISED"
+    assert review_body["run"]["superseded_by_run_id"] == revised_run_id
+    assert review_body["run"]["replacement_run_id"] == revised_run_id
+    assert review_body["run"]["allowed_review_actions"] == []
+    assert any(event["event_type"] == "LINEAGE_UPDATED" for event in review_body["events"])
+    assert any(
+        f"Replacement lineage now points to `{revised_run_id}`" in line
+        for line in review_body["summary"]
+    )
+
+    replacement_detail_response = client.get(f"/platform/workflow-packs/runs/{revised_run_id}")
+    assert replacement_detail_response.status_code == 200
+    replacement_detail_body = replacement_detail_response.json()
+    assert replacement_detail_body["run"]["supersedes_run_id"] == original_run_id
+    assert any(
+        event["event_type"] == "LINEAGE_UPDATED" for event in replacement_detail_body["events"]
+    )
+
+
+def test_workflow_pack_run_review_action_rejects_unknown_replacement_run(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-missing-001"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "REVISE",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.revise.missing.001",
+            "reason": "Unknown replacement run id should fail through the API contract.",
+            "replacement_run_id": "packrun_advisor_brief_pack_missing",
+        },
+    )
+
+    assert review_response.status_code == 404
+    assert (
+        review_response.json()["detail"]
+        == "Unknown replacement workflow-pack run: packrun_advisor_brief_pack_missing"
+    )
+
+
+def test_workflow_pack_run_review_action_rejects_cross_family_replacement_lineage(
+    client: TestClient,
+) -> None:
+    original_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-cross-family-001"
+        ),
+    )
+    assert original_execute_response.status_code == 200
+
+    replacement_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-cross-family-002"
+        ),
+    )
+    assert replacement_execute_response.status_code == 200
+
+    runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+    original_run_id = next(
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-cross-family-001"
+    )
+    replacement_run_id = next(
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-cross-family-002"
+    )
+
+    store = get_workflow_pack_run_store()
+    replacement_record = store.get_run(run_id=replacement_run_id)
+    assert replacement_record is not None
+    store.save_run(replace(replacement_record, pack_family="different_family"))
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{original_run_id}/review-actions",
+        json={
+            "action_type": "REVISE",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.revise.cross-family.001",
+            "reason": "Cross-family lineage should remain blocked.",
+            "replacement_run_id": replacement_run_id,
+        },
+    )
+
+    assert review_response.status_code == 409
+    assert (
+        review_response.json()["detail"]
+        == "Replacement workflow-pack run must belong to the same pack family to preserve bounded review-state lineage."
+    )
+
+
+def test_workflow_pack_run_review_action_rejects_cross_workflow_replacement_lineage(
+    client: TestClient,
+) -> None:
+    original_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-cross-workflow-001"
+        ),
+    )
+    assert original_execute_response.status_code == 200
+
+    replacement_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-cross-workflow-002"
+        ),
+    )
+    assert replacement_execute_response.status_code == 200
+
+    runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+    original_run_id = next(
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-cross-workflow-001"
+    )
+    replacement_run_id = next(
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-cross-workflow-002"
+    )
+
+    store = get_workflow_pack_run_store()
+    replacement_record = store.get_run(run_id=replacement_run_id)
+    assert replacement_record is not None
+    store.save_run(replace(replacement_record, workflow_authority_owner="lotus-manage"))
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{original_run_id}/review-actions",
+        json={
+            "action_type": "REVISE",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.revise.cross-workflow.001",
+            "reason": "Cross-workflow lineage should remain blocked.",
+            "replacement_run_id": replacement_run_id,
+        },
+    )
+
+    assert review_response.status_code == 409
+    assert (
+        review_response.json()["detail"]
+        == "Replacement workflow-pack run must preserve workflow authority owner, caller app, tenant scope, and workflow surface to keep review-state lineage inside one bounded downstream workflow."
+    )
+
+
+def test_workflow_pack_run_review_action_rejects_already_linked_replacement_lineage(
+    client: TestClient,
+) -> None:
+    original_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-linked-001"
+        ),
+    )
+    assert original_execute_response.status_code == 200
+
+    replacement_execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-revise-linked-002"
+        ),
+    )
+    assert replacement_execute_response.status_code == 200
+
+    runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+    original_run_id = next(
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-linked-001"
+    )
+    replacement_run_id = next(
+        run["run_id"]
+        for run in runs
+        if run["correlation_id"] == "corr-pack-run-api-revise-linked-002"
+    )
+
+    store = get_workflow_pack_run_store()
+    replacement_record = store.get_run(run_id=replacement_run_id)
+    assert replacement_record is not None
+    store.save_run(
+        replace(
+            replacement_record,
+            supersedes_run_id="packrun_advisor_brief_pack_already_linked",
+        )
+    )
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{original_run_id}/review-actions",
+        json={
+            "action_type": "REVISE",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.revise.linked.001",
+            "reason": "Replacement lineage already linked elsewhere should remain blocked.",
+            "replacement_run_id": replacement_run_id,
+        },
+    )
+
+    assert review_response.status_code == 409
+    assert (
+        review_response.json()["detail"]
+        == f"Replacement workflow-pack run `{replacement_run_id}` is already linked to `packrun_advisor_brief_pack_already_linked`."
+    )
+
+
+def test_workflow_pack_run_consumer_view_groups_runtime_review_and_lineage(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-consumer-001"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    consumer_view_response = client.get(f"/platform/workflow-packs/runs/{run_id}/consumer-view")
+
+    assert consumer_view_response.status_code == 200
+    body = consumer_view_response.json()
+    assert body["runtime"]["state"] == "COMPLETED"
+    assert body["review"]["state"] == "AWAITING_REVIEW"
+    assert body["review"]["allowed_actions"] == [
+        "ACCEPT",
+        "REJECT",
+        "REVISE",
+        "SUPERSEDE",
+        "ABANDON",
+    ]
+    assert body["review"]["latest_review_event_at"] is None
+    assert body["review"]["latest_review_actor"] is None
+    assert body["review"]["review_transition_count"] == 0
+    assert body["review"]["has_review_history"] is False
+    assert body["provenance_summary"]["artifact_ref_count"] == 1
+    assert body["provenance_summary"]["artifact_types"] == ["run_output_summary"]
+    assert body["provenance_summary"]["evidence_descriptor_count"] >= 1
+    assert "task_contract" in body["provenance_summary"]["evidence_types"]
+    assert body["supportability"]["status"] == "ACTION_REQUIRED"
+    assert body["supportability"]["review_pending"] is True
+    assert body["supportability"]["superseded"] is False
+    assert body["supportability"]["partial_output_visible"] is False
+    assert body["lineage"]["workflow_authority_owner"] == "lotus-gateway"
+    assert "advisor_brief_status" in body["provenance"]["structured_output_keys"]
+    assert len(body["provenance"]["artifact_refs"]) == 1
+    assert body["provenance"]["artifact_refs"][0]["domain"] == "workflow_pack"
+
+
+def test_workflow_pack_run_consumer_view_exposes_latest_review_transition(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-consumer-002"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.consumer.002",
+            "reason": "Accepted for consumer view review metadata coverage.",
+        },
+    )
+    assert review_response.status_code == 200
+
+    consumer_view_response = client.get(f"/platform/workflow-packs/runs/{run_id}/consumer-view")
+
+    assert consumer_view_response.status_code == 200
+    body = consumer_view_response.json()
+    assert body["review"]["state"] == "ACCEPTED"
+    assert body["review"]["latest_review_event_at"] is not None
+    assert body["review"]["latest_review_actor"] == "review:banker.sg.consumer.002"
+    assert body["review"]["review_transition_count"] == 1
+    assert body["review"]["has_review_history"] is True
+    assert body["provenance_summary"]["artifact_ref_count"] == 1
+    assert "task_contract" in body["provenance_summary"]["evidence_types"]
+
+
+def test_workflow_pack_run_operator_profile_reports_supportability_posture(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-operator-001"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    profile_response = client.get(f"/platform/workflow-packs/runs/{run_id}/operator-profile")
+
+    assert profile_response.status_code == 200
+    body = profile_response.json()
+    assert body["run_id"] == run_id
+    assert body["supportability_status"] == "ACTION_REQUIRED"
+    assert body["review_pending"] is True
+    assert body["provenance"]["artifact_ref_count"] == 1
+    assert body["provenance"]["artifact_types"] == ["run_output_summary"]
+    assert body["provenance"]["evidence_descriptor_count"] >= 1
+    assert "task_contract" in body["provenance"]["evidence_types"]
+    assert body["artifact_ref_count"] == 1
+    assert body["latest_event_type"] == "RUN_RECORDED"
+    assert body["latest_event_actor"] == "lotus-ai.workflow-pack-run-ledger"
+    assert body["latest_review_event_at"] is None
+    assert body["latest_review_actor"] is None
+    assert body["review_transition_count"] == 0
+    assert body["event_type_counts"] == {"RUN_RECORDED": 1}
+    assert any(finding["finding_id"] == "review_pending" for finding in body["findings"])
+
+
+def test_workflow_pack_run_operator_profile_exposes_latest_review_transition(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/ai/tasks/execute",
+        json=advisor_brief_task_execution_request_json(
+            correlation_id="corr-pack-run-api-operator-002"
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = client.get("/platform/workflow-packs/runs").json()["runs"][0]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.operator.003",
+            "reason": "Accepted for operator profile review metadata coverage.",
+        },
+    )
+    assert review_response.status_code == 200
+
+    profile_response = client.get(f"/platform/workflow-packs/runs/{run_id}/operator-profile")
+
+    assert profile_response.status_code == 200
+    body = profile_response.json()
+    assert body["latest_event_type"] == "REVIEW_STATE_UPDATED"
+    assert body["latest_review_event_at"] is not None
+    assert body["latest_review_actor"] == "review:banker.sg.operator.003"
+    assert body["review_transition_count"] == 1
+    assert body["provenance"]["artifact_ref_count"] == 1
+    assert "task_contract" in body["provenance"]["evidence_types"]
+
+
+def test_workflow_pack_run_operator_profile_rejects_unknown_run(client: TestClient) -> None:
+    response = client.get("/platform/workflow-packs/runs/unknown-run/operator-profile")
+
+    assert response.status_code == 404
+
+
+def test_workflow_pack_run_catalog_supports_sqlalchemy_store_mode(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-run-api.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        workflow_pack_run_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as client:
+            execute_response = client.post(
+                "/ai/tasks/execute",
+                json=advisor_brief_task_execution_request_json(
+                    correlation_id="corr-pack-run-api-sql-001"
+                ),
+            )
+            assert execute_response.status_code == 200
+
+            catalog_response = client.get("/platform/workflow-packs/runs")
+
+    assert catalog_response.status_code == 200
+    catalog_body = catalog_response.json()
+    assert catalog_body["run_store_mode"] == "sqlalchemy"
+    assert catalog_body["run_count"] == 1
+    assert len(catalog_body["runs"][0]["artifact_refs"]) == 1
+    assert catalog_body["runs"][0]["artifact_refs"][0]["domain"] == "workflow_pack"
+
+
+def test_sqlalchemy_workflow_pack_run_review_and_lineage_survive_restart(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-run-review-persistence.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        workflow_pack_run_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as client:
+            original_execute_response = client.post(
+                "/ai/tasks/execute",
+                json=advisor_brief_task_execution_request_json(
+                    correlation_id="corr-pack-run-api-sql-revise-001"
+                ),
+            )
+            assert original_execute_response.status_code == 200
+
+            revised_execute_response = client.post(
+                "/ai/tasks/execute",
+                json=advisor_brief_task_execution_request_json(
+                    correlation_id="corr-pack-run-api-sql-revise-002",
+                    summary="Draft revised advisor brief from source performance facts.",
+                    portfolio_return_pct=1.55,
+                    active_return_pct=-6.38,
+                ),
+            )
+            assert revised_execute_response.status_code == 200
+
+            runs = client.get("/platform/workflow-packs/runs").json()["runs"]
+            original_run_id = next(
+                run["run_id"]
+                for run in runs
+                if run["correlation_id"] == "corr-pack-run-api-sql-revise-001"
+            )
+            revised_run_id = next(
+                run["run_id"]
+                for run in runs
+                if run["correlation_id"] == "corr-pack-run-api-sql-revise-002"
+            )
+
+            review_response = client.post(
+                f"/platform/workflow-packs/runs/{original_run_id}/review-actions",
+                json={
+                    "action_type": "REVISE",
+                    "caller_app": "lotus-gateway",
+                    "reviewed_by": "banker.sg.sql.001",
+                    "reason": "Durable SQL-backed lineage and review-state proof.",
+                    "replacement_run_id": revised_run_id,
+                },
+            )
+            assert review_response.status_code == 200
+
+        with TestClient(app) as restarted_client:
+            catalog_response = restarted_client.get("/platform/workflow-packs/runs")
+            original_detail_response = restarted_client.get(
+                f"/platform/workflow-packs/runs/{original_run_id}"
+            )
+            revised_detail_response = restarted_client.get(
+                f"/platform/workflow-packs/runs/{revised_run_id}"
+            )
+            revised_consumer_view_response = restarted_client.get(
+                f"/platform/workflow-packs/runs/{revised_run_id}/consumer-view"
+            )
+            original_operator_profile_response = restarted_client.get(
+                f"/platform/workflow-packs/runs/{original_run_id}/operator-profile"
+            )
+            runtime_status_response = restarted_client.get("/platform/runtime-status")
+
+    assert catalog_response.status_code == 200
+    catalog_body = catalog_response.json()
+    assert catalog_body["run_store_mode"] == "sqlalchemy"
+    assert catalog_body["run_count"] == 2
+    original_catalog_run = next(
+        run for run in catalog_body["runs"] if run["run_id"] == original_run_id
+    )
+    revised_catalog_run = next(
+        run for run in catalog_body["runs"] if run["run_id"] == revised_run_id
+    )
+    assert original_catalog_run["review_state"] == "REVISED"
+    assert original_catalog_run["supportability_status"] == "HISTORICAL"
+    assert original_catalog_run["superseded_by_run_id"] == revised_run_id
+    assert (
+        original_catalog_run["review_summary"]["latest_review_actor"] == "review:banker.sg.sql.001"
+    )
+    assert original_catalog_run["review_summary"]["review_transition_count"] == 1
+    assert revised_catalog_run["review_state"] == "AWAITING_REVIEW"
+    assert revised_catalog_run["supportability_status"] == "ACTION_REQUIRED"
+    assert revised_catalog_run["supersedes_run_id"] == original_run_id
+
+    assert original_detail_response.status_code == 200
+    original_detail_body = original_detail_response.json()
+    assert original_detail_body["run"]["review_state"] == "REVISED"
+    assert original_detail_body["run"]["superseded_by_run_id"] == revised_run_id
+    assert original_detail_body["review"]["latest_review_actor"] == "review:banker.sg.sql.001"
+    assert original_detail_body["review"]["review_transition_count"] == 1
+    assert any(event["event_type"] == "LINEAGE_UPDATED" for event in original_detail_body["events"])
+
+    assert revised_detail_response.status_code == 200
+    revised_detail_body = revised_detail_response.json()
+    assert revised_detail_body["run"]["supersedes_run_id"] == original_run_id
+    assert any(event["event_type"] == "LINEAGE_UPDATED" for event in revised_detail_body["events"])
+
+    assert revised_consumer_view_response.status_code == 200
+    revised_consumer_view_body = revised_consumer_view_response.json()
+    assert revised_consumer_view_body["review"]["state"] == "AWAITING_REVIEW"
+    assert revised_consumer_view_body["review"]["review_transition_count"] == 0
+    assert revised_consumer_view_body["lineage"]["supersedes_run_id"] == original_run_id
+    assert revised_consumer_view_body["supportability"]["status"] == "ACTION_REQUIRED"
+
+    assert original_operator_profile_response.status_code == 200
+    original_operator_profile_body = original_operator_profile_response.json()
+    assert original_operator_profile_body["supportability_status"] == "HISTORICAL"
+    assert original_operator_profile_body["review_transition_count"] == 1
+    assert original_operator_profile_body["latest_review_actor"] == "review:banker.sg.sql.001"
+    assert original_operator_profile_body["replacement_run_id"] == revised_run_id
+
+    assert runtime_status_response.status_code == 200
+    runtime_status_body = runtime_status_response.json()
+    assert runtime_status_body["workflow_pack_run_store_mode"] == "sqlalchemy"
+    assert runtime_status_body["workflow_pack_run_store"]["status"] == "READY"
+    assert runtime_status_body["workflow_pack_runtime"]["run_summary"]["run_count"] == 2
+    assert runtime_status_body["workflow_pack_runtime"]["run_summary"]["awaiting_review_count"] == 1
+    assert runtime_status_body["workflow_pack_runtime"]["run_summary"]["superseded_count"] == 1
+    assert runtime_status_body["workflow_pack_runtime"]["attention_queue"]["queue_depth"] == 1
+    assert (
+        runtime_status_body["workflow_pack_runtime"]["attention_queue"]["items"][0]["run_id"]
+        == revised_run_id
+    )
+
+
+def test_runtime_status_attention_queue_reports_full_backlog_depth(client: TestClient) -> None:
+    for index in range(6):
+        execute_response = client.post(
+            "/ai/tasks/execute",
+            json=advisor_brief_task_execution_request_json(
+                correlation_id=f"corr-pack-run-api-queue-depth-00{index + 1}"
+            ),
+        )
+        assert execute_response.status_code == 200
+
+    runtime_status_response = client.get("/platform/runtime-status")
+
+    assert runtime_status_response.status_code == 200
+    runtime_status_body = runtime_status_response.json()
+    attention_queue = runtime_status_body["workflow_pack_runtime"]["attention_queue"]
+    assert attention_queue["queue_depth"] == 6
+    assert attention_queue["queue_limit"] == 5
+    assert len(attention_queue["items"]) == 5
+    assert all(
+        item["supportability_status"] == "ACTION_REQUIRED" for item in attention_queue["items"]
+    )
+    assert any(
+        "use queue_depth to measure the full actionable backlog" in line
+        for line in attention_queue["status_summary"]
+    )

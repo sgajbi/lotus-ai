@@ -61,6 +61,45 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
 
     assert status.service == "lotus-ai"
     assert status.access_control_store_mode == "memory"
+    assert status.workflow_pack_registry_store_mode == "memory"
+    assert status.workflow_pack_runtime.registration_count == 4
+    assert status.workflow_pack_runtime.registered_count == 3
+    assert status.workflow_pack_runtime.execution_binding_count == 3
+    assert status.workflow_pack_runtime.executable_registration_count == 3
+    assert status.workflow_pack_runtime.executable_review_required_count == 3
+    assert status.workflow_pack_runtime.executable_without_review_count == 0
+    assert status.workflow_pack_runtime.registered_without_execution_binding_count == 0
+    assert status.workflow_pack_runtime.executable_registration_refs == [
+        "advisor_brief.pack@v1",
+        "twr_inspection_support_brief.pack@v1",
+        "workspace_rationale.pack@v1",
+    ]
+    assert status.workflow_pack_runtime.executable_review_required_refs == [
+        "advisor_brief.pack@v1",
+        "twr_inspection_support_brief.pack@v1",
+        "workspace_rationale.pack@v1",
+    ]
+    assert len(status.workflow_pack_runtime.executable_activity) == 3
+    assert [item.registration_ref for item in status.workflow_pack_runtime.executable_activity] == [
+        "advisor_brief.pack@v1",
+        "twr_inspection_support_brief.pack@v1",
+        "workspace_rationale.pack@v1",
+    ]
+    for item in status.workflow_pack_runtime.executable_activity:
+        assert item.run_count == 0
+        assert item.ready_count == 0
+        assert item.action_required_count == 0
+        assert item.historical_count == 0
+        assert item.latest_action_required_run_id is None
+        assert item.latest_ready_run_id is None
+        assert item.has_activity is False
+    assert status.workflow_pack_runtime.attention_queue.queue_depth == 0
+    assert status.workflow_pack_runtime.attention_queue.queue_limit == 5
+    assert status.workflow_pack_runtime.attention_queue.items == []
+    assert status.workflow_pack_runtime.run_summary.run_count == 0
+    assert status.workflow_pack_runtime.run_summary.awaiting_review_count == 0
+    assert status.workflow_pack_runtime.run_summary.accepted_count == 0
+    assert status.workflow_pack_runtime.run_summary.action_required_count == 0
     assert status.access_control_runtime.enforcement_state.value == "FULLY_ENFORCED"
     assert status.access_control_runtime.data_plane_enforced is True
     assert status.access_control_runtime.control_plane_enforced is True
@@ -234,6 +273,7 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     settings.prompt_store_mode = "sqlalchemy"
     settings.retrieval_store_mode = "sqlalchemy"
     settings.access_control_store_mode = "sqlalchemy"
+    settings.workflow_pack_registry_store_mode = "sqlalchemy"
     settings.provider_operations_store_mode = "sqlalchemy"
     settings.async_runtime_store_mode = "sqlalchemy"
     settings.evaluation_runtime_store_mode = "sqlalchemy"
