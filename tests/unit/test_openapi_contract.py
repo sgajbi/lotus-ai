@@ -842,6 +842,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "registration_count" in workflow_pack_registry_catalog_schema["properties"]
     assert "registrations" in workflow_pack_registry_catalog_schema["properties"]
     assert "execution_bindings" in workflow_pack_registry_catalog_schema["properties"]
+    assert "queue_policies" in workflow_pack_registry_catalog_schema["properties"]
     assert "validation_rules" in workflow_pack_registry_catalog_schema["properties"]
     assert "registration_status" in workflow_pack_registration_schema["properties"]
     assert "activation_state" in workflow_pack_registration_schema["properties"]
@@ -850,6 +851,15 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "definition_ref" in workflow_pack_registration_schema["properties"]
     workflow_pack_execution_binding_schema = spec["components"]["schemas"][
         "WorkflowPackExecutionBindingDescriptor"
+    ]
+    workflow_pack_queue_policy_schema = spec["components"]["schemas"][
+        "WorkflowPackQueuePolicyDescriptor"
+    ]
+    workflow_pack_queue_retry_policy_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueRetryPolicyDescriptor"
+    ]
+    workflow_pack_queue_cancellation_policy_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueCancellationPolicyDescriptor"
     ]
     workflow_pack_runtime_status_schema = spec["components"]["schemas"][
         "WorkflowPackRuntimeStatusSummaryResponse"
@@ -869,6 +879,31 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "task_id" in workflow_pack_execution_binding_schema["properties"]
     assert "default_workflow_surface" in workflow_pack_execution_binding_schema["properties"]
     assert "required_payload_keys" in workflow_pack_execution_binding_schema["properties"]
+    assert "policy_id" in workflow_pack_queue_policy_schema["properties"]
+    assert "workflow_pack_id" in workflow_pack_queue_policy_schema["properties"]
+    assert "workflow_pack_version" in workflow_pack_queue_policy_schema["properties"]
+    assert "allowed_lanes" in workflow_pack_queue_policy_schema["properties"]
+    assert "default_lane" in workflow_pack_queue_policy_schema["properties"]
+    assert "max_concurrent_runs_per_pack" in workflow_pack_queue_policy_schema["properties"]
+    assert "max_concurrent_runs_per_lane" in workflow_pack_queue_policy_schema["properties"]
+    assert "max_queued_runs_per_pack" in workflow_pack_queue_policy_schema["properties"]
+    assert "max_queued_runs_per_lane" in workflow_pack_queue_policy_schema["properties"]
+    assert "admission_timeout_seconds" in workflow_pack_queue_policy_schema["properties"]
+    assert "execution_timeout_seconds" in workflow_pack_queue_policy_schema["properties"]
+    assert "retry_policy" in workflow_pack_queue_policy_schema["properties"]
+    assert "cancellation_policy" in workflow_pack_queue_policy_schema["properties"]
+    assert "stale_queue_threshold_seconds" in workflow_pack_queue_policy_schema["properties"]
+    assert "saturation_attention_threshold" in workflow_pack_queue_policy_schema["properties"]
+    assert "degraded_readiness_behavior" in workflow_pack_queue_policy_schema["properties"]
+    assert "operator_visibility" in workflow_pack_queue_policy_schema["properties"]
+    assert "evidence_requirements" in workflow_pack_queue_policy_schema["properties"]
+    assert "max_attempts" in workflow_pack_queue_retry_policy_schema["properties"]
+    assert "backoff_strategy" in workflow_pack_queue_retry_policy_schema["properties"]
+    assert "retryable_failure_codes" in workflow_pack_queue_retry_policy_schema["properties"]
+    assert "non_retryable_failure_codes" in workflow_pack_queue_retry_policy_schema["properties"]
+    assert "cancellable_by" in workflow_pack_queue_cancellation_policy_schema["properties"]
+    assert "terminal_state" in workflow_pack_queue_cancellation_policy_schema["properties"]
+    assert "evidence_required" in workflow_pack_queue_cancellation_policy_schema["properties"]
     assert "execution_binding_count" in workflow_pack_runtime_status_schema["properties"]
     assert "executable_registration_count" in workflow_pack_runtime_status_schema["properties"]
     assert "executable_review_required_count" in workflow_pack_runtime_status_schema["properties"]
@@ -918,6 +953,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "action_required_count" in workflow_pack_run_runtime_summary_schema["properties"]
     assert "validation_rules" in workflow_pack_registration_detail_schema["properties"]
     assert "execution_binding" in workflow_pack_registration_detail_schema["properties"]
+    assert "queue_policy" in workflow_pack_registration_detail_schema["properties"]
     assert "denied_without_registration" in workflow_pack_registration_detail_schema["properties"]
     assert "caller_app" in workflow_pack_eligibility_request_schema["properties"]
     assert "workflow_surface" in workflow_pack_eligibility_request_schema["properties"]

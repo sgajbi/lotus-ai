@@ -11,6 +11,7 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunProvenanceSummaryDescriptor,
     WorkflowPackRunReviewSummaryDescriptor,
 )
+from app.contracts.workflow_pack_queue_policies import WorkflowPackQueuePolicyDescriptor
 
 
 class WorkflowPackRegistrationStatus(str, Enum):
@@ -227,6 +228,9 @@ class WorkflowPackRegistryCatalogResponse(BaseModel):
     )
     execution_bindings: list[WorkflowPackExecutionBindingDescriptor] = Field(
         description="Explicit workflow-pack execution bindings currently implemented by lotus-ai."
+    )
+    queue_policies: list[WorkflowPackQueuePolicyDescriptor] = Field(
+        description="Explicit per-pack queue policies currently declared for executable workflow-pack versions."
     )
     validation_rules: list[WorkflowPackValidationRuleDescriptor] = Field(
         description="Workflow-pack registration validation rules enforced for catalog entries."
@@ -480,6 +484,10 @@ class WorkflowPackRegistrationDetailResponse(BaseModel):
     execution_binding: WorkflowPackExecutionBindingDescriptor | None = Field(
         default=None,
         description="Explicit execution binding currently implemented for this workflow-pack version, when available.",
+    )
+    queue_policy: WorkflowPackQueuePolicyDescriptor | None = Field(
+        default=None,
+        description="Explicit queue policy for this workflow-pack version when the version is executable through lotus-ai.",
     )
     validation_rules: list[WorkflowPackValidationRuleDescriptor] = Field(
         description="Registration validation rules that apply to the requested workflow-pack version."

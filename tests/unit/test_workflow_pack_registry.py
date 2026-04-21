@@ -65,9 +65,16 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     assert twr_inspection_registration.owner_repository == "lotus-performance"
     assert twr_inspection_registration.workflow_authority_owner == "lotus-performance"
     assert len(catalog.execution_bindings) == 3
+    assert len(catalog.queue_policies) == 3
     assert any(
         binding.pack_id == "advisor_brief.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
+    )
+    assert any(
+        policy.workflow_pack_id == "advisor_brief.pack"
+        and policy.workflow_pack_version == "v1"
+        and policy.default_lane.value == "LATENCY_SENSITIVE"
+        for policy in catalog.queue_policies
     )
     assert any(
         binding.pack_id == "workspace_rationale.pack" and binding.task_id == "explain.v1"
@@ -95,6 +102,7 @@ def test_build_workflow_pack_registry_catalog_exposes_validation_rules() -> None
     assert any(
         "Internal execution bindings are validated" in line for line in catalog.status_summary
     )
+    assert any("Queue-policy inspection is version-scoped" in line for line in catalog.status_summary)
 
 
 def test_build_workflow_pack_registration_detail_exposes_deny_by_default_registration_truth() -> (
@@ -116,6 +124,9 @@ def test_build_workflow_pack_registration_detail_exposes_deny_by_default_registr
     assert detail.execution_binding is not None
     assert detail.execution_binding.task_id == "explain.v1"
     assert detail.execution_binding.default_workflow_surface == "advisor-brief-workspace"
+    assert detail.queue_policy is not None
+    assert detail.queue_policy.policy_id == "queue-policy.advisor-brief.v1"
+    assert detail.queue_policy.default_lane.value == "LATENCY_SENSITIVE"
     assert detail.denied_without_registration is True
     assert any(
         rule.rule_id == "registered_entries_require_scope" for rule in detail.validation_rules
@@ -128,6 +139,7 @@ def test_build_workflow_pack_registration_detail_omits_execution_binding_for_dis
     detail = build_workflow_pack_registration_detail(pack_id="advisor_brief.pack", version="v2")
 
     assert detail.execution_binding is None
+    assert detail.queue_policy is None
 
 
 def test_build_workspace_rationale_registration_detail_exposes_advise_owned_binding() -> None:

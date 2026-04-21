@@ -41,6 +41,12 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         for binding in body["execution_bindings"]
         if binding["pack_id"] == "twr_inspection_support_brief.pack"
     )
+    advisor_brief_queue_policy = next(
+        policy
+        for policy in body["queue_policies"]
+        if policy["workflow_pack_id"] == "advisor_brief.pack"
+        and policy["workflow_pack_version"] == "v1"
+    )
 
     assert advisor_brief_registration["registration_status"] == "REGISTERED"
     assert advisor_brief_registration["activation_state"] == "PILOT"
@@ -75,6 +81,16 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         "inspection",
         "owner_summary",
     ]
+    assert advisor_brief_queue_policy["default_lane"] == "LATENCY_SENSITIVE"
+    assert advisor_brief_queue_policy["allowed_lanes"] == [
+        "LATENCY_SENSITIVE",
+        "REVIEW_SUPPORT",
+    ]
+    assert advisor_brief_queue_policy["max_concurrent_runs_per_pack"] == 4
+    assert any(
+        requirement["evidence_type"] == "capacity_evaluation"
+        for requirement in advisor_brief_queue_policy["evidence_requirements"]
+    )
 
 
 def test_workflow_pack_registration_detail_route(client: TestClient) -> None:
@@ -99,6 +115,9 @@ def test_workflow_pack_registration_detail_route(client: TestClient) -> None:
     assert body["execution_binding"]["version"] == "v1"
     assert body["execution_binding"]["task_id"] == "explain.v1"
     assert body["execution_binding"]["default_workflow_surface"] == "advisor-brief-workspace"
+    assert body["queue_policy"]["policy_id"] == "queue-policy.advisor-brief.v1"
+    assert body["queue_policy"]["default_lane"] == "LATENCY_SENSITIVE"
+    assert body["queue_policy"]["degraded_readiness_behavior"] == "REJECT"
     assert body["denied_without_registration"] is True
     assert any(
         rule["rule_id"] == "registered_entries_require_scope" for rule in body["validation_rules"]
