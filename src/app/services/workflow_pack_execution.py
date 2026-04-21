@@ -85,6 +85,10 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
     with workflow_pack_queue_admission(
         registration=registration,
         requested_lane=request.queue_lane,
+        caller_app=request.task_request.caller.caller_app,
+        correlation_id=request.task_request.caller.correlation_id,
+        tenant_id=request.task_request.caller.tenant_id,
+        workflow_surface=workflow_surface,
     ):
         try:
             resolved = resolve_task_execution(context=context)

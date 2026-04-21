@@ -1,10 +1,17 @@
 from fastapi import HTTPException
 
+from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueEventDescriptor,
+    WorkflowPackQueueLane,
+)
 from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
-from app.contracts.workflow_pack_queue_policies import WorkflowPackQueueLane
 from app.services.workflow_pack_queue_admission import (
     acquire_workflow_pack_queue_admission,
     release_workflow_pack_queue_admission,
+)
+from app.services.workflow_pack_queue_events import (
+    build_workflow_pack_queue_event_catalog,
+    build_workflow_pack_queue_event_detail,
 )
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 
@@ -15,8 +22,14 @@ def _advisor_brief_registration() -> WorkflowPackRegistrationDescriptor:
     return registration
 
 
-def test_queue_admission_acquires_and_releases_default_lane() -> None:
-    lease = acquire_workflow_pack_queue_admission(registration=_advisor_brief_registration())
+def test_queue_admission_acquires_releases_and_records_durable_event_history() -> None:
+    lease = acquire_workflow_pack_queue_admission(
+        registration=_advisor_brief_registration(),
+        caller_app="lotus-gateway",
+        correlation_id="corr-queue-admission-1",
+        tenant_id="tenant-sg-001",
+        workflow_surface="advisor-brief-panel",
+    )
 
     assert lease.policy_id == "queue-policy.advisor-brief.v1"
     assert lease.workflow_pack_id == "advisor_brief.pack"
@@ -25,6 +38,24 @@ def test_queue_admission_acquires_and_releases_default_lane() -> None:
     assert lease.state.value == "RUNNING"
 
     release_workflow_pack_queue_admission(lease.queue_item_id)
+    history = build_workflow_pack_queue_event_detail(queue_item_id=lease.queue_item_id)
+
+    assert [event.event_type.value for event in history.events] == [
+        "ADMISSION_REQUESTED",
+        "ADMISSION_GRANTED",
+        "ADMISSION_RELEASED",
+    ]
+    assert [event.state.value for event in history.events] == [
+        "NOT_ADMITTED",
+        "RUNNING",
+        "COMPLETED_HANDOFF",
+    ]
+    assert history.events[0].caller_app == "lotus-gateway"
+    assert history.events[0].correlation_id == "corr-queue-admission-1"
+    assert history.events[0].tenant_id == "tenant-sg-001"
+    assert history.events[0].workflow_surface == "advisor-brief-panel"
+    assert history.events[2].caller_app == "lotus-gateway"
+    assert history.events[2].correlation_id == "corr-queue-admission-1"
 
 
 def test_queue_admission_rejects_lane_capacity_without_creating_extra_lease() -> None:
@@ -45,6 +76,10 @@ def test_queue_admission_rejects_lane_capacity_without_creating_extra_lease() ->
         release_workflow_pack_queue_admission(first_lease.queue_item_id)
         release_workflow_pack_queue_admission(second_lease.queue_item_id)
 
+    rejected_history = _queue_events_for_reason("MAX_CONCURRENT_RUNS_PER_LANE")
+    assert rejected_history[0].state.value == "REJECTED"
+    assert rejected_history[0].workflow_pack_id == "advisor_brief.pack"
+
 
 def test_queue_admission_rejects_unsupported_requested_lane() -> None:
     try:
@@ -57,3 +92,16 @@ def test_queue_admission_rejects_unsupported_requested_lane() -> None:
         assert "not allowed" in str(exc.detail)
     else:
         raise AssertionError("Expected unsupported queue lane to fail admission")
+
+    rejected_history = _queue_events_for_reason("QUEUE_LANE_NOT_ALLOWED")
+    assert rejected_history[0].lane == WorkflowPackQueueLane.NIGHTLY
+
+
+def _queue_events_for_reason(reason_code: str) -> list[WorkflowPackQueueEventDescriptor]:
+    return [
+        event
+        for event in build_workflow_pack_queue_event_catalog(
+            workflow_pack_id="advisor_brief.pack"
+        ).events
+        if event.reason_code == reason_code
+    ]

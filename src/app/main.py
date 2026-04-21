@@ -121,6 +121,7 @@ async def metadata() -> dict[str, str]:
         "retrievalStoreMode": settings.retrieval_store_mode,
         "workflowPackRunStoreMode": settings.workflow_pack_run_store_mode,
         "workflowPackTaskFlowStoreMode": settings.workflow_pack_task_flow_store_mode,
+        "workflowPackQueueEventStoreMode": settings.workflow_pack_queue_event_store_mode,
         "startupReadinessPolicy": settings.startup_readiness_policy,
         "readinessProbePolicy": settings.readiness_probe_policy,
     }
@@ -158,6 +159,7 @@ async def root() -> dict[str, object]:
         "retrievalStoreMode": settings.retrieval_store_mode,
         "workflowPackRunStoreMode": settings.workflow_pack_run_store_mode,
         "workflowPackTaskFlowStoreMode": settings.workflow_pack_task_flow_store_mode,
+        "workflowPackQueueEventStoreMode": settings.workflow_pack_queue_event_store_mode,
         "startupReadinessPolicy": settings.startup_readiness_policy,
         "readinessProbePolicy": settings.readiness_probe_policy,
         "capabilityAreas": [
@@ -169,6 +171,7 @@ async def root() -> dict[str, object]:
             "workflow_packs",
             "workflow_pack_runs",
             "workflow_pack_task_flows",
+            "workflow_pack_queue_events",
             "prompt_registry",
             "access_control",
             "retrieval",

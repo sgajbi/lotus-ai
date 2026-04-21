@@ -154,6 +154,15 @@ def get_workflow_pack_task_flow_store_runtime_status() -> StoreRuntimeStatusDesc
     )
 
 
+def get_workflow_pack_queue_event_store_runtime_status() -> StoreRuntimeStatusDescriptor:
+    return _build_store_runtime_status(
+        configured_mode=settings.workflow_pack_queue_event_store_mode,
+        expected_tables=["workflow_pack_queue_events"],
+        memory_detail="In-memory workflow-pack queue event history is active for local queue-policy proof.",
+        unsupported_detail="Configured workflow-pack queue event store mode is not supported by lotus-ai.",
+    )
+
+
 def _build_store_runtime_status(
     *,
     configured_mode: str,

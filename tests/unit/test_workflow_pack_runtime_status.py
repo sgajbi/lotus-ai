@@ -340,7 +340,7 @@ def test_build_workflow_pack_queue_attention_summary_surfaces_saturation_and_sta
     assert summary.items[0].active_count == 2
     assert summary.items[1].queue_item_id == leases[0].queue_item_id
     assert summary.items[1].admitted_at == leases[0].admitted_at
-    assert any("durable queue-event source" in line for line in summary.status_summary)
+    assert any("Durable queue events now preserve" in line for line in summary.status_summary)
 
 
 def test_build_workflow_pack_run_runtime_summary_counts_action_required_and_historical_posture(

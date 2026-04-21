@@ -94,6 +94,54 @@ def test_workflow_pack_queue_status_reports_active_admission_without_worker_inte
     assert detail_body["queue_item"]["state"] == "RUNNING"
 
 
+def test_workflow_pack_queue_events_report_admission_history_without_worker_internals(
+    client: TestClient,
+) -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    lease = acquire_workflow_pack_queue_admission(
+        registration=registration,
+        caller_app="lotus-gateway",
+        tenant_id="tenant-sg-001",
+        workflow_surface="advisor-brief-panel",
+    )
+    release_workflow_pack_queue_admission(lease.queue_item_id)
+
+    catalog_response = client.get(
+        "/platform/workflow-packs/queue-events",
+        params={"workflow_pack_id": "advisor_brief.pack"},
+    )
+    detail_response = client.get(f"/platform/workflow-packs/queue-events/{lease.queue_item_id}")
+
+    assert catalog_response.status_code == 200
+    catalog_body = catalog_response.json()
+    assert catalog_body["queue_event_source_mode"] == "memory"
+    assert catalog_body["event_count"] == 3
+    assert catalog_body["events"][0]["event_type"] == "ADMISSION_RELEASED"
+    assert "worker_id" not in catalog_body["events"][0]
+
+    assert detail_response.status_code == 200
+    detail_body = detail_response.json()
+    assert detail_body["queue_item_id"] == lease.queue_item_id
+    assert [event["event_type"] for event in detail_body["events"]] == [
+        "ADMISSION_REQUESTED",
+        "ADMISSION_GRANTED",
+        "ADMISSION_RELEASED",
+    ]
+    assert detail_body["events"][0]["caller_app"] == "lotus-gateway"
+    assert detail_body["events"][0]["tenant_id"] == "tenant-sg-001"
+    assert detail_body["events"][0]["workflow_surface"] == "advisor-brief-panel"
+    assert detail_body["events"][2]["caller_app"] == "lotus-gateway"
+    assert detail_body["events"][2]["tenant_id"] == "tenant-sg-001"
+
+
+def test_workflow_pack_queue_event_detail_rejects_unknown_item(client: TestClient) -> None:
+    response = client.get("/platform/workflow-packs/queue-events/wpq_missing")
+
+    assert response.status_code == 404
+    assert "Unknown workflow-pack queue item history" in response.json()["detail"]
+
+
 def test_workflow_pack_queue_status_marks_lane_saturated_at_attention_threshold(
     client: TestClient,
 ) -> None:
@@ -156,4 +204,25 @@ def test_workflow_pack_queue_policy_routes_degrade_when_sql_registry_store_is_un
     ):
         assert response.status_code == 503
         assert "Workflow-pack registry store is not ready." in response.json()["detail"]
+        assert "MIGRATION_REQUIRED" in response.json()["detail"]
+
+
+def test_workflow_pack_queue_event_routes_degrade_when_sql_event_store_is_unmigrated(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-queue-events-unmigrated-api.db'}"
+
+    with override_runtime_settings(
+        workflow_pack_queue_event_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            catalog_response = durable_client.get("/platform/workflow-packs/queue-events")
+            detail_response = durable_client.get(
+                "/platform/workflow-packs/queue-events/wpq_missing"
+            )
+
+    for response in (catalog_response, detail_response):
+        assert response.status_code == 503
+        assert "Workflow-pack queue event store is not ready:" in response.json()["detail"]
         assert "MIGRATION_REQUIRED" in response.json()["detail"]

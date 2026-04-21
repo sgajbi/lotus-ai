@@ -47,8 +47,8 @@ def build_workflow_pack_queue_attention_summary(
     attention_items = saturated_items + stale_items
     status_summary = [
         "Workflow-pack queue heartbeat attention is derived from queue source posture and does not replace run-ledger, review, or task-flow state.",
-        "First-wave queue attention covers active-admission saturation and stale active admissions from the current queue source.",
-        "Historical timeout, cancellation, and retry-cluster attention requires a durable queue-event source before it can be reported truthfully.",
+        "Queue attention covers active-admission saturation and stale active admissions from the current queue source.",
+        "Durable queue events now preserve admission, rejection, and release evidence; timeout, cancellation, and retry-cluster attention remains a separate terminal-state slice.",
     ]
     if len(attention_items) > WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT:
         status_summary.append(

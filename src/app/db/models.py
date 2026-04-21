@@ -494,6 +494,27 @@ class WorkflowPackTaskFlowCheckpointModel(Base):
     task_flow: Mapped["WorkflowPackTaskFlowModel"] = relationship(back_populates="checkpoints")
 
 
+class WorkflowPackQueueEventModel(Base):
+    __tablename__ = "workflow_pack_queue_events"
+
+    event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    queue_item_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    policy_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    workflow_pack_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    workflow_pack_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    lane: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    caller_app: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    correlation_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    workflow_surface: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    reason_code: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    descriptor_payload: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+
+
 class WorkflowPackRegistrationModel(Base):
     __tablename__ = "workflow_pack_registrations"
 

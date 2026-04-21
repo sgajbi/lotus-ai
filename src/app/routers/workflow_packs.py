@@ -25,6 +25,8 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunSupportabilityStatus,
 )
 from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueEventCatalogResponse,
+    WorkflowPackQueueEventDetailResponse,
     WorkflowPackQueuePolicyCatalogResponse,
     WorkflowPackQueuePolicyDetailResponse,
     WorkflowPackQueueStatusDetailResponse,
@@ -67,6 +69,11 @@ from app.services.workflow_pack_queue_policy_catalog import (
     build_workflow_pack_queue_policy_detail,
     build_workflow_pack_queue_status,
     build_workflow_pack_queue_status_detail,
+)
+from app.services.workflow_pack_queue_events import (
+    WorkflowPackQueueEventStoreNotReadyError,
+    build_workflow_pack_queue_event_catalog,
+    build_workflow_pack_queue_event_detail,
 )
 
 router = APIRouter(tags=["platform"])
@@ -214,6 +221,81 @@ async def get_workflow_pack_queue_status_detail_route(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/queue-events",
+    response_model=WorkflowPackQueueEventCatalogResponse,
+    operation_id="getWorkflowPackQueueEventCatalog",
+    summary="Get lotus-ai workflow-pack queue event catalog",
+    description=(
+        "Returns durable queue admission, rejection, and release evidence without exposing raw "
+        "worker internals or replacing run-ledger lifecycle posture."
+    ),
+    responses={
+        200: {"description": "Workflow-pack queue event catalog returned successfully."},
+        422: {"description": "Invalid query parameters supplied."},
+        503: {"description": "Workflow-pack queue event store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_queue_event_catalog_route(
+    queue_item_id: str | None = Query(
+        default=None,
+        description="Optional queue item identifier filter.",
+    ),
+    workflow_pack_id: str | None = Query(
+        default=None,
+        description="Optional workflow-pack identifier filter.",
+    ),
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=200,
+        description="Maximum number of queue events to return after filtering.",
+    ),
+) -> WorkflowPackQueueEventCatalogResponse:
+    try:
+        return build_workflow_pack_queue_event_catalog(
+            queue_item_id=queue_item_id,
+            workflow_pack_id=workflow_pack_id,
+            limit=limit,
+        )
+    except WorkflowPackQueueEventStoreNotReadyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/queue-events/{queue_item_id}",
+    response_model=WorkflowPackQueueEventDetailResponse,
+    operation_id="getWorkflowPackQueueEventDetail",
+    summary="Get lotus-ai workflow-pack queue event detail",
+    description=("Returns the bounded event history for one workflow-pack queue admission item."),
+    responses={
+        200: {"description": "Workflow-pack queue event detail returned successfully."},
+        404: {"description": "Unknown workflow-pack queue item history."},
+        503: {"description": "Workflow-pack queue event store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_queue_event_detail_route(
+    queue_item_id: str,
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=200,
+        description="Maximum number of events to return for this queue item.",
+    ),
+) -> WorkflowPackQueueEventDetailResponse:
+    try:
+        return build_workflow_pack_queue_event_detail(
+            queue_item_id=queue_item_id,
+            limit=limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except WorkflowPackQueueEventStoreNotReadyError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 

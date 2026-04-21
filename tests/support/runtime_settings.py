@@ -10,6 +10,7 @@ from app.services.caller_policy_store import reset_caller_policy_store_cache
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.retrieval_store import reset_retrieval_repository
 from app.services.workflow_pack_registry import reset_workflow_pack_registry_state
+from app.services.workflow_pack_queue_event_store import reset_workflow_pack_queue_event_store_cache
 from app.services.workflow_pack_run_store import reset_workflow_pack_run_store_cache
 from app.services.workflow_pack_task_flow_store import reset_workflow_pack_task_flow_store_cache
 
@@ -26,6 +27,7 @@ def override_runtime_settings(**overrides: object) -> Iterator[None]:
         reset_prompt_store_cache()
         reset_retrieval_repository()
         reset_workflow_pack_registry_state()
+        reset_workflow_pack_queue_event_store_cache()
         reset_workflow_pack_run_store_cache()
         reset_workflow_pack_task_flow_store_cache()
         yield
@@ -38,5 +40,6 @@ def override_runtime_settings(**overrides: object) -> Iterator[None]:
         reset_prompt_store_cache()
         reset_retrieval_repository()
         reset_workflow_pack_registry_state()
+        reset_workflow_pack_queue_event_store_cache()
         reset_workflow_pack_run_store_cache()
         reset_workflow_pack_task_flow_store_cache()
