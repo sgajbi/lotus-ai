@@ -82,6 +82,13 @@ def test_record_task_flow_for_workflow_pack_run_links_waiting_review_checkpoint(
     ("runtime_state", "review_state", "expected_status", "expected_transition", "degraded"),
     [
         (
+            WorkflowPackRunRuntimeState.COMPLETED,
+            WorkflowPackRunReviewState.NOT_REVIEW_REQUIRED,
+            WorkflowPackTaskFlowStatus.COMPLETED,
+            WorkflowPackTaskFlowCheckpointTransition.FLOW_COMPLETED,
+            False,
+        ),
+        (
             WorkflowPackRunRuntimeState.FAILED,
             WorkflowPackRunReviewState.NOT_REVIEW_REQUIRED,
             WorkflowPackTaskFlowStatus.FAILED,
