@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import RLock
-from typing import Iterator
+from typing import Iterator, NoReturn
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -191,7 +191,7 @@ def _raise_capacity_rejection(
     )
 
 
-def _raise_queue_rejection(*, status_code: int, detail: str) -> None:
+def _raise_queue_rejection(*, status_code: int, detail: str) -> NoReturn:
     raise HTTPException(status_code=status_code, detail=detail)
 
 

@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 
+from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.contracts.workflow_pack_queue_policies import WorkflowPackQueueLane
 from app.services.workflow_pack_queue_admission import (
     acquire_workflow_pack_queue_admission,
@@ -8,7 +9,7 @@ from app.services.workflow_pack_queue_admission import (
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 
 
-def _advisor_brief_registration():
+def _advisor_brief_registration() -> WorkflowPackRegistrationDescriptor:
     registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
     assert registration is not None
     return registration
