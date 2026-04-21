@@ -5,6 +5,7 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunEventType,
     WorkflowPackRunReviewState,
     WorkflowPackRunReviewSummaryDescriptor,
+    WorkflowPackRunRuntimeState,
 )
 from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunEventRecord,
@@ -26,6 +27,7 @@ def build_workflow_pack_run_review_descriptor(
         allowed_actions=resolve_allowed_review_actions(
             review_required=record.review_required,
             review_state=review_state,
+            runtime_state=WorkflowPackRunRuntimeState(record.runtime_state),
         ),
         latest_review_event_at=review_summary.latest_review_event_at,
         latest_review_actor=review_summary.latest_review_actor,

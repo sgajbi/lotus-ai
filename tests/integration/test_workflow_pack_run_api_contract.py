@@ -304,6 +304,7 @@ def test_workflow_pack_execute_route_records_failed_run_when_runtime_execution_i
     assert body["execution"]["result"]["message"].startswith("LIVE_EXECUTION_NOT_ENABLED:")
     assert body["execution"]["audit"]["workflow_pack_run_id"] == run_id
     assert body["workflow_pack_run"]["runtime_state"] == "FAILED"
+    assert body["workflow_pack_run"]["allowed_review_actions"] == []
     assert body["workflow_pack_run"]["supportability_status"] == "ACTION_REQUIRED"
     _assert_task_flow_recorded_for_run(
         client=client,
@@ -324,6 +325,25 @@ def test_workflow_pack_execute_route_records_failed_run_when_runtime_execution_i
     assert operator_body["runtime_state"] == "FAILED"
     assert operator_body["supportability_status"] == "ACTION_REQUIRED"
     assert any(finding["finding_id"] == "runtime_failed" for finding in operator_body["findings"])
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-gateway",
+            "reviewed_by": "banker.sg.failed",
+            "reason": "Failed runtime output must not be accepted as workflow truth.",
+        },
+    )
+    assert review_response.status_code == 409
+    assert "runtime state `FAILED`" in review_response.json()["detail"]
+
+    unchanged_detail_response = client.get(f"/platform/workflow-packs/runs/{run_id}")
+    assert unchanged_detail_response.status_code == 200
+    unchanged_detail = unchanged_detail_response.json()
+    assert unchanged_detail["run"]["review_state"] == "AWAITING_REVIEW"
+    assert unchanged_detail["review"]["review_transition_count"] == 0
+    assert [event["event_type"] for event in unchanged_detail["events"]] == ["RUN_RECORDED"]
 
 
 def test_workflow_pack_execute_route_rejects_wrong_task_for_binding(client: TestClient) -> None:
