@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -140,6 +141,82 @@ def test_workflow_pack_queue_event_detail_rejects_unknown_item(client: TestClien
 
     assert response.status_code == 404
     assert "Unknown workflow-pack queue item history" in response.json()["detail"]
+
+
+def test_workflow_pack_queue_retry_decision_route_records_recovery_metadata(
+    client: TestClient,
+) -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    lease = acquire_workflow_pack_queue_admission(registration=registration)
+    release_workflow_pack_queue_admission(
+        lease.queue_item_id,
+        now_utc=datetime.now(UTC) + timedelta(minutes=10),
+    )
+    decision_response = client.post(
+        f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/retry-decisions",
+        json={
+            "failure_code": "EXECUTION_TIMEOUT",
+            "requested_by": "operator-a",
+            "reason": "Retry after bounded queue timeout.",
+            "evidence_ref": "support-ticket-queue-recovery-api",
+        },
+    )
+
+    assert decision_response.status_code == 200
+    decision_body = decision_response.json()
+    assert decision_body["event"]["event_type"] == "RETRY_RECORDED"
+    assert any("does not claim" in line for line in decision_body["status_summary"])
+
+    detail_response = client.get(f"/platform/workflow-packs/queue-events/{lease.queue_item_id}")
+
+    assert detail_response.status_code == 200
+    detail_body = detail_response.json()
+    retry_events = [
+        event
+        for event in detail_body["events"]
+        if event["event_id"] == decision_body["event"]["event_id"]
+    ]
+    assert retry_events[0]["event_type"] == "RETRY_RECORDED"
+    assert retry_events[0]["source_queue_item_id"] == lease.queue_item_id
+    assert retry_events[0]["recovery_action_type"] == "RETRY"
+    assert retry_events[0]["recovery_attempt_number"] == 1
+    assert retry_events[0]["requested_by"] == "operator-a"
+    assert retry_events[0]["evidence_ref"] == "support-ticket-queue-recovery-api"
+
+
+def test_workflow_pack_queue_replay_decision_route_blocks_duplicate_replay(
+    client: TestClient,
+) -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    lease = acquire_workflow_pack_queue_admission(registration=registration)
+    release_workflow_pack_queue_admission(lease.queue_item_id)
+
+    first_response = client.post(
+        f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/replay-decisions",
+        json={
+            "requested_by": "operator-a",
+            "reason": "Replay for controlled evidence comparison.",
+            "evidence_ref": "support-ticket-queue-replay-api-1",
+        },
+    )
+    second_response = client.post(
+        f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/replay-decisions",
+        json={
+            "requested_by": "operator-a",
+            "reason": "Duplicate replay should be blocked.",
+            "evidence_ref": "support-ticket-queue-replay-api-2",
+        },
+    )
+
+    assert first_response.status_code == 200
+    assert first_response.json()["event"]["event_type"] == "REPLAY_RECORDED"
+    assert second_response.status_code == 200
+    blocked_event = second_response.json()["event"]
+    assert blocked_event["event_type"] == "REPLAY_BLOCKED"
+    assert blocked_event["recovery_action_type"] == "REPLAY"
+    assert blocked_event["recovery_attempt_number"] == 2
 
 
 def test_workflow_pack_queue_status_marks_lane_saturated_at_attention_threshold(

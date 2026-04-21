@@ -50,11 +50,12 @@ def build_workflow_pack_queue_attention_summary(
         now=now,
     )
     terminal_items = _build_terminal_queue_attention_items()
-    attention_items = saturated_items + stale_items + terminal_items
+    recovery_blocked_items = _build_recovery_blocked_attention_items()
+    attention_items = saturated_items + stale_items + terminal_items + recovery_blocked_items
     status_summary = [
         "Workflow-pack queue heartbeat attention is derived from queue source posture and does not replace run-ledger, review, or task-flow state.",
         "Queue attention covers active-admission saturation and stale active admissions from the current queue source.",
-        "Durable queue events now preserve admission, rejection, release, timeout, and cancellation evidence; retry-cluster attention remains a separate terminal-state slice.",
+        "Durable queue events now preserve admission, rejection, release, timeout, cancellation, retry, and replay evidence; repeated-failure clustering remains a separate terminal-state slice.",
     ]
     if len(attention_items) > WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT:
         status_summary.append(
@@ -66,6 +67,7 @@ def build_workflow_pack_queue_attention_summary(
         saturated_lane_count=len(saturated_items),
         stale_item_count=len(stale_items),
         terminal_event_count=len(terminal_items),
+        recovery_blocked_count=len(recovery_blocked_items),
         active_admission_count=queue_status.active_admission_count,
         queue_source_mode=queue_status.queue_source_mode,
         attention_limit=WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT,
@@ -133,6 +135,63 @@ def _build_terminal_queue_attention_items() -> list[WorkflowPackQueueAttentionIt
         if item is not None:
             items.append(item)
     return items
+
+
+def _build_recovery_blocked_attention_items() -> list[WorkflowPackQueueAttentionItemResponse]:
+    blocked_events = [
+        event
+        for event in build_workflow_pack_queue_event_catalog(limit=100).events
+        if event.event_type
+        in {
+            WorkflowPackQueueEventType.RETRY_BLOCKED,
+            WorkflowPackQueueEventType.REPLAY_BLOCKED,
+        }
+    ]
+    items: list[WorkflowPackQueueAttentionItemResponse] = []
+    seen_events: set[str] = set()
+    for event in blocked_events:
+        if event.event_id in seen_events:
+            continue
+        seen_events.add(event.event_id)
+        item = _recovery_blocked_event_to_attention_item(event)
+        if item is not None:
+            items.append(item)
+    return items
+
+
+def _recovery_blocked_event_to_attention_item(
+    event: WorkflowPackQueueEventDescriptor,
+) -> WorkflowPackQueueAttentionItemResponse | None:
+    if event.lane is None:
+        return None
+    policy = get_workflow_pack_queue_policy_descriptor(
+        pack_id=event.workflow_pack_id,
+        version=event.workflow_pack_version,
+    )
+    if policy is None:
+        return None
+    attention_type = (
+        WorkflowPackQueueAttentionType.QUEUE_RETRY_BLOCKED
+        if event.event_type is WorkflowPackQueueEventType.RETRY_BLOCKED
+        else WorkflowPackQueueAttentionType.QUEUE_REPLAY_BLOCKED
+    )
+    reason = (
+        "Workflow-pack queue retry was blocked by policy and requires operator triage."
+        if event.event_type is WorkflowPackQueueEventType.RETRY_BLOCKED
+        else "Workflow-pack queue replay was blocked by policy and requires operator triage."
+    )
+    return WorkflowPackQueueAttentionItemResponse(
+        attention_type=attention_type,
+        policy_id=event.policy_id or policy.policy_id,
+        workflow_pack_id=event.workflow_pack_id,
+        workflow_pack_version=event.workflow_pack_version,
+        lane=event.lane,
+        queue_item_id=event.queue_item_id,
+        active_count=0,
+        max_concurrent_runs_per_lane=policy.max_concurrent_runs_per_lane,
+        admitted_at=None,
+        attention_reasons=[reason],
+    )
 
 
 def _terminal_event_to_attention_item(

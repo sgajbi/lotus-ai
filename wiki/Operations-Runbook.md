@@ -84,6 +84,8 @@ Good examples:
    - `/platform/workflow-packs/queue-policies`
    - `/platform/workflow-packs/queue-status`
    - `/platform/workflow-packs/queue-events`
+   - `/platform/workflow-packs/queue-events/{queue_item_id}/retry-decisions`
+   - `/platform/workflow-packs/queue-events/{queue_item_id}/replay-decisions`
    - `/platform/workflow-packs/eligibility/evaluate`
    - `/platform/workflow-packs/control-history`
 
@@ -101,7 +103,7 @@ Use this sequence:
 4. evaluate `/platform/workflow-packs/eligibility/evaluate` with the real caller and surface posture,
 5. inspect the embedded `queue_attention` block in `/platform/runtime-status` when lane
    saturation or stale active-admission posture may explain delayed workflow-pack execution,
-6. inspect `/platform/workflow-packs/queue-events` when support needs durable source evidence for queue admission requests, grants, rejections, releases, timeout posture, and cancellation posture,
+6. inspect `/platform/workflow-packs/queue-events` when support needs durable source evidence for queue admission requests, grants, rejections, releases, timeout posture, cancellation posture, and retry/replay recovery decisions; use the retry/replay decision routes only with explicit actor, reason, and evidence reference,
 7. inspect `/platform/workflow-packs/control-history` when rollout state changed or operator action is disputed,
 8. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block in `/platform/runtime-status` reports `READY` before treating activation state and control history as restart-safe truth,
 9. when `LOTUS_AI_WORKFLOW_PACK_QUEUE_EVENT_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_queue_event_store` block in `/platform/runtime-status` reports `READY` before treating queue event history as restart-safe truth,
@@ -112,8 +114,9 @@ Use this sequence:
     audit, run-ledger, or task-flow side effects and inspect `/platform/workflow-packs/queue-events`
     for the reason code,
 14. treat queue cancellation events as queue-boundary evidence only; they do not claim that
-    already-running synchronous execution was interrupted, and retry/replay remains outside the
-    current queue contract,
+    already-running synchronous execution was interrupted, and treat `RETRY_RECORDED` or
+    `REPLAY_RECORDED` as recovery-decision evidence rather than proof that workflow logic
+    was executed again,
 15. when reading the embedded workflow-pack attention queue, treat `queue_depth` as the full actionable backlog and `items` as only the newest bounded sample up to `queue_limit`.
 
 The owner-facing source for that procedure is:

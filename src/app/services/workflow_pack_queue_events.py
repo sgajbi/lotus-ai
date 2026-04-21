@@ -11,6 +11,7 @@ from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueEventDetailResponse,
     WorkflowPackQueueEventType,
     WorkflowPackQueueLane,
+    WorkflowPackQueueRecoveryActionType,
     WorkflowPackQueueState,
 )
 from app.repositories.workflow_pack_queue_event_repository import (
@@ -50,6 +51,11 @@ def record_workflow_pack_queue_event(
     tenant_id: str | None = None,
     workflow_surface: str | None = None,
     reason_code: str | None = None,
+    source_queue_item_id: str | None = None,
+    recovery_action_type: WorkflowPackQueueRecoveryActionType | None = None,
+    recovery_attempt_number: int | None = None,
+    requested_by: str | None = None,
+    evidence_ref: str | None = None,
 ) -> WorkflowPackQueueEventDescriptor:
     ensure_workflow_pack_queue_event_store_ready()
     descriptor = WorkflowPackQueueEventDescriptor(
@@ -66,6 +72,11 @@ def record_workflow_pack_queue_event(
         tenant_id=tenant_id,
         workflow_surface=workflow_surface,
         reason_code=reason_code,
+        source_queue_item_id=source_queue_item_id,
+        recovery_action_type=recovery_action_type,
+        recovery_attempt_number=recovery_attempt_number,
+        requested_by=requested_by,
+        evidence_ref=evidence_ref,
         message=message,
         recorded_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
     )
@@ -95,7 +106,7 @@ def build_workflow_pack_queue_event_catalog(
         event_count=len(records),
         events=[record.descriptor for record in records],
         status_summary=[
-            "Workflow-pack queue events provide durable source evidence for queue admission decisions and release posture.",
+            "Workflow-pack queue events provide durable source evidence for queue admission decisions, release posture, and recovery decisions.",
             "Queue events do not replace active queue status, run-ledger lifecycle state, review state, or task-flow checkpoints.",
         ],
     )
@@ -125,6 +136,6 @@ def build_workflow_pack_queue_event_detail(
         events=events,
         status_summary=[
             "Queue event detail is bounded to one queue item and ordered from request through terminal queue posture.",
-            "Terminal queue posture remains separate from workflow-pack run supportability and review authority.",
+            "Terminal queue posture and recovery decisions remain separate from workflow-pack run supportability, review authority, and actual replacement execution.",
         ],
     )

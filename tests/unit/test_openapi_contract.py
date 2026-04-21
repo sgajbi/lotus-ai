@@ -323,6 +323,18 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         == "Workflow-pack queue event store is not ready."
     )
     assert (
+        spec["paths"]["/platform/workflow-packs/queue-events/{queue_item_id}/retry-decisions"][
+            "post"
+        ]["operationId"]
+        == "recordWorkflowPackQueueRetryDecision"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/queue-events/{queue_item_id}/replay-decisions"][
+            "post"
+        ]["operationId"]
+        == "recordWorkflowPackQueueReplayDecision"
+    )
+    assert (
         spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["operationId"]
         == "evaluateWorkflowPackEligibility"
     )
@@ -940,6 +952,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_queue_event_detail_schema = spec["components"]["schemas"][
         "WorkflowPackQueueEventDetailResponse"
     ]
+    workflow_pack_queue_recovery_decision_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueRecoveryDecisionResponse"
+    ]
     workflow_pack_queue_lane_status_schema = spec["components"]["schemas"][
         "WorkflowPackQueueLaneStatusDescriptor"
     ]
@@ -1019,10 +1034,17 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "lane" in workflow_pack_queue_event_schema["properties"]
     assert "state" in workflow_pack_queue_event_schema["properties"]
     assert "reason_code" in workflow_pack_queue_event_schema["properties"]
+    assert "source_queue_item_id" in workflow_pack_queue_event_schema["properties"]
+    assert "recovery_action_type" in workflow_pack_queue_event_schema["properties"]
+    assert "recovery_attempt_number" in workflow_pack_queue_event_schema["properties"]
+    assert "requested_by" in workflow_pack_queue_event_schema["properties"]
+    assert "evidence_ref" in workflow_pack_queue_event_schema["properties"]
     assert "queue_event_source_mode" in workflow_pack_queue_event_catalog_schema["properties"]
     assert "events" in workflow_pack_queue_event_catalog_schema["properties"]
     assert "queue_item_id" in workflow_pack_queue_event_detail_schema["properties"]
     assert "events" in workflow_pack_queue_event_detail_schema["properties"]
+    assert "event" in workflow_pack_queue_recovery_decision_schema["properties"]
+    assert "status_summary" in workflow_pack_queue_recovery_decision_schema["properties"]
     assert "active_count" in workflow_pack_queue_lane_status_schema["properties"]
     assert "saturation_status" in workflow_pack_queue_lane_status_schema["properties"]
     assert "execution_binding_count" in workflow_pack_runtime_status_schema["properties"]

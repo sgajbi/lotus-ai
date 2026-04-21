@@ -119,6 +119,15 @@ class WorkflowPackQueueEventType(str, Enum):
     ADMISSION_RELEASED = "ADMISSION_RELEASED"
     ADMISSION_CANCELLED = "ADMISSION_CANCELLED"
     ADMISSION_TIMED_OUT = "ADMISSION_TIMED_OUT"
+    RETRY_RECORDED = "RETRY_RECORDED"
+    RETRY_BLOCKED = "RETRY_BLOCKED"
+    REPLAY_RECORDED = "REPLAY_RECORDED"
+    REPLAY_BLOCKED = "REPLAY_BLOCKED"
+
+
+class WorkflowPackQueueRecoveryActionType(str, Enum):
+    RETRY = "RETRY"
+    REPLAY = "REPLAY"
 
 
 class WorkflowPackQueueRetryPolicyDescriptor(BaseModel):
@@ -424,6 +433,27 @@ class WorkflowPackQueueEventDescriptor(BaseModel):
         default=None,
         description="Bounded reason code for rejected or degraded queue posture.",
     )
+    source_queue_item_id: str | None = Field(
+        default=None,
+        description="Original queue item identifier when this event records retry or replay posture.",
+    )
+    recovery_action_type: WorkflowPackQueueRecoveryActionType | None = Field(
+        default=None,
+        description="Retry or replay action classification when this event records recovery posture.",
+    )
+    recovery_attempt_number: int | None = Field(
+        default=None,
+        ge=1,
+        description="Attempt number for retry or replay evidence under the pack queue policy.",
+    )
+    requested_by: str | None = Field(
+        default=None,
+        description="Operator, caller, or platform automation actor requesting recovery posture.",
+    )
+    evidence_ref: str | None = Field(
+        default=None,
+        description="Bounded evidence reference supporting retry or replay posture.",
+    )
     message: str = Field(description="Human-readable queue event summary.")
     recorded_at: str = Field(description="UTC timestamp when the event was recorded.")
 
@@ -454,4 +484,50 @@ class WorkflowPackQueueEventDetailResponse(BaseModel):
     )
     status_summary: list[str] = Field(
         description="Human-readable summary of workflow-pack queue event detail posture."
+    )
+
+
+class WorkflowPackQueueRetryDecisionRequest(BaseModel):
+    failure_code: str = Field(
+        min_length=1,
+        description="Bounded failure code being evaluated against the pack queue retry policy.",
+    )
+    requested_by: str = Field(
+        min_length=1,
+        description="Operator, caller, or platform automation actor requesting retry posture.",
+    )
+    reason: str = Field(
+        min_length=1,
+        description="Human-readable reason for recording retry posture.",
+    )
+    evidence_ref: str = Field(
+        min_length=1,
+        description="Bounded evidence reference supporting the retry decision.",
+    )
+
+
+class WorkflowPackQueueReplayDecisionRequest(BaseModel):
+    requested_by: str = Field(
+        min_length=1,
+        description="Operator, caller, or platform automation actor requesting replay posture.",
+    )
+    reason: str = Field(
+        min_length=1,
+        description="Human-readable reason for recording replay posture.",
+    )
+    evidence_ref: str = Field(
+        min_length=1,
+        description="Bounded evidence reference supporting the replay decision.",
+    )
+
+
+class WorkflowPackQueueRecoveryDecisionResponse(BaseModel):
+    service: str = Field(description="Service emitting the queue recovery decision response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    phase: str = Field(description="Current lotus-ai delivery phase.")
+    event: WorkflowPackQueueEventDescriptor = Field(
+        description="Durable queue event recording the retry or replay decision."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of workflow-pack queue recovery decision posture."
     )

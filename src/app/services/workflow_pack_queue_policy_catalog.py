@@ -277,6 +277,7 @@ def _build_queue_policy(
             max_attempts=2,
             backoff_strategy=WorkflowPackQueueBackoffStrategy.EXPONENTIAL,
             retryable_failure_codes=[
+                "EXECUTION_TIMEOUT",
                 "TRANSIENT_PROVIDER_FAILURE",
                 "WORKER_LEASE_EXPIRED",
             ],

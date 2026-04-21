@@ -78,6 +78,8 @@
 - Workflow-pack queue policies: /platform/workflow-packs/queue-policies
 - Workflow-pack queue status: /platform/workflow-packs/queue-status
 - Workflow-pack queue events: /platform/workflow-packs/queue-events
+- Workflow-pack queue retry decisions: /platform/workflow-packs/queue-events/{queue_item_id}/retry-decisions
+- Workflow-pack queue replay decisions: /platform/workflow-packs/queue-events/{queue_item_id}/replay-decisions
 - Workflow-pack eligibility evaluation: /platform/workflow-packs/eligibility/evaluate
 - Workflow-pack control history: /platform/workflow-packs/control-history
 - Workflow-pack control actions: /platform/workflow-packs/control-actions
@@ -116,7 +118,7 @@ Expected operator flow for SQL-backed stores:
 6. when workflow-pack runtime triage matters, inspect the embedded `workflow_pack_runtime` block for latest ready and latest actionable run pointers plus bounded review provenance, bounded artifact or evidence linkage summaries, and `queue_attention` saturation or stale-admission posture before pivoting into the full ledger
 7. verify `GET /platform/workflow-packs/runs` when workflow-pack run persistence is part of the rollout slice
 8. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block also reports `READY` before treating workflow-pack activation state and control history as restart-safe truth
-9. when `LOTUS_AI_WORKFLOW_PACK_QUEUE_EVENT_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_queue_event_store` block reports `READY` before treating queue admission, rejection, and release history as restart-safe truth
+9. when `LOTUS_AI_WORKFLOW_PACK_QUEUE_EVENT_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_queue_event_store` block reports `READY` before treating queue admission, rejection, release, timeout, cancellation, retry-decision, and replay-decision history as restart-safe truth
 10. when using explicit `/platform/workflow-packs/execute`, set `queue_lane` only to one of the requested pack version's declared `allowed_lanes`; omitted lanes use the policy default
 11. verify `GET /platform/workflow-packs/control-history` when registry durability is part of the rollout slice
 12. verify `GET /platform/safety/runtime-status`
@@ -258,8 +260,8 @@ Before treating any workflow-pack-enabled path as operator-ready:
 20. when pack-backed `POST /platform/workflow-packs/execute` or `POST /ai/tasks/execute` returns a
    queue-policy `429`, treat that as admission rejected before audit, run-ledger, or task-flow side
    effects; inspect `/platform/workflow-packs/queue-events` to confirm the rejected admission reason
-21. use `GET /platform/workflow-packs/queue-events/{queue_item_id}` when support needs the exact queue-item history from request through grant, rejection, release, timeout, or cancellation; this source does not replace run-ledger, review-state, or task-flow posture and cancellation evidence does not claim the current synchronous execution body was interrupted
-22. when runtime-status `queue_attention` surfaces terminal timeout or cancellation posture, treat it as durable queue-boundary evidence for operator triage; retry, replay, and retry-cluster action remains outside the current workflow-pack queue contract
+21. use `GET /platform/workflow-packs/queue-events/{queue_item_id}` when support needs the exact queue-item history from request through grant, rejection, release, timeout, cancellation, retry decision, or replay decision; use the bounded retry and replay decision routes only with explicit actor, reason, and evidence reference; this source does not replace run-ledger, review-state, or task-flow posture, cancellation evidence does not claim the current synchronous execution body was interrupted, and `RETRY_RECORDED` or `REPLAY_RECORDED` means recovery posture was recorded rather than the workflow body being executed again
+22. when runtime-status `queue_attention` surfaces terminal timeout, cancellation, blocked retry, or blocked replay posture, treat it as durable queue-boundary evidence for operator triage; actual retry/replay execution and retry-cluster action remain outside the current workflow-pack queue contract
 23. when inspecting the embedded `workflow_pack_runtime.attention_queue` block in `GET /platform/runtime-status`, treat `queue_depth` as the full actionable backlog across executable pack versions and `items` as only the newest bounded sample up to `queue_limit`; if `queue_depth` exceeds `queue_limit`, continue triage through the ledger catalog rather than assuming the visible queue is the full backlog
 
 ## Durable Async Recovery
