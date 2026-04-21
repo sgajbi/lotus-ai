@@ -71,7 +71,9 @@ def test_has_workflow_pack_run_partial_output_requires_terminal_failure_or_expir
     assert has_workflow_pack_run_partial_output(accepted) is False
 
 
-def test_resolve_workflow_pack_run_record_supportability_status_marks_reviewed_record_ready() -> None:
+def test_resolve_workflow_pack_run_record_supportability_status_marks_reviewed_record_ready() -> (
+    None
+):
     source_descriptor = build_workflow_pack_run_descriptor(
         run_id="run-record-ready-source",
         review_state=WorkflowPackRunReviewState.ACCEPTED,

@@ -21,9 +21,7 @@ class InMemoryWorkflowPackRegistryRepository(WorkflowPackRegistryRepository):
 
     def list_registrations(self) -> list[WorkflowPackRegistrationDescriptor]:
         identities = sorted(self._registrations)
-        return [
-            self._registrations[identity].model_copy(deep=True) for identity in identities
-        ]
+        return [self._registrations[identity].model_copy(deep=True) for identity in identities]
 
     def get_registration(
         self, *, pack_id: str, version: str

@@ -127,7 +127,9 @@ def test_access_control_store_runtime_status_reports_unsupported_mode() -> None:
     assert "not supported" in status_descriptor.detail
 
 
-def test_workflow_pack_registry_store_runtime_status_requires_database_for_sqlalchemy_mode() -> None:
+def test_workflow_pack_registry_store_runtime_status_requires_database_for_sqlalchemy_mode() -> (
+    None
+):
     settings.workflow_pack_registry_store_mode = "sqlalchemy"
     settings.database_url = None
 

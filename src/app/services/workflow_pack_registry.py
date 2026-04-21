@@ -37,7 +37,8 @@ def build_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogRespons
     production_eligible_count = sum(
         1
         for registration in registrations
-        if "PRODUCTION" in [environment.value for environment in registration.supported_environments]
+        if "PRODUCTION"
+        in [environment.value for environment in registration.supported_environments]
     )
     return WorkflowPackRegistryCatalogResponse(
         service=settings.service_name,

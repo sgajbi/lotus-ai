@@ -176,8 +176,7 @@ def test_build_workflow_pack_runtime_status_summary_tracks_activity_for_executab
     assert summary.executable_activity[0].historical_count == 0
     assert summary.executable_activity[0].latest_action_required_run_id == "run-awaiting"
     assert (
-        summary.executable_activity[0].latest_action_required_recorded_at
-        == "2026-04-19T11:00:00Z"
+        summary.executable_activity[0].latest_action_required_recorded_at == "2026-04-19T11:00:00Z"
     )
     assert (
         summary.executable_activity[0].latest_action_required_review_summary.review_transition_count
@@ -367,7 +366,9 @@ def test_build_workflow_pack_attention_queue_summary_limits_to_latest_actionable
         "run-action-3",
         "run-action-2",
     ]
-    assert summary.attention_queue.items[0].review_summary.latest_review_actor == "review:banker.sg.6"
+    assert (
+        summary.attention_queue.items[0].review_summary.latest_review_actor == "review:banker.sg.6"
+    )
     assert summary.attention_queue.items[0].review_summary.review_transition_count == 6
     assert summary.attention_queue.items[0].review_summary.has_review_history is True
     assert summary.attention_queue.items[0].provenance.artifact_ref_count == 1

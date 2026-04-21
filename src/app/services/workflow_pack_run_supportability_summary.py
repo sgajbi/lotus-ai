@@ -51,9 +51,7 @@ def _build_supportability_summary_note(
             "historical review state has superseded the current run."
         )
     if review_pending:
-        return (
-            "This workflow-pack run completed execution but still requires bounded review before downstream use."
-        )
+        return "This workflow-pack run completed execution but still requires bounded review before downstream use."
     if status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED:
         return "This workflow-pack run remains action-required and should be reviewed before downstream use."
     return "This workflow-pack run is currently supportable through the bounded ledger posture."

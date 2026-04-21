@@ -92,7 +92,10 @@ def test_workflow_pack_control_history_and_registration_state_support_sqlalchemy
     assert detail_response.status_code == 200
     assert history_response.json()["control_plane_store_mode"] == "sqlalchemy"
     assert history_response.json()["latest_events"][0]["action_type"] == "PAUSE"
-    assert history_response.json()["latest_events"][0]["authorization"]["caller_app"] == "lotus-platform"
+    assert (
+        history_response.json()["latest_events"][0]["authorization"]["caller_app"]
+        == "lotus-platform"
+    )
     assert history_response.json()["latest_events"][0]["authorization"]["outcome"] == "ALLOWED"
     assert detail_response.json()["registration"]["activation_state"] == "PAUSED"
 

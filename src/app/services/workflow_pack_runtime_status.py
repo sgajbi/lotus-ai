@@ -44,7 +44,8 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
         if registration.registration_status.value == "REGISTERED"
     ]
     registered_registration_refs = [
-        f"{registration.pack_id}@{registration.version}" for registration in registered_registrations
+        f"{registration.pack_id}@{registration.version}"
+        for registration in registered_registrations
     ]
     executable_registrations = [
         registration
@@ -52,7 +53,8 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
         if f"{registration.pack_id}@{registration.version}" in binding_refs
     ]
     executable_registration_refs = sorted(
-        f"{registration.pack_id}@{registration.version}" for registration in executable_registrations
+        f"{registration.pack_id}@{registration.version}"
+        for registration in executable_registrations
     )
     executable_review_required_refs = sorted(
         f"{registration.pack_id}@{registration.version}"
@@ -259,7 +261,9 @@ def build_workflow_pack_executable_activity_summary(
                     if latest_action_required_run is not None
                     else None
                 ),
-                latest_ready_run_id=latest_ready_run.run_id if latest_ready_run is not None else None,
+                latest_ready_run_id=latest_ready_run.run_id
+                if latest_ready_run is not None
+                else None,
                 latest_ready_recorded_at=(
                     latest_ready_run.created_at if latest_ready_run is not None else None
                 ),
@@ -330,9 +334,7 @@ def _resolve_latest_run_by_supportability(
     runs: list[WorkflowPackRunDescriptor],
     target_status: WorkflowPackRunSupportabilityStatus,
 ) -> WorkflowPackRunDescriptor | None:
-    matching_runs = [
-        run for run in runs if run.supportability_status is target_status
-    ]
+    matching_runs = [run for run in runs if run.supportability_status is target_status]
     if not matching_runs:
         return None
     return max(matching_runs, key=lambda run: run.created_at)

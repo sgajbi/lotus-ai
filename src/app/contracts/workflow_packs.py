@@ -109,7 +109,9 @@ class WorkflowPackDefinitionReferenceDescriptor(BaseModel):
 
 
 class WorkflowPackExecutionBindingDescriptor(BaseModel):
-    pack_id: str = Field(description="Workflow-pack family identifier bound for explicit execution.")
+    pack_id: str = Field(
+        description="Workflow-pack family identifier bound for explicit execution."
+    )
     version: str = Field(description="Workflow-pack version bound for explicit execution.")
     task_id: str = Field(
         description="Bounded lotus-ai task identifier used by the current explicit execution path."
@@ -277,7 +279,9 @@ class WorkflowPackRuntimeStatusSummaryResponse(BaseModel):
 
 
 class WorkflowPackRunRuntimeSummaryResponse(BaseModel):
-    run_count: int = Field(description="Number of workflow-pack runs currently recorded in the ledger.")
+    run_count: int = Field(
+        description="Number of workflow-pack runs currently recorded in the ledger."
+    )
     awaiting_review_count: int = Field(
         description="Number of workflow-pack runs currently awaiting human review."
     )

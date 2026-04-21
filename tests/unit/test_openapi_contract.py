@@ -248,9 +248,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         "getWorkflowPackRegistryCatalog"
     )
     assert (
-        spec["paths"]["/platform/workflow-packs/registry"]["get"]["responses"]["503"][
-            "description"
-        ]
+        spec["paths"]["/platform/workflow-packs/registry"]["get"]["responses"]["503"]["description"]
         == "Workflow-pack registry store is not ready."
     )
     assert (
@@ -258,9 +256,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         == "getWorkflowPackRegistrationDetail"
     )
     assert (
-        spec["paths"]["/platform/workflow-packs/registry/{pack_id}/{version}"]["get"][
-            "responses"
-        ]["503"]["description"]
+        spec["paths"]["/platform/workflow-packs/registry/{pack_id}/{version}"]["get"]["responses"][
+            "503"
+        ]["description"]
         == "Workflow-pack registry store is not ready."
     )
     assert (
@@ -268,18 +266,16 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         == "evaluateWorkflowPackEligibility"
     )
     assert (
-        spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["responses"][
-            "503"
-        ]["description"]
+        spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["responses"]["503"][
+            "description"
+        ]
         == "Workflow-pack registry store is not ready."
     )
     assert spec["paths"]["/platform/workflow-packs/execute"]["post"]["operationId"] == (
         "executeWorkflowPack"
     )
     assert (
-        spec["paths"]["/platform/workflow-packs/execute"]["post"]["responses"]["503"][
-            "description"
-        ]
+        spec["paths"]["/platform/workflow-packs/execute"]["post"]["responses"]["503"]["description"]
         == "Workflow-pack runtime dependency store is not ready."
     )
     assert spec["paths"]["/platform/workflow-packs/control-history"]["get"]["operationId"] == (
@@ -306,9 +302,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_run_catalog_parameters = spec["paths"]["/platform/workflow-packs/runs"]["get"][
         "parameters"
     ]
-    assert {
-        parameter["name"] for parameter in workflow_pack_run_catalog_parameters
-    } >= {
+    assert {parameter["name"] for parameter in workflow_pack_run_catalog_parameters} >= {
         "registration_ref",
         "pack_id",
         "caller_app",
@@ -365,9 +359,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         == "getWorkflowPackRunConsumerView"
     )
     assert (
-        spec["paths"]["/platform/workflow-packs/runs/{run_id}/consumer-view"]["get"][
-            "responses"
-        ]["503"]["description"]
+        spec["paths"]["/platform/workflow-packs/runs/{run_id}/consumer-view"]["get"]["responses"][
+            "503"
+        ]["description"]
         == "Workflow-pack run store is not ready."
     )
     assert (
@@ -945,7 +939,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "status" in workflow_pack_run_consumer_supportability_schema["properties"]
     assert "review_pending" in workflow_pack_run_consumer_supportability_schema["properties"]
     assert "superseded" in workflow_pack_run_consumer_supportability_schema["properties"]
-    assert "partial_output_visible" in workflow_pack_run_consumer_supportability_schema["properties"]
+    assert (
+        "partial_output_visible" in workflow_pack_run_consumer_supportability_schema["properties"]
+    )
     assert "summary_note" in workflow_pack_run_consumer_supportability_schema["properties"]
     assert (
         "historical review state"

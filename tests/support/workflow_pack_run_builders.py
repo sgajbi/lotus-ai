@@ -10,7 +10,9 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunRuntimeState,
     WorkflowPackRunSupportabilityStatus,
 )
-from app.services.workflow_pack_run_supportability import resolve_workflow_pack_run_supportability_status
+from app.services.workflow_pack_run_supportability import (
+    resolve_workflow_pack_run_supportability_status,
+)
 
 
 def build_workflow_pack_run_descriptor(

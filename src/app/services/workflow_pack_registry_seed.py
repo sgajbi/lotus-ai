@@ -346,7 +346,9 @@ def _workspace_rationale_v1_definition_refs() -> list[WorkflowPackDefinitionRefe
     ]
 
 
-def _twr_inspection_support_brief_v1_definition_refs() -> list[WorkflowPackDefinitionReferenceDescriptor]:
+def _twr_inspection_support_brief_v1_definition_refs() -> list[
+    WorkflowPackDefinitionReferenceDescriptor
+]:
     return [
         _definition_ref(
             reference_id="owner_router",

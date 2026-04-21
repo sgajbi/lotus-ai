@@ -115,10 +115,12 @@ def resolve_workflow_pack_execution_binding_for_task(
             resolved_binding
             for binding in _WORKFLOW_PACK_EXECUTION_BINDINGS
             if (
-                (resolved_binding := get_resolved_workflow_pack_execution_binding(
-                    pack_id=binding.pack_id,
-                    version=binding.version,
-                ))
+                (
+                    resolved_binding := get_resolved_workflow_pack_execution_binding(
+                        pack_id=binding.pack_id,
+                        version=binding.version,
+                    )
+                )
                 is not None
                 and binding.supports_task_execution_context(
                     context=context,
@@ -140,16 +142,16 @@ def validate_workflow_pack_execution_bindings() -> None:
             raise ValueError(
                 f"Workflow-pack execution binding missing registration: {binding.pack_id}@{binding.version}"
             )
-        if not binding.supports_registration_scope(
-            registration=resolved_binding.registration
-        ):
+        if not binding.supports_registration_scope(registration=resolved_binding.registration):
             raise ValueError(
                 "Workflow-pack execution binding default surface is outside registration scope: "
                 f"{binding.pack_id}@{binding.version}"
             )
 
 
-def list_workflow_pack_execution_binding_descriptors() -> list[WorkflowPackExecutionBindingDescriptor]:
+def list_workflow_pack_execution_binding_descriptors() -> list[
+    WorkflowPackExecutionBindingDescriptor
+]:
     return [
         _map_workflow_pack_execution_binding_descriptor(binding)
         for binding in _WORKFLOW_PACK_EXECUTION_BINDINGS

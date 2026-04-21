@@ -35,7 +35,9 @@ def execute_task_with_optional_workflow_pack_recording(
         response=response,
         resolved_binding=resolved_binding,
     )
-    return _attach_workflow_pack_run_id(response=response, workflow_pack_run=workflow_pack_run), workflow_pack_run
+    return _attach_workflow_pack_run_id(
+        response=response, workflow_pack_run=workflow_pack_run
+    ), workflow_pack_run
 
 
 def _attach_workflow_pack_run_id(

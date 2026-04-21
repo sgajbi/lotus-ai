@@ -25,7 +25,9 @@ router = APIRouter(prefix="/ai/tasks", tags=["tasks"])
         403: {"description": "Caller is not authorized for the protected task execution path."},
         404: {"description": "Unknown task id."},
         409: {"description": "Task disabled or request conflicts with task policy."},
-        503: {"description": "Workflow-pack run store is not ready for this pack-backed task path."},
+        503: {
+            "description": "Workflow-pack run store is not ready for this pack-backed task path."
+        },
         500: {"description": "Unexpected server error."},
     },
 )

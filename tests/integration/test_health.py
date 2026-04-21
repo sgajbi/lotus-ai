@@ -400,7 +400,10 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["workflow_pack_runtime"]["executable_activity"][0]["ready_count"] == 0
     assert body["workflow_pack_runtime"]["executable_activity"][0]["action_required_count"] == 0
     assert body["workflow_pack_runtime"]["executable_activity"][0]["historical_count"] == 0
-    assert body["workflow_pack_runtime"]["executable_activity"][0]["latest_action_required_run_id"] is None
+    assert (
+        body["workflow_pack_runtime"]["executable_activity"][0]["latest_action_required_run_id"]
+        is None
+    )
     assert (
         body["workflow_pack_runtime"]["executable_activity"][0][
             "latest_action_required_review_summary"
@@ -408,13 +411,14 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
         is None
     )
     assert (
-        body["workflow_pack_runtime"]["executable_activity"][0][
-            "latest_action_required_provenance"
-        ]
+        body["workflow_pack_runtime"]["executable_activity"][0]["latest_action_required_provenance"]
         is None
     )
     assert body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_run_id"] is None
-    assert body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_review_summary"] is None
+    assert (
+        body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_review_summary"]
+        is None
+    )
     assert body["workflow_pack_runtime"]["executable_activity"][1]["registration_ref"] == (
         "twr_inspection_support_brief.pack@v1"
     )
@@ -423,7 +427,9 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
         "workspace_rationale.pack@v1"
     )
     assert body["workflow_pack_runtime"]["executable_activity"][2]["run_count"] == 0
-    assert body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_provenance"] is None
+    assert (
+        body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_provenance"] is None
+    )
     assert body["workflow_pack_runtime"]["executable_activity"][0]["has_activity"] is False
     assert body["workflow_pack_runtime"]["attention_queue"]["queue_depth"] == 0
     assert body["workflow_pack_runtime"]["attention_queue"]["queue_limit"] == 5

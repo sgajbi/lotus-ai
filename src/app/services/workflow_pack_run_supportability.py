@@ -42,7 +42,8 @@ def is_workflow_pack_run_review_pending(run: WorkflowPackRunDescriptor) -> bool:
 def is_workflow_pack_run_historical(run: WorkflowPackRunDescriptor) -> bool:
     return (
         run.superseded_by_run_id is not None
-        or run.review_state in {WorkflowPackRunReviewState.REVISED, WorkflowPackRunReviewState.SUPERSEDED}
+        or run.review_state
+        in {WorkflowPackRunReviewState.REVISED, WorkflowPackRunReviewState.SUPERSEDED}
         or run.runtime_state is WorkflowPackRunRuntimeState.SUPERSEDED
     )
 

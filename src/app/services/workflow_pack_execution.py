@@ -63,8 +63,10 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
         )
     )
     if not eligibility.allowed:
-        detail = eligibility.denial_reasons[0] if eligibility.denial_reasons else (
-            "Workflow-pack execution is not currently allowed."
+        detail = (
+            eligibility.denial_reasons[0]
+            if eligibility.denial_reasons
+            else ("Workflow-pack execution is not currently allowed.")
         )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 

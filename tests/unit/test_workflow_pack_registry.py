@@ -39,7 +39,9 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         for registration in catalog.registrations
         if registration.pack_id == "twr_inspection_support_brief.pack"
     )
-    assert advisor_brief_registration.registration_status == WorkflowPackRegistrationStatus.REGISTERED
+    assert (
+        advisor_brief_registration.registration_status == WorkflowPackRegistrationStatus.REGISTERED
+    )
     assert advisor_brief_registration.activation_state == WorkflowPackActivationState.PILOT
     assert advisor_brief_registration.owner_repository == "lotus-gateway"
     assert advisor_brief_registration.workflow_authority_owner == "lotus-gateway"
@@ -72,8 +74,7 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         for binding in catalog.execution_bindings
     )
     assert any(
-        binding.pack_id == "twr_inspection_support_brief.pack"
-        and binding.task_id == "explain.v1"
+        binding.pack_id == "twr_inspection_support_brief.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
     )
 
@@ -91,7 +92,9 @@ def test_build_workflow_pack_registry_catalog_exposes_validation_rules() -> None
         "valid ownership, scope, and definition references" in line
         for line in catalog.status_summary
     )
-    assert any("Internal execution bindings are validated" in line for line in catalog.status_summary)
+    assert any(
+        "Internal execution bindings are validated" in line for line in catalog.status_summary
+    )
 
 
 def test_build_workflow_pack_registration_detail_exposes_deny_by_default_registration_truth() -> (
@@ -140,8 +143,9 @@ def test_build_workspace_rationale_registration_detail_exposes_advise_owned_bind
     assert detail.execution_binding.default_workflow_surface == "advisory-workspace-assistant"
 
 
-def test_build_twr_inspection_support_brief_registration_detail_exposes_performance_owned_binding(
-) -> None:
+def test_build_twr_inspection_support_brief_registration_detail_exposes_performance_owned_binding() -> (
+    None
+):
     detail = build_workflow_pack_registration_detail(
         pack_id="twr_inspection_support_brief.pack",
         version="v1",

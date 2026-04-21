@@ -175,9 +175,7 @@ def workspace_rationale_workflow_pack_execution_request_json(
                 "tenant_id": "tenant-us-002",
             },
             "context": {
-                "summary": (
-                    f"Advisory workspace rationale request for workspace {workspace_id}."
-                ),
+                "summary": (f"Advisory workspace rationale request for workspace {workspace_id}."),
                 "payload": workspace_rationale_payload(
                     workspace_id=workspace_id,
                     proposal_status=proposal_status,

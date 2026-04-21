@@ -56,10 +56,7 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     ]
     assert workspace_rationale_binding["version"] == "v1"
     assert workspace_rationale_binding["task_id"] == "explain.v1"
-    assert (
-        workspace_rationale_binding["default_workflow_surface"]
-        == "advisory-workspace-assistant"
-    )
+    assert workspace_rationale_binding["default_workflow_surface"] == "advisory-workspace-assistant"
     assert workspace_rationale_binding["required_payload_keys"] == [
         "evaluation_summary",
         "instruction",
@@ -68,10 +65,7 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     ]
     assert twr_inspection_binding["version"] == "v1"
     assert twr_inspection_binding["task_id"] == "explain.v1"
-    assert (
-        twr_inspection_binding["default_workflow_surface"]
-        == "twr-supportability-inspection"
-    )
+    assert twr_inspection_binding["default_workflow_surface"] == "twr-supportability-inspection"
     assert twr_inspection_binding["required_payload_keys"] == [
         "check_coverage",
         "evidence_summary",
@@ -130,10 +124,7 @@ def test_workspace_rationale_registration_detail_route(client: TestClient) -> No
     assert body["execution_binding"]["pack_id"] == "workspace_rationale.pack"
     assert body["execution_binding"]["version"] == "v1"
     assert body["execution_binding"]["task_id"] == "explain.v1"
-    assert (
-        body["execution_binding"]["default_workflow_surface"]
-        == "advisory-workspace-assistant"
-    )
+    assert body["execution_binding"]["default_workflow_surface"] == "advisory-workspace-assistant"
 
 
 def test_twr_inspection_support_brief_registration_detail_route(client: TestClient) -> None:
@@ -157,10 +148,7 @@ def test_twr_inspection_support_brief_registration_detail_route(client: TestClie
     assert body["execution_binding"]["pack_id"] == "twr_inspection_support_brief.pack"
     assert body["execution_binding"]["version"] == "v1"
     assert body["execution_binding"]["task_id"] == "explain.v1"
-    assert (
-        body["execution_binding"]["default_workflow_surface"]
-        == "twr-supportability-inspection"
-    )
+    assert body["execution_binding"]["default_workflow_surface"] == "twr-supportability-inspection"
 
 
 def test_workflow_pack_registration_detail_route_rejects_unknown_registration(

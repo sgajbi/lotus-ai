@@ -79,10 +79,7 @@ class SqlAlchemyWorkflowPackRegistryRepository(
             models = session.scalars(
                 statement.order_by(WorkflowPackControlEventModel.recorded_at.desc())
             ).all()
-            return [
-                self._to_control_event_descriptor(model)
-                for model in models[: max(limit, 1)]
-            ]
+            return [self._to_control_event_descriptor(model) for model in models[: max(limit, 1)]]
 
     def save_control_event(self, event: WorkflowPackControlEventDescriptor) -> None:
         model = WorkflowPackControlEventModel(
