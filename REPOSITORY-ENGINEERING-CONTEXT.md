@@ -30,7 +30,8 @@ It does not own portfolio, performance, risk, advisory, or management domain tru
 
 Current repository posture:
 
-1. `lotus-ai` is in a governed foundation phase with many bounded capabilities already implemented,
+1. `lotus-ai` now has an implemented bounded workflow-pack runtime foundation for the current
+   Phase-1 pack families, with broader pack-family expansion remaining follow-on work,
 2. live provider rollout remains controlled and deliberately constrained,
 3. retrieval, prompts, provider policy, evaluation, async runtime, and governance are real first-class seams,
 4. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity, with owner-artifact references that must resolve back to the real downstream repository and with one governed store-mode seam that can keep activation state and control history in memory or in a migration-backed SQL store,

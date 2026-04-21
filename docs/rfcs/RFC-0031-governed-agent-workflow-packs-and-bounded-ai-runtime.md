@@ -1,6 +1,6 @@
 # RFC-0031: Governed Agent Workflow Packs and Bounded AI Runtime
 
-- Status: In Progress
+- Status: Implemented
 - Date: 2026-04-18
 - Owners:
   - lotus-ai maintainers
@@ -64,8 +64,8 @@ without becoming an unconstrained agent platform.
 
 ## Implementation Status
 
-This RFC is now partially implemented through three bounded workflow-pack adoption paths, with
-three governed live proofs.
+This RFC is now implemented for the bounded Phase-1 workflow-pack runtime scope through three
+bounded workflow-pack adoption paths, with three governed live proofs.
 
 Current branch evidence now spans `lotus-ai`, `lotus-gateway`, and `lotus-workbench` for the
 Phase-1 `advisor_brief.pack` flow:
@@ -92,7 +92,7 @@ Phase-1 `advisor_brief.pack` flow:
    truthful blocked and deferred alternatives posture, and parity-safe stateful simulation
    requests.
 
-Still pending under this broader RFC:
+Follow-on work outside the implemented bounded Phase-1 scope:
 
 1. broader multi-pack execution posture and downstream proof beyond the current
    `advisor_brief.pack`, `workspace_rationale.pack`, and
@@ -144,7 +144,7 @@ Implemented evidence now available in `lotus-ai`:
    `docs/guides/workflow-pack-owner-onboarding.md`, `docs/runbooks/service-operations.md`, and
    `wiki/`.
 
-Evidence that remains intentionally absent because this RFC is only partially implemented:
+Deliberately deferred beyond the implemented bounded Phase-1 scope:
 
 1. no broader workflow-pack rollout beyond the current Phase-1 `advisor_brief.pack`,
    `workspace_rationale.pack`, and `twr_inspection_support_brief.pack` seams plus the internal
