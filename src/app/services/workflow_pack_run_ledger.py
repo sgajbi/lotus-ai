@@ -338,6 +338,7 @@ def map_workflow_pack_run_record(
         allowed_review_actions=resolve_allowed_review_actions(
             review_required=record.review_required,
             review_state=WorkflowPackRunReviewState(record.review_state),
+            runtime_state=WorkflowPackRunRuntimeState(record.runtime_state),
         ),
         review_summary=review_summary,
         review_required=record.review_required,

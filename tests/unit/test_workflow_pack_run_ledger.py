@@ -89,6 +89,7 @@ def test_record_workflow_pack_run_preserves_failed_runtime_posture() -> None:
     assert recorded is not None
     assert recorded.runtime_state.value == "FAILED"
     assert recorded.review_state.value == "AWAITING_REVIEW"
+    assert recorded.allowed_review_actions == []
     assert recorded.supportability_status.value == "ACTION_REQUIRED"
     assert recorded.output_preview.startswith("LIVE_EXECUTION_NOT_ENABLED:")
     assert "failure_category" in recorded.structured_output_keys
@@ -99,6 +100,27 @@ def test_record_workflow_pack_run_preserves_failed_runtime_posture() -> None:
     detail = build_workflow_pack_run_detail(run_id=recorded.run_id)
     assert detail.run.runtime_state.value == "FAILED"
     assert detail.supportability.partial_output_visible is True
+
+    try:
+        apply_workflow_pack_run_review_action(
+            run_id=recorded.run_id,
+            request=WorkflowPackRunReviewActionRequest(
+                action_type=WorkflowPackRunReviewActionType.ACCEPT,
+                caller_app="lotus-gateway",
+                reviewed_by="banker.sg.failed",
+                reason="Failed runtime output must not be accepted as workflow truth.",
+            ),
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 409
+        assert "runtime state `FAILED`" in exc.detail
+    else:
+        raise AssertionError("Expected failed workflow-pack run to reject review action")
+
+    unchanged = build_workflow_pack_run_detail(run_id=recorded.run_id)
+    assert unchanged.run.review_state.value == "AWAITING_REVIEW"
+    assert unchanged.review.review_transition_count == 0
+    assert [event.event_type.value for event in unchanged.events] == ["RUN_RECORDED"]
 
 
 def test_record_workflow_pack_run_ignores_non_pack_task_execution() -> None:

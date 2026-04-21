@@ -14,6 +14,7 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunReviewActionResponse,
     WorkflowPackRunReviewActionType,
     WorkflowPackRunReviewState,
+    WorkflowPackRunRuntimeState,
 )
 from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunEventRecord,
@@ -144,6 +145,7 @@ def _apply_review_transition(
     _validate_review_transition(
         review_required=run.review_required,
         current_state=current_state,
+        runtime_state=WorkflowPackRunRuntimeState(run.runtime_state),
         action_type=request.action_type,
     )
 
@@ -208,18 +210,20 @@ def _validate_review_transition(
     *,
     review_required: bool,
     current_state: WorkflowPackRunReviewState,
+    runtime_state: WorkflowPackRunRuntimeState,
     action_type: WorkflowPackRunReviewActionType,
 ) -> None:
     if action_type in resolve_allowed_review_actions(
         review_required=review_required,
         review_state=current_state,
+        runtime_state=runtime_state,
     ):
         return
     raise HTTPException(
         status_code=status.HTTP_409_CONFLICT,
         detail=(
             f"Workflow-pack run review action `{action_type.value}` is not allowed from "
-            f"review state `{current_state.value}`."
+            f"review state `{current_state.value}` and runtime state `{runtime_state.value}`."
         ),
     )
 
