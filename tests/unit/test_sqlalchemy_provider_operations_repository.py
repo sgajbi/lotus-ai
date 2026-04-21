@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any, cast
 
 from sqlalchemy.exc import IntegrityError
 
@@ -227,9 +228,14 @@ def _integrity_error_session_factory() -> _IntegrityErrorSession:
     return _IntegrityErrorSession()
 
 
-def test_sqlalchemy_provider_operations_repository_fails_after_retry_exhaustion() -> None:
+def _repository_with_integrity_error_session() -> SqlAlchemyProviderOperationsRepository:
     repository = object.__new__(SqlAlchemyProviderOperationsRepository)
-    repository._session_factory = _integrity_error_session_factory
+    cast(Any, repository)._session_factory = _integrity_error_session_factory
+    return repository
+
+
+def test_sqlalchemy_provider_operations_repository_fails_after_retry_exhaustion() -> None:
+    repository = _repository_with_integrity_error_session()
 
     for operation in (
         lambda: repository.increment_quota_state(

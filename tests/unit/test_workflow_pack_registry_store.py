@@ -173,10 +173,12 @@ def test_sqlalchemy_workflow_pack_registry_repository_preserves_existing_rows_an
         default_registrations=[registration],
     )
 
-    assert second_repository.get_registration(
+    restored_registration = second_repository.get_registration(
         pack_id="advisor_brief.pack",
         version="v1",
-    ).status_summary == ["custom operator summary"]
+    )
+    assert restored_registration is not None
+    assert restored_registration.status_summary == ["custom operator summary"]
 
     with second_repository._session_factory() as session:
         session.add(
