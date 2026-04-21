@@ -10,12 +10,18 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 
 from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueEventType,
     WorkflowPackQueueLane,
     WorkflowPackQueuePolicyDescriptor,
     WorkflowPackQueueState,
     is_workflow_pack_queue_state_transition_allowed,
 )
 from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
+from app.services.workflow_pack_queue_events import (
+    WorkflowPackQueueEventStoreNotReadyError,
+    ensure_workflow_pack_queue_event_store_ready,
+    record_workflow_pack_queue_event,
+)
 from app.services.workflow_pack_queue_policy_catalog import (
     get_workflow_pack_queue_policy_descriptor,
 )
@@ -30,6 +36,10 @@ class WorkflowPackQueueAdmissionLease:
     lane: WorkflowPackQueueLane
     state: WorkflowPackQueueState
     admitted_at: str
+    caller_app: str | None = None
+    correlation_id: str | None = None
+    tenant_id: str | None = None
+    workflow_surface: str | None = None
 
 
 _queue_lock = RLock()
@@ -41,10 +51,18 @@ def workflow_pack_queue_admission(
     *,
     registration: WorkflowPackRegistrationDescriptor,
     requested_lane: WorkflowPackQueueLane | None = None,
+    caller_app: str | None = None,
+    correlation_id: str | None = None,
+    tenant_id: str | None = None,
+    workflow_surface: str | None = None,
 ) -> Iterator[WorkflowPackQueueAdmissionLease]:
     lease = acquire_workflow_pack_queue_admission(
         registration=registration,
         requested_lane=requested_lane,
+        caller_app=caller_app,
+        correlation_id=correlation_id,
+        tenant_id=tenant_id,
+        workflow_surface=workflow_surface,
     )
     try:
         yield lease
@@ -56,12 +74,35 @@ def acquire_workflow_pack_queue_admission(
     *,
     registration: WorkflowPackRegistrationDescriptor,
     requested_lane: WorkflowPackQueueLane | None = None,
+    caller_app: str | None = None,
+    correlation_id: str | None = None,
+    tenant_id: str | None = None,
+    workflow_surface: str | None = None,
 ) -> WorkflowPackQueueAdmissionLease:
+    _ensure_queue_event_store_ready_for_admission()
+    queue_item_id = f"wpq_{uuid4().hex}"
     policy = get_workflow_pack_queue_policy_descriptor(
         pack_id=registration.pack_id,
         version=registration.version,
     )
     if policy is None:
+        _record_queue_event(
+            queue_item_id=queue_item_id,
+            event_type=WorkflowPackQueueEventType.ADMISSION_REJECTED,
+            workflow_pack_id=registration.pack_id,
+            workflow_pack_version=registration.version,
+            state=WorkflowPackQueueState.REJECTED,
+            lane=requested_lane,
+            caller_app=caller_app,
+            correlation_id=correlation_id,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+            reason_code="QUEUE_POLICY_NOT_FOUND",
+            message=(
+                "Workflow-pack queue admission rejected because no queue policy is "
+                f"declared for `{registration.pack_id}@{registration.version}`."
+            ),
+        )
         _raise_queue_rejection(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
@@ -71,7 +112,38 @@ def acquire_workflow_pack_queue_admission(
         )
 
     lane = requested_lane or policy.default_lane
+    _record_queue_event(
+        queue_item_id=queue_item_id,
+        event_type=WorkflowPackQueueEventType.ADMISSION_REQUESTED,
+        policy=policy,
+        lane=lane,
+        state=WorkflowPackQueueState.NOT_ADMITTED,
+        caller_app=caller_app,
+        correlation_id=correlation_id,
+        tenant_id=tenant_id,
+        workflow_surface=workflow_surface,
+        message=(
+            "Workflow-pack queue admission requested for "
+            f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}` in lane `{lane.value}`."
+        ),
+    )
     if lane not in set(policy.allowed_lanes):
+        _record_queue_event(
+            queue_item_id=queue_item_id,
+            event_type=WorkflowPackQueueEventType.ADMISSION_REJECTED,
+            policy=policy,
+            lane=lane,
+            state=WorkflowPackQueueState.REJECTED,
+            caller_app=caller_app,
+            correlation_id=correlation_id,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+            reason_code="QUEUE_LANE_NOT_ALLOWED",
+            message=(
+                "Workflow-pack queue admission rejected because the requested lane "
+                f"`{lane.value}` is not allowed."
+            ),
+        )
         _raise_queue_rejection(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
@@ -85,17 +157,27 @@ def acquire_workflow_pack_queue_admission(
         active_lane_count = _count_active_leases(policy=policy, lane=lane)
         if active_pack_count >= policy.max_concurrent_runs_per_pack:
             _raise_capacity_rejection(
+                queue_item_id=queue_item_id,
                 policy=policy,
                 lane=lane,
                 limit_name="max_concurrent_runs_per_pack",
                 limit=policy.max_concurrent_runs_per_pack,
+                caller_app=caller_app,
+                correlation_id=correlation_id,
+                tenant_id=tenant_id,
+                workflow_surface=workflow_surface,
             )
         if active_lane_count >= policy.max_concurrent_runs_per_lane:
             _raise_capacity_rejection(
+                queue_item_id=queue_item_id,
                 policy=policy,
                 lane=lane,
                 limit_name="max_concurrent_runs_per_lane",
                 limit=policy.max_concurrent_runs_per_lane,
+                caller_app=caller_app,
+                correlation_id=correlation_id,
+                tenant_id=tenant_id,
+                workflow_surface=workflow_surface,
             )
 
         queued_state = _transition_queue_state(
@@ -111,19 +193,63 @@ def acquire_workflow_pack_queue_admission(
             next_state=WorkflowPackQueueState.RUNNING,
         )
         lease = WorkflowPackQueueAdmissionLease(
-            queue_item_id=f"wpq_{uuid4().hex}",
+            queue_item_id=queue_item_id,
             policy_id=policy.policy_id,
             workflow_pack_id=policy.workflow_pack_id,
             workflow_pack_version=policy.workflow_pack_version,
             lane=lane,
             state=running_state,
             admitted_at=_utc_now_timestamp(),
+            caller_app=caller_app,
+            correlation_id=correlation_id,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+        )
+        _record_queue_event(
+            queue_item_id=lease.queue_item_id,
+            event_type=WorkflowPackQueueEventType.ADMISSION_GRANTED,
+            policy=policy,
+            lane=lane,
+            state=running_state,
+            caller_app=caller_app,
+            correlation_id=correlation_id,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+            message=(
+                "Workflow-pack queue admission granted for "
+                f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}` in lane `{lane.value}`."
+            ),
         )
         _active_leases[lease.queue_item_id] = lease
         return lease
 
 
 def release_workflow_pack_queue_admission(queue_item_id: str) -> None:
+    with _queue_lock:
+        lease = _active_leases.get(queue_item_id)
+    if lease is None:
+        return
+    release_state = _transition_queue_state(
+        current_state=lease.state,
+        next_state=WorkflowPackQueueState.COMPLETED_HANDOFF,
+    )
+    _record_queue_event(
+        queue_item_id=lease.queue_item_id,
+        event_type=WorkflowPackQueueEventType.ADMISSION_RELEASED,
+        workflow_pack_id=lease.workflow_pack_id,
+        workflow_pack_version=lease.workflow_pack_version,
+        policy_id=lease.policy_id,
+        lane=lease.lane,
+        state=release_state,
+        caller_app=lease.caller_app,
+        correlation_id=lease.correlation_id,
+        tenant_id=lease.tenant_id,
+        workflow_surface=lease.workflow_surface,
+        message=(
+            "Workflow-pack queue admission released after bounded execution handoff for "
+            f"`{lease.workflow_pack_id}@{lease.workflow_pack_version}`."
+        ),
+    )
     with _queue_lock:
         _active_leases.pop(queue_item_id, None)
 
@@ -176,11 +302,31 @@ def _transition_queue_state(
 
 def _raise_capacity_rejection(
     *,
+    queue_item_id: str,
     policy: WorkflowPackQueuePolicyDescriptor,
     lane: WorkflowPackQueueLane,
     limit_name: str,
     limit: int,
+    caller_app: str | None = None,
+    correlation_id: str | None = None,
+    tenant_id: str | None = None,
+    workflow_surface: str | None = None,
 ) -> None:
+    _record_queue_event(
+        queue_item_id=queue_item_id,
+        event_type=WorkflowPackQueueEventType.ADMISSION_REJECTED,
+        policy=policy,
+        lane=lane,
+        state=WorkflowPackQueueState.REJECTED,
+        caller_app=caller_app,
+        correlation_id=correlation_id,
+        tenant_id=tenant_id,
+        workflow_surface=workflow_surface,
+        reason_code=limit_name.upper(),
+        message=(
+            f"Workflow-pack queue admission rejected because `{limit_name}` is already at {limit}."
+        ),
+    )
     _raise_queue_rejection(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         detail=(
@@ -193,6 +339,55 @@ def _raise_capacity_rejection(
 
 def _raise_queue_rejection(*, status_code: int, detail: str) -> NoReturn:
     raise HTTPException(status_code=status_code, detail=detail)
+
+
+def _ensure_queue_event_store_ready_for_admission() -> None:
+    try:
+        ensure_workflow_pack_queue_event_store_ready()
+    except WorkflowPackQueueEventStoreNotReadyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+
+
+def _record_queue_event(
+    *,
+    queue_item_id: str,
+    event_type: WorkflowPackQueueEventType,
+    state: WorkflowPackQueueState,
+    message: str,
+    policy: WorkflowPackQueuePolicyDescriptor | None = None,
+    workflow_pack_id: str | None = None,
+    workflow_pack_version: str | None = None,
+    policy_id: str | None = None,
+    lane: WorkflowPackQueueLane | None = None,
+    caller_app: str | None = None,
+    correlation_id: str | None = None,
+    tenant_id: str | None = None,
+    workflow_surface: str | None = None,
+    reason_code: str | None = None,
+) -> None:
+    resolved_workflow_pack_id = policy.workflow_pack_id if policy is not None else workflow_pack_id
+    resolved_workflow_pack_version = (
+        policy.workflow_pack_version if policy is not None else workflow_pack_version
+    )
+    if resolved_workflow_pack_id is None or resolved_workflow_pack_version is None:
+        raise RuntimeError("Workflow-pack queue event identity is required.")
+    record_workflow_pack_queue_event(
+        queue_item_id=queue_item_id,
+        event_type=event_type,
+        policy_id=policy.policy_id if policy is not None else policy_id,
+        workflow_pack_id=resolved_workflow_pack_id,
+        workflow_pack_version=resolved_workflow_pack_version,
+        lane=lane,
+        state=state,
+        caller_app=caller_app,
+        correlation_id=correlation_id,
+        tenant_id=tenant_id,
+        workflow_surface=workflow_surface,
+        reason_code=reason_code,
+        message=message,
+    )
 
 
 def _utc_now_timestamp() -> str:

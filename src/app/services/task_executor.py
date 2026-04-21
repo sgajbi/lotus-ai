@@ -38,7 +38,13 @@ def execute_task_with_optional_workflow_pack_recording(
         ensure_workflow_pack_run_store_ready()
         ensure_workflow_pack_task_flow_store_ready()
     admission = (
-        workflow_pack_queue_admission(registration=resolved_binding.registration)
+        workflow_pack_queue_admission(
+            registration=resolved_binding.registration,
+            caller_app=request.caller.caller_app,
+            correlation_id=request.caller.correlation_id,
+            tenant_id=request.caller.tenant_id,
+            workflow_surface=resolved_binding.binding.default_workflow_surface,
+        )
         if resolved_binding is not None
         else nullcontext()
     )

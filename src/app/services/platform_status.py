@@ -53,6 +53,7 @@ from app.services.runtime_readiness import (
     get_audit_store_runtime_status,
     get_retrieval_store_runtime_status,
     get_workflow_pack_registry_store_runtime_status,
+    get_workflow_pack_queue_event_store_runtime_status,
     get_workflow_pack_run_store_runtime_status,
     get_workflow_pack_task_flow_store_runtime_status,
 )
@@ -122,6 +123,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     workflow_pack_registry_store = get_workflow_pack_registry_store_runtime_status()
     workflow_pack_run_store = get_workflow_pack_run_store_runtime_status()
     workflow_pack_task_flow_store = get_workflow_pack_task_flow_store_runtime_status()
+    workflow_pack_queue_event_store = get_workflow_pack_queue_event_store_runtime_status()
     workflow_pack_runtime = build_workflow_pack_runtime_status_summary()
     safety_runtime = build_safety_runtime_status()
     safety_governance = build_safety_governance_status()
@@ -141,6 +143,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         workflow_pack_registry_store_mode=settings.workflow_pack_registry_store_mode,
         workflow_pack_run_store_mode=settings.workflow_pack_run_store_mode,
         workflow_pack_task_flow_store_mode=settings.workflow_pack_task_flow_store_mode,
+        workflow_pack_queue_event_store_mode=settings.workflow_pack_queue_event_store_mode,
         artifact_store_mode=settings.artifact_store_mode,
         artifact_object_store_mode=settings.artifact_object_store_mode,
         access_control_runtime=access_control_runtime,
@@ -181,6 +184,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         workflow_pack_registry_store=workflow_pack_registry_store,
         workflow_pack_run_store=workflow_pack_run_store,
         workflow_pack_task_flow_store=workflow_pack_task_flow_store,
+        workflow_pack_queue_event_store=workflow_pack_queue_event_store,
         workflow_pack_runtime=workflow_pack_runtime,
         database_configured=(
             audit_store.database_configured
@@ -188,6 +192,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
             or workflow_pack_registry_store.database_configured
             or workflow_pack_run_store.database_configured
             or workflow_pack_task_flow_store.database_configured
+            or workflow_pack_queue_event_store.database_configured
             or artifact_store.database_configured
         ),
         prompt_count=len(prompts),

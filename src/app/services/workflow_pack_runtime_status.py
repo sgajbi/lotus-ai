@@ -36,6 +36,7 @@ from app.services.workflow_pack_run_provenance_summary import (
 )
 from app.services.runtime_readiness import (
     get_workflow_pack_registry_store_runtime_status,
+    get_workflow_pack_queue_event_store_runtime_status,
     get_workflow_pack_run_store_runtime_status,
     get_workflow_pack_task_flow_store_runtime_status,
 )
@@ -51,6 +52,7 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
     registry_store_status = get_workflow_pack_registry_store_runtime_status()
     run_store_status = get_workflow_pack_run_store_runtime_status()
     task_flow_store_status = get_workflow_pack_task_flow_store_runtime_status()
+    queue_event_store_status = get_workflow_pack_queue_event_store_runtime_status()
     registrations = (
         list_workflow_pack_registrations()
         if registry_store_status.status is RuntimeReadinessStatus.READY
@@ -141,9 +143,17 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
             ],
         )
 
-    if registry_store_status.status is RuntimeReadinessStatus.READY:
+    if (
+        registry_store_status.status is RuntimeReadinessStatus.READY
+        and queue_event_store_status.status is RuntimeReadinessStatus.READY
+    ):
         queue_attention = build_workflow_pack_queue_attention_summary()
     else:
+        blocking_store = (
+            registry_store_status
+            if registry_store_status.status is not RuntimeReadinessStatus.READY
+            else queue_event_store_status
+        )
         queue_attention = WorkflowPackQueueAttentionSummaryResponse(
             heartbeat_status="UNAVAILABLE",
             attention_count=0,
@@ -154,8 +164,8 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
             attention_limit=WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT,
             items=[],
             status_summary=[
-                "Workflow-pack queue heartbeat attention is unavailable until the configured registry store is ready.",
-                f"Current workflow-pack registry store status is `{registry_store_status.status.value}`.",
+                "Workflow-pack queue heartbeat attention is unavailable until configured queue source stores are ready.",
+                f"Current blocking queue source status is `{blocking_store.status.value}`.",
             ],
         )
 
@@ -200,9 +210,12 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
                 else "Task-flow heartbeat attention is available through the configured workflow-pack task-flow store."
             ),
             (
-                "Queue heartbeat attention is unavailable until the configured workflow-pack registry store is ready."
-                if registry_store_status.status is not RuntimeReadinessStatus.READY
-                else "Queue heartbeat attention is available through the configured workflow-pack queue source posture."
+                "Queue heartbeat attention is unavailable until the configured workflow-pack queue source stores are ready."
+                if (
+                    registry_store_status.status is not RuntimeReadinessStatus.READY
+                    or queue_event_store_status.status is not RuntimeReadinessStatus.READY
+                )
+                else "Queue heartbeat attention is available through active-admission posture and durable queue-event source truth."
             ),
         ],
     )

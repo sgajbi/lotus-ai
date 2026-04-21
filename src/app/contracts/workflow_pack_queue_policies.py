@@ -112,6 +112,13 @@ class WorkflowPackQueueSaturationStatus(str, Enum):
     SATURATED = "SATURATED"
 
 
+class WorkflowPackQueueEventType(str, Enum):
+    ADMISSION_REQUESTED = "ADMISSION_REQUESTED"
+    ADMISSION_GRANTED = "ADMISSION_GRANTED"
+    ADMISSION_REJECTED = "ADMISSION_REJECTED"
+    ADMISSION_RELEASED = "ADMISSION_RELEASED"
+
+
 class WorkflowPackQueueRetryPolicyDescriptor(BaseModel):
     max_attempts: int = Field(
         ge=1,
@@ -377,4 +384,72 @@ class WorkflowPackQueueStatusDetailResponse(BaseModel):
     )
     status_summary: list[str] = Field(
         description="Human-readable summary of current queue item posture."
+    )
+
+
+class WorkflowPackQueueEventDescriptor(BaseModel):
+    event_id: str = Field(description="Stable queue event identifier.")
+    queue_item_id: str = Field(description="Bounded queue admission item identifier.")
+    event_type: WorkflowPackQueueEventType = Field(description="Queue event type.")
+    policy_id: str | None = Field(
+        default=None,
+        description="Queue policy identifier when one could be resolved for the event.",
+    )
+    workflow_pack_id: str = Field(description="Workflow-pack family identifier.")
+    workflow_pack_version: str = Field(description="Workflow-pack version.")
+    lane: WorkflowPackQueueLane | None = Field(
+        default=None,
+        description="Requested or resolved queue lane when available.",
+    )
+    state: WorkflowPackQueueState = Field(description="Queue state recorded for this event.")
+    caller_app: str | None = Field(
+        default=None,
+        description="Calling Lotus application when supplied by the execution path.",
+    )
+    correlation_id: str | None = Field(
+        default=None,
+        description="Caller correlation identifier when supplied by the execution path.",
+    )
+    tenant_id: str | None = Field(
+        default=None,
+        description="Optional tenant or environment ownership marker.",
+    )
+    workflow_surface: str | None = Field(
+        default=None,
+        description="Optional workflow surface associated with the queued work.",
+    )
+    reason_code: str | None = Field(
+        default=None,
+        description="Bounded reason code for rejected or degraded queue posture.",
+    )
+    message: str = Field(description="Human-readable queue event summary.")
+    recorded_at: str = Field(description="UTC timestamp when the event was recorded.")
+
+
+class WorkflowPackQueueEventCatalogResponse(BaseModel):
+    service: str = Field(description="Service emitting workflow-pack queue events.")
+    version: str = Field(description="Current lotus-ai service version.")
+    phase: str = Field(description="Current lotus-ai delivery phase.")
+    queue_event_source_mode: str = Field(description="Configured queue-event source mode.")
+    event_count: int = Field(description="Number of queue events returned after filtering.")
+    events: list[WorkflowPackQueueEventDescriptor] = Field(
+        description="Bounded workflow-pack queue events ordered newest first."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of workflow-pack queue event posture."
+    )
+
+
+class WorkflowPackQueueEventDetailResponse(BaseModel):
+    service: str = Field(description="Service emitting workflow-pack queue event detail.")
+    version: str = Field(description="Current lotus-ai service version.")
+    phase: str = Field(description="Current lotus-ai delivery phase.")
+    queue_event_source_mode: str = Field(description="Configured queue-event source mode.")
+    queue_item_id: str = Field(description="Bounded queue admission item identifier.")
+    event_count: int = Field(description="Number of events recorded for this queue item.")
+    events: list[WorkflowPackQueueEventDescriptor] = Field(
+        description="Queue event history for the requested queue item ordered oldest first."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of workflow-pack queue event detail posture."
     )
