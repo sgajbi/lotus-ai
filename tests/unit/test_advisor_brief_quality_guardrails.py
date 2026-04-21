@@ -94,6 +94,57 @@ def test_normalize_advisor_brief_output_falls_back_on_numeric_consistency_mismat
     assert "PB SG GLOBAL BAL 001 delivered 1.25% over YTD" in result.message
 
 
+def test_normalize_advisor_brief_output_falls_back_when_summary_is_missing() -> None:
+    result = normalize_advisor_brief_output(
+        parsed_output={
+            "talking_points": [],
+            "recommended_actions": [],
+            "risks_and_exceptions": [],
+        },
+        output_message="missing summary",
+        context_payload=_advisor_context(),
+        source_refs=["lotus-gateway:workbench:performance-summary:YTD"],
+    )
+
+    assert result.guardrail_triggered is True
+    assert result.guardrail_reason == "missing_grounded_summary"
+    assert "PB SG GLOBAL BAL 001 delivered 1.25% over YTD" in result.message
+
+
+def test_normalize_advisor_brief_output_rejects_code_fenced_summary() -> None:
+    result = normalize_advisor_brief_output(
+        parsed_output={
+            "grounded_summary": '```json\n{"grounded_summary":"bad"}\n```',
+            "talking_points": [],
+            "recommended_actions": [],
+            "risks_and_exceptions": [],
+        },
+        output_message="code fenced summary",
+        context_payload=_advisor_context(),
+        source_refs=["lotus-gateway:workbench:performance-summary:YTD"],
+    )
+
+    assert result.guardrail_triggered is True
+    assert result.guardrail_reason == "invalid_grounded_summary_language"
+
+
+def test_normalize_advisor_brief_output_rejects_ungrounded_currency_claim() -> None:
+    result = normalize_advisor_brief_output(
+        parsed_output={
+            "grounded_summary": "Portfolio cash flow was $999,999 over YTD.",
+            "talking_points": [],
+            "recommended_actions": [],
+            "risks_and_exceptions": [],
+        },
+        output_message="currency mismatch",
+        context_payload=_advisor_context(),
+        source_refs=["lotus-gateway:workbench:performance-summary:YTD"],
+    )
+
+    assert result.guardrail_triggered is True
+    assert result.guardrail_reason == "numeric_consistency_mismatch"
+
+
 def test_normalize_advisor_brief_output_preserves_clean_structured_brief() -> None:
     result = normalize_advisor_brief_output(
         parsed_output={
@@ -244,6 +295,36 @@ def test_normalize_advisor_brief_output_sanitizes_invalid_items_and_tones() -> N
     assert actions[0]["evidence_refs"] == []
     assert risks[0]["headline"] == "Attribution remains partial."
     assert risks[0]["detail"] == "Keep to available facts only."
+
+
+def test_normalize_advisor_brief_output_discards_incomplete_items_without_performance() -> None:
+    result = normalize_advisor_brief_output(
+        parsed_output={
+            "grounded_summary": "Portfolio context is available for banker review.",
+            "talking_points": [
+                {"headline": "Missing detail", "tone": "positive"},
+                {"detail": "Missing headline", "tone": "warning"},
+            ],
+            "recommended_actions": [
+                {"detail": "Missing label"},
+                {
+                    "label": "Valid action",
+                    "detail": "Use only sourced context.",
+                    "evidence_refs": [{"metric_label": "Incomplete"}],
+                },
+            ],
+            "risks_and_exceptions": [],
+        },
+        output_message="clean fallback-free output",
+        context_payload={"portfolio": {"display_label": "PB SG GLOBAL BAL 001"}},
+        source_refs=["lotus-gateway:workbench:performance-summary:YTD"],
+    )
+
+    assert result.guardrail_triggered is False
+    assert result.structured_output["talking_points"] == []
+    assert result.structured_output["recommended_actions"] == [
+        {"label": "Valid action", "detail": "Use only sourced context.", "evidence_refs": []}
+    ]
 
 
 def test_normalize_advisor_brief_output_returns_unavailable_when_stub_cannot_build_result() -> None:

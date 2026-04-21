@@ -1,5 +1,6 @@
 from _pytest.monkeypatch import MonkeyPatch
 
+from app.contracts.artifacts import ArtifactObjectStoreRuntimeStatusDescriptor
 from app.contracts.evals import EvaluationApprovalEvidenceState
 from app.contracts.resilience import (
     ResilienceActivationReadinessResponse,
@@ -12,9 +13,21 @@ from app.contracts.resilience import (
     ResilienceRunbookReadinessResponse,
     ResilienceRuntimeStatusResponse,
 )
+from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.services.resilience_activation_readiness import build_resilience_activation_readiness
-from app.services.resilience_drill_evidence import build_resilience_drill_evidence
+from app.services.resilience_drill_evidence import (
+    _build_artifact_restore_review_item,
+    _build_async_recovery_drill_item,
+    _build_store_restore_validation_item,
+    build_resilience_drill_evidence,
+)
 from app.services.resilience_governance import build_resilience_governance_status
+from app.services.resilience_runtime import (
+    _classify_artifact_object_dependency,
+    _classify_retrieval_dependency,
+    _resolve_recovery_state,
+    _resolve_resilience_posture,
+)
 
 
 def test_resilience_drill_evidence_is_not_ready_by_default() -> None:
@@ -183,3 +196,127 @@ def test_resilience_drill_evidence_marks_provider_and_retrieval_as_foundation_st
         and item.status is ResilienceDrillEvidenceState.FOUNDATION_STAGED
         for item in evidence.items
     )
+
+
+def test_resilience_drill_evidence_classifies_not_ready_partial_and_ready_paths() -> None:
+    runtime_status = ResilienceRuntimeStatusResponse(
+        service="lotus-ai",
+        version="test",
+        delivery_stage=ResilienceDeliveryStage.DRILL_VERIFIED,
+        recovery_state=ResilienceRecoveryState.STEADY,
+        posture=ResiliencePosture.INVENTORIED_PROD_SHAPED,
+        dependency_count=0,
+        authoritative_dependency_count=0,
+        restart_survivable_dependency_count=0,
+        dependencies=[],
+        recovery_attention_dependency_count=0,
+        recovery_findings=[],
+        blocking_findings=[],
+        status_summary=["ready"],
+    )
+    no_restore_plan = ResilienceRestorePlanResponse(
+        service="lotus-ai",
+        version="test",
+        delivery_stage=ResilienceDeliveryStage.DRILL_VERIFIED,
+        restore_step_count=0,
+        restore_steps=[],
+        restore_validation_summary=[],
+        status_summary=[],
+    )
+
+    assert (
+        _build_store_restore_validation_item(runtime_status, no_restore_plan).status
+        is ResilienceDrillEvidenceState.NOT_READY
+    )
+    assert (
+        _build_async_recovery_drill_item(
+            type(
+                "AsyncRuntime",
+                (),
+                {
+                    "queue_backend": "redis_queue",
+                    "worker_mode": "DEDICATED",
+                    "degraded_findings": ["queue lag exceeds threshold"],
+                },
+            )()
+        ).status
+        is ResilienceDrillEvidenceState.PARTIAL
+    )
+    assert (
+        _build_artifact_restore_review_item(
+            type(
+                "ArtifactRuntime",
+                (),
+                {
+                    "metadata_store": type(
+                        "MetadataStore",
+                        (),
+                        {"status": RuntimeReadinessStatus.READY},
+                    )(),
+                    "object_store": ArtifactObjectStoreRuntimeStatusDescriptor(
+                        mode="s3",
+                        status=RuntimeReadinessStatus.READY,
+                        root_configured=True,
+                        durable=True,
+                        detail="ready",
+                    ),
+                    "object_store_mode": "s3",
+                },
+            )()
+        ).status
+        is ResilienceDrillEvidenceState.READY
+    )
+    assert (
+        _build_artifact_restore_review_item(
+            type(
+                "ArtifactRuntime",
+                (),
+                {
+                    "metadata_store": type(
+                        "MetadataStore",
+                        (),
+                        {"status": RuntimeReadinessStatus.UNAVAILABLE},
+                    )(),
+                    "object_store": ArtifactObjectStoreRuntimeStatusDescriptor(
+                        mode="filesystem",
+                        status=RuntimeReadinessStatus.UNAVAILABLE,
+                        root_configured=False,
+                        durable=False,
+                        detail="missing root",
+                    ),
+                    "object_store_mode": "filesystem",
+                },
+            )()
+        ).status
+        is ResilienceDrillEvidenceState.NOT_READY
+    )
+
+
+def test_resilience_runtime_classifiers_cover_steady_and_blocked_edges() -> None:
+    blocked_artifact = _classify_artifact_object_dependency(
+        mode="filesystem",
+        root_configured=False,
+        object_store_status=RuntimeReadinessStatus.CONFIGURATION_REQUIRED,
+    )
+    unknown_artifact = _classify_artifact_object_dependency(
+        mode="s3",
+        root_configured=False,
+        object_store_status=RuntimeReadinessStatus.UNAVAILABLE,
+    )
+    retrieval = _classify_retrieval_dependency(
+        retrieval_mode="enabled",
+        execution_stage="INDEXING_DISABLED",
+        split_route_degraded=False,
+        findings=[],
+        message="Retrieval indexing is disabled.",
+    )
+
+    assert blocked_artifact.recovery_state is ResilienceRecoveryState.DEGRADED
+    assert unknown_artifact.recovery_classification is not None
+    assert unknown_artifact.recovery_classification.name == "BLOCKED"
+    assert retrieval.recovery_findings == ["Retrieval indexing is disabled."]
+    assert (
+        _resolve_resilience_posture([unknown_artifact])
+        is ResiliencePosture.PARTIAL_RUNTIME_DURABILITY
+    )
+    assert _resolve_recovery_state([]) is ResilienceRecoveryState.STEADY

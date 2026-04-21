@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from sqlalchemy.exc import IntegrityError
+
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
     AuthorizationDecision,
@@ -205,3 +207,70 @@ def test_sqlalchemy_provider_operations_repository_records_events_and_resets_sta
     assert repository.list_quota_states() == []
     assert repository.get_budget_state(budget_key="live_text_generation") is None
     assert repository.get_degradation_state(degradation_key="live_text_generation") is None
+
+
+class _IntegrityErrorSession:
+    def __enter__(self) -> "_IntegrityErrorSession":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def execute(self, *args: object, **kwargs: object) -> object:
+        raise IntegrityError("statement", {}, Exception("duplicate"))
+
+    def rollback(self) -> None:
+        return None
+
+
+def _integrity_error_session_factory() -> _IntegrityErrorSession:
+    return _IntegrityErrorSession()
+
+
+def test_sqlalchemy_provider_operations_repository_fails_after_retry_exhaustion() -> None:
+    repository = object.__new__(SqlAlchemyProviderOperationsRepository)
+    repository._session_factory = _integrity_error_session_factory
+
+    for operation in (
+        lambda: repository.increment_quota_state(
+            scope=ProviderQuotaScope.DEFAULT,
+            scope_key="global",
+            amount=1,
+            updated_at="2026-04-21T00:00:00Z",
+        ),
+        lambda: repository.add_budget_spend(
+            budget_key="live_text_generation",
+            amount_usd=1.0,
+            updated_at="2026-04-21T00:00:00Z",
+        ),
+        lambda: repository.record_degradation_failure(
+            degradation_key="live_text_generation",
+            category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+            updated_at="2026-04-21T00:00:00Z",
+        ),
+    ):
+        try:
+            operation()
+        except RuntimeError as exc:
+            assert "Failed to" in str(exc)
+            assert "atomically" in str(exc)
+        else:
+            raise AssertionError("Expected SQL retry exhaustion to raise RuntimeError")
+
+
+def test_sqlalchemy_provider_operations_repository_sqlite_parent_handling(
+    tmp_path: Path,
+) -> None:
+    repository = object.__new__(SqlAlchemyProviderOperationsRepository)
+
+    repository._database_url = "postgresql://example"
+    repository._ensure_sqlite_parent_directory()
+
+    repository._database_url = "sqlite:///:memory:"
+    repository._ensure_sqlite_parent_directory()
+
+    relative_db_path = tmp_path / "relative" / "provider-ops.db"
+    repository._database_url = f"sqlite:///{relative_db_path}"
+    repository._ensure_sqlite_parent_directory()
+
+    assert relative_db_path.parent.is_dir()

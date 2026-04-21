@@ -1,0 +1,143 @@
+from datetime import UTC, datetime
+
+from _pytest.monkeypatch import MonkeyPatch
+
+from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueLane,
+    WorkflowPackQueueLaneStatusDescriptor,
+    WorkflowPackQueueSaturationStatus,
+    WorkflowPackQueueState,
+    WorkflowPackQueueStatusItemDescriptor,
+    WorkflowPackQueueStatusResponse,
+)
+from app.services.workflow_pack_queue_attention import (
+    build_workflow_pack_queue_attention_summary,
+)
+
+
+def _queue_status(
+    *,
+    active_items: list[WorkflowPackQueueStatusItemDescriptor],
+    lane_statuses: list[WorkflowPackQueueLaneStatusDescriptor] | None = None,
+) -> WorkflowPackQueueStatusResponse:
+    return WorkflowPackQueueStatusResponse(
+        service="lotus-ai",
+        version="0.1.0",
+        phase="foundation",
+        queue_source_mode="memory",
+        active_admission_count=len(active_items),
+        lane_statuses=lane_statuses or [],
+        active_items=active_items,
+        status_summary=["test queue posture"],
+    )
+
+
+def _queue_item(
+    queue_item_id: str,
+    *,
+    admitted_at: str,
+    workflow_pack_id: str = "advisor_brief.pack",
+    workflow_pack_version: str = "v1",
+) -> WorkflowPackQueueStatusItemDescriptor:
+    return WorkflowPackQueueStatusItemDescriptor(
+        queue_item_id=queue_item_id,
+        policy_id="queue-policy.advisor-brief.v1",
+        workflow_pack_id=workflow_pack_id,
+        workflow_pack_version=workflow_pack_version,
+        lane=WorkflowPackQueueLane.LATENCY_SENSITIVE,
+        state=WorkflowPackQueueState.RUNNING,
+        admitted_at=admitted_at,
+    )
+
+
+def test_queue_attention_ignores_unknown_policy_and_non_stale_active_items(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.workflow_pack_queue_attention.build_workflow_pack_queue_status",
+        lambda: _queue_status(
+            active_items=[
+                _queue_item(
+                    "queue-recent",
+                    admitted_at="2026-04-21T12:00:00Z",
+                ),
+                _queue_item(
+                    "queue-unknown-policy",
+                    admitted_at="not-a-timestamp",
+                    workflow_pack_id="missing.pack",
+                ),
+            ],
+        ),
+    )
+
+    summary = build_workflow_pack_queue_attention_summary(
+        now_utc=datetime(2026, 4, 21, 12, 0, 30, tzinfo=UTC),
+    )
+
+    assert summary.heartbeat_status == "READY"
+    assert summary.attention_count == 0
+    assert summary.stale_item_count == 0
+    assert summary.items == []
+
+
+def test_queue_attention_treats_unparseable_admission_timestamp_as_stale(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.workflow_pack_queue_attention.build_workflow_pack_queue_status",
+        lambda: _queue_status(
+            active_items=[_queue_item("queue-invalid-time", admitted_at="not-a-timestamp")],
+        ),
+    )
+
+    summary = build_workflow_pack_queue_attention_summary(
+        now_utc=datetime(2026, 4, 21, 12, 0, tzinfo=UTC),
+    )
+
+    assert summary.heartbeat_status == "ATTENTION_REQUIRED"
+    assert summary.attention_count == 1
+    assert summary.stale_item_count == 1
+    assert summary.items[0].queue_item_id == "queue-invalid-time"
+    assert summary.items[0].admitted_at == "not-a-timestamp"
+
+
+def test_queue_attention_normalizes_naive_timestamps_and_truncates_items(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    lane_status = WorkflowPackQueueLaneStatusDescriptor(
+        policy_id="queue-policy.advisor-brief.v1",
+        workflow_pack_id="advisor_brief.pack",
+        workflow_pack_version="v1",
+        lane=WorkflowPackQueueLane.LATENCY_SENSITIVE,
+        active_count=2,
+        max_concurrent_runs_per_lane=2,
+        max_queued_runs_per_lane=20,
+        saturation_attention_threshold=1.0,
+        saturation_status=WorkflowPackQueueSaturationStatus.SATURATED,
+    )
+    stale_items = [
+        _queue_item(f"queue-stale-{index}", admitted_at="2026-04-21T11:00:00")
+        for index in range(1, 6)
+    ]
+    monkeypatch.setattr(
+        "app.services.workflow_pack_queue_attention.build_workflow_pack_queue_status",
+        lambda: _queue_status(active_items=stale_items, lane_statuses=[lane_status]),
+    )
+
+    summary = build_workflow_pack_queue_attention_summary(
+        now_utc=datetime(2026, 4, 21, 12, 30, tzinfo=UTC),
+    )
+
+    assert summary.heartbeat_status == "ATTENTION_REQUIRED"
+    assert summary.attention_count == 6
+    assert summary.saturated_lane_count == 1
+    assert summary.stale_item_count == 5
+    assert len(summary.items) == summary.attention_limit == 5
+    assert summary.items[0].attention_type == "LANE_SATURATED"
+    assert [item.queue_item_id for item in summary.items[1:]] == [
+        "queue-stale-1",
+        "queue-stale-2",
+        "queue-stale-3",
+        "queue-stale-4",
+    ]
+    assert any("truncated" in line for line in summary.status_summary)
