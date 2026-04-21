@@ -24,6 +24,12 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunRuntimeState,
     WorkflowPackRunSupportabilityStatus,
 )
+from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueuePolicyCatalogResponse,
+    WorkflowPackQueuePolicyDetailResponse,
+    WorkflowPackQueueStatusDetailResponse,
+    WorkflowPackQueueStatusResponse,
+)
 from app.contracts.workflow_pack_task_flows import (
     WorkflowPackTaskFlowCatalogResponse,
     WorkflowPackTaskFlowCheckpointCatalogResponse,
@@ -55,6 +61,12 @@ from app.services.workflow_pack_registry import (
     WorkflowPackRegistryUnavailableError,
     build_workflow_pack_registration_detail,
     build_workflow_pack_registry_catalog,
+)
+from app.services.workflow_pack_queue_policy_catalog import (
+    build_workflow_pack_queue_policy_catalog,
+    build_workflow_pack_queue_policy_detail,
+    build_workflow_pack_queue_status,
+    build_workflow_pack_queue_status_detail,
 )
 
 router = APIRouter(tags=["platform"])
@@ -103,6 +115,102 @@ async def get_workflow_pack_registration_detail(
 ) -> WorkflowPackRegistrationDetailResponse:
     try:
         return build_workflow_pack_registration_detail(pack_id=pack_id, version=version)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/queue-policies",
+    response_model=WorkflowPackQueuePolicyCatalogResponse,
+    operation_id="getWorkflowPackQueuePolicyCatalog",
+    summary="Get lotus-ai workflow-pack queue policy catalog",
+    description=(
+        "Returns declared per-pack queue policies for executable workflow-pack versions. "
+        "This is source policy posture, not a mutation or worker-control surface."
+    ),
+    responses={
+        200: {"description": "Workflow-pack queue policy catalog returned successfully."},
+        503: {"description": "Workflow-pack registry store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_queue_policy_catalog_route() -> WorkflowPackQueuePolicyCatalogResponse:
+    try:
+        return build_workflow_pack_queue_policy_catalog()
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/queue-policies/{pack_id}/{version}",
+    response_model=WorkflowPackQueuePolicyDetailResponse,
+    operation_id="getWorkflowPackQueuePolicyDetail",
+    summary="Get lotus-ai workflow-pack queue policy detail",
+    description=(
+        "Returns one declared workflow-pack queue policy while preserving the separation between "
+        "queue policy, queue admission, run lifecycle, and task-flow lifecycle."
+    ),
+    responses={
+        200: {"description": "Workflow-pack queue policy detail returned successfully."},
+        404: {"description": "Workflow-pack queue policy not found."},
+        503: {"description": "Workflow-pack registry store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_queue_policy_detail_route(
+    pack_id: str,
+    version: str,
+) -> WorkflowPackQueuePolicyDetailResponse:
+    try:
+        return build_workflow_pack_queue_policy_detail(pack_id=pack_id, version=version)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/queue-status",
+    response_model=WorkflowPackQueueStatusResponse,
+    operation_id="getWorkflowPackQueueStatus",
+    summary="Get lotus-ai workflow-pack queue status",
+    description=(
+        "Returns bounded current workflow-pack queue admission posture without exposing raw worker "
+        "or lock internals."
+    ),
+    responses={
+        200: {"description": "Workflow-pack queue status returned successfully."},
+        503: {"description": "Workflow-pack registry store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_queue_status_route() -> WorkflowPackQueueStatusResponse:
+    try:
+        return build_workflow_pack_queue_status()
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/queue-status/{queue_item_id}",
+    response_model=WorkflowPackQueueStatusDetailResponse,
+    operation_id="getWorkflowPackQueueStatusDetail",
+    summary="Get lotus-ai workflow-pack queue status detail",
+    description="Returns one bounded active workflow-pack queue admission item.",
+    responses={
+        200: {"description": "Workflow-pack queue status detail returned successfully."},
+        404: {"description": "Workflow-pack queue item not found."},
+        503: {"description": "Workflow-pack registry store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_queue_status_detail_route(
+    queue_item_id: str,
+) -> WorkflowPackQueueStatusDetailResponse:
+    try:
+        return build_workflow_pack_queue_status_detail(queue_item_id=queue_item_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WorkflowPackRegistryUnavailableError as exc:

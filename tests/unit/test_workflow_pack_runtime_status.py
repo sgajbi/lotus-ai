@@ -1,5 +1,5 @@
 from _pytest.monkeypatch import MonkeyPatch
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from app.contracts.runtime_readiness import RuntimeReadinessStatus, StoreRuntimeStatusDescriptor
 from app.contracts.workflow_pack_runs import (
@@ -12,10 +12,17 @@ from app.contracts.workflow_pack_runs import (
 from app.contracts.workflow_packs import WorkflowPackExecutionMode, WorkflowPackRegistrationStatus
 from app.services.workflow_pack_bindings import get_workflow_pack_execution_binding_descriptor
 from app.services.workflow_pack_registry import get_workflow_pack_registration
+from app.services.workflow_pack_queue_attention import (
+    build_workflow_pack_queue_attention_summary,
+)
 from app.services.workflow_pack_runtime_status import (
     build_workflow_pack_task_flow_attention_summary,
     build_workflow_pack_run_runtime_summary,
     build_workflow_pack_runtime_status_summary,
+)
+from app.services.workflow_pack_queue_admission import (
+    acquire_workflow_pack_queue_admission,
+    release_workflow_pack_queue_admission,
 )
 from app.contracts.workflow_pack_task_flows import WorkflowPackTaskFlowStatus
 from tests.support.workflow_pack_task_flow_fixtures import workflow_pack_task_flow_descriptor
@@ -76,6 +83,8 @@ def test_build_workflow_pack_runtime_status_summary_separates_catalog_from_execu
     assert summary.attention_queue.items == []
     assert summary.task_flow_attention.heartbeat_status == "READY"
     assert summary.task_flow_attention.attention_count == 0
+    assert summary.queue_attention.heartbeat_status == "READY"
+    assert summary.queue_attention.attention_count == 0
     assert summary.run_summary.run_count == 0
     assert summary.run_summary.action_required_count == 0
 
@@ -295,6 +304,43 @@ def test_build_workflow_pack_task_flow_attention_summary_surfaces_heartbeat_post
         "Task flow supportability requires operator action.",
         "Task flow has not advanced within the heartbeat stale threshold.",
     ]
+
+
+def test_build_workflow_pack_queue_attention_summary_surfaces_saturation_and_stale_posture() -> (
+    None
+):
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    leases = [
+        acquire_workflow_pack_queue_admission(registration=registration),
+        acquire_workflow_pack_queue_admission(registration=registration),
+    ]
+
+    try:
+        summary = build_workflow_pack_queue_attention_summary(
+            now_utc=datetime.now(UTC) + timedelta(hours=1),
+        )
+    finally:
+        for lease in leases:
+            release_workflow_pack_queue_admission(lease.queue_item_id)
+
+    assert summary.heartbeat_status == "ATTENTION_REQUIRED"
+    assert summary.attention_count == 3
+    assert summary.saturated_lane_count == 1
+    assert summary.stale_item_count == 2
+    assert summary.active_admission_count == 2
+    assert summary.queue_source_mode == "memory"
+    assert [item.attention_type for item in summary.items] == [
+        "LANE_SATURATED",
+        "QUEUE_ITEM_STALE",
+        "QUEUE_ITEM_STALE",
+    ]
+    assert summary.items[0].workflow_pack_id == "advisor_brief.pack"
+    assert summary.items[0].lane.value == "LATENCY_SENSITIVE"
+    assert summary.items[0].active_count == 2
+    assert summary.items[1].queue_item_id == leases[0].queue_item_id
+    assert summary.items[1].admitted_at == leases[0].admitted_at
+    assert any("durable queue-event source" in line for line in summary.status_summary)
 
 
 def test_build_workflow_pack_run_runtime_summary_counts_action_required_and_historical_posture(
@@ -538,6 +584,8 @@ def test_build_workflow_pack_runtime_status_summary_degrades_when_registry_store
         "Registry-backed execution counts are unavailable" in line
         for line in summary.status_summary
     )
+    assert summary.queue_attention.heartbeat_status == "UNAVAILABLE"
+    assert summary.queue_attention.queue_source_mode == "unavailable"
 
 
 def test_build_workflow_pack_runtime_status_summary_degrades_when_run_store_not_ready(

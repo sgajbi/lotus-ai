@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
+
 from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
 from app.contracts.workflow_pack_runs import WorkflowPackRunDescriptor
 from app.services.workflow_pack_bindings import resolve_workflow_pack_execution_binding_for_task
@@ -19,6 +21,7 @@ from app.services.workflow_pack_task_flow_recording import (
 from app.services.workflow_pack_task_flow_service import (
     ensure_workflow_pack_task_flow_store_ready,
 )
+from app.services.workflow_pack_queue_admission import workflow_pack_queue_admission
 
 
 def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
@@ -34,21 +37,27 @@ def execute_task_with_optional_workflow_pack_recording(
     if resolved_binding is not None:
         ensure_workflow_pack_run_store_ready()
         ensure_workflow_pack_task_flow_store_ready()
-    resolved = resolve_task_execution(context=context)
-    response = build_task_execution_response(resolved=resolved)
-    persist_task_execution_audit(context=context, response=response)
-    workflow_pack_run = record_workflow_pack_run_for_task_execution(
-        context=context,
-        response=response,
-        resolved_binding=resolved_binding,
+    admission = (
+        workflow_pack_queue_admission(registration=resolved_binding.registration)
+        if resolved_binding is not None
+        else nullcontext()
     )
-    if workflow_pack_run is not None and resolved_binding is not None:
-        record_task_flow_for_workflow_pack_run(
+    with admission:
+        resolved = resolve_task_execution(context=context)
+        response = build_task_execution_response(resolved=resolved)
+        persist_task_execution_audit(context=context, response=response)
+        workflow_pack_run = record_workflow_pack_run_for_task_execution(
             context=context,
-            registration=resolved_binding.registration,
-            workflow_surface=resolved_binding.binding.default_workflow_surface,
-            workflow_pack_run=workflow_pack_run,
+            response=response,
+            resolved_binding=resolved_binding,
         )
+        if workflow_pack_run is not None and resolved_binding is not None:
+            record_task_flow_for_workflow_pack_run(
+                context=context,
+                registration=resolved_binding.registration,
+                workflow_surface=resolved_binding.binding.default_workflow_surface,
+                workflow_pack_run=workflow_pack_run,
+            )
     return _attach_workflow_pack_run_id(
         response=response, workflow_pack_run=workflow_pack_run
     ), workflow_pack_run

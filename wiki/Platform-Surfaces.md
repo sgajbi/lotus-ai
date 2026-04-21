@@ -75,6 +75,10 @@ platform programs.
 4. workflow-pack runtime registration
    - `/platform/workflow-packs/registry`
    - `/platform/workflow-packs/registry/{pack_id}/{version}`
+   - `/platform/workflow-packs/queue-policies`
+   - `/platform/workflow-packs/queue-policies/{pack_id}/{version}`
+   - `/platform/workflow-packs/queue-status`
+   - `/platform/workflow-packs/queue-status/{queue_item_id}`
    - `/platform/workflow-packs/eligibility/evaluate`
    - `/platform/workflow-packs/execute`
    - `/platform/workflow-packs/control-history`
@@ -92,7 +96,11 @@ The workflow-pack detail route now carries structured owner-artifact references 
 
 1. `definition_ref` is the primary repo-backed owner artifact,
 2. `definition_refs` enumerate the concrete contract, service, router, tests, and optional supporting RFC or UI validation evidence behind the registration,
-3. those references make the registry an onboarding and governance surface, not a second home for workflow implementation.
+3. executable pack versions now expose declarative `queue_policy` posture in detail and
+   `queue_policies` in the catalog,
+4. pack-backed execution enforces the declared policy before task execution, audit persistence, run
+   recording, or task-flow recording,
+5. those references make the registry an onboarding and governance surface, not a second home for workflow implementation.
 
 The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 recorded runs:
 
@@ -109,7 +117,11 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 9. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode`, `workflow_pack_run_store`, `workflow_pack_task_flow_store_mode`, and `workflow_pack_task_flow_store` so operators can distinguish process-local workflow-pack runtime posture from SQL-backed durable ledger and task-flow posture,
 10. the embedded `workflow_pack_runtime` block now also carries bounded review provenance on executable-pack latest ready and latest actionable run pointers plus the cross-pack attention queue, and now also carries bounded artifact and evidence linkage summaries for those same runtime-status items, so estate-level triage does not need a raw ledger fetch just to understand latest review movement or missing provenance posture,
 11. pack-backed `503` degraded-state failures now preflight the workflow-pack run store before task execution and audit persistence, so callers should not expect new audit records or partial run-side effects when the run-ledger store is not ready,
-12. the embedded workflow-pack attention queue now treats `queue_depth` as the full actionable backlog across executable pack versions, while `items` stays bounded by `queue_limit` as the newest visible sample.
+12. the embedded workflow-pack attention queue now treats `queue_depth` as the full actionable backlog across executable pack versions, while `items` stays bounded by `queue_limit` as the newest visible sample,
+13. the embedded `queue_attention` block reports source-backed workflow-pack queue heartbeat posture for active-admission saturation and stale active admissions; historical timeout, cancellation, and retry-cluster attention remains deferred until a durable queue-event source exists,
+14. explicit `/platform/workflow-packs/execute` calls may request a governed `queue_lane`
+    from the pack version's declared `allowed_lanes`; omitted lanes use the queue policy default,
+    and unsupported lanes fail before audit, run, or task-flow side effects.
 
 RFC-0097 task-flow state is currently a read-only inspection family, not a public mutation or
 handoff execution family:
@@ -341,6 +353,8 @@ These are the app-facing rollout and onboarding surfaces rather than low-level r
 2. workflow-pack registry
    - `/platform/workflow-packs/registry`
    - `/platform/workflow-packs/registry/{pack_id}/{version}`
+   - `/platform/workflow-packs/queue-policies`
+   - `/platform/workflow-packs/queue-status`
    - `/platform/workflow-packs/eligibility/evaluate`
    - `/platform/workflow-packs/control-history`
    - `/platform/workflow-packs/control-actions`

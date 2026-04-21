@@ -27,6 +27,9 @@ def build_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogRespons
     from app.services.workflow_pack_bindings import (
         list_workflow_pack_execution_binding_descriptors,
     )
+    from app.services.workflow_pack_queue_policy_catalog import (
+        list_workflow_pack_queue_policy_descriptors,
+    )
 
     registrations = list_workflow_pack_registrations()
     registered_count = sum(
@@ -49,6 +52,7 @@ def build_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogRespons
         production_eligible_count=production_eligible_count,
         registrations=registrations,
         execution_bindings=list_workflow_pack_execution_binding_descriptors(),
+        queue_policies=list_workflow_pack_queue_policy_descriptors(),
         validation_rules=build_workflow_pack_validation_rules(),
         status_summary=[
             "Workflow-pack registry records are modeled separately from capability-pack maturity so runtime activation can stay explicit and auditable.",
@@ -56,6 +60,7 @@ def build_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogRespons
             "Only declared workflow-pack versions with valid ownership, scope, and definition references are eligible to advance into activation evaluation.",
             "Internal execution bindings are validated against the same registry scope so task-shape hints cannot silently drift away from caller or surface truth.",
             "Registry inspection now shows which registered workflow-pack versions also have an explicit lotus-ai execution binding, including task and default surface posture.",
+            "Queue-policy inspection is version-scoped and declarative; runtime queue admission is intentionally separate from registry posture.",
         ],
     )
 
@@ -67,10 +72,15 @@ def build_workflow_pack_registration_detail(
     from app.services.workflow_pack_bindings import (
         get_workflow_pack_execution_binding_descriptor,
     )
+    from app.services.workflow_pack_queue_policy_catalog import (
+        get_workflow_pack_queue_policy_descriptor,
+        validate_workflow_pack_queue_policies,
+    )
 
     registration = get_workflow_pack_registration(pack_id=pack_id, version=version)
     if registration is None:
         raise ValueError(f"Unknown workflow-pack registration: {pack_id}@{version}")
+    validate_workflow_pack_queue_policies()
 
     return WorkflowPackRegistrationDetailResponse(
         service=settings.service_name,
@@ -80,12 +90,17 @@ def build_workflow_pack_registration_detail(
             pack_id=pack_id,
             version=version,
         ),
+        queue_policy=get_workflow_pack_queue_policy_descriptor(
+            pack_id=pack_id,
+            version=version,
+        ),
         validation_rules=build_workflow_pack_validation_rules(),
         denied_without_registration=True,
         status_summary=[
             "Workflow-pack execution remains deny-by-default for versions that do not resolve through the governed registry.",
             "This record captures activation posture and ownership metadata without duplicating business workflow logic from the owning repository.",
             "When an explicit execution binding exists, this detail view also shows the current task and default workflow-surface mapping implemented by lotus-ai.",
+            "When an explicit queue policy exists, it remains declarative scheduling policy and does not imply runtime admission has already executed.",
         ],
     )
 
@@ -144,10 +159,14 @@ def reset_workflow_pack_registry_state() -> None:
 
 def _validated_registrations() -> list[WorkflowPackRegistrationDescriptor]:
     from app.services.workflow_pack_bindings import validate_workflow_pack_execution_bindings
+    from app.services.workflow_pack_queue_policy_catalog import (
+        validate_workflow_pack_queue_policies,
+    )
 
     registrations = get_workflow_pack_registry_store().list_registrations()
     validate_workflow_pack_registrations(registrations)
     validate_workflow_pack_execution_bindings()
+    validate_workflow_pack_queue_policies()
     return registrations
 
 

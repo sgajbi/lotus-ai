@@ -18,6 +18,7 @@ from app.contracts.workflow_packs import (
     WorkflowPackAttentionQueueItemResponse,
     WorkflowPackAttentionQueueSummaryResponse,
     WorkflowPackExecutableActivitySummaryResponse,
+    WorkflowPackQueueAttentionSummaryResponse,
     WorkflowPackRunRuntimeSummaryResponse,
     WorkflowPackRuntimeStatusSummaryResponse,
     WorkflowPackTaskFlowAttentionItemResponse,
@@ -25,6 +26,10 @@ from app.contracts.workflow_packs import (
 )
 from app.services.workflow_pack_bindings import list_workflow_pack_execution_binding_descriptors
 from app.services.workflow_pack_registry import list_workflow_pack_registrations
+from app.services.workflow_pack_queue_attention import (
+    WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT,
+    build_workflow_pack_queue_attention_summary,
+)
 from app.services.workflow_pack_run_ledger import build_workflow_pack_run_catalog
 from app.services.workflow_pack_run_provenance_summary import (
     build_workflow_pack_run_provenance_summary,
@@ -136,6 +141,24 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
             ],
         )
 
+    if registry_store_status.status is RuntimeReadinessStatus.READY:
+        queue_attention = build_workflow_pack_queue_attention_summary()
+    else:
+        queue_attention = WorkflowPackQueueAttentionSummaryResponse(
+            heartbeat_status="UNAVAILABLE",
+            attention_count=0,
+            saturated_lane_count=0,
+            stale_item_count=0,
+            active_admission_count=0,
+            queue_source_mode="unavailable",
+            attention_limit=WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT,
+            items=[],
+            status_summary=[
+                "Workflow-pack queue heartbeat attention is unavailable until the configured registry store is ready.",
+                f"Current workflow-pack registry store status is `{registry_store_status.status.value}`.",
+            ],
+        )
+
     return WorkflowPackRuntimeStatusSummaryResponse(
         registration_count=len(registrations),
         registered_count=registered_count,
@@ -151,6 +174,7 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
         executable_activity=executable_activity,
         attention_queue=attention_queue,
         task_flow_attention=task_flow_attention,
+        queue_attention=queue_attention,
         run_summary=run_summary,
         status_summary=[
             "Workflow-pack runtime readiness is narrower than catalog presence and counts only versions that are both REGISTERED and explicitly bound for lotus-ai execution.",
@@ -174,6 +198,11 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
                 "Task-flow heartbeat attention is unavailable until the configured workflow-pack task-flow store is ready."
                 if task_flow_store_status.status is not RuntimeReadinessStatus.READY
                 else "Task-flow heartbeat attention is available through the configured workflow-pack task-flow store."
+            ),
+            (
+                "Queue heartbeat attention is unavailable until the configured workflow-pack registry store is ready."
+                if registry_store_status.status is not RuntimeReadinessStatus.READY
+                else "Queue heartbeat attention is available through the configured workflow-pack queue source posture."
             ),
         ],
     )

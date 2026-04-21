@@ -11,6 +11,10 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunProvenanceSummaryDescriptor,
     WorkflowPackRunReviewSummaryDescriptor,
 )
+from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueLane,
+    WorkflowPackQueuePolicyDescriptor,
+)
 
 
 class WorkflowPackRegistrationStatus(str, Enum):
@@ -35,6 +39,11 @@ class WorkflowPackExecutionMode(str, Enum):
     SYNCHRONOUS = "SYNCHRONOUS"
     ASYNCHRONOUS = "ASYNCHRONOUS"
     REVIEW_GATED = "REVIEW_GATED"
+
+
+class WorkflowPackQueueAttentionType(str, Enum):
+    LANE_SATURATED = "LANE_SATURATED"
+    QUEUE_ITEM_STALE = "QUEUE_ITEM_STALE"
 
 
 class WorkflowPackCallerIdentityClass(str, Enum):
@@ -228,6 +237,9 @@ class WorkflowPackRegistryCatalogResponse(BaseModel):
     execution_bindings: list[WorkflowPackExecutionBindingDescriptor] = Field(
         description="Explicit workflow-pack execution bindings currently implemented by lotus-ai."
     )
+    queue_policies: list[WorkflowPackQueuePolicyDescriptor] = Field(
+        description="Explicit per-pack queue policies currently declared for executable workflow-pack versions."
+    )
     validation_rules: list[WorkflowPackValidationRuleDescriptor] = Field(
         description="Workflow-pack registration validation rules enforced for catalog entries."
     )
@@ -272,6 +284,9 @@ class WorkflowPackRuntimeStatusSummaryResponse(BaseModel):
     )
     task_flow_attention: "WorkflowPackTaskFlowAttentionSummaryResponse" = Field(
         description="Bounded heartbeat-style attention summary for workflow-pack task flows."
+    )
+    queue_attention: "WorkflowPackQueueAttentionSummaryResponse" = Field(
+        description="Bounded heartbeat-style attention summary for workflow-pack queue posture."
     )
     run_summary: "WorkflowPackRunRuntimeSummaryResponse" = Field(
         description="Estate-level workflow-pack run posture derived from the current bounded run ledger."
@@ -471,6 +486,61 @@ class WorkflowPackTaskFlowAttentionSummaryResponse(BaseModel):
     )
 
 
+class WorkflowPackQueueAttentionItemResponse(BaseModel):
+    attention_type: WorkflowPackQueueAttentionType = Field(
+        description="Governed queue attention classification."
+    )
+    policy_id: str = Field(
+        description="Queue policy identifier associated with the attention item."
+    )
+    workflow_pack_id: str = Field(description="Workflow-pack family identifier.")
+    workflow_pack_version: str = Field(description="Workflow-pack version.")
+    lane: WorkflowPackQueueLane = Field(
+        description="Queue lane associated with the attention item."
+    )
+    queue_item_id: str | None = Field(
+        default=None,
+        description="Queue admission item identifier when attention is tied to one active item.",
+    )
+    active_count: int = Field(description="Current active admission count for the lane.")
+    max_concurrent_runs_per_lane: int = Field(
+        description="Configured concurrent admission limit for this lane."
+    )
+    admitted_at: str | None = Field(
+        default=None,
+        description="UTC timestamp when the queue item was admitted, when applicable.",
+    )
+    attention_reasons: list[str] = Field(
+        description="Human-readable reasons why this queue posture requires attention."
+    )
+
+
+class WorkflowPackQueueAttentionSummaryResponse(BaseModel):
+    heartbeat_status: str = Field(
+        description="Heartbeat-style aggregate posture for queue attention."
+    )
+    attention_count: int = Field(
+        description="Number of queue attention items currently requiring operator attention."
+    )
+    saturated_lane_count: int = Field(
+        description="Number of queue lanes currently at or above their saturation attention threshold."
+    )
+    stale_item_count: int = Field(
+        description="Number of active queue items older than their configured stale threshold."
+    )
+    active_admission_count: int = Field(
+        description="Number of active queue admission leases in the source queue status."
+    )
+    queue_source_mode: str = Field(description="Queue source mode used for this attention summary.")
+    attention_limit: int = Field(description="Maximum number of queue attention items returned.")
+    items: list[WorkflowPackQueueAttentionItemResponse] = Field(
+        description="Bounded queue attention items."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of current workflow-pack queue attention posture."
+    )
+
+
 class WorkflowPackRegistrationDetailResponse(BaseModel):
     service: str = Field(description="Service name emitting the workflow-pack registry detail.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -480,6 +550,10 @@ class WorkflowPackRegistrationDetailResponse(BaseModel):
     execution_binding: WorkflowPackExecutionBindingDescriptor | None = Field(
         default=None,
         description="Explicit execution binding currently implemented for this workflow-pack version, when available.",
+    )
+    queue_policy: WorkflowPackQueuePolicyDescriptor | None = Field(
+        default=None,
+        description="Explicit queue policy for this workflow-pack version when the version is executable through lotus-ai.",
     )
     validation_rules: list[WorkflowPackValidationRuleDescriptor] = Field(
         description="Registration validation rules that apply to the requested workflow-pack version."
@@ -649,6 +723,10 @@ class WorkflowPackExecutionRequest(BaseModel):
     workflow_surface: str | None = Field(
         default=None,
         description="Named workflow surface requesting the workflow-pack execution.",
+    )
+    queue_lane: WorkflowPackQueueLane | None = Field(
+        default=None,
+        description="Optional governed queue lane requested for this explicit workflow-pack execution. Omit to use the pack policy default lane.",
     )
     task_request: TaskExecutionRequest = Field(
         description=(

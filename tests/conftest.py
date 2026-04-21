@@ -21,6 +21,7 @@ from app.services.provider_operations_store import reset_provider_operations_sto
 from app.services.provider_quota_policy import reset_provider_quota_counters
 from app.services.retrieval_store import reset_retrieval_repository
 from app.services.workflow_pack_registry import reset_workflow_pack_registry_state
+from app.services.workflow_pack_queue_admission import reset_workflow_pack_queue_admission_state
 from app.services.workflow_pack_run_store import reset_workflow_pack_run_store_cache
 from app.services.workflow_pack_task_flow_store import reset_workflow_pack_task_flow_store_cache
 
@@ -99,5 +100,6 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_evaluation_runtime_store_cache()
         reset_artifact_store_cache()
         reset_workflow_pack_registry_state()
+        reset_workflow_pack_queue_admission_state()
         reset_workflow_pack_run_store_cache()
         reset_workflow_pack_task_flow_store_cache()
