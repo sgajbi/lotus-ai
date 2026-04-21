@@ -185,9 +185,41 @@ def acquire_workflow_pack_queue_admission(
             current_state=WorkflowPackQueueState.NOT_ADMITTED,
             next_state=WorkflowPackQueueState.QUEUED,
         )
+        _record_admission_lifecycle_event(
+            queue_item_id=queue_item_id,
+            event_type=WorkflowPackQueueEventType.ADMISSION_QUEUED,
+            policy=policy,
+            lane=lane,
+            state=queued_state,
+            caller_app=caller_app,
+            correlation_id=correlation_id,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+            message=(
+                "Workflow-pack queue item queued after policy and capacity evaluation for "
+                f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}` in lane "
+                f"`{lane.value}`."
+            ),
+        )
         admitted_state = _transition_queue_state(
             current_state=queued_state,
             next_state=WorkflowPackQueueState.ADMITTED,
+        )
+        _record_admission_lifecycle_event(
+            queue_item_id=queue_item_id,
+            event_type=WorkflowPackQueueEventType.ADMISSION_ADMITTED,
+            policy=policy,
+            lane=lane,
+            state=admitted_state,
+            caller_app=caller_app,
+            correlation_id=correlation_id,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+            message=(
+                "Workflow-pack queue item admitted for execution handoff for "
+                f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}` in lane "
+                f"`{lane.value}`."
+            ),
         )
         running_state = _transition_queue_state(
             current_state=admitted_state,
@@ -405,6 +437,33 @@ def _raise_capacity_rejection(
 
 def _raise_queue_rejection(*, status_code: int, detail: str) -> NoReturn:
     raise HTTPException(status_code=status_code, detail=detail)
+
+
+def _record_admission_lifecycle_event(
+    *,
+    queue_item_id: str,
+    event_type: WorkflowPackQueueEventType,
+    policy: WorkflowPackQueuePolicyDescriptor,
+    lane: WorkflowPackQueueLane,
+    state: WorkflowPackQueueState,
+    message: str,
+    caller_app: str | None = None,
+    correlation_id: str | None = None,
+    tenant_id: str | None = None,
+    workflow_surface: str | None = None,
+) -> None:
+    _record_queue_event(
+        queue_item_id=queue_item_id,
+        event_type=event_type,
+        policy=policy,
+        lane=lane,
+        state=state,
+        caller_app=caller_app,
+        correlation_id=correlation_id,
+        tenant_id=tenant_id,
+        workflow_surface=workflow_surface,
+        message=message,
+    )
 
 
 def _get_policy_for_lease(

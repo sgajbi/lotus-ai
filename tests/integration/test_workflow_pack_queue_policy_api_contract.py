@@ -117,7 +117,7 @@ def test_workflow_pack_queue_events_report_admission_history_without_worker_inte
     assert catalog_response.status_code == 200
     catalog_body = catalog_response.json()
     assert catalog_body["queue_event_source_mode"] == "memory"
-    assert catalog_body["event_count"] == 3
+    assert catalog_body["event_count"] == 5
     assert catalog_body["events"][0]["event_type"] == "ADMISSION_RELEASED"
     assert "worker_id" not in catalog_body["events"][0]
 
@@ -126,6 +126,8 @@ def test_workflow_pack_queue_events_report_admission_history_without_worker_inte
     assert detail_body["queue_item_id"] == lease.queue_item_id
     assert [event["event_type"] for event in detail_body["events"]] == [
         "ADMISSION_REQUESTED",
+        "ADMISSION_QUEUED",
+        "ADMISSION_ADMITTED",
         "ADMISSION_GRANTED",
         "ADMISSION_RELEASED",
     ]
