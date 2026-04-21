@@ -84,6 +84,9 @@ platform programs.
    - `/platform/workflow-packs/runs/{run_id}/operator-profile`
    - `/platform/workflow-packs/runs/{run_id}/consumer-view`
    - `/platform/workflow-packs/runs/{run_id}/review-actions`
+   - `/platform/workflow-packs/task-flows`
+   - `/platform/workflow-packs/task-flows/{task_flow_id}`
+   - `/platform/workflow-packs/task-flows/{task_flow_id}/checkpoints`
 
 The workflow-pack detail route now carries structured owner-artifact references as part of the registration record:
 
@@ -108,11 +111,13 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 11. pack-backed `503` degraded-state failures now preflight the workflow-pack run store before task execution and audit persistence, so callers should not expect new audit records or partial run-side effects when the run-ledger store is not ready,
 12. the embedded workflow-pack attention queue now treats `queue_depth` as the full actionable backlog across executable pack versions, while `items` stays bounded by `queue_limit` as the newest visible sample.
 
-RFC-0097 task-flow state is currently a foundation seam, not a public workflow-pack API family:
+RFC-0097 task-flow state is currently a read-only inspection family, not a public mutation or
+handoff execution family:
 
 1. task-flow and checkpoint descriptors are persisted behind memory or SQL-backed stores,
 2. lifecycle transition guards are implemented inside `lotus-ai`,
-3. public task-flow routes, gateway publication, Workbench rendering, heartbeat attention, and domain handoff execution remain future slices.
+3. `/platform/workflow-packs/task-flows` plus detail and checkpoint routes expose cataloged posture,
+4. public mutation routes, gateway publication, Workbench rendering, heartbeat attention, and domain handoff execution remain future slices.
 
 ## Provider Surface
 

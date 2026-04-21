@@ -291,3 +291,46 @@ class WorkflowPackTaskFlowDescriptor(BaseModel):
             raise ValueError("active or waiting task flows require current_step_id")
         return self
 
+
+class WorkflowPackTaskFlowCatalogResponse(BaseModel):
+    service: str = Field(description="Service emitting the workflow-pack task-flow catalog.")
+    phase: str = Field(description="Current lotus-ai delivery phase.")
+    task_flow_store_mode: str = Field(description="Configured task-flow store mode.")
+    task_flow_count: int = Field(description="Number of task flows returned after filtering.")
+    active_count: int = Field(
+        description="Returned task-flow count in active, waiting, or blocked posture."
+    )
+    waiting_for_review_count: int = Field(
+        description="Returned task-flow count waiting for review."
+    )
+    blocked_count: int = Field(description="Returned task-flow count currently blocked.")
+    terminal_count: int = Field(description="Returned task-flow count in terminal posture.")
+    filters_applied: dict[str, object] = Field(
+        description="Bounded filter set applied to the task-flow catalog."
+    )
+    task_flows: list[WorkflowPackTaskFlowDescriptor] = Field(
+        description="Task-flow descriptors returned by the catalog query."
+    )
+
+
+class WorkflowPackTaskFlowDetailResponse(BaseModel):
+    service: str = Field(description="Service emitting the workflow-pack task-flow detail.")
+    phase: str = Field(description="Current lotus-ai delivery phase.")
+    task_flow_store_mode: str = Field(description="Configured task-flow store mode.")
+    task_flow: WorkflowPackTaskFlowDescriptor = Field(
+        description="Task-flow descriptor for the requested task-flow id."
+    )
+    checkpoints: list[WorkflowPackTaskFlowCheckpointDescriptor] = Field(
+        description="Recorded checkpoints for the requested task flow."
+    )
+
+
+class WorkflowPackTaskFlowCheckpointCatalogResponse(BaseModel):
+    service: str = Field(description="Service emitting the task-flow checkpoint catalog.")
+    phase: str = Field(description="Current lotus-ai delivery phase.")
+    task_flow_store_mode: str = Field(description="Configured task-flow store mode.")
+    task_flow_id: str = Field(description="Task-flow id used to load checkpoints.")
+    checkpoint_count: int = Field(description="Number of checkpoints returned.")
+    checkpoints: list[WorkflowPackTaskFlowCheckpointDescriptor] = Field(
+        description="Recorded checkpoints for the requested task flow."
+    )

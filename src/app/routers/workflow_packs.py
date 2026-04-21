@@ -24,6 +24,12 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunRuntimeState,
     WorkflowPackRunSupportabilityStatus,
 )
+from app.contracts.workflow_pack_task_flows import (
+    WorkflowPackTaskFlowCatalogResponse,
+    WorkflowPackTaskFlowCheckpointCatalogResponse,
+    WorkflowPackTaskFlowDetailResponse,
+    WorkflowPackTaskFlowStatus,
+)
 from app.services.workflow_pack_run_consumer_view import build_workflow_pack_run_consumer_view
 from app.services.workflow_pack_run_operator_profile import build_workflow_pack_run_operator_profile
 from app.services.workflow_pack_control import (
@@ -38,6 +44,13 @@ from app.services.workflow_pack_run_ledger import (
     build_workflow_pack_run_detail,
 )
 from app.services.workflow_pack_run_review import apply_workflow_pack_run_review_action
+from app.services.workflow_pack_task_flow_service import (
+    WorkflowPackTaskFlowNotFoundError,
+    WorkflowPackTaskFlowStoreNotReadyError,
+    build_workflow_pack_task_flow_catalog,
+    build_workflow_pack_task_flow_checkpoint_catalog,
+    build_workflow_pack_task_flow_detail,
+)
 from app.services.workflow_pack_registry import (
     WorkflowPackRegistryUnavailableError,
     build_workflow_pack_registration_detail,
@@ -248,6 +261,122 @@ async def get_workflow_pack_run_catalog_route(
             limit=limit,
         )
     except WorkflowPackRunStoreUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/task-flows",
+    response_model=WorkflowPackTaskFlowCatalogResponse,
+    operation_id="getWorkflowPackTaskFlowCatalog",
+    summary="Get lotus-ai workflow-pack task-flow catalog",
+    description=(
+        "Returns recorded long-running workflow-pack task-flow posture. This is a read-only "
+        "inspection surface; consequence-bearing workflow authority remains with the owning domain service."
+    ),
+    responses={
+        200: {"description": "Workflow-pack task-flow catalog returned successfully."},
+        422: {"description": "Invalid query parameters supplied."},
+        503: {"description": "Workflow-pack task-flow store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_task_flow_catalog_route(
+    workflow_pack_id: str | None = Query(
+        default=None,
+        description="Optional workflow-pack identifier filter.",
+    ),
+    caller: str | None = Query(
+        default=None,
+        description="Optional caller-application filter.",
+    ),
+    tenant_id: str | None = Query(
+        default=None,
+        description="Optional tenant identifier filter.",
+    ),
+    workflow_surface: str | None = Query(
+        default=None,
+        description="Optional workflow-surface filter.",
+    ),
+    flow_status: WorkflowPackTaskFlowStatus | None = Query(
+        default=None,
+        description="Optional task-flow lifecycle-state filter.",
+    ),
+    supportability_status: WorkflowPackRunSupportabilityStatus | None = Query(
+        default=None,
+        description="Optional supportability-status filter.",
+    ),
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=200,
+        description="Maximum number of task flows to return after filtering.",
+    ),
+) -> WorkflowPackTaskFlowCatalogResponse:
+    try:
+        return build_workflow_pack_task_flow_catalog(
+            workflow_pack_id=workflow_pack_id,
+            caller=caller,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+            flow_status=flow_status,
+            supportability_status=supportability_status,
+            limit=limit,
+        )
+    except WorkflowPackTaskFlowStoreNotReadyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/task-flows/{task_flow_id}",
+    response_model=WorkflowPackTaskFlowDetailResponse,
+    operation_id="getWorkflowPackTaskFlowDetail",
+    summary="Get lotus-ai workflow-pack task-flow detail",
+    description=(
+        "Returns one task-flow descriptor and its checkpoint history while preserving the "
+        "separation between task-flow posture, run state, review state, and domain handoff authority."
+    ),
+    responses={
+        200: {"description": "Workflow-pack task-flow detail returned successfully."},
+        404: {"description": "Unknown workflow-pack task-flow identifier."},
+        503: {"description": "Workflow-pack task-flow store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_task_flow_detail_route(
+    task_flow_id: str,
+) -> WorkflowPackTaskFlowDetailResponse:
+    try:
+        return build_workflow_pack_task_flow_detail(task_flow_id)
+    except WorkflowPackTaskFlowNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except WorkflowPackTaskFlowStoreNotReadyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/task-flows/{task_flow_id}/checkpoints",
+    response_model=WorkflowPackTaskFlowCheckpointCatalogResponse,
+    operation_id="getWorkflowPackTaskFlowCheckpointCatalog",
+    summary="Get lotus-ai workflow-pack task-flow checkpoints",
+    description=(
+        "Returns recorded checkpoints for one task flow, including evidence references and "
+        "degraded or unsupported posture markers."
+    ),
+    responses={
+        200: {"description": "Workflow-pack task-flow checkpoints returned successfully."},
+        404: {"description": "Unknown workflow-pack task-flow identifier."},
+        503: {"description": "Workflow-pack task-flow store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_task_flow_checkpoints_route(
+    task_flow_id: str,
+) -> WorkflowPackTaskFlowCheckpointCatalogResponse:
+    try:
+        return build_workflow_pack_task_flow_checkpoint_catalog(task_flow_id)
+    except WorkflowPackTaskFlowNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except WorkflowPackTaskFlowStoreNotReadyError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
