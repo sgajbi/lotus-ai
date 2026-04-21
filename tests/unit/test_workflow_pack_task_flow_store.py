@@ -41,6 +41,28 @@ def test_workflow_pack_task_flow_store_returns_sqlalchemy_repository(tmp_path: P
     assert isinstance(repository, SqlAlchemyWorkflowPackTaskFlowRepository)
 
 
+def test_sqlalchemy_task_flow_repository_accepts_in_memory_sqlite() -> None:
+    repository = SqlAlchemyWorkflowPackTaskFlowRepository("sqlite:///:memory:")
+
+    assert isinstance(repository, SqlAlchemyWorkflowPackTaskFlowRepository)
+
+
+def test_sqlalchemy_task_flow_repository_ignores_non_file_sqlite_parent() -> None:
+    repository = SqlAlchemyWorkflowPackTaskFlowRepository("sqlite+pysqlite:///:memory:")
+
+    assert isinstance(repository, SqlAlchemyWorkflowPackTaskFlowRepository)
+
+
+def test_sqlalchemy_task_flow_repository_creates_relative_sqlite_parent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    SqlAlchemyWorkflowPackTaskFlowRepository("sqlite:///nested/task-flow-store.db")
+
+    assert (tmp_path / "nested").is_dir()
+
+
 def test_workflow_pack_task_flow_store_rejects_invalid_configuration() -> None:
     settings.workflow_pack_task_flow_store_mode = "sqlalchemy"
     settings.database_url = None
