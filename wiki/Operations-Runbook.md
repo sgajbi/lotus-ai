@@ -98,9 +98,11 @@ Use this sequence:
 3. confirm executable pack versions expose a declarative `queue_policy` and treat pack-backed
    execution failures as source evidence for actual queue-admission decisions,
 4. evaluate `/platform/workflow-packs/eligibility/evaluate` with the real caller and surface posture,
-5. inspect `/platform/workflow-packs/control-history` when rollout state changed or operator action is disputed,
-6. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block in `/platform/runtime-status` reports `READY` before treating activation state and control history as restart-safe truth,
-7. confirm `definition_ref` and `definition_refs` still resolve to the owning repository artifacts rather than placeholder notes,
+5. inspect the embedded `queue_attention` block in `/platform/runtime-status` when lane
+   saturation or stale active-admission posture may explain delayed workflow-pack execution,
+6. inspect `/platform/workflow-packs/control-history` when rollout state changed or operator action is disputed,
+7. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block in `/platform/runtime-status` reports `READY` before treating activation state and control history as restart-safe truth,
+8. confirm `definition_ref` and `definition_refs` still resolve to the owning repository artifacts rather than placeholder notes,
 8. when the issue is pack execution or review backlog rather than registration posture, inspect `/platform/workflow-packs/runs` and the embedded `workflow_pack_runtime` block in `/platform/runtime-status`,
 9. if the embedded `workflow_pack_run_store` block is not `READY`, treat pack-backed `POST /ai/tasks/execute` and `POST /platform/workflow-packs/execute` failures as preflight-blocked degraded-state signals rather than as requests that partially executed and then failed later,
 10. if pack-backed execution returns a queue-policy `429`, treat it as admission rejected before

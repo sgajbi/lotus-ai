@@ -921,6 +921,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_attention_queue_item_schema = spec["components"]["schemas"][
         "WorkflowPackAttentionQueueItemResponse"
     ]
+    workflow_pack_queue_attention_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueAttentionSummaryResponse"
+    ]
+    workflow_pack_queue_attention_item_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueAttentionItemResponse"
+    ]
     workflow_pack_run_runtime_summary_schema = spec["components"]["schemas"][
         "WorkflowPackRunRuntimeSummaryResponse"
     ]
@@ -966,6 +972,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "policy_id" in workflow_pack_queue_status_item_schema["properties"]
     assert "lane" in workflow_pack_queue_status_item_schema["properties"]
     assert "state" in workflow_pack_queue_status_item_schema["properties"]
+    assert "admitted_at" in workflow_pack_queue_status_item_schema["properties"]
     assert "queue_item" in workflow_pack_queue_status_detail_schema["properties"]
     assert "status_summary" in workflow_pack_queue_status_detail_schema["properties"]
     assert "active_count" in workflow_pack_queue_lane_status_schema["properties"]
@@ -982,7 +989,16 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "executable_review_required_refs" in workflow_pack_runtime_status_schema["properties"]
     assert "executable_activity" in workflow_pack_runtime_status_schema["properties"]
     assert "attention_queue" in workflow_pack_runtime_status_schema["properties"]
+    assert "queue_attention" in workflow_pack_runtime_status_schema["properties"]
     assert "run_summary" in workflow_pack_runtime_status_schema["properties"]
+    assert "heartbeat_status" in workflow_pack_queue_attention_schema["properties"]
+    assert "saturated_lane_count" in workflow_pack_queue_attention_schema["properties"]
+    assert "stale_item_count" in workflow_pack_queue_attention_schema["properties"]
+    assert "queue_source_mode" in workflow_pack_queue_attention_schema["properties"]
+    assert "attention_type" in workflow_pack_queue_attention_item_schema["properties"]
+    assert "policy_id" in workflow_pack_queue_attention_item_schema["properties"]
+    assert "queue_item_id" in workflow_pack_queue_attention_item_schema["properties"]
+    assert "attention_reasons" in workflow_pack_queue_attention_item_schema["properties"]
     assert "queue_depth" in workflow_pack_attention_queue_schema["properties"]
     assert "queue_limit" in workflow_pack_attention_queue_schema["properties"]
     assert "items" in workflow_pack_attention_queue_schema["properties"]

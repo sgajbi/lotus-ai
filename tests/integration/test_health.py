@@ -439,6 +439,10 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["workflow_pack_runtime"]["attention_queue"]["queue_depth"] == 0
     assert body["workflow_pack_runtime"]["attention_queue"]["queue_limit"] == 5
     assert body["workflow_pack_runtime"]["attention_queue"]["items"] == []
+    assert body["workflow_pack_runtime"]["queue_attention"]["heartbeat_status"] == "READY"
+    assert body["workflow_pack_runtime"]["queue_attention"]["attention_count"] == 0
+    assert body["workflow_pack_runtime"]["queue_attention"]["active_admission_count"] == 0
+    assert body["workflow_pack_runtime"]["queue_attention"]["queue_source_mode"] == "memory"
     assert body["workflow_pack_runtime"]["run_summary"]["run_count"] == 0
     assert body["workflow_pack_runtime"]["run_summary"]["awaiting_review_count"] == 0
     assert body["workflow_pack_runtime"]["run_summary"]["accepted_count"] == 0

@@ -117,7 +117,8 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 9. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode`, `workflow_pack_run_store`, `workflow_pack_task_flow_store_mode`, and `workflow_pack_task_flow_store` so operators can distinguish process-local workflow-pack runtime posture from SQL-backed durable ledger and task-flow posture,
 10. the embedded `workflow_pack_runtime` block now also carries bounded review provenance on executable-pack latest ready and latest actionable run pointers plus the cross-pack attention queue, and now also carries bounded artifact and evidence linkage summaries for those same runtime-status items, so estate-level triage does not need a raw ledger fetch just to understand latest review movement or missing provenance posture,
 11. pack-backed `503` degraded-state failures now preflight the workflow-pack run store before task execution and audit persistence, so callers should not expect new audit records or partial run-side effects when the run-ledger store is not ready,
-12. the embedded workflow-pack attention queue now treats `queue_depth` as the full actionable backlog across executable pack versions, while `items` stays bounded by `queue_limit` as the newest visible sample.
+12. the embedded workflow-pack attention queue now treats `queue_depth` as the full actionable backlog across executable pack versions, while `items` stays bounded by `queue_limit` as the newest visible sample,
+13. the embedded `queue_attention` block reports source-backed workflow-pack queue heartbeat posture for active-admission saturation and stale active admissions; historical timeout, cancellation, and retry-cluster attention remains deferred until a durable queue-event source exists.
 
 RFC-0097 task-flow state is currently a read-only inspection family, not a public mutation or
 handoff execution family:

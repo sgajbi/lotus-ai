@@ -326,6 +326,7 @@ class WorkflowPackQueueStatusItemDescriptor(BaseModel):
     workflow_pack_version: str = Field(description="Workflow-pack version.")
     lane: WorkflowPackQueueLane = Field(description="Queue lane used for admission.")
     state: WorkflowPackQueueState = Field(description="Current queue admission state.")
+    admitted_at: str = Field(description="UTC timestamp when queue admission was granted.")
 
 
 class WorkflowPackQueueLaneStatusDescriptor(BaseModel):

@@ -11,7 +11,10 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunProvenanceSummaryDescriptor,
     WorkflowPackRunReviewSummaryDescriptor,
 )
-from app.contracts.workflow_pack_queue_policies import WorkflowPackQueuePolicyDescriptor
+from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueLane,
+    WorkflowPackQueuePolicyDescriptor,
+)
 
 
 class WorkflowPackRegistrationStatus(str, Enum):
@@ -36,6 +39,11 @@ class WorkflowPackExecutionMode(str, Enum):
     SYNCHRONOUS = "SYNCHRONOUS"
     ASYNCHRONOUS = "ASYNCHRONOUS"
     REVIEW_GATED = "REVIEW_GATED"
+
+
+class WorkflowPackQueueAttentionType(str, Enum):
+    LANE_SATURATED = "LANE_SATURATED"
+    QUEUE_ITEM_STALE = "QUEUE_ITEM_STALE"
 
 
 class WorkflowPackCallerIdentityClass(str, Enum):
@@ -277,6 +285,9 @@ class WorkflowPackRuntimeStatusSummaryResponse(BaseModel):
     task_flow_attention: "WorkflowPackTaskFlowAttentionSummaryResponse" = Field(
         description="Bounded heartbeat-style attention summary for workflow-pack task flows."
     )
+    queue_attention: "WorkflowPackQueueAttentionSummaryResponse" = Field(
+        description="Bounded heartbeat-style attention summary for workflow-pack queue posture."
+    )
     run_summary: "WorkflowPackRunRuntimeSummaryResponse" = Field(
         description="Estate-level workflow-pack run posture derived from the current bounded run ledger."
     )
@@ -472,6 +483,57 @@ class WorkflowPackTaskFlowAttentionSummaryResponse(BaseModel):
     )
     status_summary: list[str] = Field(
         description="Human-readable summary of current task-flow attention posture."
+    )
+
+
+class WorkflowPackQueueAttentionItemResponse(BaseModel):
+    attention_type: WorkflowPackQueueAttentionType = Field(
+        description="Governed queue attention classification."
+    )
+    policy_id: str = Field(description="Queue policy identifier associated with the attention item.")
+    workflow_pack_id: str = Field(description="Workflow-pack family identifier.")
+    workflow_pack_version: str = Field(description="Workflow-pack version.")
+    lane: WorkflowPackQueueLane = Field(description="Queue lane associated with the attention item.")
+    queue_item_id: str | None = Field(
+        default=None,
+        description="Queue admission item identifier when attention is tied to one active item.",
+    )
+    active_count: int = Field(description="Current active admission count for the lane.")
+    max_concurrent_runs_per_lane: int = Field(
+        description="Configured concurrent admission limit for this lane."
+    )
+    admitted_at: str | None = Field(
+        default=None,
+        description="UTC timestamp when the queue item was admitted, when applicable.",
+    )
+    attention_reasons: list[str] = Field(
+        description="Human-readable reasons why this queue posture requires attention."
+    )
+
+
+class WorkflowPackQueueAttentionSummaryResponse(BaseModel):
+    heartbeat_status: str = Field(
+        description="Heartbeat-style aggregate posture for queue attention."
+    )
+    attention_count: int = Field(
+        description="Number of queue attention items currently requiring operator attention."
+    )
+    saturated_lane_count: int = Field(
+        description="Number of queue lanes currently at or above their saturation attention threshold."
+    )
+    stale_item_count: int = Field(
+        description="Number of active queue items older than their configured stale threshold."
+    )
+    active_admission_count: int = Field(
+        description="Number of active queue admission leases in the source queue status."
+    )
+    queue_source_mode: str = Field(description="Queue source mode used for this attention summary.")
+    attention_limit: int = Field(description="Maximum number of queue attention items returned.")
+    items: list[WorkflowPackQueueAttentionItemResponse] = Field(
+        description="Bounded queue attention items."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of current workflow-pack queue attention posture."
     )
 
 

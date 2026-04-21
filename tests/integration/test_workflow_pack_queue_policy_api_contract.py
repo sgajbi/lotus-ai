@@ -69,16 +69,14 @@ def test_workflow_pack_queue_status_reports_active_admission_without_worker_inte
     body = response.json()
     assert body["queue_source_mode"] == "memory"
     assert body["active_admission_count"] == 1
-    assert body["active_items"] == [
-        {
-            "queue_item_id": lease.queue_item_id,
-            "policy_id": "queue-policy.advisor-brief.v1",
-            "workflow_pack_id": "advisor_brief.pack",
-            "workflow_pack_version": "v1",
-            "lane": "LATENCY_SENSITIVE",
-            "state": "RUNNING",
-        }
-    ]
+    assert len(body["active_items"]) == 1
+    assert body["active_items"][0]["queue_item_id"] == lease.queue_item_id
+    assert body["active_items"][0]["policy_id"] == "queue-policy.advisor-brief.v1"
+    assert body["active_items"][0]["workflow_pack_id"] == "advisor_brief.pack"
+    assert body["active_items"][0]["workflow_pack_version"] == "v1"
+    assert body["active_items"][0]["lane"] == "LATENCY_SENSITIVE"
+    assert body["active_items"][0]["state"] == "RUNNING"
+    assert body["active_items"][0]["admitted_at"].endswith("Z")
     advisor_latency_lane = next(
         lane_status
         for lane_status in body["lane_statuses"]

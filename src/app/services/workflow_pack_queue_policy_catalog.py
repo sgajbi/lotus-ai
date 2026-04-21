@@ -346,6 +346,7 @@ def _map_queue_status_item(
         workflow_pack_version=lease.workflow_pack_version,
         lane=lease.lane,
         state=lease.state,
+        admitted_at=lease.admitted_at,
     )
 
 

@@ -14,10 +14,14 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunRuntimeState,
     WorkflowPackRunSupportabilityStatus,
 )
+from app.contracts.workflow_pack_queue_policies import WorkflowPackQueueStatusItemDescriptor
 from app.contracts.workflow_packs import (
     WorkflowPackAttentionQueueItemResponse,
     WorkflowPackAttentionQueueSummaryResponse,
     WorkflowPackExecutableActivitySummaryResponse,
+    WorkflowPackQueueAttentionItemResponse,
+    WorkflowPackQueueAttentionSummaryResponse,
+    WorkflowPackQueueAttentionType,
     WorkflowPackRunRuntimeSummaryResponse,
     WorkflowPackRuntimeStatusSummaryResponse,
     WorkflowPackTaskFlowAttentionItemResponse,
@@ -25,6 +29,10 @@ from app.contracts.workflow_packs import (
 )
 from app.services.workflow_pack_bindings import list_workflow_pack_execution_binding_descriptors
 from app.services.workflow_pack_registry import list_workflow_pack_registrations
+from app.services.workflow_pack_queue_policy_catalog import (
+    build_workflow_pack_queue_status,
+    get_workflow_pack_queue_policy_descriptor,
+)
 from app.services.workflow_pack_run_ledger import build_workflow_pack_run_catalog
 from app.services.workflow_pack_run_provenance_summary import (
     build_workflow_pack_run_provenance_summary,
@@ -38,6 +46,7 @@ from app.services.workflow_pack_task_flow_service import list_task_flows
 
 WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT = 5
 WORKFLOW_PACK_TASK_FLOW_ATTENTION_LIMIT = 5
+WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT = 5
 WORKFLOW_PACK_TASK_FLOW_STALE_AFTER = timedelta(hours=24)
 
 
@@ -136,6 +145,24 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
             ],
         )
 
+    if registry_store_status.status is RuntimeReadinessStatus.READY:
+        queue_attention = build_workflow_pack_queue_attention_summary()
+    else:
+        queue_attention = WorkflowPackQueueAttentionSummaryResponse(
+            heartbeat_status="UNAVAILABLE",
+            attention_count=0,
+            saturated_lane_count=0,
+            stale_item_count=0,
+            active_admission_count=0,
+            queue_source_mode="unavailable",
+            attention_limit=WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT,
+            items=[],
+            status_summary=[
+                "Workflow-pack queue heartbeat attention is unavailable until the configured registry store is ready.",
+                f"Current workflow-pack registry store status is `{registry_store_status.status.value}`.",
+            ],
+        )
+
     return WorkflowPackRuntimeStatusSummaryResponse(
         registration_count=len(registrations),
         registered_count=registered_count,
@@ -151,6 +178,7 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
         executable_activity=executable_activity,
         attention_queue=attention_queue,
         task_flow_attention=task_flow_attention,
+        queue_attention=queue_attention,
         run_summary=run_summary,
         status_summary=[
             "Workflow-pack runtime readiness is narrower than catalog presence and counts only versions that are both REGISTERED and explicitly bound for lotus-ai execution.",
@@ -174,6 +202,11 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
                 "Task-flow heartbeat attention is unavailable until the configured workflow-pack task-flow store is ready."
                 if task_flow_store_status.status is not RuntimeReadinessStatus.READY
                 else "Task-flow heartbeat attention is available through the configured workflow-pack task-flow store."
+            ),
+            (
+                "Queue heartbeat attention is unavailable until the configured workflow-pack registry store is ready."
+                if registry_store_status.status is not RuntimeReadinessStatus.READY
+                else "Queue heartbeat attention is available through the configured workflow-pack queue source posture."
             ),
         ],
     )
@@ -412,6 +445,57 @@ def build_workflow_pack_task_flow_attention_summary(
     )
 
 
+def build_workflow_pack_queue_attention_summary(
+    *,
+    now_utc: datetime | None = None,
+) -> WorkflowPackQueueAttentionSummaryResponse:
+    queue_status = build_workflow_pack_queue_status()
+    now = now_utc or datetime.now(UTC)
+    saturated_items = [
+        WorkflowPackQueueAttentionItemResponse(
+            attention_type=WorkflowPackQueueAttentionType.LANE_SATURATED,
+            policy_id=lane_status.policy_id,
+            workflow_pack_id=lane_status.workflow_pack_id,
+            workflow_pack_version=lane_status.workflow_pack_version,
+            lane=lane_status.lane,
+            queue_item_id=None,
+            active_count=lane_status.active_count,
+            max_concurrent_runs_per_lane=lane_status.max_concurrent_runs_per_lane,
+            admitted_at=None,
+            attention_reasons=[
+                "Workflow-pack queue lane is at or above its saturation attention threshold."
+            ],
+        )
+        for lane_status in queue_status.lane_statuses
+        if lane_status.saturation_status.value == "SATURATED"
+    ]
+    stale_items = _build_stale_queue_attention_items(
+        active_items=queue_status.active_items,
+        now=now,
+    )
+    attention_items = saturated_items + stale_items
+    status_summary = [
+        "Workflow-pack queue heartbeat attention is derived from queue source posture and does not replace run-ledger, review, or task-flow state.",
+        "First-wave queue attention covers active-admission saturation and stale active admissions from the current queue source.",
+        "Historical timeout, cancellation, and retry-cluster attention requires a durable queue-event source before it can be reported truthfully.",
+    ]
+    if len(attention_items) > WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT:
+        status_summary.append(
+            "Returned queue attention items are truncated to the bounded attention limit; use attention_count to measure the full backlog."
+        )
+    return WorkflowPackQueueAttentionSummaryResponse(
+        heartbeat_status="READY" if not attention_items else "ATTENTION_REQUIRED",
+        attention_count=len(attention_items),
+        saturated_lane_count=len(saturated_items),
+        stale_item_count=len(stale_items),
+        active_admission_count=queue_status.active_admission_count,
+        queue_source_mode=queue_status.queue_source_mode,
+        attention_limit=WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT,
+        items=attention_items[:WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT],
+        status_summary=status_summary,
+    )
+
+
 def _resolve_latest_run_by_supportability(
     *,
     runs: list[WorkflowPackRunDescriptor],
@@ -421,6 +505,47 @@ def _resolve_latest_run_by_supportability(
     if not matching_runs:
         return None
     return max(matching_runs, key=lambda run: run.created_at)
+
+
+def _build_stale_queue_attention_items(
+    *,
+    active_items: list[WorkflowPackQueueStatusItemDescriptor],
+    now: datetime,
+) -> list[WorkflowPackQueueAttentionItemResponse]:
+    items: list[WorkflowPackQueueAttentionItemResponse] = []
+    for active_item in active_items:
+        policy = get_workflow_pack_queue_policy_descriptor(
+            pack_id=active_item.workflow_pack_id,
+            version=active_item.workflow_pack_version,
+        )
+        if policy is None:
+            continue
+        admitted_at = _parse_utc_timestamp(active_item.admitted_at)
+        if admitted_at is None:
+            is_stale = True
+        else:
+            is_stale = now - admitted_at > timedelta(
+                seconds=policy.stale_queue_threshold_seconds
+            )
+        if not is_stale:
+            continue
+        items.append(
+            WorkflowPackQueueAttentionItemResponse(
+                attention_type=WorkflowPackQueueAttentionType.QUEUE_ITEM_STALE,
+                policy_id=active_item.policy_id,
+                workflow_pack_id=active_item.workflow_pack_id,
+                workflow_pack_version=active_item.workflow_pack_version,
+                lane=active_item.lane,
+                queue_item_id=active_item.queue_item_id,
+                active_count=1,
+                max_concurrent_runs_per_lane=policy.max_concurrent_runs_per_lane,
+                admitted_at=active_item.admitted_at,
+                attention_reasons=[
+                    "Workflow-pack queue item has exceeded the policy stale queue threshold."
+                ],
+            )
+        )
+    return items
 
 
 def _build_task_flow_attention_item(

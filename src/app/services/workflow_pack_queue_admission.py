@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from threading import RLock
 from typing import Iterator
 from uuid import uuid4
@@ -28,6 +29,7 @@ class WorkflowPackQueueAdmissionLease:
     workflow_pack_version: str
     lane: WorkflowPackQueueLane
     state: WorkflowPackQueueState
+    admitted_at: str
 
 
 _queue_lock = RLock()
@@ -115,6 +117,7 @@ def acquire_workflow_pack_queue_admission(
             workflow_pack_version=policy.workflow_pack_version,
             lane=lane,
             state=running_state,
+            admitted_at=_utc_now_timestamp(),
         )
         _active_leases[lease.queue_item_id] = lease
         return lease
@@ -190,3 +193,7 @@ def _raise_capacity_rejection(
 
 def _raise_queue_rejection(*, status_code: int, detail: str) -> None:
     raise HTTPException(status_code=status_code, detail=detail)
+
+
+def _utc_now_timestamp() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
