@@ -556,6 +556,28 @@ def test_workflow_pack_run_review_action_updates_review_state(client: TestClient
     assert task_flow["flow_status"] == "COMPLETED"
     assert task_flow["review_states"][run_id] == "ACCEPTED"
     assert task_flow["supportability_status"] == "READY"
+    assert task_flow["handoff_refs"] == [
+        {
+            "handoff_id": f"{task_flow['task_flow_id']}_handoff_{run_id}",
+            "owner_service": "lotus-gateway",
+            "status": "READY_FOR_HANDOFF",
+            "domain_ref": None,
+            "evidence_refs": [
+                {
+                    "evidence_type": "workflow_pack_review_handoff_ready",
+                    "summary": (
+                        "Accepted workflow-pack task flow is ready for domain-owner handoff."
+                    ),
+                    "attributes": {
+                        "run_id": run_id,
+                        "task_flow_id": task_flow["task_flow_id"],
+                        "workflow_authority_owner": "lotus-gateway",
+                        "reason": "Advisor brief accepted for bounded downstream workflow use.",
+                    },
+                }
+            ],
+        }
+    ]
 
 
 def test_workflow_pack_run_review_action_allows_operator_caller(client: TestClient) -> None:

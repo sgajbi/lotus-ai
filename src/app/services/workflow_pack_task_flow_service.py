@@ -8,6 +8,8 @@ from app.contracts.workflow_pack_task_flows import (
     WorkflowPackTaskFlowCheckpointTransition,
     WorkflowPackTaskFlowDetailResponse,
     WorkflowPackTaskFlowDescriptor,
+    WorkflowPackTaskFlowHandoffDescriptor,
+    WorkflowPackTaskFlowHandoffStatus,
     WorkflowPackTaskFlowReplacementLineageDescriptor,
     WorkflowPackTaskFlowStatus,
     WorkflowPackTaskFlowStepDescriptor,
@@ -373,6 +375,8 @@ def _record_review_checkpoint(
         run_id=run_id,
         review_state=review_state,
         supportability_status=supportability_status,
+        action_type=action_type,
+        reason=reason,
         lineage=lineage,
     )
     task_flow_store.save_checkpoint(WorkflowPackTaskFlowCheckpointRecord(descriptor=checkpoint))
@@ -386,6 +390,8 @@ def _with_review_state_and_lineage(
     run_id: str,
     review_state: WorkflowPackRunReviewState,
     supportability_status: WorkflowPackRunSupportabilityStatus,
+    action_type: WorkflowPackRunReviewActionType,
+    reason: str,
     lineage: WorkflowPackTaskFlowReplacementLineageDescriptor | None,
 ) -> WorkflowPackTaskFlowDescriptor:
     payload = task_flow.model_dump(mode="json")
@@ -395,6 +401,12 @@ def _with_review_state_and_lineage(
     payload["supportability_status"] = supportability_status.value
     if lineage is not None:
         payload["replacement_lineage"] = _append_lineage_payload(task_flow, lineage=lineage)
+    if action_type is WorkflowPackRunReviewActionType.ACCEPT:
+        payload["handoff_refs"] = _append_ready_handoff_payload(
+            task_flow,
+            run_id=run_id,
+            reason=reason,
+        )
     return WorkflowPackTaskFlowDescriptor.model_validate(payload)
 
 
@@ -420,6 +432,36 @@ def _append_lineage_payload(
     if candidate not in lineage_payload:
         lineage_payload.append(candidate)
     return lineage_payload
+
+
+def _append_ready_handoff_payload(
+    task_flow: WorkflowPackTaskFlowDescriptor,
+    *,
+    run_id: str,
+    reason: str,
+) -> list[dict[str, object]]:
+    handoff_payload = [item.model_dump(mode="json") for item in task_flow.handoff_refs]
+    candidate = WorkflowPackTaskFlowHandoffDescriptor(
+        handoff_id=f"{task_flow.task_flow_id}_handoff_{run_id}",
+        owner_service=task_flow.workflow_authority_owner,
+        status=WorkflowPackTaskFlowHandoffStatus.READY_FOR_HANDOFF,
+        domain_ref=None,
+        evidence_refs=[
+            ExecutionEvidenceDescriptor(
+                evidence_type="workflow_pack_review_handoff_ready",
+                summary="Accepted workflow-pack task flow is ready for domain-owner handoff.",
+                attributes={
+                    "run_id": run_id,
+                    "task_flow_id": task_flow.task_flow_id,
+                    "workflow_authority_owner": task_flow.workflow_authority_owner,
+                    "reason": reason,
+                },
+            )
+        ],
+    ).model_dump(mode="json")
+    if candidate not in handoff_payload:
+        handoff_payload.append(candidate)
+    return handoff_payload
 
 
 def _resolve_review_task_flow_status(
