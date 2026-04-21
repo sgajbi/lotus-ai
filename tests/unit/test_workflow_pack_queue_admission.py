@@ -46,11 +46,15 @@ def test_queue_admission_acquires_releases_and_records_durable_event_history() -
 
     assert [event.event_type.value for event in history.events] == [
         "ADMISSION_REQUESTED",
+        "ADMISSION_QUEUED",
+        "ADMISSION_ADMITTED",
         "ADMISSION_GRANTED",
         "ADMISSION_RELEASED",
     ]
     assert [event.state.value for event in history.events] == [
         "NOT_ADMITTED",
+        "QUEUED",
+        "ADMITTED",
         "RUNNING",
         "COMPLETED_HANDOFF",
     ]

@@ -104,7 +104,7 @@ Use this sequence:
 5. inspect the embedded `queue_attention` block in `/platform/runtime-status` when lane
    saturation, stale active-admission posture, terminal queue posture, blocked recovery posture,
    repeated-failure clusters, or degraded queue-source posture may explain delayed workflow-pack execution,
-6. inspect `/platform/workflow-packs/queue-events` when support needs durable source evidence for queue admission requests, grants, rejections, releases, timeout posture, cancellation posture, and retry/replay recovery decisions; use the retry/replay decision routes only with explicit actor, reason, and evidence reference,
+6. inspect `/platform/workflow-packs/queue-events` when support needs durable source evidence for queue admission requests, queued posture, admitted posture, execution handoff, rejections, releases, timeout posture, cancellation posture, and retry/replay recovery decisions; use the retry/replay decision routes only with explicit actor, reason, and evidence reference,
 7. inspect `/platform/workflow-packs/control-history` when rollout state changed or operator action is disputed,
 8. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block in `/platform/runtime-status` reports `READY` before treating activation state and control history as restart-safe truth,
 9. when `LOTUS_AI_WORKFLOW_PACK_QUEUE_EVENT_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_queue_event_store` block in `/platform/runtime-status` reports `READY` before treating queue event history as restart-safe truth,

@@ -946,6 +946,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_queue_event_schema = spec["components"]["schemas"][
         "WorkflowPackQueueEventDescriptor"
     ]
+    workflow_pack_queue_event_type_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueEventType"
+    ]
     workflow_pack_queue_event_catalog_schema = spec["components"]["schemas"][
         "WorkflowPackQueueEventCatalogResponse"
     ]
@@ -1030,6 +1033,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "event_id" in workflow_pack_queue_event_schema["properties"]
     assert "queue_item_id" in workflow_pack_queue_event_schema["properties"]
     assert "event_type" in workflow_pack_queue_event_schema["properties"]
+    assert "ADMISSION_QUEUED" in workflow_pack_queue_event_type_schema["enum"]
+    assert "ADMISSION_ADMITTED" in workflow_pack_queue_event_type_schema["enum"]
     assert "policy_id" in workflow_pack_queue_event_schema["properties"]
     assert "lane" in workflow_pack_queue_event_schema["properties"]
     assert "state" in workflow_pack_queue_event_schema["properties"]
