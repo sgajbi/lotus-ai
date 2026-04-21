@@ -10,6 +10,7 @@ from app.contracts.workflow_pack_task_flows import (
     WorkflowPackTaskFlowCheckpointTransition,
     WorkflowPackTaskFlowStatus,
 )
+from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.services.task_execution_models import TaskExecutionContext
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.workflow_pack_task_flow_recording import (
@@ -35,7 +36,7 @@ def _task_execution_context(*, request_id: str) -> TaskExecutionContext:
     )
 
 
-def _advisor_brief_registration():
+def _advisor_brief_registration() -> WorkflowPackRegistrationDescriptor:
     registration = get_workflow_pack_registration(
         pack_id="advisor_brief.pack",
         version="v1",
