@@ -63,6 +63,14 @@ def test_sqlalchemy_task_flow_repository_creates_relative_sqlite_parent(
     assert (tmp_path / "nested").is_dir()
 
 
+def test_sqlalchemy_task_flow_repository_returns_none_for_missing_record(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-task-flow-store.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyWorkflowPackTaskFlowRepository(database_url)
+
+    assert repository.get_task_flow(task_flow_id="missing-task-flow") is None
+
+
 def test_workflow_pack_task_flow_store_rejects_invalid_configuration() -> None:
     settings.workflow_pack_task_flow_store_mode = "sqlalchemy"
     settings.database_url = None

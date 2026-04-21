@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -27,6 +28,10 @@ from tests.support.workflow_pack_task_flow_fixtures import (
     workflow_pack_task_flow_checkpoint,
     workflow_pack_task_flow_descriptor,
 )
+
+
+class _UnknownReviewAction:
+    value = "ESCALATE"
 
 
 def test_task_flow_service_records_checkpoint_and_preserves_state_boundaries() -> None:
@@ -249,6 +254,32 @@ def test_task_flow_review_action_sync_records_terminal_review_posture(
         assert updated.handoff_refs[0].owner_service == "lotus-advise"
     else:
         assert updated.handoff_refs == []
+
+
+def test_task_flow_review_action_sync_blocks_unknown_future_review_action() -> None:
+    create_task_flow(
+        workflow_pack_task_flow_descriptor(
+            flow_status=WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW,
+            current_step_id="draft-brief",
+        )
+    )
+
+    synchronize_task_flow_review_action(
+        run_id="run-001",
+        review_state=WorkflowPackRunReviewState.AWAITING_REVIEW,
+        supportability_status=WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED,
+        action_type=cast(WorkflowPackRunReviewActionType, _UnknownReviewAction()),
+        reviewed_by="advisor-001",
+        reason="Unknown review action should block the task flow.",
+        recorded_at="2026-04-21T01:05:00Z",
+    )
+
+    updated = get_task_flow("task-flow-001")
+    assert updated is not None
+    assert updated.flow_status == WorkflowPackTaskFlowStatus.BLOCKED
+    assert updated.current_step_id == "draft-brief"
+    checkpoints = list_task_flow_checkpoints("task-flow-001")
+    assert checkpoints[-1].transition == WorkflowPackTaskFlowCheckpointTransition.FLOW_BLOCKED
 
 
 @pytest.mark.parametrize(
