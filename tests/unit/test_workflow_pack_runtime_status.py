@@ -12,8 +12,10 @@ from app.contracts.workflow_pack_runs import (
 from app.contracts.workflow_packs import WorkflowPackExecutionMode, WorkflowPackRegistrationStatus
 from app.services.workflow_pack_bindings import get_workflow_pack_execution_binding_descriptor
 from app.services.workflow_pack_registry import get_workflow_pack_registration
-from app.services.workflow_pack_runtime_status import (
+from app.services.workflow_pack_queue_attention import (
     build_workflow_pack_queue_attention_summary,
+)
+from app.services.workflow_pack_runtime_status import (
     build_workflow_pack_task_flow_attention_summary,
     build_workflow_pack_run_runtime_summary,
     build_workflow_pack_runtime_status_summary,
