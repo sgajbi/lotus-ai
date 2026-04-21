@@ -33,9 +33,7 @@ def _assert_task_flow_recorded_for_run(
     assert task_flow["runtime_states"][run_id] in {"COMPLETED", "FAILED"}
     assert task_flow["review_states"][run_id] == "AWAITING_REVIEW"
 
-    detail_response = client.get(
-        f"/platform/workflow-packs/task-flows/{task_flow['task_flow_id']}"
-    )
+    detail_response = client.get(f"/platform/workflow-packs/task-flows/{task_flow['task_flow_id']}")
     assert detail_response.status_code == 200
     detail_body = detail_response.json()
     assert detail_body["task_flow"]["run_refs"] == [run_id]
@@ -1173,9 +1171,7 @@ def test_sqlalchemy_workflow_pack_run_review_and_lineage_survive_restart(tmp_pat
                 f"/platform/workflow-packs/runs/{original_run_id}/operator-profile"
             )
             runtime_status_response = restarted_client.get("/platform/runtime-status")
-            task_flow_catalog_response = restarted_client.get(
-                "/platform/workflow-packs/task-flows"
-            )
+            task_flow_catalog_response = restarted_client.get("/platform/workflow-packs/task-flows")
 
     assert catalog_response.status_code == 200
     catalog_body = catalog_response.json()
@@ -1244,7 +1240,9 @@ def test_sqlalchemy_workflow_pack_run_review_and_lineage_survive_restart(tmp_pat
     task_flow_catalog_body = task_flow_catalog_response.json()
     assert task_flow_catalog_body["task_flow_store_mode"] == "sqlalchemy"
     assert task_flow_catalog_body["task_flow_count"] == 2
-    assert {run_id for flow in task_flow_catalog_body["task_flows"] for run_id in flow["run_refs"]} == {
+    assert {
+        run_id for flow in task_flow_catalog_body["task_flows"] for run_id in flow["run_refs"]
+    } == {
         original_run_id,
         revised_run_id,
     }

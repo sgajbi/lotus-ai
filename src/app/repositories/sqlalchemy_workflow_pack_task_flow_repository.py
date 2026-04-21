@@ -87,9 +87,7 @@ class SqlAlchemyWorkflowPackTaskFlowRepository(
             session.merge(model)
             session.commit()
 
-    def _to_task_flow_record(
-        self, model: WorkflowPackTaskFlowModel
-    ) -> WorkflowPackTaskFlowRecord:
+    def _to_task_flow_record(self, model: WorkflowPackTaskFlowModel) -> WorkflowPackTaskFlowRecord:
         return WorkflowPackTaskFlowRecord(
             descriptor=WorkflowPackTaskFlowDescriptor.model_validate(model.descriptor_payload)
         )

@@ -269,7 +269,9 @@ def test_build_workflow_pack_task_flow_attention_summary_surfaces_heartbeat_post
                 flow_status=WorkflowPackTaskFlowStatus.COMPLETED,
                 current_step_id=None,
                 updated_at="2026-04-18T01:00:00Z",
-            ).model_copy(update={"supportability_status": WorkflowPackRunSupportabilityStatus.READY}),
+            ).model_copy(
+                update={"supportability_status": WorkflowPackRunSupportabilityStatus.READY}
+            ),
         ],
         now_utc=datetime(2026, 4, 21, 3, 0, tzinfo=UTC),
     )

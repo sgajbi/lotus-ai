@@ -164,8 +164,7 @@ def build_workflow_pack_task_flow_catalog(
         task_flow_count=len(filtered),
         active_count=sum(flow.flow_status in TASK_FLOW_ACTIVE_STATUSES for flow in filtered),
         waiting_for_review_count=sum(
-            flow.flow_status == WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW
-            for flow in filtered
+            flow.flow_status == WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW for flow in filtered
         ),
         blocked_count=sum(
             flow.flow_status == WorkflowPackTaskFlowStatus.BLOCKED for flow in filtered
@@ -189,9 +188,7 @@ def build_workflow_pack_task_flow_detail(
 ) -> WorkflowPackTaskFlowDetailResponse:
     task_flow = get_task_flow(task_flow_id)
     if task_flow is None:
-        raise WorkflowPackTaskFlowNotFoundError(
-            f"Unknown workflow-pack task flow: {task_flow_id}"
-        )
+        raise WorkflowPackTaskFlowNotFoundError(f"Unknown workflow-pack task flow: {task_flow_id}")
     checkpoints = list_task_flow_checkpoints(task_flow_id)
     return WorkflowPackTaskFlowDetailResponse(
         service=settings.service_name,
@@ -206,9 +203,7 @@ def build_workflow_pack_task_flow_checkpoint_catalog(
     task_flow_id: str,
 ) -> WorkflowPackTaskFlowCheckpointCatalogResponse:
     if get_task_flow(task_flow_id) is None:
-        raise WorkflowPackTaskFlowNotFoundError(
-            f"Unknown workflow-pack task flow: {task_flow_id}"
-        )
+        raise WorkflowPackTaskFlowNotFoundError(f"Unknown workflow-pack task flow: {task_flow_id}")
     checkpoints = list_task_flow_checkpoints(task_flow_id)
     return WorkflowPackTaskFlowCheckpointCatalogResponse(
         service=settings.service_name,
@@ -515,8 +510,7 @@ def _append_checkpoint_to_task_flow(
         checkpoint_refs.append(checkpoint.checkpoint_id)
 
     step_statuses = [
-        _append_checkpoint_to_step(step, checkpoint)
-        for step in descriptor.step_statuses
+        _append_checkpoint_to_step(step, checkpoint) for step in descriptor.step_statuses
     ]
     payload = descriptor.model_dump(mode="json")
     payload.update(

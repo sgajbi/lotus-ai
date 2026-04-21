@@ -381,7 +381,9 @@ def build_workflow_pack_task_flow_attention_summary(
     waiting_for_review_count = sum(
         1 for flow in flows if flow.flow_status is WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW
     )
-    blocked_count = sum(1 for flow in flows if flow.flow_status is WorkflowPackTaskFlowStatus.BLOCKED)
+    blocked_count = sum(
+        1 for flow in flows if flow.flow_status is WorkflowPackTaskFlowStatus.BLOCKED
+    )
     degraded_count = sum(
         1
         for flow in flows

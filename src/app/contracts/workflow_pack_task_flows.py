@@ -115,7 +115,9 @@ class WorkflowPackTaskFlowReplacementLineageDescriptor(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _replacement_must_not_point_to_self(self) -> "WorkflowPackTaskFlowReplacementLineageDescriptor":
+    def _replacement_must_not_point_to_self(
+        self,
+    ) -> "WorkflowPackTaskFlowReplacementLineageDescriptor":
         if self.superseded_run_id == self.replacement_run_id:
             raise ValueError("replacement_run_id must differ from superseded_run_id")
         return self
@@ -220,7 +222,9 @@ class WorkflowPackTaskFlowDescriptor(BaseModel):
         min_length=1,
         description="Service boundary that retains consequence-bearing workflow authority.",
     )
-    flow_status: WorkflowPackTaskFlowStatus = Field(description="Current task-flow lifecycle state.")
+    flow_status: WorkflowPackTaskFlowStatus = Field(
+        description="Current task-flow lifecycle state."
+    )
     current_step_id: str | None = Field(
         default=None,
         description="Current step identifier, when the flow has an active or waiting step.",
@@ -282,12 +286,16 @@ class WorkflowPackTaskFlowDescriptor(BaseModel):
         step_ids = {step.step_id for step in self.step_statuses}
         if self.current_step_id is not None and self.current_step_id not in step_ids:
             raise ValueError("current_step_id must reference a declared step")
-        if self.flow_status in {
-            WorkflowPackTaskFlowStatus.RUNNING,
-            WorkflowPackTaskFlowStatus.WAITING_FOR_INPUT,
-            WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW,
-            WorkflowPackTaskFlowStatus.BLOCKED,
-        } and self.current_step_id is None:
+        if (
+            self.flow_status
+            in {
+                WorkflowPackTaskFlowStatus.RUNNING,
+                WorkflowPackTaskFlowStatus.WAITING_FOR_INPUT,
+                WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW,
+                WorkflowPackTaskFlowStatus.BLOCKED,
+            }
+            and self.current_step_id is None
+        ):
             raise ValueError("active or waiting task flows require current_step_id")
         return self
 

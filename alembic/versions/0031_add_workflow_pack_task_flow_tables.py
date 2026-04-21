@@ -149,9 +149,7 @@ def downgrade() -> None:
         "ix_workflow_pack_task_flows_supportability_status",
         table_name="workflow_pack_task_flows",
     )
-    op.drop_index(
-        "ix_workflow_pack_task_flows_flow_status", table_name="workflow_pack_task_flows"
-    )
+    op.drop_index("ix_workflow_pack_task_flows_flow_status", table_name="workflow_pack_task_flows")
     op.drop_index(
         "ix_workflow_pack_task_flows_workflow_surface",
         table_name="workflow_pack_task_flows",

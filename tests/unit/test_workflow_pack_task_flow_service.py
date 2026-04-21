@@ -42,9 +42,9 @@ def test_task_flow_service_records_checkpoint_and_preserves_state_boundaries() -
     assert updated.checkpoint_refs == ["checkpoint-001"]
     assert updated.step_statuses[0].checkpoint_refs == ["checkpoint-001"]
     assert get_task_flow("task-flow-001") == updated
-    assert [checkpoint.checkpoint_id for checkpoint in list_task_flow_checkpoints("task-flow-001")] == [
-        "checkpoint-001"
-    ]
+    assert [
+        checkpoint.checkpoint_id for checkpoint in list_task_flow_checkpoints("task-flow-001")
+    ] == ["checkpoint-001"]
 
 
 def test_task_flow_service_rejects_invalid_terminal_transition() -> None:
@@ -124,6 +124,6 @@ def test_task_flow_service_survives_sqlalchemy_repository_restart(tmp_path: Path
     assert reloaded is not None
     assert reloaded.flow_status == WorkflowPackTaskFlowStatus.RUNNING
     assert reloaded.checkpoint_refs == ["checkpoint-001"]
-    assert [checkpoint.checkpoint_id for checkpoint in list_task_flow_checkpoints("task-flow-001")] == [
-        "checkpoint-001"
-    ]
+    assert [
+        checkpoint.checkpoint_id for checkpoint in list_task_flow_checkpoints("task-flow-001")
+    ] == ["checkpoint-001"]

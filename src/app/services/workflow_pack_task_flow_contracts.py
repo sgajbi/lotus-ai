@@ -11,9 +11,7 @@ TASK_FLOW_TERMINAL_STATES = {
     WorkflowPackTaskFlowStatus.SUPERSEDED,
 }
 
-TASK_FLOW_ALLOWED_TRANSITIONS: dict[
-    WorkflowPackTaskFlowStatus, set[WorkflowPackTaskFlowStatus]
-] = {
+TASK_FLOW_ALLOWED_TRANSITIONS: dict[WorkflowPackTaskFlowStatus, set[WorkflowPackTaskFlowStatus]] = {
     WorkflowPackTaskFlowStatus.CREATED: {
         WorkflowPackTaskFlowStatus.RUNNING,
         WorkflowPackTaskFlowStatus.CANCELLED,
@@ -74,4 +72,3 @@ def require_task_flow_transition_allowed(
     raise ValueError(
         f"Task-flow transition from {current_status.value} to {next_status.value} is not allowed."
     )
-

@@ -349,9 +349,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         == "Workflow-pack task-flow store is not ready."
     )
     assert (
-        spec["paths"]["/platform/workflow-packs/task-flows/{task_flow_id}"]["get"][
-            "operationId"
-        ]
+        spec["paths"]["/platform/workflow-packs/task-flows/{task_flow_id}"]["get"]["operationId"]
         == "getWorkflowPackTaskFlowDetail"
     )
     assert (

@@ -24,9 +24,7 @@ def get_workflow_pack_task_flow_store() -> WorkflowPackTaskFlowRepository:
             )
         global _sqlalchemy_repository
         if _sqlalchemy_repository is None:
-            _sqlalchemy_repository = SqlAlchemyWorkflowPackTaskFlowRepository(
-                settings.database_url
-            )
+            _sqlalchemy_repository = SqlAlchemyWorkflowPackTaskFlowRepository(settings.database_url)
         return _sqlalchemy_repository
     raise RuntimeError(
         "Unsupported workflow-pack task-flow store mode: "

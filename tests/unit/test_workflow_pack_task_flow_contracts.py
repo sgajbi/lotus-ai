@@ -133,7 +133,9 @@ def test_active_task_flow_requires_current_step_to_reference_declared_step() -> 
 
 
 def test_active_task_flow_requires_current_step() -> None:
-    with pytest.raises(ValidationError, match="active or waiting task flows require current_step_id"):
+    with pytest.raises(
+        ValidationError, match="active or waiting task flows require current_step_id"
+    ):
         _task_flow(current_step_id=None)
 
 
@@ -172,4 +174,3 @@ def test_transition_validator_allows_revision_loop_and_rejects_terminal_advance(
             WorkflowPackTaskFlowStatus.COMPLETED,
             WorkflowPackTaskFlowStatus.RUNNING,
         )
-

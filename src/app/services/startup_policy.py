@@ -40,9 +40,7 @@ def evaluate_startup_readiness() -> StartupReadinessEvaluation:
     if workflow_pack_run_status.status != "READY":
         findings.append(f"workflow-pack run store: {workflow_pack_run_status.detail}")
     if workflow_pack_task_flow_status.status != "READY":
-        findings.append(
-            f"workflow-pack task-flow store: {workflow_pack_task_flow_status.detail}"
-        )
+        findings.append(f"workflow-pack task-flow store: {workflow_pack_task_flow_status.detail}")
 
     if settings.startup_readiness_policy == "enforce" and findings:
         blocking = True
