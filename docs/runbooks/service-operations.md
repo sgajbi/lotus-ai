@@ -221,8 +221,8 @@ Before treating any workflow-pack-enabled path as operator-ready:
 2. inspect `GET /platform/workflow-packs/registry/{pack_id}/{version}` to confirm `owner_repository`,
    `workflow_authority_owner`, `definition_ref`, and `definition_refs` all point to real owner artifacts
 3. confirm executable pack versions carry a `queue_policy` in detail and appear in catalog
-   `queue_policies`; treat that policy as declarative scheduling posture, not proof that runtime
-   queue admission has executed
+   `queue_policies`; treat registry policy as declarative scheduling posture and pack-backed
+   execution failures as the source evidence for actual queue-admission decisions
 4. treat missing or vague owner-artifact references as a registration-quality failure, not as harmless metadata drift
 5. evaluate `POST /platform/workflow-packs/eligibility/evaluate` using the real caller app,
    identity class, environment, tenant, and workflow surface that will request the pack
@@ -246,7 +246,10 @@ Before treating any workflow-pack-enabled path as operator-ready:
 16. when using `REVISE` or `SUPERSEDE`, confirm the replacement run id belongs to the same pack family so lineage remains reconstructable
 17. when `LOTUS_AI_WORKFLOW_PACK_RUN_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_run_store` block in `GET /platform/runtime-status` reports `READY` before treating the run ledger as restart-safe durable truth
 18. if the embedded `workflow_pack_run_store` block is not `READY`, treat `GET /platform/workflow-packs/runs`, `GET /platform/workflow-packs/runs/{run_id}`, `GET /platform/workflow-packs/runs/{run_id}/consumer-view`, `GET /platform/workflow-packs/runs/{run_id}/operator-profile`, `POST /platform/workflow-packs/runs/{run_id}/review-actions`, `POST /platform/workflow-packs/execute`, and pack-backed `POST /ai/tasks/execute` requests as governed `503` degraded-state signals rather than as missing data, missing runs, or transient UI-only faults; the current bounded runtime now blocks those pack-backed execution paths before task execution and audit persistence so a failed preflight does not leave misleading post-failure run-side effects
-19. when inspecting the embedded `workflow_pack_runtime.attention_queue` block in `GET /platform/runtime-status`, treat `queue_depth` as the full actionable backlog across executable pack versions and `items` as only the newest bounded sample up to `queue_limit`; if `queue_depth` exceeds `queue_limit`, continue triage through the ledger catalog rather than assuming the visible queue is the full backlog
+19. when pack-backed `POST /platform/workflow-packs/execute` or `POST /ai/tasks/execute` returns a
+   queue-policy `429`, treat that as admission rejected before audit, run-ledger, or task-flow side
+   effects; retry only after capacity is available or the owning operator changes policy
+20. when inspecting the embedded `workflow_pack_runtime.attention_queue` block in `GET /platform/runtime-status`, treat `queue_depth` as the full actionable backlog across executable pack versions and `items` as only the newest bounded sample up to `queue_limit`; if `queue_depth` exceeds `queue_limit`, continue triage through the ledger catalog rather than assuming the visible queue is the full backlog
 
 ## Durable Async Recovery
 

@@ -6,6 +6,11 @@ from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
 from app.main import app
+from app.services.workflow_pack_queue_admission import (
+    acquire_workflow_pack_queue_admission,
+    release_workflow_pack_queue_admission,
+)
+from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
@@ -368,6 +373,82 @@ def test_workflow_pack_execute_route_rejects_denied_surface(client: TestClient) 
     )
 
     assert execute_response.status_code == 403
+
+
+def test_workflow_pack_execute_route_rejects_full_queue_lane_without_side_effects(
+    client: TestClient,
+) -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    first_lease = acquire_workflow_pack_queue_admission(registration=registration)
+    second_lease = acquire_workflow_pack_queue_admission(registration=registration)
+
+    try:
+        baseline_audit_response = client.get(
+            "/ai/audit",
+            params={"caller_app": "lotus-gateway", "limit": 10},
+        )
+        execute_response = client.post(
+            "/platform/workflow-packs/execute",
+            json=advisor_brief_workflow_pack_execution_request_json(
+                correlation_id="corr-pack-execute-queue-full-001"
+            ),
+        )
+        audit_response = client.get(
+            "/ai/audit",
+            params={"caller_app": "lotus-gateway", "limit": 10},
+        )
+        run_catalog_response = client.get("/platform/workflow-packs/runs")
+    finally:
+        release_workflow_pack_queue_admission(first_lease.queue_item_id)
+        release_workflow_pack_queue_admission(second_lease.queue_item_id)
+
+    assert baseline_audit_response.status_code == 200
+    assert execute_response.status_code == 429
+    assert "Workflow-pack queue policy rejected admission" in execute_response.json()["detail"]
+    assert "max_concurrent_runs_per_lane" in execute_response.json()["detail"]
+    assert audit_response.status_code == 200
+    assert audit_response.json()["records"] == baseline_audit_response.json()["records"]
+    assert run_catalog_response.status_code == 200
+    assert run_catalog_response.json()["run_count"] == 0
+
+
+def test_pack_backed_task_route_rejects_full_queue_lane_without_side_effects(
+    client: TestClient,
+) -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    first_lease = acquire_workflow_pack_queue_admission(registration=registration)
+    second_lease = acquire_workflow_pack_queue_admission(registration=registration)
+
+    try:
+        baseline_audit_response = client.get(
+            "/ai/audit",
+            params={"caller_app": "lotus-gateway", "limit": 10},
+        )
+        task_response = client.post(
+            "/ai/tasks/execute",
+            json=advisor_brief_task_execution_request_json(
+                correlation_id="corr-pack-task-queue-full-001"
+            ),
+        )
+        audit_response = client.get(
+            "/ai/audit",
+            params={"caller_app": "lotus-gateway", "limit": 10},
+        )
+        run_catalog_response = client.get("/platform/workflow-packs/runs")
+    finally:
+        release_workflow_pack_queue_admission(first_lease.queue_item_id)
+        release_workflow_pack_queue_admission(second_lease.queue_item_id)
+
+    assert baseline_audit_response.status_code == 200
+    assert task_response.status_code == 429
+    assert "Workflow-pack queue policy rejected admission" in task_response.json()["detail"]
+    assert "max_concurrent_runs_per_lane" in task_response.json()["detail"]
+    assert audit_response.status_code == 200
+    assert audit_response.json()["records"] == baseline_audit_response.json()["records"]
+    assert run_catalog_response.status_code == 200
+    assert run_catalog_response.json()["run_count"] == 0
 
 
 def test_workflow_pack_execute_route_degrades_when_registry_store_is_unmigrated(

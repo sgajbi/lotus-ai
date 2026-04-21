@@ -94,8 +94,8 @@ The workflow-pack detail route now carries structured owner-artifact references 
 2. `definition_refs` enumerate the concrete contract, service, router, tests, and optional supporting RFC or UI validation evidence behind the registration,
 3. executable pack versions now expose declarative `queue_policy` posture in detail and
    `queue_policies` in the catalog,
-4. queue policy remains scheduling and capacity policy only; it does not mean runtime queue
-   admission has executed,
+4. pack-backed execution enforces the declared policy before task execution, audit persistence, run
+   recording, or task-flow recording,
 5. those references make the registry an onboarding and governance surface, not a second home for workflow implementation.
 
 The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 recorded runs:

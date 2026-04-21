@@ -33,6 +33,7 @@ from app.services.workflow_pack_task_flow_recording import (
 from app.services.workflow_pack_task_flow_service import (
     ensure_workflow_pack_task_flow_store_ready,
 )
+from app.services.workflow_pack_queue_admission import workflow_pack_queue_admission
 
 
 def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPackExecutionResponse:
@@ -81,24 +82,25 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
     context = validate_task_request(request.task_request)
     ensure_workflow_pack_run_store_ready()
     ensure_workflow_pack_task_flow_store_ready()
-    try:
-        resolved = resolve_task_execution(context=context)
-        response = build_task_execution_response(resolved=resolved)
-    except HTTPException as exc:
-        response = build_failed_task_execution_response(context=context, exc=exc)
-    persist_task_execution_audit(context=context, response=response)
-    workflow_pack_run = record_registered_workflow_pack_run(
-        context=context,
-        response=response,
-        registration=registration,
-        workflow_surface=workflow_surface,
-    )
-    record_task_flow_for_workflow_pack_run(
-        context=context,
-        registration=registration,
-        workflow_surface=workflow_surface,
-        workflow_pack_run=workflow_pack_run,
-    )
+    with workflow_pack_queue_admission(registration=registration):
+        try:
+            resolved = resolve_task_execution(context=context)
+            response = build_task_execution_response(resolved=resolved)
+        except HTTPException as exc:
+            response = build_failed_task_execution_response(context=context, exc=exc)
+        persist_task_execution_audit(context=context, response=response)
+        workflow_pack_run = record_registered_workflow_pack_run(
+            context=context,
+            response=response,
+            registration=registration,
+            workflow_surface=workflow_surface,
+        )
+        record_task_flow_for_workflow_pack_run(
+            context=context,
+            registration=registration,
+            workflow_surface=workflow_surface,
+            workflow_pack_run=workflow_pack_run,
+        )
     response = _attach_workflow_pack_run_id(response=response, workflow_pack_run=workflow_pack_run)
 
     return WorkflowPackExecutionResponse(
