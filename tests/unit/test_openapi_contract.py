@@ -261,6 +261,39 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         ]["description"]
         == "Workflow-pack registry store is not ready."
     )
+    assert spec["paths"]["/platform/workflow-packs/queue-policies"]["get"]["operationId"] == (
+        "getWorkflowPackQueuePolicyCatalog"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/queue-policies"]["get"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack registry store is not ready."
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/queue-policies/{pack_id}/{version}"]["get"][
+            "operationId"
+        ]
+        == "getWorkflowPackQueuePolicyDetail"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/queue-policies/{pack_id}/{version}"]["get"][
+            "responses"
+        ]["503"]["description"]
+        == "Workflow-pack registry store is not ready."
+    )
+    assert spec["paths"]["/platform/workflow-packs/queue-status"]["get"]["operationId"] == (
+        "getWorkflowPackQueueStatus"
+    )
+    assert spec["paths"]["/platform/workflow-packs/queue-status/{queue_item_id}"]["get"][
+        "operationId"
+    ] == "getWorkflowPackQueueStatusDetail"
+    assert (
+        spec["paths"]["/platform/workflow-packs/queue-status/{queue_item_id}"]["get"][
+            "responses"
+        ]["503"]["description"]
+        == "Workflow-pack registry store is not ready."
+    )
     assert (
         spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["operationId"]
         == "evaluateWorkflowPackEligibility"
@@ -855,6 +888,24 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_queue_policy_schema = spec["components"]["schemas"][
         "WorkflowPackQueuePolicyDescriptor"
     ]
+    workflow_pack_queue_policy_catalog_schema = spec["components"]["schemas"][
+        "WorkflowPackQueuePolicyCatalogResponse"
+    ]
+    workflow_pack_queue_policy_detail_schema = spec["components"]["schemas"][
+        "WorkflowPackQueuePolicyDetailResponse"
+    ]
+    workflow_pack_queue_status_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueStatusResponse"
+    ]
+    workflow_pack_queue_status_item_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueStatusItemDescriptor"
+    ]
+    workflow_pack_queue_status_detail_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueStatusDetailResponse"
+    ]
+    workflow_pack_queue_lane_status_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueLaneStatusDescriptor"
+    ]
     workflow_pack_queue_retry_policy_schema = spec["components"]["schemas"][
         "WorkflowPackQueueRetryPolicyDescriptor"
     ]
@@ -904,6 +955,21 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "cancellable_by" in workflow_pack_queue_cancellation_policy_schema["properties"]
     assert "terminal_state" in workflow_pack_queue_cancellation_policy_schema["properties"]
     assert "evidence_required" in workflow_pack_queue_cancellation_policy_schema["properties"]
+    assert "policy_count" in workflow_pack_queue_policy_catalog_schema["properties"]
+    assert "policies" in workflow_pack_queue_policy_catalog_schema["properties"]
+    assert "policy" in workflow_pack_queue_policy_detail_schema["properties"]
+    assert "queue_source_mode" in workflow_pack_queue_status_schema["properties"]
+    assert "active_admission_count" in workflow_pack_queue_status_schema["properties"]
+    assert "lane_statuses" in workflow_pack_queue_status_schema["properties"]
+    assert "active_items" in workflow_pack_queue_status_schema["properties"]
+    assert "queue_item_id" in workflow_pack_queue_status_item_schema["properties"]
+    assert "policy_id" in workflow_pack_queue_status_item_schema["properties"]
+    assert "lane" in workflow_pack_queue_status_item_schema["properties"]
+    assert "state" in workflow_pack_queue_status_item_schema["properties"]
+    assert "queue_item" in workflow_pack_queue_status_detail_schema["properties"]
+    assert "status_summary" in workflow_pack_queue_status_detail_schema["properties"]
+    assert "active_count" in workflow_pack_queue_lane_status_schema["properties"]
+    assert "saturation_status" in workflow_pack_queue_lane_status_schema["properties"]
     assert "execution_binding_count" in workflow_pack_runtime_status_schema["properties"]
     assert "executable_registration_count" in workflow_pack_runtime_status_schema["properties"]
     assert "executable_review_required_count" in workflow_pack_runtime_status_schema["properties"]

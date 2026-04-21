@@ -125,6 +125,18 @@ def release_workflow_pack_queue_admission(queue_item_id: str) -> None:
         _active_leases.pop(queue_item_id, None)
 
 
+def list_active_workflow_pack_queue_admissions() -> list[WorkflowPackQueueAdmissionLease]:
+    with _queue_lock:
+        return list(_active_leases.values())
+
+
+def get_active_workflow_pack_queue_admission(
+    queue_item_id: str,
+) -> WorkflowPackQueueAdmissionLease | None:
+    with _queue_lock:
+        return _active_leases.get(queue_item_id)
+
+
 def reset_workflow_pack_queue_admission_state() -> None:
     with _queue_lock:
         _active_leases.clear()

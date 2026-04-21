@@ -81,6 +81,8 @@ Good examples:
    - `/platform/evals/runs`
 6. workflow-pack rollout posture
    - `/platform/workflow-packs/registry`
+   - `/platform/workflow-packs/queue-policies`
+   - `/platform/workflow-packs/queue-status`
    - `/platform/workflow-packs/eligibility/evaluate`
    - `/platform/workflow-packs/control-history`
 

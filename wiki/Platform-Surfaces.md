@@ -75,6 +75,10 @@ platform programs.
 4. workflow-pack runtime registration
    - `/platform/workflow-packs/registry`
    - `/platform/workflow-packs/registry/{pack_id}/{version}`
+   - `/platform/workflow-packs/queue-policies`
+   - `/platform/workflow-packs/queue-policies/{pack_id}/{version}`
+   - `/platform/workflow-packs/queue-status`
+   - `/platform/workflow-packs/queue-status/{queue_item_id}`
    - `/platform/workflow-packs/eligibility/evaluate`
    - `/platform/workflow-packs/execute`
    - `/platform/workflow-packs/control-history`
@@ -345,6 +349,8 @@ These are the app-facing rollout and onboarding surfaces rather than low-level r
 2. workflow-pack registry
    - `/platform/workflow-packs/registry`
    - `/platform/workflow-packs/registry/{pack_id}/{version}`
+   - `/platform/workflow-packs/queue-policies`
+   - `/platform/workflow-packs/queue-status`
    - `/platform/workflow-packs/eligibility/evaluate`
    - `/platform/workflow-packs/control-history`
    - `/platform/workflow-packs/control-actions`

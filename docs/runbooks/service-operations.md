@@ -75,6 +75,8 @@
 - Retrieval runtime status: /platform/retrieval/runtime-status
 - Workflow-pack registry: /platform/workflow-packs/registry
 - Workflow-pack registration detail: /platform/workflow-packs/registry/{pack_id}/{version}
+- Workflow-pack queue policies: /platform/workflow-packs/queue-policies
+- Workflow-pack queue status: /platform/workflow-packs/queue-status
 - Workflow-pack eligibility evaluation: /platform/workflow-packs/eligibility/evaluate
 - Workflow-pack control history: /platform/workflow-packs/control-history
 - Workflow-pack control actions: /platform/workflow-packs/control-actions

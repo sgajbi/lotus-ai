@@ -107,6 +107,11 @@ class WorkflowPackQueueOperatorVisibility(str, Enum):
     INTERNAL_ONLY = "INTERNAL_ONLY"
 
 
+class WorkflowPackQueueSaturationStatus(str, Enum):
+    HEALTHY = "HEALTHY"
+    SATURATED = "SATURATED"
+
+
 class WorkflowPackQueueRetryPolicyDescriptor(BaseModel):
     max_attempts: int = Field(
         ge=1,
@@ -287,3 +292,90 @@ class WorkflowPackQueuePolicyDescriptor(BaseModel):
                 + ", ".join(missing_evidence_types)
             )
         return self
+
+
+class WorkflowPackQueuePolicyCatalogResponse(BaseModel):
+    service: str = Field(description="Service emitting workflow-pack queue policy posture.")
+    version: str = Field(description="Current lotus-ai service version.")
+    phase: str = Field(description="Current lotus-ai delivery phase.")
+    policy_count: int = Field(description="Number of queue policies returned.")
+    policies: list[WorkflowPackQueuePolicyDescriptor] = Field(
+        description="Queue policies declared for executable workflow-pack versions."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of workflow-pack queue policy posture."
+    )
+
+
+class WorkflowPackQueuePolicyDetailResponse(BaseModel):
+    service: str = Field(description="Service emitting workflow-pack queue policy detail.")
+    version: str = Field(description="Current lotus-ai service version.")
+    phase: str = Field(description="Current lotus-ai delivery phase.")
+    policy: WorkflowPackQueuePolicyDescriptor = Field(
+        description="Queue policy declared for the requested workflow-pack version."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of the queue policy detail posture."
+    )
+
+
+class WorkflowPackQueueStatusItemDescriptor(BaseModel):
+    queue_item_id: str = Field(description="Bounded queue admission item identifier.")
+    policy_id: str = Field(description="Queue policy identifier used for admission.")
+    workflow_pack_id: str = Field(description="Workflow-pack family identifier.")
+    workflow_pack_version: str = Field(description="Workflow-pack version.")
+    lane: WorkflowPackQueueLane = Field(description="Queue lane used for admission.")
+    state: WorkflowPackQueueState = Field(description="Current queue admission state.")
+
+
+class WorkflowPackQueueLaneStatusDescriptor(BaseModel):
+    policy_id: str = Field(description="Queue policy identifier for the lane status.")
+    workflow_pack_id: str = Field(description="Workflow-pack family identifier.")
+    workflow_pack_version: str = Field(description="Workflow-pack version.")
+    lane: WorkflowPackQueueLane = Field(description="Queue lane being summarized.")
+    active_count: int = Field(description="Current active admission count for this lane.")
+    max_concurrent_runs_per_lane: int = Field(
+        description="Configured concurrent admission limit for this lane."
+    )
+    max_queued_runs_per_lane: int = Field(
+        description="Configured queued-run limit for this lane."
+    )
+    saturation_attention_threshold: float = Field(
+        description="Configured utilization threshold for operator attention."
+    )
+    saturation_status: WorkflowPackQueueSaturationStatus = Field(
+        description="Current bounded saturation posture for this lane."
+    )
+
+
+class WorkflowPackQueueStatusResponse(BaseModel):
+    service: str = Field(description="Service emitting workflow-pack queue status.")
+    version: str = Field(description="Current lotus-ai service version.")
+    phase: str = Field(description="Current lotus-ai delivery phase.")
+    queue_source_mode: str = Field(
+        description="Current queue source mode for this first-wave admission implementation."
+    )
+    active_admission_count: int = Field(
+        description="Number of currently active queue admission leases."
+    )
+    lane_statuses: list[WorkflowPackQueueLaneStatusDescriptor] = Field(
+        description="Bounded per-pack and per-lane queue status summaries."
+    )
+    active_items: list[WorkflowPackQueueStatusItemDescriptor] = Field(
+        description="Bounded active queue admission items without raw worker internals."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of current workflow-pack queue posture."
+    )
+
+
+class WorkflowPackQueueStatusDetailResponse(BaseModel):
+    service: str = Field(description="Service emitting workflow-pack queue item detail.")
+    version: str = Field(description="Current lotus-ai service version.")
+    phase: str = Field(description="Current lotus-ai delivery phase.")
+    queue_item: WorkflowPackQueueStatusItemDescriptor = Field(
+        description="Bounded active queue admission item."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of current queue item posture."
+    )

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueBackoffStrategy,
     WorkflowPackQueueCancellationActor,
@@ -7,17 +9,28 @@ from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueDegradedReadinessBehavior,
     WorkflowPackQueueEvidenceRequirementDescriptor,
     WorkflowPackQueueLane,
+    WorkflowPackQueueLaneStatusDescriptor,
     WorkflowPackQueueOperatorVisibility,
+    WorkflowPackQueuePolicyCatalogResponse,
     WorkflowPackQueuePolicyDescriptor,
+    WorkflowPackQueuePolicyDetailResponse,
     WorkflowPackQueueRetryPolicyDescriptor,
+    WorkflowPackQueueSaturationStatus,
     WorkflowPackQueueState,
+    WorkflowPackQueueStatusDetailResponse,
+    WorkflowPackQueueStatusItemDescriptor,
+    WorkflowPackQueueStatusResponse,
 )
+from app.config import settings
 from app.services.workflow_pack_phase1_specs import (
     ADVISOR_BRIEF_V1_SPEC,
     TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC,
     WORKSPACE_RATIONALE_V1_SPEC,
     WorkflowPackPhase1VersionSpec,
 )
+
+if TYPE_CHECKING:
+    from app.services.workflow_pack_queue_admission import WorkflowPackQueueAdmissionLease
 
 
 def list_workflow_pack_queue_policy_descriptors() -> list[WorkflowPackQueuePolicyDescriptor]:
@@ -67,6 +80,101 @@ def validate_workflow_pack_queue_policies() -> None:
             "Queue policies must reference executable workflow-pack versions only: "
             + ", ".join(orphan_policy_refs)
         )
+
+
+def build_workflow_pack_queue_policy_catalog() -> WorkflowPackQueuePolicyCatalogResponse:
+    from app.services.workflow_pack_registry import list_workflow_pack_registrations
+
+    list_workflow_pack_registrations()
+    policies = list_workflow_pack_queue_policy_descriptors()
+    return WorkflowPackQueuePolicyCatalogResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        phase=settings.delivery_phase,
+        policy_count=len(policies),
+        policies=policies,
+        status_summary=[
+            "Workflow-pack queue policies are declared for executable pack versions only.",
+            "Queue policy posture is source policy; queue-status endpoints expose current admission posture.",
+        ],
+    )
+
+
+def build_workflow_pack_queue_policy_detail(
+    *,
+    pack_id: str,
+    version: str,
+) -> WorkflowPackQueuePolicyDetailResponse:
+    from app.services.workflow_pack_registry import list_workflow_pack_registrations
+
+    list_workflow_pack_registrations()
+    policy = get_workflow_pack_queue_policy_descriptor(pack_id=pack_id, version=version)
+    if policy is None:
+        raise ValueError(f"Unknown workflow-pack queue policy: {pack_id}@{version}")
+    return WorkflowPackQueuePolicyDetailResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        phase=settings.delivery_phase,
+        policy=policy,
+        status_summary=[
+            "Queue policy detail is version-scoped and does not expose raw worker internals.",
+            "Runtime queue admission remains separate from run-ledger and task-flow lifecycle state.",
+        ],
+    )
+
+
+def build_workflow_pack_queue_status() -> WorkflowPackQueueStatusResponse:
+    from app.services.workflow_pack_registry import list_workflow_pack_registrations
+    from app.services.workflow_pack_queue_admission import (
+        list_active_workflow_pack_queue_admissions,
+    )
+
+    list_workflow_pack_registrations()
+    policies = list_workflow_pack_queue_policy_descriptors()
+    active_leases = list_active_workflow_pack_queue_admissions()
+    active_items = [_map_queue_status_item(lease) for lease in active_leases]
+    lane_statuses = [
+        _build_lane_status(policy=policy, lane=lane, active_leases=active_leases)
+        for policy in policies
+        for lane in policy.allowed_lanes
+    ]
+    return WorkflowPackQueueStatusResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        phase=settings.delivery_phase,
+        queue_source_mode="memory",
+        active_admission_count=len(active_items),
+        lane_statuses=lane_statuses,
+        active_items=active_items,
+        status_summary=[
+            "Workflow-pack queue status reports current in-process admission leases only.",
+            "Queue status does not replace workflow-pack run, review, or task-flow lifecycle state.",
+        ],
+    )
+
+
+def build_workflow_pack_queue_status_detail(
+    *,
+    queue_item_id: str,
+) -> WorkflowPackQueueStatusDetailResponse:
+    from app.services.workflow_pack_registry import list_workflow_pack_registrations
+    from app.services.workflow_pack_queue_admission import (
+        get_active_workflow_pack_queue_admission,
+    )
+
+    list_workflow_pack_registrations()
+    lease = get_active_workflow_pack_queue_admission(queue_item_id)
+    if lease is None:
+        raise ValueError(f"Unknown active workflow-pack queue item: {queue_item_id}")
+    return WorkflowPackQueueStatusDetailResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        phase=settings.delivery_phase,
+        queue_item=_map_queue_status_item(lease),
+        status_summary=[
+            "Queue item detail is bounded to source admission posture and hides raw worker internals."
+        ],
+    )
 
 
 def _latency_sensitive_advisor_brief_policy() -> WorkflowPackQueuePolicyDescriptor:
@@ -226,3 +334,47 @@ def _validate_queue_policy_identity(policies: list[WorkflowPackQueuePolicyDescri
 
 def _policy_ref(policy: WorkflowPackQueuePolicyDescriptor) -> str:
     return f"{policy.workflow_pack_id}@{policy.workflow_pack_version}"
+
+
+def _map_queue_status_item(
+    lease: WorkflowPackQueueAdmissionLease,
+) -> WorkflowPackQueueStatusItemDescriptor:
+    return WorkflowPackQueueStatusItemDescriptor(
+        queue_item_id=lease.queue_item_id,
+        policy_id=lease.policy_id,
+        workflow_pack_id=lease.workflow_pack_id,
+        workflow_pack_version=lease.workflow_pack_version,
+        lane=lease.lane,
+        state=lease.state,
+    )
+
+
+def _build_lane_status(
+    *,
+    policy: WorkflowPackQueuePolicyDescriptor,
+    lane: WorkflowPackQueueLane,
+    active_leases: list[WorkflowPackQueueAdmissionLease],
+) -> WorkflowPackQueueLaneStatusDescriptor:
+    active_count = sum(
+        1
+        for lease in active_leases
+        if lease.workflow_pack_id == policy.workflow_pack_id
+        and lease.workflow_pack_version == policy.workflow_pack_version
+        and lease.lane == lane
+    )
+    saturation_ratio = active_count / policy.max_concurrent_runs_per_lane
+    return WorkflowPackQueueLaneStatusDescriptor(
+        policy_id=policy.policy_id,
+        workflow_pack_id=policy.workflow_pack_id,
+        workflow_pack_version=policy.workflow_pack_version,
+        lane=lane,
+        active_count=active_count,
+        max_concurrent_runs_per_lane=policy.max_concurrent_runs_per_lane,
+        max_queued_runs_per_lane=policy.max_queued_runs_per_lane,
+        saturation_attention_threshold=policy.saturation_attention_threshold,
+        saturation_status=(
+            WorkflowPackQueueSaturationStatus.SATURATED
+            if saturation_ratio >= policy.saturation_attention_threshold
+            else WorkflowPackQueueSaturationStatus.HEALTHY
+        ),
+    )
