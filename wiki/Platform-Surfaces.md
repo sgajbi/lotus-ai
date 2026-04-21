@@ -119,7 +119,9 @@ handoff execution family:
 3. Phase-1 workflow-pack execution records task-flow and checkpoint state for implicit and explicit pack-backed execution paths,
 4. workflow-pack review actions synchronize task-flow review posture and replacement lineage,
 5. `/platform/workflow-packs/task-flows` plus detail and checkpoint routes expose cataloged posture,
-6. public mutation routes, gateway publication, Workbench rendering, heartbeat attention, and domain handoff execution remain future slices.
+6. `/platform/runtime-status` emits bounded heartbeat-style task-flow attention for waiting,
+   blocked, stale, and action-required task flows,
+7. public mutation routes and domain handoff execution remain future slices.
 
 ## Provider Surface
 

@@ -270,6 +270,9 @@ class WorkflowPackRuntimeStatusSummaryResponse(BaseModel):
     attention_queue: "WorkflowPackAttentionQueueSummaryResponse" = Field(
         description="Bounded estate-level queue of workflow-pack runs that currently require operator attention."
     )
+    task_flow_attention: "WorkflowPackTaskFlowAttentionSummaryResponse" = Field(
+        description="Bounded heartbeat-style attention summary for workflow-pack task flows."
+    )
     run_summary: "WorkflowPackRunRuntimeSummaryResponse" = Field(
         description="Estate-level workflow-pack run posture derived from the current bounded run ledger."
     )
@@ -419,6 +422,52 @@ class WorkflowPackAttentionQueueSummaryResponse(BaseModel):
     )
     status_summary: list[str] = Field(
         description="Human-readable summary of the current workflow-pack operator-attention queue posture."
+    )
+
+
+class WorkflowPackTaskFlowAttentionItemResponse(BaseModel):
+    task_flow_id: str = Field(description="Workflow-pack task-flow identifier requiring attention.")
+    workflow_pack_id: str = Field(description="Workflow-pack family identifier for the task flow.")
+    workflow_pack_version: str = Field(description="Workflow-pack version for the task flow.")
+    flow_status: str = Field(description="Current task-flow lifecycle state.")
+    supportability_status: str = Field(description="Current task-flow supportability posture.")
+    current_step_id: str | None = Field(
+        default=None,
+        description="Current task-flow step identifier when the flow is active or waiting.",
+    )
+    run_refs: list[str] = Field(description="Workflow-pack run references linked to the task flow.")
+    replacement_lineage_count: int = Field(
+        description="Number of replacement-lineage edges linked to the task flow."
+    )
+    updated_at: str = Field(description="UTC timestamp when the task flow was last updated.")
+    attention_reasons: list[str] = Field(
+        description="Human-readable reasons why this task flow appears in the attention summary."
+    )
+
+
+class WorkflowPackTaskFlowAttentionSummaryResponse(BaseModel):
+    heartbeat_status: str = Field(
+        description="Heartbeat-style aggregate posture for task-flow attention."
+    )
+    attention_count: int = Field(
+        description="Number of task flows currently requiring attention across the bounded task-flow catalog."
+    )
+    waiting_for_review_count: int = Field(
+        description="Number of task flows currently waiting for review."
+    )
+    blocked_count: int = Field(description="Number of task flows currently blocked.")
+    degraded_count: int = Field(
+        description="Number of task flows with degraded or action-required supportability posture."
+    )
+    stale_count: int = Field(
+        description="Number of active task flows whose updated timestamp exceeds the heartbeat stale threshold."
+    )
+    attention_limit: int = Field(description="Maximum number of attention items returned.")
+    items: list[WorkflowPackTaskFlowAttentionItemResponse] = Field(
+        description="Newest task-flow attention items up to the bounded attention limit."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of current task-flow attention posture."
     )
 
 
