@@ -1065,6 +1065,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "saturated_lane_count" in workflow_pack_queue_attention_schema["properties"]
     assert "stale_item_count" in workflow_pack_queue_attention_schema["properties"]
     assert "failure_cluster_count" in workflow_pack_queue_attention_schema["properties"]
+    assert "degraded_source_count" in workflow_pack_queue_attention_schema["properties"]
     assert "queue_source_mode" in workflow_pack_queue_attention_schema["properties"]
     assert "attention_type" in workflow_pack_queue_attention_item_schema["properties"]
     assert "policy_id" in workflow_pack_queue_attention_item_schema["properties"]
