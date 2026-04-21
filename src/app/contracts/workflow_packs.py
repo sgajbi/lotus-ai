@@ -46,6 +46,8 @@ class WorkflowPackQueueAttentionType(str, Enum):
     QUEUE_ITEM_STALE = "QUEUE_ITEM_STALE"
     QUEUE_ITEM_CANCELLED = "QUEUE_ITEM_CANCELLED"
     QUEUE_ITEM_TIMED_OUT = "QUEUE_ITEM_TIMED_OUT"
+    QUEUE_RETRY_BLOCKED = "QUEUE_RETRY_BLOCKED"
+    QUEUE_REPLAY_BLOCKED = "QUEUE_REPLAY_BLOCKED"
 
 
 class WorkflowPackCallerIdentityClass(str, Enum):
@@ -533,6 +535,10 @@ class WorkflowPackQueueAttentionSummaryResponse(BaseModel):
     terminal_event_count: int = Field(
         default=0,
         description="Number of durable terminal queue events currently surfaced for operator attention.",
+    )
+    recovery_blocked_count: int = Field(
+        default=0,
+        description="Number of durable retry or replay decisions blocked by workflow-pack queue policy.",
     )
     active_admission_count: int = Field(
         description="Number of active queue admission leases in the source queue status."

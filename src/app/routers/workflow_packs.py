@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.config import settings
 from app.contracts.workflow_packs import (
     WorkflowPackControlActionRequest,
     WorkflowPackControlActionResponse,
@@ -29,6 +30,9 @@ from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueEventDetailResponse,
     WorkflowPackQueuePolicyCatalogResponse,
     WorkflowPackQueuePolicyDetailResponse,
+    WorkflowPackQueueRecoveryDecisionResponse,
+    WorkflowPackQueueReplayDecisionRequest,
+    WorkflowPackQueueRetryDecisionRequest,
     WorkflowPackQueueStatusDetailResponse,
     WorkflowPackQueueStatusResponse,
 )
@@ -74,6 +78,10 @@ from app.services.workflow_pack_queue_events import (
     WorkflowPackQueueEventStoreNotReadyError,
     build_workflow_pack_queue_event_catalog,
     build_workflow_pack_queue_event_detail,
+)
+from app.services.workflow_pack_queue_recovery import (
+    record_workflow_pack_queue_replay_decision,
+    record_workflow_pack_queue_retry_decision,
 )
 
 router = APIRouter(tags=["platform"])
@@ -297,6 +305,93 @@ async def get_workflow_pack_queue_event_detail_route(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WorkflowPackQueueEventStoreNotReadyError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post(
+    "/platform/workflow-packs/queue-events/{queue_item_id}/retry-decisions",
+    response_model=WorkflowPackQueueRecoveryDecisionResponse,
+    operation_id="recordWorkflowPackQueueRetryDecision",
+    summary="Record lotus-ai workflow-pack queue retry decision",
+    description=(
+        "Records bounded retry decision evidence for a terminal workflow-pack queue item. "
+        "This does not execute the workflow body again."
+    ),
+    responses={
+        200: {"description": "Workflow-pack queue retry decision recorded successfully."},
+        404: {"description": "Unknown workflow-pack queue item history."},
+        409: {"description": "Queue item is not eligible for recovery decision recording."},
+        422: {"description": "Invalid retry decision request supplied."},
+        503: {"description": "Workflow-pack queue event store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def record_workflow_pack_queue_retry_decision_route(
+    queue_item_id: str,
+    request: WorkflowPackQueueRetryDecisionRequest,
+) -> WorkflowPackQueueRecoveryDecisionResponse:
+    try:
+        event = record_workflow_pack_queue_retry_decision(
+            queue_item_id=queue_item_id,
+            failure_code=request.failure_code,
+            requested_by=request.requested_by,
+            reason=request.reason,
+            evidence_ref=request.evidence_ref,
+        )
+    except WorkflowPackQueueEventStoreNotReadyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return WorkflowPackQueueRecoveryDecisionResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        phase=settings.delivery_phase,
+        event=event,
+        status_summary=[
+            "Workflow-pack queue retry decision evidence was recorded durably.",
+            "This response does not claim that workflow-pack execution was retried.",
+        ],
+    )
+
+
+@router.post(
+    "/platform/workflow-packs/queue-events/{queue_item_id}/replay-decisions",
+    response_model=WorkflowPackQueueRecoveryDecisionResponse,
+    operation_id="recordWorkflowPackQueueReplayDecision",
+    summary="Record lotus-ai workflow-pack queue replay decision",
+    description=(
+        "Records bounded replay decision evidence for a terminal workflow-pack queue item. "
+        "This does not execute the workflow body again."
+    ),
+    responses={
+        200: {"description": "Workflow-pack queue replay decision recorded successfully."},
+        404: {"description": "Unknown workflow-pack queue item history."},
+        409: {"description": "Queue item is not eligible for recovery decision recording."},
+        422: {"description": "Invalid replay decision request supplied."},
+        503: {"description": "Workflow-pack queue event store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def record_workflow_pack_queue_replay_decision_route(
+    queue_item_id: str,
+    request: WorkflowPackQueueReplayDecisionRequest,
+) -> WorkflowPackQueueRecoveryDecisionResponse:
+    try:
+        event = record_workflow_pack_queue_replay_decision(
+            queue_item_id=queue_item_id,
+            requested_by=request.requested_by,
+            reason=request.reason,
+            evidence_ref=request.evidence_ref,
+        )
+    except WorkflowPackQueueEventStoreNotReadyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return WorkflowPackQueueRecoveryDecisionResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        phase=settings.delivery_phase,
+        event=event,
+        status_summary=[
+            "Workflow-pack queue replay decision evidence was recorded durably.",
+            "This response does not claim that workflow-pack execution was replayed.",
+        ],
+    )
 
 
 @router.post(
