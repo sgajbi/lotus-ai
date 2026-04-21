@@ -327,6 +327,37 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         ]
         == "Workflow-pack run store is not ready."
     )
+    assert spec["paths"]["/platform/workflow-packs/task-flows"]["get"]["operationId"] == (
+        "getWorkflowPackTaskFlowCatalog"
+    )
+    workflow_pack_task_flow_catalog_parameters = spec["paths"][
+        "/platform/workflow-packs/task-flows"
+    ]["get"]["parameters"]
+    assert {parameter["name"] for parameter in workflow_pack_task_flow_catalog_parameters} >= {
+        "workflow_pack_id",
+        "caller",
+        "tenant_id",
+        "workflow_surface",
+        "flow_status",
+        "supportability_status",
+        "limit",
+    }
+    assert (
+        spec["paths"]["/platform/workflow-packs/task-flows"]["get"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack task-flow store is not ready."
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/task-flows/{task_flow_id}"]["get"]["operationId"]
+        == "getWorkflowPackTaskFlowDetail"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/task-flows/{task_flow_id}/checkpoints"]["get"][
+            "operationId"
+        ]
+        == "getWorkflowPackTaskFlowCheckpointCatalog"
+    )
     assert (
         spec["paths"]["/platform/workflow-packs/runs/{run_id}/review-actions"]["post"][
             "operationId"
@@ -740,8 +771,10 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "artifact_governance" in platform_runtime_schema["properties"]
     assert "workflow_pack_registry_store_mode" in platform_runtime_schema["properties"]
     assert "workflow_pack_run_store_mode" in platform_runtime_schema["properties"]
+    assert "workflow_pack_task_flow_store_mode" in platform_runtime_schema["properties"]
     assert "workflow_pack_registry_store" in platform_runtime_schema["properties"]
     assert "workflow_pack_run_store" in platform_runtime_schema["properties"]
+    assert "workflow_pack_task_flow_store" in platform_runtime_schema["properties"]
     assert "workflow_pack_runtime" in platform_runtime_schema["properties"]
     assert "capability_pack_catalog" in platform_runtime_schema["properties"]
     assert "capability_pack_governance" in platform_runtime_schema["properties"]
@@ -1146,7 +1179,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/ai/tasks/execute"]["post"]["operationId"] == "executeTask"
     assert (
         spec["paths"]["/ai/tasks/execute"]["post"]["responses"]["503"]["description"]
-        == "Workflow-pack run store is not ready for this pack-backed task path."
+        == "Workflow-pack runtime store is not ready for this pack-backed task path."
     )
     assert spec["paths"]["/ai/audit/{request_id}"]["get"]["operationId"] == "getAuditRecord"
     assert spec["paths"]["/ai/audit"]["get"]["operationId"] == "listAuditRecords"

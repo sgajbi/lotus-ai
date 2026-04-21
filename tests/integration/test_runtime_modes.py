@@ -17,6 +17,7 @@ def test_sql_backed_runtime_status_is_ready_after_migration(tmp_path: Path) -> N
         retrieval_store_mode="sqlalchemy",
         workflow_pack_registry_store_mode="sqlalchemy",
         workflow_pack_run_store_mode="sqlalchemy",
+        workflow_pack_task_flow_store_mode="sqlalchemy",
         database_url=database_url,
         startup_readiness_policy="enforce",
         readiness_probe_policy="degrade",
@@ -32,6 +33,7 @@ def test_sql_backed_runtime_status_is_ready_after_migration(tmp_path: Path) -> N
     assert platform_body["retrieval_store"]["status"] == "READY"
     assert platform_body["workflow_pack_registry_store"]["status"] == "READY"
     assert platform_body["workflow_pack_run_store"]["status"] == "READY"
+    assert platform_body["workflow_pack_task_flow_store"]["status"] == "READY"
     assert platform_body["startup_readiness_blocking"] is False
 
     assert retrieval_status.status_code == 200
@@ -124,6 +126,34 @@ def test_health_ready_degrades_for_unmigrated_sql_workflow_pack_registry_store(
         for warning in platform_body["startup_readiness_warnings"]
     )
     assert platform_body["workflow_pack_registry_store"]["status"] == "MIGRATION_REQUIRED"
+
+
+def test_health_ready_degrades_for_unmigrated_sql_workflow_pack_task_flow_store(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-task-flow-unmigrated.db'}"
+
+    with override_runtime_settings(
+        audit_store_mode="memory",
+        retrieval_store_mode="memory",
+        workflow_pack_task_flow_store_mode="sqlalchemy",
+        database_url=database_url,
+        startup_readiness_policy="warn",
+        readiness_probe_policy="degrade",
+    ):
+        with TestClient(app) as client:
+            ready_status = client.get("/health/ready")
+            platform_status = client.get("/platform/runtime-status")
+
+    assert ready_status.status_code == 503
+    assert ready_status.json()["status"] == "degraded"
+
+    platform_body = platform_status.json()
+    assert any(
+        "workflow-pack task-flow store:" in warning
+        for warning in platform_body["startup_readiness_warnings"]
+    )
+    assert platform_body["workflow_pack_task_flow_store"]["status"] == "MIGRATION_REQUIRED"
 
 
 def test_startup_enforce_policy_blocks_unmigrated_sql_store(tmp_path: Path) -> None:

@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     provider_operations_store_mode: str = "memory"
     async_runtime_store_mode: str = "memory"
     workflow_pack_run_store_mode: str = "memory"
+    workflow_pack_task_flow_store_mode: str = "memory"
     async_cutover_state: str = "in_process_only"
     async_queue_backend_mode: str = "none"
     async_queue_redis_url: str | None = None

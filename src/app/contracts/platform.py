@@ -76,6 +76,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
         description="Current workflow-pack registry store mode."
     )
     workflow_pack_run_store_mode: str = Field(description="Current workflow-pack run store mode.")
+    workflow_pack_task_flow_store_mode: str = Field(
+        description="Current workflow-pack task-flow store mode."
+    )
     artifact_store_mode: str = Field(description="Current artifact metadata store mode.")
     artifact_object_store_mode: str = Field(description="Current artifact payload store mode.")
     async_runtime: AsyncRuntimeStatusResponse = Field(
@@ -188,6 +191,9 @@ class PlatformRuntimeStatusResponse(BaseModel):
     )
     workflow_pack_run_store: StoreRuntimeStatusDescriptor = Field(
         description="Current workflow-pack run-ledger runtime posture."
+    )
+    workflow_pack_task_flow_store: StoreRuntimeStatusDescriptor = Field(
+        description="Current workflow-pack task-flow runtime posture."
     )
     workflow_pack_runtime: WorkflowPackRuntimeStatusSummaryResponse = Field(
         description="Current estate-level workflow-pack registration versus explicit execution-readiness posture."

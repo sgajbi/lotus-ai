@@ -453,6 +453,47 @@ class WorkflowPackRunEventModel(Base):
     run: Mapped["WorkflowPackRunModel"] = relationship(back_populates="events")
 
 
+class WorkflowPackTaskFlowModel(Base):
+    __tablename__ = "workflow_pack_task_flows"
+
+    task_flow_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    workflow_pack_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    workflow_pack_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    caller: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    workflow_surface: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    workflow_authority_owner: Mapped[str] = mapped_column(String(128), nullable=False)
+    flow_status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    supportability_status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    current_step_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    expires_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    descriptor_payload: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+
+    checkpoints: Mapped[list["WorkflowPackTaskFlowCheckpointModel"]] = relationship(
+        back_populates="task_flow"
+    )
+
+
+class WorkflowPackTaskFlowCheckpointModel(Base):
+    __tablename__ = "workflow_pack_task_flow_checkpoints"
+
+    checkpoint_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    task_flow_id: Mapped[str] = mapped_column(
+        ForeignKey("workflow_pack_task_flows.task_flow_id"), nullable=False, index=True
+    )
+    step_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    transition: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    actor: Mapped[str] = mapped_column(String(128), nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    degraded: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    unsupported: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    descriptor_payload: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+
+    task_flow: Mapped["WorkflowPackTaskFlowModel"] = relationship(back_populates="checkpoints")
+
+
 class WorkflowPackRegistrationModel(Base):
     __tablename__ = "workflow_pack_registrations"
 

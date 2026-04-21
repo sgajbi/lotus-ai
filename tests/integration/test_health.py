@@ -29,9 +29,11 @@ def test_service_root_and_metadata_routes_expose_workflow_pack_platform_truth(
     metadata_body = metadata_response.json()
     assert "workflow_packs" in root_body["capabilityAreas"]
     assert "workflow_pack_runs" in root_body["capabilityAreas"]
+    assert "workflow_pack_task_flows" in root_body["capabilityAreas"]
     assert metadata_body["service"] == "lotus-ai"
     assert metadata_body["workflowPackRegistryStoreMode"] == "memory"
     assert metadata_body["workflowPackRunStoreMode"] == "memory"
+    assert metadata_body["workflowPackTaskFlowStoreMode"] == "memory"
     assert "startupReadinessPolicy" in metadata_body
     assert "readinessProbePolicy" in metadata_body
 
@@ -372,10 +374,13 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["access_control_store_mode"] == "memory"
     assert body["workflow_pack_registry_store_mode"] == "memory"
     assert body["workflow_pack_run_store_mode"] == "memory"
+    assert body["workflow_pack_task_flow_store_mode"] == "memory"
     assert body["workflow_pack_registry_store"]["mode"] == "memory"
     assert body["workflow_pack_registry_store"]["status"] == "READY"
     assert body["workflow_pack_run_store"]["mode"] == "memory"
     assert body["workflow_pack_run_store"]["status"] == "READY"
+    assert body["workflow_pack_task_flow_store"]["mode"] == "memory"
+    assert body["workflow_pack_task_flow_store"]["status"] == "READY"
     assert body["workflow_pack_runtime"]["registration_count"] == 4
     assert body["workflow_pack_runtime"]["registered_count"] == 3
     assert body["workflow_pack_runtime"]["execution_binding_count"] == 3
@@ -608,5 +613,6 @@ def test_service_metadata_exposes_store_modes(client: TestClient) -> None:
     assert body["accessControlStoreMode"] == "memory"
     assert body["workflowPackRegistryStoreMode"] == "memory"
     assert body["workflowPackRunStoreMode"] == "memory"
+    assert body["workflowPackTaskFlowStoreMode"] == "memory"
     assert body["startupReadinessPolicy"] == "warn"
     assert body["readinessProbePolicy"] == "observe"

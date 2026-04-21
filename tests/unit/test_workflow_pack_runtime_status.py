@@ -1,4 +1,5 @@
 from _pytest.monkeypatch import MonkeyPatch
+from datetime import UTC, datetime
 
 from app.contracts.runtime_readiness import RuntimeReadinessStatus, StoreRuntimeStatusDescriptor
 from app.contracts.workflow_pack_runs import (
@@ -12,9 +13,12 @@ from app.contracts.workflow_packs import WorkflowPackExecutionMode, WorkflowPack
 from app.services.workflow_pack_bindings import get_workflow_pack_execution_binding_descriptor
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.workflow_pack_runtime_status import (
+    build_workflow_pack_task_flow_attention_summary,
     build_workflow_pack_run_runtime_summary,
     build_workflow_pack_runtime_status_summary,
 )
+from app.contracts.workflow_pack_task_flows import WorkflowPackTaskFlowStatus
+from tests.support.workflow_pack_task_flow_fixtures import workflow_pack_task_flow_descriptor
 from tests.support.workflow_pack_run_builders import build_workflow_pack_run_descriptor
 
 
@@ -70,6 +74,8 @@ def test_build_workflow_pack_runtime_status_summary_separates_catalog_from_execu
     assert summary.attention_queue.queue_depth == 0
     assert summary.attention_queue.queue_limit == 5
     assert summary.attention_queue.items == []
+    assert summary.task_flow_attention.heartbeat_status == "READY"
+    assert summary.task_flow_attention.attention_count == 0
     assert summary.run_summary.run_count == 0
     assert summary.run_summary.action_required_count == 0
 
@@ -217,6 +223,7 @@ def test_build_workflow_pack_runtime_status_summary_tracks_activity_for_executab
     assert summary.attention_queue.items[0].provenance.artifact_types == ["run_output_summary"]
     assert summary.attention_queue.items[0].provenance.evidence_descriptor_count == 1
     assert summary.attention_queue.items[0].provenance.evidence_types == ["evidence_0"]
+    assert summary.task_flow_attention.heartbeat_status == "READY"
 
 
 def test_build_workflow_pack_runtime_status_summary_defaults_include_all_executable_phase1_packs() -> (
@@ -239,6 +246,54 @@ def test_build_workflow_pack_runtime_status_summary_defaults_include_all_executa
         "advisor_brief.pack@v1",
         "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
+    ]
+
+
+def test_build_workflow_pack_task_flow_attention_summary_surfaces_heartbeat_posture() -> None:
+    summary = build_workflow_pack_task_flow_attention_summary(
+        task_flows=[
+            workflow_pack_task_flow_descriptor(
+                task_flow_id="flow-review",
+                flow_status=WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW,
+                current_step_id="draft-brief",
+                updated_at="2026-04-21T01:00:00Z",
+            ),
+            workflow_pack_task_flow_descriptor(
+                task_flow_id="flow-blocked-stale",
+                flow_status=WorkflowPackTaskFlowStatus.BLOCKED,
+                current_step_id="draft-brief",
+                updated_at="2026-04-19T01:00:00Z",
+            ),
+            workflow_pack_task_flow_descriptor(
+                task_flow_id="flow-completed",
+                flow_status=WorkflowPackTaskFlowStatus.COMPLETED,
+                current_step_id=None,
+                updated_at="2026-04-18T01:00:00Z",
+            ).model_copy(
+                update={"supportability_status": WorkflowPackRunSupportabilityStatus.READY}
+            ),
+        ],
+        now_utc=datetime(2026, 4, 21, 3, 0, tzinfo=UTC),
+    )
+
+    assert summary.heartbeat_status == "ATTENTION_REQUIRED"
+    assert summary.attention_count == 2
+    assert summary.waiting_for_review_count == 1
+    assert summary.blocked_count == 1
+    assert summary.degraded_count == 2
+    assert summary.stale_count == 1
+    assert [item.task_flow_id for item in summary.items] == [
+        "flow-review",
+        "flow-blocked-stale",
+    ]
+    assert summary.items[0].attention_reasons == [
+        "Task flow is waiting for bounded human review.",
+        "Task flow supportability requires operator action.",
+    ]
+    assert summary.items[1].attention_reasons == [
+        "Task flow is blocked and requires operator triage.",
+        "Task flow supportability requires operator action.",
+        "Task flow has not advanced within the heartbeat stale threshold.",
     ]
 
 

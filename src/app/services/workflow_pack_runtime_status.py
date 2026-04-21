@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 from app.contracts.runtime_readiness import RuntimeReadinessStatus
+from app.contracts.workflow_pack_task_flows import (
+    WorkflowPackTaskFlowDescriptor,
+    WorkflowPackTaskFlowStatus,
+)
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunCatalogResponse,
     WorkflowPackRunDescriptor,
@@ -14,6 +20,8 @@ from app.contracts.workflow_packs import (
     WorkflowPackExecutableActivitySummaryResponse,
     WorkflowPackRunRuntimeSummaryResponse,
     WorkflowPackRuntimeStatusSummaryResponse,
+    WorkflowPackTaskFlowAttentionItemResponse,
+    WorkflowPackTaskFlowAttentionSummaryResponse,
 )
 from app.services.workflow_pack_bindings import list_workflow_pack_execution_binding_descriptors
 from app.services.workflow_pack_registry import list_workflow_pack_registrations
@@ -24,15 +32,20 @@ from app.services.workflow_pack_run_provenance_summary import (
 from app.services.runtime_readiness import (
     get_workflow_pack_registry_store_runtime_status,
     get_workflow_pack_run_store_runtime_status,
+    get_workflow_pack_task_flow_store_runtime_status,
 )
+from app.services.workflow_pack_task_flow_service import list_task_flows
 
 WORKFLOW_PACK_ATTENTION_QUEUE_LIMIT = 5
+WORKFLOW_PACK_TASK_FLOW_ATTENTION_LIMIT = 5
+WORKFLOW_PACK_TASK_FLOW_STALE_AFTER = timedelta(hours=24)
 
 
 def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSummaryResponse:
     execution_bindings = list_workflow_pack_execution_binding_descriptors()
     registry_store_status = get_workflow_pack_registry_store_runtime_status()
     run_store_status = get_workflow_pack_run_store_runtime_status()
+    task_flow_store_status = get_workflow_pack_task_flow_store_runtime_status()
     registrations = (
         list_workflow_pack_registrations()
         if registry_store_status.status is RuntimeReadinessStatus.READY
@@ -105,6 +118,24 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
             ],
         )
 
+    if task_flow_store_status.status is RuntimeReadinessStatus.READY:
+        task_flow_attention = build_workflow_pack_task_flow_attention_summary()
+    else:
+        task_flow_attention = WorkflowPackTaskFlowAttentionSummaryResponse(
+            heartbeat_status="UNAVAILABLE",
+            attention_count=0,
+            waiting_for_review_count=0,
+            blocked_count=0,
+            degraded_count=0,
+            stale_count=0,
+            attention_limit=WORKFLOW_PACK_TASK_FLOW_ATTENTION_LIMIT,
+            items=[],
+            status_summary=[
+                "Workflow-pack task-flow heartbeat attention is unavailable until the configured task-flow store is ready.",
+                f"Current workflow-pack task-flow store status is `{task_flow_store_status.status.value}`.",
+            ],
+        )
+
     return WorkflowPackRuntimeStatusSummaryResponse(
         registration_count=len(registrations),
         registered_count=registered_count,
@@ -119,6 +150,7 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
         executable_review_required_refs=executable_review_required_refs,
         executable_activity=executable_activity,
         attention_queue=attention_queue,
+        task_flow_attention=task_flow_attention,
         run_summary=run_summary,
         status_summary=[
             "Workflow-pack runtime readiness is narrower than catalog presence and counts only versions that are both REGISTERED and explicitly bound for lotus-ai execution.",
@@ -137,6 +169,11 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
                 "Run-ledger-backed activity posture is unavailable until the configured workflow-pack run store is ready."
                 if run_store_status.status is not RuntimeReadinessStatus.READY
                 else "Run-ledger-backed activity posture is available through the configured workflow-pack run store."
+            ),
+            (
+                "Task-flow heartbeat attention is unavailable until the configured workflow-pack task-flow store is ready."
+                if task_flow_store_status.status is not RuntimeReadinessStatus.READY
+                else "Task-flow heartbeat attention is available through the configured workflow-pack task-flow store."
             ),
         ],
     )
@@ -330,6 +367,51 @@ def build_workflow_pack_attention_queue_summary(
     )
 
 
+def build_workflow_pack_task_flow_attention_summary(
+    *,
+    task_flows: list[WorkflowPackTaskFlowDescriptor] | None = None,
+    now_utc: datetime | None = None,
+) -> WorkflowPackTaskFlowAttentionSummaryResponse:
+    flows = task_flows if task_flows is not None else list_task_flows()
+    now = now_utc or datetime.now(UTC)
+    attention_items = [
+        item for item in (_build_task_flow_attention_item(flow, now=now) for flow in flows) if item
+    ]
+    attention_items.sort(key=lambda item: item.updated_at, reverse=True)
+    waiting_for_review_count = sum(
+        1 for flow in flows if flow.flow_status is WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW
+    )
+    blocked_count = sum(
+        1 for flow in flows if flow.flow_status is WorkflowPackTaskFlowStatus.BLOCKED
+    )
+    degraded_count = sum(
+        1
+        for flow in flows
+        if flow.supportability_status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED
+    )
+    stale_count = sum(1 for flow in flows if _is_stale_task_flow(flow, now=now))
+    heartbeat_status = "READY" if not attention_items else "ATTENTION_REQUIRED"
+    status_summary = [
+        "Workflow-pack task-flow heartbeat attention is derived from durable task-flow posture and does not replace run-ledger review authority.",
+        "Waiting-for-review, blocked, degraded, and stale active task flows are surfaced as bounded attention items.",
+    ]
+    if len(attention_items) > WORKFLOW_PACK_TASK_FLOW_ATTENTION_LIMIT:
+        status_summary.append(
+            "Returned task-flow attention items are truncated to the bounded attention limit; use attention_count to measure the full backlog."
+        )
+    return WorkflowPackTaskFlowAttentionSummaryResponse(
+        heartbeat_status=heartbeat_status,
+        attention_count=len(attention_items),
+        waiting_for_review_count=waiting_for_review_count,
+        blocked_count=blocked_count,
+        degraded_count=degraded_count,
+        stale_count=stale_count,
+        attention_limit=WORKFLOW_PACK_TASK_FLOW_ATTENTION_LIMIT,
+        items=attention_items[:WORKFLOW_PACK_TASK_FLOW_ATTENTION_LIMIT],
+        status_summary=status_summary,
+    )
+
+
 def _resolve_latest_run_by_supportability(
     *,
     runs: list[WorkflowPackRunDescriptor],
@@ -339,3 +421,67 @@ def _resolve_latest_run_by_supportability(
     if not matching_runs:
         return None
     return max(matching_runs, key=lambda run: run.created_at)
+
+
+def _build_task_flow_attention_item(
+    flow: WorkflowPackTaskFlowDescriptor,
+    *,
+    now: datetime,
+) -> WorkflowPackTaskFlowAttentionItemResponse | None:
+    attention_reasons = _task_flow_attention_reasons(flow, now=now)
+    if not attention_reasons:
+        return None
+    return WorkflowPackTaskFlowAttentionItemResponse(
+        task_flow_id=flow.task_flow_id,
+        workflow_pack_id=flow.workflow_pack_id,
+        workflow_pack_version=flow.workflow_pack_version,
+        flow_status=flow.flow_status.value,
+        supportability_status=flow.supportability_status.value,
+        current_step_id=flow.current_step_id,
+        run_refs=flow.run_refs,
+        replacement_lineage_count=len(flow.replacement_lineage),
+        updated_at=flow.updated_at,
+        attention_reasons=attention_reasons,
+    )
+
+
+def _task_flow_attention_reasons(
+    flow: WorkflowPackTaskFlowDescriptor,
+    *,
+    now: datetime,
+) -> list[str]:
+    reasons: list[str] = []
+    if flow.flow_status is WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW:
+        reasons.append("Task flow is waiting for bounded human review.")
+    if flow.flow_status is WorkflowPackTaskFlowStatus.BLOCKED:
+        reasons.append("Task flow is blocked and requires operator triage.")
+    if flow.supportability_status is WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED:
+        reasons.append("Task flow supportability requires operator action.")
+    if _is_stale_task_flow(flow, now=now):
+        reasons.append("Task flow has not advanced within the heartbeat stale threshold.")
+    return reasons
+
+
+def _is_stale_task_flow(flow: WorkflowPackTaskFlowDescriptor, *, now: datetime) -> bool:
+    if flow.flow_status not in {
+        WorkflowPackTaskFlowStatus.CREATED,
+        WorkflowPackTaskFlowStatus.RUNNING,
+        WorkflowPackTaskFlowStatus.WAITING_FOR_INPUT,
+        WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW,
+        WorkflowPackTaskFlowStatus.BLOCKED,
+    }:
+        return False
+    updated_at = _parse_utc_timestamp(flow.updated_at)
+    if updated_at is None:
+        return True
+    return now - updated_at > WORKFLOW_PACK_TASK_FLOW_STALE_AFTER
+
+
+def _parse_utc_timestamp(value: str) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)

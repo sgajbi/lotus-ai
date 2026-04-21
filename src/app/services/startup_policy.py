@@ -9,6 +9,7 @@ from app.services.runtime_readiness import (
     get_retrieval_store_runtime_status,
     get_workflow_pack_registry_store_runtime_status,
     get_workflow_pack_run_store_runtime_status,
+    get_workflow_pack_task_flow_store_runtime_status,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ def evaluate_startup_readiness() -> StartupReadinessEvaluation:
     retrieval_status = get_retrieval_store_runtime_status()
     workflow_pack_registry_status = get_workflow_pack_registry_store_runtime_status()
     workflow_pack_run_status = get_workflow_pack_run_store_runtime_status()
+    workflow_pack_task_flow_status = get_workflow_pack_task_flow_store_runtime_status()
 
     if audit_status.status != "READY":
         findings.append(f"audit store: {audit_status.detail}")
@@ -37,6 +39,8 @@ def evaluate_startup_readiness() -> StartupReadinessEvaluation:
         findings.append(f"workflow-pack registry store: {workflow_pack_registry_status.detail}")
     if workflow_pack_run_status.status != "READY":
         findings.append(f"workflow-pack run store: {workflow_pack_run_status.detail}")
+    if workflow_pack_task_flow_status.status != "READY":
+        findings.append(f"workflow-pack task-flow store: {workflow_pack_task_flow_status.detail}")
 
     if settings.startup_readiness_policy == "enforce" and findings:
         blocking = True

@@ -17,6 +17,29 @@ from tests.support.workflow_pack_fixtures import (
 )
 
 
+def _assert_task_flow_recorded_for_run(
+    *,
+    client: TestClient,
+    run_id: str,
+    expected_status: str = "WAITING_FOR_REVIEW",
+) -> None:
+    catalog_response = client.get("/platform/workflow-packs/task-flows")
+    assert catalog_response.status_code == 200
+    task_flows = catalog_response.json()["task_flows"]
+    matching = [flow for flow in task_flows if run_id in flow["run_refs"]]
+    assert len(matching) == 1
+    task_flow = matching[0]
+    assert task_flow["flow_status"] == expected_status
+    assert task_flow["runtime_states"][run_id] in {"COMPLETED", "FAILED"}
+    assert task_flow["review_states"][run_id] == "AWAITING_REVIEW"
+
+    detail_response = client.get(f"/platform/workflow-packs/task-flows/{task_flow['task_flow_id']}")
+    assert detail_response.status_code == 200
+    detail_body = detail_response.json()
+    assert detail_body["task_flow"]["run_refs"] == [run_id]
+    assert detail_body["checkpoints"][0]["run_id"] == run_id
+
+
 def test_workflow_pack_run_catalog_starts_empty(client: TestClient) -> None:
     response = client.get("/platform/workflow-packs/runs")
 
@@ -92,6 +115,7 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
     assert detail_body["run"]["artifact_refs"][0]["source_object_id"] == run["run_id"]
     assert detail_body["events"][0]["event_type"] == "RUN_RECORDED"
     assert detail_body["run"]["workflow_surface"] == "advisor-brief-workspace"
+    _assert_task_flow_recorded_for_run(client=client, run_id=run["run_id"])
 
 
 def test_workflow_pack_run_catalog_route_supports_bounded_filters(
@@ -186,6 +210,7 @@ def test_workflow_pack_execute_route_records_explicit_run_and_returns_run_id(
     assert body["execution"]["status"] == "COMPLETED"
     assert body["execution"]["audit"]["workflow_pack_run_id"] == body["workflow_pack_run"]["run_id"]
     assert body["workflow_pack_run"]["workflow_surface"] == "advisor-brief-workspace"
+    _assert_task_flow_recorded_for_run(client=client, run_id=body["workflow_pack_run"]["run_id"])
 
 
 def test_workflow_pack_execute_route_defaults_workflow_surface_from_binding(
@@ -280,6 +305,11 @@ def test_workflow_pack_execute_route_records_failed_run_when_runtime_execution_i
     assert body["execution"]["audit"]["workflow_pack_run_id"] == run_id
     assert body["workflow_pack_run"]["runtime_state"] == "FAILED"
     assert body["workflow_pack_run"]["supportability_status"] == "ACTION_REQUIRED"
+    _assert_task_flow_recorded_for_run(
+        client=client,
+        run_id=run_id,
+        expected_status="FAILED",
+    )
 
     consumer_response = client.get(f"/platform/workflow-packs/runs/{run_id}/consumer-view")
     assert consumer_response.status_code == 200
@@ -347,6 +377,7 @@ def test_workflow_pack_run_routes_degrade_when_sql_run_store_is_unmigrated(tmp_p
 
     with override_runtime_settings(
         workflow_pack_run_store_mode="sqlalchemy",
+        workflow_pack_task_flow_store_mode="sqlalchemy",
         database_url=database_url,
     ):
         with TestClient(app) as durable_client:
@@ -387,6 +418,7 @@ def test_pack_backed_execution_routes_degrade_when_sql_run_store_is_unmigrated(
 
     with override_runtime_settings(
         workflow_pack_run_store_mode="sqlalchemy",
+        workflow_pack_task_flow_store_mode="sqlalchemy",
         database_url=database_url,
     ):
         with TestClient(app) as durable_client:
@@ -417,6 +449,49 @@ def test_pack_backed_execution_routes_degrade_when_sql_run_store_is_unmigrated(
 
     assert explicit_response.status_code == 503
     assert "Workflow-pack run store is not ready." in explicit_response.json()["detail"]
+    assert "MIGRATION_REQUIRED" in explicit_response.json()["detail"]
+    assert baseline_audit_response.status_code == 200
+    assert audit_response.status_code == 200
+    assert audit_response.json()["record_count"] == baseline_audit_response.json()["record_count"]
+
+
+def test_pack_backed_execution_routes_degrade_when_sql_task_flow_store_is_unmigrated(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-task-flow-execution-unmigrated.db'}"
+
+    with override_runtime_settings(
+        workflow_pack_task_flow_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        with TestClient(app) as durable_client:
+            baseline_audit_response = durable_client.get(
+                "/ai/audit",
+                params={"caller_app": "lotus-gateway", "limit": 10},
+            )
+            task_response = durable_client.post(
+                "/ai/tasks/execute",
+                json=advisor_brief_task_execution_request_json(
+                    correlation_id="corr-pack-task-flow-unmigrated-task-001"
+                ),
+            )
+            explicit_response = durable_client.post(
+                "/platform/workflow-packs/execute",
+                json=advisor_brief_workflow_pack_execution_request_json(
+                    correlation_id="corr-pack-task-flow-unmigrated-explicit-001"
+                ),
+            )
+            audit_response = durable_client.get(
+                "/ai/audit",
+                params={"caller_app": "lotus-gateway", "limit": 10},
+            )
+
+    assert task_response.status_code == 503
+    assert "Workflow-pack task-flow store is not ready." in task_response.json()["detail"]
+    assert "MIGRATION_REQUIRED" in task_response.json()["detail"]
+
+    assert explicit_response.status_code == 503
+    assert "Workflow-pack task-flow store is not ready." in explicit_response.json()["detail"]
     assert "MIGRATION_REQUIRED" in explicit_response.json()["detail"]
     assert baseline_audit_response.status_code == 200
     assert audit_response.status_code == 200
@@ -472,6 +547,35 @@ def test_workflow_pack_run_review_action_updates_review_state(client: TestClient
     assert detail_body["review"]["latest_review_actor"] == "review:banker.sg.100"
     assert detail_body["review"]["review_transition_count"] == 1
     assert detail_body["review"]["has_review_history"] is True
+
+    task_flow_response = client.get("/platform/workflow-packs/task-flows")
+    assert task_flow_response.status_code == 200
+    task_flow = task_flow_response.json()["task_flows"][0]
+    assert task_flow["flow_status"] == "COMPLETED"
+    assert task_flow["review_states"][run_id] == "ACCEPTED"
+    assert task_flow["supportability_status"] == "READY"
+    assert task_flow["handoff_refs"] == [
+        {
+            "handoff_id": f"{task_flow['task_flow_id']}_handoff_{run_id}",
+            "owner_service": "lotus-gateway",
+            "status": "READY_FOR_HANDOFF",
+            "domain_ref": None,
+            "evidence_refs": [
+                {
+                    "evidence_type": "workflow_pack_review_handoff_ready",
+                    "summary": (
+                        "Accepted workflow-pack task flow is ready for domain-owner handoff."
+                    ),
+                    "attributes": {
+                        "run_id": run_id,
+                        "task_flow_id": task_flow["task_flow_id"],
+                        "workflow_authority_owner": "lotus-gateway",
+                        "reason": "Advisor brief accepted for bounded downstream workflow use.",
+                    },
+                }
+            ],
+        }
+    ]
 
 
 def test_workflow_pack_run_review_action_allows_operator_caller(client: TestClient) -> None:
@@ -603,6 +707,23 @@ def test_workflow_pack_run_review_action_revise_links_replacement_lineage(
     assert any(
         event["event_type"] == "LINEAGE_UPDATED" for event in replacement_detail_body["events"]
     )
+
+    task_flow_response = client.get("/platform/workflow-packs/task-flows")
+    assert task_flow_response.status_code == 200
+    task_flows = task_flow_response.json()["task_flows"]
+    original_task_flow = next(flow for flow in task_flows if original_run_id in flow["run_refs"])
+    revised_task_flow = next(flow for flow in task_flows if revised_run_id in flow["run_refs"])
+    expected_lineage = {
+        "superseded_run_id": original_run_id,
+        "replacement_run_id": revised_run_id,
+        "review_action_ref": "REVISE",
+        "reason": "Reviewer requested a revised advisor brief draft.",
+    }
+    assert original_task_flow["flow_status"] == "SUPERSEDED"
+    assert original_task_flow["review_states"][original_run_id] == "REVISED"
+    assert original_task_flow["supportability_status"] == "HISTORICAL"
+    assert expected_lineage in original_task_flow["replacement_lineage"]
+    assert expected_lineage in revised_task_flow["replacement_lineage"]
 
 
 def test_workflow_pack_run_review_action_rejects_unknown_replacement_run(
@@ -988,6 +1109,7 @@ def test_sqlalchemy_workflow_pack_run_review_and_lineage_survive_restart(tmp_pat
 
     with override_runtime_settings(
         workflow_pack_run_store_mode="sqlalchemy",
+        workflow_pack_task_flow_store_mode="sqlalchemy",
         database_url=database_url,
     ):
         with TestClient(app) as client:
@@ -1049,6 +1171,7 @@ def test_sqlalchemy_workflow_pack_run_review_and_lineage_survive_restart(tmp_pat
                 f"/platform/workflow-packs/runs/{original_run_id}/operator-profile"
             )
             runtime_status_response = restarted_client.get("/platform/runtime-status")
+            task_flow_catalog_response = restarted_client.get("/platform/workflow-packs/task-flows")
 
     assert catalog_response.status_code == 200
     catalog_body = catalog_response.json()
@@ -1102,6 +1225,8 @@ def test_sqlalchemy_workflow_pack_run_review_and_lineage_survive_restart(tmp_pat
     runtime_status_body = runtime_status_response.json()
     assert runtime_status_body["workflow_pack_run_store_mode"] == "sqlalchemy"
     assert runtime_status_body["workflow_pack_run_store"]["status"] == "READY"
+    assert runtime_status_body["workflow_pack_task_flow_store_mode"] == "sqlalchemy"
+    assert runtime_status_body["workflow_pack_task_flow_store"]["status"] == "READY"
     assert runtime_status_body["workflow_pack_runtime"]["run_summary"]["run_count"] == 2
     assert runtime_status_body["workflow_pack_runtime"]["run_summary"]["awaiting_review_count"] == 1
     assert runtime_status_body["workflow_pack_runtime"]["run_summary"]["superseded_count"] == 1
@@ -1110,6 +1235,17 @@ def test_sqlalchemy_workflow_pack_run_review_and_lineage_survive_restart(tmp_pat
         runtime_status_body["workflow_pack_runtime"]["attention_queue"]["items"][0]["run_id"]
         == revised_run_id
     )
+
+    assert task_flow_catalog_response.status_code == 200
+    task_flow_catalog_body = task_flow_catalog_response.json()
+    assert task_flow_catalog_body["task_flow_store_mode"] == "sqlalchemy"
+    assert task_flow_catalog_body["task_flow_count"] == 2
+    assert {
+        run_id for flow in task_flow_catalog_body["task_flows"] for run_id in flow["run_refs"]
+    } == {
+        original_run_id,
+        revised_run_id,
+    }
 
 
 def test_runtime_status_attention_queue_reports_full_backlog_depth(client: TestClient) -> None:
