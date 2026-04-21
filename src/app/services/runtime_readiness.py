@@ -145,6 +145,15 @@ def get_workflow_pack_run_store_runtime_status() -> StoreRuntimeStatusDescriptor
     )
 
 
+def get_workflow_pack_task_flow_store_runtime_status() -> StoreRuntimeStatusDescriptor:
+    return _build_store_runtime_status(
+        configured_mode=settings.workflow_pack_task_flow_store_mode,
+        expected_tables=["workflow_pack_task_flows", "workflow_pack_task_flow_checkpoints"],
+        memory_detail="In-memory workflow-pack task-flow state is active for foundation-phase multi-step runtime work.",
+        unsupported_detail="Configured workflow-pack task-flow store mode is not supported by lotus-ai.",
+    )
+
+
 def _build_store_runtime_status(
     *,
     configured_mode: str,

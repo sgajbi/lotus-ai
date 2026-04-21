@@ -10,6 +10,7 @@ from app.services.runtime_readiness import (
     get_audit_store_runtime_status,
     get_retrieval_store_runtime_status,
     get_workflow_pack_registry_store_runtime_status,
+    get_workflow_pack_task_flow_store_runtime_status,
 )
 
 
@@ -157,6 +158,42 @@ def test_workflow_pack_registry_store_runtime_status_reports_unsupported_mode() 
     settings.database_url = None
 
     status_descriptor = get_workflow_pack_registry_store_runtime_status()
+
+    assert status_descriptor.mode == "unsupported"
+    assert status_descriptor.status == RuntimeReadinessStatus.UNAVAILABLE
+    assert "not supported" in status_descriptor.detail
+
+
+def test_workflow_pack_task_flow_store_runtime_status_requires_database_for_sqlalchemy_mode() -> (
+    None
+):
+    settings.workflow_pack_task_flow_store_mode = "sqlalchemy"
+    settings.database_url = None
+
+    status_descriptor = get_workflow_pack_task_flow_store_runtime_status()
+
+    assert status_descriptor.mode == "sqlalchemy"
+    assert status_descriptor.status == RuntimeReadinessStatus.CONFIGURATION_REQUIRED
+
+
+def test_workflow_pack_task_flow_store_runtime_status_reports_migration_required_for_unmigrated_database(
+    tmp_path: Path,
+) -> None:
+    settings.workflow_pack_task_flow_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'unmigrated-workflow-pack-task-flow.db'}"
+
+    status_descriptor = get_workflow_pack_task_flow_store_runtime_status()
+
+    assert status_descriptor.mode == "sqlalchemy"
+    assert status_descriptor.status == RuntimeReadinessStatus.MIGRATION_REQUIRED
+    assert "workflow_pack_task_flows" in status_descriptor.detail
+
+
+def test_workflow_pack_task_flow_store_runtime_status_reports_unsupported_mode() -> None:
+    settings.workflow_pack_task_flow_store_mode = "unsupported"
+    settings.database_url = None
+
+    status_descriptor = get_workflow_pack_task_flow_store_runtime_status()
 
     assert status_descriptor.mode == "unsupported"
     assert status_descriptor.status == RuntimeReadinessStatus.UNAVAILABLE
