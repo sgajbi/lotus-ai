@@ -115,12 +115,13 @@ Expected operator flow for SQL-backed stores:
 6. when workflow-pack runtime triage matters, inspect the embedded `workflow_pack_runtime` block for latest ready and latest actionable run pointers plus bounded review provenance, bounded artifact or evidence linkage summaries, and `queue_attention` saturation or stale-admission posture before pivoting into the full ledger
 7. verify `GET /platform/workflow-packs/runs` when workflow-pack run persistence is part of the rollout slice
 8. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block also reports `READY` before treating workflow-pack activation state and control history as restart-safe truth
-9. verify `GET /platform/workflow-packs/control-history` when registry durability is part of the rollout slice
-10. verify `GET /platform/safety/runtime-status`
-11. verify `GET /platform/safety/evidence-readiness` when runtime safety approval posture matters
-12. verify `GET /platform/safety/governance-status` when runtime safety rollout posture matters
-13. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
-14. only then proceed with rollout if readiness is `READY`
+9. when using explicit `/platform/workflow-packs/execute`, set `queue_lane` only to one of the requested pack version's declared `allowed_lanes`; omitted lanes use the policy default
+10. verify `GET /platform/workflow-packs/control-history` when registry durability is part of the rollout slice
+11. verify `GET /platform/safety/runtime-status`
+12. verify `GET /platform/safety/evidence-readiness` when runtime safety approval posture matters
+13. verify `GET /platform/safety/governance-status` when runtime safety rollout posture matters
+14. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
+15. only then proceed with rollout if readiness is `READY`
 
 ## Resilience Governance
 

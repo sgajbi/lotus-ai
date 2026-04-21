@@ -98,6 +98,7 @@ def advisor_brief_workflow_pack_execution_request_json(
     correlation_id: str,
     task_id: str = "explain.v1",
     workflow_surface: str | None = "advisor-brief-workspace",
+    queue_lane: str | None = None,
     environment: str = "DEVELOPMENT",
     caller_identity_class: str = "BANKER_PRODUCT",
     portfolio_return_pct: float = 1.25,
@@ -119,6 +120,8 @@ def advisor_brief_workflow_pack_execution_request_json(
     }
     if workflow_surface is not None:
         request["workflow_surface"] = workflow_surface
+    if queue_lane is not None:
+        request["queue_lane"] = queue_lane
     return request
 
 

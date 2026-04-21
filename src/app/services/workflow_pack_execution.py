@@ -82,7 +82,10 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
     context = validate_task_request(request.task_request)
     ensure_workflow_pack_run_store_ready()
     ensure_workflow_pack_task_flow_store_ready()
-    with workflow_pack_queue_admission(registration=registration):
+    with workflow_pack_queue_admission(
+        registration=registration,
+        requested_lane=request.queue_lane,
+    ):
         try:
             resolved = resolve_task_execution(context=context)
             response = build_task_execution_response(resolved=resolved)

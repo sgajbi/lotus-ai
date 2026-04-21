@@ -413,6 +413,65 @@ def test_workflow_pack_execute_route_rejects_full_queue_lane_without_side_effect
     assert run_catalog_response.json()["run_count"] == 0
 
 
+def test_workflow_pack_execute_route_uses_requested_allowed_queue_lane(
+    client: TestClient,
+) -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    first_latency_lease = acquire_workflow_pack_queue_admission(registration=registration)
+    second_latency_lease = acquire_workflow_pack_queue_admission(registration=registration)
+
+    try:
+        execute_response = client.post(
+            "/platform/workflow-packs/execute",
+            json=advisor_brief_workflow_pack_execution_request_json(
+                correlation_id="corr-pack-execute-review-lane-001",
+                queue_lane="REVIEW_SUPPORT",
+            ),
+        )
+        run_catalog_response = client.get("/platform/workflow-packs/runs")
+    finally:
+        release_workflow_pack_queue_admission(first_latency_lease.queue_item_id)
+        release_workflow_pack_queue_admission(second_latency_lease.queue_item_id)
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    assert body["workflow_pack_run"]["correlation_id"] == (
+        "corr-pack-execute-review-lane-001"
+    )
+    assert run_catalog_response.status_code == 200
+    assert run_catalog_response.json()["run_count"] == 1
+
+
+def test_workflow_pack_execute_route_rejects_unsupported_queue_lane_without_side_effects(
+    client: TestClient,
+) -> None:
+    baseline_audit_response = client.get(
+        "/ai/audit",
+        params={"caller_app": "lotus-gateway", "limit": 10},
+    )
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=advisor_brief_workflow_pack_execution_request_json(
+            correlation_id="corr-pack-execute-unsupported-lane-001",
+            queue_lane="NIGHTLY",
+        ),
+    )
+    audit_response = client.get(
+        "/ai/audit",
+        params={"caller_app": "lotus-gateway", "limit": 10},
+    )
+    run_catalog_response = client.get("/platform/workflow-packs/runs")
+
+    assert baseline_audit_response.status_code == 200
+    assert execute_response.status_code == 409
+    assert "not allowed" in execute_response.json()["detail"]
+    assert audit_response.status_code == 200
+    assert audit_response.json()["records"] == baseline_audit_response.json()["records"]
+    assert run_catalog_response.status_code == 200
+    assert run_catalog_response.json()["run_count"] == 0
+
+
 def test_pack_backed_task_route_rejects_full_queue_lane_without_side_effects(
     client: TestClient,
 ) -> None:

@@ -720,6 +720,10 @@ class WorkflowPackExecutionRequest(BaseModel):
         default=None,
         description="Named workflow surface requesting the workflow-pack execution.",
     )
+    queue_lane: WorkflowPackQueueLane | None = Field(
+        default=None,
+        description="Optional governed queue lane requested for this explicit workflow-pack execution. Omit to use the pack policy default lane.",
+    )
     task_request: TaskExecutionRequest = Field(
         description=(
             "Bounded lotus-ai task request that carries the structured execution context for the "
