@@ -620,6 +620,10 @@ def test_build_workflow_pack_runtime_status_summary_degrades_when_registry_store
     )
     assert summary.queue_attention.heartbeat_status == "UNAVAILABLE"
     assert summary.queue_attention.queue_source_mode == "unavailable"
+    assert summary.queue_attention.degraded_source_count == 1
+    assert any(
+        "blocking queue source status" in line for line in summary.queue_attention.status_summary
+    )
 
 
 def test_build_workflow_pack_runtime_status_summary_degrades_when_run_store_not_ready(

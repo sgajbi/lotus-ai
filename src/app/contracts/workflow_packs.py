@@ -551,6 +551,10 @@ class WorkflowPackQueueAttentionSummaryResponse(BaseModel):
         default=0,
         description="Number of repeated terminal or blocked-recovery queue event clusters requiring operator attention.",
     )
+    degraded_source_count: int = Field(
+        default=0,
+        description="Number of configured queue source dependencies currently preventing queue attention from being computed.",
+    )
     active_admission_count: int = Field(
         description="Number of active queue admission leases in the source queue status."
     )
