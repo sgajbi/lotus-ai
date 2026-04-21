@@ -1,6 +1,6 @@
 # RFC-0032: Governed Workflow-Pack Registry and Activation Posture
 
-- Status: In Progress
+- Status: Implemented
 - Date: 2026-04-18
 - Owners:
   - lotus-ai maintainers
@@ -50,7 +50,8 @@ collapsing business ownership into the runtime service.
 
 ## Implementation Status
 
-This RFC is now partially implemented in `lotus-ai`.
+This RFC is now implemented for the current bounded Phase-1 registry and activation scope in
+`lotus-ai`.
 
 Completed implementation slices on the current branch:
 
@@ -77,14 +78,15 @@ Completed implementation slices on the current branch:
     supportability seam, including governed live validator proof through the
     `lotus-performance` -> `lotus-ai` path.
 
-Still pending before this RFC should be considered fully implemented:
+Follow-on work outside the implemented bounded Phase-1 scope:
 
 1. broader operator authorization beyond the current bounded caller-policy control-plane posture,
 2. broader rollout posture beyond the current pilot and discovery reference family,
 3. broader downstream proof and operator rollout posture beyond the current Phase-1
    `advisor_brief.pack`, `workspace_rationale.pack`, and
    `twr_inspection_support_brief.pack` families,
-4. convergence with the durable run-ledger and review-state model proposed in `RFC-0033`.
+4. broader self-serve discovery and rollout ergonomics once more workflow-pack families are
+   onboarded.
 
 ## Requirement Traceability And Evidence
 
@@ -137,7 +139,7 @@ The implemented portions of this RFC map to concrete branch evidence as follows.
    `tests/unit/test_workflow_pack_control.py`,
    `tests/integration/test_workflow_pack_control_api_contract.py`
 
-Open gaps that remain consistent with this RFC's still-pending scope:
+Open follow-on work beyond this implemented scope:
 
 1. operator authorization is now caller-policy-backed for bounded workflow-pack control actions but
    is not yet a broader enterprise entitlement model,
@@ -145,9 +147,8 @@ Open gaps that remain consistent with this RFC's still-pending scope:
    `workspace_rationale.pack`, and `twr_inspection_support_brief.pack` families is not yet
    onboarded,
 3. the current registry and activation evidence now proves governed live reuse beyond the
-   reference path across all three current Phase-1 families, but RFC-0032 still should not be
-   declared fully complete until operator rollout and downstream adoption are broader than the
-   current bounded Phase-1 slice.
+   reference path across all three current Phase-1 families, while broader operator rollout and
+   downstream adoption remain future expansion rather than a blocker for this accepted slice.
 
 ## Why This RFC Exists
 

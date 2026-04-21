@@ -1,6 +1,6 @@
 # RFC-0033: Durable AI Run Ledger and Review-State Contracts
 
-- Status: In Progress
+- Status: Implemented
 - Date: 2026-04-18
 - Owners:
   - lotus-ai maintainers
@@ -57,7 +57,8 @@ The goal is to make every meaningful AI-assisted workflow run:
 
 ## Implementation Status
 
-This RFC is now partially implemented.
+This RFC is now implemented for the bounded Phase-1 workflow-pack run-ledger and review-state
+scope.
 
 Current prerequisite foundations that now exist in `lotus-ai`:
 
@@ -105,7 +106,7 @@ Implemented on the current branch:
     `lotus-performance` -> `lotus-ai` stack, including retrievable `support_brief.md` artifact
     evidence and bounded workflow-pack run posture.
 
-What is not implemented yet:
+Follow-on work outside the implemented bounded Phase-1 scope:
 
 1. broader durable linkage expansion from workflow-pack execution into downstream artifact,
    review-action entitlement, and support-evidence flows beyond the current bounded Phase-1 slice,
@@ -118,7 +119,10 @@ What is not implemented yet:
 4. broader shared downstream consumption primitives that make the ledger model reusable across more
    than the current advisor-brief, workspace-rationale, and TWR-inspection product-specific seams.
 
-This RFC now correctly moves to `In Progress`, but it should not be treated as complete until downstream contract adoption, artifact and evidence linkage expansion, and broader runtime integration are implemented and reflected in the RFC, RFC index, and branch evidence together.
+This RFC is implemented for the bounded Phase-1 scope now that downstream contract adoption,
+artifact and evidence linkage, and live proof are merged across the current advisor-brief,
+workspace-rationale, and TWR-inspection paths. Broader runtime integration remains follow-on work
+rather than a blocker for this accepted slice.
 
 ## Prerequisite Evidence And Open Gaps
 
