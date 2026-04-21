@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from threading import RLock
 from typing import Iterator, NoReturn
 from uuid import uuid4
@@ -10,6 +10,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 
 from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueCancellationActor,
     WorkflowPackQueueEventType,
     WorkflowPackQueueLane,
     WorkflowPackQueuePolicyDescriptor,
@@ -224,18 +225,29 @@ def acquire_workflow_pack_queue_admission(
         return lease
 
 
-def release_workflow_pack_queue_admission(queue_item_id: str) -> None:
+def release_workflow_pack_queue_admission(
+    queue_item_id: str,
+    *,
+    now_utc: datetime | None = None,
+) -> None:
     with _queue_lock:
         lease = _active_leases.get(queue_item_id)
     if lease is None:
         return
+    policy = _get_policy_for_lease(lease)
+    terminal_state = _release_terminal_state(lease=lease, policy=policy, now_utc=now_utc)
+    event_type = (
+        WorkflowPackQueueEventType.ADMISSION_TIMED_OUT
+        if terminal_state is WorkflowPackQueueState.TIMED_OUT
+        else WorkflowPackQueueEventType.ADMISSION_RELEASED
+    )
     release_state = _transition_queue_state(
         current_state=lease.state,
-        next_state=WorkflowPackQueueState.COMPLETED_HANDOFF,
+        next_state=terminal_state,
     )
     _record_queue_event(
         queue_item_id=lease.queue_item_id,
-        event_type=WorkflowPackQueueEventType.ADMISSION_RELEASED,
+        event_type=event_type,
         workflow_pack_id=lease.workflow_pack_id,
         workflow_pack_version=lease.workflow_pack_version,
         policy_id=lease.policy_id,
@@ -245,13 +257,67 @@ def release_workflow_pack_queue_admission(queue_item_id: str) -> None:
         correlation_id=lease.correlation_id,
         tenant_id=lease.tenant_id,
         workflow_surface=lease.workflow_surface,
+        reason_code=(
+            "EXECUTION_TIMEOUT"
+            if event_type is WorkflowPackQueueEventType.ADMISSION_TIMED_OUT
+            else None
+        ),
+        message=_release_event_message(lease=lease, event_type=event_type, policy=policy),
+    )
+    with _queue_lock:
+        _active_leases.pop(queue_item_id, None)
+
+
+def cancel_workflow_pack_queue_admission(
+    queue_item_id: str,
+    *,
+    actor: WorkflowPackQueueCancellationActor,
+    reason: str,
+    evidence_ref: str,
+) -> bool:
+    if not reason.strip() or not evidence_ref.strip():
+        _raise_queue_rejection(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Workflow-pack queue cancellation requires non-empty reason and evidence_ref.",
+        )
+    with _queue_lock:
+        lease = _active_leases.get(queue_item_id)
+    if lease is None:
+        return False
+    policy = _get_policy_for_lease(lease)
+    if actor not in set(policy.cancellation_policy.cancellable_by):
+        _raise_queue_rejection(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Workflow-pack queue admission `{queue_item_id}` cannot be cancelled by "
+                f"`{actor.value}` under policy `{policy.policy_id}`."
+            ),
+        )
+    cancellation_state = _transition_queue_state(
+        current_state=lease.state,
+        next_state=WorkflowPackQueueState.CANCELLED,
+    )
+    _record_queue_event(
+        queue_item_id=lease.queue_item_id,
+        event_type=WorkflowPackQueueEventType.ADMISSION_CANCELLED,
+        workflow_pack_id=lease.workflow_pack_id,
+        workflow_pack_version=lease.workflow_pack_version,
+        policy_id=lease.policy_id,
+        lane=lease.lane,
+        state=cancellation_state,
+        caller_app=lease.caller_app,
+        correlation_id=lease.correlation_id,
+        tenant_id=lease.tenant_id,
+        workflow_surface=lease.workflow_surface,
+        reason_code="QUEUE_ADMISSION_CANCELLED",
         message=(
-            "Workflow-pack queue admission released after bounded execution handoff for "
-            f"`{lease.workflow_pack_id}@{lease.workflow_pack_version}`."
+            "Workflow-pack queue admission cancelled by "
+            f"`{actor.value}` with evidence `{evidence_ref}`: {reason}"
         ),
     )
     with _queue_lock:
         _active_leases.pop(queue_item_id, None)
+    return True
 
 
 def list_active_workflow_pack_queue_admissions() -> list[WorkflowPackQueueAdmissionLease]:
@@ -339,6 +405,52 @@ def _raise_capacity_rejection(
 
 def _raise_queue_rejection(*, status_code: int, detail: str) -> NoReturn:
     raise HTTPException(status_code=status_code, detail=detail)
+
+
+def _get_policy_for_lease(
+    lease: WorkflowPackQueueAdmissionLease,
+) -> WorkflowPackQueuePolicyDescriptor:
+    policy = get_workflow_pack_queue_policy_descriptor(
+        pack_id=lease.workflow_pack_id,
+        version=lease.workflow_pack_version,
+    )
+    if policy is None:
+        raise RuntimeError(
+            "Workflow-pack queue policy disappeared for active lease "
+            f"`{lease.workflow_pack_id}@{lease.workflow_pack_version}`."
+        )
+    return policy
+
+
+def _release_terminal_state(
+    *,
+    lease: WorkflowPackQueueAdmissionLease,
+    policy: WorkflowPackQueuePolicyDescriptor,
+    now_utc: datetime | None = None,
+) -> WorkflowPackQueueState:
+    admitted_at = datetime.fromisoformat(lease.admitted_at.replace("Z", "+00:00"))
+    now = now_utc or datetime.now(UTC)
+    if now - admitted_at.astimezone(UTC) > timedelta(seconds=policy.execution_timeout_seconds):
+        return WorkflowPackQueueState.TIMED_OUT
+    return WorkflowPackQueueState.COMPLETED_HANDOFF
+
+
+def _release_event_message(
+    *,
+    lease: WorkflowPackQueueAdmissionLease,
+    event_type: WorkflowPackQueueEventType,
+    policy: WorkflowPackQueuePolicyDescriptor,
+) -> str:
+    if event_type is WorkflowPackQueueEventType.ADMISSION_TIMED_OUT:
+        return (
+            "Workflow-pack queue admission released with timeout posture after exceeding "
+            f"the policy execution timeout of {policy.execution_timeout_seconds} seconds for "
+            f"`{lease.workflow_pack_id}@{lease.workflow_pack_version}`."
+        )
+    return (
+        "Workflow-pack queue admission released after bounded execution handoff for "
+        f"`{lease.workflow_pack_id}@{lease.workflow_pack_version}`."
+    )
 
 
 def _ensure_queue_event_store_ready_for_admission() -> None:

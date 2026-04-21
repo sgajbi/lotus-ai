@@ -44,6 +44,8 @@ class WorkflowPackExecutionMode(str, Enum):
 class WorkflowPackQueueAttentionType(str, Enum):
     LANE_SATURATED = "LANE_SATURATED"
     QUEUE_ITEM_STALE = "QUEUE_ITEM_STALE"
+    QUEUE_ITEM_CANCELLED = "QUEUE_ITEM_CANCELLED"
+    QUEUE_ITEM_TIMED_OUT = "QUEUE_ITEM_TIMED_OUT"
 
 
 class WorkflowPackCallerIdentityClass(str, Enum):
@@ -527,6 +529,10 @@ class WorkflowPackQueueAttentionSummaryResponse(BaseModel):
     )
     stale_item_count: int = Field(
         description="Number of active queue items older than their configured stale threshold."
+    )
+    terminal_event_count: int = Field(
+        default=0,
+        description="Number of durable terminal queue events currently surfaced for operator attention.",
     )
     active_admission_count: int = Field(
         description="Number of active queue admission leases in the source queue status."

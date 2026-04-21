@@ -1,12 +1,16 @@
+from datetime import datetime, timedelta
+
 from fastapi import HTTPException
 
 from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueCancellationActor,
     WorkflowPackQueueEventDescriptor,
     WorkflowPackQueueLane,
 )
 from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.services.workflow_pack_queue_admission import (
     acquire_workflow_pack_queue_admission,
+    cancel_workflow_pack_queue_admission,
     release_workflow_pack_queue_admission,
 )
 from app.services.workflow_pack_queue_events import (
@@ -95,6 +99,57 @@ def test_queue_admission_rejects_unsupported_requested_lane() -> None:
 
     rejected_history = _queue_events_for_reason("QUEUE_LANE_NOT_ALLOWED")
     assert rejected_history[0].lane == WorkflowPackQueueLane.NIGHTLY
+
+
+def test_queue_admission_release_records_timeout_terminal_posture() -> None:
+    lease = acquire_workflow_pack_queue_admission(registration=_advisor_brief_registration())
+
+    release_workflow_pack_queue_admission(
+        lease.queue_item_id,
+        now_utc=datetime.fromisoformat(lease.admitted_at.replace("Z", "+00:00"))
+        + timedelta(minutes=10),
+    )
+
+    history = build_workflow_pack_queue_event_detail(queue_item_id=lease.queue_item_id)
+    assert history.events[-1].event_type.value == "ADMISSION_TIMED_OUT"
+    assert history.events[-1].state.value == "TIMED_OUT"
+    assert history.events[-1].reason_code == "EXECUTION_TIMEOUT"
+
+
+def test_queue_admission_cancellation_records_terminal_posture_and_releases_capacity() -> None:
+    lease = acquire_workflow_pack_queue_admission(registration=_advisor_brief_registration())
+
+    cancelled = cancel_workflow_pack_queue_admission(
+        lease.queue_item_id,
+        actor=WorkflowPackQueueCancellationActor.OPERATOR,
+        reason="Operator stopped stale support request.",
+        evidence_ref="support-ticket-123",
+    )
+
+    assert cancelled is True
+    history = build_workflow_pack_queue_event_detail(queue_item_id=lease.queue_item_id)
+    assert history.events[-1].event_type.value == "ADMISSION_CANCELLED"
+    assert history.events[-1].state.value == "CANCELLED"
+    assert history.events[-1].reason_code == "QUEUE_ADMISSION_CANCELLED"
+
+
+def test_queue_admission_cancellation_requires_reason_and_evidence() -> None:
+    lease = acquire_workflow_pack_queue_admission(registration=_advisor_brief_registration())
+
+    try:
+        cancel_workflow_pack_queue_admission(
+            lease.queue_item_id,
+            actor=WorkflowPackQueueCancellationActor.OPERATOR,
+            reason=" ",
+            evidence_ref="support-ticket-123",
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 422
+        assert "requires non-empty reason and evidence_ref" in str(exc.detail)
+    else:
+        raise AssertionError("Expected queue cancellation without reason to fail")
+    finally:
+        release_workflow_pack_queue_admission(lease.queue_item_id)
 
 
 def _queue_events_for_reason(reason_code: str) -> list[WorkflowPackQueueEventDescriptor]:
