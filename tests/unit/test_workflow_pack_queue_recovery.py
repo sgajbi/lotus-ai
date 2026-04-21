@@ -6,8 +6,10 @@ from fastapi import HTTPException
 from app.services.workflow_pack_queue_admission import (
     WorkflowPackQueueAdmissionLease,
     acquire_workflow_pack_queue_admission,
+    cancel_workflow_pack_queue_admission,
     release_workflow_pack_queue_admission,
 )
+from app.contracts.workflow_pack_queue_policies import WorkflowPackQueueCancellationActor
 from app.services.workflow_pack_queue_attention import build_workflow_pack_queue_attention_summary
 from app.services.workflow_pack_queue_events import build_workflow_pack_queue_event_detail
 from app.services.workflow_pack_queue_recovery import (
@@ -159,6 +161,33 @@ def test_queue_attention_surfaces_blocked_retry_and_replay() -> None:
     ] == ["QUEUE_REPLAY_BLOCKED", "QUEUE_RETRY_BLOCKED"]
 
 
+def test_queue_attention_surfaces_repeated_failure_clusters() -> None:
+    _timed_out_advisor_brief_queue_item()
+    _timed_out_advisor_brief_queue_item()
+    _cancelled_advisor_brief_queue_item("support-ticket-queue-cancel-cluster-1")
+    _cancelled_advisor_brief_queue_item("support-ticket-queue-cancel-cluster-2")
+
+    summary = build_workflow_pack_queue_attention_summary()
+
+    cluster_items = [
+        item
+        for item in summary.items
+        if item.attention_type
+        in {
+            "QUEUE_TIMEOUT_CLUSTER",
+            "QUEUE_CANCELLATION_CLUSTER",
+        }
+    ]
+    assert summary.failure_cluster_count == 2
+    assert [item.attention_type for item in cluster_items] == [
+        "QUEUE_CANCELLATION_CLUSTER",
+        "QUEUE_TIMEOUT_CLUSTER",
+    ]
+    assert all(item.active_count == 0 for item in cluster_items)
+    assert all(item.event_count == 2 for item in cluster_items)
+    assert all(item.queue_item_id is None for item in cluster_items)
+
+
 def _timed_out_advisor_brief_queue_item() -> str:
     lease = _acquire_advisor_brief_lease()
     release_workflow_pack_queue_admission(
@@ -171,6 +200,17 @@ def _timed_out_advisor_brief_queue_item() -> str:
 def _completed_advisor_brief_queue_item() -> str:
     lease = _acquire_advisor_brief_lease()
     release_workflow_pack_queue_admission(lease.queue_item_id)
+    return lease.queue_item_id
+
+
+def _cancelled_advisor_brief_queue_item(evidence_ref: str) -> str:
+    lease = _acquire_advisor_brief_lease()
+    cancel_workflow_pack_queue_admission(
+        lease.queue_item_id,
+        actor=WorkflowPackQueueCancellationActor.OPERATOR,
+        reason="Operator cancelled repeated queue admission.",
+        evidence_ref=evidence_ref,
+    )
     return lease.queue_item_id
 
 

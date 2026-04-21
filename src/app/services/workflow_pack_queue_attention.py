@@ -19,6 +19,7 @@ from app.services.workflow_pack_queue_policy_catalog import (
 from app.services.workflow_pack_queue_events import build_workflow_pack_queue_event_catalog
 
 WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT = 5
+WORKFLOW_PACK_QUEUE_FAILURE_CLUSTER_THRESHOLD = 2
 
 
 def build_workflow_pack_queue_attention_summary(
@@ -51,11 +52,18 @@ def build_workflow_pack_queue_attention_summary(
     )
     terminal_items = _build_terminal_queue_attention_items()
     recovery_blocked_items = _build_recovery_blocked_attention_items()
-    attention_items = saturated_items + stale_items + terminal_items + recovery_blocked_items
+    failure_cluster_items = _build_failure_cluster_attention_items()
+    attention_items = (
+        saturated_items
+        + stale_items
+        + failure_cluster_items
+        + terminal_items
+        + recovery_blocked_items
+    )
     status_summary = [
         "Workflow-pack queue heartbeat attention is derived from queue source posture and does not replace run-ledger, review, or task-flow state.",
         "Queue attention covers active-admission saturation and stale active admissions from the current queue source.",
-        "Durable queue events now preserve admission, rejection, release, timeout, cancellation, retry, and replay evidence; repeated-failure clustering remains a separate terminal-state slice.",
+        "Durable queue events now preserve admission, rejection, release, timeout, cancellation, retry, and replay evidence; repeated timeout, cancellation, and blocked-recovery clusters are derived attention, not source queue state.",
     ]
     if len(attention_items) > WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT:
         status_summary.append(
@@ -68,6 +76,7 @@ def build_workflow_pack_queue_attention_summary(
         stale_item_count=len(stale_items),
         terminal_event_count=len(terminal_items),
         recovery_blocked_count=len(recovery_blocked_items),
+        failure_cluster_count=len(failure_cluster_items),
         active_admission_count=queue_status.active_admission_count,
         queue_source_mode=queue_status.queue_source_mode,
         attention_limit=WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT,
@@ -157,6 +166,93 @@ def _build_recovery_blocked_attention_items() -> list[WorkflowPackQueueAttention
         if item is not None:
             items.append(item)
     return items
+
+
+def _build_failure_cluster_attention_items() -> list[WorkflowPackQueueAttentionItemResponse]:
+    clustered_events: dict[
+        tuple[str, str, str, str | None],
+        list[WorkflowPackQueueEventDescriptor],
+    ] = {}
+    for event in build_workflow_pack_queue_event_catalog(limit=100).events:
+        if event.event_type not in {
+            WorkflowPackQueueEventType.ADMISSION_TIMED_OUT,
+            WorkflowPackQueueEventType.ADMISSION_CANCELLED,
+            WorkflowPackQueueEventType.RETRY_BLOCKED,
+            WorkflowPackQueueEventType.REPLAY_BLOCKED,
+        }:
+            continue
+        if event.lane is None:
+            continue
+        cluster_key = (
+            event.event_type.value,
+            event.workflow_pack_id,
+            event.workflow_pack_version,
+            event.lane.value,
+        )
+        clustered_events.setdefault(cluster_key, []).append(event)
+
+    items: list[WorkflowPackQueueAttentionItemResponse] = []
+    for events in clustered_events.values():
+        if len(events) < WORKFLOW_PACK_QUEUE_FAILURE_CLUSTER_THRESHOLD:
+            continue
+        item = _failure_cluster_to_attention_item(events)
+        if item is not None:
+            items.append(item)
+    return items
+
+
+def _failure_cluster_to_attention_item(
+    events: list[WorkflowPackQueueEventDescriptor],
+) -> WorkflowPackQueueAttentionItemResponse | None:
+    latest_event = events[0]
+    if latest_event.lane is None:
+        return None
+    policy = get_workflow_pack_queue_policy_descriptor(
+        pack_id=latest_event.workflow_pack_id,
+        version=latest_event.workflow_pack_version,
+    )
+    if policy is None:
+        return None
+    attention_type = _cluster_attention_type(latest_event.event_type)
+    reason = _cluster_attention_reason(
+        event_type=latest_event.event_type,
+        event_count=len(events),
+    )
+    return WorkflowPackQueueAttentionItemResponse(
+        attention_type=attention_type,
+        policy_id=latest_event.policy_id or policy.policy_id,
+        workflow_pack_id=latest_event.workflow_pack_id,
+        workflow_pack_version=latest_event.workflow_pack_version,
+        lane=latest_event.lane,
+        queue_item_id=None,
+        active_count=0,
+        event_count=len(events),
+        max_concurrent_runs_per_lane=policy.max_concurrent_runs_per_lane,
+        admitted_at=None,
+        attention_reasons=[reason],
+    )
+
+
+def _cluster_attention_type(
+    event_type: WorkflowPackQueueEventType,
+) -> WorkflowPackQueueAttentionType:
+    if event_type is WorkflowPackQueueEventType.ADMISSION_TIMED_OUT:
+        return WorkflowPackQueueAttentionType.QUEUE_TIMEOUT_CLUSTER
+    if event_type is WorkflowPackQueueEventType.ADMISSION_CANCELLED:
+        return WorkflowPackQueueAttentionType.QUEUE_CANCELLATION_CLUSTER
+    return WorkflowPackQueueAttentionType.QUEUE_RECOVERY_BLOCKED_CLUSTER
+
+
+def _cluster_attention_reason(
+    *,
+    event_type: WorkflowPackQueueEventType,
+    event_count: int,
+) -> str:
+    if event_type is WorkflowPackQueueEventType.ADMISSION_TIMED_OUT:
+        return f"{event_count} workflow-pack queue admissions timed out for this pack, version, and lane."
+    if event_type is WorkflowPackQueueEventType.ADMISSION_CANCELLED:
+        return f"{event_count} workflow-pack queue admissions were cancelled for this pack, version, and lane."
+    return f"{event_count} workflow-pack queue recovery decisions were blocked for this pack, version, and lane."
 
 
 def _recovery_blocked_event_to_attention_item(

@@ -48,6 +48,9 @@ class WorkflowPackQueueAttentionType(str, Enum):
     QUEUE_ITEM_TIMED_OUT = "QUEUE_ITEM_TIMED_OUT"
     QUEUE_RETRY_BLOCKED = "QUEUE_RETRY_BLOCKED"
     QUEUE_REPLAY_BLOCKED = "QUEUE_REPLAY_BLOCKED"
+    QUEUE_TIMEOUT_CLUSTER = "QUEUE_TIMEOUT_CLUSTER"
+    QUEUE_CANCELLATION_CLUSTER = "QUEUE_CANCELLATION_CLUSTER"
+    QUEUE_RECOVERY_BLOCKED_CLUSTER = "QUEUE_RECOVERY_BLOCKED_CLUSTER"
 
 
 class WorkflowPackCallerIdentityClass(str, Enum):
@@ -507,6 +510,10 @@ class WorkflowPackQueueAttentionItemResponse(BaseModel):
         description="Queue admission item identifier when attention is tied to one active item.",
     )
     active_count: int = Field(description="Current active admission count for the lane.")
+    event_count: int | None = Field(
+        default=None,
+        description="Number of durable queue events represented by this attention item, when it is event-derived.",
+    )
     max_concurrent_runs_per_lane: int = Field(
         description="Configured concurrent admission limit for this lane."
     )
@@ -539,6 +546,10 @@ class WorkflowPackQueueAttentionSummaryResponse(BaseModel):
     recovery_blocked_count: int = Field(
         default=0,
         description="Number of durable retry or replay decisions blocked by workflow-pack queue policy.",
+    )
+    failure_cluster_count: int = Field(
+        default=0,
+        description="Number of repeated terminal or blocked-recovery queue event clusters requiring operator attention.",
     )
     active_admission_count: int = Field(
         description="Number of active queue admission leases in the source queue status."
