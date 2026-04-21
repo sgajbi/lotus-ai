@@ -1,14 +1,17 @@
+import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.artifact_store import get_artifact_object_store
 from app.services.workflow_pack_queue_admission import (
     acquire_workflow_pack_queue_admission,
     release_workflow_pack_queue_admission,
 )
 from app.services.workflow_pack_registry import get_workflow_pack_registration
+from tests.support.workflow_pack_fixtures import advisor_brief_workflow_pack_execution_request_json
 from tests.support.runtime_settings import override_runtime_settings
 
 
@@ -136,6 +139,69 @@ def test_workflow_pack_queue_events_report_admission_history_without_worker_inte
     assert detail_body["events"][0]["workflow_surface"] == "advisor-brief-panel"
     assert detail_body["events"][2]["caller_app"] == "lotus-gateway"
     assert detail_body["events"][2]["tenant_id"] == "tenant-sg-001"
+
+
+def test_workflow_pack_execution_records_queue_request_snapshot_artifact(
+    client: TestClient,
+) -> None:
+    correlation_id = "corr-queue-request-snapshot-api"
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=advisor_brief_workflow_pack_execution_request_json(correlation_id=correlation_id),
+    )
+
+    assert execute_response.status_code == 200
+
+    catalog_response = client.get(
+        "/platform/workflow-packs/queue-events",
+        params={"workflow_pack_id": "advisor_brief.pack"},
+    )
+
+    assert catalog_response.status_code == 200
+    body = catalog_response.json()
+    matching_events = [
+        event for event in body["events"] if event["correlation_id"] == correlation_id
+    ]
+    assert [event["event_type"] for event in reversed(matching_events)] == [
+        "ADMISSION_REQUESTED",
+        "ADMISSION_QUEUED",
+        "ADMISSION_ADMITTED",
+        "ADMISSION_GRANTED",
+        "ADMISSION_RELEASED",
+    ]
+    assert all(len(event["artifact_refs"]) == 1 for event in matching_events)
+    snapshot_ref = matching_events[0]["artifact_refs"][0]
+    assert all(event["artifact_refs"] == [snapshot_ref] for event in matching_events)
+    assert snapshot_ref["domain"] == "workflow_pack"
+    assert snapshot_ref["artifact_type"] == "queue_request_snapshot"
+    assert snapshot_ref["source_object_kind"] == "workflow_pack_queue_item"
+    assert snapshot_ref["source_object_id"] == matching_events[0]["queue_item_id"]
+    assert snapshot_ref["retention_posture"] == "retained_for_recovery"
+    assert "task_request" not in matching_events[0]
+    assert "payload" not in matching_events[0]
+    snapshot_object_key = snapshot_ref["storage_reference"].partition("://")[2]
+    snapshot_object = get_artifact_object_store().get_object(object_key=snapshot_object_key)
+    assert snapshot_object is not None
+    snapshot_payload = json.loads(snapshot_object.payload)
+    assert snapshot_payload["queue_item_id"] == matching_events[0]["queue_item_id"]
+    assert snapshot_payload["registration_ref"] == "advisor_brief.pack@v1"
+    assert snapshot_payload["workflow_authority_owner"] == "lotus-gateway"
+    assert snapshot_payload["queue_lane"] == "LATENCY_SENSITIVE"
+    assert snapshot_payload["task_request"]["caller"]["correlation_id"] == correlation_id
+
+    replay_response = client.post(
+        f"/platform/workflow-packs/queue-events/{matching_events[0]['queue_item_id']}/replay-decisions",
+        json={
+            "requested_by": "operator-a",
+            "reason": "Replay after comparing queue request snapshot evidence.",
+            "evidence_ref": "support-ticket-queue-snapshot-replay",
+        },
+    )
+
+    assert replay_response.status_code == 200
+    replay_event = replay_response.json()["event"]
+    assert replay_event["event_type"] == "REPLAY_RECORDED"
+    assert replay_event["artifact_refs"] == [snapshot_ref]
 
 
 def test_workflow_pack_queue_event_detail_rejects_unknown_item(client: TestClient) -> None:

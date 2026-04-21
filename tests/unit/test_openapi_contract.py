@@ -1044,6 +1044,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "recovery_attempt_number" in workflow_pack_queue_event_schema["properties"]
     assert "requested_by" in workflow_pack_queue_event_schema["properties"]
     assert "evidence_ref" in workflow_pack_queue_event_schema["properties"]
+    assert "artifact_refs" in workflow_pack_queue_event_schema["properties"]
     assert "queue_event_source_mode" in workflow_pack_queue_event_catalog_schema["properties"]
     assert "events" in workflow_pack_queue_event_catalog_schema["properties"]
     assert "queue_item_id" in workflow_pack_queue_event_detail_schema["properties"]

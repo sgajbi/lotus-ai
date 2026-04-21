@@ -220,4 +220,5 @@ def _record_recovery_event(
         recovery_attempt_number=recovery_attempt_number,
         requested_by=requested_by,
         evidence_ref=evidence_ref,
+        artifact_refs=source_event.artifact_refs,
     )
