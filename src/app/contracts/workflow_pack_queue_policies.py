@@ -4,6 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.contracts.artifacts import ArtifactDescriptor
+
 
 class WorkflowPackQueueLane(str, Enum):
     LATENCY_SENSITIVE = "LATENCY_SENSITIVE"
@@ -455,6 +457,13 @@ class WorkflowPackQueueEventDescriptor(BaseModel):
     evidence_ref: str | None = Field(
         default=None,
         description="Bounded evidence reference supporting retry or replay posture.",
+    )
+    artifact_refs: list[ArtifactDescriptor] = Field(
+        default_factory=list,
+        description=(
+            "Governed artifact references associated with this queue event, such as a bounded "
+            "execution request snapshot. Raw task payloads are not embedded in queue events."
+        ),
     )
     message: str = Field(description="Human-readable queue event summary.")
     recorded_at: str = Field(description="UTC timestamp when the event was recorded.")

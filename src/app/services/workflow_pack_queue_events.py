@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.config import settings
+from app.contracts.artifacts import ArtifactDescriptor
 from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueEventCatalogResponse,
@@ -56,6 +57,7 @@ def record_workflow_pack_queue_event(
     recovery_attempt_number: int | None = None,
     requested_by: str | None = None,
     evidence_ref: str | None = None,
+    artifact_refs: list[ArtifactDescriptor] | None = None,
 ) -> WorkflowPackQueueEventDescriptor:
     ensure_workflow_pack_queue_event_store_ready()
     descriptor = WorkflowPackQueueEventDescriptor(
@@ -77,6 +79,7 @@ def record_workflow_pack_queue_event(
         recovery_attempt_number=recovery_attempt_number,
         requested_by=requested_by,
         evidence_ref=evidence_ref,
+        artifact_refs=[artifact.model_copy(deep=True) for artifact in artifact_refs or []],
         message=message,
         recorded_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
     )

@@ -9,6 +9,8 @@ from uuid import uuid4
 
 from fastapi import HTTPException, status
 
+from app.contracts.artifacts import ArtifactDescriptor
+from app.contracts.tasks import TaskExecutionRequest
 from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueCancellationActor,
     WorkflowPackQueueEventType,
@@ -26,6 +28,9 @@ from app.services.workflow_pack_queue_events import (
 from app.services.workflow_pack_queue_policy_catalog import (
     get_workflow_pack_queue_policy_descriptor,
 )
+from app.services.workflow_pack_queue_request_snapshots import (
+    persist_workflow_pack_queue_request_snapshot,
+)
 
 
 @dataclass(frozen=True)
@@ -41,6 +46,7 @@ class WorkflowPackQueueAdmissionLease:
     correlation_id: str | None = None
     tenant_id: str | None = None
     workflow_surface: str | None = None
+    artifact_refs: tuple[ArtifactDescriptor, ...] = ()
 
 
 _queue_lock = RLock()
@@ -56,6 +62,7 @@ def workflow_pack_queue_admission(
     correlation_id: str | None = None,
     tenant_id: str | None = None,
     workflow_surface: str | None = None,
+    task_request: TaskExecutionRequest | None = None,
 ) -> Iterator[WorkflowPackQueueAdmissionLease]:
     lease = acquire_workflow_pack_queue_admission(
         registration=registration,
@@ -64,6 +71,7 @@ def workflow_pack_queue_admission(
         correlation_id=correlation_id,
         tenant_id=tenant_id,
         workflow_surface=workflow_surface,
+        task_request=task_request,
     )
     try:
         yield lease
@@ -79,6 +87,7 @@ def acquire_workflow_pack_queue_admission(
     correlation_id: str | None = None,
     tenant_id: str | None = None,
     workflow_surface: str | None = None,
+    task_request: TaskExecutionRequest | None = None,
 ) -> WorkflowPackQueueAdmissionLease:
     _ensure_queue_event_store_ready_for_admission()
     queue_item_id = f"wpq_{uuid4().hex}"
@@ -113,6 +122,13 @@ def acquire_workflow_pack_queue_admission(
         )
 
     lane = requested_lane or policy.default_lane
+    request_artifact_refs = _persist_request_snapshot_artifact_refs(
+        queue_item_id=queue_item_id,
+        registration=registration,
+        lane=lane,
+        task_request=task_request,
+        workflow_surface=workflow_surface,
+    )
     _record_queue_event(
         queue_item_id=queue_item_id,
         event_type=WorkflowPackQueueEventType.ADMISSION_REQUESTED,
@@ -123,6 +139,7 @@ def acquire_workflow_pack_queue_admission(
         correlation_id=correlation_id,
         tenant_id=tenant_id,
         workflow_surface=workflow_surface,
+        artifact_refs=request_artifact_refs,
         message=(
             "Workflow-pack queue admission requested for "
             f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}` in lane `{lane.value}`."
@@ -139,6 +156,7 @@ def acquire_workflow_pack_queue_admission(
             correlation_id=correlation_id,
             tenant_id=tenant_id,
             workflow_surface=workflow_surface,
+            artifact_refs=request_artifact_refs,
             reason_code="QUEUE_LANE_NOT_ALLOWED",
             message=(
                 "Workflow-pack queue admission rejected because the requested lane "
@@ -167,6 +185,7 @@ def acquire_workflow_pack_queue_admission(
                 correlation_id=correlation_id,
                 tenant_id=tenant_id,
                 workflow_surface=workflow_surface,
+                artifact_refs=request_artifact_refs,
             )
         if active_lane_count >= policy.max_concurrent_runs_per_lane:
             _raise_capacity_rejection(
@@ -179,6 +198,7 @@ def acquire_workflow_pack_queue_admission(
                 correlation_id=correlation_id,
                 tenant_id=tenant_id,
                 workflow_surface=workflow_surface,
+                artifact_refs=request_artifact_refs,
             )
 
         queued_state = _transition_queue_state(
@@ -195,6 +215,7 @@ def acquire_workflow_pack_queue_admission(
             correlation_id=correlation_id,
             tenant_id=tenant_id,
             workflow_surface=workflow_surface,
+            artifact_refs=request_artifact_refs,
             message=(
                 "Workflow-pack queue item queued after policy and capacity evaluation for "
                 f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}` in lane "
@@ -215,6 +236,7 @@ def acquire_workflow_pack_queue_admission(
             correlation_id=correlation_id,
             tenant_id=tenant_id,
             workflow_surface=workflow_surface,
+            artifact_refs=request_artifact_refs,
             message=(
                 "Workflow-pack queue item admitted for execution handoff for "
                 f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}` in lane "
@@ -237,6 +259,7 @@ def acquire_workflow_pack_queue_admission(
             correlation_id=correlation_id,
             tenant_id=tenant_id,
             workflow_surface=workflow_surface,
+            artifact_refs=tuple(request_artifact_refs),
         )
         _record_queue_event(
             queue_item_id=lease.queue_item_id,
@@ -248,6 +271,7 @@ def acquire_workflow_pack_queue_admission(
             correlation_id=correlation_id,
             tenant_id=tenant_id,
             workflow_surface=workflow_surface,
+            artifact_refs=request_artifact_refs,
             message=(
                 "Workflow-pack queue admission granted for "
                 f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}` in lane `{lane.value}`."
@@ -289,6 +313,7 @@ def release_workflow_pack_queue_admission(
         correlation_id=lease.correlation_id,
         tenant_id=lease.tenant_id,
         workflow_surface=lease.workflow_surface,
+        artifact_refs=lease.artifact_refs,
         reason_code=(
             "EXECUTION_TIMEOUT"
             if event_type is WorkflowPackQueueEventType.ADMISSION_TIMED_OUT
@@ -341,6 +366,7 @@ def cancel_workflow_pack_queue_admission(
         correlation_id=lease.correlation_id,
         tenant_id=lease.tenant_id,
         workflow_surface=lease.workflow_surface,
+        artifact_refs=lease.artifact_refs,
         reason_code="QUEUE_ADMISSION_CANCELLED",
         message=(
             "Workflow-pack queue admission cancelled by "
@@ -409,6 +435,7 @@ def _raise_capacity_rejection(
     correlation_id: str | None = None,
     tenant_id: str | None = None,
     workflow_surface: str | None = None,
+    artifact_refs: list[ArtifactDescriptor] | None = None,
 ) -> None:
     _record_queue_event(
         queue_item_id=queue_item_id,
@@ -420,6 +447,7 @@ def _raise_capacity_rejection(
         correlation_id=correlation_id,
         tenant_id=tenant_id,
         workflow_surface=workflow_surface,
+        artifact_refs=artifact_refs,
         reason_code=limit_name.upper(),
         message=(
             f"Workflow-pack queue admission rejected because `{limit_name}` is already at {limit}."
@@ -451,6 +479,7 @@ def _record_admission_lifecycle_event(
     correlation_id: str | None = None,
     tenant_id: str | None = None,
     workflow_surface: str | None = None,
+    artifact_refs: list[ArtifactDescriptor] | None = None,
 ) -> None:
     _record_queue_event(
         queue_item_id=queue_item_id,
@@ -462,8 +491,31 @@ def _record_admission_lifecycle_event(
         correlation_id=correlation_id,
         tenant_id=tenant_id,
         workflow_surface=workflow_surface,
+        artifact_refs=artifact_refs,
         message=message,
     )
+
+
+def _persist_request_snapshot_artifact_refs(
+    *,
+    queue_item_id: str,
+    registration: WorkflowPackRegistrationDescriptor,
+    lane: WorkflowPackQueueLane,
+    task_request: TaskExecutionRequest | None,
+    workflow_surface: str | None,
+) -> list[ArtifactDescriptor]:
+    if task_request is None:
+        return []
+    return [
+        persist_workflow_pack_queue_request_snapshot(
+            queue_item_id=queue_item_id,
+            registration=registration,
+            lane=lane,
+            task_request=task_request,
+            workflow_surface=workflow_surface,
+            created_at=_utc_now_timestamp(),
+        )
+    ]
 
 
 def _get_policy_for_lease(
@@ -537,6 +589,7 @@ def _record_queue_event(
     tenant_id: str | None = None,
     workflow_surface: str | None = None,
     reason_code: str | None = None,
+    artifact_refs: list[ArtifactDescriptor] | tuple[ArtifactDescriptor, ...] | None = None,
 ) -> None:
     resolved_workflow_pack_id = policy.workflow_pack_id if policy is not None else workflow_pack_id
     resolved_workflow_pack_version = (
@@ -557,6 +610,7 @@ def _record_queue_event(
         tenant_id=tenant_id,
         workflow_surface=workflow_surface,
         reason_code=reason_code,
+        artifact_refs=list(artifact_refs or []),
         message=message,
     )
 

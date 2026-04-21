@@ -89,6 +89,7 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
         correlation_id=request.task_request.caller.correlation_id,
         tenant_id=request.task_request.caller.tenant_id,
         workflow_surface=workflow_surface,
+        task_request=request.task_request,
     ):
         try:
             resolved = resolve_task_execution(context=context)

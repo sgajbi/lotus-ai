@@ -44,6 +44,7 @@ def execute_task_with_optional_workflow_pack_recording(
             correlation_id=request.caller.correlation_id,
             tenant_id=request.caller.tenant_id,
             workflow_surface=resolved_binding.binding.default_workflow_surface,
+            task_request=request,
         )
         if resolved_binding is not None
         else nullcontext()
