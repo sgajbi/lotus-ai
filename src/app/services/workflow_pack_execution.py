@@ -27,6 +27,12 @@ from app.services.workflow_pack_run_ledger import (
     ensure_workflow_pack_run_store_ready,
     record_registered_workflow_pack_run,
 )
+from app.services.workflow_pack_task_flow_recording import (
+    record_task_flow_for_workflow_pack_run,
+)
+from app.services.workflow_pack_task_flow_service import (
+    ensure_workflow_pack_task_flow_store_ready,
+)
 
 
 def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPackExecutionResponse:
@@ -74,6 +80,7 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
 
     context = validate_task_request(request.task_request)
     ensure_workflow_pack_run_store_ready()
+    ensure_workflow_pack_task_flow_store_ready()
     try:
         resolved = resolve_task_execution(context=context)
         response = build_task_execution_response(resolved=resolved)
@@ -85,6 +92,12 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
         response=response,
         registration=registration,
         workflow_surface=workflow_surface,
+    )
+    record_task_flow_for_workflow_pack_run(
+        context=context,
+        registration=registration,
+        workflow_surface=workflow_surface,
+        workflow_pack_run=workflow_pack_run,
     )
     response = _attach_workflow_pack_run_id(response=response, workflow_pack_run=workflow_pack_run)
 

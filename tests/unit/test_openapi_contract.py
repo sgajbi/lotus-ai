@@ -1181,7 +1181,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/ai/tasks/execute"]["post"]["operationId"] == "executeTask"
     assert (
         spec["paths"]["/ai/tasks/execute"]["post"]["responses"]["503"]["description"]
-        == "Workflow-pack run store is not ready for this pack-backed task path."
+        == "Workflow-pack runtime store is not ready for this pack-backed task path."
     )
     assert spec["paths"]["/ai/audit/{request_id}"]["get"]["operationId"] == "getAuditRecord"
     assert spec["paths"]["/ai/audit"]["get"]["operationId"] == "listAuditRecords"

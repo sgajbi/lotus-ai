@@ -13,6 +13,12 @@ from app.services.workflow_pack_run_ledger import (
     ensure_workflow_pack_run_store_ready,
     record_workflow_pack_run_for_task_execution,
 )
+from app.services.workflow_pack_task_flow_recording import (
+    record_task_flow_for_workflow_pack_run,
+)
+from app.services.workflow_pack_task_flow_service import (
+    ensure_workflow_pack_task_flow_store_ready,
+)
 
 
 def execute_task(request: TaskExecutionRequest) -> TaskExecutionResponse:
@@ -27,6 +33,7 @@ def execute_task_with_optional_workflow_pack_recording(
     resolved_binding = resolve_workflow_pack_execution_binding_for_task(context=context)
     if resolved_binding is not None:
         ensure_workflow_pack_run_store_ready()
+        ensure_workflow_pack_task_flow_store_ready()
     resolved = resolve_task_execution(context=context)
     response = build_task_execution_response(resolved=resolved)
     persist_task_execution_audit(context=context, response=response)
@@ -35,6 +42,13 @@ def execute_task_with_optional_workflow_pack_recording(
         response=response,
         resolved_binding=resolved_binding,
     )
+    if workflow_pack_run is not None and resolved_binding is not None:
+        record_task_flow_for_workflow_pack_run(
+            context=context,
+            registration=resolved_binding.registration,
+            workflow_surface=resolved_binding.binding.default_workflow_surface,
+            workflow_pack_run=workflow_pack_run,
+        )
     return _attach_workflow_pack_run_id(
         response=response, workflow_pack_run=workflow_pack_run
     ), workflow_pack_run
