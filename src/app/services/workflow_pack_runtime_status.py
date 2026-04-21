@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.contracts.workflow_pack_runs import (
+    WorkflowPackRunCatalogResponse,
     WorkflowPackRunDescriptor,
     WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
@@ -143,7 +144,7 @@ def build_workflow_pack_runtime_status_summary() -> WorkflowPackRuntimeStatusSum
 
 def build_workflow_pack_run_runtime_summary(
     *,
-    run_catalog=None,
+    run_catalog: WorkflowPackRunCatalogResponse | None = None,
 ) -> WorkflowPackRunRuntimeSummaryResponse:
     catalog = run_catalog or build_workflow_pack_run_catalog()
     runs = catalog.runs
@@ -192,9 +193,9 @@ def build_workflow_pack_run_runtime_summary(
 def build_workflow_pack_executable_activity_summary(
     *,
     executable_registration_refs: list[str],
-    run_catalog,
+    run_catalog: WorkflowPackRunCatalogResponse,
 ) -> list[WorkflowPackExecutableActivitySummaryResponse]:
-    runs_by_registration_ref: dict[str, list] = {}
+    runs_by_registration_ref: dict[str, list[WorkflowPackRunDescriptor]] = {}
     for run in run_catalog.runs:
         runs_by_registration_ref.setdefault(run.registration_ref, []).append(run)
 
@@ -286,7 +287,7 @@ def build_workflow_pack_executable_activity_summary(
 def build_workflow_pack_attention_queue_summary(
     *,
     executable_registration_refs: list[str],
-    run_catalog,
+    run_catalog: WorkflowPackRunCatalogResponse,
 ) -> WorkflowPackAttentionQueueSummaryResponse:
     executable_registration_ref_set = set(executable_registration_refs)
     actionable_runs: list[WorkflowPackRunDescriptor] = []

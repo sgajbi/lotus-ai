@@ -2,6 +2,7 @@ from dataclasses import replace
 
 from fastapi import HTTPException
 
+from app.contracts.tasks import TaskExecutionRequest
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunReviewActionRequest,
     WorkflowPackRunReviewActionType,
@@ -41,6 +42,7 @@ def test_workflow_pack_run_operator_profile_reports_review_pending_attention() -
     assert profile.artifact_ref_count == 1
     assert profile.evidence_descriptor_count >= 1
     assert profile.history_event_count == 1
+    assert profile.latest_event_type is not None
     assert profile.latest_event_type.value == "RUN_RECORDED"
     assert profile.latest_event_actor == "lotus-ai.workflow-pack-run-ledger"
     assert profile.latest_review_event_at is None
@@ -89,6 +91,7 @@ def test_workflow_pack_run_operator_profile_marks_superseded_run_historical() ->
     assert profile.superseded is True
     assert profile.replacement_run_id == replacement_run.run_id
     assert profile.review_state is WorkflowPackRunReviewState.REVISED
+    assert profile.latest_event_type is not None
     assert profile.latest_event_type.value == "LINEAGE_UPDATED"
     assert profile.latest_review_event_at is not None
     assert profile.latest_review_actor == "review:banker.sg.operator.001"
@@ -148,6 +151,7 @@ def test_workflow_pack_run_operator_profile_marks_accepted_run_ready() -> None:
     assert profile.review_pending is False
     assert profile.failed is False
     assert profile.superseded is False
+    assert profile.latest_event_type is not None
     assert profile.latest_event_type.value == "REVIEW_STATE_UPDATED"
     assert profile.latest_review_event_at is not None
     assert profile.latest_review_actor == "review:banker.sg.operator.002"
@@ -181,6 +185,7 @@ def test_workflow_pack_run_operator_profile_exposes_failed_partial_output() -> N
     assert profile.supportability_status.value == "ACTION_REQUIRED"
     assert profile.failed is True
     assert profile.partial_output_visible is True
+    assert profile.latest_event_type is not None
     assert profile.latest_event_type.value == "RUN_RECORDED"
     assert profile.latest_review_event_at is None
     assert profile.latest_review_actor is None
@@ -201,5 +206,5 @@ def test_workflow_pack_run_operator_profile_rejects_unknown_run() -> None:
         raise AssertionError("Expected unknown workflow-pack run operator profile lookup to fail")
 
 
-def _build_request(correlation_id: str):
+def _build_request(correlation_id: str) -> TaskExecutionRequest:
     return advisor_brief_task_execution_request(correlation_id=correlation_id)

@@ -178,31 +178,30 @@ def test_build_workflow_pack_runtime_status_summary_tracks_activity_for_executab
     assert (
         summary.executable_activity[0].latest_action_required_recorded_at == "2026-04-19T11:00:00Z"
     )
-    assert (
-        summary.executable_activity[0].latest_action_required_review_summary.review_transition_count
-        == 0
-    )
-    assert (
-        summary.executable_activity[0].latest_action_required_review_summary.has_review_history
-        is False
-    )
-    assert summary.executable_activity[0].latest_action_required_provenance.artifact_ref_count == 1
-    assert summary.executable_activity[0].latest_action_required_provenance.artifact_types == [
-        "run_output_summary"
-    ]
-    assert (
-        summary.executable_activity[0].latest_action_required_provenance.evidence_descriptor_count
-        == 1
-    )
-    assert summary.executable_activity[0].latest_action_required_provenance.evidence_types == [
-        "evidence_0"
-    ]
+    latest_action_required_review_summary = summary.executable_activity[
+        0
+    ].latest_action_required_review_summary
+    assert latest_action_required_review_summary is not None
+    assert latest_action_required_review_summary.review_transition_count == 0
+    assert latest_action_required_review_summary.has_review_history is False
+    latest_action_required_provenance = summary.executable_activity[
+        0
+    ].latest_action_required_provenance
+    assert latest_action_required_provenance is not None
+    assert latest_action_required_provenance.artifact_ref_count == 1
+    assert latest_action_required_provenance.artifact_types == ["run_output_summary"]
+    assert latest_action_required_provenance.evidence_descriptor_count == 1
+    assert latest_action_required_provenance.evidence_types == ["evidence_0"]
     assert summary.executable_activity[0].latest_ready_run_id == "run-accepted"
     assert summary.executable_activity[0].latest_ready_recorded_at == "2026-04-19T12:00:00Z"
-    assert summary.executable_activity[0].latest_ready_review_summary.review_transition_count == 0
-    assert summary.executable_activity[0].latest_ready_review_summary.has_review_history is False
-    assert summary.executable_activity[0].latest_ready_provenance.artifact_ref_count == 1
-    assert summary.executable_activity[0].latest_ready_provenance.evidence_descriptor_count == 1
+    latest_ready_review_summary = summary.executable_activity[0].latest_ready_review_summary
+    assert latest_ready_review_summary is not None
+    assert latest_ready_review_summary.review_transition_count == 0
+    assert latest_ready_review_summary.has_review_history is False
+    latest_ready_provenance = summary.executable_activity[0].latest_ready_provenance
+    assert latest_ready_provenance is not None
+    assert latest_ready_provenance.artifact_ref_count == 1
+    assert latest_ready_provenance.evidence_descriptor_count == 1
     assert summary.executable_activity[0].latest_run_id == "run-accepted"
     assert summary.executable_activity[0].latest_recorded_at == "2026-04-19T12:00:00Z"
     assert summary.executable_activity[0].has_activity is True

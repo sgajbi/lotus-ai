@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from app.contracts.artifacts import ArtifactDescriptor
+from app.contracts.artifacts import (
+    ArtifactDescriptor,
+    ArtifactLifecycleStatus,
+    ArtifactStorageBackend,
+)
 from app.contracts.evidence import ExecutionEvidenceDescriptor
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunDescriptor,
@@ -73,12 +77,12 @@ def build_workflow_pack_run_descriptor(
                 artifact_type="run_output_summary",
                 source_object_kind="workflow_pack_run",
                 source_object_id=run_id,
-                lifecycle_status="runtime_generated",
+                lifecycle_status=ArtifactLifecycleStatus.RUNTIME_GENERATED,
                 retention_posture="retained_for_review",
                 media_type="application/json",
                 byte_size=128,
                 checksum_sha256=f"sha256:{index}",
-                storage_backend="memory",
+                storage_backend=ArtifactStorageBackend.MEMORY,
                 storage_reference=f"memory://{run_id}/{index}",
                 created_at=created_at,
                 created_by="test",

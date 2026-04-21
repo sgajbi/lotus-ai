@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -64,7 +66,9 @@ def test_workflow_pack_eligibility_route_denies_unknown_registration(
     assert body["eligibility_result"] == "DENIED_NOT_REGISTERED"
 
 
-def test_workflow_pack_eligibility_route_degrades_when_sql_store_is_unmigrated(tmp_path) -> None:
+def test_workflow_pack_eligibility_route_degrades_when_sql_store_is_unmigrated(
+    tmp_path: Path,
+) -> None:
     database_url = f"sqlite:///{tmp_path / 'workflow-pack-eligibility-unmigrated-api.db'}"
 
     with override_runtime_settings(

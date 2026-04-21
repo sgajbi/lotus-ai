@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -57,7 +59,7 @@ def test_workflow_pack_control_action_route_blocks_non_operator_caller(
 
 
 def test_workflow_pack_control_history_and_registration_state_support_sqlalchemy_store(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     database_url = f"sqlite:///{tmp_path / 'workflow-pack-control-store.db'}"
     upgrade_database_to_head(database_url)
@@ -100,7 +102,9 @@ def test_workflow_pack_control_history_and_registration_state_support_sqlalchemy
     assert detail_response.json()["registration"]["activation_state"] == "PAUSED"
 
 
-def test_workflow_pack_control_routes_degrade_when_sql_store_is_unmigrated(tmp_path) -> None:
+def test_workflow_pack_control_routes_degrade_when_sql_store_is_unmigrated(
+    tmp_path: Path,
+) -> None:
     database_url = f"sqlite:///{tmp_path / 'workflow-pack-control-unmigrated-api.db'}"
 
     with override_runtime_settings(

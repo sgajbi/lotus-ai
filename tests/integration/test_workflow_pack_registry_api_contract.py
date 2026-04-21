@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -160,7 +162,9 @@ def test_workflow_pack_registration_detail_route_rejects_unknown_registration(
     assert "Unknown workflow-pack registration" in response.json()["detail"]
 
 
-def test_workflow_pack_registry_routes_degrade_when_sql_store_is_unmigrated(tmp_path) -> None:
+def test_workflow_pack_registry_routes_degrade_when_sql_store_is_unmigrated(
+    tmp_path: Path,
+) -> None:
     database_url = f"sqlite:///{tmp_path / 'workflow-pack-registry-unmigrated-api.db'}"
 
     with override_runtime_settings(

@@ -18,6 +18,7 @@ from app.contracts.workflow_pack_runs import (
 from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunEventRecord,
     WorkflowPackRunRecord,
+    WorkflowPackRunRepository,
 )
 from app.services.access_control_authorization import (
     authorize_request,
@@ -226,7 +227,7 @@ def _require_review_caller(*, run: WorkflowPackRunRecord, caller_app: str) -> No
 
 def _require_replacement_run(
     *,
-    store,
+    store: WorkflowPackRunRepository,
     run: WorkflowPackRunRecord,
     replacement_run_id: str | None,
 ) -> WorkflowPackRunRecord:
