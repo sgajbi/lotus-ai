@@ -9,6 +9,7 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunRuntimeState,
     WorkflowPackRunSupportabilityStatus,
 )
+from app.contracts.workflow_pack_queue_policies import WorkflowPackQueueCancellationActor
 from app.contracts.workflow_packs import WorkflowPackExecutionMode, WorkflowPackRegistrationStatus
 from app.services.workflow_pack_bindings import get_workflow_pack_execution_binding_descriptor
 from app.services.workflow_pack_registry import get_workflow_pack_registration
@@ -22,6 +23,7 @@ from app.services.workflow_pack_runtime_status import (
 )
 from app.services.workflow_pack_queue_admission import (
     acquire_workflow_pack_queue_admission,
+    cancel_workflow_pack_queue_admission,
     release_workflow_pack_queue_admission,
 )
 from app.contracts.workflow_pack_task_flows import WorkflowPackTaskFlowStatus
@@ -341,6 +343,38 @@ def test_build_workflow_pack_queue_attention_summary_surfaces_saturation_and_sta
     assert summary.items[1].queue_item_id == leases[0].queue_item_id
     assert summary.items[1].admitted_at == leases[0].admitted_at
     assert any("Durable queue events now preserve" in line for line in summary.status_summary)
+
+
+def test_build_workflow_pack_queue_attention_summary_surfaces_terminal_event_posture() -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    timed_out_lease = acquire_workflow_pack_queue_admission(registration=registration)
+    release_workflow_pack_queue_admission(
+        timed_out_lease.queue_item_id,
+        now_utc=datetime.now(UTC) + timedelta(minutes=10),
+    )
+    cancelled_lease = acquire_workflow_pack_queue_admission(registration=registration)
+    cancel_workflow_pack_queue_admission(
+        cancelled_lease.queue_item_id,
+        actor=WorkflowPackQueueCancellationActor.OPERATOR,
+        reason="Operator cancelled stale queue admission.",
+        evidence_ref="support-ticket-queue-1",
+    )
+
+    summary = build_workflow_pack_queue_attention_summary()
+
+    terminal_items = [
+        item
+        for item in summary.items
+        if item.attention_type in {"QUEUE_ITEM_CANCELLED", "QUEUE_ITEM_TIMED_OUT"}
+    ]
+    assert summary.heartbeat_status == "ATTENTION_REQUIRED"
+    assert summary.terminal_event_count == 2
+    assert [item.attention_type for item in terminal_items] == [
+        "QUEUE_ITEM_CANCELLED",
+        "QUEUE_ITEM_TIMED_OUT",
+    ]
+    assert {item.active_count for item in terminal_items} == {0}
 
 
 def test_build_workflow_pack_run_runtime_summary_counts_action_required_and_historical_posture(

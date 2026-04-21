@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from app.contracts.workflow_pack_queue_policies import WorkflowPackQueueStatusItemDescriptor
+from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueEventDescriptor,
+    WorkflowPackQueueEventType,
+    WorkflowPackQueueStatusItemDescriptor,
+)
 from app.contracts.workflow_packs import (
     WorkflowPackQueueAttentionItemResponse,
     WorkflowPackQueueAttentionSummaryResponse,
@@ -12,6 +16,7 @@ from app.services.workflow_pack_queue_policy_catalog import (
     build_workflow_pack_queue_status,
     get_workflow_pack_queue_policy_descriptor,
 )
+from app.services.workflow_pack_queue_events import build_workflow_pack_queue_event_catalog
 
 WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT = 5
 
@@ -44,11 +49,12 @@ def build_workflow_pack_queue_attention_summary(
         active_items=queue_status.active_items,
         now=now,
     )
-    attention_items = saturated_items + stale_items
+    terminal_items = _build_terminal_queue_attention_items()
+    attention_items = saturated_items + stale_items + terminal_items
     status_summary = [
         "Workflow-pack queue heartbeat attention is derived from queue source posture and does not replace run-ledger, review, or task-flow state.",
         "Queue attention covers active-admission saturation and stale active admissions from the current queue source.",
-        "Durable queue events now preserve admission, rejection, and release evidence; timeout, cancellation, and retry-cluster attention remains a separate terminal-state slice.",
+        "Durable queue events now preserve admission, rejection, release, timeout, and cancellation evidence; retry-cluster attention remains a separate terminal-state slice.",
     ]
     if len(attention_items) > WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT:
         status_summary.append(
@@ -59,6 +65,7 @@ def build_workflow_pack_queue_attention_summary(
         attention_count=len(attention_items),
         saturated_lane_count=len(saturated_items),
         stale_item_count=len(stale_items),
+        terminal_event_count=len(terminal_items),
         active_admission_count=queue_status.active_admission_count,
         queue_source_mode=queue_status.queue_source_mode,
         attention_limit=WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT,
@@ -104,6 +111,63 @@ def _build_stale_queue_attention_items(
             )
         )
     return items
+
+
+def _build_terminal_queue_attention_items() -> list[WorkflowPackQueueAttentionItemResponse]:
+    terminal_events = [
+        event
+        for event in build_workflow_pack_queue_event_catalog(limit=100).events
+        if event.event_type
+        in {
+            WorkflowPackQueueEventType.ADMISSION_CANCELLED,
+            WorkflowPackQueueEventType.ADMISSION_TIMED_OUT,
+        }
+    ]
+    items: list[WorkflowPackQueueAttentionItemResponse] = []
+    seen_queue_items: set[str] = set()
+    for event in terminal_events:
+        if event.queue_item_id in seen_queue_items:
+            continue
+        seen_queue_items.add(event.queue_item_id)
+        item = _terminal_event_to_attention_item(event)
+        if item is not None:
+            items.append(item)
+    return items
+
+
+def _terminal_event_to_attention_item(
+    event: WorkflowPackQueueEventDescriptor,
+) -> WorkflowPackQueueAttentionItemResponse | None:
+    if event.lane is None:
+        return None
+    policy = get_workflow_pack_queue_policy_descriptor(
+        pack_id=event.workflow_pack_id,
+        version=event.workflow_pack_version,
+    )
+    if policy is None:
+        return None
+    attention_type = (
+        WorkflowPackQueueAttentionType.QUEUE_ITEM_TIMED_OUT
+        if event.event_type is WorkflowPackQueueEventType.ADMISSION_TIMED_OUT
+        else WorkflowPackQueueAttentionType.QUEUE_ITEM_CANCELLED
+    )
+    reason = (
+        "Workflow-pack queue admission exceeded the policy execution timeout."
+        if event.event_type is WorkflowPackQueueEventType.ADMISSION_TIMED_OUT
+        else "Workflow-pack queue admission was cancelled with durable evidence."
+    )
+    return WorkflowPackQueueAttentionItemResponse(
+        attention_type=attention_type,
+        policy_id=event.policy_id or policy.policy_id,
+        workflow_pack_id=event.workflow_pack_id,
+        workflow_pack_version=event.workflow_pack_version,
+        lane=event.lane,
+        queue_item_id=event.queue_item_id,
+        active_count=0,
+        max_concurrent_runs_per_lane=policy.max_concurrent_runs_per_lane,
+        admitted_at=None,
+        attention_reasons=[reason],
+    )
 
 
 def _parse_utc_timestamp(value: str) -> datetime | None:

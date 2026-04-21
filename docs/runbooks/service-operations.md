@@ -258,8 +258,9 @@ Before treating any workflow-pack-enabled path as operator-ready:
 20. when pack-backed `POST /platform/workflow-packs/execute` or `POST /ai/tasks/execute` returns a
    queue-policy `429`, treat that as admission rejected before audit, run-ledger, or task-flow side
    effects; inspect `/platform/workflow-packs/queue-events` to confirm the rejected admission reason
-21. use `GET /platform/workflow-packs/queue-events/{queue_item_id}` when support needs the exact queue-item history from request through grant, rejection, or release; this source does not replace run-ledger, review-state, or task-flow posture
-22. when inspecting the embedded `workflow_pack_runtime.attention_queue` block in `GET /platform/runtime-status`, treat `queue_depth` as the full actionable backlog across executable pack versions and `items` as only the newest bounded sample up to `queue_limit`; if `queue_depth` exceeds `queue_limit`, continue triage through the ledger catalog rather than assuming the visible queue is the full backlog
+21. use `GET /platform/workflow-packs/queue-events/{queue_item_id}` when support needs the exact queue-item history from request through grant, rejection, release, timeout, or cancellation; this source does not replace run-ledger, review-state, or task-flow posture and cancellation evidence does not claim the current synchronous execution body was interrupted
+22. when runtime-status `queue_attention` surfaces terminal timeout or cancellation posture, treat it as durable queue-boundary evidence for operator triage; retry, replay, and retry-cluster action remains outside the current workflow-pack queue contract
+23. when inspecting the embedded `workflow_pack_runtime.attention_queue` block in `GET /platform/runtime-status`, treat `queue_depth` as the full actionable backlog across executable pack versions and `items` as only the newest bounded sample up to `queue_limit`; if `queue_depth` exceeds `queue_limit`, continue triage through the ledger catalog rather than assuming the visible queue is the full backlog
 
 ## Durable Async Recovery
 
