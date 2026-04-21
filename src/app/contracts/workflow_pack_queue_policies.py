@@ -140,7 +140,10 @@ class WorkflowPackQueueRetryPolicyDescriptor(BaseModel):
                 "retryable_failure_codes must not overlap non_retryable_failure_codes: "
                 + ", ".join(overlapping_codes)
             )
-        if self.max_attempts == 1 and self.backoff_strategy is not WorkflowPackQueueBackoffStrategy.NONE:
+        if (
+            self.max_attempts == 1
+            and self.backoff_strategy is not WorkflowPackQueueBackoffStrategy.NONE
+        ):
             raise ValueError("single-attempt queue policies must use NONE backoff")
         if self.max_attempts > 1 and self.backoff_strategy is WorkflowPackQueueBackoffStrategy.NONE:
             raise ValueError("multi-attempt queue policies require an explicit backoff strategy")
@@ -277,9 +280,7 @@ class WorkflowPackQueuePolicyDescriptor(BaseModel):
             raise ValueError("execution_timeout_seconds must exceed admission_timeout_seconds")
         if self.stale_queue_threshold_seconds <= self.admission_timeout_seconds:
             raise ValueError("stale_queue_threshold_seconds must exceed admission_timeout_seconds")
-        evidence_types = {
-            requirement.evidence_type for requirement in self.evidence_requirements
-        }
+        evidence_types = {requirement.evidence_type for requirement in self.evidence_requirements}
         required_evidence_types = {
             "registry_authorization",
             "queue_policy_evaluation",
@@ -288,8 +289,7 @@ class WorkflowPackQueuePolicyDescriptor(BaseModel):
         missing_evidence_types = sorted(required_evidence_types.difference(evidence_types))
         if missing_evidence_types:
             raise ValueError(
-                "queue policy missing required evidence types: "
-                + ", ".join(missing_evidence_types)
+                "queue policy missing required evidence types: " + ", ".join(missing_evidence_types)
             )
         return self
 
@@ -338,9 +338,7 @@ class WorkflowPackQueueLaneStatusDescriptor(BaseModel):
     max_concurrent_runs_per_lane: int = Field(
         description="Configured concurrent admission limit for this lane."
     )
-    max_queued_runs_per_lane: int = Field(
-        description="Configured queued-run limit for this lane."
-    )
+    max_queued_runs_per_lane: int = Field(description="Configured queued-run limit for this lane.")
     saturation_attention_threshold: float = Field(
         description="Configured utilization threshold for operator attention."
     )

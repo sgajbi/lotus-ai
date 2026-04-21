@@ -159,7 +159,9 @@ def reset_workflow_pack_registry_state() -> None:
 
 def _validated_registrations() -> list[WorkflowPackRegistrationDescriptor]:
     from app.services.workflow_pack_bindings import validate_workflow_pack_execution_bindings
-    from app.services.workflow_pack_queue_policy_catalog import validate_workflow_pack_queue_policies
+    from app.services.workflow_pack_queue_policy_catalog import (
+        validate_workflow_pack_queue_policies,
+    )
 
     registrations = get_workflow_pack_registry_store().list_registrations()
     validate_workflow_pack_registrations(registrations)

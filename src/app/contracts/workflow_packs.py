@@ -490,10 +490,14 @@ class WorkflowPackQueueAttentionItemResponse(BaseModel):
     attention_type: WorkflowPackQueueAttentionType = Field(
         description="Governed queue attention classification."
     )
-    policy_id: str = Field(description="Queue policy identifier associated with the attention item.")
+    policy_id: str = Field(
+        description="Queue policy identifier associated with the attention item."
+    )
     workflow_pack_id: str = Field(description="Workflow-pack family identifier.")
     workflow_pack_version: str = Field(description="Workflow-pack version.")
-    lane: WorkflowPackQueueLane = Field(description="Queue lane associated with the attention item.")
+    lane: WorkflowPackQueueLane = Field(
+        description="Queue lane associated with the attention item."
+    )
     queue_item_id: str | None = Field(
         default=None,
         description="Queue admission item identifier when attention is tied to one active item.",

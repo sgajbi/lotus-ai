@@ -436,9 +436,7 @@ def test_workflow_pack_execute_route_uses_requested_allowed_queue_lane(
 
     assert execute_response.status_code == 200
     body = execute_response.json()
-    assert body["workflow_pack_run"]["correlation_id"] == (
-        "corr-pack-execute-review-lane-001"
-    )
+    assert body["workflow_pack_run"]["correlation_id"] == ("corr-pack-execute-review-lane-001")
     assert run_catalog_response.status_code == 200
     assert run_catalog_response.json()["run_count"] == 1
 

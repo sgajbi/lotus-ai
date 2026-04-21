@@ -102,7 +102,9 @@ def test_build_workflow_pack_registry_catalog_exposes_validation_rules() -> None
     assert any(
         "Internal execution bindings are validated" in line for line in catalog.status_summary
     )
-    assert any("Queue-policy inspection is version-scoped" in line for line in catalog.status_summary)
+    assert any(
+        "Queue-policy inspection is version-scoped" in line for line in catalog.status_summary
+    )
 
 
 def test_build_workflow_pack_registration_detail_exposes_deny_by_default_registration_truth() -> (

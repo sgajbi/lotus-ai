@@ -285,13 +285,14 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/workflow-packs/queue-status"]["get"]["operationId"] == (
         "getWorkflowPackQueueStatus"
     )
-    assert spec["paths"]["/platform/workflow-packs/queue-status/{queue_item_id}"]["get"][
-        "operationId"
-    ] == "getWorkflowPackQueueStatusDetail"
     assert (
-        spec["paths"]["/platform/workflow-packs/queue-status/{queue_item_id}"]["get"][
-            "responses"
-        ]["503"]["description"]
+        spec["paths"]["/platform/workflow-packs/queue-status/{queue_item_id}"]["get"]["operationId"]
+        == "getWorkflowPackQueueStatusDetail"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/queue-status/{queue_item_id}"]["get"]["responses"][
+            "503"
+        ]["description"]
         == "Workflow-pack registry store is not ready."
     )
     assert (

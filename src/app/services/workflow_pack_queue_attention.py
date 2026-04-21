@@ -84,9 +84,7 @@ def _build_stale_queue_attention_items(
         if admitted_at is None:
             is_stale = True
         else:
-            is_stale = now - admitted_at > timedelta(
-                seconds=policy.stale_queue_threshold_seconds
-            )
+            is_stale = now - admitted_at > timedelta(seconds=policy.stale_queue_threshold_seconds)
         if not is_stale:
             continue
         items.append(
