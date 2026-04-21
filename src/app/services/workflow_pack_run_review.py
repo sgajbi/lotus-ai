@@ -31,7 +31,14 @@ from app.services.workflow_pack_run_ledger import (
     map_workflow_pack_run_record,
 )
 from app.services.workflow_pack_run_review_policy import resolve_allowed_review_actions
+from app.services.workflow_pack_run_supportability import (
+    resolve_workflow_pack_run_record_supportability_status,
+)
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
+from app.services.workflow_pack_task_flow_service import (
+    ensure_workflow_pack_task_flow_store_ready,
+    synchronize_task_flow_review_action,
+)
 
 
 def apply_workflow_pack_run_review_action(
@@ -40,6 +47,7 @@ def apply_workflow_pack_run_review_action(
     request: WorkflowPackRunReviewActionRequest,
 ) -> WorkflowPackRunReviewActionResponse:
     ensure_workflow_pack_run_store_ready()
+    ensure_workflow_pack_task_flow_store_ready()
     store = get_workflow_pack_run_store()
     run = store.get_run(run_id=run_id)
     if run is None:
@@ -99,6 +107,17 @@ def apply_workflow_pack_run_review_action(
         )
         store.save_event(replacement_event)
         recorded_events.append(replacement_event)
+
+    synchronize_task_flow_review_action(
+        run_id=updated_run.run_id,
+        review_state=WorkflowPackRunReviewState(updated_run.review_state),
+        supportability_status=resolve_workflow_pack_run_record_supportability_status(updated_run),
+        action_type=request.action_type,
+        reviewed_by=request.reviewed_by,
+        reason=request.reason,
+        recorded_at=recorded_events[0].recorded_at,
+        replacement_run_id=replacement_run.run_id if replacement_run is not None else None,
+    )
 
     return WorkflowPackRunReviewActionResponse(
         service=settings.service_name,

@@ -550,6 +550,13 @@ def test_workflow_pack_run_review_action_updates_review_state(client: TestClient
     assert detail_body["review"]["review_transition_count"] == 1
     assert detail_body["review"]["has_review_history"] is True
 
+    task_flow_response = client.get("/platform/workflow-packs/task-flows")
+    assert task_flow_response.status_code == 200
+    task_flow = task_flow_response.json()["task_flows"][0]
+    assert task_flow["flow_status"] == "COMPLETED"
+    assert task_flow["review_states"][run_id] == "ACCEPTED"
+    assert task_flow["supportability_status"] == "READY"
+
 
 def test_workflow_pack_run_review_action_allows_operator_caller(client: TestClient) -> None:
     execute_response = client.post(
@@ -680,6 +687,23 @@ def test_workflow_pack_run_review_action_revise_links_replacement_lineage(
     assert any(
         event["event_type"] == "LINEAGE_UPDATED" for event in replacement_detail_body["events"]
     )
+
+    task_flow_response = client.get("/platform/workflow-packs/task-flows")
+    assert task_flow_response.status_code == 200
+    task_flows = task_flow_response.json()["task_flows"]
+    original_task_flow = next(flow for flow in task_flows if original_run_id in flow["run_refs"])
+    revised_task_flow = next(flow for flow in task_flows if revised_run_id in flow["run_refs"])
+    expected_lineage = {
+        "superseded_run_id": original_run_id,
+        "replacement_run_id": revised_run_id,
+        "review_action_ref": "REVISE",
+        "reason": "Reviewer requested a revised advisor brief draft.",
+    }
+    assert original_task_flow["flow_status"] == "SUPERSEDED"
+    assert original_task_flow["review_states"][original_run_id] == "REVISED"
+    assert original_task_flow["supportability_status"] == "HISTORICAL"
+    assert expected_lineage in original_task_flow["replacement_lineage"]
+    assert expected_lineage in revised_task_flow["replacement_lineage"]
 
 
 def test_workflow_pack_run_review_action_rejects_unknown_replacement_run(

@@ -117,8 +117,9 @@ handoff execution family:
 1. task-flow and checkpoint descriptors are persisted behind memory or SQL-backed stores,
 2. lifecycle transition guards are implemented inside `lotus-ai`,
 3. Phase-1 workflow-pack execution records task-flow and checkpoint state for implicit and explicit pack-backed execution paths,
-4. `/platform/workflow-packs/task-flows` plus detail and checkpoint routes expose cataloged posture,
-5. public mutation routes, gateway publication, Workbench rendering, heartbeat attention, and domain handoff execution remain future slices.
+4. workflow-pack review actions synchronize task-flow review posture and replacement lineage,
+5. `/platform/workflow-packs/task-flows` plus detail and checkpoint routes expose cataloged posture,
+6. public mutation routes, gateway publication, Workbench rendering, heartbeat attention, and domain handoff execution remain future slices.
 
 ## Provider Surface
 

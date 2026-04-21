@@ -485,6 +485,8 @@ async def apply_workflow_pack_run_review_action_route(
         return apply_workflow_pack_run_review_action(run_id=run_id, request=request)
     except WorkflowPackRunStoreUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except WorkflowPackTaskFlowStoreNotReadyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post(

@@ -5,12 +5,19 @@ from app.contracts.workflow_pack_task_flows import (
     WorkflowPackTaskFlowCatalogResponse,
     WorkflowPackTaskFlowCheckpointDescriptor,
     WorkflowPackTaskFlowCheckpointCatalogResponse,
+    WorkflowPackTaskFlowCheckpointTransition,
     WorkflowPackTaskFlowDetailResponse,
     WorkflowPackTaskFlowDescriptor,
+    WorkflowPackTaskFlowReplacementLineageDescriptor,
     WorkflowPackTaskFlowStatus,
     WorkflowPackTaskFlowStepDescriptor,
 )
-from app.contracts.workflow_pack_runs import WorkflowPackRunSupportabilityStatus
+from app.contracts.evidence import ExecutionEvidenceDescriptor
+from app.contracts.workflow_pack_runs import (
+    WorkflowPackRunReviewActionType,
+    WorkflowPackRunReviewState,
+    WorkflowPackRunSupportabilityStatus,
+)
 from app.config import settings
 from app.repositories.workflow_pack_task_flow_repository import (
     WorkflowPackTaskFlowCheckpointRecord,
@@ -211,6 +218,50 @@ def build_workflow_pack_task_flow_checkpoint_catalog(
     )
 
 
+def synchronize_task_flow_review_action(
+    *,
+    run_id: str,
+    review_state: WorkflowPackRunReviewState,
+    supportability_status: WorkflowPackRunSupportabilityStatus,
+    action_type: WorkflowPackRunReviewActionType,
+    reviewed_by: str,
+    reason: str,
+    recorded_at: str,
+    replacement_run_id: str | None = None,
+) -> None:
+    ensure_workflow_pack_task_flow_store_ready()
+    task_flow_store = get_workflow_pack_task_flow_store()
+    lineage = (
+        WorkflowPackTaskFlowReplacementLineageDescriptor(
+            superseded_run_id=run_id,
+            replacement_run_id=replacement_run_id,
+            review_action_ref=action_type.value,
+            reason=reason,
+        )
+        if replacement_run_id is not None
+        else None
+    )
+    for record in task_flow_store.list_task_flows():
+        task_flow = record.descriptor
+        if run_id in task_flow.run_refs:
+            _record_review_checkpoint(
+                task_flow_store=task_flow_store,
+                task_flow=task_flow,
+                run_id=run_id,
+                review_state=review_state,
+                supportability_status=supportability_status,
+                action_type=action_type,
+                reviewed_by=reviewed_by,
+                reason=reason,
+                recorded_at=recorded_at,
+                lineage=lineage,
+            )
+            continue
+        if replacement_run_id is not None and replacement_run_id in task_flow.run_refs:
+            updated = _with_review_lineage(task_flow, lineage=lineage)
+            task_flow_store.save_task_flow(WorkflowPackTaskFlowRecord(descriptor=updated))
+
+
 def _filter_task_flows(
     task_flows: list[WorkflowPackTaskFlowDescriptor],
     *,
@@ -260,6 +311,148 @@ def _filters_applied(
     if supportability_status is not None:
         filters["supportability_status"] = supportability_status.value
     return filters
+
+
+def _record_review_checkpoint(
+    *,
+    task_flow_store: WorkflowPackTaskFlowRepository,
+    task_flow: WorkflowPackTaskFlowDescriptor,
+    run_id: str,
+    review_state: WorkflowPackRunReviewState,
+    supportability_status: WorkflowPackRunSupportabilityStatus,
+    action_type: WorkflowPackRunReviewActionType,
+    reviewed_by: str,
+    reason: str,
+    recorded_at: str,
+    lineage: WorkflowPackTaskFlowReplacementLineageDescriptor | None,
+) -> WorkflowPackTaskFlowDescriptor:
+    resulting_status = _resolve_review_task_flow_status(action_type)
+    step_id = task_flow.current_step_id or task_flow.step_statuses[0].step_id
+    checkpoint = WorkflowPackTaskFlowCheckpointDescriptor(
+        checkpoint_id=f"{task_flow.task_flow_id}_review_{run_id}_{action_type.value.lower()}",
+        task_flow_id=task_flow.task_flow_id,
+        step_id=step_id,
+        transition=_resolve_review_checkpoint_transition(action_type),
+        actor=f"review:{reviewed_by}",
+        recorded_at=recorded_at,
+        evidence_refs=[
+            ExecutionEvidenceDescriptor(
+                evidence_type="workflow_pack_review_action",
+                summary="Workflow-pack run review action synchronized into task-flow posture.",
+                attributes={
+                    "run_id": run_id,
+                    "action_type": action_type.value,
+                    "review_state": review_state.value,
+                },
+            )
+        ],
+        run_id=run_id,
+        review_ref=run_id,
+        reason=reason,
+    )
+    require_task_flow_transition_allowed(task_flow.flow_status, resulting_status)
+    updated = _append_checkpoint_to_task_flow(
+        task_flow,
+        checkpoint=checkpoint,
+        resulting_status=resulting_status,
+        current_step_id=(
+            step_id
+            if resulting_status
+            in {
+                WorkflowPackTaskFlowStatus.RUNNING,
+                WorkflowPackTaskFlowStatus.WAITING_FOR_INPUT,
+                WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW,
+                WorkflowPackTaskFlowStatus.BLOCKED,
+            }
+            else None
+        ),
+        updated_at=recorded_at,
+    )
+    updated = _with_review_state_and_lineage(
+        updated,
+        run_id=run_id,
+        review_state=review_state,
+        supportability_status=supportability_status,
+        lineage=lineage,
+    )
+    task_flow_store.save_checkpoint(WorkflowPackTaskFlowCheckpointRecord(descriptor=checkpoint))
+    task_flow_store.save_task_flow(WorkflowPackTaskFlowRecord(descriptor=updated))
+    return updated
+
+
+def _with_review_state_and_lineage(
+    task_flow: WorkflowPackTaskFlowDescriptor,
+    *,
+    run_id: str,
+    review_state: WorkflowPackRunReviewState,
+    supportability_status: WorkflowPackRunSupportabilityStatus,
+    lineage: WorkflowPackTaskFlowReplacementLineageDescriptor | None,
+) -> WorkflowPackTaskFlowDescriptor:
+    payload = task_flow.model_dump(mode="json")
+    review_states = dict(payload["review_states"])
+    review_states[run_id] = review_state.value
+    payload["review_states"] = review_states
+    payload["supportability_status"] = supportability_status.value
+    if lineage is not None:
+        payload["replacement_lineage"] = _append_lineage_payload(task_flow, lineage=lineage)
+    return WorkflowPackTaskFlowDescriptor.model_validate(payload)
+
+
+def _with_review_lineage(
+    task_flow: WorkflowPackTaskFlowDescriptor,
+    *,
+    lineage: WorkflowPackTaskFlowReplacementLineageDescriptor | None,
+) -> WorkflowPackTaskFlowDescriptor:
+    if lineage is None:
+        return task_flow
+    payload = task_flow.model_dump(mode="json")
+    payload["replacement_lineage"] = _append_lineage_payload(task_flow, lineage=lineage)
+    return WorkflowPackTaskFlowDescriptor.model_validate(payload)
+
+
+def _append_lineage_payload(
+    task_flow: WorkflowPackTaskFlowDescriptor,
+    *,
+    lineage: WorkflowPackTaskFlowReplacementLineageDescriptor,
+) -> list[dict[str, object]]:
+    lineage_payload = [item.model_dump(mode="json") for item in task_flow.replacement_lineage]
+    candidate = lineage.model_dump(mode="json")
+    if candidate not in lineage_payload:
+        lineage_payload.append(candidate)
+    return lineage_payload
+
+
+def _resolve_review_task_flow_status(
+    action_type: WorkflowPackRunReviewActionType,
+) -> WorkflowPackTaskFlowStatus:
+    if action_type == WorkflowPackRunReviewActionType.ACCEPT:
+        return WorkflowPackTaskFlowStatus.COMPLETED
+    if action_type == WorkflowPackRunReviewActionType.REJECT:
+        return WorkflowPackTaskFlowStatus.FAILED
+    if action_type in {
+        WorkflowPackRunReviewActionType.REVISE,
+        WorkflowPackRunReviewActionType.SUPERSEDE,
+    }:
+        return WorkflowPackTaskFlowStatus.SUPERSEDED
+    if action_type == WorkflowPackRunReviewActionType.ABANDON:
+        return WorkflowPackTaskFlowStatus.CANCELLED
+    return WorkflowPackTaskFlowStatus.BLOCKED
+
+
+def _resolve_review_checkpoint_transition(
+    action_type: WorkflowPackRunReviewActionType,
+) -> WorkflowPackTaskFlowCheckpointTransition:
+    if action_type == WorkflowPackRunReviewActionType.ACCEPT:
+        return WorkflowPackTaskFlowCheckpointTransition.FLOW_COMPLETED
+    if action_type == WorkflowPackRunReviewActionType.REJECT:
+        return WorkflowPackTaskFlowCheckpointTransition.STEP_FAILED
+    if action_type == WorkflowPackRunReviewActionType.REVISE:
+        return WorkflowPackTaskFlowCheckpointTransition.REVISION_REQUESTED
+    if action_type == WorkflowPackRunReviewActionType.SUPERSEDE:
+        return WorkflowPackTaskFlowCheckpointTransition.FLOW_SUPERSEDED
+    if action_type == WorkflowPackRunReviewActionType.ABANDON:
+        return WorkflowPackTaskFlowCheckpointTransition.FLOW_CANCELLED
+    return WorkflowPackTaskFlowCheckpointTransition.FLOW_BLOCKED
 
 
 def _append_checkpoint_to_task_flow(
