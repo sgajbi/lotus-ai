@@ -129,6 +129,13 @@ def record_workflow_pack_queue_replay_decision(
     )
 
 
+def get_workflow_pack_queue_recovery_source_event(
+    *,
+    queue_item_id: str,
+) -> WorkflowPackQueueEventDescriptor:
+    return _latest_terminal_event(_load_history(queue_item_id).events)
+
+
 def _require_recovery_evidence(*, requested_by: str, reason: str, evidence_ref: str) -> None:
     if not requested_by.strip() or not reason.strip() or not evidence_ref.strip():
         raise HTTPException(

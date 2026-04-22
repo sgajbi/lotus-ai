@@ -19,7 +19,11 @@ from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueState,
     is_workflow_pack_queue_state_transition_allowed,
 )
-from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
+from app.contracts.workflow_packs import (
+    WorkflowPackCallerIdentityClass,
+    WorkflowPackEnvironment,
+    WorkflowPackRegistrationDescriptor,
+)
 from app.services.workflow_pack_queue_events import (
     WorkflowPackQueueEventStoreNotReadyError,
     ensure_workflow_pack_queue_event_store_ready,
@@ -63,6 +67,8 @@ def workflow_pack_queue_admission(
     tenant_id: str | None = None,
     workflow_surface: str | None = None,
     task_request: TaskExecutionRequest | None = None,
+    environment: WorkflowPackEnvironment | None = None,
+    caller_identity_class: WorkflowPackCallerIdentityClass | None = None,
 ) -> Iterator[WorkflowPackQueueAdmissionLease]:
     lease = acquire_workflow_pack_queue_admission(
         registration=registration,
@@ -72,6 +78,8 @@ def workflow_pack_queue_admission(
         tenant_id=tenant_id,
         workflow_surface=workflow_surface,
         task_request=task_request,
+        environment=environment,
+        caller_identity_class=caller_identity_class,
     )
     try:
         yield lease
@@ -88,6 +96,8 @@ def acquire_workflow_pack_queue_admission(
     tenant_id: str | None = None,
     workflow_surface: str | None = None,
     task_request: TaskExecutionRequest | None = None,
+    environment: WorkflowPackEnvironment | None = None,
+    caller_identity_class: WorkflowPackCallerIdentityClass | None = None,
 ) -> WorkflowPackQueueAdmissionLease:
     _ensure_queue_event_store_ready_for_admission()
     queue_item_id = f"wpq_{uuid4().hex}"
@@ -128,6 +138,8 @@ def acquire_workflow_pack_queue_admission(
         lane=lane,
         task_request=task_request,
         workflow_surface=workflow_surface,
+        environment=environment,
+        caller_identity_class=caller_identity_class,
     )
     _record_queue_event(
         queue_item_id=queue_item_id,
@@ -503,6 +515,8 @@ def _persist_request_snapshot_artifact_refs(
     lane: WorkflowPackQueueLane,
     task_request: TaskExecutionRequest | None,
     workflow_surface: str | None,
+    environment: WorkflowPackEnvironment | None,
+    caller_identity_class: WorkflowPackCallerIdentityClass | None,
 ) -> list[ArtifactDescriptor]:
     if task_request is None:
         return []
@@ -513,6 +527,8 @@ def _persist_request_snapshot_artifact_refs(
             lane=lane,
             task_request=task_request,
             workflow_surface=workflow_surface,
+            environment=environment,
+            caller_identity_class=caller_identity_class,
             created_at=_utc_now_timestamp(),
         )
     ]

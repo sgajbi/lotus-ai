@@ -36,6 +36,9 @@ from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueStatusDetailResponse,
     WorkflowPackQueueStatusResponse,
 )
+from app.contracts.workflow_pack_queue_recovery import (
+    WorkflowPackQueueRecoveryExecutionResponse,
+)
 from app.contracts.workflow_pack_task_flows import (
     WorkflowPackTaskFlowCatalogResponse,
     WorkflowPackTaskFlowCheckpointCatalogResponse,
@@ -82,6 +85,10 @@ from app.services.workflow_pack_queue_events import (
 from app.services.workflow_pack_queue_recovery import (
     record_workflow_pack_queue_replay_decision,
     record_workflow_pack_queue_retry_decision,
+)
+from app.services.workflow_pack_queue_recovery_execution import (
+    execute_workflow_pack_queue_replay,
+    execute_workflow_pack_queue_retry,
 )
 
 router = APIRouter(tags=["platform"])
@@ -352,6 +359,41 @@ async def record_workflow_pack_queue_retry_decision_route(
 
 
 @router.post(
+    "/platform/workflow-packs/queue-events/{queue_item_id}/retry-executions",
+    response_model=WorkflowPackQueueRecoveryExecutionResponse,
+    operation_id="executeWorkflowPackQueueRetry",
+    summary="Execute lotus-ai workflow-pack queue retry",
+    description=(
+        "Records bounded retry decision evidence for a terminal workflow-pack queue item, "
+        "reconstructs the retained request snapshot, and executes the workflow pack through the "
+        "normal governed execution path."
+    ),
+    responses={
+        200: {"description": "Workflow-pack queue retry executed successfully."},
+        404: {"description": "Unknown workflow-pack queue item history."},
+        409: {"description": "Queue item is not eligible for retry execution."},
+        422: {"description": "Invalid retry execution request supplied."},
+        503: {"description": "Workflow-pack queue event store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def execute_workflow_pack_queue_retry_route(
+    queue_item_id: str,
+    request: WorkflowPackQueueRetryDecisionRequest,
+) -> WorkflowPackQueueRecoveryExecutionResponse:
+    try:
+        return execute_workflow_pack_queue_retry(
+            queue_item_id=queue_item_id,
+            failure_code=request.failure_code,
+            requested_by=request.requested_by,
+            reason=request.reason,
+            evidence_ref=request.evidence_ref,
+        )
+    except WorkflowPackQueueEventStoreNotReadyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post(
     "/platform/workflow-packs/queue-events/{queue_item_id}/replay-decisions",
     response_model=WorkflowPackQueueRecoveryDecisionResponse,
     operation_id="recordWorkflowPackQueueReplayDecision",
@@ -392,6 +434,40 @@ async def record_workflow_pack_queue_replay_decision_route(
             "This response does not claim that workflow-pack execution was replayed.",
         ],
     )
+
+
+@router.post(
+    "/platform/workflow-packs/queue-events/{queue_item_id}/replay-executions",
+    response_model=WorkflowPackQueueRecoveryExecutionResponse,
+    operation_id="executeWorkflowPackQueueReplay",
+    summary="Execute lotus-ai workflow-pack queue replay",
+    description=(
+        "Records bounded replay decision evidence for a terminal workflow-pack queue item, "
+        "reconstructs the retained request snapshot, and executes the workflow pack through the "
+        "normal governed execution path."
+    ),
+    responses={
+        200: {"description": "Workflow-pack queue replay executed successfully."},
+        404: {"description": "Unknown workflow-pack queue item history."},
+        409: {"description": "Queue item is not eligible for replay execution."},
+        422: {"description": "Invalid replay execution request supplied."},
+        503: {"description": "Workflow-pack queue event store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def execute_workflow_pack_queue_replay_route(
+    queue_item_id: str,
+    request: WorkflowPackQueueReplayDecisionRequest,
+) -> WorkflowPackQueueRecoveryExecutionResponse:
+    try:
+        return execute_workflow_pack_queue_replay(
+            queue_item_id=queue_item_id,
+            requested_by=request.requested_by,
+            reason=request.reason,
+            evidence_ref=request.evidence_ref,
+        )
+    except WorkflowPackQueueEventStoreNotReadyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post(

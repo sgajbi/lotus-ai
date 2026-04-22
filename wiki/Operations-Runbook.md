@@ -85,7 +85,9 @@ Good examples:
    - `/platform/workflow-packs/queue-status`
    - `/platform/workflow-packs/queue-events`
    - `/platform/workflow-packs/queue-events/{queue_item_id}/retry-decisions`
+   - `/platform/workflow-packs/queue-events/{queue_item_id}/retry-executions`
    - `/platform/workflow-packs/queue-events/{queue_item_id}/replay-decisions`
+   - `/platform/workflow-packs/queue-events/{queue_item_id}/replay-executions`
    - `/platform/workflow-packs/eligibility/evaluate`
    - `/platform/workflow-packs/control-history`
 
@@ -104,7 +106,7 @@ Use this sequence:
 5. inspect the embedded `queue_attention` block in `/platform/runtime-status` when lane
    saturation, stale active-admission posture, terminal queue posture, blocked recovery posture,
    repeated-failure clusters, or degraded queue-source posture may explain delayed workflow-pack execution,
-6. inspect `/platform/workflow-packs/queue-events` when support needs durable source evidence for queue admission requests, queued posture, admitted posture, execution handoff, rejections, releases, timeout posture, cancellation posture, request-snapshot artifact refs, and retry/replay recovery decisions; use the retry/replay decision routes only with explicit actor, reason, and evidence reference,
+6. inspect `/platform/workflow-packs/queue-events` when support needs durable source evidence for queue admission requests, queued posture, admitted posture, execution handoff, rejections, releases, timeout posture, cancellation posture, request-snapshot artifact refs, and retry/replay recovery decisions; use the retry/replay decision routes only with explicit actor, reason, and evidence reference, and use retry/replay execution routes only when the source queue item carries a retained executable request snapshot,
 7. inspect `/platform/workflow-packs/control-history` when rollout state changed or operator action is disputed,
 8. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block in `/platform/runtime-status` reports `READY` before treating activation state and control history as restart-safe truth,
 9. when `LOTUS_AI_WORKFLOW_PACK_QUEUE_EVENT_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_queue_event_store` block in `/platform/runtime-status` reports `READY` before treating queue event history as restart-safe truth,
@@ -116,8 +118,8 @@ Use this sequence:
     for the reason code,
 14. treat queue cancellation events as queue-boundary evidence only; they do not claim that
     already-running synchronous execution was interrupted, and treat `RETRY_RECORDED` or
-    `REPLAY_RECORDED` as recovery-decision evidence rather than proof that workflow logic
-    was executed again,
+    `REPLAY_RECORDED` as recovery-decision evidence unless it is returned by the explicit
+    retry/replay execution route with a new workflow-pack execution response,
 15. when reading the embedded workflow-pack attention queue, treat `queue_depth` as the full actionable backlog and `items` as only the newest bounded sample up to `queue_limit`.
 
 The owner-facing source for that procedure is:

@@ -79,7 +79,9 @@
 - Workflow-pack queue status: /platform/workflow-packs/queue-status
 - Workflow-pack queue events: /platform/workflow-packs/queue-events
 - Workflow-pack queue retry decisions: /platform/workflow-packs/queue-events/{queue_item_id}/retry-decisions
+- Workflow-pack queue retry executions: /platform/workflow-packs/queue-events/{queue_item_id}/retry-executions
 - Workflow-pack queue replay decisions: /platform/workflow-packs/queue-events/{queue_item_id}/replay-decisions
+- Workflow-pack queue replay executions: /platform/workflow-packs/queue-events/{queue_item_id}/replay-executions
 - Workflow-pack eligibility evaluation: /platform/workflow-packs/eligibility/evaluate
 - Workflow-pack control history: /platform/workflow-packs/control-history
 - Workflow-pack control actions: /platform/workflow-packs/control-actions
@@ -260,8 +262,8 @@ Before treating any workflow-pack-enabled path as operator-ready:
 20. when pack-backed `POST /platform/workflow-packs/execute` or `POST /ai/tasks/execute` returns a
    queue-policy `429`, treat that as admission rejected before audit, run-ledger, or task-flow side
    effects; inspect `/platform/workflow-packs/queue-events` to confirm the rejected admission reason
-21. use `GET /platform/workflow-packs/queue-events/{queue_item_id}` when support needs the exact queue-item history from request through queued, admitted, running handoff, rejection, release, timeout, cancellation, retry decision, or replay decision; queue events may carry governed request-snapshot artifact refs for recovery investigation, but they do not embed raw task payloads; use the bounded retry and replay decision routes only with explicit actor, reason, and evidence reference; this source does not replace run-ledger, review-state, or task-flow posture, cancellation evidence does not claim the current synchronous execution body was interrupted, and `RETRY_RECORDED` or `REPLAY_RECORDED` means recovery posture was recorded rather than the workflow body being executed again
-22. when runtime-status `queue_attention` surfaces terminal timeout, cancellation, blocked retry, blocked replay, repeated-failure cluster, or degraded queue-source posture, treat it as durable queue-boundary evidence for operator triage; actual retry/replay execution remains outside the current workflow-pack queue contract
+21. use `GET /platform/workflow-packs/queue-events/{queue_item_id}` when support needs the exact queue-item history from request through queued, admitted, running handoff, rejection, release, timeout, cancellation, retry decision, or replay decision; queue events may carry governed request-snapshot artifact refs for recovery investigation, but they do not embed raw task payloads; use the bounded retry/replay decision routes only to record explicit actor, reason, and evidence reference without executing workflow logic, and use the bounded retry/replay execution routes only when the source queue item carries an executable request snapshot; this source does not replace run-ledger, review-state, or task-flow posture, and cancellation evidence does not claim the current synchronous execution body was interrupted
+22. when runtime-status `queue_attention` surfaces terminal timeout, cancellation, blocked retry, blocked replay, repeated-failure cluster, or degraded queue-source posture, treat it as durable queue-boundary evidence for operator triage; retry/replay execution is available only for queue items with retained explicit execution snapshots and still uses the normal workflow-pack execution path
 23. when inspecting the embedded `workflow_pack_runtime.attention_queue` block in `GET /platform/runtime-status`, treat `queue_depth` as the full actionable backlog across executable pack versions and `items` as only the newest bounded sample up to `queue_limit`; if `queue_depth` exceeds `queue_limit`, continue triage through the ledger catalog rather than assuming the visible queue is the full backlog
 
 ## Durable Async Recovery

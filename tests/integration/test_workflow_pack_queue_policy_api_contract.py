@@ -5,13 +5,20 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.contracts.workflow_packs import (
+    WorkflowPackCallerIdentityClass,
+    WorkflowPackEnvironment,
+)
 from app.services.artifact_store import get_artifact_object_store
 from app.services.workflow_pack_queue_admission import (
     acquire_workflow_pack_queue_admission,
     release_workflow_pack_queue_admission,
 )
 from app.services.workflow_pack_registry import get_workflow_pack_registration
-from tests.support.workflow_pack_fixtures import advisor_brief_workflow_pack_execution_request_json
+from tests.support.workflow_pack_fixtures import (
+    advisor_brief_task_execution_request,
+    advisor_brief_workflow_pack_execution_request_json,
+)
 from tests.support.runtime_settings import override_runtime_settings
 
 
@@ -187,6 +194,8 @@ def test_workflow_pack_execution_records_queue_request_snapshot_artifact(
     assert snapshot_payload["registration_ref"] == "advisor_brief.pack@v1"
     assert snapshot_payload["workflow_authority_owner"] == "lotus-gateway"
     assert snapshot_payload["queue_lane"] == "LATENCY_SENSITIVE"
+    assert snapshot_payload["environment"] == "DEVELOPMENT"
+    assert snapshot_payload["caller_identity_class"] == "BANKER_PRODUCT"
     assert snapshot_payload["task_request"]["caller"]["correlation_id"] == correlation_id
 
     replay_response = client.post(
@@ -202,6 +211,114 @@ def test_workflow_pack_execution_records_queue_request_snapshot_artifact(
     replay_event = replay_response.json()["event"]
     assert replay_event["event_type"] == "REPLAY_RECORDED"
     assert replay_event["artifact_refs"] == [snapshot_ref]
+
+
+def test_workflow_pack_queue_retry_execution_replays_retained_request_snapshot(
+    client: TestClient,
+) -> None:
+    correlation_id = "corr-queue-retry-execution-api"
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    lease = acquire_workflow_pack_queue_admission(
+        registration=registration,
+        task_request=advisor_brief_task_execution_request(correlation_id=correlation_id),
+        environment=WorkflowPackEnvironment.DEVELOPMENT,
+        caller_identity_class=WorkflowPackCallerIdentityClass.BANKER_PRODUCT,
+    )
+    release_workflow_pack_queue_admission(
+        lease.queue_item_id,
+        now_utc=datetime.now(UTC) + timedelta(minutes=10),
+    )
+
+    response = client.post(
+        f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/retry-executions",
+        json={
+            "failure_code": "EXECUTION_TIMEOUT",
+            "requested_by": "operator-a",
+            "reason": "Retry after bounded queue timeout.",
+            "evidence_ref": "support-ticket-queue-retry-execution-api",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["decision_event"]["event_type"] == "RETRY_RECORDED"
+    assert body["decision_event"]["artifact_refs"]
+    assert body["execution"]["workflow_pack_run"]["registration_ref"] == "advisor_brief.pack@v1"
+    assert (
+        body["execution"]["execution"]["audit"]["workflow_pack_run_id"]
+        == (body["execution"]["workflow_pack_run"]["run_id"])
+    )
+    assert any(
+        "executed from the retained request snapshot" in line for line in body["status_summary"]
+    )
+
+
+def test_workflow_pack_queue_retry_execution_requires_executable_snapshot(
+    client: TestClient,
+) -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    lease = acquire_workflow_pack_queue_admission(registration=registration)
+    release_workflow_pack_queue_admission(
+        lease.queue_item_id,
+        now_utc=datetime.now(UTC) + timedelta(minutes=10),
+    )
+
+    response = client.post(
+        f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/retry-executions",
+        json={
+            "failure_code": "EXECUTION_TIMEOUT",
+            "requested_by": "operator-a",
+            "reason": "Retry should require a retained request snapshot.",
+            "evidence_ref": "support-ticket-queue-retry-execution-missing-snapshot",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "requires a request snapshot artifact ref" in response.json()["detail"]
+    detail_response = client.get(f"/platform/workflow-packs/queue-events/{lease.queue_item_id}")
+    assert all(
+        event["event_type"] != "RETRY_RECORDED" for event in detail_response.json()["events"]
+    )
+
+
+def test_workflow_pack_queue_replay_execution_uses_normal_execution_path(
+    client: TestClient,
+) -> None:
+    correlation_id = "corr-queue-replay-execution-api"
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=advisor_brief_workflow_pack_execution_request_json(correlation_id=correlation_id),
+    )
+    assert execute_response.status_code == 200
+    catalog_response = client.get(
+        "/platform/workflow-packs/queue-events",
+        params={"workflow_pack_id": "advisor_brief.pack"},
+    )
+    source_queue_item_id = next(
+        event["queue_item_id"]
+        for event in catalog_response.json()["events"]
+        if event["correlation_id"] == correlation_id and event["event_type"] == "ADMISSION_RELEASED"
+    )
+
+    response = client.post(
+        f"/platform/workflow-packs/queue-events/{source_queue_item_id}/replay-executions",
+        json={
+            "requested_by": "operator-a",
+            "reason": "Replay from governed queue snapshot.",
+            "evidence_ref": "support-ticket-queue-replay-execution-api",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["decision_event"]["event_type"] == "REPLAY_RECORDED"
+    assert body["execution"]["workflow_pack_run"]["registration_ref"] == "advisor_brief.pack@v1"
+    assert (
+        body["execution"]["workflow_pack_run"]["run_id"]
+        != (execute_response.json()["workflow_pack_run"]["run_id"])
+    )
 
 
 def test_workflow_pack_queue_event_detail_rejects_unknown_item(client: TestClient) -> None:

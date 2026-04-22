@@ -329,10 +329,22 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         == "recordWorkflowPackQueueRetryDecision"
     )
     assert (
+        spec["paths"]["/platform/workflow-packs/queue-events/{queue_item_id}/retry-executions"][
+            "post"
+        ]["operationId"]
+        == "executeWorkflowPackQueueRetry"
+    )
+    assert (
         spec["paths"]["/platform/workflow-packs/queue-events/{queue_item_id}/replay-decisions"][
             "post"
         ]["operationId"]
         == "recordWorkflowPackQueueReplayDecision"
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/queue-events/{queue_item_id}/replay-executions"][
+            "post"
+        ]["operationId"]
+        == "executeWorkflowPackQueueReplay"
     )
     assert (
         spec["paths"]["/platform/workflow-packs/eligibility/evaluate"]["post"]["operationId"]
@@ -958,6 +970,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_queue_recovery_decision_schema = spec["components"]["schemas"][
         "WorkflowPackQueueRecoveryDecisionResponse"
     ]
+    workflow_pack_queue_recovery_execution_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueRecoveryExecutionResponse"
+    ]
     workflow_pack_queue_lane_status_schema = spec["components"]["schemas"][
         "WorkflowPackQueueLaneStatusDescriptor"
     ]
@@ -1051,6 +1066,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "events" in workflow_pack_queue_event_detail_schema["properties"]
     assert "event" in workflow_pack_queue_recovery_decision_schema["properties"]
     assert "status_summary" in workflow_pack_queue_recovery_decision_schema["properties"]
+    assert "decision_event" in workflow_pack_queue_recovery_execution_schema["properties"]
+    assert "execution" in workflow_pack_queue_recovery_execution_schema["properties"]
+    assert "status_summary" in workflow_pack_queue_recovery_execution_schema["properties"]
     assert "active_count" in workflow_pack_queue_lane_status_schema["properties"]
     assert "saturation_status" in workflow_pack_queue_lane_status_schema["properties"]
     assert "execution_binding_count" in workflow_pack_runtime_status_schema["properties"]
