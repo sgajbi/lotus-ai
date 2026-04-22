@@ -32,6 +32,15 @@ def list_async_job_types() -> list[AsyncJobTypeDescriptor]:
                 "replay, and completion semantics for governed retrieval ingestion job targets."
             ),
         ),
+        AsyncJobTypeDescriptor(
+            job_type="workflow_pack_execution",
+            enabled=True,
+            execution_path="durable_runtime_worker_execution",
+            notes=(
+                "Workflow-pack execution can now be persisted as a durable async runtime job "
+                "backed by retained queue request snapshots and dedicated worker execution."
+            ),
+        ),
     ]
 
 

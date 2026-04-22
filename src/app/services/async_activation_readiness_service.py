@@ -13,7 +13,7 @@ def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
     if runtime.cutover_state == AsyncCutoverState.DEDICATED_WORKERS_ACTIVE:
         blocking_findings = [
             *operational_state.degraded_findings,
-            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
+            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing, evaluation execution, document ingestion, and workflow-pack execution are active, but broader async surfaces remain staged or documented-only.",
         ]
         activation_path = [
             "Confirm queue backlog, duplicate/redelivery, drain mode, and active worker identity surfaces remain healthy under the dedicated worker cutover.",
@@ -23,7 +23,7 @@ def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
         blocking_findings = [
             *operational_state.degraded_findings,
             "Dedicated queue-backed worker execution is currently degraded; operator review must resolve the degraded fallback before activation can be considered stable.",
-            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
+            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing, evaluation execution, document ingestion, and workflow-pack execution are active, but broader async surfaces remain staged or documented-only.",
         ]
         activation_path = [
             "Restore the Redis-backed managed queue and dedicated worker fleet as the primary path without changing the durable async state model.",
@@ -32,7 +32,7 @@ def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
     elif runtime.cutover_state == AsyncCutoverState.QUEUE_DELIVERY_SHADOW:
         blocking_findings = [
             "Managed queue delivery is wired in shadow mode, but dedicated workers are not yet the active primary execution path.",
-            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
+            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing, evaluation execution, document ingestion, and workflow-pack execution are active, but broader async surfaces remain staged or documented-only.",
         ]
         activation_path = [
             "Promote the Redis-backed managed queue from shadow delivery to dedicated primary execution only after worker startup, drain, replay, and queue-outage procedures are reviewed.",
@@ -41,7 +41,7 @@ def build_async_activation_readiness() -> AsyncActivationReadinessResponse:
     else:
         blocking_findings = [
             "Dedicated queue-backed worker execution is not the active primary path yet; the current posture is still limited to durable in-process execution or queue-delivery shadow mode.",
-            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing and evaluation execution are active, but broader async surfaces remain staged or documented-only.",
+            "Only a narrow allowlist of async job types is runtime-backed today; retrieval indexing, evaluation execution, document ingestion, and workflow-pack execution are active, but broader async surfaces remain staged or documented-only.",
         ]
         activation_path = [
             "Promote the Redis-backed managed queue from shadow delivery to the primary dedicated-worker path without changing the durable async state model.",

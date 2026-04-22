@@ -9,7 +9,11 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunRuntimeState,
     WorkflowPackRunSupportabilityStatus,
 )
-from app.contracts.workflow_pack_queue_policies import WorkflowPackQueueCancellationActor
+from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueCancellationActor,
+    WorkflowPackQueueEventType,
+    WorkflowPackQueueState,
+)
 from app.contracts.workflow_packs import WorkflowPackExecutionMode, WorkflowPackRegistrationStatus
 from app.services.workflow_pack_bindings import get_workflow_pack_execution_binding_descriptor
 from app.services.workflow_pack_registry import get_workflow_pack_registration
@@ -26,6 +30,7 @@ from app.services.workflow_pack_queue_admission import (
     cancel_workflow_pack_queue_admission,
     release_workflow_pack_queue_admission,
 )
+from app.services.workflow_pack_queue_events import record_workflow_pack_queue_event
 from app.contracts.workflow_pack_task_flows import WorkflowPackTaskFlowStatus
 from tests.support.workflow_pack_task_flow_fixtures import workflow_pack_task_flow_descriptor
 from tests.support.workflow_pack_run_builders import build_workflow_pack_run_descriptor
@@ -360,17 +365,34 @@ def test_build_workflow_pack_queue_attention_summary_surfaces_terminal_event_pos
         reason="Operator cancelled stale queue admission.",
         evidence_ref="support-ticket-queue-1",
     )
+    record_workflow_pack_queue_event(
+        queue_item_id="wpq_degraded_worker_001",
+        event_type=WorkflowPackQueueEventType.ADMISSION_DEGRADED,
+        workflow_pack_id="advisor_brief.pack",
+        workflow_pack_version="v1",
+        policy_id="queue-policy.advisor-brief.v1",
+        lane=timed_out_lease.lane,
+        state=WorkflowPackQueueState.DEGRADED,
+        caller_app="lotus-gateway",
+        correlation_id="corr-degraded-worker-001",
+        tenant_id="tenant-sg-001",
+        workflow_surface="advisor-brief-workspace",
+        reason_code="WORKER_FAILURE",
+        message="Workflow-pack queued worker execution degraded before completed handoff.",
+    )
 
     summary = build_workflow_pack_queue_attention_summary()
 
     terminal_items = [
         item
         for item in summary.items
-        if item.attention_type in {"QUEUE_ITEM_CANCELLED", "QUEUE_ITEM_TIMED_OUT"}
+        if item.attention_type
+        in {"QUEUE_ITEM_CANCELLED", "QUEUE_ITEM_TIMED_OUT", "QUEUE_ITEM_DEGRADED"}
     ]
     assert summary.heartbeat_status == "ATTENTION_REQUIRED"
-    assert summary.terminal_event_count == 2
+    assert summary.terminal_event_count == 3
     assert [item.attention_type for item in terminal_items] == [
+        "QUEUE_ITEM_DEGRADED",
         "QUEUE_ITEM_CANCELLED",
         "QUEUE_ITEM_TIMED_OUT",
     ]

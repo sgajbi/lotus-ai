@@ -10,6 +10,7 @@ from app.services.async_runtime_posture import get_async_runtime_posture
 from app.services.eval_async_execution import run_evaluation_execution_job_by_id
 from app.services.retrieval_ingestion_async_execution import run_retrieval_ingestion_job_by_id
 from app.services.retrieval_async_execution import run_retrieval_index_job_by_id
+from app.services.workflow_pack_async_execution import run_workflow_pack_execution_job_by_id
 
 
 @dataclass(frozen=True)
@@ -98,6 +99,20 @@ def _dispatch_delivery(
             handled=ingestion_result is not None,
             terminal_status=(
                 None if ingestion_result is None else ingestion_result.terminal_status
+            ),
+        )
+    if delivery.job_type == "workflow_pack_execution":
+        workflow_pack_result = run_workflow_pack_execution_job_by_id(
+            async_job_id=delivery.job_id,
+            worker_id=worker_id,
+        )
+        return DedicatedWorkerCycleResult(
+            delivery_id=delivery.delivery_id,
+            job_id=delivery.job_id,
+            job_type=delivery.job_type,
+            handled=workflow_pack_result is not None,
+            terminal_status=(
+                None if workflow_pack_result is None else workflow_pack_result.terminal_status
             ),
         )
     return DedicatedWorkerCycleResult(

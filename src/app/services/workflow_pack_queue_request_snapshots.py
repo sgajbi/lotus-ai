@@ -66,17 +66,7 @@ def build_workflow_pack_execution_request_from_queue_snapshot(
     source_event: WorkflowPackQueueEventDescriptor,
 ) -> WorkflowPackExecutionRequest:
     snapshot_ref = _resolve_queue_request_snapshot_ref(source_event=source_event)
-    object_key = _parse_storage_reference(snapshot_ref.storage_reference)
-    snapshot_object = get_artifact_object_store().get_object(object_key=object_key)
-    if snapshot_object is None:
-        raise ValueError(
-            "Workflow-pack queue recovery execution requires an available request snapshot object."
-        )
-    if hashlib.sha256(snapshot_object.payload).hexdigest() != snapshot_ref.checksum_sha256:
-        raise ValueError(
-            "Workflow-pack queue recovery execution request snapshot checksum does not match."
-        )
-    payload = json.loads(snapshot_object.payload)
+    payload = load_workflow_pack_queue_request_snapshot_payload(snapshot_ref=snapshot_ref)
     _validate_snapshot_payload(payload=payload, source_event=source_event)
     return WorkflowPackExecutionRequest.model_validate(
         {
@@ -89,6 +79,26 @@ def build_workflow_pack_execution_request_from_queue_snapshot(
             "task_request": payload["task_request"],
         }
     )
+
+
+def load_workflow_pack_queue_request_snapshot_payload(
+    *,
+    snapshot_ref: ArtifactDescriptor,
+) -> dict[str, object]:
+    object_key = _parse_storage_reference(snapshot_ref.storage_reference)
+    snapshot_object = get_artifact_object_store().get_object(object_key=object_key)
+    if snapshot_object is None:
+        raise ValueError(
+            "Workflow-pack queue recovery execution requires an available request snapshot object."
+        )
+    if hashlib.sha256(snapshot_object.payload).hexdigest() != snapshot_ref.checksum_sha256:
+        raise ValueError(
+            "Workflow-pack queue recovery execution request snapshot checksum does not match."
+        )
+    payload = json.loads(snapshot_object.payload)
+    if not isinstance(payload, dict):
+        raise ValueError("Workflow-pack queue request snapshot payload must be an object.")
+    return payload
 
 
 def _resolve_queue_request_snapshot_ref(

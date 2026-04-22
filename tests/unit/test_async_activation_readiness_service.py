@@ -16,13 +16,13 @@ def test_async_activation_readiness_reports_foundation_blockers() -> None:
     assert readiness.cutover_state == "in_process_only"
     assert readiness.queue_backend == "none"
     assert readiness.worker_execution == "in_process_stub"
-    assert readiness.supported_job_type_count == 3
+    assert readiness.supported_job_type_count == 4
     assert len(readiness.blocking_findings) == 2
     assert (
         "queue-backed worker execution is not the active primary path yet"
         in readiness.blocking_findings[0]
     )
-    assert "evaluation execution are active" in readiness.blocking_findings[1]
+    assert "workflow-pack execution are active" in readiness.blocking_findings[1]
     assert len(readiness.activation_path) == 2
 
 

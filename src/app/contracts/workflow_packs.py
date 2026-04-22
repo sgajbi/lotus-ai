@@ -6,12 +6,14 @@ from pydantic import BaseModel, Field
 
 from app.contracts.access_control import AuthorizationDecision
 from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
+from app.contracts.async_runtime import AsyncJobArtifactDescriptor
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunDescriptor,
     WorkflowPackRunProvenanceSummaryDescriptor,
     WorkflowPackRunReviewSummaryDescriptor,
 )
 from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueEventDescriptor,
     WorkflowPackQueueLane,
     WorkflowPackQueuePolicyDescriptor,
 )
@@ -46,6 +48,7 @@ class WorkflowPackQueueAttentionType(str, Enum):
     QUEUE_ITEM_STALE = "QUEUE_ITEM_STALE"
     QUEUE_ITEM_CANCELLED = "QUEUE_ITEM_CANCELLED"
     QUEUE_ITEM_TIMED_OUT = "QUEUE_ITEM_TIMED_OUT"
+    QUEUE_ITEM_DEGRADED = "QUEUE_ITEM_DEGRADED"
     QUEUE_RETRY_BLOCKED = "QUEUE_RETRY_BLOCKED"
     QUEUE_REPLAY_BLOCKED = "QUEUE_REPLAY_BLOCKED"
     QUEUE_TIMEOUT_CLUSTER = "QUEUE_TIMEOUT_CLUSTER"
@@ -777,4 +780,23 @@ class WorkflowPackExecutionResponse(BaseModel):
     )
     summary: list[str] = Field(
         description="Human-readable summary of the explicit workflow-pack execution posture."
+    )
+
+
+class WorkflowPackAsyncExecutionSubmissionResponse(BaseModel):
+    service: str = Field(description="Service name emitting the workflow-pack async response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    phase: str = Field(description="Current delivery phase for lotus-ai.")
+    accepted: bool = Field(description="Whether the workflow-pack execution was durably queued.")
+    queue_item_id: str = Field(
+        description="Workflow-pack queue item identifier that owns the persisted worker execution."
+    )
+    async_job: AsyncJobArtifactDescriptor = Field(
+        description="Durable async runtime job created for dedicated worker execution."
+    )
+    queue_event: "WorkflowPackQueueEventDescriptor" = Field(
+        description="Durable queue event proving the queued worker-execution posture."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary of the async workflow-pack execution posture."
     )
