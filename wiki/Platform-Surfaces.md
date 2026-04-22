@@ -87,6 +87,7 @@ platform programs.
    - `/platform/workflow-packs/queue-events/{queue_item_id}/replay-executions`
    - `/platform/workflow-packs/eligibility/evaluate`
    - `/platform/workflow-packs/execute`
+   - `/platform/workflow-packs/execute-async`
    - `/platform/workflow-packs/control-history`
    - `/platform/workflow-packs/control-actions`
    - `/platform/workflow-packs/runs`
@@ -124,9 +125,10 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 10. the embedded `workflow_pack_runtime` block now also carries bounded review provenance on executable-pack latest ready and latest actionable run pointers plus the cross-pack attention queue, and now also carries bounded artifact and evidence linkage summaries for those same runtime-status items, so estate-level triage does not need a raw ledger fetch just to understand latest review movement or missing provenance posture,
 11. pack-backed `503` degraded-state failures now preflight the workflow-pack run store before task execution and audit persistence, so callers should not expect new audit records or partial run-side effects when the run-ledger store is not ready,
 12. the embedded workflow-pack attention queue now treats `queue_depth` as the full actionable backlog across executable pack versions, while `items` stays bounded by `queue_limit` as the newest visible sample,
-13. `/platform/workflow-packs/queue-events`, `/platform/workflow-packs/queue-events/{queue_item_id}`, and the bounded retry/replay decision and execution routes expose durable queue admission, queued, admitted, execution-handoff, rejection, release, timeout, cancellation, request-snapshot artifact refs, retry/replay decision evidence, and bounded retry/replay execution from retained request snapshots without exposing raw worker internals, embedding raw task payloads, or replacing run-ledger, review-state, or task-flow posture,
-14. the embedded `queue_attention` block reports source-backed workflow-pack queue heartbeat posture for active-admission saturation, stale active admissions, durable timeout/cancellation queue events, blocked retry/replay recovery decisions, repeated timeout/cancellation/blocked-recovery clusters, and degraded queue-source posture; persisted queued-worker execution remains a separate future slice,
-15. explicit `/platform/workflow-packs/execute` calls may request a governed `queue_lane`
+13. `/platform/workflow-packs/queue-events`, `/platform/workflow-packs/queue-events/{queue_item_id}`, and the bounded retry/replay decision and execution routes expose durable queue admission, queued, admitted, execution-handoff, rejection, release, timeout, cancellation, degraded worker execution, request-snapshot artifact refs, retry/replay decision evidence, and bounded retry/replay execution from retained request snapshots without exposing raw worker internals, embedding raw task payloads, or replacing run-ledger, review-state, async job, or task-flow posture,
+14. `/platform/workflow-packs/execute-async` persists a workflow-pack execution as a durable async runtime job backed by retained queue request-snapshot evidence; dedicated workers then execute it through the normal workflow-pack execution seam,
+15. the embedded `queue_attention` block reports source-backed workflow-pack queue heartbeat posture for active-admission saturation, stale active admissions, durable timeout/cancellation/degraded worker-execution queue events, blocked retry/replay recovery decisions, repeated timeout/cancellation/blocked-recovery clusters, and degraded queue-source posture,
+16. explicit `/platform/workflow-packs/execute` and `/platform/workflow-packs/execute-async` calls may request a governed `queue_lane`
     from the pack version's declared `allowed_lanes`; omitted lanes use the queue policy default,
     and unsupported lanes fail before audit, run, or task-flow side effects.
 

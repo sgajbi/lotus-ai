@@ -9,6 +9,7 @@ from app.contracts.workflow_packs import (
     WorkflowPackControlHistoryResponse,
     WorkflowPackEligibilityEvaluationRequest,
     WorkflowPackEligibilityEvaluationResponse,
+    WorkflowPackAsyncExecutionSubmissionResponse,
     WorkflowPackExecutionRequest,
     WorkflowPackExecutionResponse,
     WorkflowPackRegistrationDetailResponse,
@@ -53,6 +54,7 @@ from app.services.workflow_pack_control import (
 )
 from app.services.workflow_pack_activation import evaluate_workflow_pack_eligibility
 from app.services.workflow_pack_execution import execute_workflow_pack
+from app.services.workflow_pack_async_execution import submit_workflow_pack_execution_async
 from app.services.workflow_pack_run_ledger import (
     WorkflowPackRunStoreUnavailableError,
     build_workflow_pack_run_catalog,
@@ -517,6 +519,40 @@ async def execute_workflow_pack_route(
 ) -> WorkflowPackExecutionResponse:
     try:
         return execute_workflow_pack(request)
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except WorkflowPackRunStoreUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except WorkflowPackTaskFlowStoreNotReadyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post(
+    "/platform/workflow-packs/execute-async",
+    response_model=WorkflowPackAsyncExecutionSubmissionResponse,
+    operation_id="submitWorkflowPackAsyncExecution",
+    summary="Submit a lotus-ai workflow pack for durable async execution",
+    description=(
+        "Evaluates workflow-pack eligibility, validates the bounded execution request, records "
+        "durable queue-event and request-snapshot evidence, and persists a workflow-pack async "
+        "runtime job for dedicated worker execution."
+    ),
+    responses={
+        200: {"description": "Workflow-pack async execution submitted successfully."},
+        403: {"description": "Workflow-pack execution is not currently allowed."},
+        404: {"description": "Workflow-pack registration not found."},
+        409: {"description": "Workflow-pack async execution conflicts with queue policy."},
+        422: {"description": "Workflow-pack execution payload is invalid."},
+        429: {"description": "Workflow-pack async queue capacity is saturated."},
+        503: {"description": "Workflow-pack runtime dependency store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def submit_workflow_pack_async_execution_route(
+    request: WorkflowPackExecutionRequest,
+) -> WorkflowPackAsyncExecutionSubmissionResponse:
+    try:
+        return submit_workflow_pack_execution_async(request)
     except WorkflowPackRegistryUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except WorkflowPackRunStoreUnavailableError as exc:

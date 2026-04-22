@@ -672,6 +672,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_execution_response_schema = spec["components"]["schemas"][
         "WorkflowPackExecutionResponse"
     ]
+    workflow_pack_async_execution_response_schema = spec["components"]["schemas"][
+        "WorkflowPackAsyncExecutionSubmissionResponse"
+    ]
     workflow_pack_control_history_schema = spec["components"]["schemas"][
         "WorkflowPackControlHistoryResponse"
     ]
@@ -1150,6 +1153,13 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "eligibility" in workflow_pack_execution_response_schema["properties"]
     assert "execution" in workflow_pack_execution_response_schema["properties"]
     assert "workflow_pack_run" in workflow_pack_execution_response_schema["properties"]
+    assert (
+        spec["paths"]["/platform/workflow-packs/execute-async"]["post"]["operationId"]
+        == "submitWorkflowPackAsyncExecution"
+    )
+    assert "async_job" in workflow_pack_async_execution_response_schema["properties"]
+    assert "queue_event" in workflow_pack_async_execution_response_schema["properties"]
+    assert "queue_item_id" in workflow_pack_async_execution_response_schema["properties"]
     assert "run_store_mode" in workflow_pack_run_catalog_schema["properties"]
     assert "filters_applied" in workflow_pack_run_catalog_schema["properties"]
     assert "awaiting_review_count" in workflow_pack_run_catalog_schema["properties"]

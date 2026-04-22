@@ -131,6 +131,7 @@ def _build_terminal_queue_attention_items() -> list[WorkflowPackQueueAttentionIt
         if event.event_type
         in {
             WorkflowPackQueueEventType.ADMISSION_CANCELLED,
+            WorkflowPackQueueEventType.ADMISSION_DEGRADED,
             WorkflowPackQueueEventType.ADMISSION_TIMED_OUT,
         }
     ]
@@ -304,11 +305,15 @@ def _terminal_event_to_attention_item(
     attention_type = (
         WorkflowPackQueueAttentionType.QUEUE_ITEM_TIMED_OUT
         if event.event_type is WorkflowPackQueueEventType.ADMISSION_TIMED_OUT
+        else WorkflowPackQueueAttentionType.QUEUE_ITEM_DEGRADED
+        if event.event_type is WorkflowPackQueueEventType.ADMISSION_DEGRADED
         else WorkflowPackQueueAttentionType.QUEUE_ITEM_CANCELLED
     )
     reason = (
         "Workflow-pack queue admission exceeded the policy execution timeout."
         if event.event_type is WorkflowPackQueueEventType.ADMISSION_TIMED_OUT
+        else "Workflow-pack queued worker execution degraded before completed handoff."
+        if event.event_type is WorkflowPackQueueEventType.ADMISSION_DEGRADED
         else "Workflow-pack queue admission was cancelled with durable evidence."
     )
     return WorkflowPackQueueAttentionItemResponse(

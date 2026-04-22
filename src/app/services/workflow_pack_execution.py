@@ -77,7 +77,7 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
         )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
-    _validate_execution_binding(request=request, binding=binding)
+    validate_workflow_pack_execution_binding(request=request, binding=binding)
 
     context = validate_task_request(request.task_request)
     ensure_workflow_pack_run_store_ready()
@@ -126,7 +126,7 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
     )
 
 
-def _validate_execution_binding(
+def validate_workflow_pack_execution_binding(
     *,
     request: WorkflowPackExecutionRequest,
     binding: WorkflowPackExecutionBinding,

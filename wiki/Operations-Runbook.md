@@ -104,22 +104,22 @@ Use this sequence:
    execution failures as source evidence for actual queue-admission decisions,
 4. evaluate `/platform/workflow-packs/eligibility/evaluate` with the real caller and surface posture,
 5. inspect the embedded `queue_attention` block in `/platform/runtime-status` when lane
-   saturation, stale active-admission posture, terminal queue posture, blocked recovery posture,
+   saturation, stale active-admission posture, terminal queue posture, degraded queued-worker execution, blocked recovery posture,
    repeated-failure clusters, or degraded queue-source posture may explain delayed workflow-pack execution,
-6. inspect `/platform/workflow-packs/queue-events` when support needs durable source evidence for queue admission requests, queued posture, admitted posture, execution handoff, rejections, releases, timeout posture, cancellation posture, request-snapshot artifact refs, and retry/replay recovery decisions; use the retry/replay decision routes only with explicit actor, reason, and evidence reference, and use retry/replay execution routes only when the source queue item carries a retained executable request snapshot,
+6. inspect `/platform/workflow-packs/queue-events` when support needs durable source evidence for queue admission requests, queued posture, admitted posture, execution handoff, rejections, releases, timeout posture, cancellation posture, degraded queued-worker execution, request-snapshot artifact refs, and retry/replay recovery decisions; use the retry/replay decision routes only with explicit actor, reason, and evidence reference, use retry/replay execution routes only when the source queue item carries a retained executable request snapshot, and use `/platform/workflow-packs/execute-async` when the intended source behavior is a new durable async worker execution,
 7. inspect `/platform/workflow-packs/control-history` when rollout state changed or operator action is disputed,
 8. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_registry_store` block in `/platform/runtime-status` reports `READY` before treating activation state and control history as restart-safe truth,
 9. when `LOTUS_AI_WORKFLOW_PACK_QUEUE_EVENT_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_queue_event_store` block in `/platform/runtime-status` reports `READY` before treating queue event history as restart-safe truth,
 10. confirm `definition_ref` and `definition_refs` still resolve to the owning repository artifacts rather than placeholder notes,
 11. when the issue is pack execution or review backlog rather than registration posture, inspect `/platform/workflow-packs/runs` and the embedded `workflow_pack_runtime` block in `/platform/runtime-status`,
-12. if the embedded `workflow_pack_run_store` or `workflow_pack_queue_event_store` block is not `READY`, treat pack-backed `POST /ai/tasks/execute` and `POST /platform/workflow-packs/execute` failures as preflight-blocked degraded-state signals rather than as requests that partially executed and then failed later,
+12. if the embedded `workflow_pack_run_store` or `workflow_pack_queue_event_store` block is not `READY`, treat pack-backed `POST /ai/tasks/execute`, `POST /platform/workflow-packs/execute`, and `POST /platform/workflow-packs/execute-async` failures as preflight-blocked degraded-state signals rather than as requests that partially executed and then failed later,
 13. if pack-backed execution returns a queue-policy `429`, treat it as admission rejected before
     audit, run-ledger, or task-flow side effects and inspect `/platform/workflow-packs/queue-events`
     for the reason code,
 14. treat queue cancellation events as queue-boundary evidence only; they do not claim that
     already-running synchronous execution was interrupted, and treat `RETRY_RECORDED` or
     `REPLAY_RECORDED` as recovery-decision evidence unless it is returned by the explicit
-    retry/replay execution route with a new workflow-pack execution response,
+    retry/replay execution route with a new workflow-pack execution response; durable async worker execution should appear as a `workflow_pack_execution` async job linked to the queue item,
 15. when reading the embedded workflow-pack attention queue, treat `queue_depth` as the full actionable backlog and `items` as only the newest bounded sample up to `queue_limit`.
 
 The owner-facing source for that procedure is:

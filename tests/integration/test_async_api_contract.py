@@ -100,7 +100,7 @@ def test_async_activation_readiness_route(client: TestClient) -> None:
     assert body["cutover_state"] == "in_process_only"
     assert body["queue_backend"] == "none"
     assert body["worker_execution"] == "in_process_stub"
-    assert body["supported_job_type_count"] == 3
+    assert body["supported_job_type_count"] == 4
     assert len(body["blocking_findings"]) == 2
     assert len(body["activation_path"]) == 2
 

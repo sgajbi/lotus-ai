@@ -35,6 +35,15 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
     )
     if request.job_type == "evaluation_execution":
         return submit_evaluation_execution_async_job(request)
+    if request.job_type == "workflow_pack_execution":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Workflow-pack async execution must be submitted through "
+                "/platform/workflow-packs/execute-async so queue policy, eligibility, and "
+                "request-snapshot evidence are preserved."
+            ),
+        )
     job_type = get_async_job_type_descriptor(job_type=request.job_type)
     if job_type is None:
         raise HTTPException(

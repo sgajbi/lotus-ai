@@ -23,7 +23,7 @@ The platform now has:
 
 1. durable async job submission,
 2. durable job, attempt, lease, and control-event state,
-3. runtime-backed retrieval indexing and evaluation execution,
+3. runtime-backed retrieval indexing, evaluation execution, document ingestion, and workflow-pack execution,
 4. explicit worker claim, heartbeat, recovery, replay, and abandon semantics,
 5. a documented scalability target that expects a worker layer and queue coordination.
 
@@ -42,7 +42,7 @@ The current async runtime is strong for correctness and reviewability, but limit
 1. worker execution still shares process/runtime boundaries with the API tier,
 2. queue semantics still depend on the service database as the live coordination backend,
 3. horizontal worker scaling is still documented as a future option rather than an active capability,
-4. noisy-neighbor isolation for heavy retrieval, evaluation, and future ingestion workloads is still incomplete.
+4. noisy-neighbor isolation for heavy retrieval, evaluation, ingestion, and workflow-pack workloads is still incomplete.
 
 This becomes more important as the platform activates:
 
