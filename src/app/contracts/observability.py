@@ -202,6 +202,73 @@ class ObservabilityIncidentSummaryResponse(BaseModel):
     )
 
 
+class AISurfaceSupportabilityItem(BaseModel):
+    surface_id: str = Field(description="Stable AI-backed product or workflow surface identifier.")
+    owning_service: str = Field(description="Service that owns the surface contract.")
+    workflow_authority_owner: str = Field(
+        description="Service or composition layer that retains consequence-bearing workflow authority."
+    )
+    workflow_pack_ref: str = Field(
+        description="Workflow-pack version reference grounding this supportability item."
+    )
+    supportability_status: str = Field(
+        description="Current supportability posture for this AI-backed surface."
+    )
+    model_posture: ObservabilityPosture = Field(
+        description="Current model/provider posture relevant to the AI-backed surface."
+    )
+    latest_ready_run_id: str | None = Field(
+        default=None,
+        description="Latest ready workflow-pack run for this surface, when available.",
+    )
+    latest_action_required_run_id: str | None = Field(
+        default=None,
+        description="Latest actionable workflow-pack run for this surface, when available.",
+    )
+    no_sensitive_content_telemetry: bool = Field(
+        description="Whether the item is covered by bounded no-sensitive-content telemetry and redaction posture."
+    )
+    source_endpoints: list[str] = Field(
+        description="Bounded source endpoints operators can inspect for this supportability item."
+    )
+    status_summary: list[str] = Field(
+        description="Short operator-facing summary of this surface supportability item."
+    )
+
+
+class AISurfaceSupportabilitySummary(BaseModel):
+    posture: ObservabilityPosture = Field(
+        description="Overall AI surface supportability posture across supported AI-backed surfaces."
+    )
+    freshness: ObservabilityFreshness = Field(
+        description="Freshness posture for the source-backed AI surface supportability summary."
+    )
+    supported_surface_count: int = Field(
+        description="Number of AI-backed surfaces represented in the supportability summary."
+    )
+    executable_workflow_pack_count: int = Field(
+        description="Number of explicitly executable workflow-pack versions represented by the supportability summary."
+    )
+    action_required_surface_count: int = Field(
+        description="Number of represented surfaces that currently require operator action."
+    )
+    unavailable_surface_count: int = Field(
+        description="Number of represented surfaces whose source supportability posture is unavailable."
+    )
+    no_sensitive_content_telemetry: bool = Field(
+        description="Whether all represented surfaces remain covered by bounded no-sensitive-content telemetry posture."
+    )
+    metric_name: str = Field(
+        description="Prometheus metric emitted for bounded AI surface supportability posture."
+    )
+    surfaces: list[AISurfaceSupportabilityItem] = Field(
+        description="Bounded source-backed AI surface supportability items."
+    )
+    status_summary: list[str] = Field(
+        description="Short operator-facing summary of AI surface supportability posture."
+    )
+
+
 class ObservabilityRuntimeStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the observability runtime status.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -231,6 +298,9 @@ class ObservabilityRuntimeStatusResponse(BaseModel):
     )
     incident_evidence_items: list[IncidentEvidenceSummaryItem] = Field(
         description="Bounded incident-evidence items currently exposed by the observability layer."
+    )
+    ai_surface_supportability: AISurfaceSupportabilitySummary = Field(
+        description="RFC-0108 source-backed supportability posture for AI-backed product and workflow surfaces."
     )
     status_summary: list[str] = Field(
         description="Short operator-facing summary of the current observability layer posture."

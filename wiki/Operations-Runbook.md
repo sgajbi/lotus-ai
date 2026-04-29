@@ -43,7 +43,8 @@ The service exposes a broad platform surface. The main groups are:
 7. async runtime
    runtime status, queue backends, worker executions, jobs, and control-plane actions
 8. observability
-   runtime status, governance posture, incident summary, domain summaries, and bounded breakdowns
+   runtime status, governance posture, incident summary, domain summaries, AI surface
+   supportability, and bounded breakdowns
 9. access control
    runtime, caller-policy catalog, and governance posture for caller authorization
 10. task-runtime inspection
@@ -61,6 +62,13 @@ If the issue is broad and you do not yet know which subsystem is wrong, start he
 2. `/platform/observability/incident-summary`
 3. `/platform/tasks/runtime-status`
 4. the subsystem-specific governance or operations surface you depend on
+
+For RFC-0108 AI-backed surface supportability, inspect the `ai_surface_supportability` block in
+`/platform/observability/runtime-status` or the embedded `observability_runtime` block in
+`/platform/runtime-status`. Treat it as the summary-first supportability posture for the currently
+represented advisor brief, TWR inspection support brief, and workspace rationale surfaces; it is
+sourced from workflow-pack runtime, provider operations, and safety runtime rather than from model
+availability alone.
 
 Good examples:
 
@@ -121,6 +129,15 @@ Use this sequence:
     `REPLAY_RECORDED` as recovery-decision evidence unless it is returned by the explicit
     retry/replay execution route with a new workflow-pack execution response; durable async worker execution should appear as a `workflow_pack_execution` async job linked to the queue item,
 15. when reading the embedded workflow-pack attention queue, treat `queue_depth` as the full actionable backlog and `items` as only the newest bounded sample up to `queue_limit`.
+
+For AI-backed product-surface support, also confirm:
+
+1. `ai_surface_supportability.metric_name` is `lotus_ai_surface_supportability_state`,
+2. metric labels stay bounded to `surface`, `posture`, and `source`,
+3. each represented surface has `no_sensitive_content_telemetry=true` before treating generated
+   commentary, rationale, or brief surfaces as supportable without sensitive-content telemetry gaps,
+4. `twr_inspection_support_brief` remains owned by `lotus-performance`; do not reintroduce old
+   `pa` naming in operator evidence or supportability records.
 
 The owner-facing source for that procedure is:
 

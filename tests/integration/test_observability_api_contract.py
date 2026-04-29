@@ -8,6 +8,22 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["domain_count"] == 6
+    assert body["ai_surface_supportability"]["supported_surface_count"] == 3
+    assert body["ai_surface_supportability"]["executable_workflow_pack_count"] == 3
+    assert (
+        body["ai_surface_supportability"]["metric_name"] == "lotus_ai_surface_supportability_state"
+    )
+    assert {
+        surface["workflow_pack_ref"] for surface in body["ai_surface_supportability"]["surfaces"]
+    } == {
+        "advisor_brief.pack@v1",
+        "twr_inspection_support_brief.pack@v1",
+        "workspace_rationale.pack@v1",
+    }
+    assert all(
+        surface["no_sensitive_content_telemetry"] is False
+        for surface in body["ai_surface_supportability"]["surfaces"]
+    )
     assert body["unavailable_domain_count"] == 0
     assert body["incident_evidence_supported_domain_count"] >= 1
     assert any(domain["domain_id"] == "provider" for domain in body["domains"])

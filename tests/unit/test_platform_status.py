@@ -127,6 +127,21 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.observability_runtime.domain_count == 6
     assert status.observability_runtime.unavailable_domain_count == 0
     assert status.observability_runtime.incident_evidence_supported_domain_count >= 1
+    assert status.observability_runtime.ai_surface_supportability.supported_surface_count == 3
+    assert (
+        status.observability_runtime.ai_surface_supportability.executable_workflow_pack_count == 3
+    )
+    assert (
+        status.observability_runtime.ai_surface_supportability.no_sensitive_content_telemetry
+        is False
+    )
+    assert {
+        item.surface_id for item in status.observability_runtime.ai_surface_supportability.surfaces
+    } == {
+        "advisor_brief",
+        "twr_inspection_support_brief",
+        "workspace_rationale",
+    }
     assert status.observability_governance.governance_ready is False
     assert status.observability_governance.activation_readiness.activation_ready is False
     assert status.observability_governance.runbook_readiness.runbook_ready is True

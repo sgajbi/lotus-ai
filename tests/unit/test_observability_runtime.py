@@ -6,6 +6,19 @@ def test_build_observability_runtime_status_returns_bounded_domain_summary() -> 
 
     assert status.service == "lotus-ai"
     assert status.domain_count == 6
+    assert status.ai_surface_supportability.supported_surface_count == 3
+    assert status.ai_surface_supportability.executable_workflow_pack_count == 3
+    assert status.ai_surface_supportability.no_sensitive_content_telemetry is False
+    assert status.ai_surface_supportability.metric_name == "lotus_ai_surface_supportability_state"
+    assert {surface.workflow_pack_ref for surface in status.ai_surface_supportability.surfaces} == {
+        "advisor_brief.pack@v1",
+        "twr_inspection_support_brief.pack@v1",
+        "workspace_rationale.pack@v1",
+    }
+    assert all(
+        surface.no_sensitive_content_telemetry is False
+        for surface in status.ai_surface_supportability.surfaces
+    )
     assert status.healthy_domain_count >= 1
     assert status.degraded_domain_count >= 1
     assert status.unavailable_domain_count == 0
@@ -25,6 +38,7 @@ def test_build_observability_runtime_status_returns_bounded_domain_summary() -> 
         for item in status.incident_evidence_items
     )
     assert any("deployment-split posture" in line.lower() for line in status.status_summary)
+    assert any("ai surface supportability" in line.lower() for line in status.status_summary)
 
 
 def test_build_observability_runtime_status_flags_async_degradation() -> None:
