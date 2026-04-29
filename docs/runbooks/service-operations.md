@@ -199,9 +199,12 @@ Before treating the in-service observability layer as governed rollout posture:
 4. inspect `GET /platform/observability/governance-status` for the composed governance view
 5. confirm the embedded `observability_runtime` and `observability_governance` blocks in `GET /platform/runtime-status` match the detailed observability views
 6. confirm `GET /platform/observability/incident-summary` covers provider, retrieval, async, evaluation, prompt, and safety domains without unavailable telemetry posture
-7. confirm `GET /platform/observability/breakdowns` still exposes bounded caller, tenant, and capability samples without leaking unauthorized tenant data
-8. confirm observability incident items now expose governed artifact descriptors rather than raw payloads or backend URLs
-9. treat SQL-backed audit and caller-policy stores as the activation gate for restart-safe observability governance
+7. inspect the `ai_surface_supportability` block in `GET /platform/observability/runtime-status` and the embedded `observability_runtime` block in `GET /platform/runtime-status` before treating AI-backed Workbench, advisory, or performance support surfaces as operator-ready
+8. confirm the `ai_surface_supportability.metric_name` is `lotus_ai_surface_supportability_state` and that metric labels stay bounded to `surface`, `posture`, and `source`
+9. confirm represented AI-backed surfaces carry `no_sensitive_content_telemetry=true` before treating generated commentary, rationale, or brief surfaces as free of sensitive-content telemetry gaps
+10. confirm `GET /platform/observability/breakdowns` still exposes bounded caller, tenant, and capability samples without leaking unauthorized tenant data
+11. confirm observability incident items now expose governed artifact descriptors rather than raw payloads or backend URLs
+12. treat SQL-backed audit and caller-policy stores as the activation gate for restart-safe observability governance
 
 Current incident-review expectations:
 
@@ -209,6 +212,7 @@ Current incident-review expectations:
 2. inspect the `artifact_refs` attached to each incident-evidence item when bounded historical or diagnostic context is needed
 3. treat those artifact refs as governed snapshots of the domain incident bundle rather than as a raw export surface
 4. use the linked domain endpoints for deeper runtime and governance inspection instead of expecting observability routes to dump raw payloads inline
+5. for RFC-0108 AI-backed surface supportability, use `ai_surface_supportability.surfaces[*].source_endpoints` as the bounded pivot list; do not infer supportability from model availability alone because workflow-pack run posture and no-sensitive-content telemetry are separate gates
 
 ## Async Activation Governance
 
@@ -496,7 +500,8 @@ Before treating `lotus-performance` analytics commentary as limited governed rol
 6. confirm `GET /platform/evals/runtime-status` still reports the `first_use_case_onboarding` approval gate truthfully
 7. confirm `GET /platform/resilience/governance-status` is also ready before treating limited rollout as credible continuity-backed posture
 8. confirm `GET /platform/observability/incident-summary` and any attached artifact descriptors remain available for bounded incident review of the first use case
-9. only then proceed with any limited downstream rollout review
+9. confirm `GET /platform/observability/runtime-status` reports the `twr_inspection_support_brief` AI surface with `owning_service=lotus-performance` before treating lotus-performance AI supportability as current
+10. only then proceed with any limited downstream rollout review
 
 Current rollback and support expectations:
 

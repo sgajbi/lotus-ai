@@ -9,12 +9,14 @@ from app.contracts.observability import (
     ObservabilityRuntimeStatusResponse,
 )
 from app.services.deployment_split_runtime import build_deployment_split_runtime_status
+from app.services.ai_surface_supportability import build_ai_surface_supportability_summary
 from app.services.observability_domain_summaries import build_current_observability_bundles
 from app.services.observability_shared import assess_observability_posture
 
 
 def build_observability_runtime_status() -> ObservabilityRuntimeStatusResponse:
     deployment_split = build_deployment_split_runtime_status()
+    ai_surface_supportability = build_ai_surface_supportability_summary()
     domains = _build_domain_summaries()
     incident_items = _build_incident_items()
     postures = [domain.posture for domain in domains]
@@ -46,9 +48,11 @@ def build_observability_runtime_status() -> ObservabilityRuntimeStatusResponse:
         incident_evidence_supported_domain_count=incident_evidence_supported_domain_count,
         domains=domains,
         incident_evidence_items=incident_items,
+        ai_surface_supportability=ai_surface_supportability,
         status_summary=_build_status_summary(
             deployment_split_summary=deployment_split.status_summary[0],
             deployment_split_degraded=deployment_split.degraded,
+            ai_surface_supportability_posture=ai_surface_supportability.posture.value,
             healthy_domain_count=healthy_domain_count,
             degraded_domain_count=degraded_domain_count,
             unavailable_domain_count=unavailable_domain_count,
@@ -74,6 +78,7 @@ def _build_status_summary(
     *,
     deployment_split_summary: str,
     deployment_split_degraded: bool,
+    ai_surface_supportability_posture: str,
     healthy_domain_count: int,
     degraded_domain_count: int,
     unavailable_domain_count: int,
@@ -86,6 +91,7 @@ def _build_status_summary(
             if not deployment_split_degraded
             else f"Deployment-split posture is active but degraded: {deployment_split_summary.lower()}"
         ),
+        f"AI surface supportability currently reports `{ai_surface_supportability_posture}` posture from workflow-pack runtime, provider, and safety sources.",
         (
             f"{degraded_domain_count} domain(s) currently report degraded observability posture because the underlying governed runtime or evidence state is degraded."
             if degraded_domain_count
