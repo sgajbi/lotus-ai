@@ -3,6 +3,7 @@ from __future__ import annotations
 from prometheus_client import Gauge
 
 from app.contracts.observability import (
+    AISurfaceSupportabilityReason,
     AISurfaceSupportabilityItem,
     AISurfaceSupportabilitySummary,
     ObservabilityFreshness,
@@ -14,11 +15,12 @@ from app.services.safety_status import build_safety_runtime_status
 from app.services.workflow_pack_runtime_status import build_workflow_pack_runtime_status_summary
 
 AI_SURFACE_SUPPORTABILITY_METRIC = "lotus_ai_surface_supportability_state"
+AI_SURFACE_SUPPORTABILITY_METRIC_LABELS = ("surface", "posture", "source")
 
 _AI_SURFACE_SUPPORTABILITY_GAUGE = Gauge(
     AI_SURFACE_SUPPORTABILITY_METRIC,
     "Bounded AI-backed surface supportability posture by surface and source.",
-    ["surface", "posture", "source"],
+    list(AI_SURFACE_SUPPORTABILITY_METRIC_LABELS),
 )
 
 _WORKFLOW_PACK_SURFACE_OWNERS = {
@@ -88,6 +90,7 @@ def build_ai_surface_supportability_summary() -> AISurfaceSupportabilitySummary:
         unavailable_surface_count=unavailable_surface_count,
         no_sensitive_content_telemetry=no_sensitive_content_telemetry,
         metric_name=AI_SURFACE_SUPPORTABILITY_METRIC,
+        metric_labels=list(AI_SURFACE_SUPPORTABILITY_METRIC_LABELS),
         surfaces=surfaces,
         status_summary=[
             f"AI surface supportability is sourced from {len(surfaces)} executable workflow-pack surface(s), provider operations, and safety runtime.",
@@ -121,12 +124,19 @@ def _build_surface_item(
         ready_count=activity.ready_count,
         no_sensitive_content_telemetry=no_sensitive_content_telemetry,
     )
+    supportability_reason = _surface_supportability_reason(
+        has_activity=activity.has_activity,
+        action_required_count=activity.action_required_count,
+        ready_count=activity.ready_count,
+        no_sensitive_content_telemetry=no_sensitive_content_telemetry,
+    )
     return AISurfaceSupportabilityItem(
         surface_id=surface_id,
         owning_service=owning_service,
         workflow_authority_owner=workflow_authority_owner,
         workflow_pack_ref=activity.registration_ref,
         supportability_status=supportability_status,
+        supportability_reason=supportability_reason,
         model_posture=provider_posture,
         latest_ready_run_id=activity.latest_ready_run_id,
         latest_action_required_run_id=activity.latest_action_required_run_id,
@@ -178,6 +188,24 @@ def _surface_supportability_status(
     if has_activity:
         return "HISTORICAL"
     return "SUPPORTED_NO_ACTIVITY"
+
+
+def _surface_supportability_reason(
+    *,
+    has_activity: bool,
+    action_required_count: int,
+    ready_count: int,
+    no_sensitive_content_telemetry: bool,
+) -> AISurfaceSupportabilityReason:
+    if not no_sensitive_content_telemetry:
+        return AISurfaceSupportabilityReason.NO_SENSITIVE_TELEMETRY_DEGRADED
+    if action_required_count:
+        return AISurfaceSupportabilityReason.WORKFLOW_PACK_ACTION_REQUIRED
+    if ready_count:
+        return AISurfaceSupportabilityReason.WORKFLOW_PACK_READY
+    if has_activity:
+        return AISurfaceSupportabilityReason.WORKFLOW_PACK_HISTORICAL
+    return AISurfaceSupportabilityReason.WORKFLOW_PACK_SUPPORTED_NO_ACTIVITY
 
 
 def _overall_posture(

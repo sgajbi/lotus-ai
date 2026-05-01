@@ -330,7 +330,10 @@ This family covers:
 1. runtime, activation, runbook, and governance posture
 2. incident summary
 3. bounded summaries by provider, retrieval, async, evaluation, prompt, and safety
-4. breakdown views for operator analysis
+4. AI-backed surface supportability for advisor brief, TWR inspection support brief, and workspace
+   rationale surfaces, including bounded `supportability_reason` values and explicit
+   `metric_labels` truth for `lotus_ai_surface_supportability_state`
+5. breakdown views for operator analysis
 
 ## Access-Control Surface
 

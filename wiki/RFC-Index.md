@@ -20,6 +20,10 @@ The main Lotus platform RFCs that shape this repository are:
    CI, validation, and release governance
 3. `RFC-0073`
    context and guidance-system governance
+4. `RFC-0108`
+   front-office analytics UI observability and operational posture; in `lotus-ai`, this is
+   represented by the `ai_surface_supportability` runtime-status block and the bounded
+   `lotus_ai_surface_supportability_state` metric
 
 These live under:
 

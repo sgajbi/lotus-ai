@@ -70,6 +70,24 @@ represented advisor brief, TWR inspection support brief, and workspace rationale
 sourced from workflow-pack runtime, provider operations, and safety runtime rather than from model
 availability alone.
 
+```mermaid
+flowchart LR
+    Runs["Workflow-pack runtime"] --> Supportability["ai_surface_supportability"]
+    Provider["Provider operations"] --> Supportability
+    Safety["Safety runtime"] --> Supportability
+    Supportability --> Runtime["/platform/observability/runtime-status"]
+    Supportability --> Metric["lotus_ai_surface_supportability_state"]
+```
+
+Operator interpretation:
+
+1. `metric_labels` must remain exactly `surface`, `posture`, and `source`.
+2. `supportability_reason` is the bounded cause code for the current surface posture.
+3. no-sensitive-content telemetry must be true before generated commentary, rationale, or brief
+   surfaces are treated as supportable without sensitive-content telemetry gaps.
+4. supportability evidence must not add portfolio, client, advisor, correlation, trace, prompt,
+   request body, response body, or generated-output values to metrics or operator summaries.
+
 Good examples:
 
 1. provider posture
@@ -134,9 +152,12 @@ For AI-backed product-surface support, also confirm:
 
 1. `ai_surface_supportability.metric_name` is `lotus_ai_surface_supportability_state`,
 2. metric labels stay bounded to `surface`, `posture`, and `source`,
-3. each represented surface has `no_sensitive_content_telemetry=true` before treating generated
+3. each represented surface carries a bounded `supportability_reason` so support can distinguish
+   no-sensitive-telemetry degradation from workflow-pack action-required, ready, historical, or
+   supported-no-activity posture without raw prompts or generated content,
+4. each represented surface has `no_sensitive_content_telemetry=true` before treating generated
    commentary, rationale, or brief surfaces as supportable without sensitive-content telemetry gaps,
-4. `twr_inspection_support_brief` remains owned by `lotus-performance`; do not reintroduce old
+5. `twr_inspection_support_brief` remains owned by `lotus-performance`; do not reintroduce old
    `pa` naming in operator evidence or supportability records.
 
 The owner-facing source for that procedure is:
