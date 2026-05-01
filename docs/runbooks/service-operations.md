@@ -202,9 +202,10 @@ Before treating the in-service observability layer as governed rollout posture:
 7. inspect the `ai_surface_supportability` block in `GET /platform/observability/runtime-status` and the embedded `observability_runtime` block in `GET /platform/runtime-status` before treating AI-backed Workbench, advisory, or performance support surfaces as operator-ready
 8. confirm the `ai_surface_supportability.metric_name` is `lotus_ai_surface_supportability_state` and that metric labels stay bounded to `surface`, `posture`, and `source`
 9. confirm represented AI-backed surfaces carry `no_sensitive_content_telemetry=true` before treating generated commentary, rationale, or brief surfaces as free of sensitive-content telemetry gaps
-10. confirm `GET /platform/observability/breakdowns` still exposes bounded caller, tenant, and capability samples without leaking unauthorized tenant data
-11. confirm observability incident items now expose governed artifact descriptors rather than raw payloads or backend URLs
-12. treat SQL-backed audit and caller-policy stores as the activation gate for restart-safe observability governance
+10. inspect `ai_surface_supportability.surfaces[*].supportability_reason` to distinguish no-sensitive-telemetry degradation from workflow-pack action-required, ready, historical, or supported-no-activity posture without inspecting raw prompts or generated content
+11. confirm `GET /platform/observability/breakdowns` still exposes bounded caller, tenant, and capability samples without leaking unauthorized tenant data
+12. confirm observability incident items now expose governed artifact descriptors rather than raw payloads or backend URLs
+13. treat SQL-backed audit and caller-policy stores as the activation gate for restart-safe observability governance
 
 Current incident-review expectations:
 
@@ -213,6 +214,7 @@ Current incident-review expectations:
 3. treat those artifact refs as governed snapshots of the domain incident bundle rather than as a raw export surface
 4. use the linked domain endpoints for deeper runtime and governance inspection instead of expecting observability routes to dump raw payloads inline
 5. for RFC-0108 AI-backed surface supportability, use `ai_surface_supportability.surfaces[*].source_endpoints` as the bounded pivot list; do not infer supportability from model availability alone because workflow-pack run posture and no-sensitive-content telemetry are separate gates
+6. use `ai_surface_supportability.surfaces[*].supportability_reason` as the bounded cause code for support triage; do not add portfolio, client, advisor, correlation, trace, raw prompt, request body, response body, or model-output labels to the metric or supportability response
 
 ## Async Activation Governance
 

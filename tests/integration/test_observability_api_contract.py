@@ -13,6 +13,7 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
     assert (
         body["ai_surface_supportability"]["metric_name"] == "lotus_ai_surface_supportability_state"
     )
+    assert body["ai_surface_supportability"]["metric_labels"] == ["surface", "posture", "source"]
     assert {
         surface["workflow_pack_ref"] for surface in body["ai_surface_supportability"]["surfaces"]
     } == {
@@ -20,6 +21,10 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
         "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
     }
+    assert {
+        surface["supportability_reason"]
+        for surface in body["ai_surface_supportability"]["surfaces"]
+    } == {"NO_SENSITIVE_TELEMETRY_DEGRADED"}
     assert all(
         surface["no_sensitive_content_telemetry"] is False
         for surface in body["ai_surface_supportability"]["surfaces"]

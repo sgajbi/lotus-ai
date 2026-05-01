@@ -10,11 +10,15 @@ def test_build_observability_runtime_status_returns_bounded_domain_summary() -> 
     assert status.ai_surface_supportability.executable_workflow_pack_count == 3
     assert status.ai_surface_supportability.no_sensitive_content_telemetry is False
     assert status.ai_surface_supportability.metric_name == "lotus_ai_surface_supportability_state"
+    assert status.ai_surface_supportability.metric_labels == ["surface", "posture", "source"]
     assert {surface.workflow_pack_ref for surface in status.ai_surface_supportability.surfaces} == {
         "advisor_brief.pack@v1",
         "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
     }
+    assert {
+        surface.supportability_reason.value for surface in status.ai_surface_supportability.surfaces
+    } == {"NO_SENSITIVE_TELEMETRY_DEGRADED"}
     assert all(
         surface.no_sensitive_content_telemetry is False
         for surface in status.ai_surface_supportability.surfaces

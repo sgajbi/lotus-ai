@@ -19,6 +19,14 @@ class ObservabilityFreshness(str, Enum):
     UNAVAILABLE = "UNAVAILABLE"
 
 
+class AISurfaceSupportabilityReason(str, Enum):
+    NO_SENSITIVE_TELEMETRY_DEGRADED = "NO_SENSITIVE_TELEMETRY_DEGRADED"
+    WORKFLOW_PACK_ACTION_REQUIRED = "WORKFLOW_PACK_ACTION_REQUIRED"
+    WORKFLOW_PACK_READY = "WORKFLOW_PACK_READY"
+    WORKFLOW_PACK_HISTORICAL = "WORKFLOW_PACK_HISTORICAL"
+    WORKFLOW_PACK_SUPPORTED_NO_ACTIVITY = "WORKFLOW_PACK_SUPPORTED_NO_ACTIVITY"
+
+
 class ObservabilityDomainId(str, Enum):
     PROVIDER = "provider"
     RETRIEVAL = "retrieval"
@@ -214,6 +222,11 @@ class AISurfaceSupportabilityItem(BaseModel):
     supportability_status: str = Field(
         description="Current supportability posture for this AI-backed surface."
     )
+    supportability_reason: AISurfaceSupportabilityReason = Field(
+        description=(
+            "Bounded reason explaining why the current supportability posture was assigned."
+        )
+    )
     model_posture: ObservabilityPosture = Field(
         description="Current model/provider posture relevant to the AI-backed surface."
     )
@@ -260,6 +273,11 @@ class AISurfaceSupportabilitySummary(BaseModel):
     )
     metric_name: str = Field(
         description="Prometheus metric emitted for bounded AI surface supportability posture."
+    )
+    metric_labels: list[str] = Field(
+        description=(
+            "Governed bounded Prometheus labels emitted by the AI surface supportability metric."
+        )
     )
     surfaces: list[AISurfaceSupportabilityItem] = Field(
         description="Bounded source-backed AI surface supportability items."
