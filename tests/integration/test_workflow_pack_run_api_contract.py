@@ -312,6 +312,29 @@ def test_workflow_pack_execute_route_records_outcome_review_narrative_run(
     _assert_task_flow_recorded_for_run(client=client, run_id=body["workflow_pack_run"]["run_id"])
 
 
+def test_workflow_pack_execute_route_allows_gateway_outcome_review_narrative_handoff(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=outcome_review_narrative_workflow_pack_execution_request_json(
+            correlation_id="corr-outcome-review-narrative-gateway-pack-001",
+            caller_app="lotus-gateway",
+        ),
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    structured_output = body["execution"]["result"]["structured_output"]
+    assert body["eligibility"]["allowed"] is True
+    assert body["workflow_pack_run"]["pack_id"] == "outcome_review_narrative.pack"
+    assert body["workflow_pack_run"]["caller_app"] == "lotus-gateway"
+    assert body["workflow_pack_run"]["workflow_authority_owner"] == "lotus-manage"
+    assert structured_output["outcome_review_narrative_status"] == "REVIEW_REQUIRED"
+    assert structured_output["evidence_content_hash"] == "sha256:outcome-ai-evidence-001"
+    assert "contact_client" in structured_output["forbidden_actions_enforced"]
+
+
 def test_workflow_pack_execute_route_blocks_outcome_review_narrative_forbidden_output(
     client: TestClient,
 ) -> None:

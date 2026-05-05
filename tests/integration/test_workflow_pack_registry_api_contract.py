@@ -72,6 +72,7 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     assert outcome_review_registration["version"] == "v1"
     assert outcome_review_registration["owner_repository"] == "lotus-manage"
     assert outcome_review_registration["workflow_authority_owner"] == "lotus-manage"
+    assert outcome_review_registration["supported_callers"] == ["lotus-manage", "lotus-gateway"]
     assert advisor_brief_binding["version"] == "v1"
     assert advisor_brief_binding["task_id"] == "explain.v1"
     assert advisor_brief_binding["default_workflow_surface"] == "advisor-brief-workspace"
