@@ -371,6 +371,7 @@ def outcome_review_narrative_workflow_pack_execution_request_json(
     *,
     correlation_id: str,
     task_id: str = "explain.v1",
+    caller_app: str = "lotus-manage",
     workflow_surface: str | None = "dpm-outcome-review-ai-evidence",
     environment: str = "DEVELOPMENT",
     caller_identity_class: str = "INTERNAL_SERVICE",
@@ -385,7 +386,7 @@ def outcome_review_narrative_workflow_pack_execution_request_json(
             "task_id": task_id,
             "input_mode": "STRUCTURED_CONTEXT",
             "caller": {
-                "caller_app": "lotus-manage",
+                "caller_app": caller_app,
                 "correlation_id": correlation_id,
                 "tenant_id": "tenant-sg-001",
             },

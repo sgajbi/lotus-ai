@@ -79,6 +79,10 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     )
     assert outcome_review_narrative_registration.owner_repository == "lotus-manage"
     assert outcome_review_narrative_registration.workflow_authority_owner == "lotus-manage"
+    assert outcome_review_narrative_registration.supported_callers == [
+        "lotus-manage",
+        "lotus-gateway",
+    ]
     assert any(
         definition_ref.repository == "lotus-manage"
         and definition_ref.path == "src/core/outcomes/handoffs.py"
