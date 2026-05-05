@@ -21,8 +21,8 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
 
     assert catalog.service == "lotus-ai"
     assert catalog.phase == "foundation"
-    assert catalog.registration_count == 4
-    assert catalog.registered_count == 3
+    assert catalog.registration_count == 5
+    assert catalog.registered_count == 4
     assert catalog.production_eligible_count == 0
     advisor_brief_registration = next(
         registration
@@ -38,6 +38,11 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         registration
         for registration in catalog.registrations
         if registration.pack_id == "twr_inspection_support_brief.pack"
+    )
+    outcome_review_narrative_registration = next(
+        registration
+        for registration in catalog.registrations
+        if registration.pack_id == "outcome_review_narrative.pack"
     )
     assert (
         advisor_brief_registration.registration_status == WorkflowPackRegistrationStatus.REGISTERED
@@ -64,8 +69,19 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     )
     assert twr_inspection_registration.owner_repository == "lotus-performance"
     assert twr_inspection_registration.workflow_authority_owner == "lotus-performance"
-    assert len(catalog.execution_bindings) == 3
-    assert len(catalog.queue_policies) == 3
+    assert outcome_review_narrative_registration.registration_status == (
+        WorkflowPackRegistrationStatus.REGISTERED
+    )
+    assert outcome_review_narrative_registration.owner_repository == "lotus-manage"
+    assert outcome_review_narrative_registration.workflow_authority_owner == "lotus-manage"
+    assert any(
+        definition_ref.repository == "lotus-manage"
+        and definition_ref.path == "src/core/outcomes/handoffs.py"
+        and definition_ref.required_for_registration is True
+        for definition_ref in outcome_review_narrative_registration.definition_refs
+    )
+    assert len(catalog.execution_bindings) == 4
+    assert len(catalog.queue_policies) == 4
     assert any(
         binding.pack_id == "advisor_brief.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
@@ -82,6 +98,10 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     )
     assert any(
         binding.pack_id == "twr_inspection_support_brief.pack" and binding.task_id == "explain.v1"
+        for binding in catalog.execution_bindings
+    )
+    assert any(
+        binding.pack_id == "outcome_review_narrative.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
     )
 

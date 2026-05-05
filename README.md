@@ -58,7 +58,7 @@ Important posture limits:
 4. prompt bodies remain repository-managed even though runtime prompt selection is durable,
 5. workflow-pack registry records are control-plane metadata, not a second editable home for workflow logic,
 6. workflow-pack registrations must point to real owning-repository artifacts rather than placeholder definitions in `lotus-ai`,
-7. workflow-pack registry and control state can now run either in-memory or through a SQL-backed durable store, but broader workflow-pack runtime rollout is still intentionally narrow,
+7. workflow-pack registry and control state can now run either in-memory or through a SQL-backed durable store, and the current executable workflow-pack set includes advisor brief, workspace rationale, TWR inspection support brief, and the review-gated `outcome_review_narrative.pack@v1` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`,
 8. the service should be treated as a governed capability layer, not a business-domain authority.
 
 ## Architectural Shape

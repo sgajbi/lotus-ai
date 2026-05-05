@@ -277,6 +277,11 @@ That sequence keeps downstream adoption pack-oriented first, while still preserv
 1. Explain rebalance outcome.
 2. Summarize blocking diagnostics.
 3. Draft reviewer notes for support or operations.
+4. Use `outcome_review_narrative.pack@v1` only with manage-owned `DpmOutcomeAiEvidenceInput`,
+   a bounded `narrative_request`, and supportability posture. Requests for PM scoring, client
+   messages, trade approval, control override, or invented missing evidence are guardrail-blocked
+   before execution and should be fixed in the calling workflow rather than retried with different
+   prompt wording.
 
 ### lotus-advise
 

@@ -87,3 +87,20 @@ TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC = WorkflowPackPhase1VersionSpec(
         {"inspection", "findings", "owner_summary", "evidence_summary", "check_coverage"}
     ),
 )
+
+
+OUTCOME_REVIEW_NARRATIVE_V1_SPEC = WorkflowPackPhase1VersionSpec(
+    pack_id="outcome_review_narrative.pack",
+    pack_family="outcome_review_narrative",
+    version="v1",
+    owner_repository="lotus-manage",
+    owner_service="lotus-manage",
+    truth_owner_services=("lotus-manage", "lotus-core", "lotus-risk", "lotus-performance"),
+    primary_use_case="dpm_outcome_review_ai_narrative",
+    workflow_authority_owner="lotus-manage",
+    supported_callers=("lotus-manage",),
+    surface_scope=("dpm-outcome-review-ai-evidence",),
+    default_workflow_surface="dpm-outcome-review-ai-evidence",
+    execution_task_id="explain.v1",
+    required_payload_keys=frozenset({"ai_evidence_input", "narrative_request", "supportability"}),
+)

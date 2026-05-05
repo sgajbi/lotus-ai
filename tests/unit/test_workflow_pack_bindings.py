@@ -16,6 +16,7 @@ from app.services.workflow_pack_bindings import (
     resolve_workflow_pack_execution_binding_for_task,
     validate_workflow_pack_execution_bindings,
 )
+from tests.support.workflow_pack_fixtures import outcome_review_narrative_payload
 
 
 def test_get_workflow_pack_execution_binding_returns_phase1_binding() -> None:
@@ -35,6 +36,18 @@ def test_get_workflow_pack_execution_binding_returns_twr_inspection_support_brie
     assert binding is not None
     assert binding.task_id == "explain.v1"
     assert binding.default_workflow_surface == "twr-supportability-inspection"
+
+
+def test_get_workflow_pack_execution_binding_returns_outcome_review_narrative_binding() -> None:
+    binding = get_workflow_pack_execution_binding(
+        pack_id="outcome_review_narrative.pack",
+        version="v1",
+    )
+
+    assert binding is not None
+    assert binding.task_id == "explain.v1"
+    assert binding.default_workflow_surface == "dpm-outcome-review-ai-evidence"
+    assert binding.validate_task_request_payload(payload=outcome_review_narrative_payload())
 
 
 def test_get_resolved_workflow_pack_execution_binding_returns_binding_and_registration() -> None:

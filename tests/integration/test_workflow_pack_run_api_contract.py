@@ -1,5 +1,6 @@
 from dataclasses import replace
 from pathlib import Path
+from typing import Any, cast
 
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
@@ -17,6 +18,7 @@ from tests.support.runtime_settings import override_runtime_settings
 from tests.support.workflow_pack_fixtures import (
     advisor_brief_task_execution_request_json,
     advisor_brief_workflow_pack_execution_request_json,
+    outcome_review_narrative_workflow_pack_execution_request_json,
     twr_inspection_support_brief_workflow_pack_execution_request_json,
     workspace_rationale_workflow_pack_execution_request_json,
 )
@@ -276,6 +278,75 @@ def test_workflow_pack_execute_route_records_twr_inspection_support_brief_run(
     assert body["workflow_pack_run"]["workflow_surface"] == "twr-supportability-inspection"
     assert body["workflow_pack_run"]["workflow_authority_owner"] == "lotus-performance"
     assert body["execution"]["audit"]["workflow_pack_run_id"] == body["workflow_pack_run"]["run_id"]
+
+
+def test_workflow_pack_execute_route_records_outcome_review_narrative_run(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=outcome_review_narrative_workflow_pack_execution_request_json(
+            correlation_id="corr-outcome-review-narrative-pack-001"
+        ),
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    structured_output = body["execution"]["result"]["structured_output"]
+    assert body["eligibility"]["allowed"] is True
+    assert body["execution"]["status"] == "COMPLETED"
+    assert body["workflow_pack_run"]["pack_id"] == "outcome_review_narrative.pack"
+    assert body["workflow_pack_run"]["registration_ref"] == "outcome_review_narrative.pack@v1"
+    assert body["workflow_pack_run"]["caller_app"] == "lotus-manage"
+    assert body["workflow_pack_run"]["workflow_surface"] == "dpm-outcome-review-ai-evidence"
+    assert body["workflow_pack_run"]["workflow_authority_owner"] == "lotus-manage"
+    assert body["execution"]["audit"]["workflow_pack_run_id"] == body["workflow_pack_run"]["run_id"]
+    assert structured_output["outcome_review_narrative_status"] == "REVIEW_REQUIRED"
+    assert structured_output["unsupported_claims"] == [
+        "client_contact",
+        "trade_approval",
+        "portfolio_manager_scoring",
+        "source_fact_invention",
+    ]
+    assert "score_portfolio_manager" in structured_output["forbidden_actions_enforced"]
+    _assert_task_flow_recorded_for_run(client=client, run_id=body["workflow_pack_run"]["run_id"])
+
+
+def test_workflow_pack_execute_route_blocks_outcome_review_narrative_forbidden_output(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/platform/workflow-packs/execute",
+        json=outcome_review_narrative_workflow_pack_execution_request_json(
+            correlation_id="corr-outcome-review-narrative-blocked-output-001",
+            requested_outputs=["pm_summary", "pm_score"],
+        ),
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert "OUTCOME_REVIEW_NARRATIVE_GUARDRAIL_BLOCKED" in body["detail"]
+    assert "Forbidden narrative outputs requested: pm_score" in body["detail"]
+
+
+def test_workflow_pack_execute_route_blocks_outcome_review_narrative_forbidden_field(
+    client: TestClient,
+) -> None:
+    request = outcome_review_narrative_workflow_pack_execution_request_json(
+        correlation_id="corr-outcome-review-narrative-blocked-field-001"
+    )
+    task_request = cast(dict[str, Any], request["task_request"])
+    context = cast(dict[str, Any], task_request["context"])
+    payload = cast(dict[str, Any], context["payload"])
+    ai_evidence_input = cast(dict[str, Any], payload["ai_evidence_input"])
+    ai_evidence_input["raw_payload"] = {"unsafe": True}
+
+    response = client.post("/platform/workflow-packs/execute", json=request)
+
+    assert response.status_code == 422
+    body = response.json()
+    assert "OUTCOME_REVIEW_NARRATIVE_GUARDRAIL_BLOCKED" in body["detail"]
+    assert "Forbidden AI evidence fields present: raw_payload" in body["detail"]
 
 
 def test_workflow_pack_execute_route_records_failed_run_when_runtime_execution_is_unavailable(

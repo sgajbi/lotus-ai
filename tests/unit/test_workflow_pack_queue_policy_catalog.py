@@ -17,6 +17,7 @@ def test_queue_policy_catalog_declares_policy_for_each_executable_phase1_pack() 
     }
     assert policy_refs == {
         "advisor_brief.pack@v1",
+        "outcome_review_narrative.pack@v1",
         "workspace_rationale.pack@v1",
         "twr_inspection_support_brief.pack@v1",
     }
