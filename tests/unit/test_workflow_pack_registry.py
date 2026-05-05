@@ -14,6 +14,11 @@ from app.services.workflow_pack_registry import (
     get_workflow_pack_registration,
     save_workflow_pack_registration,
 )
+from app.services.workflow_pack_registry_seed import (
+    _validate_registered_entries_have_scope,
+    _validate_retired_entries_are_not_active,
+    _validate_unique_registration_identity,
+)
 
 
 def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> None:
@@ -311,3 +316,40 @@ def test_save_workflow_pack_registration_rejects_missing_required_owner_artifact
         assert "missing required owner artifacts" in str(exc)
     else:
         raise AssertionError("Expected missing required owner artifacts to fail")
+
+
+def test_seed_registration_validation_rejects_duplicate_identity_scope_and_retired_drift() -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+
+    try:
+        _validate_unique_registration_identity([registration, registration])
+    except ValueError as exc:
+        assert "Duplicate workflow-pack registration identity" in str(exc)
+    else:
+        raise AssertionError("expected duplicate registration identity to fail")
+
+    try:
+        _validate_registered_entries_have_scope(
+            [registration.model_copy(update={"supported_callers": []})]
+        )
+    except ValueError as exc:
+        assert "missing execution scope" in str(exc)
+    else:
+        raise AssertionError("expected registered entry without caller scope to fail")
+
+    try:
+        _validate_retired_entries_are_not_active(
+            [
+                registration.model_copy(
+                    update={
+                        "registration_status": WorkflowPackRegistrationStatus.RETIRED,
+                        "activation_state": WorkflowPackActivationState.PILOT,
+                    }
+                )
+            ]
+        )
+    except ValueError as exc:
+        assert "Retired workflow-pack cannot remain active" in str(exc)
+    else:
+        raise AssertionError("expected retired active entry to fail")

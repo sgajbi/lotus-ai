@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from pytest import MonkeyPatch
 
 from app.contracts.tasks import (
@@ -11,11 +13,13 @@ from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.task_execution_context_builder import build_task_execution_context
 from app.services.workflow_pack_bindings import (
+    _build_execution_binding_from_spec,
     get_workflow_pack_execution_binding,
     get_resolved_workflow_pack_execution_binding,
     resolve_workflow_pack_execution_binding_for_task,
     validate_workflow_pack_execution_bindings,
 )
+from app.services.workflow_pack_phase1_specs import ADVISOR_BRIEF_V1_SPEC
 from tests.support.workflow_pack_fixtures import outcome_review_narrative_payload
 
 
@@ -48,6 +52,24 @@ def test_get_workflow_pack_execution_binding_returns_outcome_review_narrative_bi
     assert binding.task_id == "explain.v1"
     assert binding.default_workflow_surface == "dpm-outcome-review-ai-evidence"
     assert binding.validate_task_request_payload(payload=outcome_review_narrative_payload())
+
+
+def test_workflow_pack_execution_binding_spec_requires_task_and_surface() -> None:
+    missing_task_spec = replace(ADVISOR_BRIEF_V1_SPEC, execution_task_id=None)
+    try:
+        _build_execution_binding_from_spec(missing_task_spec)
+    except ValueError as exc:
+        assert "missing execution_task_id" in str(exc)
+    else:
+        raise AssertionError("expected missing execution task id to block binding construction")
+
+    missing_surface_spec = replace(ADVISOR_BRIEF_V1_SPEC, default_workflow_surface=None)
+    try:
+        _build_execution_binding_from_spec(missing_surface_spec)
+    except ValueError as exc:
+        assert "missing default_workflow_surface" in str(exc)
+    else:
+        raise AssertionError("expected missing default surface to block binding construction")
 
 
 def test_get_resolved_workflow_pack_execution_binding_returns_binding_and_registration() -> None:

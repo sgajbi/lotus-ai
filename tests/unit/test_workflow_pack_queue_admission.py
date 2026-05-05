@@ -1,19 +1,26 @@
 from datetime import datetime, timedelta
 
+from _pytest.monkeypatch import MonkeyPatch
 from fastapi import HTTPException
 
 from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueCancellationActor,
     WorkflowPackQueueEventDescriptor,
+    WorkflowPackQueueEventType,
     WorkflowPackQueueLane,
+    WorkflowPackQueueState,
 )
 from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.services.workflow_pack_queue_admission import (
+    _ensure_queue_event_store_ready_for_admission,
+    _record_queue_event,
+    _transition_queue_state,
     acquire_workflow_pack_queue_admission,
     cancel_workflow_pack_queue_admission,
     release_workflow_pack_queue_admission,
 )
 from app.services.workflow_pack_queue_events import (
+    WorkflowPackQueueEventStoreNotReadyError,
     build_workflow_pack_queue_event_catalog,
     build_workflow_pack_queue_event_detail,
 )
@@ -105,6 +112,30 @@ def test_queue_admission_rejects_unsupported_requested_lane() -> None:
     assert rejected_history[0].lane == WorkflowPackQueueLane.NIGHTLY
 
 
+def test_queue_admission_rejects_registration_without_queue_policy(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.workflow_pack_queue_admission.get_workflow_pack_queue_policy_descriptor",
+        lambda *, pack_id, version: None,
+    )
+
+    try:
+        acquire_workflow_pack_queue_admission(
+            registration=_advisor_brief_registration(),
+            caller_app="lotus-gateway",
+            correlation_id="corr-queue-policy-missing",
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 409
+        assert "queue policy is not declared" in str(exc.detail)
+    else:
+        raise AssertionError("expected missing queue policy to reject admission")
+
+    rejected_history = _queue_events_for_reason("QUEUE_POLICY_NOT_FOUND")
+    assert rejected_history[0].correlation_id == "corr-queue-policy-missing"
+
+
 def test_queue_admission_release_records_timeout_terminal_posture() -> None:
     lease = acquire_workflow_pack_queue_admission(registration=_advisor_brief_registration())
 
@@ -137,6 +168,18 @@ def test_queue_admission_cancellation_records_terminal_posture_and_releases_capa
     assert history.events[-1].reason_code == "QUEUE_ADMISSION_CANCELLED"
 
 
+def test_queue_admission_cancellation_returns_false_for_unknown_lease() -> None:
+    assert (
+        cancel_workflow_pack_queue_admission(
+            "wpq_missing",
+            actor=WorkflowPackQueueCancellationActor.OPERATOR,
+            reason="Operator searched for a missing queue item.",
+            evidence_ref="support-ticket-missing-queue",
+        )
+        is False
+    )
+
+
 def test_queue_admission_cancellation_requires_reason_and_evidence() -> None:
     lease = acquire_workflow_pack_queue_admission(registration=_advisor_brief_registration())
 
@@ -154,6 +197,46 @@ def test_queue_admission_cancellation_requires_reason_and_evidence() -> None:
         raise AssertionError("Expected queue cancellation without reason to fail")
     finally:
         release_workflow_pack_queue_admission(lease.queue_item_id)
+
+
+def test_queue_admission_defensive_failures_are_explicit(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    try:
+        _transition_queue_state(
+            current_state=WorkflowPackQueueState.COMPLETED_HANDOFF,
+            next_state=WorkflowPackQueueState.RUNNING,
+        )
+    except RuntimeError as exc:
+        assert "Illegal workflow-pack queue transition" in str(exc)
+    else:
+        raise AssertionError("expected illegal queue transition to fail explicitly")
+
+    try:
+        _record_queue_event(
+            queue_item_id="wpq_missing_identity",
+            event_type=WorkflowPackQueueEventType.ADMISSION_REJECTED,
+            state=WorkflowPackQueueState.REJECTED,
+            message="missing identity",
+        )
+    except RuntimeError as exc:
+        assert "queue event identity is required" in str(exc)
+    else:
+        raise AssertionError("expected missing queue event identity to fail explicitly")
+
+    monkeypatch.setattr(
+        "app.services.workflow_pack_queue_admission.ensure_workflow_pack_queue_event_store_ready",
+        lambda: (_ for _ in ()).throw(
+            WorkflowPackQueueEventStoreNotReadyError("queue store not ready")
+        ),
+    )
+    try:
+        _ensure_queue_event_store_ready_for_admission()
+    except HTTPException as exc:
+        assert exc.status_code == 503
+        assert "queue store not ready" in str(exc.detail)
+    else:
+        raise AssertionError("expected queue admission to fail when event store is unavailable")
 
 
 def _queue_events_for_reason(reason_code: str) -> list[WorkflowPackQueueEventDescriptor]:

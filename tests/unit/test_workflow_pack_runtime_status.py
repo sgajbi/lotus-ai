@@ -21,6 +21,7 @@ from app.services.workflow_pack_queue_attention import (
     build_workflow_pack_queue_attention_summary,
 )
 from app.services.workflow_pack_runtime_status import (
+    build_workflow_pack_attention_queue_summary,
     build_workflow_pack_task_flow_attention_summary,
     build_workflow_pack_run_runtime_summary,
     build_workflow_pack_runtime_status_summary,
@@ -312,6 +313,73 @@ def test_build_workflow_pack_task_flow_attention_summary_surfaces_heartbeat_post
         "Task flow is blocked and requires operator triage.",
         "Task flow supportability requires operator action.",
         "Task flow has not advanced within the heartbeat stale threshold.",
+    ]
+
+
+def test_workflow_pack_attention_summaries_truncate_and_handle_unparseable_flow_time() -> None:
+    run_catalog = WorkflowPackRunCatalogResponse(
+        service="lotus-ai",
+        version="0.1.0",
+        phase="foundation",
+        run_store_mode="memory",
+        run_count=7,
+        awaiting_review_count=6,
+        completed_count=7,
+        ready_count=0,
+        action_required_count=6,
+        historical_count=1,
+        latest_recorded_at="2026-04-19T12:00:00Z",
+        runs=[
+            build_workflow_pack_run_descriptor(
+                run_id=f"run-action-{index}",
+                created_at=f"2026-04-19T12:0{index}:00Z",
+                review_state=WorkflowPackRunReviewState.AWAITING_REVIEW,
+                supportability_status=WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED,
+            )
+            for index in range(6)
+        ]
+        + [
+            build_workflow_pack_run_descriptor(
+                run_id="run-non-executable",
+                created_at="2026-04-19T12:07:00Z",
+                supportability_status=WorkflowPackRunSupportabilityStatus.ACTION_REQUIRED,
+            ).model_copy(update={"registration_ref": "missing.pack@v1"})
+        ],
+        notes=["summary"],
+    )
+
+    queue = build_workflow_pack_attention_queue_summary(
+        executable_registration_refs=["advisor_brief.pack@v1"],
+        run_catalog=run_catalog,
+    )
+
+    assert queue.queue_depth == 6
+    assert len(queue.items) == queue.queue_limit == 5
+    assert all(item.registration_ref == "advisor_brief.pack@v1" for item in queue.items)
+    assert any("truncated" in line for line in queue.status_summary)
+
+    flow_summary = build_workflow_pack_task_flow_attention_summary(
+        task_flows=[
+            workflow_pack_task_flow_descriptor(
+                task_flow_id="flow-invalid-time",
+                flow_status=WorkflowPackTaskFlowStatus.RUNNING,
+                current_step_id="draft-brief",
+                updated_at="not-a-timestamp",
+            ),
+            workflow_pack_task_flow_descriptor(
+                task_flow_id="flow-naive-time",
+                flow_status=WorkflowPackTaskFlowStatus.RUNNING,
+                current_step_id="draft-brief",
+                updated_at="2026-04-19T01:00:00",
+            ),
+        ],
+        now_utc=datetime(2026, 4, 21, 3, 0, tzinfo=UTC),
+    )
+
+    assert flow_summary.stale_count == 2
+    assert [item.task_flow_id for item in flow_summary.items] == [
+        "flow-invalid-time",
+        "flow-naive-time",
     ]
 
 

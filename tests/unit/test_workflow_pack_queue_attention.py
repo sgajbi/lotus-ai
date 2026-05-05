@@ -3,6 +3,8 @@ from datetime import UTC, datetime
 from _pytest.monkeypatch import MonkeyPatch
 
 from app.contracts.workflow_pack_queue_policies import (
+    WorkflowPackQueueEventDescriptor,
+    WorkflowPackQueueEventType,
     WorkflowPackQueueLane,
     WorkflowPackQueueLaneStatusDescriptor,
     WorkflowPackQueueSaturationStatus,
@@ -11,6 +13,10 @@ from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueStatusResponse,
 )
 from app.services.workflow_pack_queue_attention import (
+    _cluster_attention_reason,
+    _cluster_attention_type,
+    _recovery_blocked_event_to_attention_item,
+    _terminal_event_to_attention_item,
     build_workflow_pack_queue_attention_summary,
 )
 
@@ -47,6 +53,38 @@ def _queue_item(
         lane=WorkflowPackQueueLane.LATENCY_SENSITIVE,
         state=WorkflowPackQueueState.RUNNING,
         admitted_at=admitted_at,
+    )
+
+
+def _queue_event(
+    event_type: WorkflowPackQueueEventType,
+    *,
+    lane: WorkflowPackQueueLane | None = WorkflowPackQueueLane.LATENCY_SENSITIVE,
+    workflow_pack_id: str = "advisor_brief.pack",
+    queue_item_id: str = "wpq_attention_event",
+) -> WorkflowPackQueueEventDescriptor:
+    return WorkflowPackQueueEventDescriptor(
+        event_id=f"wpqe_{event_type.value.lower()}",
+        queue_item_id=queue_item_id,
+        event_type=event_type,
+        policy_id="queue-policy.advisor-brief.v1",
+        workflow_pack_id=workflow_pack_id,
+        workflow_pack_version="v1",
+        lane=lane,
+        state=WorkflowPackQueueState.TIMED_OUT,
+        caller_app="lotus-gateway",
+        correlation_id="corr-attention-event",
+        tenant_id="tenant-sg-001",
+        workflow_surface="advisor-brief-panel",
+        reason_code="TEST_REASON",
+        source_queue_item_id=None,
+        recovery_action_type=None,
+        recovery_attempt_number=None,
+        requested_by=None,
+        evidence_ref=None,
+        artifact_refs=[],
+        message="test queue event",
+        recorded_at="2026-04-21T12:00:00Z",
     )
 
 
@@ -141,3 +179,88 @@ def test_queue_attention_normalizes_naive_timestamps_and_truncates_items(
         "queue-stale-4",
     ]
     assert any("truncated" in line for line in summary.status_summary)
+
+
+def test_queue_attention_maps_terminal_and_recovery_blocked_events() -> None:
+    assert (
+        _cluster_attention_type(WorkflowPackQueueEventType.ADMISSION_TIMED_OUT).value
+        == "QUEUE_TIMEOUT_CLUSTER"
+    )
+    assert (
+        _cluster_attention_type(WorkflowPackQueueEventType.ADMISSION_CANCELLED).value
+        == "QUEUE_CANCELLATION_CLUSTER"
+    )
+    assert (
+        _cluster_attention_type(WorkflowPackQueueEventType.RETRY_BLOCKED).value
+        == "QUEUE_RECOVERY_BLOCKED_CLUSTER"
+    )
+    assert "timed out" in _cluster_attention_reason(
+        event_type=WorkflowPackQueueEventType.ADMISSION_TIMED_OUT,
+        event_count=3,
+    )
+    assert "cancelled" in _cluster_attention_reason(
+        event_type=WorkflowPackQueueEventType.ADMISSION_CANCELLED,
+        event_count=3,
+    )
+    assert "recovery decisions were blocked" in _cluster_attention_reason(
+        event_type=WorkflowPackQueueEventType.RETRY_BLOCKED,
+        event_count=3,
+    )
+
+    retry_item = _recovery_blocked_event_to_attention_item(
+        _queue_event(WorkflowPackQueueEventType.RETRY_BLOCKED)
+    )
+    replay_item = _recovery_blocked_event_to_attention_item(
+        _queue_event(WorkflowPackQueueEventType.REPLAY_BLOCKED)
+    )
+    timed_out_item = _terminal_event_to_attention_item(
+        _queue_event(WorkflowPackQueueEventType.ADMISSION_TIMED_OUT)
+    )
+    cancelled_item = _terminal_event_to_attention_item(
+        _queue_event(WorkflowPackQueueEventType.ADMISSION_CANCELLED)
+    )
+    degraded_item = _terminal_event_to_attention_item(
+        _queue_event(WorkflowPackQueueEventType.ADMISSION_DEGRADED)
+    )
+
+    assert retry_item is not None
+    assert retry_item.attention_type.value == "QUEUE_RETRY_BLOCKED"
+    assert replay_item is not None
+    assert replay_item.attention_type.value == "QUEUE_REPLAY_BLOCKED"
+    assert timed_out_item is not None
+    assert timed_out_item.attention_type.value == "QUEUE_ITEM_TIMED_OUT"
+    assert cancelled_item is not None
+    assert cancelled_item.attention_type.value == "QUEUE_ITEM_CANCELLED"
+    assert degraded_item is not None
+    assert degraded_item.attention_type.value == "QUEUE_ITEM_DEGRADED"
+
+    assert (
+        _recovery_blocked_event_to_attention_item(
+            _queue_event(WorkflowPackQueueEventType.RETRY_BLOCKED, lane=None)
+        )
+        is None
+    )
+    assert (
+        _terminal_event_to_attention_item(
+            _queue_event(WorkflowPackQueueEventType.ADMISSION_TIMED_OUT, lane=None)
+        )
+        is None
+    )
+    assert (
+        _recovery_blocked_event_to_attention_item(
+            _queue_event(
+                WorkflowPackQueueEventType.RETRY_BLOCKED,
+                workflow_pack_id="missing.pack",
+            )
+        )
+        is None
+    )
+    assert (
+        _terminal_event_to_attention_item(
+            _queue_event(
+                WorkflowPackQueueEventType.ADMISSION_TIMED_OUT,
+                workflow_pack_id="missing.pack",
+            )
+        )
+        is None
+    )
