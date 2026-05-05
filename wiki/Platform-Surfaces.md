@@ -118,9 +118,13 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 5. `/platform/workflow-packs/runs/{run_id}/review-actions` records bounded actor-attributed review transitions without taking consequence-bearing workflow authority,
 6. `lotus-gateway` now uses that same bounded ledger seam to record advisor-brief review actions and returns refreshed workflow-pack posture through its advisor-brief contract without turning `lotus-ai` into the business-workflow owner,
 7. `lotus-workbench` now has a typed client seam for the downstream advisor-brief review-action route, while UI-triggered business authorization remains a separate future slice,
-8. the current Phase-1 slice now has governed live downstream proof for `advisor_brief.pack`,
-   `workspace_rationale.pack`, and `twr_inspection_support_brief.pack`, while broader multi-pack
-   runtime rollout and more generalized downstream primitives remain future work,
+8. the current executable workflow-pack set includes `advisor_brief.pack`,
+   `workspace_rationale.pack`, `twr_inspection_support_brief.pack`, and the review-gated
+   `outcome_review_narrative.pack` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`.
+   Outcome-review narrative execution validates required forbidden actions, rejects forbidden field
+   names, rejects forbidden requested outputs such as PM scoring or client messages, records run and
+   task-flow posture only after those guardrails pass, and remains support-only until Gateway and
+   Workbench surfaces consume the contract.
 9. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode`, `workflow_pack_run_store`, `workflow_pack_task_flow_store_mode`, `workflow_pack_task_flow_store`, `workflow_pack_queue_event_store_mode`, and `workflow_pack_queue_event_store` so operators can distinguish process-local workflow-pack runtime posture from SQL-backed durable ledger, task-flow, and queue-event posture,
 10. the embedded `workflow_pack_runtime` block now also carries bounded review provenance on executable-pack latest ready and latest actionable run pointers plus the cross-pack attention queue, and now also carries bounded artifact and evidence linkage summaries for those same runtime-status items, so estate-level triage does not need a raw ledger fetch just to understand latest review movement or missing provenance posture,
 11. pack-backed `503` degraded-state failures now preflight the workflow-pack run store before task execution and audit persistence, so callers should not expect new audit records or partial run-side effects when the run-ledger store is not ready,
@@ -330,8 +334,8 @@ This family covers:
 1. runtime, activation, runbook, and governance posture
 2. incident summary
 3. bounded summaries by provider, retrieval, async, evaluation, prompt, and safety
-4. AI-backed surface supportability for advisor brief, TWR inspection support brief, and workspace
-   rationale surfaces, including bounded `supportability_reason` values and explicit
+4. AI-backed surface supportability for advisor brief, TWR inspection support brief, workspace
+   rationale, and outcome-review narrative surfaces, including bounded `supportability_reason` values and explicit
    `metric_labels` truth for `lotus_ai_surface_supportability_state`
 5. breakdown views for operator analysis
 

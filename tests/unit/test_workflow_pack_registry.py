@@ -14,6 +14,11 @@ from app.services.workflow_pack_registry import (
     get_workflow_pack_registration,
     save_workflow_pack_registration,
 )
+from app.services.workflow_pack_registry_seed import (
+    _validate_registered_entries_have_scope,
+    _validate_retired_entries_are_not_active,
+    _validate_unique_registration_identity,
+)
 
 
 def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> None:
@@ -21,8 +26,8 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
 
     assert catalog.service == "lotus-ai"
     assert catalog.phase == "foundation"
-    assert catalog.registration_count == 4
-    assert catalog.registered_count == 3
+    assert catalog.registration_count == 5
+    assert catalog.registered_count == 4
     assert catalog.production_eligible_count == 0
     advisor_brief_registration = next(
         registration
@@ -38,6 +43,11 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         registration
         for registration in catalog.registrations
         if registration.pack_id == "twr_inspection_support_brief.pack"
+    )
+    outcome_review_narrative_registration = next(
+        registration
+        for registration in catalog.registrations
+        if registration.pack_id == "outcome_review_narrative.pack"
     )
     assert (
         advisor_brief_registration.registration_status == WorkflowPackRegistrationStatus.REGISTERED
@@ -64,8 +74,19 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     )
     assert twr_inspection_registration.owner_repository == "lotus-performance"
     assert twr_inspection_registration.workflow_authority_owner == "lotus-performance"
-    assert len(catalog.execution_bindings) == 3
-    assert len(catalog.queue_policies) == 3
+    assert outcome_review_narrative_registration.registration_status == (
+        WorkflowPackRegistrationStatus.REGISTERED
+    )
+    assert outcome_review_narrative_registration.owner_repository == "lotus-manage"
+    assert outcome_review_narrative_registration.workflow_authority_owner == "lotus-manage"
+    assert any(
+        definition_ref.repository == "lotus-manage"
+        and definition_ref.path == "src/core/outcomes/handoffs.py"
+        and definition_ref.required_for_registration is True
+        for definition_ref in outcome_review_narrative_registration.definition_refs
+    )
+    assert len(catalog.execution_bindings) == 4
+    assert len(catalog.queue_policies) == 4
     assert any(
         binding.pack_id == "advisor_brief.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
@@ -82,6 +103,10 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     )
     assert any(
         binding.pack_id == "twr_inspection_support_brief.pack" and binding.task_id == "explain.v1"
+        for binding in catalog.execution_bindings
+    )
+    assert any(
+        binding.pack_id == "outcome_review_narrative.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
     )
 
@@ -291,3 +316,40 @@ def test_save_workflow_pack_registration_rejects_missing_required_owner_artifact
         assert "missing required owner artifacts" in str(exc)
     else:
         raise AssertionError("Expected missing required owner artifacts to fail")
+
+
+def test_seed_registration_validation_rejects_duplicate_identity_scope_and_retired_drift() -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+
+    try:
+        _validate_unique_registration_identity([registration, registration])
+    except ValueError as exc:
+        assert "Duplicate workflow-pack registration identity" in str(exc)
+    else:
+        raise AssertionError("expected duplicate registration identity to fail")
+
+    try:
+        _validate_registered_entries_have_scope(
+            [registration.model_copy(update={"supported_callers": []})]
+        )
+    except ValueError as exc:
+        assert "missing execution scope" in str(exc)
+    else:
+        raise AssertionError("expected registered entry without caller scope to fail")
+
+    try:
+        _validate_retired_entries_are_not_active(
+            [
+                registration.model_copy(
+                    update={
+                        "registration_status": WorkflowPackRegistrationStatus.RETIRED,
+                        "activation_state": WorkflowPackActivationState.PILOT,
+                    }
+                )
+            ]
+        )
+    except ValueError as exc:
+        assert "Retired workflow-pack cannot remain active" in str(exc)
+    else:
+        raise AssertionError("expected retired active entry to fail")

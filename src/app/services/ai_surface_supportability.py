@@ -39,6 +39,11 @@ _WORKFLOW_PACK_SURFACE_OWNERS = {
         "lotus-workbench",
         "lotus-workbench",
     ),
+    "outcome_review_narrative.pack@v1": (
+        "outcome_review_narrative",
+        "lotus-manage",
+        "lotus-manage",
+    ),
 }
 
 _PROMETHEUS_POSTURES = (

@@ -287,3 +287,121 @@ def twr_inspection_support_brief_workflow_pack_execution_request_json(
     if workflow_surface is not None:
         request["workflow_surface"] = workflow_surface
     return request
+
+
+def outcome_review_narrative_payload(
+    *,
+    outcome_review_id: str = "or_pb_sg_001",
+    portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
+    content_hash: str = "sha256:outcome-ai-evidence-001",
+    requested_outputs: list[str] | None = None,
+) -> dict[str, object]:
+    return {
+        "ai_evidence_input": {
+            "contract_version": "1.0",
+            "outcome_review_id": outcome_review_id,
+            "outcome_review_content_hash": "sha256:outcome-review-001",
+            "portfolio_id": portfolio_id,
+            "mandate_id": "mandate_pb_sg_balanced",
+            "rebalance_run_id": "rr_20260505_001",
+            "proof_pack_id": "pp_20260505_001",
+            "wave_id": "wave_20260505_001",
+            "review_window": {"start_date": "2026-04-01", "end_date": "2026-04-30"},
+            "generated_at": "2026-05-05T08:00:00Z",
+            "permitted_use": (
+                "Draft support-only PM, CIO, compliance, and operations narratives from evidence."
+            ),
+            "forbidden_actions": [
+                "place_orders",
+                "approve_rebalance",
+                "override_controls",
+                "invent_missing_evidence",
+                "score_portfolio_manager",
+                "contact_client",
+            ],
+            "forbidden_fields_removed": [],
+            "state": "COMPLETE",
+            "overall_outcome": "Implemented rebalance stayed within expected risk and cash bands.",
+            "reason_codes": ["OUTCOME_REVIEW_COMPLETE"],
+            "dimensions": [
+                {
+                    "dimension": "cash",
+                    "state": "MATCHED",
+                    "reason_code": "CASH_WITHIN_TOLERANCE",
+                    "expected": "4.0",
+                    "realized": "4.1",
+                    "variance": "0.1",
+                    "explanation": "Realized cash weight remained inside the bounded tolerance.",
+                }
+            ],
+            "source_refs": [
+                {
+                    "source_system": "lotus-manage",
+                    "source_type": "DPM_OUTCOME_AI_EVIDENCE_INPUT",
+                    "source_id": f"{outcome_review_id}:dpm_outcome_ai_evidence_input",
+                    "content_hash": content_hash,
+                }
+            ],
+            "evidence_ref": {
+                "source_system": "lotus-manage",
+                "source_type": "DPM_OUTCOME_AI_EVIDENCE_INPUT",
+                "source_id": f"{outcome_review_id}:dpm_outcome_ai_evidence_input",
+                "content_hash": content_hash,
+            },
+            "content_hash": content_hash,
+        },
+        "narrative_request": {
+            "requested_outputs": requested_outputs
+            or ["pm_summary", "cio_summary", "control_summary", "evidence_gaps"],
+            "audience": ["portfolio_manager", "cio_office", "investment_control"],
+        },
+        "supportability": {
+            "source_state": "READY",
+            "requires_human_review": True,
+            "unsupported_claims": [
+                "client_contact",
+                "trade_approval",
+                "portfolio_manager_scoring",
+            ],
+        },
+    }
+
+
+def outcome_review_narrative_workflow_pack_execution_request_json(
+    *,
+    correlation_id: str,
+    task_id: str = "explain.v1",
+    workflow_surface: str | None = "dpm-outcome-review-ai-evidence",
+    environment: str = "DEVELOPMENT",
+    caller_identity_class: str = "INTERNAL_SERVICE",
+    requested_outputs: list[str] | None = None,
+) -> dict[str, object]:
+    request: dict[str, object] = {
+        "pack_id": "outcome_review_narrative.pack",
+        "version": "v1",
+        "environment": environment,
+        "caller_identity_class": caller_identity_class,
+        "task_request": {
+            "task_id": task_id,
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": correlation_id,
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Generate review-gated outcome-review narrative from bounded AI evidence.",
+                "payload": outcome_review_narrative_payload(
+                    requested_outputs=requested_outputs,
+                ),
+                "source_refs": [
+                    "lotus-manage:outcome-review:or_pb_sg_001",
+                    "lotus-manage:outcome-ai-evidence:or_pb_sg_001",
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    }
+    if workflow_surface is not None:
+        request["workflow_surface"] = workflow_surface
+    return request

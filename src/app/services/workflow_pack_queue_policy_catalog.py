@@ -24,6 +24,7 @@ from app.contracts.workflow_pack_queue_policies import (
 from app.config import settings
 from app.services.workflow_pack_phase1_specs import (
     ADVISOR_BRIEF_V1_SPEC,
+    OUTCOME_REVIEW_NARRATIVE_V1_SPEC,
     TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC,
     WORKSPACE_RATIONALE_V1_SPEC,
     WorkflowPackPhase1VersionSpec,
@@ -38,6 +39,7 @@ def list_workflow_pack_queue_policy_descriptors() -> list[WorkflowPackQueuePolic
         _latency_sensitive_advisor_brief_policy(),
         _review_support_workspace_rationale_policy(),
         _batch_twr_inspection_support_brief_policy(),
+        _review_support_outcome_review_narrative_policy(),
     ]
     _validate_queue_policy_identity(policies)
     return [policy.model_copy(deep=True) for policy in policies]
@@ -242,6 +244,29 @@ def _batch_twr_inspection_support_brief_policy() -> WorkflowPackQueuePolicyDescr
         status_summary=[
             "TWR inspection support briefs default to batch capacity because the inspection artifact path is supportability-oriented.",
             "Operator capacity is reserved for controlled diagnosis and replay posture without exposing raw queue internals.",
+        ],
+    )
+
+
+def _review_support_outcome_review_narrative_policy() -> WorkflowPackQueuePolicyDescriptor:
+    return _build_queue_policy(
+        spec=OUTCOME_REVIEW_NARRATIVE_V1_SPEC,
+        policy_id="queue-policy.outcome-review-narrative.v1",
+        allowed_lanes=[
+            WorkflowPackQueueLane.REVIEW_SUPPORT,
+            WorkflowPackQueueLane.OPERATOR,
+        ],
+        default_lane=WorkflowPackQueueLane.REVIEW_SUPPORT,
+        max_concurrent_runs_per_pack=2,
+        max_concurrent_runs_per_lane=1,
+        max_queued_runs_per_pack=25,
+        max_queued_runs_per_lane=10,
+        admission_timeout_seconds=20,
+        execution_timeout_seconds=300,
+        stale_queue_threshold_seconds=90,
+        status_summary=[
+            "Outcome-review narrative work defaults to review-support capacity because generated text remains support-only and review-gated.",
+            "Operator capacity is reserved for controlled investigation of guardrail-blocked, unavailable, or stale outcome-evidence posture.",
         ],
     )
 

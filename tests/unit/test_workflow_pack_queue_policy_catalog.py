@@ -3,6 +3,7 @@ from pytest import MonkeyPatch
 from app.contracts.workflow_pack_queue_policies import WorkflowPackQueueLane
 from app.services import workflow_pack_queue_policy_catalog
 from app.services.workflow_pack_queue_policy_catalog import (
+    _validate_queue_policy_identity,
     get_workflow_pack_queue_policy_descriptor,
     list_workflow_pack_queue_policy_descriptors,
     validate_workflow_pack_queue_policies,
@@ -17,6 +18,7 @@ def test_queue_policy_catalog_declares_policy_for_each_executable_phase1_pack() 
     }
     assert policy_refs == {
         "advisor_brief.pack@v1",
+        "outcome_review_narrative.pack@v1",
         "workspace_rationale.pack@v1",
         "twr_inspection_support_brief.pack@v1",
     }
@@ -109,3 +111,28 @@ def test_queue_policy_validation_rejects_policy_without_executable_binding(
         assert "advisor_brief.pack@v9" in str(exc)
     else:
         raise AssertionError("Expected orphan queue policy to fail")
+
+
+def test_queue_policy_identity_validation_rejects_duplicate_policy_ids_and_refs() -> None:
+    policies = list_workflow_pack_queue_policy_descriptors()
+    duplicate_id = policies[1].model_copy(update={"policy_id": policies[0].policy_id})
+
+    try:
+        _validate_queue_policy_identity([policies[0], duplicate_id])
+    except ValueError as exc:
+        assert "Duplicate workflow-pack queue policy id" in str(exc)
+    else:
+        raise AssertionError("expected duplicate queue policy id to fail")
+
+    duplicate_ref = policies[1].model_copy(
+        update={
+            "workflow_pack_id": policies[0].workflow_pack_id,
+            "workflow_pack_version": policies[0].workflow_pack_version,
+        }
+    )
+    try:
+        _validate_queue_policy_identity([policies[0], duplicate_ref])
+    except ValueError as exc:
+        assert "Duplicate workflow-pack queue policy ref" in str(exc)
+    else:
+        raise AssertionError("expected duplicate queue policy ref to fail")
