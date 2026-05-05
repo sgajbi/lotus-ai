@@ -13,8 +13,8 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["phase"] == "foundation"
-    assert body["registration_count"] == 4
-    assert body["registered_count"] == 3
+    assert body["registration_count"] == 5
+    assert body["registered_count"] == 4
     assert body["production_eligible_count"] == 0
     advisor_brief_registration = next(
         registration
@@ -25,6 +25,11 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         registration
         for registration in body["registrations"]
         if registration["pack_id"] == "workspace_rationale.pack"
+    )
+    outcome_review_registration = next(
+        registration
+        for registration in body["registrations"]
+        if registration["pack_id"] == "outcome_review_narrative.pack"
     )
     advisor_brief_binding = next(
         binding
@@ -41,10 +46,21 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         for binding in body["execution_bindings"]
         if binding["pack_id"] == "twr_inspection_support_brief.pack"
     )
+    outcome_review_binding = next(
+        binding
+        for binding in body["execution_bindings"]
+        if binding["pack_id"] == "outcome_review_narrative.pack"
+    )
     advisor_brief_queue_policy = next(
         policy
         for policy in body["queue_policies"]
         if policy["workflow_pack_id"] == "advisor_brief.pack"
+        and policy["workflow_pack_version"] == "v1"
+    )
+    outcome_review_queue_policy = next(
+        policy
+        for policy in body["queue_policies"]
+        if policy["workflow_pack_id"] == "outcome_review_narrative.pack"
         and policy["workflow_pack_version"] == "v1"
     )
 
@@ -53,6 +69,9 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     assert workspace_rationale_registration["version"] == "v1"
     assert workspace_rationale_registration["owner_repository"] == "lotus-advise"
     assert workspace_rationale_registration["workflow_authority_owner"] == "lotus-advise"
+    assert outcome_review_registration["version"] == "v1"
+    assert outcome_review_registration["owner_repository"] == "lotus-manage"
+    assert outcome_review_registration["workflow_authority_owner"] == "lotus-manage"
     assert advisor_brief_binding["version"] == "v1"
     assert advisor_brief_binding["task_id"] == "explain.v1"
     assert advisor_brief_binding["default_workflow_surface"] == "advisor-brief-workspace"
@@ -81,6 +100,14 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         "inspection",
         "owner_summary",
     ]
+    assert outcome_review_binding["version"] == "v1"
+    assert outcome_review_binding["task_id"] == "explain.v1"
+    assert outcome_review_binding["default_workflow_surface"] == "dpm-outcome-review-ai-evidence"
+    assert outcome_review_binding["required_payload_keys"] == [
+        "ai_evidence_input",
+        "narrative_request",
+        "supportability",
+    ]
     assert advisor_brief_queue_policy["default_lane"] == "LATENCY_SENSITIVE"
     assert advisor_brief_queue_policy["allowed_lanes"] == [
         "LATENCY_SENSITIVE",
@@ -91,6 +118,8 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         requirement["evidence_type"] == "capacity_evaluation"
         for requirement in advisor_brief_queue_policy["evidence_requirements"]
     )
+    assert outcome_review_queue_policy["default_lane"] == "REVIEW_SUPPORT"
+    assert outcome_review_queue_policy["allowed_lanes"] == ["REVIEW_SUPPORT", "OPERATOR"]
 
 
 def test_workflow_pack_registration_detail_route(client: TestClient) -> None:
