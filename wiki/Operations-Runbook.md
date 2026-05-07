@@ -67,8 +67,8 @@ For RFC-0108 AI-backed surface supportability, inspect the `ai_surface_supportab
 `/platform/observability/runtime-status` or the embedded `observability_runtime` block in
 `/platform/runtime-status`. Treat it as the summary-first supportability posture for the currently
 represented advisor brief, TWR inspection support brief, workspace rationale, and outcome-review
-narrative surfaces; it is sourced from workflow-pack runtime, provider operations, and safety
-runtime rather than from model availability alone.
+narrative surfaces, plus the DPM PM memo surface; it is sourced from workflow-pack runtime,
+provider operations, and safety runtime rather than from model availability alone.
 
 ```mermaid
 flowchart LR
@@ -159,7 +159,11 @@ For AI-backed product-surface support, also confirm:
    commentary, rationale, or brief surfaces as supportable without sensitive-content telemetry gaps,
 5. `twr_inspection_support_brief` remains owned by `lotus-performance`; do not reintroduce old
    `pa` naming in operator evidence or supportability records.
-6. `outcome_review_narrative` remains owned by `lotus-manage` evidence contracts; treat PM scoring,
+6. `dpm_pm_memo` remains owned by `lotus-manage` proof-pack evidence contracts; treat trade
+   recommendations, order tickets, rebalance approvals, client messages, PM scoring, control
+   overrides, and invented missing evidence as guardrail-blocked requests, not as prompt-tuning
+   opportunities.
+7. `outcome_review_narrative` remains owned by `lotus-manage` evidence contracts; treat PM scoring,
    client messages, trade approvals, control overrides, and invented missing evidence as
    guardrail-blocked requests, not as prompt-tuning opportunities.
 

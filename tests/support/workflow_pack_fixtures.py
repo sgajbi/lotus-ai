@@ -406,3 +406,127 @@ def outcome_review_narrative_workflow_pack_execution_request_json(
     if workflow_surface is not None:
         request["workflow_surface"] = workflow_surface
     return request
+
+
+def proof_pack_pm_memo_payload(
+    *,
+    proof_pack_id: str = "dpp_c09f73d0",
+    portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
+    content_hash: str = "sha256:proof-pack-ai-evidence-001",
+    requested_outputs: list[str] | None = None,
+) -> dict[str, object]:
+    return {
+        "ai_evidence_input": {
+            "contract_version": "1.0",
+            "proof_pack_id": proof_pack_id,
+            "proof_pack_content_hash": "sha256:proof-pack-001",
+            "portfolio_id": portfolio_id,
+            "mandate_id": "MANDATE_PB_SG_GLOBAL_BAL_001",
+            "as_of_date": "2026-05-03",
+            "generated_at": "2026-05-03T09:30:00Z",
+            "permitted_use": (
+                "Draft support-only PM, compliance, and operations narratives from evidence."
+            ),
+            "forbidden_actions": [
+                "place_orders",
+                "approve_rebalance",
+                "override_controls",
+                "invent_missing_evidence",
+                "contact_client",
+            ],
+            "forbidden_fields_removed": [],
+            "decision_summary": {
+                "selected_alternative_id": "ALT_REBALANCE_TO_MODEL",
+                "recommendation": "Review rebalance back to approved balanced model.",
+                "main_tradeoffs": ["Reduce drift while preserving liquidity buffer."],
+            },
+            "supportability_status": "READY",
+            "reason_codes": ["PROOF_PACK_READY"],
+            "sections": [
+                {
+                    "section_id": "selected_alternative",
+                    "section_type": "SELECTED_ALTERNATIVE",
+                    "state": "READY",
+                    "summary": "Selected alternative rebalances toward model within guardrails.",
+                    "reason_codes": ["SELECTED_ALTERNATIVE_READY"],
+                    "bounded_facts": {"alternative_id": "ALT_REBALANCE_TO_MODEL"},
+                    "bounded_metrics": {"cash_weight_after": "0.041"},
+                    "content_hash": "sha256:proof-pack-section-001",
+                }
+            ],
+            "source_refs": [
+                {
+                    "source_system": "lotus-manage",
+                    "source_type": "DPM_PRE_TRADE_PROOF_PACK",
+                    "source_id": proof_pack_id,
+                    "content_hash": "sha256:proof-pack-001",
+                }
+            ],
+            "evidence_ref": {
+                "ref_type": "DPM_PROOF_PACK_AI_EVIDENCE_INPUT",
+                "ref_id": f"{proof_pack_id}:dpm_proof_pack_ai_evidence_input",
+                "source_system": "lotus-manage",
+                "content_hash": content_hash,
+            },
+            "content_hash": content_hash,
+        },
+        "memo_request": {
+            "requested_outputs": requested_outputs
+            or [
+                "pm_memo",
+                "rationale_summary",
+                "approval_checklist",
+                "risk_caveats",
+                "evidence_gaps",
+            ],
+            "audience": ["portfolio_manager", "investment_control", "operations"],
+        },
+        "supportability": {
+            "source_state": "READY",
+            "requires_human_review": True,
+            "unsupported_claims": [
+                "trade_approval",
+                "order_instruction",
+                "client_message",
+            ],
+        },
+    }
+
+
+def proof_pack_pm_memo_workflow_pack_execution_request_json(
+    *,
+    correlation_id: str,
+    task_id: str = "explain.v1",
+    caller_app: str = "lotus-manage",
+    workflow_surface: str | None = "dpm-proof-pack-ai-evidence",
+    environment: str = "DEVELOPMENT",
+    caller_identity_class: str = "INTERNAL_SERVICE",
+    requested_outputs: list[str] | None = None,
+) -> dict[str, object]:
+    request: dict[str, object] = {
+        "pack_id": "dpm_pm_memo.pack",
+        "version": "v1",
+        "environment": environment,
+        "caller_identity_class": caller_identity_class,
+        "task_request": {
+            "task_id": task_id,
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": caller_app,
+                "correlation_id": correlation_id,
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Generate review-gated PM memo from bounded proof-pack AI evidence.",
+                "payload": proof_pack_pm_memo_payload(requested_outputs=requested_outputs),
+                "source_refs": [
+                    "lotus-manage:proof-pack:dpp_c09f73d0",
+                    "lotus-manage:proof-pack-ai-evidence:dpp_c09f73d0",
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    }
+    if workflow_surface is not None:
+        request["workflow_surface"] = workflow_surface
+    return request

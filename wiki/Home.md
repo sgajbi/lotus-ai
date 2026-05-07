@@ -39,6 +39,22 @@ If you need the shortest accurate orientation, read these in order:
 
 It does not own portfolio, performance, risk, advisory, management, or reporting domain truth.
 
+## Workflow-Pack Product Coverage
+
+Current executable workflow-pack coverage is implementation-backed for five pilot-scoped families:
+
+1. `advisor_brief.pack@v1`
+2. `workspace_rationale.pack@v1`
+3. `twr_inspection_support_brief.pack@v1`
+4. `dpm_pm_memo.pack@v1`
+5. `outcome_review_narrative.pack@v1`
+
+The DPM packs are deliberately support-only and review-gated. `dpm_pm_memo.pack@v1` consumes
+`lotus-manage` `DpmProofPackAiEvidenceInput`; `outcome_review_narrative.pack@v1` consumes
+`lotus-manage` `DpmOutcomeAiEvidenceInput`. Both validate forbidden actions, forbidden fields,
+requested output scope, run-ledger posture, and source evidence before generated narrative can be
+treated as usable support.
+
 ## Supported Task Families
 
 Current task families include:

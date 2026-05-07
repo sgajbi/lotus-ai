@@ -89,6 +89,23 @@ TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC = WorkflowPackPhase1VersionSpec(
 )
 
 
+PROOF_PACK_PM_MEMO_V1_SPEC = WorkflowPackPhase1VersionSpec(
+    pack_id="dpm_pm_memo.pack",
+    pack_family="dpm_pm_memo",
+    version="v1",
+    owner_repository="lotus-manage",
+    owner_service="lotus-manage",
+    truth_owner_services=("lotus-manage", "lotus-core", "lotus-risk", "lotus-performance"),
+    primary_use_case="dpm_proof_pack_pm_memo",
+    workflow_authority_owner="lotus-manage",
+    supported_callers=("lotus-manage", "lotus-gateway"),
+    surface_scope=("dpm-proof-pack-ai-evidence",),
+    default_workflow_surface="dpm-proof-pack-ai-evidence",
+    execution_task_id="explain.v1",
+    required_payload_keys=frozenset({"ai_evidence_input", "memo_request", "supportability"}),
+)
+
+
 OUTCOME_REVIEW_NARRATIVE_V1_SPEC = WorkflowPackPhase1VersionSpec(
     pack_id="outcome_review_narrative.pack",
     pack_family="outcome_review_narrative",
