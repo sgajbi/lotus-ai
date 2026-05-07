@@ -15,6 +15,7 @@ from app.services.workflow_pack_phase1_specs import (
     ADVISOR_BRIEF_V1_SPEC,
     ADVISOR_BRIEF_V2_SPEC,
     OUTCOME_REVIEW_NARRATIVE_V1_SPEC,
+    PROOF_PACK_PM_MEMO_V1_SPEC,
     TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC,
     WORKSPACE_RATIONALE_V1_SPEC,
 )
@@ -177,6 +178,46 @@ def build_seed_workflow_pack_registrations() -> list[WorkflowPackRegistrationDes
             status_summary=[
                 "The TWR inspection support-brief workflow pack extends executable workflow-pack proof into a domain-owned performance supportability surface.",
                 "Activation remains pilot-scoped while Lotus validates support-brief generation against the inspection evidence contract and bounded run-ledger posture.",
+            ],
+        ),
+        WorkflowPackRegistrationDescriptor(
+            pack_id=PROOF_PACK_PM_MEMO_V1_SPEC.pack_id,
+            pack_family=PROOF_PACK_PM_MEMO_V1_SPEC.pack_family,
+            version=PROOF_PACK_PM_MEMO_V1_SPEC.version,
+            owner_repository=PROOF_PACK_PM_MEMO_V1_SPEC.owner_repository,
+            owner_service=PROOF_PACK_PM_MEMO_V1_SPEC.owner_service,
+            truth_owner_services=list(PROOF_PACK_PM_MEMO_V1_SPEC.truth_owner_services),
+            primary_use_case=PROOF_PACK_PM_MEMO_V1_SPEC.primary_use_case,
+            workflow_authority_owner=PROOF_PACK_PM_MEMO_V1_SPEC.workflow_authority_owner,
+            default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
+            definition_ref="repo://lotus-manage/src/core/proof_packs/handoffs.py",
+            definition_refs=_proof_pack_pm_memo_v1_definition_refs(),
+            compatibility_contract_version="workflow-pack-contract.v1",
+            registration_status=WorkflowPackRegistrationStatus.REGISTERED,
+            activation_state=WorkflowPackActivationState.PILOT,
+            registered_definition_digest="sha256:dpm-pm-memo-v1-registered-digest",
+            supported_callers=list(PROOF_PACK_PM_MEMO_V1_SPEC.supported_callers),
+            supported_identity_classes=[
+                WorkflowPackCallerIdentityClass.INTERNAL_SERVICE,
+            ],
+            supported_environments=[
+                WorkflowPackEnvironment.DEVELOPMENT,
+                WorkflowPackEnvironment.QA,
+                WorkflowPackEnvironment.UAT,
+            ],
+            tenant_scope=[],
+            surface_scope=list(PROOF_PACK_PM_MEMO_V1_SPEC.surface_scope),
+            default_rollout_stage="PILOT_SCOPED",
+            pause_state="NOT_PAUSED",
+            supersedes=None,
+            superseded_by=None,
+            registered_at="2026-05-07T08:00:00Z",
+            registered_by="lotus-ai.workflow-pack-registry.seed",
+            last_activated_at="2026-05-07T08:20:00Z",
+            last_changed_at="2026-05-07T08:20:00Z",
+            status_summary=[
+                "The DPM PM memo workflow pack consumes lotus-manage DpmProofPackAiEvidenceInput only.",
+                "Activation remains pilot-scoped while Gateway and Workbench product surfaces add unavailable fallback, memo review posture, and canonical proof without browser-side prompt construction.",
             ],
         ),
         WorkflowPackRegistrationDescriptor(
@@ -430,6 +471,51 @@ def _twr_inspection_support_brief_v1_definition_refs() -> list[
             reference_type=WorkflowPackDefinitionReferenceType.RFC,
             required_for_registration=False,
             description="TWR inspection RFC that defines optional support-brief artifacts within the inspection contract family.",
+        ),
+    ]
+
+
+def _proof_pack_pm_memo_v1_definition_refs() -> list[WorkflowPackDefinitionReferenceDescriptor]:
+    return [
+        _definition_ref(
+            reference_id="primary_contract",
+            repository="lotus-manage",
+            path="src/core/proof_packs/handoffs.py",
+            reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
+            required_for_registration=True,
+            description="Manage-owned DpmProofPackAiEvidenceInput contract that bounds proof-pack evidence for PM memo drafting.",
+        ),
+        _definition_ref(
+            reference_id="owner_service",
+            repository="lotus-manage",
+            path="src/api/services/proof_pack_service.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description="Manage service that materializes immutable proof packs and deterministic AI evidence input without generating AI narrative locally.",
+        ),
+        _definition_ref(
+            reference_id="owner_router",
+            repository="lotus-manage",
+            path="src/api/routers/proof_packs.py",
+            reference_type=WorkflowPackDefinitionReferenceType.ROUTER,
+            required_for_registration=True,
+            description="Manage API route exposing bounded proof-pack AI evidence input for downstream AI execution.",
+        ),
+        _definition_ref(
+            reference_id="owner_tests",
+            repository="lotus-manage",
+            path="tests/unit/dpm/proof_packs/test_proof_pack_handoffs.py",
+            reference_type=WorkflowPackDefinitionReferenceType.TEST,
+            required_for_registration=True,
+            description="Manage regression coverage proving forbidden fields and actions are removed from proof-pack AI evidence.",
+        ),
+        _definition_ref(
+            reference_id="owner_rfc",
+            repository="lotus-manage",
+            path="docs/rfcs/RFC-0043-governed-ai-pm-copilot-for-dpm.md",
+            reference_type=WorkflowPackDefinitionReferenceType.RFC,
+            required_for_registration=False,
+            description="RFC-0043 defines governed DPM PM memo support, no-domain-decision guardrails, review posture, and unavailable behavior.",
         ),
     ]
 

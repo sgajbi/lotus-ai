@@ -164,6 +164,37 @@ the owner-facing procedure and do one more truth check before treating a registr
 3. `definition_refs` should include enough owner-repo evidence to cover contract, service or router, and regression tests,
 4. optional cross-repo RFC or UI references are supporting evidence, not a substitute for owner-repo truth.
 
+## DPM PM Memo Integration
+
+`dpm_pm_memo.pack@v1` is the current `lotus-ai` owner-side execution contract for governed PM memo
+drafting from proof-pack evidence.
+
+Use it only when the caller supplies:
+
+1. `ai_evidence_input` shaped as `lotus-manage` `DpmProofPackAiEvidenceInput`,
+2. `memo_request` with allowed requested outputs such as `pm_memo`, `rationale_summary`,
+   `approval_checklist`, `risk_caveats`, `operations_handoff`, or `evidence_gaps`,
+3. `supportability` posture that states source readiness, human-review need, and unsupported claims.
+
+The pack blocks requests for trade recommendations, order tickets, rebalance approval, client
+messages, PM scoring, control overrides, hidden source inference, or forbidden sensitive fields.
+Downstream Gateway and Workbench product surfaces should preserve `workflow_pack_run_id`, proof-pack
+hashes, AI-evidence hash, review posture, and unsupported-claim posture rather than flattening the
+memo into plain text.
+
+```mermaid
+sequenceDiagram
+    participant Manage as lotus-manage
+    participant AI as lotus-ai
+    participant Ledger as workflow-pack ledger
+    participant UI as Gateway / Workbench
+    Manage->>AI: dpm_pm_memo.pack@v1 with DpmProofPackAiEvidenceInput
+    AI->>AI: Validate forbidden actions, fields, requested outputs
+    AI->>Ledger: Record review-gated run after guardrails pass
+    Ledger-->>AI: workflow_pack_run_id and provenance
+    AI-->>UI: Support-only memo payload plus run posture
+```
+
 ## Provider and Safety Expectations
 
 Callers must not assume that one successful response means unrestricted live-provider or safety

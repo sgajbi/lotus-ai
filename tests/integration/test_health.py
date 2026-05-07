@@ -97,8 +97,8 @@ def test_platform_workflow_pack_registry_contract(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["phase"] == "foundation"
-    assert body["registration_count"] == 5
-    assert body["registered_count"] == 4
+    assert body["registration_count"] == 6
+    assert body["registered_count"] == 5
     assert any(
         registration["pack_id"] == "advisor_brief.pack"
         and registration["activation_state"] == "PILOT"
@@ -111,6 +111,12 @@ def test_platform_workflow_pack_registry_contract(client: TestClient) -> None:
     )
     assert any(
         registration["pack_id"] == "outcome_review_narrative.pack"
+        and registration["owner_repository"] == "lotus-manage"
+        and registration["activation_state"] == "PILOT"
+        for registration in body["registrations"]
+    )
+    assert any(
+        registration["pack_id"] == "dpm_pm_memo.pack"
         and registration["owner_repository"] == "lotus-manage"
         and registration["activation_state"] == "PILOT"
         for registration in body["registrations"]
@@ -391,21 +397,23 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["workflow_pack_task_flow_store"]["status"] == "READY"
     assert body["workflow_pack_queue_event_store"]["mode"] == "memory"
     assert body["workflow_pack_queue_event_store"]["status"] == "READY"
-    assert body["workflow_pack_runtime"]["registration_count"] == 5
-    assert body["workflow_pack_runtime"]["registered_count"] == 4
-    assert body["workflow_pack_runtime"]["execution_binding_count"] == 4
-    assert body["workflow_pack_runtime"]["executable_registration_count"] == 4
-    assert body["workflow_pack_runtime"]["executable_review_required_count"] == 4
+    assert body["workflow_pack_runtime"]["registration_count"] == 6
+    assert body["workflow_pack_runtime"]["registered_count"] == 5
+    assert body["workflow_pack_runtime"]["execution_binding_count"] == 5
+    assert body["workflow_pack_runtime"]["executable_registration_count"] == 5
+    assert body["workflow_pack_runtime"]["executable_review_required_count"] == 5
     assert body["workflow_pack_runtime"]["executable_without_review_count"] == 0
     assert body["workflow_pack_runtime"]["registered_without_execution_binding_count"] == 0
     assert body["workflow_pack_runtime"]["executable_registration_refs"] == [
         "advisor_brief.pack@v1",
+        "dpm_pm_memo.pack@v1",
         "outcome_review_narrative.pack@v1",
         "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
     ]
     assert body["workflow_pack_runtime"]["executable_review_required_refs"] == [
         "advisor_brief.pack@v1",
+        "dpm_pm_memo.pack@v1",
         "outcome_review_narrative.pack@v1",
         "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
@@ -437,17 +445,21 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
         is None
     )
     assert body["workflow_pack_runtime"]["executable_activity"][1]["registration_ref"] == (
-        "outcome_review_narrative.pack@v1"
+        "dpm_pm_memo.pack@v1"
     )
     assert body["workflow_pack_runtime"]["executable_activity"][1]["run_count"] == 0
     assert body["workflow_pack_runtime"]["executable_activity"][2]["registration_ref"] == (
-        "twr_inspection_support_brief.pack@v1"
+        "outcome_review_narrative.pack@v1"
     )
     assert body["workflow_pack_runtime"]["executable_activity"][2]["run_count"] == 0
     assert body["workflow_pack_runtime"]["executable_activity"][3]["registration_ref"] == (
-        "workspace_rationale.pack@v1"
+        "twr_inspection_support_brief.pack@v1"
     )
     assert body["workflow_pack_runtime"]["executable_activity"][3]["run_count"] == 0
+    assert body["workflow_pack_runtime"]["executable_activity"][4]["registration_ref"] == (
+        "workspace_rationale.pack@v1"
+    )
+    assert body["workflow_pack_runtime"]["executable_activity"][4]["run_count"] == 0
     assert (
         body["workflow_pack_runtime"]["executable_activity"][0]["latest_ready_provenance"] is None
     )

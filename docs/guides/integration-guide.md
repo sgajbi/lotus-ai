@@ -277,11 +277,30 @@ That sequence keeps downstream adoption pack-oriented first, while still preserv
 1. Explain rebalance outcome.
 2. Summarize blocking diagnostics.
 3. Draft reviewer notes for support or operations.
-4. Use `outcome_review_narrative.pack@v1` only with manage-owned `DpmOutcomeAiEvidenceInput`,
+4. Use `dpm_pm_memo.pack@v1` only with manage-owned `DpmProofPackAiEvidenceInput`, a bounded
+   `memo_request`, and supportability posture. Requests for trade recommendations, order
+   instructions, rebalance approval, client messages, PM scoring, control override, or invented
+   missing evidence are guardrail-blocked before execution and should be corrected in the calling
+   workflow rather than retried with prompt wording.
+5. Use `outcome_review_narrative.pack@v1` only with manage-owned `DpmOutcomeAiEvidenceInput`,
    a bounded `narrative_request`, and supportability posture. Requests for PM scoring, client
    messages, trade approval, control override, or invented missing evidence are guardrail-blocked
    before execution and should be fixed in the calling workflow rather than retried with different
    prompt wording.
+
+```mermaid
+flowchart LR
+    Manage["lotus-manage proof pack\nDpmProofPackAiEvidenceInput"] --> Gateway["lotus-gateway\nfuture BFF caller"]
+    Manage --> AI["lotus-ai\ndpm_pm_memo.pack@v1"]
+    Gateway --> AI
+    AI --> Guardrails["Forbidden action,\nfield, and output guardrails"]
+    Guardrails --> RunLedger["Workflow-pack run ledger\nreview required"]
+    RunLedger --> Consumers["Gateway / Workbench\nfuture PM memo surface"]
+```
+
+The memo flow is support-only. `lotus-ai` may draft a review-gated memo from bounded proof-pack
+evidence, but `lotus-manage` keeps proof-pack truth and any downstream PM/CIO/operations workflow
+authority.
 
 ### lotus-advise
 

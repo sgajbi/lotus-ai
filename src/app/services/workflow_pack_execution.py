@@ -37,6 +37,7 @@ from app.services.workflow_pack_queue_admission import workflow_pack_queue_admis
 from app.services.outcome_review_narrative_guardrails import (
     validate_outcome_review_narrative_payload,
 )
+from app.services.proof_pack_pm_memo_guardrails import validate_proof_pack_pm_memo_payload
 
 
 def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPackExecutionResponse:
@@ -149,6 +150,8 @@ def validate_workflow_pack_execution_binding(
         )
     if request.pack_id == "outcome_review_narrative.pack" and request.version == "v1":
         validate_outcome_review_narrative_payload(request.task_request.context.payload)
+    if request.pack_id == "dpm_pm_memo.pack" and request.version == "v1":
+        validate_proof_pack_pm_memo_payload(request.task_request.context.payload)
 
 
 def _attach_workflow_pack_run_id(

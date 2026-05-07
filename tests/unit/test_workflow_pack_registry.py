@@ -26,8 +26,8 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
 
     assert catalog.service == "lotus-ai"
     assert catalog.phase == "foundation"
-    assert catalog.registration_count == 5
-    assert catalog.registered_count == 4
+    assert catalog.registration_count == 6
+    assert catalog.registered_count == 5
     assert catalog.production_eligible_count == 0
     advisor_brief_registration = next(
         registration
@@ -48,6 +48,11 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         registration
         for registration in catalog.registrations
         if registration.pack_id == "outcome_review_narrative.pack"
+    )
+    proof_pack_pm_memo_registration = next(
+        registration
+        for registration in catalog.registrations
+        if registration.pack_id == "dpm_pm_memo.pack"
     )
     assert (
         advisor_brief_registration.registration_status == WorkflowPackRegistrationStatus.REGISTERED
@@ -89,8 +94,23 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         and definition_ref.required_for_registration is True
         for definition_ref in outcome_review_narrative_registration.definition_refs
     )
-    assert len(catalog.execution_bindings) == 4
-    assert len(catalog.queue_policies) == 4
+    assert proof_pack_pm_memo_registration.registration_status == (
+        WorkflowPackRegistrationStatus.REGISTERED
+    )
+    assert proof_pack_pm_memo_registration.owner_repository == "lotus-manage"
+    assert proof_pack_pm_memo_registration.workflow_authority_owner == "lotus-manage"
+    assert proof_pack_pm_memo_registration.supported_callers == [
+        "lotus-manage",
+        "lotus-gateway",
+    ]
+    assert any(
+        definition_ref.repository == "lotus-manage"
+        and definition_ref.path == "src/core/proof_packs/handoffs.py"
+        and definition_ref.required_for_registration is True
+        for definition_ref in proof_pack_pm_memo_registration.definition_refs
+    )
+    assert len(catalog.execution_bindings) == 5
+    assert len(catalog.queue_policies) == 5
     assert any(
         binding.pack_id == "advisor_brief.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
@@ -111,6 +131,10 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     )
     assert any(
         binding.pack_id == "outcome_review_narrative.pack" and binding.task_id == "explain.v1"
+        for binding in catalog.execution_bindings
+    )
+    assert any(
+        binding.pack_id == "dpm_pm_memo.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
     )
 
@@ -199,6 +223,19 @@ def test_build_twr_inspection_support_brief_registration_detail_exposes_performa
     assert detail.execution_binding is not None
     assert detail.execution_binding.task_id == "explain.v1"
     assert detail.execution_binding.default_workflow_surface == "twr-supportability-inspection"
+
+
+def test_build_proof_pack_pm_memo_registration_detail_exposes_manage_owned_binding() -> None:
+    detail = build_workflow_pack_registration_detail(
+        pack_id="dpm_pm_memo.pack",
+        version="v1",
+    )
+
+    assert detail.registration.owner_repository == "lotus-manage"
+    assert detail.registration.workflow_authority_owner == "lotus-manage"
+    assert detail.execution_binding is not None
+    assert detail.execution_binding.task_id == "explain.v1"
+    assert detail.execution_binding.default_workflow_surface == "dpm-proof-pack-ai-evidence"
 
 
 def test_build_workflow_pack_registration_detail_rejects_unknown_registration() -> None:
