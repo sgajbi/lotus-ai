@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.portfolio_memory_context_guardrails import portfolio_memory_context_summary
+
 
 def build_outcome_review_narrative_stub_result(
     *,
@@ -24,6 +26,7 @@ def build_outcome_review_narrative_stub_result(
         if isinstance(requested_outputs, list)
         else []
     )
+    portfolio_memory_summary = portfolio_memory_context_summary(context_payload)
 
     message = (
         f"Outcome review {outcome_review_id} for portfolio {portfolio_id} is ready for "
@@ -42,6 +45,7 @@ def build_outcome_review_narrative_stub_result(
         "source_ref_count": source_ref_count,
         "forbidden_actions_enforced": sorted(ai_evidence.get("forbidden_actions", [])),
         "forbidden_fields_removed": sorted(ai_evidence.get("forbidden_fields_removed", [])),
+        **portfolio_memory_summary,
         "unsupported_claims": [
             "client_contact",
             "trade_approval",
@@ -50,7 +54,8 @@ def build_outcome_review_narrative_stub_result(
         ],
         "review_guidance": (
             "Use this generated posture as PM/CIO support only. Business approval, client contact, "
-            "execution instructions, and source-data correction remain outside lotus-ai authority."
+            "execution instructions, and source-data correction remain outside lotus-ai authority. "
+            "Use portfolio memory only as bounded source lineage; do not reconstruct missing facts."
         ),
     }
     return message, structured_output

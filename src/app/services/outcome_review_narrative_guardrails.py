@@ -4,6 +4,10 @@ from typing import Any, cast
 
 from fastapi import HTTPException, status
 
+from app.services.portfolio_memory_context_guardrails import (
+    validate_optional_portfolio_memory_context,
+)
+
 REQUIRED_AI_EVIDENCE_KEYS = frozenset(
     {
         "contract_version",
@@ -72,7 +76,7 @@ def validate_outcome_review_narrative_payload(payload: dict[str, object]) -> Non
     if missing:
         _reject(f"Missing DpmOutcomeAiEvidenceInput fields: {', '.join(missing)}.")
 
-    forbidden_fields = sorted(_find_forbidden_field_names(payload))
+    forbidden_fields = sorted(_find_forbidden_field_names(ai_evidence))
     if forbidden_fields:
         _reject(f"Forbidden AI evidence fields present: {', '.join(forbidden_fields)}.")
 
@@ -94,6 +98,13 @@ def validate_outcome_review_narrative_payload(payload: dict[str, object]) -> Non
         _reject("DpmOutcomeAiEvidenceInput must carry at least one bounded dimension.")
     if not isinstance(ai_evidence.get("source_refs"), list):
         _reject("DpmOutcomeAiEvidenceInput source_refs must be a list.")
+
+    validate_optional_portfolio_memory_context(
+        payload=payload,
+        evidence_portfolio_id=ai_evidence.get("portfolio_id"),
+        forbidden_field_names=FORBIDDEN_FIELD_NAMES,
+        reject=_reject,
+    )
 
 
 def _require_mapping(payload: dict[str, object], key: str) -> dict[str, Any]:

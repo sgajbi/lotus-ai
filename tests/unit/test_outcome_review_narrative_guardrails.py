@@ -5,11 +5,69 @@ from fastapi import HTTPException
 from app.services.outcome_review_narrative_guardrails import (
     validate_outcome_review_narrative_payload,
 )
-from tests.support.workflow_pack_fixtures import outcome_review_narrative_payload
+from tests.support.workflow_pack_fixtures import (
+    outcome_review_narrative_payload,
+    portfolio_memory_context_payload,
+)
 
 
 def test_outcome_review_narrative_guardrails_accept_bounded_manage_ai_evidence() -> None:
     validate_outcome_review_narrative_payload(outcome_review_narrative_payload())
+
+
+def test_outcome_review_narrative_guardrails_accept_bounded_portfolio_memory_context() -> None:
+    validate_outcome_review_narrative_payload(
+        outcome_review_narrative_payload(include_portfolio_memory_context=True)
+    )
+
+
+def test_outcome_review_narrative_guardrails_block_mismatched_portfolio_memory_context() -> None:
+    payload = cast(
+        dict[str, Any],
+        outcome_review_narrative_payload(include_portfolio_memory_context=True),
+    )
+    cast(dict[str, Any], payload["portfolio_memory_context"])["portfolio_id"] = "OTHER"
+
+    try:
+        validate_outcome_review_narrative_payload(payload)
+    except HTTPException as exc:
+        assert exc.status_code == 422
+        assert "portfolio_id must match AI evidence portfolio_id" in str(exc.detail)
+    else:
+        raise AssertionError("expected portfolio mismatch to block execution")
+
+
+def test_outcome_review_narrative_guardrails_block_unbounded_portfolio_memory_context() -> None:
+    payload = cast(dict[str, Any], outcome_review_narrative_payload())
+    payload["portfolio_memory_context"] = portfolio_memory_context_payload(event_ref_count=13)
+
+    try:
+        validate_outcome_review_narrative_payload(payload)
+    except HTTPException as exc:
+        assert exc.status_code == 422
+        assert "event_refs exceeds bounded limit 12" in str(exc.detail)
+    else:
+        raise AssertionError("expected unbounded portfolio-memory context to block execution")
+
+
+def test_outcome_review_narrative_guardrails_block_raw_portfolio_memory_fields() -> None:
+    payload = cast(
+        dict[str, Any],
+        outcome_review_narrative_payload(include_portfolio_memory_context=True),
+    )
+    event_refs = cast(
+        list[dict[str, Any]],
+        cast(dict[str, Any], payload["portfolio_memory_context"])["event_refs"],
+    )
+    event_refs[0]["raw_response"] = {"unsafe": True}
+
+    try:
+        validate_outcome_review_narrative_payload(payload)
+    except HTTPException as exc:
+        assert exc.status_code == 422
+        assert "Forbidden portfolio memory fields present: raw_response" in str(exc.detail)
+    else:
+        raise AssertionError("expected raw portfolio-memory field to block execution")
 
 
 def test_outcome_review_narrative_guardrails_block_missing_forbidden_actions() -> None:

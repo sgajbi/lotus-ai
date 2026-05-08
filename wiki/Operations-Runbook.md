@@ -162,10 +162,14 @@ For AI-backed product-surface support, also confirm:
 6. `dpm_pm_memo` remains owned by `lotus-manage` proof-pack evidence contracts; treat trade
    recommendations, order tickets, rebalance approvals, client messages, PM scoring, control
    overrides, and invented missing evidence as guardrail-blocked requests, not as prompt-tuning
-   opportunities.
+   opportunities. Optional `portfolio_memory_context` is source-lineage-only context; investigate
+   mismatched portfolio ids, raw payload fields, unbounded event refs, or missing no-reconstruction
+   governance as caller contract defects.
 7. `outcome_review_narrative` remains owned by `lotus-manage` evidence contracts; treat PM scoring,
    client messages, trade approvals, control overrides, and invented missing evidence as
-   guardrail-blocked requests, not as prompt-tuning opportunities.
+   guardrail-blocked requests, not as prompt-tuning opportunities. Optional portfolio-memory
+   lineage can support review and demo provenance, but it must not be used to infer missing source
+   facts.
 
 The owner-facing source for that procedure is:
 
