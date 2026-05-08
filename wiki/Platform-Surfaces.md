@@ -120,15 +120,19 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 7. `lotus-workbench` now has a typed client seam for the downstream advisor-brief review-action route, while UI-triggered business authorization remains a separate future slice,
 8. the current executable workflow-pack set includes `advisor_brief.pack`,
    `workspace_rationale.pack`, `twr_inspection_support_brief.pack`, the review-gated
-   `dpm_pm_memo.pack` contract for `lotus-manage` `DpmProofPackAiEvidenceInput`, and the
+   `dpm_pm_memo.pack` contract for `lotus-manage` `DpmProofPackAiEvidenceInput`, the
+   review-gated `dpm_wave_pm_memo.pack` contract for `lotus-manage` `DpmWaveReportInput`, and the
    review-gated `outcome_review_narrative.pack` contract for `lotus-manage`
-   `DpmOutcomeAiEvidenceInput`. DPM PM memo execution validates required proof-pack evidence,
-   required forbidden actions, forbidden field names, forbidden requested outputs such as trade
-   recommendations or client messages, and unsupported requested outputs before run, audit, or
-   task-flow posture is recorded. Outcome-review narrative execution validates required forbidden
+   `DpmOutcomeAiEvidenceInput`. DPM proof-pack PM memo execution validates required proof-pack
+   evidence, required forbidden actions, forbidden field names, forbidden requested outputs such as
+   trade recommendations or client messages, and unsupported requested outputs before run, audit,
+   or task-flow posture is recorded. DPM wave PM memo execution validates required wave report
+   input fields, non-empty source refs, bounded wave items, proof-pack posture, `NO_RAW_PAYLOADS`,
+   no-external-execution posture, forbidden actions, forbidden fields, and requested outputs before
+   side effects are recorded. Outcome-review narrative execution validates required forbidden
    actions, rejects forbidden field names, rejects forbidden requested outputs such as PM scoring or
    client messages, records run and task-flow posture only after those guardrails pass, and remains
-   support-only until Gateway and Workbench surfaces consume the contract. Both DPM packs can
+   support-only until Gateway and Workbench surfaces consume the contract. The DPM packs can
    consume optional manage-owned `portfolio_memory_context` as bounded source lineage, validating
    portfolio identity, capped event refs, source content hash, `NO_RAW_PAYLOADS`, and
    no-reconstruction source-authority policy before any side effects are recorded.
@@ -136,10 +140,13 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 ```mermaid
 flowchart LR
     ProofPack["lotus-manage\nDpmProofPackAiEvidenceInput"] --> MemoPack["dpm_pm_memo.pack@v1"]
+    Wave["lotus-manage\nDpmWaveReportInput"] --> WavePack["dpm_wave_pm_memo.pack@v1"]
     Outcome["lotus-manage\nDpmOutcomeAiEvidenceInput"] --> OutcomePack["outcome_review_narrative.pack@v1"]
     Memory["lotus-manage\nportfolio_memory_context"] --> MemoPack
+    Memory --> WavePack
     Memory --> OutcomePack
     MemoPack --> Guardrails["lotus-ai guardrails\nfields / actions / outputs / memory"]
+    WavePack --> Guardrails
     OutcomePack --> Guardrails
     Guardrails --> Ledger["Run ledger\nreview required"]
     Ledger --> Operator["Operator profile\nconsumer view\nruntime status"]
@@ -354,7 +361,7 @@ This family covers:
 2. incident summary
 3. bounded summaries by provider, retrieval, async, evaluation, prompt, and safety
 4. AI-backed surface supportability for advisor brief, TWR inspection support brief, workspace
-   rationale, DPM PM memo, and outcome-review narrative surfaces, including bounded `supportability_reason` values and explicit
+   rationale, DPM PM memo, DPM wave PM memo, and outcome-review narrative surfaces, including bounded `supportability_reason` values and explicit
    `metric_labels` truth for `lotus_ai_surface_supportability_state`
 5. breakdown views for operator analysis
 

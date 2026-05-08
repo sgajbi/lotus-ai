@@ -121,3 +121,20 @@ OUTCOME_REVIEW_NARRATIVE_V1_SPEC = WorkflowPackPhase1VersionSpec(
     execution_task_id="explain.v1",
     required_payload_keys=frozenset({"ai_evidence_input", "narrative_request", "supportability"}),
 )
+
+
+DPM_WAVE_PM_MEMO_V1_SPEC = WorkflowPackPhase1VersionSpec(
+    pack_id="dpm_wave_pm_memo.pack",
+    pack_family="dpm_wave_pm_memo",
+    version="v1",
+    owner_repository="lotus-manage",
+    owner_service="lotus-manage",
+    truth_owner_services=("lotus-manage", "lotus-core", "lotus-risk", "lotus-performance"),
+    primary_use_case="dpm_rebalance_wave_pm_memo",
+    workflow_authority_owner="lotus-manage",
+    supported_callers=("lotus-manage", "lotus-gateway"),
+    surface_scope=("dpm-wave-ai-evidence",),
+    default_workflow_surface="dpm-wave-ai-evidence",
+    execution_task_id="explain.v1",
+    required_payload_keys=frozenset({"wave_report_input", "memo_request", "supportability"}),
+)

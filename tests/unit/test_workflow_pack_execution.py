@@ -9,6 +9,7 @@ from app.services.workflow_pack_bindings import get_workflow_pack_execution_bind
 from tests.support.workflow_pack_fixtures import (
     outcome_review_narrative_workflow_pack_execution_request_json,
     proof_pack_pm_memo_workflow_pack_execution_request_json,
+    wave_pm_memo_workflow_pack_execution_request_json,
 )
 
 
@@ -159,3 +160,39 @@ def test_execute_workflow_pack_records_outcome_review_portfolio_memory_lineage()
         "sha256:portfolio-memory-context-001"
     )
     assert structured_output["portfolio_memory_event_count"] == 2
+
+
+def test_execute_workflow_pack_records_review_gated_wave_pm_memo() -> None:
+    request = WorkflowPackExecutionRequest.model_validate(
+        wave_pm_memo_workflow_pack_execution_request_json(correlation_id="corr-execution-wave-memo")
+    )
+
+    response = execute_workflow_pack(request)
+
+    structured_output = response.execution.result.structured_output
+    assert response.execution.status.value == "COMPLETED"
+    assert response.workflow_pack_run.pack_id == "dpm_wave_pm_memo.pack"
+    assert response.workflow_pack_run.workflow_authority_owner == "lotus-manage"
+    assert structured_output["workflow_pack_family"] == "dpm_wave_pm_memo"
+    assert structured_output["state"] == "REVIEW_REQUIRED"
+    assert structured_output["scope"] == "support_only"
+    assert structured_output["wave_report_content_hash"] == "sha256:wave-report-input-001"
+    assert structured_output["proof_pack_ref_count"] == 1
+
+
+def test_execute_workflow_pack_records_wave_portfolio_memory_lineage() -> None:
+    request = WorkflowPackExecutionRequest.model_validate(
+        wave_pm_memo_workflow_pack_execution_request_json(
+            correlation_id="corr-execution-wave-memory",
+            include_portfolio_memory_context=True,
+        )
+    )
+
+    response = execute_workflow_pack(request)
+
+    structured_output = response.execution.result.structured_output
+    assert structured_output["portfolio_memory_status"] == "supplied"
+    assert structured_output["portfolio_memory_content_hash"] == (
+        "sha256:portfolio-memory-context-001"
+    )
+    assert structured_output["portfolio_memory_event_ref_count"] == 2

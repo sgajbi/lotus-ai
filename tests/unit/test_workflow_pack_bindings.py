@@ -22,6 +22,7 @@ from app.services.workflow_pack_bindings import (
 from app.services.workflow_pack_phase1_specs import ADVISOR_BRIEF_V1_SPEC
 from tests.support.workflow_pack_fixtures import outcome_review_narrative_payload
 from tests.support.workflow_pack_fixtures import proof_pack_pm_memo_payload
+from tests.support.workflow_pack_fixtures import wave_pm_memo_payload
 
 
 def test_get_workflow_pack_execution_binding_returns_phase1_binding() -> None:
@@ -65,6 +66,18 @@ def test_get_workflow_pack_execution_binding_returns_proof_pack_pm_memo_binding(
     assert binding.task_id == "explain.v1"
     assert binding.default_workflow_surface == "dpm-proof-pack-ai-evidence"
     assert binding.validate_task_request_payload(payload=proof_pack_pm_memo_payload())
+
+
+def test_get_workflow_pack_execution_binding_returns_wave_pm_memo_binding() -> None:
+    binding = get_workflow_pack_execution_binding(
+        pack_id="dpm_wave_pm_memo.pack",
+        version="v1",
+    )
+
+    assert binding is not None
+    assert binding.task_id == "explain.v1"
+    assert binding.default_workflow_surface == "dpm-wave-ai-evidence"
+    assert binding.validate_task_request_payload(payload=wave_pm_memo_payload())
 
 
 def test_workflow_pack_execution_binding_spec_requires_task_and_surface() -> None:

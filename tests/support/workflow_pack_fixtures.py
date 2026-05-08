@@ -594,3 +594,191 @@ def proof_pack_pm_memo_workflow_pack_execution_request_json(
     if workflow_surface is not None:
         request["workflow_surface"] = workflow_surface
     return request
+
+
+def wave_pm_memo_payload(
+    *,
+    wave_id: str = "wave_20260508_001",
+    portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
+    content_hash: str = "sha256:wave-report-input-001",
+    requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "wave_report_input": {
+            "contract_version": "1.0",
+            "wave_id": wave_id,
+            "wave_content_hash": "sha256:wave-domain-001",
+            "wave_state": "PENDING_REVIEW",
+            "trigger_type": "CIO_MODEL_CHANGE",
+            "trigger_id": "cio_model_change_20260508",
+            "trigger_rationale": "Balanced DPM model drift review after CIO model update.",
+            "as_of_date": "2026-05-08",
+            "generated_at": "2026-05-08T08:00:00Z",
+            "report_title": f"Rebalance Wave Evidence - {wave_id}",
+            "report_audience": [
+                "portfolio_manager",
+                "chief_investment_office",
+                "investment_control",
+                "operations",
+            ],
+            "aggregate_metrics": {
+                "portfolio_count": 1,
+                "ready_item_count": 1,
+                "blocked_item_count": 0,
+                "estimated_turnover_pct": "0.032",
+            },
+            "supportability": {
+                "source_state": "READY",
+                "reason_codes": ["WAVE_READY_FOR_REVIEW"],
+            },
+            "proof_pack_posture": {
+                "proof_pack_count": 1,
+                "proof_pack_refs": [
+                    {
+                        "proof_pack_id": "dpp_c09f73d0",
+                        "portfolio_id": portfolio_id,
+                        "state": "READY",
+                        "content_hash": "sha256:proof-pack-001",
+                    }
+                ],
+                "external_execution_claimed": False,
+            },
+            "items": [
+                {
+                    "wave_item_id": "wave_item_001",
+                    "portfolio_id": portfolio_id,
+                    "mandate_id": "MANDATE_PB_SG_GLOBAL_BAL_001",
+                    "model_portfolio_id": "MODEL_PB_SG_GLOBAL_BAL_DPM",
+                    "state": "READY",
+                    "reason_codes": ["READY_FOR_PM_REVIEW"],
+                    "selected_alternative_id": "ALT_REBALANCE_TO_MODEL",
+                    "proof_pack_id": "dpp_c09f73d0",
+                    "proof_pack_state": "READY",
+                    "source_refs": [
+                        {
+                            "source_system": "lotus-manage",
+                            "source_type": "DPM_WAVE_ITEM",
+                            "source_id": "wave_item_001",
+                            "content_hash": "sha256:wave-item-001",
+                        }
+                    ],
+                    "diagnostics": {"proof_pack_state": "READY"},
+                }
+            ],
+            "events": [
+                {
+                    "event_id": "wave_event_001",
+                    "event_type": "WAVE_CREATED",
+                    "from_state": None,
+                    "to_state": "PENDING_REVIEW",
+                    "actor_id": "lotus-manage",
+                    "reason_code": "CIO_MODEL_CHANGE",
+                    "correlation_id": "corr-wave-001",
+                    "created_at": "2026-05-08T08:00:00Z",
+                    "metadata": {"source": "governed_wave_orchestration"},
+                }
+            ],
+            "handoff_refs": [
+                {
+                    "ref_type": "DPM_PRE_TRADE_PROOF_PACK",
+                    "ref_id": "dpp_c09f73d0",
+                    "source_system": "lotus-manage",
+                    "content_hash": "sha256:proof-pack-001",
+                }
+            ],
+            "source_refs": [
+                {
+                    "source_system": "lotus-manage",
+                    "source_type": "DPM_WAVE_REPORT_INPUT",
+                    "source_id": f"{wave_id}:dpm_wave_report_input",
+                    "content_hash": content_hash,
+                }
+            ],
+            "redaction_policy": "NO_RAW_PAYLOADS",
+            "external_execution_claimed": False,
+            "evidence_ref": {
+                "ref_type": "DPM_WAVE_REPORT_INPUT",
+                "ref_id": f"{wave_id}:dpm_wave_report_input",
+                "source_system": "lotus-manage",
+                "content_hash": content_hash,
+            },
+            "content_hash": content_hash,
+        },
+        "memo_request": {
+            "requested_outputs": requested_outputs
+            or [
+                "wave_pm_memo",
+                "wave_rationale_summary",
+                "approval_checklist",
+                "risk_caveats",
+                "evidence_gaps",
+            ],
+            "audience": ["portfolio_manager", "cio_office", "investment_control"],
+        },
+        "supportability": {
+            "source_state": "READY",
+            "requires_human_review": True,
+            "forbidden_actions": [
+                "place_orders",
+                "approve_rebalance",
+                "override_controls",
+                "invent_missing_evidence",
+                "contact_client",
+            ],
+            "unsupported_claims": [
+                "trade_approval",
+                "order_instruction",
+                "client_message",
+                "external_execution",
+            ],
+        },
+    }
+    if include_portfolio_memory_context:
+        payload["portfolio_memory_context"] = portfolio_memory_context_payload(
+            portfolio_id=portfolio_id
+        )
+    return payload
+
+
+def wave_pm_memo_workflow_pack_execution_request_json(
+    *,
+    correlation_id: str,
+    task_id: str = "explain.v1",
+    caller_app: str = "lotus-manage",
+    workflow_surface: str | None = "dpm-wave-ai-evidence",
+    environment: str = "DEVELOPMENT",
+    caller_identity_class: str = "INTERNAL_SERVICE",
+    requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
+) -> dict[str, object]:
+    request: dict[str, object] = {
+        "pack_id": "dpm_wave_pm_memo.pack",
+        "version": "v1",
+        "environment": environment,
+        "caller_identity_class": caller_identity_class,
+        "task_request": {
+            "task_id": task_id,
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": caller_app,
+                "correlation_id": correlation_id,
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Generate review-gated PM memo from bounded rebalance-wave evidence.",
+                "payload": wave_pm_memo_payload(
+                    requested_outputs=requested_outputs,
+                    include_portfolio_memory_context=include_portfolio_memory_context,
+                ),
+                "source_refs": [
+                    "lotus-manage:wave:wave_20260508_001",
+                    "lotus-manage:wave-report-input:wave_20260508_001",
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    }
+    if workflow_surface is not None:
+        request["workflow_surface"] = workflow_surface
+    return request

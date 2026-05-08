@@ -14,6 +14,7 @@ from app.providers.outcome_review_narrative_stub import (
     build_outcome_review_narrative_stub_result,
 )
 from app.providers.proof_pack_pm_memo_stub import build_proof_pack_pm_memo_stub_result
+from app.providers.wave_pm_memo_stub import build_wave_pm_memo_stub_result
 
 
 class StubTextProvider:
@@ -32,6 +33,42 @@ class StubTextProvider:
     )
 
     def execute(self, request: ProviderExecutionRequest) -> ProviderExecutionResponse:
+        wave_pm_memo_result = build_wave_pm_memo_stub_result(
+            context_payload=request.context_payload,
+        )
+        if request.task_id == "explain.v1" and wave_pm_memo_result:
+            message, structured_output = wave_pm_memo_result
+            return ProviderExecutionResponse(
+                provider_id=self.descriptor.provider_id,
+                provider_mode=settings.provider_mode,
+                adapter_kind=self.descriptor.adapter_kind,
+                failure_category=None,
+                timeout_ms=request.timeout_ms,
+                retry_count=0,
+                max_output_tokens=request.max_output_tokens,
+                stubbed=True,
+                message=message,
+                structured_output={
+                    **structured_output,
+                    "phase": settings.delivery_phase,
+                    "provider_id": self.descriptor.provider_id,
+                    "provider_mode": settings.provider_mode,
+                    "adapter_kind": self.descriptor.adapter_kind.value,
+                    "timeout_ms": request.timeout_ms,
+                    "retry_count": 0,
+                    "max_output_tokens": request.max_output_tokens,
+                    "output_label": request.output_label,
+                    "safety_mode": request.safety_mode,
+                    "redaction_posture": request.redaction_posture,
+                    "context_summary": request.context_summary,
+                    "context_keys": sorted(request.context_payload.keys()),
+                    "source_refs": request.source_refs,
+                    "stub_reason": (
+                        "lotus-ai emits deterministic governed wave memo posture before live "
+                        "provider rollout is enabled for this workflow pack."
+                    ),
+                },
+            )
         proof_pack_pm_memo_result = build_proof_pack_pm_memo_stub_result(
             context_payload=request.context_payload,
         )
