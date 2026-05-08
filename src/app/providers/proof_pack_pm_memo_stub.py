@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.portfolio_memory_context_guardrails import portfolio_memory_context_summary
+
 
 def build_proof_pack_pm_memo_stub_result(
     *,
@@ -27,6 +29,7 @@ def build_proof_pack_pm_memo_stub_result(
     output_count = len(requested_outputs) if isinstance(requested_outputs, list) else 0
     section_count = len(sections) if isinstance(sections, list) else 0
     source_count = len(source_refs) if isinstance(source_refs, list) else 0
+    portfolio_memory_summary = portfolio_memory_context_summary(context_payload)
 
     message = (
         "Drafted a review-gated DPM proof-pack PM memo from bounded manage AI evidence "
@@ -50,11 +53,13 @@ def build_proof_pack_pm_memo_stub_result(
         "forbidden_fields_removed": (
             forbidden_fields_removed if isinstance(forbidden_fields_removed, list) else []
         ),
+        **portfolio_memory_summary,
         "unsupported_claims": _unsupported_claims(supportability),
         "review_guidance": [
             "Review the memo against the source proof-pack hash before using it in PM workflow.",
             "Do not treat this memo as trade approval, client communication, or order instruction.",
             "Escalate missing evidence instead of asking the model to infer it.",
+            "Use portfolio memory only as bounded source lineage; do not reconstruct missing facts.",
         ],
     }
     return message, structured_output

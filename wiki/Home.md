@@ -51,9 +51,10 @@ Current executable workflow-pack coverage is implementation-backed for five pilo
 
 The DPM packs are deliberately support-only and review-gated. `dpm_pm_memo.pack@v1` consumes
 `lotus-manage` `DpmProofPackAiEvidenceInput`; `outcome_review_narrative.pack@v1` consumes
-`lotus-manage` `DpmOutcomeAiEvidenceInput`. Both validate forbidden actions, forbidden fields,
-requested output scope, run-ledger posture, and source evidence before generated narrative can be
-treated as usable support.
+`lotus-manage` `DpmOutcomeAiEvidenceInput`. Both can also consume optional manage-owned
+`portfolio_memory_context` as bounded source lineage. They validate forbidden actions, forbidden
+fields, requested output scope, portfolio-memory redaction/source-authority posture, run-ledger
+posture, and source evidence before generated narrative can be treated as usable support.
 
 ## Supported Task Families
 

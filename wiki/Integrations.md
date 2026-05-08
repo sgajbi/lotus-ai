@@ -174,13 +174,18 @@ Use it only when the caller supplies:
 1. `ai_evidence_input` shaped as `lotus-manage` `DpmProofPackAiEvidenceInput`,
 2. `memo_request` with allowed requested outputs such as `pm_memo`, `rationale_summary`,
    `approval_checklist`, `risk_caveats`, `operations_handoff`, or `evidence_gaps`,
-3. `supportability` posture that states source readiness, human-review need, and unsupported claims.
+3. `supportability` posture that states source readiness, human-review need, and unsupported claims,
+4. optional `portfolio_memory_context` only when `lotus-manage` supplies the bounded report-input
+   handoff context for the same portfolio.
 
 The pack blocks requests for trade recommendations, order tickets, rebalance approval, client
 messages, PM scoring, control overrides, hidden source inference, or forbidden sensitive fields.
+When portfolio memory is supplied, it is validated as source-lineage-only context: matching
+portfolio id, capped event refs, `NO_RAW_PAYLOADS`, source content hash, and a source-authority
+policy that forbids reconstructing missing risk, performance, execution, report, or AI truth.
 Downstream Gateway and Workbench product surfaces should preserve `workflow_pack_run_id`, proof-pack
-hashes, AI-evidence hash, review posture, and unsupported-claim posture rather than flattening the
-memo into plain text.
+hashes, AI-evidence hash, portfolio-memory content hash, review posture, and unsupported-claim
+posture rather than flattening the memo into plain text.
 
 ```mermaid
 sequenceDiagram
@@ -188,12 +193,17 @@ sequenceDiagram
     participant AI as lotus-ai
     participant Ledger as workflow-pack ledger
     participant UI as Gateway / Workbench
-    Manage->>AI: dpm_pm_memo.pack@v1 with DpmProofPackAiEvidenceInput
-    AI->>AI: Validate forbidden actions, fields, requested outputs
+    Manage->>AI: dpm_pm_memo.pack@v1 with evidence and optional portfolio_memory_context
+    AI->>AI: Validate forbidden actions, fields, requested outputs, and memory lineage
     AI->>Ledger: Record review-gated run after guardrails pass
     Ledger-->>AI: workflow_pack_run_id and provenance
     AI-->>UI: Support-only memo payload plus run posture
 ```
+
+`outcome_review_narrative.pack@v1` follows the same boundary for
+`DpmOutcomeAiEvidenceInput`: `lotus-ai` can draft PM, CIO, control, operations, and evidence-gap
+support commentary, but cannot score portfolio managers, contact clients, approve trades, override
+controls, or infer timeline facts absent from source-owned Manage evidence.
 
 ## Provider and Safety Expectations
 

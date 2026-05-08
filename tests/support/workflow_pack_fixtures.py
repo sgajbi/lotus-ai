@@ -295,8 +295,9 @@ def outcome_review_narrative_payload(
     portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
     content_hash: str = "sha256:outcome-ai-evidence-001",
     requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
 ) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "ai_evidence_input": {
             "contract_version": "1.0",
             "outcome_review_id": outcome_review_id,
@@ -365,6 +366,11 @@ def outcome_review_narrative_payload(
             ],
         },
     }
+    if include_portfolio_memory_context:
+        payload["portfolio_memory_context"] = portfolio_memory_context_payload(
+            portfolio_id=portfolio_id
+        )
+    return payload
 
 
 def outcome_review_narrative_workflow_pack_execution_request_json(
@@ -376,6 +382,7 @@ def outcome_review_narrative_workflow_pack_execution_request_json(
     environment: str = "DEVELOPMENT",
     caller_identity_class: str = "INTERNAL_SERVICE",
     requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
 ) -> dict[str, object]:
     request: dict[str, object] = {
         "pack_id": "outcome_review_narrative.pack",
@@ -394,6 +401,7 @@ def outcome_review_narrative_workflow_pack_execution_request_json(
                 "summary": "Generate review-gated outcome-review narrative from bounded AI evidence.",
                 "payload": outcome_review_narrative_payload(
                     requested_outputs=requested_outputs,
+                    include_portfolio_memory_context=include_portfolio_memory_context,
                 ),
                 "source_refs": [
                     "lotus-manage:outcome-review:or_pb_sg_001",
@@ -414,8 +422,9 @@ def proof_pack_pm_memo_payload(
     portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
     content_hash: str = "sha256:proof-pack-ai-evidence-001",
     requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
 ) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "ai_evidence_input": {
             "contract_version": "1.0",
             "proof_pack_id": proof_pack_id,
@@ -491,6 +500,57 @@ def proof_pack_pm_memo_payload(
             ],
         },
     }
+    if include_portfolio_memory_context:
+        payload["portfolio_memory_context"] = portfolio_memory_context_payload(
+            portfolio_id=portfolio_id
+        )
+    return payload
+
+
+def portfolio_memory_context_payload(
+    *,
+    portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
+    event_ref_count: int = 2,
+) -> dict[str, object]:
+    event_refs = [
+        {
+            "event_identity": (
+                f"lotus-manage:DPM_PRE_TRADE_PROOF_PACK:dpp_c09f73d0:sha256:proof-pack-{index:03d}"
+            ),
+            "event_type": "PROOF_PACK_CREATED" if index == 0 else "OUTCOME_REVIEW_CREATED",
+            "source_system": "lotus-manage",
+            "source_type": ("DPM_PRE_TRADE_PROOF_PACK" if index == 0 else "DPM_OUTCOME_REVIEW"),
+            "source_id": "dpp_c09f73d0" if index == 0 else "or_pb_sg_001",
+            "content_hash": f"sha256:portfolio-memory-source-{index:03d}",
+            "retention_policy": "DPM_PORTFOLIO_MEMORY_SOURCE_LINEAGE_7Y",
+            "redaction_policy": "NO_RAW_PAYLOADS",
+            "audit_policy": "AUDIT_READ_AND_EXPORT",
+            "access_classification": "CLIENT_CONFIDENTIAL_INTERNAL",
+        }
+        for index in range(event_ref_count)
+    ]
+    return {
+        "portfolio_id": portfolio_id,
+        "supportability_state": "READY",
+        "event_count": event_ref_count,
+        "source_systems": ["lotus-manage"],
+        "reason_codes": ["PORTFOLIO_MEMORY_READY"],
+        "content_hash": "sha256:portfolio-memory-context-001",
+        "governance_policy": {
+            "event_identity_scheme": (
+                "source_system:source_type:source_id:content_hash_or_content_hash_unavailable"
+            ),
+            "retention_policy": "DPM_PORTFOLIO_MEMORY_SOURCE_LINEAGE_7Y",
+            "redaction_policy": "NO_RAW_PAYLOADS",
+            "audit_policy": "AUDIT_READ_AND_EXPORT",
+            "access_classification": "CLIENT_CONFIDENTIAL_INTERNAL",
+            "source_authority_policy": (
+                "portfolio memory projects source-owned facts; consumers must not reconstruct "
+                "risk, performance, mandate-health, execution, tax, cash, FX, report, or AI truth"
+            ),
+        },
+        "event_refs": event_refs,
+    }
 
 
 def proof_pack_pm_memo_workflow_pack_execution_request_json(
@@ -502,6 +562,7 @@ def proof_pack_pm_memo_workflow_pack_execution_request_json(
     environment: str = "DEVELOPMENT",
     caller_identity_class: str = "INTERNAL_SERVICE",
     requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
 ) -> dict[str, object]:
     request: dict[str, object] = {
         "pack_id": "dpm_pm_memo.pack",
@@ -518,7 +579,10 @@ def proof_pack_pm_memo_workflow_pack_execution_request_json(
             },
             "context": {
                 "summary": "Generate review-gated PM memo from bounded proof-pack AI evidence.",
-                "payload": proof_pack_pm_memo_payload(requested_outputs=requested_outputs),
+                "payload": proof_pack_pm_memo_payload(
+                    requested_outputs=requested_outputs,
+                    include_portfolio_memory_context=include_portfolio_memory_context,
+                ),
                 "source_refs": [
                     "lotus-manage:proof-pack:dpp_c09f73d0",
                     "lotus-manage:proof-pack-ai-evidence:dpp_c09f73d0",

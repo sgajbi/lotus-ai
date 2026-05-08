@@ -67,6 +67,13 @@ validation, run-ledger posture, queue policy, and deterministic stub behavior.
 and review-gated; it must not approve rebalances, place orders, produce client messages, score PMs,
 or invent missing proof-pack evidence.
 
+For DPM portfolio-memory support, the DPM PM memo and outcome-review narrative packs can consume
+optional `portfolio_memory_context` emitted by `lotus-manage` report-input handoffs. `lotus-ai`
+validates that the context is portfolio-matched, source-lineage-only, capped to the bounded event-ref
+limit, governed by `NO_RAW_PAYLOADS`, and explicitly marked as source-owned truth that consumers
+must not reconstruct. Generated outputs expose only a compact portfolio-memory lineage summary,
+content hash, event count, source systems, event types, and review guidance.
+
 ## Architectural Shape
 
 The service is a FastAPI application with explicit control-plane and data-plane seams.

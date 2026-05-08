@@ -100,6 +100,28 @@ def test_execute_workflow_pack_records_review_gated_proof_pack_pm_memo() -> None
     )
 
 
+def test_execute_workflow_pack_records_proof_pack_portfolio_memory_lineage() -> None:
+    request = WorkflowPackExecutionRequest.model_validate(
+        proof_pack_pm_memo_workflow_pack_execution_request_json(
+            correlation_id="corr-execution-proof-pack-memory",
+            include_portfolio_memory_context=True,
+        )
+    )
+
+    response = execute_workflow_pack(request)
+
+    structured_output = response.execution.result.structured_output
+    assert structured_output["portfolio_memory_status"] == "supplied"
+    assert structured_output["portfolio_memory_content_hash"] == (
+        "sha256:portfolio-memory-context-001"
+    )
+    assert structured_output["portfolio_memory_event_ref_count"] == 2
+    assert structured_output["portfolio_memory_event_types"] == [
+        "OUTCOME_REVIEW_CREATED",
+        "PROOF_PACK_CREATED",
+    ]
+
+
 def test_validate_workflow_pack_execution_binding_runs_proof_pack_guardrails() -> None:
     request_payload = proof_pack_pm_memo_workflow_pack_execution_request_json(
         correlation_id="corr-execution-proof-pack-memo-guardrail",
@@ -119,3 +141,21 @@ def test_validate_workflow_pack_execution_binding_runs_proof_pack_guardrails() -
         assert "Forbidden memo outputs requested: client_message" in str(exc.detail)
     else:
         raise AssertionError("expected proof-pack guardrails to reject forbidden memo output")
+
+
+def test_execute_workflow_pack_records_outcome_review_portfolio_memory_lineage() -> None:
+    request = WorkflowPackExecutionRequest.model_validate(
+        outcome_review_narrative_workflow_pack_execution_request_json(
+            correlation_id="corr-execution-outcome-memory",
+            include_portfolio_memory_context=True,
+        )
+    )
+
+    response = execute_workflow_pack(request)
+
+    structured_output = response.execution.result.structured_output
+    assert structured_output["portfolio_memory_status"] == "supplied"
+    assert structured_output["portfolio_memory_content_hash"] == (
+        "sha256:portfolio-memory-context-001"
+    )
+    assert structured_output["portfolio_memory_event_count"] == 2

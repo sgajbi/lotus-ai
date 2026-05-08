@@ -4,6 +4,10 @@ from typing import Any, cast
 
 from fastapi import HTTPException, status
 
+from app.services.portfolio_memory_context_guardrails import (
+    validate_optional_portfolio_memory_context,
+)
+
 REQUIRED_AI_EVIDENCE_KEYS = frozenset(
     {
         "contract_version",
@@ -106,6 +110,13 @@ def validate_proof_pack_pm_memo_payload(payload: dict[str, object]) -> None:
     source_refs = ai_evidence.get("source_refs")
     if not isinstance(source_refs, list):
         _reject("DpmProofPackAiEvidenceInput source_refs must be a list.")
+
+    validate_optional_portfolio_memory_context(
+        payload=payload,
+        evidence_portfolio_id=ai_evidence.get("portfolio_id"),
+        forbidden_field_names=FORBIDDEN_FIELD_NAMES,
+        reject=_reject,
+    )
 
 
 def _require_object_section(payload: dict[str, object], key: str) -> dict[str, Any]:

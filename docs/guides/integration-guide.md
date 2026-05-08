@@ -278,22 +278,30 @@ That sequence keeps downstream adoption pack-oriented first, while still preserv
 2. Summarize blocking diagnostics.
 3. Draft reviewer notes for support or operations.
 4. Use `dpm_pm_memo.pack@v1` only with manage-owned `DpmProofPackAiEvidenceInput`, a bounded
-   `memo_request`, and supportability posture. Requests for trade recommendations, order
-   instructions, rebalance approval, client messages, PM scoring, control override, or invented
-   missing evidence are guardrail-blocked before execution and should be corrected in the calling
-   workflow rather than retried with prompt wording.
+   `memo_request`, supportability posture, and optional manage-owned `portfolio_memory_context`.
+   Requests for trade recommendations, order instructions, rebalance approval, client messages, PM
+   scoring, control override, or invented missing evidence are guardrail-blocked before execution
+   and should be corrected in the calling workflow rather than retried with prompt wording.
 5. Use `outcome_review_narrative.pack@v1` only with manage-owned `DpmOutcomeAiEvidenceInput`,
-   a bounded `narrative_request`, and supportability posture. Requests for PM scoring, client
-   messages, trade approval, control override, or invented missing evidence are guardrail-blocked
-   before execution and should be fixed in the calling workflow rather than retried with different
-   prompt wording.
+   a bounded `narrative_request`, supportability posture, and optional manage-owned
+   `portfolio_memory_context`. Requests for PM scoring, client messages, trade approval, control
+   override, or invented missing evidence are guardrail-blocked before execution and should be
+   fixed in the calling workflow rather than retried with different prompt wording.
+
+When supplied, `portfolio_memory_context` is lineage context, not a source-fact replacement. It must
+match the AI-evidence portfolio id, carry source-owned governance including `NO_RAW_PAYLOADS` and a
+no-reconstruction source-authority policy, and remain within the bounded event-ref limit. `lotus-ai`
+returns compact portfolio-memory summary fields so downstream demo and review surfaces can show
+timeline provenance without raw payloads or inferred business facts.
 
 ```mermaid
 flowchart LR
     Manage["lotus-manage proof pack\nDpmProofPackAiEvidenceInput"] --> Gateway["lotus-gateway\nfuture BFF caller"]
     Manage --> AI["lotus-ai\ndpm_pm_memo.pack@v1"]
     Gateway --> AI
-    AI --> Guardrails["Forbidden action,\nfield, and output guardrails"]
+    Manage --> Memory["portfolio_memory_context\nsource-lineage only"]
+    Memory --> AI
+    AI --> Guardrails["Forbidden action,\nfield, output,\nand memory guardrails"]
     Guardrails --> RunLedger["Workflow-pack run ledger\nreview required"]
     RunLedger --> Consumers["Gateway / Workbench\nfuture PM memo surface"]
 ```
