@@ -58,21 +58,24 @@ Important posture limits:
 4. prompt bodies remain repository-managed even though runtime prompt selection is durable,
 5. workflow-pack registry records are control-plane metadata, not a second editable home for workflow logic,
 6. workflow-pack registrations must point to real owning-repository artifacts rather than placeholder definitions in `lotus-ai`,
-7. workflow-pack registry and control state can now run either in-memory or through a SQL-backed durable store, and the current executable workflow-pack set includes advisor brief, workspace rationale, TWR inspection support brief, the review-gated `dpm_pm_memo.pack@v1` contract for `lotus-manage` `DpmProofPackAiEvidenceInput`, and the review-gated `outcome_review_narrative.pack@v1` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`,
+7. workflow-pack registry and control state can now run either in-memory or through a SQL-backed durable store, and the current executable workflow-pack set includes advisor brief, workspace rationale, TWR inspection support brief, the review-gated `dpm_pm_memo.pack@v1` contract for `lotus-manage` `DpmProofPackAiEvidenceInput`, the review-gated `dpm_wave_pm_memo.pack@v1` contract for `lotus-manage` `DpmWaveReportInput`, and the review-gated `outcome_review_narrative.pack@v1` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`,
 8. the service should be treated as a governed capability layer, not a business-domain authority.
 
 For DPM PM memo support, `lotus-ai` owns workflow-pack execution, provider mode, safety, guardrail
 validation, run-ledger posture, queue policy, and deterministic stub behavior.
-`lotus-manage` remains the proof-pack evidence authority. The pack is pilot-scoped, support-only,
-and review-gated; it must not approve rebalances, place orders, produce client messages, score PMs,
-or invent missing proof-pack evidence.
+`lotus-manage` remains the proof-pack and rebalance-wave evidence authority. The proof-pack pack
+consumes `DpmProofPackAiEvidenceInput`; the wave pack consumes `DpmWaveReportInput`. Both packs are
+pilot-scoped, support-only, and review-gated; they must not approve rebalances, place orders,
+produce client messages, score PMs, claim external execution, or invent missing proof-pack or wave
+evidence.
 
-For DPM portfolio-memory support, the DPM PM memo and outcome-review narrative packs can consume
-optional `portfolio_memory_context` emitted by `lotus-manage` report-input handoffs. `lotus-ai`
-validates that the context is portfolio-matched, source-lineage-only, capped to the bounded event-ref
-limit, governed by `NO_RAW_PAYLOADS`, and explicitly marked as source-owned truth that consumers
-must not reconstruct. Generated outputs expose only a compact portfolio-memory lineage summary,
-content hash, event count, source systems, event types, and review guidance.
+For DPM portfolio-memory support, the proof-pack PM memo, wave PM memo, and outcome-review
+narrative packs can consume optional `portfolio_memory_context` emitted by `lotus-manage`
+report-input handoffs. `lotus-ai` validates that the context is portfolio-matched,
+source-lineage-only, capped to the bounded event-ref limit, governed by `NO_RAW_PAYLOADS`, and
+explicitly marked as source-owned truth that consumers must not reconstruct. Generated outputs
+expose only a compact portfolio-memory lineage summary, content hash, event count, source systems,
+event types, and review guidance.
 
 ## Architectural Shape
 

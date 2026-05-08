@@ -287,6 +287,12 @@ That sequence keeps downstream adoption pack-oriented first, while still preserv
    `portfolio_memory_context`. Requests for PM scoring, client messages, trade approval, control
    override, or invented missing evidence are guardrail-blocked before execution and should be
    fixed in the calling workflow rather than retried with different prompt wording.
+6. Use `dpm_wave_pm_memo.pack@v1` only with manage-owned `DpmWaveReportInput`, a bounded
+   `memo_request`, supportability posture, and optional manage-owned `portfolio_memory_context`.
+   Requests for rebalance approval, trade recommendations, order tickets, client messages,
+   external execution claims, control override, or invented missing wave or proof-pack evidence
+   are guardrail-blocked before execution and should be corrected in the caller contract rather
+   than retried with prompt wording.
 
 When supplied, `portfolio_memory_context` is lineage context, not a source-fact replacement. It must
 match the AI-evidence portfolio id, carry source-owned governance including `NO_RAW_PAYLOADS` and a
@@ -297,18 +303,23 @@ timeline provenance without raw payloads or inferred business facts.
 ```mermaid
 flowchart LR
     Manage["lotus-manage proof pack\nDpmProofPackAiEvidenceInput"] --> Gateway["lotus-gateway\nfuture BFF caller"]
+    Wave["lotus-manage rebalance wave\nDpmWaveReportInput"] --> Gateway
     Manage --> AI["lotus-ai\ndpm_pm_memo.pack@v1"]
+    Wave --> WaveAI["lotus-ai\ndpm_wave_pm_memo.pack@v1"]
     Gateway --> AI
+    Gateway --> WaveAI
     Manage --> Memory["portfolio_memory_context\nsource-lineage only"]
     Memory --> AI
+    Memory --> WaveAI
     AI --> Guardrails["Forbidden action,\nfield, output,\nand memory guardrails"]
+    WaveAI --> Guardrails
     Guardrails --> RunLedger["Workflow-pack run ledger\nreview required"]
     RunLedger --> Consumers["Gateway / Workbench\nfuture PM memo surface"]
 ```
 
-The memo flow is support-only. `lotus-ai` may draft a review-gated memo from bounded proof-pack
-evidence, but `lotus-manage` keeps proof-pack truth and any downstream PM/CIO/operations workflow
-authority.
+The memo flows are support-only. `lotus-ai` may draft review-gated memo posture from bounded
+proof-pack or wave evidence, but `lotus-manage` keeps proof-pack truth, wave truth, and any
+downstream PM/CIO/operations workflow authority.
 
 ### lotus-advise
 

@@ -67,7 +67,7 @@ For RFC-0108 AI-backed surface supportability, inspect the `ai_surface_supportab
 `/platform/observability/runtime-status` or the embedded `observability_runtime` block in
 `/platform/runtime-status`. Treat it as the summary-first supportability posture for the currently
 represented advisor brief, TWR inspection support brief, workspace rationale, and outcome-review
-narrative surfaces, plus the DPM PM memo surface; it is sourced from workflow-pack runtime,
+narrative surfaces, plus the DPM proof-pack PM memo and DPM wave PM memo surfaces; it is sourced from workflow-pack runtime,
 provider operations, and safety runtime rather than from model availability alone.
 
 ```mermaid
@@ -165,7 +165,13 @@ For AI-backed product-surface support, also confirm:
    opportunities. Optional `portfolio_memory_context` is source-lineage-only context; investigate
    mismatched portfolio ids, raw payload fields, unbounded event refs, or missing no-reconstruction
    governance as caller contract defects.
-7. `outcome_review_narrative` remains owned by `lotus-manage` evidence contracts; treat PM scoring,
+7. `dpm_wave_pm_memo` remains owned by `lotus-manage` rebalance-wave report-input contracts; treat
+   rebalance approvals, trade recommendations, order tickets, client messages, PM scoring, control
+   overrides, external execution claims, and invented missing wave or proof-pack evidence as
+   guardrail-blocked requests, not as prompt-tuning opportunities. Missing source refs, empty wave
+   items, missing proof-pack posture, or non-`NO_RAW_PAYLOADS` redaction indicate caller contract
+   defects that must be fixed at the source evidence boundary.
+8. `outcome_review_narrative` remains owned by `lotus-manage` evidence contracts; treat PM scoring,
    client messages, trade approvals, control overrides, and invented missing evidence as
    guardrail-blocked requests, not as prompt-tuning opportunities. Optional portfolio-memory
    lineage can support review and demo provenance, but it must not be used to infer missing source
