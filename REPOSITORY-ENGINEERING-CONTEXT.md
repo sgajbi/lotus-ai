@@ -57,7 +57,9 @@ Current repository posture:
    no-reconstruction source-authority policy; generated outputs expose compact lineage summaries
    rather than reconstructed timeline facts. Operator-facing supportability profiles, grouped
    consumer views, run detail, filtered run catalog, shared review/supportability/provenance
-   summaries, explicit workflow-pack execution, reusable binding registry, queue policies,
+   summaries, AI-owned source-event projections through `/platform/workflow-packs/source-events`
+   and `/platform/workflow-packs/runs/{run_id}/source-events` for no-raw-payload portfolio-memory
+   lineage consumption, explicit workflow-pack execution, reusable binding registry, queue policies,
    runtime-status activity, cross-pack attention, and RFC-0108 AI surface supportability now cover
    the expanded executable pack set. Gateway and Workbench product realization for proof-pack PM
    memo, wave PM memo, and outcome-review narrative remains downstream follow-on after the lotus-ai

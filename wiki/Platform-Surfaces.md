@@ -90,8 +90,10 @@ platform programs.
    - `/platform/workflow-packs/execute-async`
    - `/platform/workflow-packs/control-history`
    - `/platform/workflow-packs/control-actions`
+   - `/platform/workflow-packs/source-events`
    - `/platform/workflow-packs/runs`
    - `/platform/workflow-packs/runs/{run_id}`
+   - `/platform/workflow-packs/runs/{run_id}/source-events`
    - `/platform/workflow-packs/runs/{run_id}/operator-profile`
    - `/platform/workflow-packs/runs/{run_id}/consumer-view`
    - `/platform/workflow-packs/runs/{run_id}/review-actions`
@@ -115,10 +117,17 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 2. `/platform/workflow-packs/runs/{run_id}` exposes event history, evidence descriptors, governed artifact refs, bounded `allowed_review_actions`, and one bounded provenance summary for one recorded run,
 3. `/platform/workflow-packs/runs/{run_id}/operator-profile` exposes one operator-facing supportability summary for review pending, failure, expiry, supersession, partial-output, artifact, and evidence posture, and now also carries one bounded provenance summary so support tools can inspect linked artifact and evidence types without fetching raw run detail,
 4. `/platform/workflow-packs/runs/{run_id}/consumer-view` exposes one grouped runtime-review-lineage-provenance contract candidate for downstream composition layers, including artifact-backed provenance refs plus one bounded provenance summary for linked artifact and evidence posture,
-5. `/platform/workflow-packs/runs/{run_id}/review-actions` records bounded actor-attributed review transitions without taking consequence-bearing workflow authority,
-6. `lotus-gateway` now uses that same bounded ledger seam to record advisor-brief review actions and returns refreshed workflow-pack posture through its advisor-brief contract without turning `lotus-ai` into the business-workflow owner,
-7. `lotus-workbench` now has a typed client seam for the downstream advisor-brief review-action route, while UI-triggered business authorization remains a separate future slice,
-8. the current executable workflow-pack set includes `advisor_brief.pack`,
+5. `/platform/workflow-packs/source-events` and
+   `/platform/workflow-packs/runs/{run_id}/source-events` expose AI-owned source events projected
+   from the run ledger for portfolio-memory consumers. They include stable event identity, AI event
+   type, run and pack identity, workflow-authority owner, supportability state, artifact refs,
+   bounded source refs, portfolio-memory status/count/hash when supplied, `NO_RAW_PAYLOADS`, audit,
+   retention, and source-authority policy. They deliberately omit raw prompts, raw generated
+   output, raw source payloads, and raw portfolio-memory event payloads,
+6. `/platform/workflow-packs/runs/{run_id}/review-actions` records bounded actor-attributed review transitions without taking consequence-bearing workflow authority,
+7. `lotus-gateway` now uses that same bounded ledger seam to record advisor-brief review actions and returns refreshed workflow-pack posture through its advisor-brief contract without turning `lotus-ai` into the business-workflow owner,
+8. `lotus-workbench` now has a typed client seam for the downstream advisor-brief review-action route, while UI-triggered business authorization remains a separate future slice,
+9. the current executable workflow-pack set includes `advisor_brief.pack`,
    `workspace_rationale.pack`, `twr_inspection_support_brief.pack`, the review-gated
    `dpm_pm_memo.pack` contract for `lotus-manage` `DpmProofPackAiEvidenceInput`, the
    review-gated `dpm_wave_pm_memo.pack` contract for `lotus-manage` `DpmWaveReportInput`, and the
@@ -149,16 +158,18 @@ flowchart LR
     WavePack --> Guardrails
     OutcomePack --> Guardrails
     Guardrails --> Ledger["Run ledger\nreview required"]
+    Ledger --> SourceEvents["AI source events\nno raw payloads"]
     Ledger --> Operator["Operator profile\nconsumer view\nruntime status"]
+    SourceEvents --> MemoryConsumer["Portfolio-memory consumer\nbounded lineage only"]
 ```
-9. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode`, `workflow_pack_run_store`, `workflow_pack_task_flow_store_mode`, `workflow_pack_task_flow_store`, `workflow_pack_queue_event_store_mode`, and `workflow_pack_queue_event_store` so operators can distinguish process-local workflow-pack runtime posture from SQL-backed durable ledger, task-flow, and queue-event posture,
-10. the embedded `workflow_pack_runtime` block now also carries bounded review provenance on executable-pack latest ready and latest actionable run pointers plus the cross-pack attention queue, and now also carries bounded artifact and evidence linkage summaries for those same runtime-status items, so estate-level triage does not need a raw ledger fetch just to understand latest review movement or missing provenance posture,
-11. pack-backed `503` degraded-state failures now preflight the workflow-pack run store before task execution and audit persistence, so callers should not expect new audit records or partial run-side effects when the run-ledger store is not ready,
-12. the embedded workflow-pack attention queue now treats `queue_depth` as the full actionable backlog across executable pack versions, while `items` stays bounded by `queue_limit` as the newest visible sample,
-13. `/platform/workflow-packs/queue-events`, `/platform/workflow-packs/queue-events/{queue_item_id}`, and the bounded retry/replay decision and execution routes expose durable queue admission, queued, admitted, execution-handoff, rejection, release, timeout, cancellation, degraded worker execution, request-snapshot artifact refs, retry/replay decision evidence, and bounded retry/replay execution from retained request snapshots without exposing raw worker internals, embedding raw task payloads, or replacing run-ledger, review-state, async job, or task-flow posture,
-14. `/platform/workflow-packs/execute-async` persists a workflow-pack execution as a durable async runtime job backed by retained queue request-snapshot evidence; dedicated workers then execute it through the normal workflow-pack execution seam,
-15. the embedded `queue_attention` block reports source-backed workflow-pack queue heartbeat posture for active-admission saturation, stale active admissions, durable timeout/cancellation/degraded worker-execution queue events, blocked retry/replay recovery decisions, repeated timeout/cancellation/blocked-recovery clusters, and degraded queue-source posture,
-16. explicit `/platform/workflow-packs/execute` and `/platform/workflow-packs/execute-async` calls may request a governed `queue_lane`
+10. `/platform/runtime-status` now exposes `workflow_pack_run_store_mode`, `workflow_pack_run_store`, `workflow_pack_task_flow_store_mode`, `workflow_pack_task_flow_store`, `workflow_pack_queue_event_store_mode`, and `workflow_pack_queue_event_store` so operators can distinguish process-local workflow-pack runtime posture from SQL-backed durable ledger, task-flow, and queue-event posture,
+11. the embedded `workflow_pack_runtime` block now also carries bounded review provenance on executable-pack latest ready and latest actionable run pointers plus the cross-pack attention queue, and now also carries bounded artifact and evidence linkage summaries for those same runtime-status items, so estate-level triage does not need a raw ledger fetch just to understand latest review movement or missing provenance posture,
+12. pack-backed `503` degraded-state failures now preflight the workflow-pack run store before task execution and audit persistence, so callers should not expect new audit records or partial run-side effects when the run-ledger store is not ready,
+13. the embedded workflow-pack attention queue now treats `queue_depth` as the full actionable backlog across executable pack versions, while `items` stays bounded by `queue_limit` as the newest visible sample,
+14. `/platform/workflow-packs/queue-events`, `/platform/workflow-packs/queue-events/{queue_item_id}`, and the bounded retry/replay decision and execution routes expose durable queue admission, queued, admitted, execution-handoff, rejection, release, timeout, cancellation, degraded worker execution, request-snapshot artifact refs, retry/replay decision evidence, and bounded retry/replay execution from retained request snapshots without exposing raw worker internals, embedding raw task payloads, or replacing run-ledger, review-state, async job, or task-flow posture,
+15. `/platform/workflow-packs/execute-async` persists a workflow-pack execution as a durable async runtime job backed by retained queue request-snapshot evidence; dedicated workers then execute it through the normal workflow-pack execution seam,
+16. the embedded `queue_attention` block reports source-backed workflow-pack queue heartbeat posture for active-admission saturation, stale active admissions, durable timeout/cancellation/degraded worker-execution queue events, blocked retry/replay recovery decisions, repeated timeout/cancellation/blocked-recovery clusters, and degraded queue-source posture,
+17. explicit `/platform/workflow-packs/execute` and `/platform/workflow-packs/execute-async` calls may request a governed `queue_lane`
     from the pack version's declared `allowed_lanes`; omitted lanes use the queue policy default,
     and unsupported lanes fail before audit, run, or task-flow side effects.
 

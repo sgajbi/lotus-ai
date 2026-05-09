@@ -167,8 +167,10 @@ Important limitation:
    for bounded output-summary review, bounded operator-profile inspection is available for run-level
    supportability diagnosis, a shared supportability seam grounds both operator-profile posture and
    estate-level activity posture, a bounded consumer-view contract is available from lotus-ai and
-   carries one shared bounded provenance summary for linked artifact and evidence posture, and the
-   estate-level platform runtime surface reports both how many registered workflow-pack versions are
+   carries one shared bounded provenance summary for linked artifact and evidence posture,
+   AI-owned source-event projections are available through `/platform/workflow-packs/source-events`
+   and `/platform/workflow-packs/runs/{run_id}/source-events` for no-raw-payload portfolio-memory
+   lineage consumption, and the estate-level platform runtime surface reports both how many registered workflow-pack versions are
    truly executable through the explicit runtime path, a bounded workflow-pack run summary covering
    review backlog, accepted posture, historical supersession, and action-required run state,
    per-pack activity plus supportability counts for executable workflow-pack versions including

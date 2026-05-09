@@ -189,6 +189,15 @@ Downstream Gateway and Workbench product surfaces should preserve `workflow_pack
 hashes, AI-evidence hash, portfolio-memory content hash, review posture, and unsupported-claim
 posture rather than flattening the memo into plain text.
 
+When portfolio-memory consumers need AI-owned source events, use
+`GET /platform/workflow-packs/source-events` for a filtered catalog or
+`GET /platform/workflow-packs/runs/{run_id}/source-events` for one run. These routes project source
+events from workflow-pack run-ledger truth and return stable AI event identity, pack/run identity,
+workflow-authority owner, review/supportability posture, governed artifact refs, bounded source
+refs, and portfolio-memory status/count/hash when supplied. They are deliberately not raw-output or
+raw-source replay APIs: raw prompts, raw generated output, raw source payloads, and raw
+portfolio-memory event payloads stay out of the response.
+
 Use `dpm_wave_pm_memo.pack@v1` only when the caller supplies:
 
 1. `wave_report_input` shaped as `lotus-manage` `DpmWaveReportInput`,
