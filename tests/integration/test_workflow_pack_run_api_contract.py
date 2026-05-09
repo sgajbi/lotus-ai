@@ -19,6 +19,7 @@ from tests.support.workflow_pack_fixtures import (
     advisor_brief_task_execution_request_json,
     advisor_brief_workflow_pack_execution_request_json,
     outcome_review_narrative_workflow_pack_execution_request_json,
+    proof_pack_pm_memo_workflow_pack_execution_request_json,
     twr_inspection_support_brief_workflow_pack_execution_request_json,
     wave_pm_memo_workflow_pack_execution_request_json,
     workspace_rationale_workflow_pack_execution_request_json,
@@ -311,6 +312,123 @@ def test_workflow_pack_execute_route_records_outcome_review_narrative_run(
     ]
     assert "score_portfolio_manager" in structured_output["forbidden_actions_enforced"]
     _assert_task_flow_recorded_for_run(client=client, run_id=body["workflow_pack_run"]["run_id"])
+
+
+def test_workflow_pack_source_events_project_ai_run_without_raw_payloads(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=outcome_review_narrative_workflow_pack_execution_request_json(
+            correlation_id="corr-outcome-review-source-events-001",
+            include_portfolio_memory_context=True,
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = execute_response.json()["workflow_pack_run"]["run_id"]
+
+    source_events_response = client.get(f"/platform/workflow-packs/runs/{run_id}/source-events")
+
+    assert source_events_response.status_code == 200
+    body = source_events_response.json()
+    assert body["run_id"] == run_id
+    assert body["event_count"] == 1
+    assert body["no_raw_payloads"] is True
+    assert "must not reconstruct portfolio-memory" in body["source_authority_policy"]
+    source_event = body["events"][0]
+    assert source_event["event_type"] == "AI_WORKFLOW_PACK_RUN_RECORDED"
+    assert source_event["source_system"] == "lotus-ai"
+    assert source_event["source_type"] == "AI_WORKFLOW_PACK_RUN"
+    assert source_event["event_identity"].startswith(f"lotus-ai:AI_WORKFLOW_PACK_RUN:{run_id}:")
+    assert source_event["content_hash"].startswith("sha256:")
+    assert source_event["portfolio_id"] == "PB_SG_GLOBAL_BAL_001"
+    assert source_event["pack_id"] == "outcome_review_narrative.pack"
+    assert source_event["workflow_authority_owner"] == "lotus-manage"
+    assert source_event["supportability_status"] == "ACTION_REQUIRED"
+    assert source_event["portfolio_memory_status"] == "supplied"
+    assert source_event["portfolio_memory_content_hash"] == "sha256:portfolio-memory-context-001"
+    assert source_event["event_ref_count"] == 2
+    assert source_event["retention_policy"] == "AI_WORKFLOW_PACK_SOURCE_EVENT_7Y"
+    assert source_event["redaction_policy"] == "NO_RAW_PAYLOADS"
+    assert source_event["audit_policy"] == "AUDIT_READ_AND_EXPORT"
+    assert source_event["access_classification"] == "CLIENT_CONFIDENTIAL_INTERNAL"
+    assert source_event["source_refs"] == [
+        "lotus-manage:outcome-ai-evidence:or_pb_sg_001",
+        "lotus-manage:outcome-review:or_pb_sg_001",
+    ]
+    assert source_event["artifact_refs"][0]["source_object_id"] == run_id
+    assert source_event["evidence_descriptor_count"] >= 1
+
+    response_text = source_events_response.text
+    assert "Outcome review or_pb_sg_001 for portfolio" not in response_text
+    assert '"raw_payload":' not in response_text
+    assert "portfolio-memory-source-000" not in response_text
+
+
+def test_workflow_pack_source_event_catalog_filters_and_reports_review_lineage(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=proof_pack_pm_memo_workflow_pack_execution_request_json(
+            correlation_id="corr-proof-pack-source-events-001",
+            include_portfolio_memory_context=True,
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = execute_response.json()["workflow_pack_run"]["run_id"]
+
+    review_response = client.post(
+        f"/platform/workflow-packs/runs/{run_id}/review-actions",
+        json={
+            "action_type": "ACCEPT",
+            "caller_app": "lotus-manage",
+            "reviewed_by": "pm.sg.source-events.001",
+            "reason": "Accepted for source-event lineage proof.",
+        },
+    )
+    assert review_response.status_code == 200
+
+    catalog_response = client.get(
+        "/platform/workflow-packs/source-events",
+        params={
+            "pack_id": "dpm_pm_memo.pack",
+            "caller_app": "lotus-manage",
+            "tenant_id": "tenant-sg-001",
+            "workflow_surface": "dpm-proof-pack-ai-evidence",
+            "supportability_status": "READY",
+            "limit": 10,
+        },
+    )
+
+    assert catalog_response.status_code == 200
+    body = catalog_response.json()
+    assert body["filters_applied"] == {
+        "limit": 10,
+        "pack_id": "dpm_pm_memo.pack",
+        "caller_app": "lotus-manage",
+        "tenant_id": "tenant-sg-001",
+        "workflow_surface": "dpm-proof-pack-ai-evidence",
+        "supportability_status": "READY",
+    }
+    assert body["event_count"] == 2
+    assert body["ready_count"] == 2
+    assert body["action_required_count"] == 0
+    assert body["historical_count"] == 0
+    assert body["no_raw_payloads"] is True
+    assert {event["event_type"] for event in body["events"]} == {
+        "AI_WORKFLOW_PACK_RUN_RECORDED",
+        "AI_WORKFLOW_PACK_REVIEW_STATE_UPDATED",
+    }
+    assert {event["run_id"] for event in body["events"]} == {run_id}
+    assert all(event["portfolio_id"] == "PB_SG_GLOBAL_BAL_001" for event in body["events"])
+    assert all(event["redaction_policy"] == "NO_RAW_PAYLOADS" for event in body["events"])
+
+
+def test_workflow_pack_run_source_events_reject_unknown_run(client: TestClient) -> None:
+    response = client.get("/platform/workflow-packs/runs/unknown-run/source-events")
+
+    assert response.status_code == 404
 
 
 def test_workflow_pack_execute_route_allows_gateway_outcome_review_narrative_handoff(

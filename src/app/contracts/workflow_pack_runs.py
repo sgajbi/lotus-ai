@@ -150,6 +150,142 @@ class WorkflowPackRunEventDescriptor(BaseModel):
     recorded_at: str = Field(description="UTC timestamp when the event was recorded.")
 
 
+class WorkflowPackSourceEventType(str, Enum):
+    AI_WORKFLOW_PACK_RUN_RECORDED = "AI_WORKFLOW_PACK_RUN_RECORDED"
+    AI_WORKFLOW_PACK_REVIEW_STATE_UPDATED = "AI_WORKFLOW_PACK_REVIEW_STATE_UPDATED"
+    AI_WORKFLOW_PACK_LINEAGE_UPDATED = "AI_WORKFLOW_PACK_LINEAGE_UPDATED"
+
+
+class WorkflowPackSourceEventDescriptor(BaseModel):
+    event_identity: str = Field(
+        description=(
+            "Stable source-event identity using "
+            "source_system:source_type:source_id:content_hash_or_content_hash_unavailable."
+        )
+    )
+    event_type: WorkflowPackSourceEventType = Field(
+        description="AI-owned source-event type projected from the workflow-pack run ledger."
+    )
+    source_system: str = Field(description="Source system that owns the event.")
+    source_type: str = Field(description="Source object type for the event.")
+    source_id: str = Field(description="Source object identifier for the event.")
+    content_hash: str = Field(
+        description=(
+            "Checksum for the bounded workflow-pack output artifact when available, otherwise "
+            "content_hash_unavailable."
+        )
+    )
+    portfolio_id: str | None = Field(
+        default=None,
+        description=(
+            "Portfolio identifier extracted from bounded structured-output metadata when present. "
+            "The source-event projection never reconstructs portfolio-memory facts."
+        ),
+    )
+    run_id: str = Field(description="Workflow-pack run identifier that produced the source event.")
+    pack_id: str = Field(description="Workflow-pack family identifier.")
+    pack_version: str = Field(description="Workflow-pack version.")
+    caller_app: str = Field(description="Calling Lotus application associated with the run.")
+    tenant_id: str | None = Field(default=None, description="Tenant identifier when known.")
+    workflow_surface: str | None = Field(
+        default=None,
+        description="Workflow surface associated with the run when known.",
+    )
+    workflow_authority_owner: str = Field(
+        description="Service boundary retaining consequence-bearing workflow authority."
+    )
+    runtime_state: WorkflowPackRunRuntimeState = Field(
+        description="Runtime state recorded for the workflow-pack run."
+    )
+    review_state: WorkflowPackRunReviewState = Field(
+        description="Review-state posture recorded for the workflow-pack run."
+    )
+    supportability_status: WorkflowPackRunSupportabilityStatus = Field(
+        description="Supportability posture derived from the workflow-pack run state."
+    )
+    portfolio_memory_status: str = Field(
+        description="Whether bounded portfolio-memory lineage was supplied to the run."
+    )
+    portfolio_memory_content_hash: str = Field(
+        description="Portfolio-memory context hash when supplied, otherwise an empty string."
+    )
+    event_ref_count: int = Field(
+        description="Number of bounded source event references represented by the AI run output."
+    )
+    retention_policy: str = Field(description="Retention policy for the source-event projection.")
+    redaction_policy: str = Field(description="Redaction posture for the source-event projection.")
+    audit_policy: str = Field(description="Audit posture for the source-event projection.")
+    access_classification: str = Field(
+        description="Access classification for the source-event projection."
+    )
+    source_refs: list[str] = Field(
+        default_factory=list,
+        description="Bounded upstream source references used by the workflow-pack run.",
+    )
+    artifact_refs: list[ArtifactDescriptor] = Field(
+        default_factory=list,
+        description="Governed artifact references linked to the source event.",
+    )
+    evidence_descriptor_count: int = Field(
+        description="Number of execution evidence descriptors linked to the source event."
+    )
+    recorded_at: str = Field(description="UTC timestamp when the source event was recorded.")
+
+
+class WorkflowPackSourceEventCatalogResponse(BaseModel):
+    service: str = Field(
+        description="Service name emitting the workflow-pack source-event catalog."
+    )
+    version: str = Field(description="Current lotus-ai service version.")
+    run_store_mode: str = Field(description="Configured workflow-pack run-store mode.")
+    event_count: int = Field(description="Number of AI-owned source events returned.")
+    filters_applied: dict[str, str | int] = Field(
+        default_factory=dict,
+        description="Bounded query filters applied while building the source-event catalog.",
+    )
+    ready_count: int = Field(
+        description="Number of returned source events backed by ready workflow-pack run posture."
+    )
+    action_required_count: int = Field(
+        description="Number of returned source events backed by action-required run posture."
+    )
+    historical_count: int = Field(
+        description="Number of returned source events backed by historical run posture."
+    )
+    no_raw_payloads: bool = Field(
+        description="Whether this source-event surface omits raw prompt, raw output, and raw portfolio-memory payloads."
+    )
+    source_authority_policy: str = Field(
+        description="Source-authority policy enforced by the source-event projection."
+    )
+    events: list[WorkflowPackSourceEventDescriptor] = Field(
+        description="AI-owned source events projected from workflow-pack run-ledger truth."
+    )
+    notes: list[str] = Field(
+        description="Human-readable notes describing current source-event projection posture."
+    )
+
+
+class WorkflowPackRunSourceEventResponse(BaseModel):
+    service: str = Field(description="Service name emitting workflow-pack run source events.")
+    version: str = Field(description="Current lotus-ai service version.")
+    run_store_mode: str = Field(description="Configured workflow-pack run-store mode.")
+    run_id: str = Field(description="Workflow-pack run identifier.")
+    event_count: int = Field(description="Number of source events projected for the run.")
+    no_raw_payloads: bool = Field(
+        description="Whether this source-event surface omits raw prompt, raw output, and raw portfolio-memory payloads."
+    )
+    source_authority_policy: str = Field(
+        description="Source-authority policy enforced by the source-event projection."
+    )
+    events: list[WorkflowPackSourceEventDescriptor] = Field(
+        description="AI-owned source events projected for the requested workflow-pack run."
+    )
+    notes: list[str] = Field(
+        description="Human-readable notes describing the requested run source-event posture."
+    )
+
+
 class WorkflowPackRunCatalogResponse(BaseModel):
     service: str = Field(description="Service name emitting the workflow-pack run catalog.")
     version: str = Field(description="Current lotus-ai service version.")

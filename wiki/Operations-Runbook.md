@@ -116,6 +116,8 @@ Good examples:
    - `/platform/workflow-packs/queue-events/{queue_item_id}/replay-executions`
    - `/platform/workflow-packs/eligibility/evaluate`
    - `/platform/workflow-packs/control-history`
+   - `/platform/workflow-packs/source-events`
+   - `/platform/workflow-packs/runs/{run_id}/source-events`
 
 ## Workflow-Pack Operator Checks
 
@@ -138,15 +140,20 @@ Use this sequence:
 9. when `LOTUS_AI_WORKFLOW_PACK_QUEUE_EVENT_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_queue_event_store` block in `/platform/runtime-status` reports `READY` before treating queue event history as restart-safe truth,
 10. confirm `definition_ref` and `definition_refs` still resolve to the owning repository artifacts rather than placeholder notes,
 11. when the issue is pack execution or review backlog rather than registration posture, inspect `/platform/workflow-packs/runs` and the embedded `workflow_pack_runtime` block in `/platform/runtime-status`,
-12. if the embedded `workflow_pack_run_store` or `workflow_pack_queue_event_store` block is not `READY`, treat pack-backed `POST /ai/tasks/execute`, `POST /platform/workflow-packs/execute`, and `POST /platform/workflow-packs/execute-async` failures as preflight-blocked degraded-state signals rather than as requests that partially executed and then failed later,
-13. if pack-backed execution returns a queue-policy `429`, treat it as admission rejected before
+12. when a downstream portfolio-memory consumer needs AI-owned source lineage, inspect
+    `/platform/workflow-packs/source-events` or
+    `/platform/workflow-packs/runs/{run_id}/source-events`; these are no-raw-payload projections
+    from the run ledger and must not be used to reconstruct raw generated output, raw prompts, raw
+    source payloads, or raw portfolio-memory event bodies,
+13. if the embedded `workflow_pack_run_store` or `workflow_pack_queue_event_store` block is not `READY`, treat pack-backed `POST /ai/tasks/execute`, `POST /platform/workflow-packs/execute`, `POST /platform/workflow-packs/execute-async`, and workflow-pack source-event reads as preflight-blocked degraded-state signals rather than as requests that partially executed and then failed later,
+14. if pack-backed execution returns a queue-policy `429`, treat it as admission rejected before
     audit, run-ledger, or task-flow side effects and inspect `/platform/workflow-packs/queue-events`
     for the reason code,
-14. treat queue cancellation events as queue-boundary evidence only; they do not claim that
+15. treat queue cancellation events as queue-boundary evidence only; they do not claim that
     already-running synchronous execution was interrupted, and treat `RETRY_RECORDED` or
     `REPLAY_RECORDED` as recovery-decision evidence unless it is returned by the explicit
     retry/replay execution route with a new workflow-pack execution response; durable async worker execution should appear as a `workflow_pack_execution` async job linked to the queue item,
-15. when reading the embedded workflow-pack attention queue, treat `queue_depth` as the full actionable backlog and `items` as only the newest bounded sample up to `queue_limit`.
+16. when reading the embedded workflow-pack attention queue, treat `queue_depth` as the full actionable backlog and `items` as only the newest bounded sample up to `queue_limit`.
 
 For AI-backed product-surface support, also confirm:
 

@@ -24,6 +24,8 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunReviewActionResponse,
     WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
+    WorkflowPackRunSourceEventResponse,
+    WorkflowPackSourceEventCatalogResponse,
     WorkflowPackRunSupportabilityStatus,
 )
 from app.contracts.workflow_pack_queue_policies import (
@@ -61,6 +63,10 @@ from app.services.workflow_pack_run_ledger import (
     build_workflow_pack_run_detail,
 )
 from app.services.workflow_pack_run_review import apply_workflow_pack_run_review_action
+from app.services.workflow_pack_source_events import (
+    build_workflow_pack_run_source_events,
+    build_workflow_pack_source_event_catalog,
+)
 from app.services.workflow_pack_task_flow_service import (
     WorkflowPackTaskFlowNotFoundError,
     WorkflowPackTaskFlowStoreNotReadyError,
@@ -664,6 +670,64 @@ async def get_workflow_pack_run_catalog_route(
 
 
 @router.get(
+    "/platform/workflow-packs/source-events",
+    response_model=WorkflowPackSourceEventCatalogResponse,
+    operation_id="getWorkflowPackSourceEventCatalog",
+    summary="Get lotus-ai workflow-pack source-event catalog",
+    description=(
+        "Returns AI-owned source events projected from workflow-pack run-ledger truth. The response "
+        "omits raw prompts, raw generated output, and raw portfolio-memory payloads while preserving "
+        "bounded lineage, review, artifact, and supportability posture for downstream portfolio-memory consumers."
+    ),
+    responses={
+        200: {"description": "Workflow-pack source-event catalog returned successfully."},
+        422: {"description": "Invalid query parameters supplied."},
+        503: {"description": "Workflow-pack run store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_source_event_catalog_route(
+    pack_id: str | None = Query(
+        default=None,
+        description="Optional workflow-pack identifier filter.",
+    ),
+    caller_app: str | None = Query(
+        default=None,
+        description="Optional caller-application filter.",
+    ),
+    tenant_id: str | None = Query(
+        default=None,
+        description="Optional tenant identifier filter.",
+    ),
+    workflow_surface: str | None = Query(
+        default=None,
+        description="Optional workflow-surface filter.",
+    ),
+    supportability_status: WorkflowPackRunSupportabilityStatus | None = Query(
+        default=None,
+        description="Optional supportability-status filter derived from workflow-pack run posture.",
+    ),
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=200,
+        description="Maximum number of AI source events to return after filtering.",
+    ),
+) -> WorkflowPackSourceEventCatalogResponse:
+    try:
+        return build_workflow_pack_source_event_catalog(
+            pack_id=pack_id,
+            caller_app=caller_app,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+            supportability_status=supportability_status,
+            limit=limit,
+        )
+    except WorkflowPackRunStoreUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
     "/platform/workflow-packs/task-flows",
     response_model=WorkflowPackTaskFlowCatalogResponse,
     operation_id="getWorkflowPackTaskFlowCatalog",
@@ -797,6 +861,32 @@ async def get_workflow_pack_task_flow_checkpoints_route(
 async def get_workflow_pack_run_detail_route(run_id: str) -> WorkflowPackRunDetailResponse:
     try:
         return build_workflow_pack_run_detail(run_id=run_id)
+    except WorkflowPackRunStoreUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/runs/{run_id}/source-events",
+    response_model=WorkflowPackRunSourceEventResponse,
+    operation_id="getWorkflowPackRunSourceEvents",
+    summary="Get lotus-ai source events for one workflow-pack run",
+    description=(
+        "Returns the bounded AI-owned source-event projection for one workflow-pack run. This is "
+        "source-lineage evidence for portfolio-memory consumers, not a raw output, prompt, or "
+        "portfolio-memory reconstruction surface."
+    ),
+    responses={
+        200: {"description": "Workflow-pack run source events returned successfully."},
+        404: {"description": "Unknown workflow-pack run identifier."},
+        503: {"description": "Workflow-pack run store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_run_source_events_route(
+    run_id: str,
+) -> WorkflowPackRunSourceEventResponse:
+    try:
+        return build_workflow_pack_run_source_events(run_id=run_id)
     except WorkflowPackRunStoreUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
