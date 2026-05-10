@@ -10,7 +10,7 @@ def test_observability_governance_mentions_split_degradation_when_present(
 ) -> None:
     monkeypatch.setattr(
         "app.services.observability_governance.build_deployment_split_runtime_status",
-        lambda: SimpleNamespace(degraded=True),
+        lambda: SimpleNamespace(degraded=True, status_summary=["split runtime degraded"]),
     )
 
     governance = build_observability_governance_status()
