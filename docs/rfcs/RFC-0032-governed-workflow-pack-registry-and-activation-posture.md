@@ -741,9 +741,12 @@ Workflow-pack versioning must support clean forward evolution.
 
 For Phase 1, the safest posture is:
 
-1. callers request a stable named version explicitly,
-2. runtime default-resolution remains conservative and inspectable,
-3. auto-upgrade between versions is not assumed.
+1. callers can still request a stable named version explicitly,
+2. `GET /platform/workflow-packs/registry/{pack_id}/default` exposes conservative and inspectable
+   default-version resolution over registered, activation-eligible, non-superseded versions,
+3. discovered, dark, paused, deprecated, retired, and superseded versions remain visible in the
+   registry but are not selected as defaults,
+4. auto-upgrade between versions is not assumed.
 
 ## Audit and Evidence Requirements
 

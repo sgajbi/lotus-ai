@@ -258,6 +258,35 @@ class WorkflowPackRegistryCatalogResponse(BaseModel):
     )
 
 
+class WorkflowPackDefaultVersionResponse(BaseModel):
+    service: str = Field(description="Service name resolving the workflow-pack default version.")
+    version: str = Field(description="Current lotus-ai service version.")
+    pack_id: str = Field(description="Workflow-pack family identifier requested by the caller.")
+    default_registration_ref: str = Field(
+        description="Resolved pack-version reference selected as the current governed default."
+    )
+    default_version: str = Field(
+        description="Resolved workflow-pack version selected as the current governed default."
+    )
+    registration: WorkflowPackRegistrationDescriptor = Field(
+        description="Full registration record for the resolved default workflow-pack version."
+    )
+    execution_binding: WorkflowPackExecutionBindingDescriptor | None = Field(
+        default=None,
+        description="Explicit execution binding for the resolved default version, when executable.",
+    )
+    queue_policy: WorkflowPackQueuePolicyDescriptor | None = Field(
+        default=None,
+        description="Queue policy for the resolved default version, when declared.",
+    )
+    denied_without_registration: bool = Field(
+        description="Whether execution remains denied when no registered default version can be resolved."
+    )
+    status_summary: list[str] = Field(
+        description="Human-readable summary explaining the default-version resolution posture."
+    )
+
+
 class WorkflowPackRuntimeStatusSummaryResponse(BaseModel):
     registration_count: int = Field(
         description="Number of workflow-pack version registrations currently described."

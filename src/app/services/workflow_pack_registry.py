@@ -4,9 +4,12 @@ from app.config import settings
 from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.contracts.workflow_packs import (
     WorkflowPackControlEventDescriptor,
+    WorkflowPackActivationState,
+    WorkflowPackDefaultVersionResponse,
     WorkflowPackRegistrationDescriptor,
     WorkflowPackRegistrationDetailResponse,
     WorkflowPackRegistryCatalogResponse,
+    WorkflowPackRegistrationStatus,
 )
 from app.services.workflow_pack_registry_seed import (
     build_workflow_pack_validation_rules,
@@ -105,6 +108,55 @@ def build_workflow_pack_registration_detail(
     )
 
 
+def build_workflow_pack_default_version(pack_id: str) -> WorkflowPackDefaultVersionResponse:
+    from app.services.workflow_pack_bindings import (
+        get_workflow_pack_execution_binding_descriptor,
+    )
+    from app.services.workflow_pack_queue_policy_catalog import (
+        get_workflow_pack_queue_policy_descriptor,
+        validate_workflow_pack_queue_policies,
+    )
+
+    registrations = [
+        registration
+        for registration in list_workflow_pack_registrations()
+        if registration.pack_id == pack_id
+    ]
+    if not registrations:
+        raise ValueError(f"Unknown workflow-pack family: {pack_id}")
+
+    default_registration = _select_default_workflow_pack_registration(registrations)
+    if default_registration is None:
+        raise ValueError(f"No registered default workflow-pack version is available for {pack_id}")
+
+    validate_workflow_pack_queue_policies()
+    registration_ref = f"{default_registration.pack_id}@{default_registration.version}"
+
+    return WorkflowPackDefaultVersionResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        pack_id=pack_id,
+        default_registration_ref=registration_ref,
+        default_version=default_registration.version,
+        registration=default_registration,
+        execution_binding=get_workflow_pack_execution_binding_descriptor(
+            pack_id=default_registration.pack_id,
+            version=default_registration.version,
+        ),
+        queue_policy=get_workflow_pack_queue_policy_descriptor(
+            pack_id=default_registration.pack_id,
+            version=default_registration.version,
+        ),
+        denied_without_registration=True,
+        status_summary=[
+            "Default-version resolution is derived from registry truth rather than caller-side convention.",
+            "Only registered versions in an executing activation posture can become the governed default.",
+            "Discovered, dark, paused, deprecated, retired, and superseded versions remain visible in the registry but are not selected as defaults.",
+            "Execution still resolves through the explicit versioned binding and queue policy; this endpoint only exposes the current control-plane default.",
+        ],
+    )
+
+
 def get_workflow_pack_registration(
     *, pack_id: str, version: str
 ) -> WorkflowPackRegistrationDescriptor | None:
@@ -168,6 +220,28 @@ def _validated_registrations() -> list[WorkflowPackRegistrationDescriptor]:
     validate_workflow_pack_execution_bindings()
     validate_workflow_pack_queue_policies()
     return registrations
+
+
+_DEFAULT_ELIGIBLE_ACTIVATION_STATES = {
+    WorkflowPackActivationState.PILOT,
+    WorkflowPackActivationState.LIMITED_ACTIVE,
+    WorkflowPackActivationState.ACTIVE,
+}
+
+
+def _select_default_workflow_pack_registration(
+    registrations: list[WorkflowPackRegistrationDescriptor],
+) -> WorkflowPackRegistrationDescriptor | None:
+    candidates = [
+        registration
+        for registration in registrations
+        if registration.registration_status is WorkflowPackRegistrationStatus.REGISTERED
+        and registration.activation_state in _DEFAULT_ELIGIBLE_ACTIVATION_STATES
+        and registration.superseded_by is None
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda registration: registration.last_changed_at)
 
 
 def _require_workflow_pack_registry_ready() -> None:
