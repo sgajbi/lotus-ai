@@ -299,6 +299,12 @@ That sequence keeps downstream adoption pack-oriented first, while still preserv
    external execution claims, control override, or invented missing wave or proof-pack evidence
    are guardrail-blocked before execution and should be corrected in the caller contract rather
    than retried with prompt wording.
+7. Use `dpm_operations_handoff_summary.pack@v1` only with manage-owned `DpmWaveReportInput`,
+   non-empty bounded `handoff_refs`, a bounded `handoff_summary_request`, supportability posture,
+   and optional manage-owned `portfolio_memory_context`. Requests for order tickets, routing
+   instructions, execution instructions, trade recommendations, client messages, external execution
+   claims, control override, or invented missing handoff evidence are guardrail-blocked before
+   execution and should be corrected at the source evidence boundary.
 
 When supplied, `portfolio_memory_context` is lineage context, not a source-fact replacement. It must
 match the AI-evidence portfolio id, carry source-owned governance including `NO_RAW_PAYLOADS` and a
@@ -312,13 +318,17 @@ flowchart LR
     Wave["lotus-manage rebalance wave\nDpmWaveReportInput"] --> Gateway
     Manage --> AI["lotus-ai\ndpm_pm_memo.pack@v1"]
     Wave --> WaveAI["lotus-ai\ndpm_wave_pm_memo.pack@v1"]
+    Wave --> HandoffAI["lotus-ai\ndpm_operations_handoff_summary.pack@v1"]
     Gateway --> AI
     Gateway --> WaveAI
+    Gateway --> HandoffAI
     Manage --> Memory["portfolio_memory_context\nsource-lineage only"]
     Memory --> AI
     Memory --> WaveAI
+    Memory --> HandoffAI
     AI --> Guardrails["Forbidden action,\nfield, output,\nand memory guardrails"]
     WaveAI --> Guardrails
+    HandoffAI --> Guardrails
     Guardrails --> RunLedger["Workflow-pack run ledger\nreview required"]
     RunLedger --> Consumers["Gateway / Workbench\nfuture PM memo surface"]
 ```

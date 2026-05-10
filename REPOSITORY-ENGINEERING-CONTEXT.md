@@ -37,8 +37,9 @@ Current repository posture:
 4. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity, with owner-artifact references that must resolve back to the real downstream repository and with one governed store-mode seam that can keep activation state and control history in memory or in a migration-backed SQL store,
 5. workflow-pack run-ledger foundations now exist as a separate runtime seam for the current
    executable workflow-pack families (`advisor_brief.pack`, `workspace_rationale.pack`,
-   `twr_inspection_support_brief.pack`, `dpm_pm_memo.pack`, `dpm_wave_pm_memo.pack`, and
-   `outcome_review_narrative.pack`), with runtime state kept separate from review state,
+   `twr_inspection_support_brief.pack`, `dpm_pm_memo.pack`, `dpm_wave_pm_memo.pack`,
+   `dpm_operations_handoff_summary.pack`, and `outcome_review_narrative.pack`), with runtime state
+   kept separate from review state,
    bounded actor-attributed review transitions available through the ledger API, bounded
    ledger-compatible `allowed_review_actions` emitted for consumers, governed workflow-pack
    artifact refs now attached for bounded output-summary review, deterministic proof-pack PM memo
@@ -47,8 +48,12 @@ Current repository posture:
    `portfolio_memory_context` before run/audit/task-flow side effects, deterministic wave PM memo
    guardrails that validate manage-owned `DpmWaveReportInput`, required forbidden actions,
    forbidden fields, forbidden requested outputs, source refs, proof-pack posture, no-external-execution
-   posture, `NO_RAW_PAYLOADS`, and optional source-lineage-only
-   `portfolio_memory_context` before run/audit/task-flow side effects, and deterministic
+   posture, `NO_RAW_PAYLOADS`, and optional source-lineage-only `portfolio_memory_context` before
+   run/audit/task-flow side effects, deterministic operations handoff summary guardrails that
+   validate manage-owned `DpmWaveReportInput`, non-empty bounded handoff refs, required forbidden
+   actions, forbidden fields, forbidden requested outputs, no-external-execution posture,
+   `NO_RAW_PAYLOADS`, and optional source-lineage-only `portfolio_memory_context` before
+   run/audit/task-flow side effects, and deterministic
    outcome-review narrative guardrails that validate manage-owned `DpmOutcomeAiEvidenceInput`,
    required forbidden actions, forbidden fields, forbidden requested outputs, and optional
    source-lineage-only `portfolio_memory_context` before run/audit/task-flow side effects. The

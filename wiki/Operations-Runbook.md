@@ -178,7 +178,13 @@ For AI-backed product-surface support, also confirm:
    guardrail-blocked requests, not as prompt-tuning opportunities. Missing source refs, empty wave
    items, missing proof-pack posture, or non-`NO_RAW_PAYLOADS` redaction indicate caller contract
    defects that must be fixed at the source evidence boundary.
-8. `outcome_review_narrative` remains owned by `lotus-manage` evidence contracts; treat PM scoring,
+8. `dpm_operations_handoff_summary` remains owned by `lotus-manage` rebalance-wave handoff evidence
+   contracts; treat order tickets, routing instructions, execution instructions, client messages,
+   external execution claims, control overrides, and invented missing handoff evidence as
+   guardrail-blocked requests. Missing handoff refs, malformed handoff refs, empty wave items, or
+   non-`NO_RAW_PAYLOADS` redaction indicate caller contract defects that must be fixed at the
+   source evidence boundary.
+9. `outcome_review_narrative` remains owned by `lotus-manage` evidence contracts; treat PM scoring,
    client messages, trade approvals, control overrides, and invented missing evidence as
    guardrail-blocked requests, not as prompt-tuning opportunities. Optional portfolio-memory
    lineage can support review and demo provenance, but it must not be used to infer missing source

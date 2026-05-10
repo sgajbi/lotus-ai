@@ -782,3 +782,73 @@ def wave_pm_memo_workflow_pack_execution_request_json(
     if workflow_surface is not None:
         request["workflow_surface"] = workflow_surface
     return request
+
+
+def operations_handoff_summary_payload(
+    *,
+    requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
+) -> dict[str, object]:
+    payload = wave_pm_memo_payload(
+        requested_outputs=["operations_handoff"],
+        include_portfolio_memory_context=include_portfolio_memory_context,
+    )
+    payload.pop("memo_request")
+    payload["handoff_summary_request"] = {
+        "requested_outputs": requested_outputs
+        or [
+            "operations_summary",
+            "execution_prerequisites",
+            "blocking_conditions",
+            "support_references",
+            "evidence_gaps",
+        ],
+        "audience": ["operations", "portfolio_manager", "investment_control"],
+    }
+    return payload
+
+
+def operations_handoff_summary_workflow_pack_execution_request_json(
+    *,
+    correlation_id: str,
+    task_id: str = "explain.v1",
+    caller_app: str = "lotus-manage",
+    workflow_surface: str | None = "dpm-operations-handoff-ai-evidence",
+    environment: str = "DEVELOPMENT",
+    caller_identity_class: str = "INTERNAL_SERVICE",
+    requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
+) -> dict[str, object]:
+    request: dict[str, object] = {
+        "pack_id": "dpm_operations_handoff_summary.pack",
+        "version": "v1",
+        "environment": environment,
+        "caller_identity_class": caller_identity_class,
+        "task_request": {
+            "task_id": task_id,
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": caller_app,
+                "correlation_id": correlation_id,
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": (
+                    "Generate review-gated operations handoff summary from bounded "
+                    "rebalance-wave handoff evidence."
+                ),
+                "payload": operations_handoff_summary_payload(
+                    requested_outputs=requested_outputs,
+                    include_portfolio_memory_context=include_portfolio_memory_context,
+                ),
+                "source_refs": [
+                    "lotus-manage:wave:wave_20260508_001",
+                    "lotus-manage:wave-report-input:wave_20260508_001",
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    }
+    if workflow_surface is not None:
+        request["workflow_surface"] = workflow_surface
+    return request
