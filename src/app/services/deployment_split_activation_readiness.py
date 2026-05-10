@@ -10,8 +10,14 @@ from app.services.deployment_split_runtime import build_deployment_split_runtime
 
 def build_deployment_split_activation_readiness(
     app_state: object | None = None,
+    *,
+    runtime_status: object | None = None,
 ) -> DeploymentSplitActivationReadinessResponse:
-    runtime_status = build_deployment_split_runtime_status(app_state)
+    runtime_status = (
+        runtime_status
+        if runtime_status is not None
+        else build_deployment_split_runtime_status(app_state)
+    )
     split_active = runtime_status.effective_stage in {
         DeploymentSplitStage.RETRIEVAL_SPLIT_ACTIVE,
         DeploymentSplitStage.RETRIEVAL_AND_EVALS_SPLIT_ACTIVE,

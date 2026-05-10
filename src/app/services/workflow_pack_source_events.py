@@ -53,9 +53,19 @@ def build_workflow_pack_source_event_catalog(
 ) -> WorkflowPackSourceEventCatalogResponse:
     ensure_workflow_pack_run_store_ready()
     store = get_workflow_pack_run_store()
+    bounded_at_source = all(
+        item is None
+        for item in (
+            pack_id,
+            caller_app,
+            tenant_id,
+            workflow_surface,
+            supportability_status,
+        )
+    )
     runs = [
         record
-        for record in store.list_runs()
+        for record in store.list_runs(limit=limit if bounded_at_source else None)
         if _run_matches_filters(
             record=record,
             pack_id=pack_id,

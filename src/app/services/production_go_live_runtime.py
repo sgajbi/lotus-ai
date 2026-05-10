@@ -22,10 +22,24 @@ from app.services.provider_governance_status import build_provider_governance_st
 
 def build_production_go_live_runtime_status(
     app_state: object | None = None,
+    *,
+    baseline: object | None = None,
+    provider_governance: object | None = None,
+    first_use_case_governance: object | None = None,
 ) -> ProductionGoLiveRuntimeStatusResponse:
-    baseline = build_production_baseline_runtime_status(app_state)
-    provider_governance = build_provider_governance_status()
-    first_use_case_governance = build_first_use_case_governance_status()
+    baseline = (
+        baseline if baseline is not None else build_production_baseline_runtime_status(app_state)
+    )
+    provider_governance = (
+        provider_governance
+        if provider_governance is not None
+        else build_provider_governance_status()
+    )
+    first_use_case_governance = (
+        first_use_case_governance
+        if first_use_case_governance is not None
+        else build_first_use_case_governance_status()
+    )
     managed_secret = build_managed_secret_approval_domain()
     managed_object_store = build_managed_object_storage_approval_domain()
 

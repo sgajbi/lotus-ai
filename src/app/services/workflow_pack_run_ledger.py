@@ -90,7 +90,22 @@ def build_workflow_pack_run_catalog(
 ) -> WorkflowPackRunCatalogResponse:
     ensure_workflow_pack_run_store_ready()
     store = get_workflow_pack_run_store()
-    runs = [map_workflow_pack_run_record(record, store=store) for record in store.list_runs()]
+    bounded_at_source = all(
+        item is None
+        for item in (
+            registration_ref,
+            pack_id,
+            caller_app,
+            tenant_id,
+            workflow_surface,
+            runtime_state,
+            review_state,
+            supportability_status,
+            workflow_authority_owner,
+        )
+    )
+    source_records = store.list_runs(limit=limit if bounded_at_source else None)
+    runs = [map_workflow_pack_run_record(record, store=store) for record in source_records]
     filtered_runs = _filter_workflow_pack_runs(
         runs=runs,
         registration_ref=registration_ref,

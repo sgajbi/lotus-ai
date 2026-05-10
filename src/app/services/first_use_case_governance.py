@@ -11,8 +11,24 @@ from app.services.first_use_case_runbook_readiness import build_first_use_case_r
 from app.services.governance_readiness import summarize_governance_flags
 
 
-def build_first_use_case_governance_status() -> FirstUseCaseGovernanceStatusResponse:
-    readiness = build_first_use_case_readiness()
+def build_first_use_case_governance_status(
+    *,
+    readiness: object | None = None,
+    access_control_governance: object | None = None,
+    artifact_runtime: object | None = None,
+    observability_governance: object | None = None,
+    resilience_governance: object | None = None,
+) -> FirstUseCaseGovernanceStatusResponse:
+    readiness = (
+        readiness
+        if readiness is not None
+        else build_first_use_case_readiness(
+            access_control_governance=access_control_governance,
+            artifact_runtime=artifact_runtime,
+            observability_governance=observability_governance,
+            resilience_governance=resilience_governance,
+        )
+    )
     runbook_readiness = build_first_use_case_runbook_readiness()
     governance_ready, blocking_area_count = summarize_governance_flags(
         readiness.readiness_ready,

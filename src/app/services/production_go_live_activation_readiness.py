@@ -12,9 +12,20 @@ from app.services.provider_governance_status import build_provider_governance_st
 
 def build_production_go_live_activation_readiness(
     app_state: object | None = None,
+    *,
+    runtime_status: object | None = None,
+    provider_governance: object | None = None,
 ) -> ProductionGoLiveActivationReadinessResponse:
-    runtime_status = build_production_go_live_runtime_status(app_state)
-    provider_governance = build_provider_governance_status()
+    runtime_status = (
+        runtime_status
+        if runtime_status is not None
+        else build_production_go_live_runtime_status(app_state)
+    )
+    provider_governance = (
+        provider_governance
+        if provider_governance is not None
+        else build_provider_governance_status()
+    )
     activation_ready = (
         runtime_status.platform_production_approved
         and provider_governance.governance_ready

@@ -18,12 +18,35 @@ from app.services.production_baseline_runtime import build_production_baseline_r
 
 def build_production_baseline_governance_status(
     app_state: object | None = None,
+    *,
+    runtime_status: object | None = None,
+    activation_readiness: object | None = None,
+    provider_governance: object | None = None,
+    first_use_case_governance: object | None = None,
 ) -> ProductionBaselineGovernanceStatusResponse:
-    runtime_status = build_production_baseline_runtime_status(app_state)
-    activation_readiness = build_production_baseline_activation_readiness(app_state)
+    runtime_status = (
+        runtime_status
+        if runtime_status is not None
+        else build_production_baseline_runtime_status(app_state)
+    )
+    activation_readiness = (
+        activation_readiness
+        if activation_readiness is not None
+        else build_production_baseline_activation_readiness(
+            app_state, runtime_status=runtime_status
+        )
+    )
     runbook_readiness = build_production_baseline_runbook_readiness()
-    provider_governance = build_provider_governance_status()
-    first_use_case_governance = build_first_use_case_governance_status()
+    provider_governance = (
+        provider_governance
+        if provider_governance is not None
+        else build_provider_governance_status()
+    )
+    first_use_case_governance = (
+        first_use_case_governance
+        if first_use_case_governance is not None
+        else build_first_use_case_governance_status()
+    )
     dependent_rollout_findings: list[str] = []
     if settings.provider_mode == "openai" and not provider_governance.governance_ready:
         dependent_rollout_findings.append(

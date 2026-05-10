@@ -21,11 +21,16 @@ class SqlAlchemyWorkflowPackRunRepository(SqlAlchemyRepositoryBase, WorkflowPack
         self._ensure_sqlite_parent_directory()
         self._configure_sqlalchemy(database_url)
 
-    def list_runs(self) -> list[WorkflowPackRunRecord]:
+    def list_runs(self, *, limit: int | None = None) -> list[WorkflowPackRunRecord]:
         with self._session_factory() as session:
-            models = session.scalars(
-                select(WorkflowPackRunModel).order_by(WorkflowPackRunModel.created_at)
-            ).all()
+            statement = select(WorkflowPackRunModel)
+            if limit is not None:
+                statement = statement.order_by(WorkflowPackRunModel.created_at.desc()).limit(
+                    max(limit, 0)
+                )
+            else:
+                statement = statement.order_by(WorkflowPackRunModel.created_at)
+            models = session.scalars(statement).all()
             return [self._to_run_record(model) for model in models]
 
     def get_run(self, *, run_id: str) -> WorkflowPackRunRecord | None:

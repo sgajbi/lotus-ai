@@ -7,8 +7,12 @@ from app.services.observability_runtime import build_observability_runtime_statu
 from app.services.runtime_readiness import get_audit_store_runtime_status
 
 
-def build_observability_activation_readiness() -> ObservabilityActivationReadinessResponse:
-    runtime_status = build_observability_runtime_status()
+def build_observability_activation_readiness(
+    *, runtime_status: object | None = None
+) -> ObservabilityActivationReadinessResponse:
+    runtime_status = (
+        runtime_status if runtime_status is not None else build_observability_runtime_status()
+    )
     audit_store = get_audit_store_runtime_status()
     access_control_runtime = build_access_control_runtime_status()
 

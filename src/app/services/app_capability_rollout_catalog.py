@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from app.config import settings
 from app.contracts.app_capability_rollouts import (
     AppCapabilityRolloutCatalogResponse,
@@ -32,10 +34,36 @@ from app.services.production_go_live_use_case_approval import (
 from app.services.use_case_onboarding_template import build_use_case_onboarding_template
 
 
+@dataclass(frozen=True)
+class AppCapabilityRolloutBuildContext:
+    rollout_records: list[AppCapabilityRolloutDescriptor]
+
+
+def build_app_capability_rollout_context(
+    app_state: object | None = None,
+    *,
+    capability_catalog: object | None = None,
+    first_use_case: object | None = None,
+    first_use_case_governance: object | None = None,
+    production_go_live: object | None = None,
+) -> AppCapabilityRolloutBuildContext:
+    return AppCapabilityRolloutBuildContext(
+        rollout_records=_build_rollout_records(
+            app_state,
+            capability_catalog=capability_catalog,
+            first_use_case=first_use_case,
+            first_use_case_governance=first_use_case_governance,
+            production_go_live=production_go_live,
+        )
+    )
+
+
 def build_app_capability_rollout_catalog(
     app_state: object | None = None,
+    *,
+    context: AppCapabilityRolloutBuildContext | None = None,
 ) -> AppCapabilityRolloutCatalogResponse:
-    rollout_records = _build_rollout_records(app_state)
+    rollout_records = _resolve_rollout_context(app_state, context).rollout_records
     onboarded_pairing_count = sum(1 for record in rollout_records if record.currently_onboarded)
     active_pairing_count = sum(
         1
@@ -139,13 +167,24 @@ def build_app_capability_onboarding_template(
 
 
 def build_app_capability_rollout_detail(
-    *, downstream_app: str, capability_pack_id: str, app_state: object | None = None
+    *,
+    downstream_app: str,
+    capability_pack_id: str,
+    app_state: object | None = None,
+    context: AppCapabilityRolloutBuildContext | None = None,
 ) -> AppCapabilityRolloutDetailResponse:
     record = get_app_capability_rollout_record(
         downstream_app=downstream_app,
         capability_pack_id=capability_pack_id,
         app_state=app_state,
+        context=context,
     )
+    return _build_rollout_detail_response(record=record)
+
+
+def _build_rollout_detail_response(
+    *, record: AppCapabilityRolloutDescriptor
+) -> AppCapabilityRolloutDetailResponse:
     ownership_boundaries = _build_ownership_boundaries(record=record)
     escalation_paths = _build_escalation_paths(record=record)
     transition_targets = _build_transition_targets(record=record)
@@ -172,13 +211,24 @@ def build_app_capability_rollout_detail(
 
 
 def build_app_capability_rollout_governance_status(
-    *, downstream_app: str, capability_pack_id: str, app_state: object | None = None
+    *,
+    downstream_app: str,
+    capability_pack_id: str,
+    app_state: object | None = None,
+    context: AppCapabilityRolloutBuildContext | None = None,
 ) -> AppCapabilityRolloutGovernanceStatusResponse:
     detail = build_app_capability_rollout_detail(
         downstream_app=downstream_app,
         capability_pack_id=capability_pack_id,
         app_state=app_state,
+        context=context,
     )
+    return _build_governance_status_response(detail=detail)
+
+
+def _build_governance_status_response(
+    *, detail: AppCapabilityRolloutDetailResponse
+) -> AppCapabilityRolloutGovernanceStatusResponse:
     items = _build_governance_items(detail=detail)
     blocking_area_count = sum(
         1 for item in items if item.required_for_rollout and item.status != "READY"
@@ -209,15 +259,15 @@ def build_app_capability_rollout_governance_status(
 
 def build_app_capability_rollout_catalog_governance_status(
     app_state: object | None = None,
+    *,
+    context: AppCapabilityRolloutBuildContext | None = None,
 ) -> AppCapabilityRolloutCatalogGovernanceStatusResponse:
-    catalog = build_app_capability_rollout_catalog(app_state)
+    rollout_context = _resolve_rollout_context(app_state, context)
     summaries: list[AppCapabilityRolloutGovernanceSummaryItem] = []
     ready_pairing_count = 0
-    for record in catalog.rollout_records:
-        governance = build_app_capability_rollout_governance_status(
-            downstream_app=record.downstream_app,
-            capability_pack_id=record.capability_pack_id,
-            app_state=app_state,
+    for record in rollout_context.rollout_records:
+        governance = _build_governance_status_response(
+            detail=_build_rollout_detail_response(record=record)
         )
         if governance.governance_ready:
             ready_pairing_count += 1
@@ -249,9 +299,13 @@ def build_app_capability_rollout_catalog_governance_status(
 
 
 def get_app_capability_rollout_record(
-    *, downstream_app: str, capability_pack_id: str, app_state: object | None = None
+    *,
+    downstream_app: str,
+    capability_pack_id: str,
+    app_state: object | None = None,
+    context: AppCapabilityRolloutBuildContext | None = None,
 ) -> AppCapabilityRolloutDescriptor:
-    for record in _build_rollout_records(app_state):
+    for record in _resolve_rollout_context(app_state, context).rollout_records:
         if (
             record.downstream_app == downstream_app
             and record.capability_pack_id == capability_pack_id
@@ -260,12 +314,38 @@ def get_app_capability_rollout_record(
     raise ValueError(f"Unknown app-capability rollout: {downstream_app} / {capability_pack_id}")
 
 
-def _build_rollout_records(app_state: object | None) -> list[AppCapabilityRolloutDescriptor]:
-    capability_catalog = build_capability_pack_catalog()
+def _resolve_rollout_context(
+    app_state: object | None,
+    context: AppCapabilityRolloutBuildContext | None,
+) -> AppCapabilityRolloutBuildContext:
+    return context if context is not None else build_app_capability_rollout_context(app_state)
+
+
+def _build_rollout_records(
+    app_state: object | None,
+    *,
+    capability_catalog: object | None = None,
+    first_use_case: object | None = None,
+    first_use_case_governance: object | None = None,
+    production_go_live: object | None = None,
+) -> list[AppCapabilityRolloutDescriptor]:
+    capability_catalog = (
+        capability_catalog if capability_catalog is not None else build_capability_pack_catalog()
+    )
     pack_by_id = {pack.pack_id: pack for pack in capability_catalog.packs}
-    first_use_case = build_first_use_case_runtime_status()
-    first_use_case_governance = build_first_use_case_governance_status()
-    production_go_live = build_production_go_live_use_case_approval(app_state)
+    first_use_case = (
+        first_use_case if first_use_case is not None else build_first_use_case_runtime_status()
+    )
+    first_use_case_governance = (
+        first_use_case_governance
+        if first_use_case_governance is not None
+        else build_first_use_case_governance_status()
+    )
+    production_go_live = (
+        production_go_live
+        if production_go_live is not None
+        else build_production_go_live_use_case_approval(app_state)
+    )
 
     analytics_pack = pack_by_id["analytics_commentary.pack.v1"]
     decision_pack = pack_by_id["decision_explanation.pack.v1"]

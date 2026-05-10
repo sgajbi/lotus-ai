@@ -18,12 +18,41 @@ from app.services.provider_governance_status import build_provider_governance_st
 
 def build_production_go_live_governance_status(
     app_state: object | None = None,
+    *,
+    runtime_status: object | None = None,
+    activation_readiness: object | None = None,
+    use_case_approval: object | None = None,
+    provider_governance: object | None = None,
 ) -> ProductionGoLiveGovernanceStatusResponse:
-    runtime_status = build_production_go_live_runtime_status(app_state)
-    activation_readiness = build_production_go_live_activation_readiness(app_state)
+    runtime_status = (
+        runtime_status
+        if runtime_status is not None
+        else build_production_go_live_runtime_status(app_state)
+    )
+    provider_governance = (
+        provider_governance
+        if provider_governance is not None
+        else build_provider_governance_status()
+    )
+    activation_readiness = (
+        activation_readiness
+        if activation_readiness is not None
+        else build_production_go_live_activation_readiness(
+            app_state,
+            runtime_status=runtime_status,
+            provider_governance=provider_governance,
+        )
+    )
     runbook_readiness = build_production_go_live_runbook_readiness()
-    use_case_approval = build_production_go_live_use_case_approval(app_state)
-    provider_governance = build_provider_governance_status()
+    use_case_approval = (
+        use_case_approval
+        if use_case_approval is not None
+        else build_production_go_live_use_case_approval(
+            app_state,
+            provider_governance=provider_governance,
+            runtime_status=runtime_status,
+        )
+    )
     governance_ready, blocking_area_count = summarize_governance_flags(
         activation_readiness.activation_ready,
         runbook_readiness.runbook_ready,
