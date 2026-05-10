@@ -77,7 +77,9 @@ def test_operations_handoff_summary_guardrails_block_forbidden_requested_outputs
         requested_outputs=["operations_summary", "order_ticket"]
     )
 
-    _assert_guardrail_rejects(payload, "Forbidden operations handoff outputs requested: order_ticket")
+    _assert_guardrail_rejects(
+        payload, "Forbidden operations handoff outputs requested: order_ticket"
+    )
 
 
 def test_operations_handoff_summary_guardrails_block_unsupported_requested_outputs() -> None:
