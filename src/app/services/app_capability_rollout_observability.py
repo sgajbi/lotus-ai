@@ -11,7 +11,9 @@ from app.contracts.audit import AuditRecordResponse
 from app.contracts.async_runtime import AsyncJobArtifactDescriptor
 from app.services.app_capability_rollout_catalog import (
     build_app_capability_rollout_catalog,
+    build_app_capability_rollout_context,
     build_app_capability_rollout_governance_status,
+    AppCapabilityRolloutBuildContext,
 )
 from app.services.async_job_service import build_async_job_catalog
 from app.services.audit_store import get_audit_store
@@ -20,14 +22,24 @@ from app.services.runtime_readiness import get_audit_store_runtime_status
 
 def build_app_capability_rollout_observability_summary(
     app_state: object | None = None,
+    *,
+    context: AppCapabilityRolloutBuildContext | None = None,
 ) -> AppCapabilityRolloutObservabilitySummaryResponse:
-    catalog = build_app_capability_rollout_catalog(app_state)
+    rollout_context = (
+        context if context is not None else build_app_capability_rollout_context(app_state)
+    )
+    catalog = build_app_capability_rollout_catalog(app_state, context=rollout_context)
     audit_store_ready = get_audit_store_runtime_status().status in {"READY", "DEGRADED"}
+    audit_records = get_audit_store().list(limit=100)
+    async_jobs = build_async_job_catalog().jobs
     items = [
         _build_observability_item(
             downstream_app=record.downstream_app,
             capability_pack_id=record.capability_pack_id,
             app_state=app_state,
+            context=rollout_context,
+            audit_records=audit_records,
+            async_jobs=async_jobs,
         )
         for record in catalog.rollout_records
     ]
@@ -80,30 +92,41 @@ def build_app_capability_rollout_observability_summary(
 
 
 def _build_observability_item(
-    *, downstream_app: str, capability_pack_id: str, app_state: object | None = None
+    *,
+    downstream_app: str,
+    capability_pack_id: str,
+    app_state: object | None = None,
+    context: AppCapabilityRolloutBuildContext | None = None,
+    audit_records: list[AuditRecordResponse] | None = None,
+    async_jobs: list[AsyncJobArtifactDescriptor] | None = None,
 ) -> AppCapabilityRolloutObservabilityItem:
     governance = build_app_capability_rollout_governance_status(
         downstream_app=downstream_app,
         capability_pack_id=capability_pack_id,
         app_state=app_state,
+        context=context,
     )
-    audit_records = [
+    source_audit_records = (
+        audit_records if audit_records is not None else get_audit_store().list(limit=100)
+    )
+    source_async_jobs = async_jobs if async_jobs is not None else build_async_job_catalog().jobs
+    matching_audit_records = [
         record
-        for record in get_audit_store().list(limit=100)
+        for record in source_audit_records
         if _matches_pairing_record(
             record=record, downstream_app=downstream_app, capability_pack_id=capability_pack_id
         )
     ]
-    async_jobs = [
+    matching_async_jobs = [
         job
-        for job in build_async_job_catalog().jobs
+        for job in source_async_jobs
         if _matches_pairing_job(
             job=job, downstream_app=downstream_app, capability_pack_id=capability_pack_id
         )
     ]
     incident_signal_count = sum(
         1
-        for record in audit_records
+        for record in matching_audit_records
         if not record.authorization.allowed
         or record.safety_outcome.disposition.value != "DOCUMENTED_ONLY"
         or record.provider_mode not in {"disabled", "stub", "catalog_only"}
@@ -117,8 +140,8 @@ def _build_observability_item(
             governance_ready=governance.governance_ready,
         ),
         governance_ready=governance.governance_ready,
-        sampled_audit_record_count=len(audit_records),
-        sampled_async_job_count=len(async_jobs),
+        sampled_audit_record_count=len(matching_audit_records),
+        sampled_async_job_count=len(matching_async_jobs),
         incident_signal_count=incident_signal_count,
         linked_endpoints=_build_linked_endpoints(
             downstream_app=downstream_app, capability_pack_id=capability_pack_id

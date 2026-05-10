@@ -50,8 +50,8 @@ class WorkflowPackRunEventRecord:
 
 
 class WorkflowPackRunRepository(Protocol):
-    def list_runs(self) -> list[WorkflowPackRunRecord]:
-        """List all persisted workflow-pack run records."""
+    def list_runs(self, *, limit: int | None = None) -> list[WorkflowPackRunRecord]:
+        """List persisted workflow-pack run records, optionally bounded to newest records."""
 
     def get_run(self, *, run_id: str) -> WorkflowPackRunRecord | None:
         """Fetch one persisted workflow-pack run record."""

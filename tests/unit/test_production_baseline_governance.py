@@ -100,7 +100,7 @@ def test_production_baseline_governance_status_composes_runtime_activation_and_r
     )
     monkeypatch.setattr(
         "app.services.production_baseline_governance.build_production_baseline_activation_readiness",
-        lambda _app_state=None: ProductionBaselineActivationReadinessResponse(
+        lambda _app_state=None, **_kwargs: ProductionBaselineActivationReadinessResponse(
             service="lotus-ai",
             version="0.1.0",
             posture=ProductionBaselinePosture.PROD_SHAPED_LOCAL,

@@ -14,7 +14,9 @@ from app.contracts.app_capability_rollouts import (
 from app.services.app_capability_rollout_catalog import (
     build_app_capability_rollout_catalog,
     build_app_capability_rollout_detail,
+    build_app_capability_rollout_context,
     build_app_capability_rollout_governance_status,
+    AppCapabilityRolloutBuildContext,
 )
 from app.services.app_capability_rollout_observability import (
     build_app_capability_rollout_observability_summary,
@@ -22,26 +24,49 @@ from app.services.app_capability_rollout_observability import (
 
 
 def build_app_capability_rollout_lifecycle_status(
-    *, downstream_app: str, capability_pack_id: str, app_state: object | None = None
+    *,
+    downstream_app: str,
+    capability_pack_id: str,
+    app_state: object | None = None,
+    context: AppCapabilityRolloutBuildContext | None = None,
 ) -> AppCapabilityRolloutLifecycleStatusResponse:
+    rollout_context = (
+        context if context is not None else build_app_capability_rollout_context(app_state)
+    )
     detail = build_app_capability_rollout_detail(
         downstream_app=downstream_app,
         capability_pack_id=capability_pack_id,
         app_state=app_state,
+        context=rollout_context,
     )
     governance = build_app_capability_rollout_governance_status(
         downstream_app=downstream_app,
         capability_pack_id=capability_pack_id,
         app_state=app_state,
+        context=rollout_context,
     )
     observability = _get_pairing_observability_item(
         downstream_app=downstream_app,
         capability_pack_id=capability_pack_id,
         app_state=app_state,
+        context=rollout_context,
     )
-    items = _build_lifecycle_items(
+    return _build_lifecycle_status_response(
         detail=detail,
         governance_ready=governance.governance_ready,
+        observability=observability,
+    )
+
+
+def _build_lifecycle_status_response(
+    *,
+    detail: AppCapabilityRolloutDetailResponse,
+    governance_ready: bool,
+    observability: AppCapabilityRolloutObservabilityItem,
+) -> AppCapabilityRolloutLifecycleStatusResponse:
+    items = _build_lifecycle_items(
+        detail=detail,
+        governance_ready=governance_ready,
         historical_traceability_ready=observability.governance_ready
         or len(observability.linked_endpoints) >= 3,
         linked_endpoint_count=len(observability.linked_endpoints),
@@ -86,15 +111,39 @@ def build_app_capability_rollout_lifecycle_status(
 
 def build_app_capability_rollout_catalog_lifecycle_status(
     app_state: object | None = None,
+    *,
+    context: AppCapabilityRolloutBuildContext | None = None,
 ) -> AppCapabilityRolloutCatalogLifecycleStatusResponse:
-    catalog = build_app_capability_rollout_catalog(app_state)
+    rollout_context = (
+        context if context is not None else build_app_capability_rollout_context(app_state)
+    )
+    catalog = build_app_capability_rollout_catalog(app_state, context=rollout_context)
+    observability_by_pairing = {
+        (item.downstream_app, item.capability_pack_id): item
+        for item in build_app_capability_rollout_observability_summary(
+            app_state, context=rollout_context
+        ).items
+    }
     summaries: list[AppCapabilityRolloutLifecycleSummaryItem] = []
     ready_pairing_count = 0
     for record in catalog.rollout_records:
-        lifecycle = build_app_capability_rollout_lifecycle_status(
+        governance = build_app_capability_rollout_governance_status(
             downstream_app=record.downstream_app,
             capability_pack_id=record.capability_pack_id,
             app_state=app_state,
+            context=rollout_context,
+        )
+        lifecycle = _build_lifecycle_status_response(
+            detail=build_app_capability_rollout_detail(
+                downstream_app=record.downstream_app,
+                capability_pack_id=record.capability_pack_id,
+                app_state=app_state,
+                context=rollout_context,
+            ),
+            governance_ready=governance.governance_ready,
+            observability=observability_by_pairing[
+                (record.downstream_app, record.capability_pack_id)
+            ],
         )
         if lifecycle.lifecycle_ready:
             ready_pairing_count += 1
@@ -173,9 +222,13 @@ def _build_lifecycle_items(
 
 
 def _get_pairing_observability_item(
-    *, downstream_app: str, capability_pack_id: str, app_state: object | None = None
+    *,
+    downstream_app: str,
+    capability_pack_id: str,
+    app_state: object | None = None,
+    context: AppCapabilityRolloutBuildContext | None = None,
 ) -> AppCapabilityRolloutObservabilityItem:
-    summary = build_app_capability_rollout_observability_summary(app_state)
+    summary = build_app_capability_rollout_observability_summary(app_state, context=context)
     return next(
         item
         for item in summary.items

@@ -7,6 +7,7 @@ from app.config import settings
 from app.contracts.platform import PlatformRuntimeStatusResponse
 from app.services.app_capability_rollout_catalog import (
     build_app_capability_rollout_catalog,
+    build_app_capability_rollout_context,
     build_app_capability_rollout_catalog_governance_status,
 )
 from app.services.app_capability_rollout_lifecycle import (
@@ -43,6 +44,9 @@ from app.services.prompt_status import build_prompt_runtime_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
 from app.services.production_go_live_governance import build_production_go_live_governance_status
 from app.services.production_go_live_runtime import build_production_go_live_runtime_status
+from app.services.production_go_live_use_case_approval import (
+    build_production_go_live_use_case_approval,
+)
 from app.services.provider_governance_status import build_provider_governance_status
 from app.services.provider_operations_status import build_provider_operations_status
 from app.services.resilience_governance import build_resilience_governance_status
@@ -81,42 +85,85 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
     capabilities = build_capability_catalog()
     capability_packs = build_capability_pack_catalog()
     capability_pack_governance = build_capability_pack_catalog_governance_status()
-    app_capability_rollouts = build_app_capability_rollout_catalog(app_state)
-    app_capability_rollout_governance = build_app_capability_rollout_catalog_governance_status(
-        app_state
-    )
-    app_capability_rollout_lifecycle = build_app_capability_rollout_catalog_lifecycle_status(
-        app_state
-    )
-    app_capability_rollout_observability = build_app_capability_rollout_observability_summary(
-        app_state
-    )
-    prompts = list_registered_prompts()
+    first_use_case = build_first_use_case_runtime_status()
+    provider_governance = build_provider_governance_status()
+    deployment_split = build_deployment_split_runtime_status(app_state)
     access_control_runtime = build_access_control_runtime_status()
     access_control_governance = build_access_control_governance_status()
     artifact_runtime = build_artifact_runtime_status()
     artifact_governance = build_artifact_governance_status()
-    observability_runtime = build_observability_runtime_status()
-    observability_governance = build_observability_governance_status()
+    observability_runtime = build_observability_runtime_status(deployment_split=deployment_split)
+    observability_governance = build_observability_governance_status(
+        deployment_split=deployment_split,
+        runtime_status=observability_runtime,
+    )
+    resilience_runtime = build_resilience_runtime_status()
+    resilience_governance = build_resilience_governance_status()
+    first_use_case_governance = build_first_use_case_governance_status(
+        access_control_governance=access_control_governance,
+        artifact_runtime=artifact_runtime,
+        observability_governance=observability_governance,
+        resilience_governance=resilience_governance,
+    )
+    production_baseline = build_production_baseline_runtime_status(app_state)
+    production_go_live = build_production_go_live_runtime_status(
+        app_state,
+        baseline=production_baseline,
+        provider_governance=provider_governance,
+        first_use_case_governance=first_use_case_governance,
+    )
+    production_go_live_approval = build_production_go_live_use_case_approval(
+        app_state,
+        use_case_status=first_use_case,
+        use_case_governance=first_use_case_governance,
+        provider_governance=provider_governance,
+        runtime_status=production_go_live,
+    )
+    rollout_context = build_app_capability_rollout_context(
+        app_state,
+        capability_catalog=capability_packs,
+        first_use_case=first_use_case,
+        first_use_case_governance=first_use_case_governance,
+        production_go_live=production_go_live_approval,
+    )
+    app_capability_rollouts = build_app_capability_rollout_catalog(
+        app_state, context=rollout_context
+    )
+    app_capability_rollout_governance = build_app_capability_rollout_catalog_governance_status(
+        app_state, context=rollout_context
+    )
+    app_capability_rollout_lifecycle = build_app_capability_rollout_catalog_lifecycle_status(
+        app_state, context=rollout_context
+    )
+    app_capability_rollout_observability = build_app_capability_rollout_observability_summary(
+        app_state, context=rollout_context
+    )
+    prompts = list_registered_prompts()
     async_runtime = build_async_runtime_status()
     async_governance = build_async_governance_status()
-    provider_governance = build_provider_governance_status()
     provider_operations = build_provider_operations_status()
     retrieval_governance = build_retrieval_governance_status()
     prompt_governance = build_prompt_governance_status_summary()
     evaluation_runtime = build_evaluation_runtime_status()
     prompt_runtime = build_prompt_runtime_status()
     task_runtime = build_task_runtime_status()
-    first_use_case = build_first_use_case_runtime_status()
-    first_use_case_governance = build_first_use_case_governance_status()
-    resilience_runtime = build_resilience_runtime_status()
-    resilience_governance = build_resilience_governance_status()
-    production_baseline = build_production_baseline_runtime_status(app_state)
-    production_go_live = build_production_go_live_runtime_status(app_state)
-    production_go_live_governance = build_production_go_live_governance_status(app_state)
-    deployment_split = build_deployment_split_runtime_status(app_state)
-    deployment_split_governance = build_deployment_split_governance_status(app_state)
-    production_baseline_governance = build_production_baseline_governance_status(app_state)
+    production_go_live_governance = build_production_go_live_governance_status(
+        app_state,
+        runtime_status=production_go_live,
+        use_case_approval=production_go_live_approval,
+        provider_governance=provider_governance,
+    )
+    deployment_split_governance = build_deployment_split_governance_status(
+        app_state,
+        runtime_status=deployment_split,
+        observability_governance=observability_governance,
+    )
+    production_baseline_governance = build_production_baseline_governance_status(
+        app_state,
+        runtime_status=production_baseline,
+        provider_governance=provider_governance,
+        first_use_case_governance=first_use_case_governance,
+    )
     audit_store = get_audit_store_runtime_status()
     artifact_store = get_artifact_store_runtime_status()
     retrieval_store = get_retrieval_store_runtime_status()

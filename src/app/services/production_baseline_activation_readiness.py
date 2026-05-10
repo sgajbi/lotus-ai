@@ -3,14 +3,21 @@ from __future__ import annotations
 from app.config import settings
 from app.contracts.production_baseline import (
     ProductionBaselineActivationReadinessResponse,
+    ProductionBaselineRuntimeStatusResponse,
 )
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
 
 
 def build_production_baseline_activation_readiness(
     app_state: object | None = None,
+    *,
+    runtime_status: ProductionBaselineRuntimeStatusResponse | None = None,
 ) -> ProductionBaselineActivationReadinessResponse:
-    runtime_status = build_production_baseline_runtime_status(app_state)
+    runtime_status = (
+        runtime_status
+        if runtime_status is not None
+        else build_production_baseline_runtime_status(app_state)
+    )
     activation_path = [
         "Use PostgreSQL-backed durable store seams for audit, prompts, retrieval metadata, access control, provider operations, async runtime, evaluation runtime, and artifact metadata.",
         "Keep Redis queue delivery and dedicated-worker execution active for allowlisted async job types before treating the runtime as production-shaped.",

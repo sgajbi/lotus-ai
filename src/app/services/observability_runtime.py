@@ -8,17 +8,28 @@ from app.contracts.observability import (
     ObservabilityPosture,
     ObservabilityRuntimeStatusResponse,
 )
+from app.contracts.deployment_split import DeploymentSplitRuntimeStatusResponse
 from app.services.deployment_split_runtime import build_deployment_split_runtime_status
 from app.services.ai_surface_supportability import build_ai_surface_supportability_summary
-from app.services.observability_domain_summaries import build_current_observability_bundles
+from app.services.observability_domain_summaries import (
+    ObservabilityDomainBundle,
+    build_current_observability_bundles,
+)
 from app.services.observability_shared import assess_observability_posture
 
 
-def build_observability_runtime_status() -> ObservabilityRuntimeStatusResponse:
-    deployment_split = build_deployment_split_runtime_status()
+def build_observability_runtime_status(
+    *, deployment_split: DeploymentSplitRuntimeStatusResponse | None = None
+) -> ObservabilityRuntimeStatusResponse:
+    deployment_split = (
+        deployment_split
+        if deployment_split is not None
+        else build_deployment_split_runtime_status()
+    )
     ai_surface_supportability = build_ai_surface_supportability_summary()
-    domains = _build_domain_summaries()
-    incident_items = _build_incident_items()
+    bundles = build_current_observability_bundles()
+    domains = _build_domain_summaries(bundles)
+    incident_items = _build_incident_items(bundles)
     postures = [domain.posture for domain in domains]
     freshness_states = [domain.freshness for domain in domains]
     healthy_domain_count = sum(1 for posture in postures if posture == ObservabilityPosture.HEALTHY)
@@ -61,16 +72,16 @@ def build_observability_runtime_status() -> ObservabilityRuntimeStatusResponse:
     )
 
 
-def _build_domain_summaries() -> list[DomainTelemetrySummary]:
-    return [bundle.summary.telemetry for bundle in build_current_observability_bundles()]
+def _build_domain_summaries(
+    bundles: list[ObservabilityDomainBundle],
+) -> list[DomainTelemetrySummary]:
+    return [bundle.summary.telemetry for bundle in bundles]
 
 
-def _build_incident_items() -> list[IncidentEvidenceSummaryItem]:
-    items = [
-        item
-        for bundle in build_current_observability_bundles()
-        for item in bundle.summary.incident_evidence_items
-    ]
+def _build_incident_items(
+    bundles: list[ObservabilityDomainBundle],
+) -> list[IncidentEvidenceSummaryItem]:
+    items = [item for bundle in bundles for item in bundle.summary.incident_evidence_items]
     return items
 
 

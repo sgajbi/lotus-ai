@@ -94,7 +94,7 @@ def test_deployment_split_governance_status_blocks_when_observability_is_not_rea
     )
     monkeypatch.setattr(
         "app.services.deployment_split_governance.build_deployment_split_activation_readiness",
-        lambda _app_state=None: DeploymentSplitActivationReadinessResponse(
+        lambda _app_state=None, **_kwargs: DeploymentSplitActivationReadinessResponse(
             service="lotus-ai",
             version="0.1.0",
             configured_stage=DeploymentSplitStage.RETRIEVAL_AND_EVALS_SPLIT_ACTIVE,
@@ -120,7 +120,7 @@ def test_deployment_split_governance_status_blocks_when_observability_is_not_rea
     )
     monkeypatch.setattr(
         "app.services.deployment_split_governance.build_observability_governance_status",
-        lambda: SimpleNamespace(governance_ready=False),
+        lambda **_kwargs: SimpleNamespace(governance_ready=False),
     )
 
     governance = build_deployment_split_governance_status(None)

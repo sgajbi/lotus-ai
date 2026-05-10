@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.contracts.capability_packs import CapabilityPackGovernanceStatusResponse
 from app.contracts.production_go_live import (
     ProductionGoLiveFreezeState,
+    ProductionGoLiveRuntimeStatusResponse,
     ProductionGoLiveUseCaseApprovalItem,
     ProductionGoLiveUseCaseApprovalResponse,
     ProductionGoLiveUseCaseApprovalState,
+)
+from app.contracts.providers import ProviderGovernanceStatusResponse
+from app.contracts.use_cases import (
+    FirstUseCaseGovernanceStatusResponse,
+    FirstUseCaseRuntimeStatusResponse,
 )
 from app.services.capability_pack_governance import build_capability_pack_governance_status
 from app.services.first_use_case_governance import build_first_use_case_governance_status
@@ -17,14 +24,36 @@ from app.services.provider_governance_status import build_provider_governance_st
 
 def build_production_go_live_use_case_approval(
     app_state: object | None = None,
+    *,
+    use_case_status: FirstUseCaseRuntimeStatusResponse | None = None,
+    use_case_governance: FirstUseCaseGovernanceStatusResponse | None = None,
+    pack_governance: CapabilityPackGovernanceStatusResponse | None = None,
+    provider_governance: ProviderGovernanceStatusResponse | None = None,
+    runtime_status: ProductionGoLiveRuntimeStatusResponse | None = None,
 ) -> ProductionGoLiveUseCaseApprovalResponse:
-    use_case_status = build_first_use_case_runtime_status()
-    use_case_governance = build_first_use_case_governance_status()
-    pack_governance = build_capability_pack_governance_status(
-        pack_id=use_case_status.capability_pack_id
+    use_case_status = (
+        use_case_status if use_case_status is not None else build_first_use_case_runtime_status()
     )
-    provider_governance = build_provider_governance_status()
-    runtime_status = build_production_go_live_runtime_status(app_state)
+    use_case_governance = (
+        use_case_governance
+        if use_case_governance is not None
+        else build_first_use_case_governance_status()
+    )
+    pack_governance = (
+        pack_governance
+        if pack_governance is not None
+        else build_capability_pack_governance_status(pack_id=use_case_status.capability_pack_id)
+    )
+    provider_governance = (
+        provider_governance
+        if provider_governance is not None
+        else build_provider_governance_status()
+    )
+    runtime_status = (
+        runtime_status
+        if runtime_status is not None
+        else build_production_go_live_runtime_status(app_state)
+    )
 
     live_provider_active = (
         runtime_status.provider_freeze_state is ProductionGoLiveFreezeState.ACTIVE

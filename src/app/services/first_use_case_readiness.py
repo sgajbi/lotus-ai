@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 from app.config import settings
-from app.contracts.access_control import CallerLifecycleStatus
+from app.contracts.access_control import (
+    AccessControlGovernanceStatusResponse,
+    CallerLifecycleStatus,
+)
+from app.contracts.artifacts import ArtifactRuntimeStatusResponse
 from app.contracts.evals import EvaluationApprovalEvidenceState
+from app.contracts.observability import ObservabilityGovernanceStatusResponse
+from app.contracts.resilience import ResilienceGovernanceStatusResponse
 from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.contracts.tasks import OutputLabel
 from app.contracts.use_cases import FirstUseCaseReadinessItem, FirstUseCaseReadinessResponse
@@ -23,17 +29,37 @@ _FIRST_USE_CASE_TASK_ID = "explain.v1"
 _FIRST_USE_CASE_FIXTURE_ID = "lotus_performance_first_use_case_examples"
 
 
-def build_first_use_case_readiness() -> FirstUseCaseReadinessResponse:
+def build_first_use_case_readiness(
+    *,
+    access_control_governance: AccessControlGovernanceStatusResponse | None = None,
+    artifact_runtime: ArtifactRuntimeStatusResponse | None = None,
+    observability_governance: ObservabilityGovernanceStatusResponse | None = None,
+    resilience_governance: ResilienceGovernanceStatusResponse | None = None,
+) -> FirstUseCaseReadinessResponse:
     catalog = build_evaluation_catalog()
     approval_gate = build_first_use_case_approval_gate_summary()
     staged_fixture_ids = {fixture.fixture_id for fixture in catalog.fixture_families}
     policy = get_caller_policy_repository().get_policy(_FIRST_USE_CASE_CALLER_APP)
     safety_outcome = build_safety_execution_outcome(OutputLabel.EXPLANATION_ONLY)
     audit_store = get_audit_store_runtime_status()
-    access_control_governance = build_access_control_governance_status()
-    artifact_runtime = build_artifact_runtime_status()
-    observability_governance = build_observability_governance_status()
-    resilience_governance = build_resilience_governance_status()
+    access_control_governance = (
+        access_control_governance
+        if access_control_governance is not None
+        else build_access_control_governance_status()
+    )
+    artifact_runtime = (
+        artifact_runtime if artifact_runtime is not None else build_artifact_runtime_status()
+    )
+    observability_governance = (
+        observability_governance
+        if observability_governance is not None
+        else build_observability_governance_status()
+    )
+    resilience_governance = (
+        resilience_governance
+        if resilience_governance is not None
+        else build_resilience_governance_status()
+    )
 
     caller_policy_ready = (
         policy is not None

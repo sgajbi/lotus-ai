@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from app.config import settings
-from app.contracts.observability import ObservabilityGovernanceStatusResponse
+from app.contracts.deployment_split import DeploymentSplitRuntimeStatusResponse
+from app.contracts.observability import (
+    ObservabilityActivationReadinessResponse,
+    ObservabilityGovernanceStatusResponse,
+    ObservabilityRuntimeStatusResponse,
+)
 from app.services.governance_readiness import summarize_governance_flags
 from app.services.deployment_split_runtime import build_deployment_split_runtime_status
 from app.services.observability_activation_readiness import build_observability_activation_readiness
@@ -9,10 +14,27 @@ from app.services.observability_runbook_readiness import build_observability_run
 from app.services.observability_runtime import build_observability_runtime_status
 
 
-def build_observability_governance_status() -> ObservabilityGovernanceStatusResponse:
-    deployment_split = build_deployment_split_runtime_status()
-    runtime_status = build_observability_runtime_status()
-    activation_readiness = build_observability_activation_readiness()
+def build_observability_governance_status(
+    *,
+    deployment_split: DeploymentSplitRuntimeStatusResponse | None = None,
+    runtime_status: ObservabilityRuntimeStatusResponse | None = None,
+    activation_readiness: ObservabilityActivationReadinessResponse | None = None,
+) -> ObservabilityGovernanceStatusResponse:
+    deployment_split = (
+        deployment_split
+        if deployment_split is not None
+        else build_deployment_split_runtime_status()
+    )
+    runtime_status = (
+        runtime_status
+        if runtime_status is not None
+        else build_observability_runtime_status(deployment_split=deployment_split)
+    )
+    activation_readiness = (
+        activation_readiness
+        if activation_readiness is not None
+        else build_observability_activation_readiness(runtime_status=runtime_status)
+    )
     runbook_readiness = build_observability_runbook_readiness()
     governance_ready, blocking_area_count = summarize_governance_flags(
         activation_readiness.activation_ready,

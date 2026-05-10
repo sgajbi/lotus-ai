@@ -14,11 +14,15 @@ class InMemoryWorkflowPackRunRepository(WorkflowPackRunRepository):
         self._runs: dict[str, WorkflowPackRunRecord] = {}
         self._events: dict[str, list[WorkflowPackRunEventRecord]] = {}
 
-    def list_runs(self) -> list[WorkflowPackRunRecord]:
-        return [
-            deepcopy(self._runs[run_id])
-            for run_id in sorted(self._runs, key=lambda item: self._runs[item].created_at)
-        ]
+    def list_runs(self, *, limit: int | None = None) -> list[WorkflowPackRunRecord]:
+        run_ids = sorted(
+            self._runs,
+            key=lambda item: self._runs[item].created_at,
+            reverse=limit is not None,
+        )
+        if limit is not None:
+            run_ids = run_ids[: max(limit, 0)]
+        return [deepcopy(self._runs[run_id]) for run_id in run_ids]
 
     def get_run(self, *, run_id: str) -> WorkflowPackRunRecord | None:
         record = self._runs.get(run_id)

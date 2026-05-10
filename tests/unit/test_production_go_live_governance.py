@@ -294,7 +294,7 @@ def test_production_go_live_governance_can_report_production_approved(
     )
     monkeypatch.setattr(
         "app.services.production_go_live_governance.build_production_go_live_activation_readiness",
-        lambda app_state: ProductionGoLiveActivationReadinessResponse.model_validate(
+        lambda app_state, **_kwargs: ProductionGoLiveActivationReadinessResponse.model_validate(
             {
                 "service": "lotus-ai",
                 "version": "0.1.0",
@@ -344,7 +344,7 @@ def test_production_go_live_governance_can_report_production_approved(
     )
     monkeypatch.setattr(
         "app.services.production_go_live_governance.build_production_go_live_use_case_approval",
-        lambda app_state: ProductionGoLiveUseCaseApprovalResponse(
+        lambda app_state, **_kwargs: ProductionGoLiveUseCaseApprovalResponse(
             service="lotus-ai",
             version="0.1.0",
             use_case_id="lotus_performance.analytics_commentary.v1",
@@ -406,7 +406,7 @@ def test_production_go_live_governance_can_report_limited_rollout_only(
     )
     monkeypatch.setattr(
         "app.services.production_go_live_governance.build_production_go_live_activation_readiness",
-        lambda app_state: ProductionGoLiveActivationReadinessResponse.model_validate(
+        lambda app_state, **_kwargs: ProductionGoLiveActivationReadinessResponse.model_validate(
             {
                 "service": "lotus-ai",
                 "version": "0.1.0",
@@ -456,7 +456,7 @@ def test_production_go_live_governance_can_report_limited_rollout_only(
     )
     monkeypatch.setattr(
         "app.services.production_go_live_governance.build_production_go_live_use_case_approval",
-        lambda app_state: ProductionGoLiveUseCaseApprovalResponse(
+        lambda app_state, **_kwargs: ProductionGoLiveUseCaseApprovalResponse(
             service="lotus-ai",
             version="0.1.0",
             use_case_id="lotus_performance.analytics_commentary.v1",
