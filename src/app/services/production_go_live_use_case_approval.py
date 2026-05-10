@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.contracts.capability_packs import CapabilityPackGovernanceStatusResponse
 from app.contracts.production_go_live import (
     ProductionGoLiveFreezeState,
+    ProductionGoLiveRuntimeStatusResponse,
     ProductionGoLiveUseCaseApprovalItem,
     ProductionGoLiveUseCaseApprovalResponse,
     ProductionGoLiveUseCaseApprovalState,
+)
+from app.contracts.providers import ProviderGovernanceStatusResponse
+from app.contracts.use_cases import (
+    FirstUseCaseGovernanceStatusResponse,
+    FirstUseCaseRuntimeStatusResponse,
 )
 from app.services.capability_pack_governance import build_capability_pack_governance_status
 from app.services.first_use_case_governance import build_first_use_case_governance_status
@@ -18,11 +25,11 @@ from app.services.provider_governance_status import build_provider_governance_st
 def build_production_go_live_use_case_approval(
     app_state: object | None = None,
     *,
-    use_case_status: object | None = None,
-    use_case_governance: object | None = None,
-    pack_governance: object | None = None,
-    provider_governance: object | None = None,
-    runtime_status: object | None = None,
+    use_case_status: FirstUseCaseRuntimeStatusResponse | None = None,
+    use_case_governance: FirstUseCaseGovernanceStatusResponse | None = None,
+    pack_governance: CapabilityPackGovernanceStatusResponse | None = None,
+    provider_governance: ProviderGovernanceStatusResponse | None = None,
+    runtime_status: ProductionGoLiveRuntimeStatusResponse | None = None,
 ) -> ProductionGoLiveUseCaseApprovalResponse:
     use_case_status = (
         use_case_status if use_case_status is not None else build_first_use_case_runtime_status()

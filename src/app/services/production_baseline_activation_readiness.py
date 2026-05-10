@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.config import settings
 from app.contracts.production_baseline import (
     ProductionBaselineActivationReadinessResponse,
+    ProductionBaselineRuntimeStatusResponse,
 )
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
 
@@ -10,7 +11,7 @@ from app.services.production_baseline_runtime import build_production_baseline_r
 def build_production_baseline_activation_readiness(
     app_state: object | None = None,
     *,
-    runtime_status: object | None = None,
+    runtime_status: ProductionBaselineRuntimeStatusResponse | None = None,
 ) -> ProductionBaselineActivationReadinessResponse:
     runtime_status = (
         runtime_status

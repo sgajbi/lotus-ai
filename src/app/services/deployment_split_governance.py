@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from app.config import settings
-from app.contracts.deployment_split import DeploymentSplitGovernanceStatusResponse
+from app.contracts.deployment_split import (
+    DeploymentSplitActivationReadinessResponse,
+    DeploymentSplitGovernanceStatusResponse,
+    DeploymentSplitRuntimeStatusResponse,
+)
+from app.contracts.observability import ObservabilityGovernanceStatusResponse
 from app.services.deployment_split_activation_readiness import (
     build_deployment_split_activation_readiness,
 )
@@ -16,9 +21,9 @@ from app.services.observability_governance import build_observability_governance
 def build_deployment_split_governance_status(
     app_state: object | None = None,
     *,
-    runtime_status: object | None = None,
-    activation_readiness: object | None = None,
-    observability_governance: object | None = None,
+    runtime_status: DeploymentSplitRuntimeStatusResponse | None = None,
+    activation_readiness: DeploymentSplitActivationReadinessResponse | None = None,
+    observability_governance: ObservabilityGovernanceStatusResponse | None = None,
 ) -> DeploymentSplitGovernanceStatusResponse:
     runtime_status = (
         runtime_status

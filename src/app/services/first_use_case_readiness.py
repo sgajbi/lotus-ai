@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 from app.config import settings
-from app.contracts.access_control import CallerLifecycleStatus
+from app.contracts.access_control import (
+    AccessControlGovernanceStatusResponse,
+    CallerLifecycleStatus,
+)
+from app.contracts.artifacts import ArtifactRuntimeStatusResponse
 from app.contracts.evals import EvaluationApprovalEvidenceState
+from app.contracts.observability import ObservabilityGovernanceStatusResponse
+from app.contracts.resilience import ResilienceGovernanceStatusResponse
 from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.contracts.tasks import OutputLabel
 from app.contracts.use_cases import FirstUseCaseReadinessItem, FirstUseCaseReadinessResponse
@@ -25,10 +31,10 @@ _FIRST_USE_CASE_FIXTURE_ID = "lotus_performance_first_use_case_examples"
 
 def build_first_use_case_readiness(
     *,
-    access_control_governance: object | None = None,
-    artifact_runtime: object | None = None,
-    observability_governance: object | None = None,
-    resilience_governance: object | None = None,
+    access_control_governance: AccessControlGovernanceStatusResponse | None = None,
+    artifact_runtime: ArtifactRuntimeStatusResponse | None = None,
+    observability_governance: ObservabilityGovernanceStatusResponse | None = None,
+    resilience_governance: ResilienceGovernanceStatusResponse | None = None,
 ) -> FirstUseCaseReadinessResponse:
     catalog = build_evaluation_catalog()
     approval_gate = build_first_use_case_approval_gate_summary()

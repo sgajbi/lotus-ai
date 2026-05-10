@@ -8,14 +8,18 @@ from app.contracts.observability import (
     ObservabilityPosture,
     ObservabilityRuntimeStatusResponse,
 )
+from app.contracts.deployment_split import DeploymentSplitRuntimeStatusResponse
 from app.services.deployment_split_runtime import build_deployment_split_runtime_status
 from app.services.ai_surface_supportability import build_ai_surface_supportability_summary
-from app.services.observability_domain_summaries import build_current_observability_bundles
+from app.services.observability_domain_summaries import (
+    ObservabilityDomainBundle,
+    build_current_observability_bundles,
+)
 from app.services.observability_shared import assess_observability_posture
 
 
 def build_observability_runtime_status(
-    *, deployment_split: object | None = None
+    *, deployment_split: DeploymentSplitRuntimeStatusResponse | None = None
 ) -> ObservabilityRuntimeStatusResponse:
     deployment_split = (
         deployment_split
@@ -68,11 +72,15 @@ def build_observability_runtime_status(
     )
 
 
-def _build_domain_summaries(bundles: list[object]) -> list[DomainTelemetrySummary]:
+def _build_domain_summaries(
+    bundles: list[ObservabilityDomainBundle],
+) -> list[DomainTelemetrySummary]:
     return [bundle.summary.telemetry for bundle in bundles]
 
 
-def _build_incident_items(bundles: list[object]) -> list[IncidentEvidenceSummaryItem]:
+def _build_incident_items(
+    bundles: list[ObservabilityDomainBundle],
+) -> list[IncidentEvidenceSummaryItem]:
     items = [item for bundle in bundles for item in bundle.summary.incident_evidence_items]
     return items
 

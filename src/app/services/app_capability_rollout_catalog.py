@@ -20,6 +20,12 @@ from app.contracts.app_capability_rollouts import (
 from app.contracts.capability_packs import (
     CapabilityPackAdoptionChecklistItem,
     CapabilityPackAdoptionCriterion,
+    CapabilityPackCatalogResponse,
+)
+from app.contracts.production_go_live import ProductionGoLiveUseCaseApprovalResponse
+from app.contracts.use_cases import (
+    FirstUseCaseGovernanceStatusResponse,
+    FirstUseCaseRuntimeStatusResponse,
 )
 from app.services.capability_pack_catalog import (
     build_capability_pack_catalog,
@@ -42,10 +48,10 @@ class AppCapabilityRolloutBuildContext:
 def build_app_capability_rollout_context(
     app_state: object | None = None,
     *,
-    capability_catalog: object | None = None,
-    first_use_case: object | None = None,
-    first_use_case_governance: object | None = None,
-    production_go_live: object | None = None,
+    capability_catalog: CapabilityPackCatalogResponse | None = None,
+    first_use_case: FirstUseCaseRuntimeStatusResponse | None = None,
+    first_use_case_governance: FirstUseCaseGovernanceStatusResponse | None = None,
+    production_go_live: ProductionGoLiveUseCaseApprovalResponse | None = None,
 ) -> AppCapabilityRolloutBuildContext:
     return AppCapabilityRolloutBuildContext(
         rollout_records=_build_rollout_records(
@@ -324,10 +330,10 @@ def _resolve_rollout_context(
 def _build_rollout_records(
     app_state: object | None,
     *,
-    capability_catalog: object | None = None,
-    first_use_case: object | None = None,
-    first_use_case_governance: object | None = None,
-    production_go_live: object | None = None,
+    capability_catalog: CapabilityPackCatalogResponse | None = None,
+    first_use_case: FirstUseCaseRuntimeStatusResponse | None = None,
+    first_use_case_governance: FirstUseCaseGovernanceStatusResponse | None = None,
+    production_go_live: ProductionGoLiveUseCaseApprovalResponse | None = None,
 ) -> list[AppCapabilityRolloutDescriptor]:
     capability_catalog = (
         capability_catalog if capability_catalog is not None else build_capability_pack_catalog()

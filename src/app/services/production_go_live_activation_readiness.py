@@ -5,7 +5,9 @@ from app.contracts.production_go_live import (
     ProductionGoLiveActivationReadinessResponse,
     ProductionGoLiveFreezeState,
     ProductionGoLiveRollbackState,
+    ProductionGoLiveRuntimeStatusResponse,
 )
+from app.contracts.providers import ProviderGovernanceStatusResponse
 from app.services.production_go_live_runtime import build_production_go_live_runtime_status
 from app.services.provider_governance_status import build_provider_governance_status
 
@@ -13,8 +15,8 @@ from app.services.provider_governance_status import build_provider_governance_st
 def build_production_go_live_activation_readiness(
     app_state: object | None = None,
     *,
-    runtime_status: object | None = None,
-    provider_governance: object | None = None,
+    runtime_status: ProductionGoLiveRuntimeStatusResponse | None = None,
+    provider_governance: ProviderGovernanceStatusResponse | None = None,
 ) -> ProductionGoLiveActivationReadinessResponse:
     runtime_status = (
         runtime_status

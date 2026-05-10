@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from app.config import settings
 from app.contracts.production_baseline import (
+    ProductionBaselineActivationReadinessResponse,
     ProductionBaselineGovernanceStatusResponse,
+    ProductionBaselineRuntimeStatusResponse,
 )
+from app.contracts.providers import ProviderGovernanceStatusResponse
+from app.contracts.use_cases import FirstUseCaseGovernanceStatusResponse
 from app.services.first_use_case_governance import build_first_use_case_governance_status
 from app.services.governance_readiness import summarize_governance_flags
 from app.services.production_baseline_activation_readiness import (
@@ -19,10 +23,10 @@ from app.services.production_baseline_runtime import build_production_baseline_r
 def build_production_baseline_governance_status(
     app_state: object | None = None,
     *,
-    runtime_status: object | None = None,
-    activation_readiness: object | None = None,
-    provider_governance: object | None = None,
-    first_use_case_governance: object | None = None,
+    runtime_status: ProductionBaselineRuntimeStatusResponse | None = None,
+    activation_readiness: ProductionBaselineActivationReadinessResponse | None = None,
+    provider_governance: ProviderGovernanceStatusResponse | None = None,
+    first_use_case_governance: FirstUseCaseGovernanceStatusResponse | None = None,
 ) -> ProductionBaselineGovernanceStatusResponse:
     runtime_status = (
         runtime_status

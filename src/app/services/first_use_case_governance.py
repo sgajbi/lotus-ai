@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.contracts.access_control import AccessControlGovernanceStatusResponse
+from app.contracts.artifacts import ArtifactRuntimeStatusResponse
+from app.contracts.observability import ObservabilityGovernanceStatusResponse
+from app.contracts.resilience import ResilienceGovernanceStatusResponse
 from app.contracts.use_cases import (
     FirstUseCaseGovernanceStatusResponse,
     FirstUseCaseOperationalPosture,
+    FirstUseCaseReadinessResponse,
     FirstUseCaseRolloutStage,
 )
 from app.services.first_use_case_readiness import build_first_use_case_readiness
@@ -13,11 +18,11 @@ from app.services.governance_readiness import summarize_governance_flags
 
 def build_first_use_case_governance_status(
     *,
-    readiness: object | None = None,
-    access_control_governance: object | None = None,
-    artifact_runtime: object | None = None,
-    observability_governance: object | None = None,
-    resilience_governance: object | None = None,
+    readiness: FirstUseCaseReadinessResponse | None = None,
+    access_control_governance: AccessControlGovernanceStatusResponse | None = None,
+    artifact_runtime: ArtifactRuntimeStatusResponse | None = None,
+    observability_governance: ObservabilityGovernanceStatusResponse | None = None,
+    resilience_governance: ResilienceGovernanceStatusResponse | None = None,
 ) -> FirstUseCaseGovernanceStatusResponse:
     readiness = (
         readiness

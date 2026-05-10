@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from app.config import settings
-from app.contracts.observability import ObservabilityActivationReadinessResponse
+from app.contracts.observability import (
+    ObservabilityActivationReadinessResponse,
+    ObservabilityRuntimeStatusResponse,
+)
 from app.services.access_control_runtime import build_access_control_runtime_status
 from app.services.observability_runtime import build_observability_runtime_status
 from app.services.runtime_readiness import get_audit_store_runtime_status
 
 
 def build_observability_activation_readiness(
-    *, runtime_status: object | None = None
+    *, runtime_status: ObservabilityRuntimeStatusResponse | None = None
 ) -> ObservabilityActivationReadinessResponse:
     runtime_status = (
         runtime_status if runtime_status is not None else build_observability_runtime_status()

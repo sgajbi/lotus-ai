@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 from app.config import settings
-from app.contracts.production_go_live import ProductionGoLiveGovernanceStatusResponse
+from app.contracts.production_go_live import (
+    ProductionGoLiveActivationReadinessResponse,
+    ProductionGoLiveGovernanceStatusResponse,
+    ProductionGoLiveRuntimeStatusResponse,
+    ProductionGoLiveUseCaseApprovalResponse,
+)
+from app.contracts.providers import ProviderGovernanceStatusResponse
 from app.services.governance_readiness import summarize_governance_flags
 from app.services.production_go_live_activation_readiness import (
     build_production_go_live_activation_readiness,
@@ -19,10 +25,10 @@ from app.services.provider_governance_status import build_provider_governance_st
 def build_production_go_live_governance_status(
     app_state: object | None = None,
     *,
-    runtime_status: object | None = None,
-    activation_readiness: object | None = None,
-    use_case_approval: object | None = None,
-    provider_governance: object | None = None,
+    runtime_status: ProductionGoLiveRuntimeStatusResponse | None = None,
+    activation_readiness: ProductionGoLiveActivationReadinessResponse | None = None,
+    use_case_approval: ProductionGoLiveUseCaseApprovalResponse | None = None,
+    provider_governance: ProviderGovernanceStatusResponse | None = None,
 ) -> ProductionGoLiveGovernanceStatusResponse:
     runtime_status = (
         runtime_status

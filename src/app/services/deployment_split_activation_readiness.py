@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.config import settings
 from app.contracts.deployment_split import (
     DeploymentSplitActivationReadinessResponse,
+    DeploymentSplitRuntimeStatusResponse,
     DeploymentSplitStage,
 )
 from app.services.deployment_split_runtime import build_deployment_split_runtime_status
@@ -11,7 +12,7 @@ from app.services.deployment_split_runtime import build_deployment_split_runtime
 def build_deployment_split_activation_readiness(
     app_state: object | None = None,
     *,
-    runtime_status: object | None = None,
+    runtime_status: DeploymentSplitRuntimeStatusResponse | None = None,
 ) -> DeploymentSplitActivationReadinessResponse:
     runtime_status = (
         runtime_status
