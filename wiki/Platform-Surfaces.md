@@ -171,7 +171,11 @@ flowchart LR
 16. the embedded `queue_attention` block reports source-backed workflow-pack queue heartbeat posture for active-admission saturation, stale active admissions, durable timeout/cancellation/degraded worker-execution queue events, blocked retry/replay recovery decisions, repeated timeout/cancellation/blocked-recovery clusters, and degraded queue-source posture,
 17. explicit `/platform/workflow-packs/execute` and `/platform/workflow-packs/execute-async` calls may request a governed `queue_lane`
     from the pack version's declared `allowed_lanes`; omitted lanes use the queue policy default,
-    and unsupported lanes fail before audit, run, or task-flow side effects.
+    and unsupported lanes fail before audit, run, or task-flow side effects,
+18. `/platform/workflow-packs/registry/{pack_id}/default` exposes the current governed default
+    version for a workflow-pack family from registry truth. The route selects only registered,
+    activation-eligible, non-superseded versions, and keeps discovered or dark successor versions
+    visible but unpromoted.
 
 RFC-0097 task-flow state is currently a read-only inspection family, not a public mutation or
 handoff execution family:
@@ -405,6 +409,7 @@ These are the app-facing rollout and onboarding surfaces rather than low-level r
    - `/platform/capability-packs/{pack_id}/governance-status`
 2. workflow-pack registry
    - `/platform/workflow-packs/registry`
+   - `/platform/workflow-packs/registry/{pack_id}/default`
    - `/platform/workflow-packs/registry/{pack_id}/{version}`
    - `/platform/workflow-packs/queue-policies`
    - `/platform/workflow-packs/queue-status`

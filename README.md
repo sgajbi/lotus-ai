@@ -238,6 +238,7 @@ Key health and operator surfaces:
 - `/platform/evals/runtime-status`
 - `/platform/async/governance-status`
 - `/platform/workflow-packs/registry`
+- `/platform/workflow-packs/registry/{pack_id}/default`
 - `/platform/workflow-packs/eligibility/evaluate`
 - `/platform/workflow-packs/control-history`
 - `/platform/workflow-packs/runs`
@@ -246,8 +247,9 @@ Workflow-pack registry records should be read as control-plane onboarding truth:
 
 1. the primary `definition_ref` must resolve to a real owner artifact,
 2. `definition_refs` show the contract, service, router, tests, and optional RFC or UI evidence used to justify the registration,
-3. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, activation state and control history are restart-safe only after migrations are applied and `/platform/runtime-status` reports the embedded registry store as `READY`,
-4. `lotus-ai` tracks those references for governance, but the implementation remains owned by the downstream repository.
+3. `GET /platform/workflow-packs/registry/{pack_id}/default` resolves only registered, activation-eligible, non-superseded versions and does not auto-promote discovered or dark successor versions,
+4. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, activation state and control history are restart-safe only after migrations are applied and `/platform/runtime-status` reports the embedded registry store as `READY`,
+5. `lotus-ai` tracks those references for governance, but the implementation remains owned by the downstream repository.
 
 Operational guidance lives in:
 

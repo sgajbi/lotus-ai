@@ -189,6 +189,54 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     assert wave_pm_memo_queue_policy["allowed_lanes"] == ["REVIEW_SUPPORT", "OPERATOR"]
 
 
+def test_workflow_pack_default_version_route_resolves_registered_executable_default(
+    client: TestClient,
+) -> None:
+    response = client.get("/platform/workflow-packs/registry/advisor_brief.pack/default")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "lotus-ai"
+    assert body["pack_id"] == "advisor_brief.pack"
+    assert body["default_registration_ref"] == "advisor_brief.pack@v1"
+    assert body["default_version"] == "v1"
+    assert body["registration"]["version"] == "v1"
+    assert body["registration"]["registration_status"] == "REGISTERED"
+    assert body["registration"]["activation_state"] == "PILOT"
+    assert body["execution_binding"]["default_workflow_surface"] == "advisor-brief-workspace"
+    assert body["queue_policy"]["default_lane"] == "LATENCY_SENSITIVE"
+    assert body["denied_without_registration"] is True
+    assert any(
+        "Discovered, dark, paused, deprecated, retired, and superseded versions" in summary
+        for summary in body["status_summary"]
+    )
+
+
+def test_workflow_pack_default_version_route_resolves_dpm_pack_default(
+    client: TestClient,
+) -> None:
+    response = client.get("/platform/workflow-packs/registry/dpm_wave_pm_memo.pack/default")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["default_registration_ref"] == "dpm_wave_pm_memo.pack@v1"
+    assert body["registration"]["owner_repository"] == "lotus-manage"
+    assert body["registration"]["workflow_authority_owner"] == "lotus-manage"
+    assert body["execution_binding"]["required_payload_keys"] == [
+        "memo_request",
+        "supportability",
+        "wave_report_input",
+    ]
+    assert body["queue_policy"]["allowed_lanes"] == ["REVIEW_SUPPORT", "OPERATOR"]
+
+
+def test_workflow_pack_default_version_route_rejects_unknown_pack(client: TestClient) -> None:
+    response = client.get("/platform/workflow-packs/registry/unknown.pack/default")
+
+    assert response.status_code == 404
+    assert "Unknown workflow-pack family" in response.json()["detail"]
+
+
 def test_workflow_pack_registration_detail_route(client: TestClient) -> None:
     response = client.get("/platform/workflow-packs/registry/advisor_brief.pack/v1")
 
@@ -339,10 +387,15 @@ def test_workflow_pack_registry_routes_degrade_when_sql_store_is_unmigrated(
             detail_response = durable_client.get(
                 "/platform/workflow-packs/registry/advisor_brief.pack/v1"
             )
+            default_response = durable_client.get(
+                "/platform/workflow-packs/registry/advisor_brief.pack/default"
+            )
 
     assert catalog_response.status_code == 503
     assert detail_response.status_code == 503
+    assert default_response.status_code == 503
     assert "Workflow-pack registry store is not ready." in catalog_response.json()["detail"]
     assert "MIGRATION_REQUIRED" in catalog_response.json()["detail"]
     assert "workflow_pack_registrations" in catalog_response.json()["detail"]
     assert "Workflow-pack registry store is not ready." in detail_response.json()["detail"]
+    assert "Workflow-pack registry store is not ready." in default_response.json()["detail"]

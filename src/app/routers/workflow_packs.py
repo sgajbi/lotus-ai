@@ -10,6 +10,7 @@ from app.contracts.workflow_packs import (
     WorkflowPackEligibilityEvaluationRequest,
     WorkflowPackEligibilityEvaluationResponse,
     WorkflowPackAsyncExecutionSubmissionResponse,
+    WorkflowPackDefaultVersionResponse,
     WorkflowPackExecutionRequest,
     WorkflowPackExecutionResponse,
     WorkflowPackRegistrationDetailResponse,
@@ -76,6 +77,7 @@ from app.services.workflow_pack_task_flow_service import (
 )
 from app.services.workflow_pack_registry import (
     WorkflowPackRegistryUnavailableError,
+    build_workflow_pack_default_version,
     build_workflow_pack_registration_detail,
     build_workflow_pack_registry_catalog,
 )
@@ -120,6 +122,34 @@ router = APIRouter(tags=["platform"])
 async def get_workflow_pack_registry_catalog() -> WorkflowPackRegistryCatalogResponse:
     try:
         return build_workflow_pack_registry_catalog()
+    except WorkflowPackRegistryUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/registry/{pack_id}/default",
+    response_model=WorkflowPackDefaultVersionResponse,
+    operation_id="getWorkflowPackDefaultVersion",
+    summary="Resolve lotus-ai workflow-pack default version",
+    description=(
+        "Resolves the current governed default version for a workflow-pack family from registry truth. "
+        "Only registered versions in an executing activation posture can be selected; discovered, dark, "
+        "paused, deprecated, retired, and superseded versions remain visible but are not treated as defaults."
+    ),
+    responses={
+        200: {"description": "Workflow-pack default version resolved successfully."},
+        404: {"description": "Workflow-pack family or registered default version not found."},
+        503: {"description": "Workflow-pack registry store is not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_default_version(
+    pack_id: str,
+) -> WorkflowPackDefaultVersionResponse:
+    try:
+        return build_workflow_pack_default_version(pack_id=pack_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WorkflowPackRegistryUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 

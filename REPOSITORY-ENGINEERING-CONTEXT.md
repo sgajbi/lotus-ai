@@ -107,8 +107,11 @@ Runtime model:
 1. shared FastAPI service with bounded AI control-plane and data-plane seams,
 2. consumed by other Lotus apps for governed AI tasks,
 3. workflow-pack registry records define runtime registration truth without centralizing business workflow logic,
-4. workflow-pack registry records, workflow-pack run records, RFC-0097 task-flow records, and RFC-0098 queue-event records provide bounded, inspectable runtime posture without taking workflow authority, and these workflow-pack source-truth seams can move between in-memory and SQL-backed runtime posture through explicit governed store-mode seams,
-5. does not replace upstream domain logic or workflow authority.
+4. workflow-pack default-version resolution is exposed as a conservative read-only control-plane
+   route over registered, activation-eligible, non-superseded versions; it does not auto-promote
+   discovered or dark successor versions,
+5. workflow-pack registry records, workflow-pack run records, RFC-0097 task-flow records, and RFC-0098 queue-event records provide bounded, inspectable runtime posture without taking workflow authority, and these workflow-pack source-truth seams can move between in-memory and SQL-backed runtime posture through explicit governed store-mode seams,
+6. does not replace upstream domain logic or workflow authority.
 
 Boundary rules:
 

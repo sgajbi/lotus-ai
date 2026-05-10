@@ -235,8 +235,9 @@ For new downstream onboarding, start with the capability-pack layer first:
 If the selected path is evolving into a workflow-bearing pack rather than a bounded task wrapper, inspect the workflow-pack registry next:
 
 1. `GET /platform/workflow-packs/registry`
-2. `GET /platform/workflow-packs/registry/{pack_id}/{version}`
-3. `POST /platform/workflow-packs/eligibility/evaluate`
+2. `GET /platform/workflow-packs/registry/{pack_id}/default`
+3. `GET /platform/workflow-packs/registry/{pack_id}/{version}`
+4. `POST /platform/workflow-packs/eligibility/evaluate`
 
 When reading workflow-pack registry detail, treat ownership fields as governed onboarding evidence:
 
@@ -244,6 +245,11 @@ When reading workflow-pack registry detail, treat ownership fields as governed o
 2. `definition_ref` is the primary owner artifact that anchors the registration,
 3. `definition_refs` list the supporting contract, service, router, test, and optional product RFC or UI validation artifacts that justify the registration,
 4. a workflow-pack should not be considered properly onboarded if those references are vague, stale, or point only to `lotus-ai` placeholder docs.
+
+Default-version resolution is deliberately conservative. The default route returns the current
+registered, activation-eligible, non-superseded version for a pack family so callers and operators
+can discover the governed default without assuming that a discovered or dark successor version is
+ready to run.
 
 For a future-pack-owner checklist and the Phase-1 `advisor_brief.pack` reference pattern, use:
 

@@ -74,6 +74,7 @@
 - Safety governance status: /platform/safety/governance-status
 - Retrieval runtime status: /platform/retrieval/runtime-status
 - Workflow-pack registry: /platform/workflow-packs/registry
+- Workflow-pack default version: /platform/workflow-packs/registry/{pack_id}/default
 - Workflow-pack registration detail: /platform/workflow-packs/registry/{pack_id}/{version}
 - Workflow-pack queue policies: /platform/workflow-packs/queue-policies
 - Workflow-pack queue status: /platform/workflow-packs/queue-status
