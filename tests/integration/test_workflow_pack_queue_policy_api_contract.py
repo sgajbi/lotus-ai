@@ -28,7 +28,7 @@ def test_workflow_pack_queue_policy_catalog_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["policy_count"] == 6
+    assert body["policy_count"] == 7
     advisor_policy = next(
         policy
         for policy in body["policies"]
@@ -69,6 +69,17 @@ def test_workflow_pack_queue_policy_catalog_route(client: TestClient) -> None:
     assert wave_policy["policy_id"] == "queue-policy.dpm-wave-pm-memo.v1"
     assert wave_policy["default_lane"] == "REVIEW_SUPPORT"
     assert wave_policy["allowed_lanes"] == ["REVIEW_SUPPORT", "OPERATOR"]
+    operations_handoff_policy = next(
+        policy
+        for policy in body["policies"]
+        if policy["workflow_pack_id"] == "dpm_operations_handoff_summary.pack"
+        and policy["workflow_pack_version"] == "v1"
+    )
+    assert operations_handoff_policy["policy_id"] == (
+        "queue-policy.dpm-operations-handoff-summary.v1"
+    )
+    assert operations_handoff_policy["default_lane"] == "REVIEW_SUPPORT"
+    assert operations_handoff_policy["allowed_lanes"] == ["REVIEW_SUPPORT", "OPERATOR"]
 
 
 def test_workflow_pack_queue_policy_detail_route(client: TestClient) -> None:
