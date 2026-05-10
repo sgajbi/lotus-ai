@@ -138,3 +138,22 @@ DPM_WAVE_PM_MEMO_V1_SPEC = WorkflowPackPhase1VersionSpec(
     execution_task_id="explain.v1",
     required_payload_keys=frozenset({"wave_report_input", "memo_request", "supportability"}),
 )
+
+
+DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC = WorkflowPackPhase1VersionSpec(
+    pack_id="dpm_operations_handoff_summary.pack",
+    pack_family="dpm_operations_handoff_summary",
+    version="v1",
+    owner_repository="lotus-manage",
+    owner_service="lotus-manage",
+    truth_owner_services=("lotus-manage", "lotus-core", "lotus-risk", "lotus-performance"),
+    primary_use_case="dpm_operations_handoff_summary",
+    workflow_authority_owner="lotus-manage",
+    supported_callers=("lotus-manage", "lotus-gateway"),
+    surface_scope=("dpm-operations-handoff-ai-evidence",),
+    default_workflow_surface="dpm-operations-handoff-ai-evidence",
+    execution_task_id="explain.v1",
+    required_payload_keys=frozenset(
+        {"wave_report_input", "handoff_summary_request", "supportability"}
+    ),
+)

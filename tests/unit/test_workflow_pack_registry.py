@@ -26,8 +26,8 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
 
     assert catalog.service == "lotus-ai"
     assert catalog.phase == "foundation"
-    assert catalog.registration_count == 7
-    assert catalog.registered_count == 6
+    assert catalog.registration_count == 8
+    assert catalog.registered_count == 7
     assert catalog.production_eligible_count == 0
     advisor_brief_registration = next(
         registration
@@ -58,6 +58,11 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         registration
         for registration in catalog.registrations
         if registration.pack_id == "dpm_wave_pm_memo.pack"
+    )
+    operations_handoff_summary_registration = next(
+        registration
+        for registration in catalog.registrations
+        if registration.pack_id == "dpm_operations_handoff_summary.pack"
     )
     assert (
         advisor_brief_registration.registration_status == WorkflowPackRegistrationStatus.REGISTERED
@@ -129,8 +134,23 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         and definition_ref.required_for_registration is True
         for definition_ref in wave_pm_memo_registration.definition_refs
     )
-    assert len(catalog.execution_bindings) == 6
-    assert len(catalog.queue_policies) == 6
+    assert operations_handoff_summary_registration.registration_status == (
+        WorkflowPackRegistrationStatus.REGISTERED
+    )
+    assert operations_handoff_summary_registration.owner_repository == "lotus-manage"
+    assert operations_handoff_summary_registration.workflow_authority_owner == "lotus-manage"
+    assert operations_handoff_summary_registration.supported_callers == [
+        "lotus-manage",
+        "lotus-gateway",
+    ]
+    assert any(
+        definition_ref.repository == "lotus-manage"
+        and definition_ref.path == "src/core/waves/handoffs.py"
+        and definition_ref.required_for_registration is True
+        for definition_ref in operations_handoff_summary_registration.definition_refs
+    )
+    assert len(catalog.execution_bindings) == 7
+    assert len(catalog.queue_policies) == 7
     assert any(
         binding.pack_id == "advisor_brief.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
@@ -159,6 +179,10 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     )
     assert any(
         binding.pack_id == "dpm_wave_pm_memo.pack" and binding.task_id == "explain.v1"
+        for binding in catalog.execution_bindings
+    )
+    assert any(
+        binding.pack_id == "dpm_operations_handoff_summary.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
     )
 
@@ -273,6 +297,23 @@ def test_build_wave_pm_memo_registration_detail_exposes_manage_owned_binding() -
     assert detail.execution_binding is not None
     assert detail.execution_binding.task_id == "explain.v1"
     assert detail.execution_binding.default_workflow_surface == "dpm-wave-ai-evidence"
+
+
+def test_build_operations_handoff_summary_registration_detail_exposes_manage_owned_binding() -> (
+    None
+):
+    detail = build_workflow_pack_registration_detail(
+        pack_id="dpm_operations_handoff_summary.pack",
+        version="v1",
+    )
+
+    assert detail.registration.owner_repository == "lotus-manage"
+    assert detail.registration.workflow_authority_owner == "lotus-manage"
+    assert detail.execution_binding is not None
+    assert detail.execution_binding.task_id == "explain.v1"
+    assert detail.execution_binding.default_workflow_surface == (
+        "dpm-operations-handoff-ai-evidence"
+    )
 
 
 def test_build_workflow_pack_registration_detail_rejects_unknown_registration() -> None:

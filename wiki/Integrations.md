@@ -166,10 +166,11 @@ the owner-facing procedure and do one more truth check before treating a registr
 
 ## DPM PM Memo Integration
 
-`dpm_pm_memo.pack@v1` and `dpm_wave_pm_memo.pack@v1` are the current `lotus-ai` owner-side
-execution contracts for governed PM memo drafting from Manage evidence. The proof-pack pack is for
-single proof-pack evidence; the wave pack is for rebalance-wave evidence that may summarize multiple
-wave items and proof-pack refs.
+`dpm_pm_memo.pack@v1`, `dpm_wave_pm_memo.pack@v1`, and
+`dpm_operations_handoff_summary.pack@v1` are the current `lotus-ai` owner-side execution contracts
+for governed DPM support drafting from Manage evidence. The proof-pack pack is for single proof-pack
+evidence, the wave pack is for rebalance-wave PM memo evidence, and the operations pack is for
+bounded internal handoff evidence that may summarize staged wave items and handoff refs.
 
 Use it only when the caller supplies:
 
@@ -212,13 +213,27 @@ The wave pack additionally blocks external-execution claims and requires non-emp
 bounded wave items, proof-pack posture, and `NO_RAW_PAYLOADS` redaction before run, audit, or
 task-flow records are written.
 
+Use `dpm_operations_handoff_summary.pack@v1` only when the caller supplies:
+
+1. `wave_report_input` shaped as `lotus-manage` `DpmWaveReportInput`,
+2. non-empty bounded `handoff_refs` with ref type, ref id, source system, and content hash,
+3. `handoff_summary_request` with allowed requested outputs such as `operations_summary`,
+   `execution_prerequisites`, `blocking_conditions`, `support_references`, or `evidence_gaps`,
+4. `supportability` posture with required forbidden actions and unsupported claims,
+5. optional `portfolio_memory_context` only when `lotus-manage` supplies bounded source-lineage
+   context for the same portfolio.
+
+The operations handoff pack blocks order tickets, routing instructions, external-execution claims,
+trade recommendations, client messages, and inferred missing handoff evidence before run, audit, or
+task-flow records are written.
+
 ```mermaid
 sequenceDiagram
     participant Manage as lotus-manage
     participant AI as lotus-ai
     participant Ledger as workflow-pack ledger
     participant UI as Gateway / Workbench
-    Manage->>AI: dpm_pm_memo.pack@v1 or dpm_wave_pm_memo.pack@v1 with bounded evidence
+    Manage->>AI: DPM memo, wave memo, or operations handoff pack with bounded evidence
     AI->>AI: Validate forbidden actions, fields, requested outputs, and memory lineage
     AI->>Ledger: Record review-gated run after guardrails pass
     Ledger-->>AI: workflow_pack_run_id and provenance
