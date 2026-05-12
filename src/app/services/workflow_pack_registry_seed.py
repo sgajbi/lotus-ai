@@ -14,6 +14,7 @@ from app.contracts.workflow_packs import (
 from app.services.workflow_pack_phase1_specs import (
     ADVISOR_BRIEF_V1_SPEC,
     ADVISOR_BRIEF_V2_SPEC,
+    DPM_EXCEPTION_SUMMARY_V1_SPEC,
     DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC,
     DPM_WAVE_PM_MEMO_V1_SPEC,
     OUTCOME_REVIEW_NARRATIVE_V1_SPEC,
@@ -300,6 +301,46 @@ def build_seed_workflow_pack_registrations() -> list[WorkflowPackRegistrationDes
             status_summary=[
                 "The DPM wave PM memo workflow pack consumes lotus-manage DpmWaveReportInput only.",
                 "Activation remains pilot-scoped while Gateway and Workbench add product-surface invocation, unavailable posture, and canonical live proof without reconstructing wave or proof-pack evidence.",
+            ],
+        ),
+        WorkflowPackRegistrationDescriptor(
+            pack_id=DPM_EXCEPTION_SUMMARY_V1_SPEC.pack_id,
+            pack_family=DPM_EXCEPTION_SUMMARY_V1_SPEC.pack_family,
+            version=DPM_EXCEPTION_SUMMARY_V1_SPEC.version,
+            owner_repository=DPM_EXCEPTION_SUMMARY_V1_SPEC.owner_repository,
+            owner_service=DPM_EXCEPTION_SUMMARY_V1_SPEC.owner_service,
+            truth_owner_services=list(DPM_EXCEPTION_SUMMARY_V1_SPEC.truth_owner_services),
+            primary_use_case=DPM_EXCEPTION_SUMMARY_V1_SPEC.primary_use_case,
+            workflow_authority_owner=DPM_EXCEPTION_SUMMARY_V1_SPEC.workflow_authority_owner,
+            default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
+            definition_ref="repo://lotus-manage/src/api/routers/monitoring.py",
+            definition_refs=_dpm_exception_summary_v1_definition_refs(),
+            compatibility_contract_version="workflow-pack-contract.v1",
+            registration_status=WorkflowPackRegistrationStatus.REGISTERED,
+            activation_state=WorkflowPackActivationState.PILOT,
+            registered_definition_digest="sha256:dpm-exception-summary-v1-registered-digest",
+            supported_callers=list(DPM_EXCEPTION_SUMMARY_V1_SPEC.supported_callers),
+            supported_identity_classes=[
+                WorkflowPackCallerIdentityClass.INTERNAL_SERVICE,
+            ],
+            supported_environments=[
+                WorkflowPackEnvironment.DEVELOPMENT,
+                WorkflowPackEnvironment.QA,
+                WorkflowPackEnvironment.UAT,
+            ],
+            tenant_scope=[],
+            surface_scope=list(DPM_EXCEPTION_SUMMARY_V1_SPEC.surface_scope),
+            default_rollout_stage="PILOT_SCOPED",
+            pause_state="NOT_PAUSED",
+            supersedes=None,
+            superseded_by=None,
+            registered_at="2026-05-12T08:00:00Z",
+            registered_by="lotus-ai.workflow-pack-registry.seed",
+            last_activated_at="2026-05-12T08:20:00Z",
+            last_changed_at="2026-05-12T08:20:00Z",
+            status_summary=[
+                "The DPM exception summary workflow pack consumes bounded lotus-manage monitoring exception evidence only.",
+                "Activation remains pilot-scoped while product invocation and any broader copilot workspace are implemented by their owners without reconstructing exception truth.",
             ],
         ),
         WorkflowPackRegistrationDescriptor(
@@ -754,6 +795,66 @@ def _dpm_operations_handoff_summary_v1_definition_refs() -> list[
             required_for_registration=False,
             description=(
                 "RFC-0043 defines governed operations handoff summary support, no-domain-decision "
+                "guardrails, review posture, and unavailable behavior."
+            ),
+        ),
+    ]
+
+
+def _dpm_exception_summary_v1_definition_refs() -> list[WorkflowPackDefinitionReferenceDescriptor]:
+    return [
+        _definition_ref(
+            reference_id="primary_contract",
+            repository="lotus-manage",
+            path="src/core/mandates.py",
+            reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
+            required_for_registration=True,
+            description=(
+                "Manage-owned monitoring exception models that bound exception identity, severity, "
+                "state, reason code, recommended action, and source lineage."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_service",
+            repository="lotus-manage",
+            path="src/api/services/monitoring_service.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description=(
+                "Manage service that materializes mandate monitoring runs and exception posture "
+                "without generating AI narrative locally."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_router",
+            repository="lotus-manage",
+            path="src/api/routers/monitoring.py",
+            reference_type=WorkflowPackDefinitionReferenceType.ROUTER,
+            required_for_registration=True,
+            description=(
+                "Manage API route exposing bounded mandate monitoring exception evidence for "
+                "downstream AI support summaries."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_tests",
+            repository="lotus-manage",
+            path="tests/unit/dpm/api/test_monitoring_api.py",
+            reference_type=WorkflowPackDefinitionReferenceType.TEST,
+            required_for_registration=True,
+            description=(
+                "Manage regression coverage proving monitoring exceptions remain source-linked, "
+                "bounded, and review-oriented."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_rfc",
+            repository="lotus-manage",
+            path="docs/rfcs/RFC-0043-governed-ai-pm-copilot-for-dpm.md",
+            reference_type=WorkflowPackDefinitionReferenceType.RFC,
+            required_for_registration=False,
+            description=(
+                "RFC-0043 defines governed exception-summary support, no-domain-decision "
                 "guardrails, review posture, and unavailable behavior."
             ),
         ),

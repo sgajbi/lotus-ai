@@ -33,15 +33,16 @@ def test_ai_surface_supportability_summary_is_source_backed_and_bounded() -> Non
     summary = build_ai_surface_supportability_summary()
 
     assert summary.posture == ObservabilityPosture.DEGRADED
-    assert summary.supported_surface_count == 7
-    assert summary.executable_workflow_pack_count == 7
-    assert summary.action_required_surface_count == 7
+    assert summary.supported_surface_count == 8
+    assert summary.executable_workflow_pack_count == 8
+    assert summary.action_required_surface_count == 8
     assert summary.unavailable_surface_count == 0
     assert summary.no_sensitive_content_telemetry is False
     assert summary.metric_name == "lotus_ai_surface_supportability_state"
     assert summary.metric_labels == list(AI_SURFACE_SUPPORTABILITY_METRIC_LABELS)
     assert {item.surface_id: item.owning_service for item in summary.surfaces} == {
         "advisor_brief": "lotus-advise",
+        "dpm_exception_summary": "lotus-manage",
         "dpm_operations_handoff_summary": "lotus-manage",
         "dpm_pm_memo": "lotus-manage",
         "dpm_wave_pm_memo": "lotus-manage",

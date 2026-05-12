@@ -18,6 +18,7 @@ from tests.support.runtime_settings import override_runtime_settings
 from tests.support.workflow_pack_fixtures import (
     advisor_brief_task_execution_request_json,
     advisor_brief_workflow_pack_execution_request_json,
+    dpm_exception_summary_workflow_pack_execution_request_json,
     outcome_review_narrative_workflow_pack_execution_request_json,
     proof_pack_pm_memo_workflow_pack_execution_request_json,
     twr_inspection_support_brief_workflow_pack_execution_request_json,
@@ -481,6 +482,54 @@ def test_workflow_pack_execute_route_records_wave_pm_memo_run(
     assert structured_output["wave_report_content_hash"] == "sha256:wave-report-input-001"
     assert structured_output["proof_pack_ref_count"] == 1
     _assert_task_flow_recorded_for_run(client=client, run_id=body["workflow_pack_run"]["run_id"])
+
+
+def test_workflow_pack_execute_route_records_dpm_exception_summary_run(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=dpm_exception_summary_workflow_pack_execution_request_json(
+            correlation_id="corr-dpm-exception-summary-pack-001"
+        ),
+    )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    structured_output = body["execution"]["result"]["structured_output"]
+    assert body["eligibility"]["allowed"] is True
+    assert body["execution"]["status"] == "COMPLETED"
+    assert body["workflow_pack_run"]["pack_id"] == "dpm_exception_summary.pack"
+    assert body["workflow_pack_run"]["registration_ref"] == "dpm_exception_summary.pack@v1"
+    assert body["workflow_pack_run"]["caller_app"] == "lotus-manage"
+    assert body["workflow_pack_run"]["workflow_surface"] == "dpm-exception-summary-ai-evidence"
+    assert body["workflow_pack_run"]["workflow_authority_owner"] == "lotus-manage"
+    assert body["execution"]["audit"]["workflow_pack_run_id"] == body["workflow_pack_run"]["run_id"]
+    assert structured_output["workflow_pack_family"] == "dpm_exception_summary"
+    assert structured_output["state"] == "REVIEW_REQUIRED"
+    assert structured_output["scope"] == "support_only"
+    assert structured_output["exception_count"] == 2
+    assert structured_output["open_exception_count"] == 2
+    _assert_task_flow_recorded_for_run(client=client, run_id=body["workflow_pack_run"]["run_id"])
+
+
+def test_workflow_pack_execute_route_blocks_dpm_exception_summary_forbidden_output(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/platform/workflow-packs/execute",
+        json=dpm_exception_summary_workflow_pack_execution_request_json(
+            correlation_id="corr-dpm-exception-summary-blocked-output-001",
+            requested_outputs=["exception_summary", "portfolio_manager_score"],
+        ),
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert "DPM_EXCEPTION_SUMMARY_GUARDRAIL_BLOCKED" in body["detail"]
+    assert (
+        "Forbidden exception summary outputs requested: portfolio_manager_score" in body["detail"]
+    )
 
 
 def test_workflow_pack_execute_route_blocks_wave_pm_memo_execution_claim(

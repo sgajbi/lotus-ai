@@ -59,6 +59,11 @@ _WORKFLOW_PACK_SURFACE_OWNERS = {
         "lotus-manage",
         "lotus-manage",
     ),
+    "dpm_exception_summary.pack@v1": (
+        "dpm_exception_summary",
+        "lotus-manage",
+        "lotus-manage",
+    ),
 }
 
 _PROMETHEUS_POSTURES = (

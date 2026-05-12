@@ -157,3 +157,22 @@ DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC = WorkflowPackPhase1VersionSpec(
         {"wave_report_input", "handoff_summary_request", "supportability"}
     ),
 )
+
+
+DPM_EXCEPTION_SUMMARY_V1_SPEC = WorkflowPackPhase1VersionSpec(
+    pack_id="dpm_exception_summary.pack",
+    pack_family="dpm_exception_summary",
+    version="v1",
+    owner_repository="lotus-manage",
+    owner_service="lotus-manage",
+    truth_owner_services=("lotus-manage", "lotus-core", "lotus-risk", "lotus-performance"),
+    primary_use_case="dpm_exception_summary",
+    workflow_authority_owner="lotus-manage",
+    supported_callers=("lotus-manage", "lotus-gateway"),
+    surface_scope=("dpm-exception-summary-ai-evidence",),
+    default_workflow_surface="dpm-exception-summary-ai-evidence",
+    execution_task_id="explain.v1",
+    required_payload_keys=frozenset(
+        {"exception_summary_input", "exception_summary_request", "supportability"}
+    ),
+)

@@ -70,6 +70,7 @@ def test_workflow_pack_registry_store_returns_sqlalchemy_repository(tmp_path: Pa
     assert [f"{registration.pack_id}@{registration.version}" for registration in registrations] == [
         "advisor_brief.pack@v1",
         "advisor_brief.pack@v2",
+        "dpm_exception_summary.pack@v1",
         "dpm_operations_handoff_summary.pack@v1",
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",

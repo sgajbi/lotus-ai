@@ -24,6 +24,7 @@ from app.contracts.workflow_pack_queue_policies import (
 from app.config import settings
 from app.services.workflow_pack_phase1_specs import (
     ADVISOR_BRIEF_V1_SPEC,
+    DPM_EXCEPTION_SUMMARY_V1_SPEC,
     DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC,
     DPM_WAVE_PM_MEMO_V1_SPEC,
     OUTCOME_REVIEW_NARRATIVE_V1_SPEC,
@@ -46,6 +47,7 @@ def list_workflow_pack_queue_policy_descriptors() -> list[WorkflowPackQueuePolic
         _review_support_outcome_review_narrative_policy(),
         _review_support_wave_pm_memo_policy(),
         _review_support_operations_handoff_summary_policy(),
+        _review_support_dpm_exception_summary_policy(),
     ]
     _validate_queue_policy_identity(policies)
     return [policy.model_copy(deep=True) for policy in policies]
@@ -342,6 +344,29 @@ def _review_support_operations_handoff_summary_policy() -> WorkflowPackQueuePoli
         status_summary=[
             "DPM operations handoff summaries default to review-support capacity because generated text remains support-only and review-gated.",
             "Operator capacity is reserved for controlled investigation of guardrail-blocked, unavailable, or stale handoff-evidence posture.",
+        ],
+    )
+
+
+def _review_support_dpm_exception_summary_policy() -> WorkflowPackQueuePolicyDescriptor:
+    return _build_queue_policy(
+        spec=DPM_EXCEPTION_SUMMARY_V1_SPEC,
+        policy_id="queue-policy.dpm-exception-summary.v1",
+        allowed_lanes=[
+            WorkflowPackQueueLane.REVIEW_SUPPORT,
+            WorkflowPackQueueLane.OPERATOR,
+        ],
+        default_lane=WorkflowPackQueueLane.REVIEW_SUPPORT,
+        max_concurrent_runs_per_pack=2,
+        max_concurrent_runs_per_lane=1,
+        max_queued_runs_per_pack=25,
+        max_queued_runs_per_lane=10,
+        admission_timeout_seconds=20,
+        execution_timeout_seconds=300,
+        stale_queue_threshold_seconds=90,
+        status_summary=[
+            "DPM exception summaries default to review-support capacity because generated text remains support-only and review-gated.",
+            "Operator capacity is reserved for controlled investigation of guardrail-blocked, unavailable, or stale exception-evidence posture.",
         ],
     )
 

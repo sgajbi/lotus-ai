@@ -8,8 +8,8 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["domain_count"] == 6
-    assert body["ai_surface_supportability"]["supported_surface_count"] == 7
-    assert body["ai_surface_supportability"]["executable_workflow_pack_count"] == 7
+    assert body["ai_surface_supportability"]["supported_surface_count"] == 8
+    assert body["ai_surface_supportability"]["executable_workflow_pack_count"] == 8
     assert (
         body["ai_surface_supportability"]["metric_name"] == "lotus_ai_surface_supportability_state"
     )
@@ -18,6 +18,7 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
         surface["workflow_pack_ref"] for surface in body["ai_surface_supportability"]["surfaces"]
     } == {
         "advisor_brief.pack@v1",
+        "dpm_exception_summary.pack@v1",
         "dpm_operations_handoff_summary.pack@v1",
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",
@@ -25,6 +26,12 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
         "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
     }
+    assert any(
+        surface["surface_id"] == "dpm_exception_summary"
+        and surface["owning_service"] == "lotus-manage"
+        and surface["workflow_authority_owner"] == "lotus-manage"
+        for surface in body["ai_surface_supportability"]["surfaces"]
+    )
     assert any(
         surface["surface_id"] == "dpm_operations_handoff_summary"
         and surface["owning_service"] == "lotus-manage"

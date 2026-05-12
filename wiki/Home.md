@@ -41,24 +41,26 @@ It does not own portfolio, performance, risk, advisory, management, or reporting
 
 ## Workflow-Pack Product Coverage
 
-Current executable workflow-pack coverage is implementation-backed for seven pilot-scoped families:
+Current executable workflow-pack coverage is implementation-backed for eight pilot-scoped families:
 
 1. `advisor_brief.pack@v1`
 2. `workspace_rationale.pack@v1`
 3. `twr_inspection_support_brief.pack@v1`
 4. `dpm_pm_memo.pack@v1`
 5. `dpm_wave_pm_memo.pack@v1`
-6. `dpm_operations_handoff_summary.pack@v1`
-7. `outcome_review_narrative.pack@v1`
+6. `dpm_exception_summary.pack@v1`
+7. `dpm_operations_handoff_summary.pack@v1`
+8. `outcome_review_narrative.pack@v1`
 
 The DPM packs are deliberately support-only and review-gated. `dpm_pm_memo.pack@v1` consumes
 `lotus-manage` `DpmProofPackAiEvidenceInput`; `dpm_wave_pm_memo.pack@v1` and
 `dpm_operations_handoff_summary.pack@v1` consume `lotus-manage` `DpmWaveReportInput`;
-`outcome_review_narrative.pack@v1` consumes `lotus-manage` `DpmOutcomeAiEvidenceInput`. These
-packs can also consume optional manage-owned `portfolio_memory_context` as bounded source lineage.
-They validate forbidden actions, forbidden fields, requested output scope, portfolio-memory
-redaction/source-authority posture, run-ledger posture, and source evidence before generated
-narrative can be treated as usable support.
+`dpm_exception_summary.pack@v1` consumes bounded `lotus-manage` monitoring exception evidence; and
+`outcome_review_narrative.pack@v1` consumes `lotus-manage` `DpmOutcomeAiEvidenceInput`. The
+proof-pack, wave, handoff, and outcome packs can also consume optional manage-owned
+`portfolio_memory_context` as bounded source lineage. They validate forbidden actions, forbidden
+fields, requested output scope, portfolio-memory redaction/source-authority posture, run-ledger
+posture, and source evidence before generated narrative can be treated as usable support.
 
 ## Supported Task Families
 
