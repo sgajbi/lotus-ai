@@ -852,3 +852,155 @@ def operations_handoff_summary_workflow_pack_execution_request_json(
     if workflow_surface is not None:
         request["workflow_surface"] = workflow_surface
     return request
+
+
+def dpm_exception_summary_payload(
+    *,
+    portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
+    content_hash: str = "sha256:dpm-exception-summary-input-001",
+    requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "exception_summary_input": {
+            "contract_version": "1.0",
+            "portfolio_id": portfolio_id,
+            "mandate_id": "MANDATE_PB_SG_GLOBAL_BAL_001",
+            "as_of_date": "2026-05-12",
+            "generated_at": "2026-05-12T08:00:00Z",
+            "exception_count": 2,
+            "exceptions": [
+                {
+                    "exception_id": "dpm_exception_001",
+                    "portfolio_id": portfolio_id,
+                    "mandate_id": "MANDATE_PB_SG_GLOBAL_BAL_001",
+                    "severity": "HIGH",
+                    "state": "OPEN",
+                    "reason_code": "CASH_LIQUIDITY_ATTENTION",
+                    "recommended_action": "REVIEW_WITH_PM",
+                    "detected_at": "2026-05-12T07:50:00Z",
+                    "source_refs": [
+                        {
+                            "source_system": "lotus-manage",
+                            "source_type": "DPM_MONITORING_EXCEPTION",
+                            "source_id": "dpm_exception_001",
+                            "content_hash": "sha256:dpm-exception-001",
+                        }
+                    ],
+                },
+                {
+                    "exception_id": "dpm_exception_002",
+                    "portfolio_id": portfolio_id,
+                    "mandate_id": "MANDATE_PB_SG_GLOBAL_BAL_001",
+                    "severity": "MEDIUM",
+                    "state": "OPEN",
+                    "reason_code": "BENCHMARK_DRIFT_REVIEW",
+                    "recommended_action": "CHECK_SOURCE_EVIDENCE",
+                    "detected_at": "2026-05-12T07:55:00Z",
+                    "source_refs": [
+                        {
+                            "source_system": "lotus-manage",
+                            "source_type": "DPM_MONITORING_EXCEPTION",
+                            "source_id": "dpm_exception_002",
+                            "content_hash": "sha256:dpm-exception-002",
+                        }
+                    ],
+                },
+            ],
+            "source_refs": [
+                {
+                    "source_system": "lotus-manage",
+                    "source_type": "DPM_EXCEPTION_SUMMARY_INPUT",
+                    "source_id": f"{portfolio_id}:dpm_exception_summary_input",
+                    "content_hash": content_hash,
+                }
+            ],
+            "redaction_policy": "NO_RAW_PAYLOADS",
+            "evidence_ref": {
+                "source_system": "lotus-manage",
+                "source_type": "DPM_EXCEPTION_SUMMARY_INPUT",
+                "source_id": f"{portfolio_id}:dpm_exception_summary_input",
+                "content_hash": content_hash,
+            },
+            "content_hash": content_hash,
+        },
+        "exception_summary_request": {
+            "requested_outputs": requested_outputs
+            or [
+                "exception_summary",
+                "severity_summary",
+                "recommended_triage",
+                "support_references",
+                "evidence_gaps",
+            ],
+            "audience": ["portfolio_manager", "investment_control", "operations"],
+        },
+        "supportability": {
+            "source_state": "READY",
+            "requires_human_review": True,
+            "forbidden_actions": [
+                "approve_rebalance",
+                "contact_client",
+                "invent_missing_evidence",
+                "override_controls",
+                "place_orders",
+                "score_portfolio_manager",
+            ],
+            "unsupported_claims": [
+                "trade_approval",
+                "order_instruction",
+                "client_message",
+                "portfolio_manager_scoring",
+            ],
+        },
+    }
+    if include_portfolio_memory_context:
+        payload["portfolio_memory_context"] = portfolio_memory_context_payload(
+            portfolio_id=portfolio_id
+        )
+    return payload
+
+
+def dpm_exception_summary_workflow_pack_execution_request_json(
+    *,
+    correlation_id: str,
+    task_id: str = "explain.v1",
+    caller_app: str = "lotus-manage",
+    workflow_surface: str | None = "dpm-exception-summary-ai-evidence",
+    environment: str = "DEVELOPMENT",
+    caller_identity_class: str = "INTERNAL_SERVICE",
+    requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
+) -> dict[str, object]:
+    request: dict[str, object] = {
+        "pack_id": "dpm_exception_summary.pack",
+        "version": "v1",
+        "environment": environment,
+        "caller_identity_class": caller_identity_class,
+        "task_request": {
+            "task_id": task_id,
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": caller_app,
+                "correlation_id": correlation_id,
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": (
+                    "Generate review-gated DPM exception summary from bounded monitoring evidence."
+                ),
+                "payload": dpm_exception_summary_payload(
+                    requested_outputs=requested_outputs,
+                    include_portfolio_memory_context=include_portfolio_memory_context,
+                ),
+                "source_refs": [
+                    "lotus-manage:monitoring-exception:dpm_exception_001",
+                    "lotus-manage:monitoring-exception:dpm_exception_002",
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    }
+    if workflow_surface is not None:
+        request["workflow_surface"] = workflow_surface
+    return request

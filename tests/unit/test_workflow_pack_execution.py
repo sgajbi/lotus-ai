@@ -7,6 +7,7 @@ from app.services.workflow_pack_execution import (
 )
 from app.services.workflow_pack_bindings import get_workflow_pack_execution_binding
 from tests.support.workflow_pack_fixtures import (
+    dpm_exception_summary_workflow_pack_execution_request_json,
     operations_handoff_summary_workflow_pack_execution_request_json,
     outcome_review_narrative_workflow_pack_execution_request_json,
     proof_pack_pm_memo_workflow_pack_execution_request_json,
@@ -218,6 +219,51 @@ def test_execute_workflow_pack_records_review_gated_operations_handoff_summary()
     assert structured_output["wave_report_content_hash"] == "sha256:wave-report-input-001"
     assert structured_output["handoff_ref_count"] == 1
     assert structured_output["external_execution_claimed"] is False
+
+
+def test_execute_workflow_pack_records_review_gated_dpm_exception_summary() -> None:
+    request = WorkflowPackExecutionRequest.model_validate(
+        dpm_exception_summary_workflow_pack_execution_request_json(
+            correlation_id="corr-execution-dpm-exception-summary"
+        )
+    )
+
+    response = execute_workflow_pack(request)
+
+    structured_output = response.execution.result.structured_output
+    assert response.execution.status.value == "COMPLETED"
+    assert response.workflow_pack_run.pack_id == "dpm_exception_summary.pack"
+    assert response.workflow_pack_run.workflow_authority_owner == "lotus-manage"
+    assert structured_output["workflow_pack_family"] == "dpm_exception_summary"
+    assert structured_output["state"] == "REVIEW_REQUIRED"
+    assert structured_output["scope"] == "support_only"
+    assert structured_output["exception_summary_content_hash"] == (
+        "sha256:dpm-exception-summary-input-001"
+    )
+    assert structured_output["exception_count"] == 2
+
+
+def test_validate_workflow_pack_execution_binding_runs_dpm_exception_summary_guardrails() -> None:
+    request_payload = dpm_exception_summary_workflow_pack_execution_request_json(
+        correlation_id="corr-execution-dpm-exception-summary-guardrail",
+        requested_outputs=["exception_summary", "client_message"],
+    )
+    request = WorkflowPackExecutionRequest.model_validate(request_payload)
+    binding = get_workflow_pack_execution_binding(
+        pack_id="dpm_exception_summary.pack",
+        version="v1",
+    )
+    assert binding is not None
+
+    try:
+        validate_workflow_pack_execution_binding(request=request, binding=binding)
+    except HTTPException as exc:
+        assert exc.status_code == 422
+        assert "Forbidden exception summary outputs requested: client_message" in str(exc.detail)
+    else:
+        raise AssertionError(
+            "expected exception summary guardrails to reject client-message output"
+        )
 
 
 def test_validate_workflow_pack_execution_binding_runs_operations_handoff_guardrails() -> None:

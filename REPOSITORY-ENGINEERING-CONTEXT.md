@@ -38,7 +38,8 @@ Current repository posture:
 5. workflow-pack run-ledger foundations now exist as a separate runtime seam for the current
    executable workflow-pack families (`advisor_brief.pack`, `workspace_rationale.pack`,
    `twr_inspection_support_brief.pack`, `dpm_pm_memo.pack`, `dpm_wave_pm_memo.pack`,
-   `dpm_operations_handoff_summary.pack`, and `outcome_review_narrative.pack`), with runtime state
+   `dpm_exception_summary.pack`, `dpm_operations_handoff_summary.pack`, and
+   `outcome_review_narrative.pack`), with runtime state
    kept separate from review state,
    bounded actor-attributed review transitions available through the ledger API, bounded
    ledger-compatible `allowed_review_actions` emitted for consumers, governed workflow-pack
@@ -53,7 +54,10 @@ Current repository posture:
    validate manage-owned `DpmWaveReportInput`, non-empty bounded handoff refs, required forbidden
    actions, forbidden fields, forbidden requested outputs, no-external-execution posture,
    `NO_RAW_PAYLOADS`, and optional source-lineage-only `portfolio_memory_context` before
-   run/audit/task-flow side effects, and deterministic
+   run/audit/task-flow side effects, deterministic exception summary guardrails that validate
+   manage-owned monitoring exception evidence, bounded source refs, required forbidden actions,
+   forbidden fields, forbidden requested outputs, `NO_RAW_PAYLOADS`, and support-only posture
+   before run/audit/task-flow side effects, and deterministic
    outcome-review narrative guardrails that validate manage-owned `DpmOutcomeAiEvidenceInput`,
    required forbidden actions, forbidden fields, forbidden requested outputs, and optional
    source-lineage-only `portfolio_memory_context` before run/audit/task-flow side effects. The

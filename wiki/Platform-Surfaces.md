@@ -131,8 +131,10 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
    `workspace_rationale.pack`, `twr_inspection_support_brief.pack`, the review-gated
    `dpm_pm_memo.pack` contract for `lotus-manage` `DpmProofPackAiEvidenceInput`, the
    review-gated `dpm_wave_pm_memo.pack` and `dpm_operations_handoff_summary.pack` contracts for
-   `lotus-manage` `DpmWaveReportInput`, and the review-gated `outcome_review_narrative.pack` contract for `lotus-manage`
-   `DpmOutcomeAiEvidenceInput`. DPM proof-pack PM memo execution validates required proof-pack
+   `lotus-manage` `DpmWaveReportInput`, the review-gated `dpm_exception_summary.pack` contract
+   for bounded `lotus-manage` monitoring exception evidence, and the review-gated
+   `outcome_review_narrative.pack` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`.
+   DPM proof-pack PM memo execution validates required proof-pack
    evidence, required forbidden actions, forbidden field names, forbidden requested outputs such as
    trade recommendations or client messages, and unsupported requested outputs before run, audit,
    or task-flow posture is recorded. DPM wave PM memo execution validates required wave report
@@ -140,8 +142,10 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
    no-external-execution posture, forbidden actions, forbidden fields, and requested outputs before
    side effects are recorded. DPM operations handoff summary execution additionally requires
    non-empty bounded handoff refs and blocks order tickets, routing instructions, execution
-   instructions, external-execution claims, and inferred missing handoff evidence. Outcome-review
-   narrative execution validates required forbidden
+   instructions, external-execution claims, and inferred missing handoff evidence. DPM exception
+   summary execution validates bounded exception evidence, source refs, `NO_RAW_PAYLOADS`, required
+   forbidden actions, forbidden fields, and requested outputs before side effects are recorded.
+   Outcome-review narrative execution validates required forbidden
    actions, rejects forbidden field names, rejects forbidden requested outputs such as PM scoring or
    client messages, records run and task-flow posture only after those guardrails pass, and remains
    support-only until Gateway and Workbench surfaces consume the contract. The DPM packs can
@@ -153,6 +157,7 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 flowchart LR
     ProofPack["lotus-manage\nDpmProofPackAiEvidenceInput"] --> MemoPack["dpm_pm_memo.pack@v1"]
     Wave["lotus-manage\nDpmWaveReportInput"] --> WavePack["dpm_wave_pm_memo.pack@v1"]
+    Exception["lotus-manage\nmonitoring exception evidence"] --> ExceptionPack["dpm_exception_summary.pack@v1"]
     Wave --> HandoffPack["dpm_operations_handoff_summary.pack@v1"]
     Outcome["lotus-manage\nDpmOutcomeAiEvidenceInput"] --> OutcomePack["outcome_review_narrative.pack@v1"]
     Memory["lotus-manage\nportfolio_memory_context"] --> MemoPack
@@ -161,6 +166,7 @@ flowchart LR
     Memory --> OutcomePack
     MemoPack --> Guardrails["lotus-ai guardrails\nfields / actions / outputs / memory"]
     WavePack --> Guardrails
+    ExceptionPack --> Guardrails
     HandoffPack --> Guardrails
     OutcomePack --> Guardrails
     Guardrails --> Ledger["Run ledger\nreview required"]

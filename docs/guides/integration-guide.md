@@ -299,7 +299,14 @@ That sequence keeps downstream adoption pack-oriented first, while still preserv
    external execution claims, control override, or invented missing wave or proof-pack evidence
    are guardrail-blocked before execution and should be corrected in the caller contract rather
    than retried with prompt wording.
-7. Use `dpm_operations_handoff_summary.pack@v1` only with manage-owned `DpmWaveReportInput`,
+7. Use `dpm_exception_summary.pack@v1` only with bounded manage-owned monitoring exception
+   evidence, a bounded `exception_summary_request`, supportability posture, source refs,
+   `NO_RAW_PAYLOADS`, and requested outputs such as `exception_summary`, `severity_summary`,
+   `recommended_triage`, `support_references`, or `evidence_gaps`. Requests for rebalance
+   approval, order instructions, client messages, PM scoring, control override, or invented
+   exception evidence are guardrail-blocked before execution and should be corrected at the source
+   evidence boundary.
+8. Use `dpm_operations_handoff_summary.pack@v1` only with manage-owned `DpmWaveReportInput`,
    non-empty bounded `handoff_refs`, a bounded `handoff_summary_request`, supportability posture,
    and optional manage-owned `portfolio_memory_context`. Requests for order tickets, routing
    instructions, execution instructions, trade recommendations, client messages, external execution
@@ -318,9 +325,11 @@ flowchart LR
     Wave["lotus-manage rebalance wave\nDpmWaveReportInput"] --> Gateway
     Manage --> AI["lotus-ai\ndpm_pm_memo.pack@v1"]
     Wave --> WaveAI["lotus-ai\ndpm_wave_pm_memo.pack@v1"]
+    Exception["lotus-manage monitoring exceptions\nbounded exception evidence"] --> ExceptionAI["lotus-ai\ndpm_exception_summary.pack@v1"]
     Wave --> HandoffAI["lotus-ai\ndpm_operations_handoff_summary.pack@v1"]
     Gateway --> AI
     Gateway --> WaveAI
+    Gateway --> ExceptionAI
     Gateway --> HandoffAI
     Manage --> Memory["portfolio_memory_context\nsource-lineage only"]
     Memory --> AI
@@ -328,6 +337,7 @@ flowchart LR
     Memory --> HandoffAI
     AI --> Guardrails["Forbidden action,\nfield, output,\nand memory guardrails"]
     WaveAI --> Guardrails
+    ExceptionAI --> Guardrails
     HandoffAI --> Guardrails
     Guardrails --> RunLedger["Workflow-pack run ledger\nreview required"]
     RunLedger --> Consumers["Gateway / Workbench\nfuture PM memo surface"]

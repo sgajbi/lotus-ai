@@ -166,11 +166,12 @@ the owner-facing procedure and do one more truth check before treating a registr
 
 ## DPM PM Memo Integration
 
-`dpm_pm_memo.pack@v1`, `dpm_wave_pm_memo.pack@v1`, and
+`dpm_pm_memo.pack@v1`, `dpm_wave_pm_memo.pack@v1`, `dpm_exception_summary.pack@v1`, and
 `dpm_operations_handoff_summary.pack@v1` are the current `lotus-ai` owner-side execution contracts
-for governed DPM support drafting from Manage evidence. The proof-pack pack is for single proof-pack
-evidence, the wave pack is for rebalance-wave PM memo evidence, and the operations pack is for
-bounded internal handoff evidence that may summarize staged wave items and handoff refs.
+for governed DPM support drafting from Manage evidence. The proof-pack pack is for single
+proof-pack evidence, the wave pack is for rebalance-wave PM memo evidence, the exception pack is
+for bounded monitoring exception evidence, and the operations pack is for bounded internal handoff
+evidence that may summarize staged wave items and handoff refs.
 
 Use it only when the caller supplies:
 
@@ -213,6 +214,18 @@ The wave pack additionally blocks external-execution claims and requires non-emp
 bounded wave items, proof-pack posture, and `NO_RAW_PAYLOADS` redaction before run, audit, or
 task-flow records are written.
 
+Use `dpm_exception_summary.pack@v1` only when the caller supplies:
+
+1. `exception_summary_input` from manage-owned monitoring exception evidence,
+2. bounded source refs with source system, content hash, and no raw payloads,
+3. `exception_summary_request` with allowed requested outputs such as `exception_summary`,
+   `severity_summary`, `recommended_triage`, `support_references`, or `evidence_gaps`,
+4. `supportability` posture with required forbidden actions and unsupported claims.
+
+The exception pack blocks rebalance approval, order instructions, client messages, PM scoring,
+control overrides, and invented missing exception evidence before run, audit, or task-flow records
+are written.
+
 Use `dpm_operations_handoff_summary.pack@v1` only when the caller supplies:
 
 1. `wave_report_input` shaped as `lotus-manage` `DpmWaveReportInput`,
@@ -233,7 +246,7 @@ sequenceDiagram
     participant AI as lotus-ai
     participant Ledger as workflow-pack ledger
     participant UI as Gateway / Workbench
-    Manage->>AI: DPM memo, wave memo, or operations handoff pack with bounded evidence
+    Manage->>AI: DPM memo, wave memo, exception summary, or operations handoff pack with bounded evidence
     AI->>AI: Validate forbidden actions, fields, requested outputs, and memory lineage
     AI->>Ledger: Record review-gated run after guardrails pass
     Ledger-->>AI: workflow_pack_run_id and provenance

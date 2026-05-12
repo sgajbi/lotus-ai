@@ -34,6 +34,9 @@ from app.services.workflow_pack_task_flow_service import (
     ensure_workflow_pack_task_flow_store_ready,
 )
 from app.services.workflow_pack_queue_admission import workflow_pack_queue_admission
+from app.services.dpm_exception_summary_guardrails import (
+    validate_dpm_exception_summary_payload,
+)
 from app.services.outcome_review_narrative_guardrails import (
     validate_outcome_review_narrative_payload,
 )
@@ -160,6 +163,8 @@ def validate_workflow_pack_execution_binding(
         validate_wave_pm_memo_payload(request.task_request.context.payload)
     if request.pack_id == "dpm_operations_handoff_summary.pack" and request.version == "v1":
         validate_operations_handoff_summary_payload(request.task_request.context.payload)
+    if request.pack_id == "dpm_exception_summary.pack" and request.version == "v1":
+        validate_dpm_exception_summary_payload(request.task_request.context.payload)
 
 
 def _attach_workflow_pack_run_id(
