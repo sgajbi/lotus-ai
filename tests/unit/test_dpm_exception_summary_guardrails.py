@@ -46,6 +46,13 @@ def test_dpm_exception_summary_guardrails_block_unbounded_exception_rows() -> No
     _assert_guardrail_blocks(payload, "Each exception must carry")
 
 
+def test_dpm_exception_summary_guardrails_block_empty_exceptions() -> None:
+    payload = cast(dict[str, Any], dpm_exception_summary_payload())
+    payload["exception_summary_input"]["exceptions"] = []
+
+    _assert_guardrail_blocks(payload, "requires at least one bounded monitoring exception")
+
+
 def test_dpm_exception_summary_guardrails_block_count_mismatch() -> None:
     payload = cast(dict[str, Any], dpm_exception_summary_payload())
     payload["exception_summary_input"]["exception_count"] = 99
@@ -58,6 +65,20 @@ def test_dpm_exception_summary_guardrails_block_unbounded_top_level_source_refs(
     payload["exception_summary_input"]["source_refs"] = [{"source_system": "lotus-manage"}]
 
     _assert_guardrail_blocks(payload, "source_refs must be bounded and source-linked")
+
+
+def test_dpm_exception_summary_guardrails_block_empty_top_level_source_refs() -> None:
+    payload = cast(dict[str, Any], dpm_exception_summary_payload())
+    payload["exception_summary_input"]["source_refs"] = []
+
+    _assert_guardrail_blocks(payload, "source_refs must be a non-empty list")
+
+
+def test_dpm_exception_summary_guardrails_block_unbounded_evidence_ref() -> None:
+    payload = cast(dict[str, Any], dpm_exception_summary_payload())
+    payload["exception_summary_input"]["evidence_ref"] = {"source_system": "lotus-manage"}
+
+    _assert_guardrail_blocks(payload, "evidence_ref must be bounded and source-linked")
 
 
 def test_dpm_exception_summary_guardrails_block_portfolio_mismatch() -> None:
@@ -97,6 +118,27 @@ def test_dpm_exception_summary_guardrails_block_raw_payload_policy() -> None:
     _assert_guardrail_blocks(payload, "NO_RAW_PAYLOADS")
 
 
+def test_dpm_exception_summary_guardrails_block_nested_forbidden_fields() -> None:
+    payload = cast(dict[str, Any], dpm_exception_summary_payload())
+    payload["exception_summary_input"]["diagnostics"] = [{"raw_payload": {"unsafe": True}}]
+
+    _assert_guardrail_blocks(payload, "Forbidden exception summary input fields present")
+
+
+def test_dpm_exception_summary_guardrails_require_string_requested_outputs() -> None:
+    payload = cast(dict[str, Any], dpm_exception_summary_payload())
+    payload["exception_summary_request"]["requested_outputs"] = ["exception_summary", 7]
+
+    _assert_guardrail_blocks(payload, "requires string-list field `requested_outputs`")
+
+
+def test_dpm_exception_summary_guardrails_require_string_forbidden_actions() -> None:
+    payload = cast(dict[str, Any], dpm_exception_summary_payload())
+    payload["supportability"]["forbidden_actions"] = ["place_orders", 7]
+
+    _assert_guardrail_blocks(payload, "requires string-list field `forbidden_actions`")
+
+
 def test_dpm_exception_summary_guardrails_block_mismatched_portfolio_memory_context() -> None:
     payload = cast(
         dict[str, Any],
@@ -124,3 +166,32 @@ def test_dpm_exception_summary_stub_returns_review_gated_support_only_output() -
     assert structured_output["portfolio_memory_event_count"] == 2
     unsupported_claims = cast(list[str], structured_output["unsupported_claims"])
     assert "portfolio_manager_scoring" in unsupported_claims
+
+
+def test_dpm_exception_summary_stub_handles_malformed_optional_sections() -> None:
+    assert build_dpm_exception_summary_stub_result(context_payload={}) is None
+
+    result = build_dpm_exception_summary_stub_result(
+        context_payload={
+            "exception_summary_input": {
+                "portfolio_id": 101,
+                "mandate_id": None,
+                "content_hash": None,
+                "exceptions": "not-a-list",
+            },
+            "exception_summary_request": {"requested_outputs": "exception_summary"},
+            "supportability": {"unsupported_claims": "not-a-list"},
+        }
+    )
+
+    assert result is not None
+    _message, structured_output = result
+    assert structured_output["portfolio_id"] == ""
+    assert structured_output["mandate_id"] == ""
+    assert structured_output["exception_summary_content_hash"] == ""
+    assert structured_output["requested_outputs"] == []
+    assert structured_output["exception_count"] == 0
+    assert structured_output["open_exception_count"] == 0
+    assert structured_output["critical_exception_count"] == 0
+    assert structured_output["high_exception_count"] == 0
+    assert structured_output["unsupported_claims"] == []
