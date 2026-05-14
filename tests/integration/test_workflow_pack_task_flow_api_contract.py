@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from app.contracts.workflow_pack_runs import WorkflowPackRunReviewState, WorkflowPackRunRuntimeState
 from app.contracts.workflow_pack_task_flows import WorkflowPackTaskFlowStatus
 from app.main import app
 from app.services.workflow_pack_task_flow_service import (
@@ -31,6 +32,34 @@ def test_workflow_pack_task_flow_catalog_starts_empty(client: TestClient) -> Non
     assert body["terminal_count"] == 0
     assert body["filters_applied"] == {"limit": 100}
     assert body["task_flows"] == []
+
+
+def test_workflow_pack_task_flow_catalog_limits_newest_flows_first(client: TestClient) -> None:
+    for index in range(3):
+        timestamp = f"2026-04-21T01:0{index}:00Z"
+        create_task_flow(
+            workflow_pack_task_flow_descriptor(
+                task_flow_id=f"task-flow-00{index}",
+                updated_at=timestamp,
+            ).model_copy(
+                update={
+                    "created_at": timestamp,
+                    "run_refs": [f"run-00{index}"],
+                    "runtime_states": {f"run-00{index}": WorkflowPackRunRuntimeState.STAGED},
+                    "review_states": {f"run-00{index}": WorkflowPackRunReviewState.AWAITING_REVIEW},
+                }
+            )
+        )
+
+    response = client.get("/platform/workflow-packs/task-flows", params={"limit": 2})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [flow["task_flow_id"] for flow in body["task_flows"]] == [
+        "task-flow-002",
+        "task-flow-001",
+    ]
+    assert "task-flow-000" not in {flow["task_flow_id"] for flow in body["task_flows"]}
 
 
 def test_workflow_pack_task_flow_catalog_detail_and_checkpoints(
