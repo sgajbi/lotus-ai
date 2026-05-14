@@ -148,14 +148,16 @@ def build_workflow_pack_task_flow_catalog(
     limit: int = 100,
 ) -> WorkflowPackTaskFlowCatalogResponse:
     task_flows = list_task_flows()
-    filtered = _filter_task_flows(
-        task_flows,
-        workflow_pack_id=workflow_pack_id,
-        caller=caller,
-        tenant_id=tenant_id,
-        workflow_surface=workflow_surface,
-        flow_status=flow_status,
-        supportability_status=supportability_status,
+    filtered = _sort_task_flows_newest_first(
+        _filter_task_flows(
+            task_flows,
+            workflow_pack_id=workflow_pack_id,
+            caller=caller,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+            flow_status=flow_status,
+            supportability_status=supportability_status,
+        )
     )[:limit]
     return WorkflowPackTaskFlowCatalogResponse(
         service=settings.service_name,
@@ -180,6 +182,41 @@ def build_workflow_pack_task_flow_catalog(
             limit=limit,
         ),
         task_flows=filtered,
+    )
+
+
+def _filter_task_flows(
+    task_flows: list[WorkflowPackTaskFlowDescriptor],
+    *,
+    workflow_pack_id: str | None,
+    caller: str | None,
+    tenant_id: str | None,
+    workflow_surface: str | None,
+    flow_status: WorkflowPackTaskFlowStatus | None,
+    supportability_status: WorkflowPackRunSupportabilityStatus | None,
+) -> list[WorkflowPackTaskFlowDescriptor]:
+    return [
+        task_flow
+        for task_flow in task_flows
+        if (workflow_pack_id is None or task_flow.workflow_pack_id == workflow_pack_id)
+        and (caller is None or task_flow.caller == caller)
+        and (tenant_id is None or task_flow.tenant_id == tenant_id)
+        and (workflow_surface is None or task_flow.workflow_surface == workflow_surface)
+        and (flow_status is None or task_flow.flow_status == flow_status)
+        and (
+            supportability_status is None
+            or task_flow.supportability_status == supportability_status
+        )
+    ]
+
+
+def _sort_task_flows_newest_first(
+    task_flows: list[WorkflowPackTaskFlowDescriptor],
+) -> list[WorkflowPackTaskFlowDescriptor]:
+    return sorted(
+        task_flows,
+        key=lambda task_flow: (task_flow.updated_at, task_flow.created_at, task_flow.task_flow_id),
+        reverse=True,
     )
 
 
@@ -257,31 +294,6 @@ def synchronize_task_flow_review_action(
         if replacement_run_id is not None and replacement_run_id in task_flow.run_refs:
             updated = _with_review_lineage(task_flow, lineage=lineage)
             task_flow_store.save_task_flow(WorkflowPackTaskFlowRecord(descriptor=updated))
-
-
-def _filter_task_flows(
-    task_flows: list[WorkflowPackTaskFlowDescriptor],
-    *,
-    workflow_pack_id: str | None,
-    caller: str | None,
-    tenant_id: str | None,
-    workflow_surface: str | None,
-    flow_status: WorkflowPackTaskFlowStatus | None,
-    supportability_status: WorkflowPackRunSupportabilityStatus | None,
-) -> list[WorkflowPackTaskFlowDescriptor]:
-    return [
-        task_flow
-        for task_flow in task_flows
-        if (workflow_pack_id is None or task_flow.workflow_pack_id == workflow_pack_id)
-        and (caller is None or task_flow.caller == caller)
-        and (tenant_id is None or task_flow.tenant_id == tenant_id)
-        and (workflow_surface is None or task_flow.workflow_surface == workflow_surface)
-        and (flow_status is None or task_flow.flow_status == flow_status)
-        and (
-            supportability_status is None
-            or task_flow.supportability_status == supportability_status
-        )
-    ]
 
 
 def _filters_applied(
