@@ -46,9 +46,7 @@ def test_workflow_pack_task_flow_catalog_limits_newest_flows_first(client: TestC
                     "created_at": timestamp,
                     "run_refs": [f"run-00{index}"],
                     "runtime_states": {f"run-00{index}": WorkflowPackRunRuntimeState.STAGED},
-                    "review_states": {
-                        f"run-00{index}": WorkflowPackRunReviewState.AWAITING_REVIEW
-                    },
+                    "review_states": {f"run-00{index}": WorkflowPackRunReviewState.AWAITING_REVIEW},
                 }
             )
         )
