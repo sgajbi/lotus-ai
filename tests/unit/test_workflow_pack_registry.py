@@ -26,8 +26,8 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
 
     assert catalog.service == "lotus-ai"
     assert catalog.phase == "foundation"
-    assert catalog.registration_count == 9
-    assert catalog.registered_count == 8
+    assert catalog.registration_count == 10
+    assert catalog.registered_count == 9
     assert catalog.production_eligible_count == 0
     advisor_brief_registration = next(
         registration
@@ -68,6 +68,11 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         registration
         for registration in catalog.registrations
         if registration.pack_id == "dpm_exception_summary.pack"
+    )
+    pm_quality_summary_registration = next(
+        registration
+        for registration in catalog.registrations
+        if registration.pack_id == "pm_quality_summary.pack"
     )
     assert (
         advisor_brief_registration.registration_status == WorkflowPackRegistrationStatus.REGISTERED
@@ -169,8 +174,23 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         and definition_ref.required_for_registration is True
         for definition_ref in dpm_exception_summary_registration.definition_refs
     )
-    assert len(catalog.execution_bindings) == 8
-    assert len(catalog.queue_policies) == 8
+    assert pm_quality_summary_registration.registration_status == (
+        WorkflowPackRegistrationStatus.REGISTERED
+    )
+    assert pm_quality_summary_registration.owner_repository == "lotus-manage"
+    assert pm_quality_summary_registration.workflow_authority_owner == "lotus-manage"
+    assert pm_quality_summary_registration.supported_callers == [
+        "lotus-manage",
+        "lotus-gateway",
+    ]
+    assert any(
+        definition_ref.repository == "lotus-manage"
+        and definition_ref.path == "src/core/pm_quality/models.py"
+        and definition_ref.required_for_registration is True
+        for definition_ref in pm_quality_summary_registration.definition_refs
+    )
+    assert len(catalog.execution_bindings) == 9
+    assert len(catalog.queue_policies) == 9
     assert any(
         binding.pack_id == "advisor_brief.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
@@ -207,6 +227,10 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     )
     assert any(
         binding.pack_id == "dpm_exception_summary.pack" and binding.task_id == "explain.v1"
+        for binding in catalog.execution_bindings
+    )
+    assert any(
+        binding.pack_id == "pm_quality_summary.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
     )
 

@@ -63,11 +63,11 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.access_control_store_mode == "memory"
     assert status.workflow_pack_registry_store_mode == "memory"
     assert status.workflow_pack_task_flow_store_mode == "memory"
-    assert status.workflow_pack_runtime.registration_count == 9
-    assert status.workflow_pack_runtime.registered_count == 8
-    assert status.workflow_pack_runtime.execution_binding_count == 8
-    assert status.workflow_pack_runtime.executable_registration_count == 8
-    assert status.workflow_pack_runtime.executable_review_required_count == 8
+    assert status.workflow_pack_runtime.registration_count == 10
+    assert status.workflow_pack_runtime.registered_count == 9
+    assert status.workflow_pack_runtime.execution_binding_count == 9
+    assert status.workflow_pack_runtime.executable_registration_count == 9
+    assert status.workflow_pack_runtime.executable_review_required_count == 9
     assert status.workflow_pack_runtime.executable_without_review_count == 0
     assert status.workflow_pack_runtime.registered_without_execution_binding_count == 0
     assert status.workflow_pack_runtime.executable_registration_refs == [
@@ -77,6 +77,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",
         "outcome_review_narrative.pack@v1",
+        "pm_quality_summary.pack@v1",
         "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
     ]
@@ -87,10 +88,11 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",
         "outcome_review_narrative.pack@v1",
+        "pm_quality_summary.pack@v1",
         "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
     ]
-    assert len(status.workflow_pack_runtime.executable_activity) == 8
+    assert len(status.workflow_pack_runtime.executable_activity) == 9
     assert [item.registration_ref for item in status.workflow_pack_runtime.executable_activity] == [
         "advisor_brief.pack@v1",
         "dpm_exception_summary.pack@v1",
@@ -98,6 +100,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",
         "outcome_review_narrative.pack@v1",
+        "pm_quality_summary.pack@v1",
         "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
     ]
@@ -142,9 +145,9 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.observability_runtime.domain_count == 6
     assert status.observability_runtime.unavailable_domain_count == 0
     assert status.observability_runtime.incident_evidence_supported_domain_count >= 1
-    assert status.observability_runtime.ai_surface_supportability.supported_surface_count == 8
+    assert status.observability_runtime.ai_surface_supportability.supported_surface_count == 9
     assert (
-        status.observability_runtime.ai_surface_supportability.executable_workflow_pack_count == 8
+        status.observability_runtime.ai_surface_supportability.executable_workflow_pack_count == 9
     )
     assert (
         status.observability_runtime.ai_surface_supportability.no_sensitive_content_telemetry
@@ -159,6 +162,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
         "dpm_pm_memo",
         "dpm_wave_pm_memo",
         "outcome_review_narrative",
+        "pm_quality_summary",
         "twr_inspection_support_brief",
         "workspace_rationale",
     }

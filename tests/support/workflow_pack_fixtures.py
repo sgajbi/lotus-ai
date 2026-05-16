@@ -1004,3 +1004,145 @@ def dpm_exception_summary_workflow_pack_execution_request_json(
     if workflow_surface is not None:
         request["workflow_surface"] = workflow_surface
     return request
+
+
+def pm_quality_summary_payload(
+    *,
+    portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
+    content_hash: str = "sha256:pm-quality-score-run-001",
+    requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "score_run": {
+            "product_name": "PmOperatingQualityScoreRun",
+            "product_version": "1.0",
+            "score_run_id": "pmq_run_20260516_001",
+            "policy_id": "pmq_policy_operating_quality",
+            "policy_version": "2026.05",
+            "portfolio_manager_id": "pm_sg_001",
+            "portfolio_id": portfolio_id,
+            "as_of_date": "2026-05-16",
+            "state": "READY",
+            "score": "0.86",
+            "reason_codes": ["PM_QUALITY_WITHIN_POLICY"],
+            "indicator_results": [
+                {
+                    "indicator_id": "source_evidence_completeness",
+                    "state": "READY",
+                    "score": "0.92",
+                    "reason_codes": ["PM_QUALITY_SOURCE_EVIDENCE_COMPLETE"],
+                    "source_refs": [
+                        {
+                            "source_system": "lotus-manage",
+                            "source_type": "PmOperatingQualityScoreRun",
+                            "source_id": "pmq_run_20260516_001",
+                            "content_hash": content_hash,
+                        }
+                    ],
+                }
+            ],
+            "governance_evidence": {
+                "approval_ref": "PMQ-APPROVAL-2026-05",
+                "fairness_review_ref": "PMQ-FAIRNESS-2026-05",
+                "approved_by": "investment-control",
+                "fairness_reviewed_by": "fairness-committee",
+                "approved_at": "2026-05-15T09:00:00Z",
+                "fairness_reviewed_at": "2026-05-15T10:00:00Z",
+            },
+            "source_refs": [
+                {
+                    "source_system": "lotus-manage",
+                    "source_type": "PmOperatingQualityScoreRun",
+                    "source_id": "pmq_run_20260516_001",
+                    "content_hash": content_hash,
+                }
+            ],
+            "content_hash": content_hash,
+        },
+        "summary_request": {
+            "requested_outputs": requested_outputs
+            or [
+                "score_run_summary",
+                "governance_summary",
+                "fairness_review_posture",
+                "support_references",
+                "evidence_gaps",
+            ],
+            "audience": ["portfolio_manager", "investment_control", "cio_office"],
+        },
+        "supportability": {
+            "source_state": "READY",
+            "requires_human_review": True,
+            "forbidden_actions": [
+                "approve_rebalance",
+                "contact_client",
+                "enforce_conduct_action",
+                "invent_missing_evidence",
+                "make_compensation_decisions",
+                "make_hr_decisions",
+                "place_orders",
+                "rank_portfolio_managers",
+            ],
+            "unsupported_claims": [
+                "pm_ranking",
+                "hr_decision",
+                "compensation_decision",
+                "conduct_enforcement",
+                "client_message",
+                "trade_approval",
+                "execution_instruction",
+            ],
+        },
+    }
+    if include_portfolio_memory_context:
+        payload["portfolio_memory_context"] = portfolio_memory_context_payload(
+            portfolio_id=portfolio_id
+        )
+    return payload
+
+
+def pm_quality_summary_workflow_pack_execution_request_json(
+    *,
+    correlation_id: str,
+    task_id: str = "explain.v1",
+    caller_app: str = "lotus-manage",
+    workflow_surface: str | None = "dpm-pm-quality-ai-evidence",
+    environment: str = "DEVELOPMENT",
+    caller_identity_class: str = "INTERNAL_SERVICE",
+    requested_outputs: list[str] | None = None,
+    include_portfolio_memory_context: bool = False,
+) -> dict[str, object]:
+    request: dict[str, object] = {
+        "pack_id": "pm_quality_summary.pack",
+        "version": "v1",
+        "environment": environment,
+        "caller_identity_class": caller_identity_class,
+        "task_request": {
+            "task_id": task_id,
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": caller_app,
+                "correlation_id": correlation_id,
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": (
+                    "Generate review-gated PM operating quality summary from bounded score-run "
+                    "evidence."
+                ),
+                "payload": pm_quality_summary_payload(
+                    requested_outputs=requested_outputs,
+                    include_portfolio_memory_context=include_portfolio_memory_context,
+                ),
+                "source_refs": [
+                    "lotus-manage:pm-quality-score-run:pmq_run_20260516_001",
+                    "lotus-manage:pm-quality-policy:pmq_policy_operating_quality:2026.05",
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    }
+    if workflow_surface is not None:
+        request["workflow_surface"] = workflow_surface
+    return request

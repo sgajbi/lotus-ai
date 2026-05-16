@@ -12,6 +12,7 @@ from app.services.workflow_pack_phase1_specs import (
     DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC,
     DPM_WAVE_PM_MEMO_V1_SPEC,
     OUTCOME_REVIEW_NARRATIVE_V1_SPEC,
+    PM_QUALITY_SUMMARY_V1_SPEC,
     PROOF_PACK_PM_MEMO_V1_SPEC,
     TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC,
     WORKSPACE_RATIONALE_V1_SPEC,
@@ -84,6 +85,7 @@ _WORKFLOW_PACK_EXECUTION_BINDINGS = (
     _build_execution_binding_from_spec(DPM_WAVE_PM_MEMO_V1_SPEC),
     _build_execution_binding_from_spec(DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC),
     _build_execution_binding_from_spec(DPM_EXCEPTION_SUMMARY_V1_SPEC),
+    _build_execution_binding_from_spec(PM_QUALITY_SUMMARY_V1_SPEC),
 )
 
 

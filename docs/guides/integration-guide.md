@@ -312,6 +312,12 @@ That sequence keeps downstream adoption pack-oriented first, while still preserv
    instructions, execution instructions, trade recommendations, client messages, external execution
    claims, control override, or invented missing handoff evidence are guardrail-blocked before
    execution and should be corrected at the source evidence boundary.
+9. Use `pm_quality_summary.pack@v1` only with Manage-owned `PmOperatingQualityScoreRun` evidence,
+   a bounded `summary_request`, supportability posture, source refs, and optional manage-owned
+   `portfolio_memory_context`. Requests for PM ranking, HR ratings, compensation recommendations,
+   conduct actions, client messages, trade approvals, execution instructions, or invented missing
+   score-run evidence are guardrail-blocked before execution and should be corrected at the source
+   evidence boundary.
 
 When supplied, `portfolio_memory_context` is lineage context, not a source-fact replacement. It must
 match the AI-evidence portfolio id, carry source-owned governance including `NO_RAW_PAYLOADS` and a
@@ -327,6 +333,7 @@ flowchart LR
     Wave --> WaveAI["lotus-ai\ndpm_wave_pm_memo.pack@v1"]
     Exception["lotus-manage monitoring exceptions\nbounded exception evidence"] --> ExceptionAI["lotus-ai\ndpm_exception_summary.pack@v1"]
     Wave --> HandoffAI["lotus-ai\ndpm_operations_handoff_summary.pack@v1"]
+    PMQ["lotus-manage\nPmOperatingQualityScoreRun"] --> PMQAI["lotus-ai\npm_quality_summary.pack@v1"]
     Gateway --> AI
     Gateway --> WaveAI
     Gateway --> ExceptionAI

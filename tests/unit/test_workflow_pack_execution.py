@@ -10,6 +10,7 @@ from tests.support.workflow_pack_fixtures import (
     dpm_exception_summary_workflow_pack_execution_request_json,
     operations_handoff_summary_workflow_pack_execution_request_json,
     outcome_review_narrative_workflow_pack_execution_request_json,
+    pm_quality_summary_workflow_pack_execution_request_json,
     proof_pack_pm_memo_workflow_pack_execution_request_json,
     wave_pm_memo_workflow_pack_execution_request_json,
 )
@@ -285,3 +286,45 @@ def test_validate_workflow_pack_execution_binding_runs_operations_handoff_guardr
         assert "Forbidden operations handoff outputs requested: order_ticket" in str(exc.detail)
     else:
         raise AssertionError("expected operations handoff guardrails to reject order-ticket output")
+
+
+def test_execute_workflow_pack_records_review_gated_pm_quality_summary() -> None:
+    request = WorkflowPackExecutionRequest.model_validate(
+        pm_quality_summary_workflow_pack_execution_request_json(
+            correlation_id="corr-execution-pm-quality-summary"
+        )
+    )
+
+    response = execute_workflow_pack(request)
+
+    structured_output = response.execution.result.structured_output
+    assert response.execution.status.value == "COMPLETED"
+    assert response.workflow_pack_run.pack_id == "pm_quality_summary.pack"
+    assert response.workflow_pack_run.workflow_authority_owner == "lotus-manage"
+    assert structured_output["workflow_pack_family"] == "pm_quality_summary"
+    assert structured_output["state"] == "REVIEW_REQUIRED"
+    assert structured_output["scope"] == "support_only"
+    assert structured_output["score_run_content_hash"] == "sha256:pm-quality-score-run-001"
+    assert structured_output["indicator_result_count"] == 1
+    assert "pm_ranking" in structured_output["unsupported_claims"]
+
+
+def test_validate_workflow_pack_execution_binding_runs_pm_quality_summary_guardrails() -> None:
+    request_payload = pm_quality_summary_workflow_pack_execution_request_json(
+        correlation_id="corr-execution-pm-quality-summary-guardrail",
+        requested_outputs=["score_run_summary", "pm_ranking"],
+    )
+    request = WorkflowPackExecutionRequest.model_validate(request_payload)
+    binding = get_workflow_pack_execution_binding(
+        pack_id="pm_quality_summary.pack",
+        version="v1",
+    )
+    assert binding is not None
+
+    try:
+        validate_workflow_pack_execution_binding(request=request, binding=binding)
+    except HTTPException as exc:
+        assert exc.status_code == 422
+        assert "Forbidden PM quality summary outputs requested: pm_ranking" in str(exc.detail)
+    else:
+        raise AssertionError("expected PM quality guardrails to reject PM-ranking output")
