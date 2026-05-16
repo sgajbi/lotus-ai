@@ -13,8 +13,8 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["phase"] == "foundation"
-    assert body["registration_count"] == 9
-    assert body["registered_count"] == 8
+    assert body["registration_count"] == 10
+    assert body["registered_count"] == 9
     assert body["production_eligible_count"] == 0
     advisor_brief_registration = next(
         registration
@@ -50,6 +50,11 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         registration
         for registration in body["registrations"]
         if registration["pack_id"] == "dpm_exception_summary.pack"
+    )
+    pm_quality_summary_registration = next(
+        registration
+        for registration in body["registrations"]
+        if registration["pack_id"] == "pm_quality_summary.pack"
     )
     advisor_brief_binding = next(
         binding
@@ -91,6 +96,11 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         for binding in body["execution_bindings"]
         if binding["pack_id"] == "dpm_exception_summary.pack"
     )
+    pm_quality_summary_binding = next(
+        binding
+        for binding in body["execution_bindings"]
+        if binding["pack_id"] == "pm_quality_summary.pack"
+    )
     advisor_brief_queue_policy = next(
         policy
         for policy in body["queue_policies"]
@@ -125,6 +135,12 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         policy
         for policy in body["queue_policies"]
         if policy["workflow_pack_id"] == "dpm_exception_summary.pack"
+        and policy["workflow_pack_version"] == "v1"
+    )
+    pm_quality_summary_queue_policy = next(
+        policy
+        for policy in body["queue_policies"]
+        if policy["workflow_pack_id"] == "pm_quality_summary.pack"
         and policy["workflow_pack_version"] == "v1"
     )
 
@@ -162,6 +178,13 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     assert dpm_exception_summary_registration["owner_repository"] == "lotus-manage"
     assert dpm_exception_summary_registration["workflow_authority_owner"] == "lotus-manage"
     assert dpm_exception_summary_registration["supported_callers"] == [
+        "lotus-manage",
+        "lotus-gateway",
+    ]
+    assert pm_quality_summary_registration["version"] == "v1"
+    assert pm_quality_summary_registration["owner_repository"] == "lotus-manage"
+    assert pm_quality_summary_registration["workflow_authority_owner"] == "lotus-manage"
+    assert pm_quality_summary_registration["supported_callers"] == [
         "lotus-manage",
         "lotus-gateway",
     ]
@@ -237,6 +260,14 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         "exception_summary_request",
         "supportability",
     ]
+    assert pm_quality_summary_binding["version"] == "v1"
+    assert pm_quality_summary_binding["task_id"] == "explain.v1"
+    assert pm_quality_summary_binding["default_workflow_surface"] == ("dpm-pm-quality-ai-evidence")
+    assert pm_quality_summary_binding["required_payload_keys"] == [
+        "score_run",
+        "summary_request",
+        "supportability",
+    ]
     assert advisor_brief_queue_policy["default_lane"] == "LATENCY_SENSITIVE"
     assert advisor_brief_queue_policy["allowed_lanes"] == [
         "LATENCY_SENSITIVE",
@@ -260,6 +291,11 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     ]
     assert dpm_exception_summary_queue_policy["default_lane"] == "REVIEW_SUPPORT"
     assert dpm_exception_summary_queue_policy["allowed_lanes"] == [
+        "REVIEW_SUPPORT",
+        "OPERATOR",
+    ]
+    assert pm_quality_summary_queue_policy["default_lane"] == "REVIEW_SUPPORT"
+    assert pm_quality_summary_queue_policy["allowed_lanes"] == [
         "REVIEW_SUPPORT",
         "OPERATOR",
     ]

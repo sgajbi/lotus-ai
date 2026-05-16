@@ -23,6 +23,7 @@ def test_queue_policy_catalog_declares_policy_for_each_executable_phase1_pack() 
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",
         "outcome_review_narrative.pack@v1",
+        "pm_quality_summary.pack@v1",
         "workspace_rationale.pack@v1",
         "twr_inspection_support_brief.pack@v1",
     }

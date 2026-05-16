@@ -176,3 +176,20 @@ DPM_EXCEPTION_SUMMARY_V1_SPEC = WorkflowPackPhase1VersionSpec(
         {"exception_summary_input", "exception_summary_request", "supportability"}
     ),
 )
+
+
+PM_QUALITY_SUMMARY_V1_SPEC = WorkflowPackPhase1VersionSpec(
+    pack_id="pm_quality_summary.pack",
+    pack_family="pm_quality_summary",
+    version="v1",
+    owner_repository="lotus-manage",
+    owner_service="lotus-manage",
+    truth_owner_services=("lotus-manage", "lotus-core", "lotus-risk", "lotus-performance"),
+    primary_use_case="dpm_pm_operating_quality_summary",
+    workflow_authority_owner="lotus-manage",
+    supported_callers=("lotus-manage", "lotus-gateway"),
+    surface_scope=("dpm-pm-quality-ai-evidence",),
+    default_workflow_surface="dpm-pm-quality-ai-evidence",
+    execution_task_id="explain.v1",
+    required_payload_keys=frozenset({"score_run", "summary_request", "supportability"}),
+)

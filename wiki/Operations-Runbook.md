@@ -194,6 +194,11 @@ For AI-backed product-surface support, also confirm:
    guardrail-blocked requests, not as prompt-tuning opportunities. Optional portfolio-memory
    lineage can support review and demo provenance, but it must not be used to infer missing source
    facts.
+11. `pm_quality_summary` remains owned by `lotus-manage` PM operating quality score-run evidence;
+    treat PM ranking, HR ratings, compensation recommendations, conduct actions, client messages,
+    trade approvals, execution instructions, and invented missing score-run evidence as
+    guardrail-blocked requests. The pack is narrative support only and does not calculate PM scores
+    or own fairness analysis.
 
 The owner-facing source for that procedure is:
 

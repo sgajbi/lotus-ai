@@ -133,7 +133,8 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
    review-gated `dpm_wave_pm_memo.pack` and `dpm_operations_handoff_summary.pack` contracts for
    `lotus-manage` `DpmWaveReportInput`, the review-gated `dpm_exception_summary.pack` contract
    for bounded `lotus-manage` monitoring exception evidence, and the review-gated
-   `outcome_review_narrative.pack` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`.
+   `outcome_review_narrative.pack` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`, plus
+   `pm_quality_summary.pack` for Manage-owned `PmOperatingQualityScoreRun` evidence.
    DPM proof-pack PM memo execution validates required proof-pack
    evidence, required forbidden actions, forbidden field names, forbidden requested outputs such as
    trade recommendations or client messages, and unsupported requested outputs before run, audit,
@@ -148,7 +149,10 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
    Outcome-review narrative execution validates required forbidden
    actions, rejects forbidden field names, rejects forbidden requested outputs such as PM scoring or
    client messages, records run and task-flow posture only after those guardrails pass, and remains
-   support-only until Gateway and Workbench surfaces consume the contract. The DPM packs can
+   support-only until Gateway and Workbench surfaces consume the contract. PM quality summary
+   execution validates score-run source refs, non-use guardrails, forbidden fields, and requested
+   outputs before side effects are recorded; it does not calculate scores, rank PMs, or create HR,
+   compensation, conduct, client-contact, execution, or OMS decisions. The DPM packs can
    consume optional manage-owned `portfolio_memory_context` as bounded source lineage, validating
    portfolio identity, capped event refs, source content hash, `NO_RAW_PAYLOADS`, and
    no-reconstruction source-authority policy before any side effects are recorded.
@@ -160,6 +164,7 @@ flowchart LR
     Exception["lotus-manage\nmonitoring exception evidence"] --> ExceptionPack["dpm_exception_summary.pack@v1"]
     Wave --> HandoffPack["dpm_operations_handoff_summary.pack@v1"]
     Outcome["lotus-manage\nDpmOutcomeAiEvidenceInput"] --> OutcomePack["outcome_review_narrative.pack@v1"]
+    PMQ["lotus-manage\nPmOperatingQualityScoreRun"] --> PMQPack["pm_quality_summary.pack@v1"]
     Memory["lotus-manage\nportfolio_memory_context"] --> MemoPack
     Memory --> WavePack
     Memory --> HandoffPack
@@ -169,6 +174,7 @@ flowchart LR
     ExceptionPack --> Guardrails
     HandoffPack --> Guardrails
     OutcomePack --> Guardrails
+    PMQPack --> Guardrails
     Guardrails --> Ledger["Run ledger\nreview required"]
     Ledger --> SourceEvents["AI source events\nno raw payloads"]
     Ledger --> Operator["Operator profile\nconsumer view\nruntime status"]

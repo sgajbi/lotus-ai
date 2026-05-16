@@ -28,7 +28,7 @@ def test_workflow_pack_queue_policy_catalog_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["policy_count"] == 8
+    assert body["policy_count"] == 9
     advisor_policy = next(
         policy
         for policy in body["policies"]

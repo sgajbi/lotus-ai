@@ -18,6 +18,7 @@ from app.services.workflow_pack_phase1_specs import (
     DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC,
     DPM_WAVE_PM_MEMO_V1_SPEC,
     OUTCOME_REVIEW_NARRATIVE_V1_SPEC,
+    PM_QUALITY_SUMMARY_V1_SPEC,
     PROOF_PACK_PM_MEMO_V1_SPEC,
     TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC,
     WORKSPACE_RATIONALE_V1_SPEC,
@@ -385,6 +386,46 @@ def build_seed_workflow_pack_registrations() -> list[WorkflowPackRegistrationDes
             status_summary=[
                 "The DPM operations handoff summary workflow pack consumes lotus-manage DpmWaveReportInput handoff evidence only.",
                 "Activation remains pilot-scoped while Gateway and Workbench product surfaces add invocation, unavailable posture, and canonical live proof without reconstructing handoff or proof-pack evidence.",
+            ],
+        ),
+        WorkflowPackRegistrationDescriptor(
+            pack_id=PM_QUALITY_SUMMARY_V1_SPEC.pack_id,
+            pack_family=PM_QUALITY_SUMMARY_V1_SPEC.pack_family,
+            version=PM_QUALITY_SUMMARY_V1_SPEC.version,
+            owner_repository=PM_QUALITY_SUMMARY_V1_SPEC.owner_repository,
+            owner_service=PM_QUALITY_SUMMARY_V1_SPEC.owner_service,
+            truth_owner_services=list(PM_QUALITY_SUMMARY_V1_SPEC.truth_owner_services),
+            primary_use_case=PM_QUALITY_SUMMARY_V1_SPEC.primary_use_case,
+            workflow_authority_owner=PM_QUALITY_SUMMARY_V1_SPEC.workflow_authority_owner,
+            default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
+            definition_ref="repo://lotus-manage/src/core/pm_quality/models.py",
+            definition_refs=_pm_quality_summary_v1_definition_refs(),
+            compatibility_contract_version="workflow-pack-contract.v1",
+            registration_status=WorkflowPackRegistrationStatus.REGISTERED,
+            activation_state=WorkflowPackActivationState.PILOT,
+            registered_definition_digest="sha256:pm-quality-summary-v1-registered-digest",
+            supported_callers=list(PM_QUALITY_SUMMARY_V1_SPEC.supported_callers),
+            supported_identity_classes=[
+                WorkflowPackCallerIdentityClass.INTERNAL_SERVICE,
+            ],
+            supported_environments=[
+                WorkflowPackEnvironment.DEVELOPMENT,
+                WorkflowPackEnvironment.QA,
+                WorkflowPackEnvironment.UAT,
+            ],
+            tenant_scope=[],
+            surface_scope=list(PM_QUALITY_SUMMARY_V1_SPEC.surface_scope),
+            default_rollout_stage="PILOT_SCOPED",
+            pause_state="NOT_PAUSED",
+            supersedes=None,
+            superseded_by=None,
+            registered_at="2026-05-16T08:00:00Z",
+            registered_by="lotus-ai.workflow-pack-registry.seed",
+            last_activated_at="2026-05-16T08:20:00Z",
+            last_changed_at="2026-05-16T08:20:00Z",
+            status_summary=[
+                "The PM quality summary workflow pack consumes Manage-owned PmOperatingQualityScoreRun evidence only.",
+                "Activation remains pilot-scoped while Gateway and Workbench add PM-quality product surfaces without score calculation, PM ranking, HR, compensation, conduct, client-contact, execution, or OMS claims.",
             ],
         ),
     ]
@@ -856,6 +897,66 @@ def _dpm_exception_summary_v1_definition_refs() -> list[WorkflowPackDefinitionRe
             description=(
                 "RFC-0043 defines governed exception-summary support, no-domain-decision "
                 "guardrails, review posture, and unavailable behavior."
+            ),
+        ),
+    ]
+
+
+def _pm_quality_summary_v1_definition_refs() -> list[WorkflowPackDefinitionReferenceDescriptor]:
+    return [
+        _definition_ref(
+            reference_id="primary_contract",
+            repository="lotus-manage",
+            path="src/core/pm_quality/models.py",
+            reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
+            required_for_registration=True,
+            description=(
+                "Manage-owned PmOperatingQualityScoreRun model that bounds PM quality evidence, "
+                "governance evidence, source refs, non-use posture, and content hash."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_service",
+            repository="lotus-manage",
+            path="src/api/services/pm_operating_quality_service.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description=(
+                "Manage service that persists PM operating quality policy, score-run, and "
+                "fairness-analysis evidence without generating AI narrative locally."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_router",
+            repository="lotus-manage",
+            path="src/api/routers/pm_operating_quality.py",
+            reference_type=WorkflowPackDefinitionReferenceType.ROUTER,
+            required_for_registration=True,
+            description=(
+                "Manage API route exposing bounded PM operating quality policy, score-run, "
+                "and fairness-analysis lifecycle evidence."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_tests",
+            repository="lotus-manage",
+            path="tests/unit/dpm/pm_quality/test_pm_operating_quality.py",
+            reference_type=WorkflowPackDefinitionReferenceType.TEST,
+            required_for_registration=True,
+            description=(
+                "Manage regression coverage proving score-run evidence, governance controls, "
+                "peer/lookback scope, and non-use posture."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_rfc",
+            repository="lotus-manage",
+            path="docs/rfcs/RFC-0042-post-trade-outcome-feedback-loop.md",
+            reference_type=WorkflowPackDefinitionReferenceType.RFC,
+            required_for_registration=False,
+            description=(
+                "RFC-0042 defines bounded PM operating quality evidence and excludes PM ranking, "
+                "HR, compensation, conduct enforcement, client contact, execution, and OMS use."
             ),
         ),
     ]

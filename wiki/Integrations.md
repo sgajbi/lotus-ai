@@ -166,12 +166,14 @@ the owner-facing procedure and do one more truth check before treating a registr
 
 ## DPM PM Memo Integration
 
-`dpm_pm_memo.pack@v1`, `dpm_wave_pm_memo.pack@v1`, `dpm_exception_summary.pack@v1`, and
-`dpm_operations_handoff_summary.pack@v1` are the current `lotus-ai` owner-side execution contracts
+`dpm_pm_memo.pack@v1`, `dpm_wave_pm_memo.pack@v1`, `dpm_exception_summary.pack@v1`,
+`dpm_operations_handoff_summary.pack@v1`, and `pm_quality_summary.pack@v1` are the current
+`lotus-ai` owner-side execution contracts
 for governed DPM support drafting from Manage evidence. The proof-pack pack is for single
 proof-pack evidence, the wave pack is for rebalance-wave PM memo evidence, the exception pack is
 for bounded monitoring exception evidence, and the operations pack is for bounded internal handoff
-evidence that may summarize staged wave items and handoff refs.
+evidence that may summarize staged wave items and handoff refs. The PM quality pack is for
+support-only summaries over Manage-owned `PmOperatingQualityScoreRun` evidence.
 
 Use it only when the caller supplies:
 
@@ -240,13 +242,27 @@ The operations handoff pack blocks order tickets, routing instructions, external
 trade recommendations, client messages, and inferred missing handoff evidence before run, audit, or
 task-flow records are written.
 
+Use `pm_quality_summary.pack@v1` only when the caller supplies:
+
+1. `score_run` shaped as Manage-owned `PmOperatingQualityScoreRun`,
+2. `summary_request` with allowed requested outputs such as `score_run_summary`,
+   `governance_summary`, `fairness_review_posture`, `support_references`, or `evidence_gaps`,
+3. `supportability` posture with required forbidden actions and unsupported claims,
+4. optional `portfolio_memory_context` only when `lotus-manage` supplies bounded source-lineage
+   context for the same portfolio.
+
+The PM quality pack blocks PM ranking, HR ratings, compensation recommendations, conduct actions,
+client messages, trade approvals, execution instructions, and inferred missing score-run evidence
+before run, audit, or task-flow records are written. It does not calculate PM scores or own
+fairness analysis.
+
 ```mermaid
 sequenceDiagram
     participant Manage as lotus-manage
     participant AI as lotus-ai
     participant Ledger as workflow-pack ledger
     participant UI as Gateway / Workbench
-    Manage->>AI: DPM memo, wave memo, exception summary, or operations handoff pack with bounded evidence
+    Manage->>AI: DPM memo, wave memo, exception summary, operations handoff, or PM quality pack with bounded evidence
     AI->>AI: Validate forbidden actions, fields, requested outputs, and memory lineage
     AI->>Ledger: Record review-gated run after guardrails pass
     Ledger-->>AI: workflow_pack_run_id and provenance

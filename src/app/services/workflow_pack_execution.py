@@ -43,6 +43,7 @@ from app.services.outcome_review_narrative_guardrails import (
 from app.services.operations_handoff_summary_guardrails import (
     validate_operations_handoff_summary_payload,
 )
+from app.services.pm_quality_summary_guardrails import validate_pm_quality_summary_payload
 from app.services.proof_pack_pm_memo_guardrails import validate_proof_pack_pm_memo_payload
 from app.services.wave_pm_memo_guardrails import validate_wave_pm_memo_payload
 
@@ -165,6 +166,8 @@ def validate_workflow_pack_execution_binding(
         validate_operations_handoff_summary_payload(request.task_request.context.payload)
     if request.pack_id == "dpm_exception_summary.pack" and request.version == "v1":
         validate_dpm_exception_summary_payload(request.task_request.context.payload)
+    if request.pack_id == "pm_quality_summary.pack" and request.version == "v1":
+        validate_pm_quality_summary_payload(request.task_request.context.payload)
 
 
 def _attach_workflow_pack_run_id(
