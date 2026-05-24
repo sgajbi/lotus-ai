@@ -13,6 +13,9 @@ _TEMPORARY_IGNORED_VULNERABILITIES = {
     # No patched Pygments release is available yet on PyPI. Remove this exception immediately
     # once the upstream release exists so the audit returns to a strict zero-ignore posture.
     "CVE-2026-4539",
+    # FastAPI currently constrains Starlette below the patched 1.0.1 release reported for this
+    # advisory. Remove once a FastAPI-compatible patched Starlette release is available.
+    "PYSEC-2026-161",
 }
 
 _WINDOWS_DRIVE_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")

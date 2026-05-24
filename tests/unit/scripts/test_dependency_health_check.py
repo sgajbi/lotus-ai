@@ -11,7 +11,12 @@ def test_build_audit_command_uses_sorted_temporary_ignores() -> None:
     command = dependency_health_check._build_audit_command(python_bin)
 
     assert command[:3] == [str(python_bin), "-m", "pip_audit"]
-    assert command[3:] == ["--ignore-vuln", "CVE-2026-4539"]
+    assert command[3:] == [
+        "--ignore-vuln",
+        "CVE-2026-4539",
+        "--ignore-vuln",
+        "PYSEC-2026-161",
+    ]
 
 
 def test_venv_python_uses_expected_windows_layout() -> None:
