@@ -178,6 +178,58 @@ def test_task_flow_service_survives_sqlalchemy_repository_restart(tmp_path: Path
     ] == ["checkpoint-001"]
 
 
+def test_task_flow_review_action_uses_bounded_ids_for_sql_backed_workspace_rationale(
+    tmp_path: Path,
+) -> None:
+    settings.workflow_pack_task_flow_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'workflow-pack-task-flow-long-review.db'}"
+    upgrade_database_to_head(settings.database_url)
+    reset_workflow_pack_task_flow_store_cache()
+
+    run_id = "packrun_workspace_rationale_air_750b35b02c984888a334709b66d49154"
+    task_flow_id = "taskflow_workspace_rationale_air_750b35b02c984888a334709b66d49154"
+    long_raw_checkpoint_id = f"{task_flow_id}_review_{run_id}_supersede"
+    task_flow = workflow_pack_task_flow_descriptor(
+        task_flow_id=task_flow_id,
+        flow_status=WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW,
+        current_step_id="draft-brief",
+    ).model_copy(
+        update={
+            "run_refs": [run_id],
+            "runtime_states": {run_id: WorkflowPackRunRuntimeState.COMPLETED},
+            "review_states": {run_id: WorkflowPackRunReviewState.AWAITING_REVIEW},
+        }
+    )
+    create_task_flow(task_flow)
+
+    synchronize_task_flow_review_action(
+        run_id=run_id,
+        review_state=WorkflowPackRunReviewState.SUPERSEDED,
+        supportability_status=WorkflowPackRunSupportabilityStatus.HISTORICAL,
+        action_type=WorkflowPackRunReviewActionType.SUPERSEDE,
+        reviewed_by="advisor.sg.live-proof.001",
+        reason="Superseded during RFC-0023/RFC-0024 live validation.",
+        recorded_at="2026-05-24T09:22:00Z",
+    )
+
+    reset_workflow_pack_task_flow_store_cache()
+    updated = get_task_flow(task_flow_id)
+    assert updated is not None
+    assert updated.flow_status == WorkflowPackTaskFlowStatus.SUPERSEDED
+    assert updated.review_states[run_id] == WorkflowPackRunReviewState.SUPERSEDED
+    assert updated.supportability_status == WorkflowPackRunSupportabilityStatus.HISTORICAL
+    assert len(updated.checkpoint_refs) == 1
+    assert updated.checkpoint_refs[0].startswith("task_flow_review_supersede_")
+    assert len(updated.checkpoint_refs[0]) <= 128
+    assert updated.checkpoint_refs[0] != long_raw_checkpoint_id
+
+    checkpoints = list_task_flow_checkpoints(task_flow_id)
+    assert len(checkpoints) == 1
+    assert checkpoints[0].checkpoint_id == updated.checkpoint_refs[0]
+    assert checkpoints[0].transition == WorkflowPackTaskFlowCheckpointTransition.FLOW_SUPERSEDED
+    assert checkpoints[0].evidence_refs[0].attributes["run_id"] == run_id
+
+
 @pytest.mark.parametrize(
     (
         "action_type",
