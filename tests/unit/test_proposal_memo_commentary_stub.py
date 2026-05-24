@@ -126,7 +126,9 @@ def test_build_proposal_memo_commentary_stub_defaults_sections_and_ignores_inval
         "EXECUTIVE_SUMMARY",
         "REVIEW_LIMITATIONS",
     ]
-    assert all("Current memo evidence posture is BLOCKED" in section["text"] for section in sections)
+    assert all(
+        "Current memo evidence posture is BLOCKED" in section["text"] for section in sections
+    )
 
 
 def test_build_proposal_memo_commentary_stub_requires_memo_evidence_and_request() -> None:
