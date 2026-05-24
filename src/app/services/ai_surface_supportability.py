@@ -39,6 +39,11 @@ _WORKFLOW_PACK_SURFACE_OWNERS = {
         "lotus-workbench",
         "lotus-workbench",
     ),
+    "proposal_memo_commentary.pack@v1": (
+        "proposal_memo_commentary",
+        "lotus-advise",
+        "lotus-advise",
+    ),
     "outcome_review_narrative.pack@v1": (
         "outcome_review_narrative",
         "lotus-manage",

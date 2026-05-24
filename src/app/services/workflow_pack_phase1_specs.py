@@ -70,6 +70,23 @@ WORKSPACE_RATIONALE_V1_SPEC = WorkflowPackPhase1VersionSpec(
 )
 
 
+PROPOSAL_MEMO_COMMENTARY_V1_SPEC = WorkflowPackPhase1VersionSpec(
+    pack_id="proposal_memo_commentary.pack",
+    pack_family="proposal_memo_commentary",
+    version="v1",
+    owner_repository="lotus-advise",
+    owner_service="lotus-advise",
+    truth_owner_services=("lotus-advise", "lotus-core", "lotus-risk"),
+    primary_use_case="advisor_proposal_memo_review_gated_commentary",
+    workflow_authority_owner="lotus-advise",
+    supported_callers=("lotus-advise",),
+    surface_scope=("advisor-proposal-memo-commentary",),
+    default_workflow_surface="advisor-proposal-memo-commentary",
+    execution_task_id="explain.v1",
+    required_payload_keys=frozenset({"memo_evidence", "commentary_request", "supportability"}),
+)
+
+
 TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC = WorkflowPackPhase1VersionSpec(
     pack_id="twr_inspection_support_brief.pack",
     pack_family="twr_inspection_support_brief",

@@ -41,19 +41,23 @@ It does not own portfolio, performance, risk, advisory, management, or reporting
 
 ## Workflow-Pack Product Coverage
 
-Current executable workflow-pack coverage is implementation-backed for nine pilot-scoped families:
+Current executable workflow-pack coverage is implementation-backed for ten pilot-scoped families:
 
 1. `advisor_brief.pack@v1`
 2. `workspace_rationale.pack@v1`
 3. `twr_inspection_support_brief.pack@v1`
-4. `dpm_pm_memo.pack@v1`
-5. `dpm_wave_pm_memo.pack@v1`
-6. `dpm_exception_summary.pack@v1`
-7. `dpm_operations_handoff_summary.pack@v1`
-8. `outcome_review_narrative.pack@v1`
-9. `pm_quality_summary.pack@v1`
+4. `proposal_memo_commentary.pack@v1`
+5. `dpm_pm_memo.pack@v1`
+6. `dpm_wave_pm_memo.pack@v1`
+7. `dpm_exception_summary.pack@v1`
+8. `dpm_operations_handoff_summary.pack@v1`
+9. `outcome_review_narrative.pack@v1`
+10. `pm_quality_summary.pack@v1`
 
-The DPM packs are deliberately support-only and review-gated. `dpm_pm_memo.pack@v1` consumes
+The proposal memo and DPM packs are deliberately support-only and review-gated.
+`proposal_memo_commentary.pack@v1` consumes bounded `lotus-advise` memo evidence and records
+review-required commentary lineage without changing memo evidence, suitability, approval, or
+client-ready posture. `dpm_pm_memo.pack@v1` consumes
 `lotus-manage` `DpmProofPackAiEvidenceInput`; `dpm_wave_pm_memo.pack@v1` and
 `dpm_operations_handoff_summary.pack@v1` consume `lotus-manage` `DpmWaveReportInput`;
 `dpm_exception_summary.pack@v1` consumes bounded `lotus-manage` monitoring exception evidence; and
