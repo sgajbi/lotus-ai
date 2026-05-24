@@ -29,6 +29,7 @@ from app.services.workflow_pack_phase1_specs import (
     DPM_WAVE_PM_MEMO_V1_SPEC,
     OUTCOME_REVIEW_NARRATIVE_V1_SPEC,
     PM_QUALITY_SUMMARY_V1_SPEC,
+    PROPOSAL_MEMO_COMMENTARY_V1_SPEC,
     PROOF_PACK_PM_MEMO_V1_SPEC,
     TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC,
     WORKSPACE_RATIONALE_V1_SPEC,
@@ -43,6 +44,7 @@ def list_workflow_pack_queue_policy_descriptors() -> list[WorkflowPackQueuePolic
     policies = [
         _latency_sensitive_advisor_brief_policy(),
         _review_support_workspace_rationale_policy(),
+        _review_support_proposal_memo_commentary_policy(),
         _batch_twr_inspection_support_brief_policy(),
         _review_support_proof_pack_pm_memo_policy(),
         _review_support_outcome_review_narrative_policy(),
@@ -231,6 +233,29 @@ def _review_support_workspace_rationale_policy() -> WorkflowPackQueuePolicyDescr
         status_summary=[
             "Workspace rationale work defaults to review-support capacity because the owning advisory workflow remains consequence-bearing.",
             "Batch capacity is allowed for future bounded advisory workspace sweeps without changing lotus-advise workflow authority.",
+        ],
+    )
+
+
+def _review_support_proposal_memo_commentary_policy() -> WorkflowPackQueuePolicyDescriptor:
+    return _build_queue_policy(
+        spec=PROPOSAL_MEMO_COMMENTARY_V1_SPEC,
+        policy_id="queue-policy.proposal-memo-commentary.v1",
+        allowed_lanes=[
+            WorkflowPackQueueLane.REVIEW_SUPPORT,
+            WorkflowPackQueueLane.OPERATOR,
+        ],
+        default_lane=WorkflowPackQueueLane.REVIEW_SUPPORT,
+        max_concurrent_runs_per_pack=2,
+        max_concurrent_runs_per_lane=1,
+        max_queued_runs_per_pack=30,
+        max_queued_runs_per_lane=15,
+        admission_timeout_seconds=20,
+        execution_timeout_seconds=300,
+        stale_queue_threshold_seconds=90,
+        status_summary=[
+            "Proposal memo commentary defaults to review-support capacity because generated language remains advisor-use and review-gated.",
+            "Operator capacity is reserved for controlled investigation of unavailable, guardrail-blocked, or stale memo-commentary runs.",
         ],
     )
 

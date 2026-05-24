@@ -19,6 +19,7 @@ from app.services.workflow_pack_phase1_specs import (
     DPM_WAVE_PM_MEMO_V1_SPEC,
     OUTCOME_REVIEW_NARRATIVE_V1_SPEC,
     PM_QUALITY_SUMMARY_V1_SPEC,
+    PROPOSAL_MEMO_COMMENTARY_V1_SPEC,
     PROOF_PACK_PM_MEMO_V1_SPEC,
     TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC,
     WORKSPACE_RATIONALE_V1_SPEC,
@@ -142,6 +143,46 @@ def build_seed_workflow_pack_registrations() -> list[WorkflowPackRegistrationDes
             status_summary=[
                 "The advisory workspace rationale workflow pack extends executable workflow-pack proof into a domain-owned advisory surface.",
                 "Activation remains pilot-scoped while Lotus validates the lotus-advise-owned rationale seam against explicit run-ledger and registration truth.",
+            ],
+        ),
+        WorkflowPackRegistrationDescriptor(
+            pack_id=PROPOSAL_MEMO_COMMENTARY_V1_SPEC.pack_id,
+            pack_family=PROPOSAL_MEMO_COMMENTARY_V1_SPEC.pack_family,
+            version=PROPOSAL_MEMO_COMMENTARY_V1_SPEC.version,
+            owner_repository=PROPOSAL_MEMO_COMMENTARY_V1_SPEC.owner_repository,
+            owner_service=PROPOSAL_MEMO_COMMENTARY_V1_SPEC.owner_service,
+            truth_owner_services=list(PROPOSAL_MEMO_COMMENTARY_V1_SPEC.truth_owner_services),
+            primary_use_case=PROPOSAL_MEMO_COMMENTARY_V1_SPEC.primary_use_case,
+            workflow_authority_owner=PROPOSAL_MEMO_COMMENTARY_V1_SPEC.workflow_authority_owner,
+            default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
+            definition_ref="repo://lotus-advise/src/core/proposals/memo_api.py",
+            definition_refs=_proposal_memo_commentary_v1_definition_refs(),
+            compatibility_contract_version="workflow-pack-contract.v1",
+            registration_status=WorkflowPackRegistrationStatus.REGISTERED,
+            activation_state=WorkflowPackActivationState.PILOT,
+            registered_definition_digest="sha256:proposal-memo-commentary-v1-registered-digest",
+            supported_callers=list(PROPOSAL_MEMO_COMMENTARY_V1_SPEC.supported_callers),
+            supported_identity_classes=[
+                WorkflowPackCallerIdentityClass.INTERNAL_SERVICE,
+            ],
+            supported_environments=[
+                WorkflowPackEnvironment.DEVELOPMENT,
+                WorkflowPackEnvironment.QA,
+                WorkflowPackEnvironment.UAT,
+            ],
+            tenant_scope=[],
+            surface_scope=list(PROPOSAL_MEMO_COMMENTARY_V1_SPEC.surface_scope),
+            default_rollout_stage="PILOT_SCOPED",
+            pause_state="NOT_PAUSED",
+            supersedes=None,
+            superseded_by=None,
+            registered_at="2026-05-24T10:00:00Z",
+            registered_by="lotus-ai.workflow-pack-registry.seed",
+            last_activated_at="2026-05-24T10:15:00Z",
+            last_changed_at="2026-05-24T10:15:00Z",
+            status_summary=[
+                "The proposal memo commentary workflow pack consumes bounded lotus-advise memo evidence only.",
+                "Activation remains pilot-scoped and review-gated; generated commentary cannot change memo suitability, evidence, status, approval, or client-ready publication posture.",
             ],
         ),
         WorkflowPackRegistrationDescriptor(
@@ -592,6 +633,53 @@ def _workspace_rationale_v1_definition_refs() -> list[WorkflowPackDefinitionRefe
             reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
             required_for_registration=False,
             description="Repository-local engineering context describing advisory ownership and runtime boundaries for the rationale surface.",
+        ),
+    ]
+
+
+def _proposal_memo_commentary_v1_definition_refs() -> list[
+    WorkflowPackDefinitionReferenceDescriptor
+]:
+    return [
+        _definition_ref(
+            reference_id="owner_router",
+            repository="lotus-advise",
+            path="src/api/proposals/routes_memo.py",
+            reference_type=WorkflowPackDefinitionReferenceType.ROUTER,
+            required_for_registration=True,
+            description="Advisor proposal memo route family that owns review-gated commentary requests.",
+        ),
+        _definition_ref(
+            reference_id="owner_service",
+            repository="lotus-advise",
+            path="src/core/proposals/memo_api.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description="Memo domain service that enforces memo hash continuity, advisor-use review, and non-authoritative AI lineage recording.",
+        ),
+        _definition_ref(
+            reference_id="owner_integration",
+            repository="lotus-advise",
+            path="src/integrations/lotus_ai/proposal_memo.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description="Lotus-advise integration seam that maps bounded memo evidence onto the explicit workflow-pack execution route.",
+        ),
+        _definition_ref(
+            reference_id="owner_tests",
+            repository="lotus-advise",
+            path="tests/unit/advisory/api/test_api_advisory_proposal_memo.py",
+            reference_type=WorkflowPackDefinitionReferenceType.TEST,
+            required_for_registration=True,
+            description="Owner-repository regression coverage for memo commentary, unavailable posture, and review gating.",
+        ),
+        _definition_ref(
+            reference_id="owner_rfc",
+            repository="lotus-advise",
+            path="docs/rfcs/RFC-0024-advisor-proposal-memo-and-evidence-pack.md",
+            reference_type=WorkflowPackDefinitionReferenceType.RFC,
+            required_for_registration=False,
+            description="RFC-0024 Slice 10 defines the review-gated AI commentary boundary.",
         ),
     ]
 

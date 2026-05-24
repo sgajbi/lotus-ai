@@ -37,13 +37,16 @@ Current repository posture:
 4. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity, with owner-artifact references that must resolve back to the real downstream repository and with one governed store-mode seam that can keep activation state and control history in memory or in a migration-backed SQL store,
 5. workflow-pack run-ledger foundations now exist as a separate runtime seam for the current
    executable workflow-pack families (`advisor_brief.pack`, `workspace_rationale.pack`,
-   `twr_inspection_support_brief.pack`, `dpm_pm_memo.pack`, `dpm_wave_pm_memo.pack`,
+   `proposal_memo_commentary.pack`, `twr_inspection_support_brief.pack`, `dpm_pm_memo.pack`,
+   `dpm_wave_pm_memo.pack`,
    `dpm_exception_summary.pack`, `dpm_operations_handoff_summary.pack`, and
    `outcome_review_narrative.pack`, and `pm_quality_summary.pack`), with runtime state
    kept separate from review state,
    bounded actor-attributed review transitions available through the ledger API, bounded
    ledger-compatible `allowed_review_actions` emitted for consumers, governed workflow-pack
-   artifact refs now attached for bounded output-summary review, deterministic proof-pack PM memo
+   artifact refs now attached for bounded output-summary review, deterministic proposal memo
+   commentary support for bounded `lotus-advise` memo evidence that cannot mutate memo status,
+   suitability, approval, or client-ready posture, deterministic proof-pack PM memo
    guardrails that validate manage-owned `DpmProofPackAiEvidenceInput`, required forbidden
    actions, forbidden fields, forbidden requested outputs, and optional source-lineage-only
    `portfolio_memory_context` before run/audit/task-flow side effects, deterministic wave PM memo

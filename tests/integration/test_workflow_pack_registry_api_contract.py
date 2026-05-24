@@ -13,8 +13,8 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["phase"] == "foundation"
-    assert body["registration_count"] == 10
-    assert body["registered_count"] == 9
+    assert body["registration_count"] == 11
+    assert body["registered_count"] == 10
     assert body["production_eligible_count"] == 0
     advisor_brief_registration = next(
         registration
@@ -55,6 +55,11 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         registration
         for registration in body["registrations"]
         if registration["pack_id"] == "pm_quality_summary.pack"
+    )
+    proposal_memo_commentary_registration = next(
+        registration
+        for registration in body["registrations"]
+        if registration["pack_id"] == "proposal_memo_commentary.pack"
     )
     advisor_brief_binding = next(
         binding
@@ -101,6 +106,11 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         for binding in body["execution_bindings"]
         if binding["pack_id"] == "pm_quality_summary.pack"
     )
+    proposal_memo_commentary_binding = next(
+        binding
+        for binding in body["execution_bindings"]
+        if binding["pack_id"] == "proposal_memo_commentary.pack"
+    )
     advisor_brief_queue_policy = next(
         policy
         for policy in body["queue_policies"]
@@ -141,6 +151,12 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         policy
         for policy in body["queue_policies"]
         if policy["workflow_pack_id"] == "pm_quality_summary.pack"
+        and policy["workflow_pack_version"] == "v1"
+    )
+    proposal_memo_commentary_queue_policy = next(
+        policy
+        for policy in body["queue_policies"]
+        if policy["workflow_pack_id"] == "proposal_memo_commentary.pack"
         and policy["workflow_pack_version"] == "v1"
     )
 
@@ -188,6 +204,10 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         "lotus-manage",
         "lotus-gateway",
     ]
+    assert proposal_memo_commentary_registration["version"] == "v1"
+    assert proposal_memo_commentary_registration["owner_repository"] == "lotus-advise"
+    assert proposal_memo_commentary_registration["workflow_authority_owner"] == "lotus-advise"
+    assert proposal_memo_commentary_registration["supported_callers"] == ["lotus-advise"]
     assert advisor_brief_binding["version"] == "v1"
     assert advisor_brief_binding["task_id"] == "explain.v1"
     assert advisor_brief_binding["default_workflow_surface"] == "advisor-brief-workspace"
@@ -268,6 +288,16 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         "summary_request",
         "supportability",
     ]
+    assert proposal_memo_commentary_binding["version"] == "v1"
+    assert proposal_memo_commentary_binding["task_id"] == "explain.v1"
+    assert proposal_memo_commentary_binding["default_workflow_surface"] == (
+        "advisor-proposal-memo-commentary"
+    )
+    assert proposal_memo_commentary_binding["required_payload_keys"] == [
+        "commentary_request",
+        "memo_evidence",
+        "supportability",
+    ]
     assert advisor_brief_queue_policy["default_lane"] == "LATENCY_SENSITIVE"
     assert advisor_brief_queue_policy["allowed_lanes"] == [
         "LATENCY_SENSITIVE",
@@ -296,6 +326,11 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     ]
     assert pm_quality_summary_queue_policy["default_lane"] == "REVIEW_SUPPORT"
     assert pm_quality_summary_queue_policy["allowed_lanes"] == [
+        "REVIEW_SUPPORT",
+        "OPERATOR",
+    ]
+    assert proposal_memo_commentary_queue_policy["default_lane"] == "REVIEW_SUPPORT"
+    assert proposal_memo_commentary_queue_policy["allowed_lanes"] == [
         "REVIEW_SUPPORT",
         "OPERATOR",
     ]

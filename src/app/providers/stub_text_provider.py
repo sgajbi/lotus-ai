@@ -18,6 +18,9 @@ from app.providers.operations_handoff_summary_stub import (
     build_operations_handoff_summary_stub_result,
 )
 from app.providers.pm_quality_summary_stub import build_pm_quality_summary_stub_result
+from app.providers.proposal_memo_commentary_stub import (
+    build_proposal_memo_commentary_stub_result,
+)
 from app.providers.proof_pack_pm_memo_stub import build_proof_pack_pm_memo_stub_result
 from app.providers.wave_pm_memo_stub import build_wave_pm_memo_stub_result
 
@@ -38,6 +41,42 @@ class StubTextProvider:
     )
 
     def execute(self, request: ProviderExecutionRequest) -> ProviderExecutionResponse:
+        proposal_memo_commentary_result = build_proposal_memo_commentary_stub_result(
+            context_payload=request.context_payload,
+        )
+        if request.task_id == "explain.v1" and proposal_memo_commentary_result:
+            message, structured_output = proposal_memo_commentary_result
+            return ProviderExecutionResponse(
+                provider_id=self.descriptor.provider_id,
+                provider_mode=settings.provider_mode,
+                adapter_kind=self.descriptor.adapter_kind,
+                failure_category=None,
+                timeout_ms=request.timeout_ms,
+                retry_count=0,
+                max_output_tokens=request.max_output_tokens,
+                stubbed=True,
+                message=message,
+                structured_output={
+                    **structured_output,
+                    "phase": settings.delivery_phase,
+                    "provider_id": self.descriptor.provider_id,
+                    "provider_mode": settings.provider_mode,
+                    "adapter_kind": self.descriptor.adapter_kind.value,
+                    "timeout_ms": request.timeout_ms,
+                    "retry_count": 0,
+                    "max_output_tokens": request.max_output_tokens,
+                    "output_label": request.output_label,
+                    "safety_mode": request.safety_mode,
+                    "redaction_posture": request.redaction_posture,
+                    "context_summary": request.context_summary,
+                    "context_keys": sorted(request.context_payload.keys()),
+                    "source_refs": request.source_refs,
+                    "stub_reason": (
+                        "lotus-ai emits deterministic governed proposal memo commentary posture "
+                        "before live provider rollout is enabled for this workflow pack."
+                    ),
+                },
+            )
         pm_quality_summary_result = build_pm_quality_summary_stub_result(
             context_payload=request.context_payload,
         )

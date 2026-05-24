@@ -76,6 +76,7 @@ def test_workflow_pack_registry_store_returns_sqlalchemy_repository(tmp_path: Pa
         "dpm_wave_pm_memo.pack@v1",
         "outcome_review_narrative.pack@v1",
         "pm_quality_summary.pack@v1",
+        "proposal_memo_commentary.pack@v1",
         "twr_inspection_support_brief.pack@v1",
         "workspace_rationale.pack@v1",
     ]
