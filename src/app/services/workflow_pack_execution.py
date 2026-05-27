@@ -34,6 +34,7 @@ from app.services.workflow_pack_task_flow_service import (
     ensure_workflow_pack_task_flow_store_ready,
 )
 from app.services.workflow_pack_queue_admission import workflow_pack_queue_admission
+from app.services.advisory_copilot_guardrails import validate_advisory_copilot_payload
 from app.services.dpm_exception_summary_guardrails import (
     validate_dpm_exception_summary_payload,
 )
@@ -168,6 +169,8 @@ def validate_workflow_pack_execution_binding(
         validate_dpm_exception_summary_payload(request.task_request.context.payload)
     if request.pack_id == "pm_quality_summary.pack" and request.version == "v1":
         validate_pm_quality_summary_payload(request.task_request.context.payload)
+    if request.pack_id.startswith("advisory_copilot_") and request.version == "v1":
+        validate_advisory_copilot_payload(request.task_request.context.payload)
 
 
 def _attach_workflow_pack_run_id(

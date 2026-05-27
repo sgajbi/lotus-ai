@@ -69,6 +69,25 @@ def test_get_workflow_pack_execution_binding_returns_proof_pack_pm_memo_binding(
     assert binding.validate_task_request_payload(payload=proof_pack_pm_memo_payload())
 
 
+def test_get_workflow_pack_execution_binding_returns_advisory_copilot_binding() -> None:
+    binding = get_workflow_pack_execution_binding(
+        pack_id="advisory_copilot_proposal_explanation.pack",
+        version="v1",
+    )
+
+    assert binding is not None
+    assert binding.task_id == "explain.v1"
+    assert binding.default_workflow_surface == "advisory-copilot-proposal-explanation"
+    assert binding.validate_task_request_payload(
+        payload={
+            "copilot_evidence_packet": {},
+            "copilot_request": {},
+            "model_risk_controls": {},
+            "supportability": {},
+        }
+    )
+
+
 def test_get_workflow_pack_execution_binding_returns_wave_pm_memo_binding() -> None:
     binding = get_workflow_pack_execution_binding(
         pack_id="dpm_wave_pm_memo.pack",

@@ -274,6 +274,23 @@ sequenceDiagram
 support commentary, but cannot score portfolio managers, contact clients, approve trades, override
 controls, or infer timeline facts absent from source-owned Manage evidence.
 
+Use the RFC-0027 advisory copilot packs only when `lotus-advise` supplies:
+
+1. `copilot_evidence_packet` with source refs, evidence-packet hash, blocked client-ready posture,
+   and redacted business evidence sections,
+2. `copilot_request` with an allowed advisory copilot action family, audience, and bounded
+   requested outputs,
+3. `model_risk_controls` with approved instruction set, prompt-template version, output-schema
+   version, and evaluation-pack reference,
+4. `supportability` with human review required, blocked client-ready posture, and explicit
+   unsupported claims for client-ready publication, policy approval, and trade or order actions.
+
+The advisory copilot packs block advice approval, policy approval or waiver, client messages, order
+or trade instructions, missing source refs, missing model-risk controls, and raw prompt, raw
+payload, provider response, trace, or correlation fields before run, audit, or task-flow records are
+written. They are execution support for `lotus-advise`; they do not make `lotus-ai` the advisory
+workflow authority.
+
 ## Provider and Safety Expectations
 
 Callers must not assume that one successful response means unrestricted live-provider or safety

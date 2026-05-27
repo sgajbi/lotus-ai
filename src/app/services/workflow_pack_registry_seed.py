@@ -13,6 +13,7 @@ from app.contracts.workflow_packs import (
 )
 from app.services.workflow_pack_phase1_specs import (
     ADVISOR_BRIEF_V1_SPEC,
+    ADVISORY_COPILOT_ACTION_PACK_SPECS,
     ADVISOR_BRIEF_V2_SPEC,
     DPM_EXCEPTION_SUMMARY_V1_SPEC,
     DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC,
@@ -185,6 +186,7 @@ def build_seed_workflow_pack_registrations() -> list[WorkflowPackRegistrationDes
                 "Activation remains pilot-scoped and review-gated; generated commentary cannot change memo suitability, evidence, status, approval, or client-ready publication posture.",
             ],
         ),
+        *_advisory_copilot_v1_registrations(),
         WorkflowPackRegistrationDescriptor(
             pack_id=TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.pack_id,
             pack_family=TWR_INSPECTION_SUPPORT_BRIEF_V1_SPEC.pack_family,
@@ -680,6 +682,99 @@ def _proposal_memo_commentary_v1_definition_refs() -> list[
             reference_type=WorkflowPackDefinitionReferenceType.RFC,
             required_for_registration=False,
             description="RFC-0024 Slice 10 defines the review-gated AI commentary boundary.",
+        ),
+    ]
+
+
+def _advisory_copilot_v1_registrations() -> list[WorkflowPackRegistrationDescriptor]:
+    registrations: list[WorkflowPackRegistrationDescriptor] = []
+    for spec in ADVISORY_COPILOT_ACTION_PACK_SPECS:
+        registrations.append(
+            WorkflowPackRegistrationDescriptor(
+                pack_id=spec.pack_id,
+                pack_family=spec.pack_family,
+                version=spec.version,
+                owner_repository=spec.owner_repository,
+                owner_service=spec.owner_service,
+                truth_owner_services=list(spec.truth_owner_services),
+                primary_use_case=spec.primary_use_case,
+                workflow_authority_owner=spec.workflow_authority_owner,
+                default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
+                definition_ref="repo://lotus-advise/src/core/advisory_copilot/models.py",
+                definition_refs=_advisory_copilot_v1_definition_refs(),
+                compatibility_contract_version="workflow-pack-contract.v1",
+                registration_status=WorkflowPackRegistrationStatus.REGISTERED,
+                activation_state=WorkflowPackActivationState.PILOT,
+                registered_definition_digest=f"sha256:{spec.pack_family}-v1-registered-digest",
+                supported_callers=list(spec.supported_callers),
+                supported_identity_classes=[
+                    WorkflowPackCallerIdentityClass.INTERNAL_SERVICE,
+                ],
+                supported_environments=[
+                    WorkflowPackEnvironment.DEVELOPMENT,
+                    WorkflowPackEnvironment.QA,
+                    WorkflowPackEnvironment.UAT,
+                ],
+                tenant_scope=[],
+                surface_scope=list(spec.surface_scope),
+                default_rollout_stage="PILOT_SCOPED",
+                pause_state="NOT_PAUSED",
+                supersedes=None,
+                superseded_by=None,
+                registered_at="2026-05-28T08:00:00Z",
+                registered_by="lotus-ai.workflow-pack-registry.seed",
+                last_activated_at="2026-05-28T08:15:00Z",
+                last_changed_at="2026-05-28T08:15:00Z",
+                status_summary=[
+                    "The advisory copilot workflow pack consumes bounded lotus-advise evidence packets only.",
+                    "Activation is pilot-scoped and review-gated; generated output cannot approve advice, place orders, waive policy, or become client-ready communication.",
+                ],
+            )
+        )
+    return registrations
+
+
+def _advisory_copilot_v1_definition_refs() -> list[WorkflowPackDefinitionReferenceDescriptor]:
+    return [
+        _definition_ref(
+            reference_id="owner_contract",
+            repository="lotus-advise",
+            path="src/core/advisory_copilot/models.py",
+            reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
+            required_for_registration=True,
+            description="Advise-owned advisory copilot evidence-packet, review, lineage, retention, and unsupported-evidence contracts.",
+        ),
+        _definition_ref(
+            reference_id="owner_guardrails",
+            repository="lotus-advise",
+            path="src/core/advisory_copilot/guardrails.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description="Advise guardrail evaluator that blocks unsafe intents, missing source refs, prompt injection, client-ready wording, and sensitive technical leakage.",
+        ),
+        _definition_ref(
+            reference_id="owner_integration",
+            repository="lotus-advise",
+            path="src/integrations/lotus_ai/advisory_copilot.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description="Advise integration seam that maps redacted copilot evidence packets onto explicit lotus-ai workflow-pack execution.",
+        ),
+        _definition_ref(
+            reference_id="owner_tests",
+            repository="lotus-advise",
+            path="tests/unit/advisory/api/test_lotus_ai_advisory_copilot.py",
+            reference_type=WorkflowPackDefinitionReferenceType.TEST,
+            required_for_registration=True,
+            description="Owner-repository regression coverage for advisory copilot workflow-pack requests, unavailable posture, guardrails, and output validation.",
+        ),
+        _definition_ref(
+            reference_id="owner_rfc",
+            repository="lotus-advise",
+            path="docs/rfcs/RFC-0027-governed-advisory-ai-copilot.md",
+            reference_type=WorkflowPackDefinitionReferenceType.RFC,
+            required_for_registration=True,
+            description="RFC-0027 defines governed advisory copilot scope, source authority, review posture, model-risk controls, and non-client-ready boundaries.",
         ),
     ]
 

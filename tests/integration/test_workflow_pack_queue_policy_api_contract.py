@@ -28,7 +28,7 @@ def test_workflow_pack_queue_policy_catalog_route(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["policy_count"] == 10
+    assert body["policy_count"] == 16
     advisor_policy = next(
         policy
         for policy in body["policies"]
@@ -100,6 +100,17 @@ def test_workflow_pack_queue_policy_catalog_route(client: TestClient) -> None:
     )
     assert proposal_memo_commentary_policy["default_lane"] == "REVIEW_SUPPORT"
     assert proposal_memo_commentary_policy["allowed_lanes"] == ["REVIEW_SUPPORT", "OPERATOR"]
+    advisory_copilot_policy = next(
+        policy
+        for policy in body["policies"]
+        if policy["workflow_pack_id"] == "advisory_copilot_proposal_explanation.pack"
+        and policy["workflow_pack_version"] == "v1"
+    )
+    assert advisory_copilot_policy["policy_id"] == (
+        "queue-policy.advisory-copilot-proposal-explanation.v1"
+    )
+    assert advisory_copilot_policy["default_lane"] == "REVIEW_SUPPORT"
+    assert advisory_copilot_policy["allowed_lanes"] == ["REVIEW_SUPPORT", "OPERATOR"]
 
 
 def test_workflow_pack_queue_policy_detail_route(client: TestClient) -> None:

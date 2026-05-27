@@ -8,8 +8,8 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["domain_count"] == 6
-    assert body["ai_surface_supportability"]["supported_surface_count"] == 10
-    assert body["ai_surface_supportability"]["executable_workflow_pack_count"] == 10
+    assert body["ai_surface_supportability"]["supported_surface_count"] == 16
+    assert body["ai_surface_supportability"]["executable_workflow_pack_count"] == 16
     assert (
         body["ai_surface_supportability"]["metric_name"] == "lotus_ai_surface_supportability_state"
     )
@@ -18,6 +18,12 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
         surface["workflow_pack_ref"] for surface in body["ai_surface_supportability"]["surfaces"]
     } == {
         "advisor_brief.pack@v1",
+        "advisory_copilot_client_follow_up_draft.pack@v1",
+        "advisory_copilot_compliance_review_summary.pack@v1",
+        "advisory_copilot_evidence_qa.pack@v1",
+        "advisory_copilot_meeting_preparation.pack@v1",
+        "advisory_copilot_operations_report_handoff.pack@v1",
+        "advisory_copilot_proposal_explanation.pack@v1",
         "dpm_exception_summary.pack@v1",
         "dpm_operations_handoff_summary.pack@v1",
         "dpm_pm_memo.pack@v1",
@@ -66,6 +72,12 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
     )
     assert any(
         surface["surface_id"] == "proposal_memo_commentary"
+        and surface["owning_service"] == "lotus-advise"
+        and surface["workflow_authority_owner"] == "lotus-advise"
+        for surface in body["ai_surface_supportability"]["surfaces"]
+    )
+    assert any(
+        surface["surface_id"] == "advisory_copilot_proposal_explanation"
         and surface["owning_service"] == "lotus-advise"
         and surface["workflow_authority_owner"] == "lotus-advise"
         for surface in body["ai_surface_supportability"]["surfaces"]
