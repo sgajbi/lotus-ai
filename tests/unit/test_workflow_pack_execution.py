@@ -7,6 +7,7 @@ from app.services.workflow_pack_execution import (
 )
 from app.services.workflow_pack_bindings import get_workflow_pack_execution_binding
 from tests.support.workflow_pack_fixtures import (
+    advisory_copilot_workflow_pack_execution_request_json,
     dpm_exception_summary_workflow_pack_execution_request_json,
     operations_handoff_summary_workflow_pack_execution_request_json,
     outcome_review_narrative_workflow_pack_execution_request_json,
@@ -14,89 +15,6 @@ from tests.support.workflow_pack_fixtures import (
     proof_pack_pm_memo_workflow_pack_execution_request_json,
     wave_pm_memo_workflow_pack_execution_request_json,
 )
-
-
-def _advisory_copilot_payload(
-    *, requested_outputs: list[str] | None = None
-) -> dict[str, object]:
-    return {
-        "copilot_evidence_packet": {
-            "evidence_packet_id": "copilot_packet_pb_sg_001",
-            "evidence_packet_hash": "sha256:copilot-evidence-packet-001",
-            "action_family": "PROPOSAL_EXPLANATION",
-            "portfolio_id": "PB_SG_GLOBAL_BAL_001",
-            "proposal_id": "proposal_sg_structured_note_001",
-            "client_ready_publication": "BLOCKED",
-            "sections": [
-                {
-                    "section_key": "POLICY_POSTURE",
-                    "title": "Policy posture",
-                    "evidence_class": "COMPLIANCE_REVIEW_EVIDENCE",
-                    "summary_items": ["Policy evaluation requires compliance review."],
-                    "source_refs": [
-                        {
-                            "source_system": "lotus-advise",
-                            "source_type": "POLICY_EVALUATION",
-                            "source_id": "policy_eval_sg_001",
-                            "content_hash": "sha256:policy-evaluation",
-                        }
-                    ],
-                }
-            ],
-            "unsupported_evidence": [],
-        },
-        "copilot_request": {
-            "action_family": "PROPOSAL_EXPLANATION",
-            "audience": "ADVISOR",
-            "requested_outputs": requested_outputs or ["advisor_review_summary"],
-            "requested_by": "advisor_001",
-        },
-        "model_risk_controls": {
-            "approved_instruction_set": "advisory-copilot-instructions.v1",
-            "prompt_template_version": "advisory-copilot-prompt-template.v1",
-            "output_schema_version": "advisory-copilot-output-schema.v1",
-            "evaluation_pack_ref": "advisory-copilot-eval-pack.v1",
-        },
-        "supportability": {
-            "human_review_required": True,
-            "client_ready_publication": "BLOCKED",
-            "unsupported_claims": [
-                "client_ready_publication",
-                "policy_approval",
-                "trade_or_order_action",
-                "missing_evidence_inference",
-            ],
-        },
-    }
-
-
-def _advisory_copilot_workflow_pack_execution_request_json(
-    *, correlation_id: str, requested_outputs: list[str] | None = None
-) -> dict[str, object]:
-    return {
-        "pack_id": "advisory_copilot_proposal_explanation.pack",
-        "version": "v1",
-        "environment": "DEVELOPMENT",
-        "caller_identity_class": "INTERNAL_SERVICE",
-        "workflow_surface": "advisory-copilot-proposal-explanation",
-        "task_request": {
-            "task_id": "explain.v1",
-            "input_mode": "STRUCTURED_CONTEXT",
-            "caller": {
-                "caller_app": "lotus-advise",
-                "correlation_id": correlation_id,
-                "tenant_id": "tenant-sg-001",
-            },
-            "context": {
-                "summary": "Generate review-gated advisory copilot draft from bounded evidence.",
-                "payload": _advisory_copilot_payload(requested_outputs=requested_outputs),
-                "source_refs": [
-                    "lotus-advise:copilot-evidence-packet:copilot_packet_pb_sg_001"
-                ],
-            },
-            "expected_output_label": "EXPLANATION_ONLY",
-        },
-    }
 
 
 def test_execute_workflow_pack_rejects_unknown_execution_binding() -> None:
@@ -189,7 +107,7 @@ def test_execute_workflow_pack_records_review_gated_proof_pack_pm_memo() -> None
 
 def test_execute_workflow_pack_records_review_gated_advisory_copilot_output() -> None:
     request = WorkflowPackExecutionRequest.model_validate(
-        _advisory_copilot_workflow_pack_execution_request_json(
+        advisory_copilot_workflow_pack_execution_request_json(
             correlation_id="corr-execution-advisory-copilot"
         )
     )
@@ -213,7 +131,7 @@ def test_execute_workflow_pack_records_review_gated_advisory_copilot_output() ->
 
 
 def test_validate_workflow_pack_execution_binding_runs_advisory_copilot_guardrails() -> None:
-    request_payload = _advisory_copilot_workflow_pack_execution_request_json(
+    request_payload = advisory_copilot_workflow_pack_execution_request_json(
         correlation_id="corr-execution-advisory-copilot-guardrail",
         requested_outputs=["advisor_review_summary", "client_message"],
     )
