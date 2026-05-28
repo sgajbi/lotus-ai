@@ -49,9 +49,7 @@ def build_advisory_copilot_stub_result(
             "approved_instruction_set": _as_str(
                 model_risk_controls.get("approved_instruction_set")
             ),
-            "prompt_template_version": _as_str(
-                model_risk_controls.get("prompt_template_version")
-            ),
+            "prompt_template_version": _as_str(model_risk_controls.get("prompt_template_version")),
             "output_schema_version": _as_str(model_risk_controls.get("output_schema_version")),
             "evaluation_pack_ref": _as_str(model_risk_controls.get("evaluation_pack_ref")),
         },

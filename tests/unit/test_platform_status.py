@@ -176,15 +176,15 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     )
     assert {
         item.surface_id for item in status.observability_runtime.ai_surface_supportability.surfaces
-        } == {
-            "advisor_brief",
-            "advisory_copilot_client_follow_up_draft",
-            "advisory_copilot_compliance_review_summary",
-            "advisory_copilot_evidence_qa",
-            "advisory_copilot_meeting_preparation",
-            "advisory_copilot_operations_report_handoff",
-            "advisory_copilot_proposal_explanation",
-            "dpm_exception_summary",
+    } == {
+        "advisor_brief",
+        "advisory_copilot_client_follow_up_draft",
+        "advisory_copilot_compliance_review_summary",
+        "advisory_copilot_evidence_qa",
+        "advisory_copilot_meeting_preparation",
+        "advisory_copilot_operations_report_handoff",
+        "advisory_copilot_proposal_explanation",
+        "dpm_exception_summary",
         "dpm_operations_handoff_summary",
         "dpm_pm_memo",
         "dpm_wave_pm_memo",

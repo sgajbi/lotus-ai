@@ -118,9 +118,7 @@ def test_execute_workflow_pack_records_review_gated_advisory_copilot_output() ->
     assert response.execution.status.value == "COMPLETED"
     assert response.workflow_pack_run.pack_id == "advisory_copilot_proposal_explanation.pack"
     assert response.workflow_pack_run.workflow_authority_owner == "lotus-advise"
-    assert structured_output["workflow_pack_family"] == (
-        "advisory_copilot_proposal_explanation"
-    )
+    assert structured_output["workflow_pack_family"] == ("advisory_copilot_proposal_explanation")
     assert structured_output["state"] == "REVIEW_REQUIRED"
     assert structured_output["client_ready_publication"] == "BLOCKED"
     assert structured_output["human_review_required"] is True

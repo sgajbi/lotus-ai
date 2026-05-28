@@ -197,9 +197,7 @@ def workspace_rationale_workflow_pack_execution_request_json(
     return request
 
 
-def advisory_copilot_payload(
-    *, requested_outputs: list[str] | None = None
-) -> dict[str, object]:
+def advisory_copilot_payload(*, requested_outputs: list[str] | None = None) -> dict[str, object]:
     return {
         "copilot_evidence_packet": {
             "evidence_packet_id": "copilot_packet_pb_sg_001",
@@ -274,9 +272,7 @@ def advisory_copilot_workflow_pack_execution_request_json(
             "context": {
                 "summary": "Generate review-gated advisory copilot draft from bounded evidence.",
                 "payload": advisory_copilot_payload(requested_outputs=requested_outputs),
-                "source_refs": [
-                    "lotus-advise:copilot-evidence-packet:copilot_packet_pb_sg_001"
-                ],
+                "source_refs": ["lotus-advise:copilot-evidence-packet:copilot_packet_pb_sg_001"],
             },
             "expected_output_label": "EXPLANATION_ONLY",
         },

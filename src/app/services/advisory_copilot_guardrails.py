@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from fastapi import HTTPException, status
 
 _FORBIDDEN_REQUESTED_OUTPUTS = {
@@ -41,10 +43,11 @@ def _validate_evidence_packet(evidence_packet: dict[str, object]) -> None:
     if _as_str(evidence_packet.get("client_ready_publication")) != "BLOCKED":
         _reject("Advisory copilot evidence packet must keep client-ready publication blocked.")
 
-    sections = evidence_packet.get("sections")
+    sections = _require_list(
+        evidence_packet.get("sections"),
+        "Advisory copilot evidence packet sections must be supplied as a list.",
+    )
     unsupported_evidence = evidence_packet.get("unsupported_evidence")
-    if not isinstance(sections, list):
-        _reject("Advisory copilot evidence packet sections must be supplied as a list.")
     if unsupported_evidence is not None and not isinstance(unsupported_evidence, list):
         _reject("Advisory copilot unsupported evidence must be supplied as a list.")
 
@@ -52,10 +55,11 @@ def _validate_evidence_packet(evidence_packet: dict[str, object]) -> None:
     for section in sections:
         if not isinstance(section, dict):
             _reject("Advisory copilot evidence sections must be structured objects.")
-        source_refs = section.get("source_refs")
+        section_dict = cast(dict[str, object], section)
+        source_refs = section_dict.get("source_refs")
         if not isinstance(source_refs, list) or not source_refs:
             _reject("Advisory copilot evidence sections must carry source refs.")
-        source_ref_count += len(source_refs)
+        source_ref_count += len(cast(list[object], source_refs))
     if source_ref_count == 0:
         _reject("Advisory copilot evidence packet must include source-backed evidence.")
 
@@ -66,8 +70,11 @@ def _validate_request(copilot_request: dict[str, object]) -> None:
     if not _as_str(copilot_request.get("audience")):
         _reject("Advisory copilot request must include an audience.")
 
-    requested_outputs = copilot_request.get("requested_outputs")
-    if not isinstance(requested_outputs, list) or not requested_outputs:
+    requested_outputs = _require_list(
+        copilot_request.get("requested_outputs"),
+        "Advisory copilot request must include bounded requested outputs.",
+    )
+    if not requested_outputs:
         _reject("Advisory copilot request must include bounded requested outputs.")
     forbidden = sorted(
         output
@@ -83,9 +90,10 @@ def _validate_supportability(supportability: dict[str, object]) -> None:
         _reject("Advisory copilot output must require human review.")
     if _as_str(supportability.get("client_ready_publication")) != "BLOCKED":
         _reject("Advisory copilot supportability must block client-ready publication.")
-    unsupported_claims = supportability.get("unsupported_claims")
-    if not isinstance(unsupported_claims, list):
-        _reject("Advisory copilot supportability must include unsupported claims.")
+    unsupported_claims = _require_list(
+        supportability.get("unsupported_claims"),
+        "Advisory copilot supportability must include unsupported claims.",
+    )
     required_claims = {"client_ready_publication", "policy_approval", "trade_or_order_action"}
     if not required_claims.issubset({_as_str(item) for item in unsupported_claims}):
         _reject("Advisory copilot supportability is missing required unsupported claims.")
@@ -118,7 +126,13 @@ def _require_dict(payload: dict[str, object], key: str) -> dict[str, object]:
     value = payload.get(key)
     if not isinstance(value, dict):
         _reject(f"Advisory copilot payload requires `{key}`.")
-    return value
+    return cast(dict[str, object], value)
+
+
+def _require_list(value: object, detail: str) -> list[object]:
+    if not isinstance(value, list):
+        _reject(detail)
+    return cast(list[object], value)
 
 
 def _reject(detail: str) -> None:
