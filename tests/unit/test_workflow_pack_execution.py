@@ -7,6 +7,7 @@ from app.services.workflow_pack_execution import (
 )
 from app.services.workflow_pack_bindings import get_workflow_pack_execution_binding
 from tests.support.workflow_pack_fixtures import (
+    advisory_copilot_workflow_pack_execution_request_json,
     dpm_exception_summary_workflow_pack_execution_request_json,
     operations_handoff_summary_workflow_pack_execution_request_json,
     outcome_review_narrative_workflow_pack_execution_request_json,
@@ -102,6 +103,50 @@ def test_execute_workflow_pack_records_review_gated_proof_pack_pm_memo() -> None
         response.execution.result.structured_output["proof_pack_content_hash"]
         == "sha256:proof-pack-001"
     )
+
+
+def test_execute_workflow_pack_records_review_gated_advisory_copilot_output() -> None:
+    request = WorkflowPackExecutionRequest.model_validate(
+        advisory_copilot_workflow_pack_execution_request_json(
+            correlation_id="corr-execution-advisory-copilot"
+        )
+    )
+
+    response = execute_workflow_pack(request)
+
+    structured_output = response.execution.result.structured_output
+    assert response.execution.status.value == "COMPLETED"
+    assert response.workflow_pack_run.pack_id == "advisory_copilot_proposal_explanation.pack"
+    assert response.workflow_pack_run.workflow_authority_owner == "lotus-advise"
+    assert structured_output["workflow_pack_family"] == ("advisory_copilot_proposal_explanation")
+    assert structured_output["state"] == "REVIEW_REQUIRED"
+    assert structured_output["client_ready_publication"] == "BLOCKED"
+    assert structured_output["human_review_required"] is True
+    assert structured_output["evidence_packet_hash"] == "sha256:copilot-evidence-packet-001"
+    assert structured_output["model_risk"]["evaluation_pack_ref"] == (
+        "advisory-copilot-eval-pack.v1"
+    )
+
+
+def test_validate_workflow_pack_execution_binding_runs_advisory_copilot_guardrails() -> None:
+    request_payload = advisory_copilot_workflow_pack_execution_request_json(
+        correlation_id="corr-execution-advisory-copilot-guardrail",
+        requested_outputs=["advisor_review_summary", "client_message"],
+    )
+    request = WorkflowPackExecutionRequest.model_validate(request_payload)
+    binding = get_workflow_pack_execution_binding(
+        pack_id="advisory_copilot_proposal_explanation.pack",
+        version="v1",
+    )
+    assert binding is not None
+
+    try:
+        validate_workflow_pack_execution_binding(request=request, binding=binding)
+    except HTTPException as exc:
+        assert exc.status_code == 422
+        assert "Forbidden advisory copilot outputs requested: client_message" in str(exc.detail)
+    else:
+        raise AssertionError("expected advisory copilot guardrails to reject client output")
 
 
 def test_execute_workflow_pack_records_proof_pack_portfolio_memory_lineage() -> None:

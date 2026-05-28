@@ -129,6 +129,8 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
 8. `lotus-workbench` now has a typed client seam for the downstream advisor-brief review-action route, while UI-triggered business authorization remains a separate future slice,
 9. the current executable workflow-pack set includes `advisor_brief.pack`,
    `workspace_rationale.pack`, `twr_inspection_support_brief.pack`, the review-gated
+   RFC-0027 `advisory_copilot_*.pack` contracts for `lotus-advise` source-backed copilot
+   evidence packets, the review-gated
    `dpm_pm_memo.pack` contract for `lotus-manage` `DpmProofPackAiEvidenceInput`, the
    review-gated `dpm_wave_pm_memo.pack` and `dpm_operations_handoff_summary.pack` contracts for
    `lotus-manage` `DpmWaveReportInput`, the review-gated `dpm_exception_summary.pack` contract
@@ -156,15 +158,20 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
    consume optional manage-owned `portfolio_memory_context` as bounded source lineage, validating
    portfolio identity, capped event refs, source content hash, `NO_RAW_PAYLOADS`, and
    no-reconstruction source-authority policy before any side effects are recorded.
+   Advisory copilot execution validates evidence-packet hashes, source refs, model-risk controls,
+   review-required posture, blocked client-ready posture, unsupported claims, and forbidden
+   technical fields before run, audit, or task-flow records are written.
 
 ```mermaid
 flowchart LR
     ProofPack["lotus-manage\nDpmProofPackAiEvidenceInput"] --> MemoPack["dpm_pm_memo.pack@v1"]
+    Copilot["lotus-advise\ncopilot evidence packet"] --> CopilotPack["advisory_copilot_*.pack@v1"]
     Wave["lotus-manage\nDpmWaveReportInput"] --> WavePack["dpm_wave_pm_memo.pack@v1"]
     Exception["lotus-manage\nmonitoring exception evidence"] --> ExceptionPack["dpm_exception_summary.pack@v1"]
     Wave --> HandoffPack["dpm_operations_handoff_summary.pack@v1"]
     Outcome["lotus-manage\nDpmOutcomeAiEvidenceInput"] --> OutcomePack["outcome_review_narrative.pack@v1"]
     PMQ["lotus-manage\nPmOperatingQualityScoreRun"] --> PMQPack["pm_quality_summary.pack@v1"]
+    CopilotPack --> Guardrails
     Memory["lotus-manage\nportfolio_memory_context"] --> MemoPack
     Memory --> WavePack
     Memory --> HandoffPack

@@ -41,23 +41,32 @@ It does not own portfolio, performance, risk, advisory, management, or reporting
 
 ## Workflow-Pack Product Coverage
 
-Current executable workflow-pack coverage is implementation-backed for ten pilot-scoped families:
+Current executable workflow-pack coverage is implementation-backed for 16 pilot-scoped families:
 
 1. `advisor_brief.pack@v1`
 2. `workspace_rationale.pack@v1`
 3. `twr_inspection_support_brief.pack@v1`
 4. `proposal_memo_commentary.pack@v1`
-5. `dpm_pm_memo.pack@v1`
-6. `dpm_wave_pm_memo.pack@v1`
-7. `dpm_exception_summary.pack@v1`
-8. `dpm_operations_handoff_summary.pack@v1`
-9. `outcome_review_narrative.pack@v1`
-10. `pm_quality_summary.pack@v1`
+5. `advisory_copilot_proposal_explanation.pack@v1`
+6. `advisory_copilot_evidence_qa.pack@v1`
+7. `advisory_copilot_meeting_preparation.pack@v1`
+8. `advisory_copilot_compliance_review_summary.pack@v1`
+9. `advisory_copilot_operations_report_handoff.pack@v1`
+10. `advisory_copilot_client_follow_up_draft.pack@v1`
+11. `dpm_pm_memo.pack@v1`
+12. `dpm_wave_pm_memo.pack@v1`
+13. `dpm_exception_summary.pack@v1`
+14. `dpm_operations_handoff_summary.pack@v1`
+15. `outcome_review_narrative.pack@v1`
+16. `pm_quality_summary.pack@v1`
 
 The proposal memo and DPM packs are deliberately support-only and review-gated.
 `proposal_memo_commentary.pack@v1` consumes bounded `lotus-advise` memo evidence and records
 review-required commentary lineage without changing memo evidence, suitability, approval, or
-client-ready posture. `dpm_pm_memo.pack@v1` consumes
+client-ready posture. The RFC-0027 advisory copilot packs consume Advise-owned evidence packets
+with source refs, model-risk controls, review-required posture, and blocked client-ready posture;
+they do not approve advice, waive policy, create orders, send client messages, or expose raw
+prompt/payload details. `dpm_pm_memo.pack@v1` consumes
 `lotus-manage` `DpmProofPackAiEvidenceInput`; `dpm_wave_pm_memo.pack@v1` and
 `dpm_operations_handoff_summary.pack@v1` consume `lotus-manage` `DpmWaveReportInput`;
 `dpm_exception_summary.pack@v1` consumes bounded `lotus-manage` monitoring exception evidence; and

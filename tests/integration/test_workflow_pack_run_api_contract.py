@@ -18,6 +18,7 @@ from tests.support.runtime_settings import override_runtime_settings
 from tests.support.workflow_pack_fixtures import (
     advisor_brief_task_execution_request_json,
     advisor_brief_workflow_pack_execution_request_json,
+    advisory_copilot_workflow_pack_execution_request_json,
     dpm_exception_summary_workflow_pack_execution_request_json,
     outcome_review_narrative_workflow_pack_execution_request_json,
     pm_quality_summary_workflow_pack_execution_request_json,
@@ -260,6 +261,34 @@ def test_workflow_pack_execute_route_records_workspace_rationale_run(
     assert body["workflow_pack_run"]["workflow_surface"] == "advisory-workspace-assistant"
     assert body["workflow_pack_run"]["workflow_authority_owner"] == "lotus-advise"
     assert body["execution"]["audit"]["workflow_pack_run_id"] == body["workflow_pack_run"]["run_id"]
+
+
+def test_workflow_pack_execute_route_authorizes_advisory_copilot_sql_caller_policy(
+    client: TestClient,
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'advisory-copilot-sql-caller-policy.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        access_control_store_mode="sqlalchemy",
+        database_url=database_url,
+    ):
+        execute_response = client.post(
+            "/platform/workflow-packs/execute",
+            json=advisory_copilot_workflow_pack_execution_request_json(
+                correlation_id="corr-advisory-copilot-sql-tenant-sg-001"
+            ),
+        )
+
+    assert execute_response.status_code == 200
+    body = execute_response.json()
+    assert body["eligibility"]["allowed"] is True
+    assert body["execution"]["status"] == "COMPLETED"
+    assert body["workflow_pack_run"]["pack_id"] == "advisory_copilot_proposal_explanation.pack"
+    assert body["workflow_pack_run"]["caller_app"] == "lotus-advise"
+    assert body["workflow_pack_run"]["tenant_id"] == "tenant-sg-001"
+    assert body["execution"]["result"]["structured_output"]["state"] == "REVIEW_REQUIRED"
 
 
 def test_workflow_pack_execute_route_records_twr_inspection_support_brief_run(

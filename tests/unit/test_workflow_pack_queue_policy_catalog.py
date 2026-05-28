@@ -18,6 +18,12 @@ def test_queue_policy_catalog_declares_policy_for_each_executable_phase1_pack() 
     }
     assert policy_refs == {
         "advisor_brief.pack@v1",
+        "advisory_copilot_client_follow_up_draft.pack@v1",
+        "advisory_copilot_compliance_review_summary.pack@v1",
+        "advisory_copilot_evidence_qa.pack@v1",
+        "advisory_copilot_meeting_preparation.pack@v1",
+        "advisory_copilot_operations_report_handoff.pack@v1",
+        "advisory_copilot_proposal_explanation.pack@v1",
         "dpm_exception_summary.pack@v1",
         "dpm_operations_handoff_summary.pack@v1",
         "dpm_pm_memo.pack@v1",

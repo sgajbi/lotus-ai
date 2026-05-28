@@ -111,6 +111,18 @@ def test_authorize_request_blocks_live_provider_for_disallowed_caller() -> None:
     assert decision.outcome == AuthorizationOutcome.BLOCKED_LIVE_PROVIDER_NOT_ALLOWED
 
 
+def test_authorize_request_allows_advise_singapore_tenant_for_canonical_workflows() -> None:
+    decision = authorize_request(
+        caller_app="lotus-advise",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        tenant_id="tenant-sg-001",
+        task_id="explain.v1",
+    )
+
+    assert decision.allowed is True
+    assert decision.outcome == AuthorizationOutcome.ALLOWED
+
+
 def test_authorize_request_uses_sql_backed_registry_when_configured(tmp_path: Path) -> None:
     database_url = f"sqlite:///{tmp_path / 'access-control-authorization.db'}"
     upgrade_database_to_head(database_url)

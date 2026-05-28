@@ -40,7 +40,7 @@ _DEFAULT_POLICIES = [
         allow_prompt_control=False,
         allow_provider_control=False,
         tenant_policy_mode=TenantPolicyMode.RESTRICTED,
-        restricted_tenant_ids=["tenant-us-002"],
+        restricted_tenant_ids=["tenant-us-002", "tenant-sg-001"],
     ),
     CallerPolicyDescriptor(
         caller_app="lotus-platform",

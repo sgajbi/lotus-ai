@@ -25,6 +25,7 @@ def test_sqlalchemy_caller_policy_repository_survives_reopen(tmp_path: Path) -> 
     first_policy = first_repository.get_policy("lotus-manage")
     second_repository = SqlAlchemyCallerPolicyRepository(database_url)
     second_policy = second_repository.get_policy("lotus-manage")
+    lotus_advise_policy = second_repository.get_policy("lotus-advise")
     lotus_performance_policy = second_repository.get_policy("lotus-performance")
     lotus_gateway_policy = second_repository.get_policy("lotus-gateway")
 
@@ -32,6 +33,13 @@ def test_sqlalchemy_caller_policy_repository_survives_reopen(tmp_path: Path) -> 
     assert second_policy is not None
     assert first_policy.allowed_task_ids == second_policy.allowed_task_ids
     assert second_policy.restricted_tenant_ids == ["tenant-sg-001"]
+    assert lotus_advise_policy is not None
+    assert lotus_advise_policy.allowed_task_ids == [
+        "explain.v1",
+        "summarize.v1",
+        "knowledge_answer.v1",
+    ]
+    assert lotus_advise_policy.restricted_tenant_ids == ["tenant-us-002", "tenant-sg-001"]
     assert lotus_performance_policy is not None
     assert lotus_performance_policy.allowed_task_ids == ["explain.v1"]
     assert lotus_gateway_policy is not None

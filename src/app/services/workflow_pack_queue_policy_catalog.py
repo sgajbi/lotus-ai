@@ -24,6 +24,7 @@ from app.contracts.workflow_pack_queue_policies import (
 from app.config import settings
 from app.services.workflow_pack_phase1_specs import (
     ADVISOR_BRIEF_V1_SPEC,
+    ADVISORY_COPILOT_ACTION_PACK_SPECS,
     DPM_EXCEPTION_SUMMARY_V1_SPEC,
     DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC,
     DPM_WAVE_PM_MEMO_V1_SPEC,
@@ -45,6 +46,10 @@ def list_workflow_pack_queue_policy_descriptors() -> list[WorkflowPackQueuePolic
         _latency_sensitive_advisor_brief_policy(),
         _review_support_workspace_rationale_policy(),
         _review_support_proposal_memo_commentary_policy(),
+        *[
+            _review_support_advisory_copilot_policy(spec=spec)
+            for spec in ADVISORY_COPILOT_ACTION_PACK_SPECS
+        ],
         _batch_twr_inspection_support_brief_policy(),
         _review_support_proof_pack_pm_memo_policy(),
         _review_support_outcome_review_narrative_policy(),
@@ -256,6 +261,31 @@ def _review_support_proposal_memo_commentary_policy() -> WorkflowPackQueuePolicy
         status_summary=[
             "Proposal memo commentary defaults to review-support capacity because generated language remains advisor-use and review-gated.",
             "Operator capacity is reserved for controlled investigation of unavailable, guardrail-blocked, or stale memo-commentary runs.",
+        ],
+    )
+
+
+def _review_support_advisory_copilot_policy(
+    *, spec: WorkflowPackPhase1VersionSpec
+) -> WorkflowPackQueuePolicyDescriptor:
+    return _build_queue_policy(
+        spec=spec,
+        policy_id=f"queue-policy.{spec.pack_family.replace('_', '-')}.v1",
+        allowed_lanes=[
+            WorkflowPackQueueLane.REVIEW_SUPPORT,
+            WorkflowPackQueueLane.OPERATOR,
+        ],
+        default_lane=WorkflowPackQueueLane.REVIEW_SUPPORT,
+        max_concurrent_runs_per_pack=2,
+        max_concurrent_runs_per_lane=1,
+        max_queued_runs_per_pack=30,
+        max_queued_runs_per_lane=15,
+        admission_timeout_seconds=20,
+        execution_timeout_seconds=300,
+        stale_queue_threshold_seconds=90,
+        status_summary=[
+            "Advisory copilot work defaults to review-support capacity because generated content is evidence-backed and review-gated.",
+            "Operator capacity is reserved for controlled investigation of guardrail-blocked, unavailable, disabled-pack, or stale copilot posture.",
         ],
     )
 

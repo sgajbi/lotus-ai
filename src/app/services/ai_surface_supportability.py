@@ -44,6 +44,36 @@ _WORKFLOW_PACK_SURFACE_OWNERS = {
         "lotus-advise",
         "lotus-advise",
     ),
+    "advisory_copilot_proposal_explanation.pack@v1": (
+        "advisory_copilot_proposal_explanation",
+        "lotus-advise",
+        "lotus-advise",
+    ),
+    "advisory_copilot_evidence_qa.pack@v1": (
+        "advisory_copilot_evidence_qa",
+        "lotus-advise",
+        "lotus-advise",
+    ),
+    "advisory_copilot_meeting_preparation.pack@v1": (
+        "advisory_copilot_meeting_preparation",
+        "lotus-advise",
+        "lotus-advise",
+    ),
+    "advisory_copilot_compliance_review_summary.pack@v1": (
+        "advisory_copilot_compliance_review_summary",
+        "lotus-advise",
+        "lotus-advise",
+    ),
+    "advisory_copilot_operations_report_handoff.pack@v1": (
+        "advisory_copilot_operations_report_handoff",
+        "lotus-advise",
+        "lotus-advise",
+    ),
+    "advisory_copilot_client_follow_up_draft.pack@v1": (
+        "advisory_copilot_client_follow_up_draft",
+        "lotus-advise",
+        "lotus-advise",
+    ),
     "outcome_review_narrative.pack@v1": (
         "outcome_review_narrative",
         "lotus-manage",
