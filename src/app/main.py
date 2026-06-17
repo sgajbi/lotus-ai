@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Any
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, MutableMapping
 from contextlib import asynccontextmanager
+from typing import Any, cast
 
 from fastapi import FastAPI, Response, status
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_fastapi_instrumentator import routing as prometheus_routing
-from starlette.routing import Match, Mount
+from starlette.routing import Match, Mount, Route
 
 from app.config import settings
 from app.middleware.correlation import CorrelationIdMiddleware
@@ -45,8 +45,8 @@ def _install_fastapi_included_router_prometheus_patch() -> None:
 
 
 def _get_prometheus_route_name(
-    scope: dict[str, Any],
-    routes: list[Any],
+    scope: MutableMapping[str, Any],
+    routes: list[Route],
     route_name: str | None = None,
 ) -> str | None:
     """Resolve route names across Starlette routes and FastAPI deferred routers."""
@@ -63,7 +63,7 @@ def _get_prometheus_route_name(
             route_name = route_path
             if isinstance(matched_route, Mount) and matched_route.routes:
                 child_route_name = _get_prometheus_route_name(
-                    child_scope, matched_route.routes, route_name
+                    child_scope, cast(list[Route], matched_route.routes), route_name
                 )
                 if child_route_name is None:
                     route_name = None
@@ -77,7 +77,7 @@ def _get_prometheus_route_name(
     return None
 
 
-def _resolve_effective_route(route: Any, scope: dict[str, Any]) -> Any:
+def _resolve_effective_route(route: Route, scope: MutableMapping[str, Any]) -> Any:
     match_method = getattr(route, "_match", None)
     if not callable(match_method):
         return route
