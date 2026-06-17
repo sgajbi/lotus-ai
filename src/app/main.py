@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, MutableMapping
 from contextlib import asynccontextmanager
+from typing import Any, cast
 
 from fastapi import FastAPI, Response, status
 from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator import routing as prometheus_routing
+from starlette.routing import Match, Mount, Route
 
 from app.config import settings
 from app.middleware.correlation import CorrelationIdMiddleware
@@ -30,6 +33,63 @@ from app.services.startup_policy import apply_startup_readiness_policy
 SERVICE_NAME = settings.service_name
 SERVICE_VERSION = settings.service_version
 ROUNDING_POLICY_VERSION = "v1"
+_PROMETHEUS_ROUTING_PATCHED = False
+
+
+def _install_fastapi_included_router_prometheus_patch() -> None:
+    global _PROMETHEUS_ROUTING_PATCHED
+    if _PROMETHEUS_ROUTING_PATCHED:
+        return
+    prometheus_routing._get_route_name = _get_prometheus_route_name
+    _PROMETHEUS_ROUTING_PATCHED = True
+
+
+def _get_prometheus_route_name(
+    scope: MutableMapping[str, Any],
+    routes: list[Route],
+    route_name: str | None = None,
+) -> str | None:
+    """Resolve route names across Starlette routes and FastAPI deferred routers."""
+
+    for route in routes:
+        match, child_scope = route.matches(scope)
+        if match == Match.FULL:
+            matched_route = _resolve_effective_route(route, scope)
+            route_path = getattr(matched_route, "path", None)
+            if not isinstance(route_path, str):
+                return route_name
+
+            child_scope = {**scope, **child_scope}
+            route_name = route_path
+            if isinstance(matched_route, Mount) and matched_route.routes:
+                child_route_name = _get_prometheus_route_name(
+                    child_scope, cast(list[Route], matched_route.routes), route_name
+                )
+                if child_route_name is None:
+                    route_name = None
+                else:
+                    route_name += child_route_name
+            return route_name
+        if match == Match.PARTIAL and route_name is None:
+            route_path = getattr(route, "path", None)
+            if isinstance(route_path, str):
+                route_name = route_path
+    return None
+
+
+def _resolve_effective_route(route: Route, scope: MutableMapping[str, Any]) -> Any:
+    match_method = getattr(route, "_match", None)
+    if not callable(match_method):
+        return route
+
+    try:
+        _match, _child_scope, matched_route, effective_context = match_method(scope)
+    except Exception:
+        return route
+    if matched_route is not None:
+        return matched_route
+    starlette_route = getattr(effective_context, "starlette_route", None)
+    return starlette_route or route
 
 
 @asynccontextmanager
@@ -51,6 +111,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
+_install_fastapi_included_router_prometheus_patch()
 Instrumentator().instrument(app).expose(app)
 app.include_router(platform_router)
 app.include_router(artifacts_router)
