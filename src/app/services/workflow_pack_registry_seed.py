@@ -18,6 +18,7 @@ from app.services.workflow_pack_phase1_specs import (
     DPM_EXCEPTION_SUMMARY_V1_SPEC,
     DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC,
     DPM_WAVE_PM_MEMO_V1_SPEC,
+    IDEA_EXPLANATION_V1_SPEC,
     OUTCOME_REVIEW_NARRATIVE_V1_SPEC,
     PM_QUALITY_SUMMARY_V1_SPEC,
     PROPOSAL_MEMO_COMMENTARY_V1_SPEC,
@@ -345,6 +346,46 @@ def build_seed_workflow_pack_registrations() -> list[WorkflowPackRegistrationDes
             status_summary=[
                 "The DPM wave PM memo workflow pack consumes lotus-manage DpmWaveReportInput only.",
                 "Activation remains pilot-scoped while Gateway and Workbench add product-surface invocation, unavailable posture, and canonical live proof without reconstructing wave or proof-pack evidence.",
+            ],
+        ),
+        WorkflowPackRegistrationDescriptor(
+            pack_id=IDEA_EXPLANATION_V1_SPEC.pack_id,
+            pack_family=IDEA_EXPLANATION_V1_SPEC.pack_family,
+            version=IDEA_EXPLANATION_V1_SPEC.version,
+            owner_repository=IDEA_EXPLANATION_V1_SPEC.owner_repository,
+            owner_service=IDEA_EXPLANATION_V1_SPEC.owner_service,
+            truth_owner_services=list(IDEA_EXPLANATION_V1_SPEC.truth_owner_services),
+            primary_use_case=IDEA_EXPLANATION_V1_SPEC.primary_use_case,
+            workflow_authority_owner=IDEA_EXPLANATION_V1_SPEC.workflow_authority_owner,
+            default_execution_mode=WorkflowPackExecutionMode.REVIEW_GATED,
+            definition_ref="repo://lotus-idea/src/app/domain/ai_governance.py",
+            definition_refs=_idea_explanation_v1_definition_refs(),
+            compatibility_contract_version="workflow-pack-contract.v1",
+            registration_status=WorkflowPackRegistrationStatus.REGISTERED,
+            activation_state=WorkflowPackActivationState.PILOT,
+            registered_definition_digest="sha256:idea-explanation-v1-registered-digest",
+            supported_callers=list(IDEA_EXPLANATION_V1_SPEC.supported_callers),
+            supported_identity_classes=[
+                WorkflowPackCallerIdentityClass.INTERNAL_SERVICE,
+            ],
+            supported_environments=[
+                WorkflowPackEnvironment.DEVELOPMENT,
+                WorkflowPackEnvironment.QA,
+                WorkflowPackEnvironment.UAT,
+            ],
+            tenant_scope=[],
+            surface_scope=list(IDEA_EXPLANATION_V1_SPEC.surface_scope),
+            default_rollout_stage="PILOT_SCOPED",
+            pause_state="NOT_PAUSED",
+            supersedes=None,
+            superseded_by=None,
+            registered_at="2026-06-25T08:00:00Z",
+            registered_by="lotus-ai.workflow-pack-registry.seed",
+            last_activated_at="2026-06-25T08:20:00Z",
+            last_changed_at="2026-06-25T08:20:00Z",
+            status_summary=[
+                "The idea explanation workflow pack consumes lotus-idea redacted evidence packets only.",
+                "Activation remains pilot-scoped and review-gated; generated rationale cannot create suitability approval, proposal authority, rebalance authority, client-ready publication, or supported-feature promotion.",
             ],
         ),
         WorkflowPackRegistrationDescriptor(
@@ -959,6 +1000,69 @@ def _dpm_wave_pm_memo_v1_definition_refs() -> list[WorkflowPackDefinitionReferen
             reference_type=WorkflowPackDefinitionReferenceType.RFC,
             required_for_registration=False,
             description="RFC-0041 defines rebalance-wave orchestration, CIO impact review, and no-autonomous-execution workflow boundaries.",
+        ),
+    ]
+
+
+def _idea_explanation_v1_definition_refs() -> list[WorkflowPackDefinitionReferenceDescriptor]:
+    return [
+        _definition_ref(
+            reference_id="primary_contract",
+            repository="lotus-idea",
+            path="src/app/domain/ai_governance.py",
+            reference_type=WorkflowPackDefinitionReferenceType.CONTRACT,
+            required_for_registration=True,
+            description=(
+                "Idea-owned AI governance domain model that bounds redacted evidence, workflow "
+                "pack references, verifier posture, and no-downstream-authority behavior."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_application_service",
+            repository="lotus-idea",
+            path="src/app/application/ai_governance.py",
+            reference_type=WorkflowPackDefinitionReferenceType.SERVICE,
+            required_for_registration=True,
+            description=(
+                "Idea application service that evaluates governed explanation output against "
+                "candidate evidence without executing providers locally."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_router",
+            repository="lotus-idea",
+            path="src/app/api/ai_governance.py",
+            reference_type=WorkflowPackDefinitionReferenceType.ROUTER,
+            required_for_registration=True,
+            description=(
+                "Idea API route exposing the internal explanation evaluation and readiness "
+                "diagnostic boundaries for authorized operator and service callers."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_tests",
+            repository="lotus-idea",
+            path="tests/unit/test_ai_governance.py",
+            reference_type=WorkflowPackDefinitionReferenceType.TEST,
+            required_for_registration=True,
+            description=(
+                "Idea regression coverage proving unsupported claims, forbidden actions, "
+                "fallback posture, and source-safe lineage behavior."
+            ),
+        ),
+        _definition_ref(
+            reference_id="owner_rfc",
+            repository="lotus-idea",
+            path=(
+                "docs/rfcs/RFC-0002-enterprise-opportunity-intelligence-operating-layer/"
+                "RFC-0002-slice-09-governed-ai-explanation-and-model-risk-controls.md"
+            ),
+            reference_type=WorkflowPackDefinitionReferenceType.RFC,
+            required_for_registration=False,
+            description=(
+                "RFC-0002 Slice 09 defines governed AI explanation, model-risk controls, "
+                "review posture, and unsupported-claim boundaries for Lotus Idea."
+            ),
         ),
     ]
 

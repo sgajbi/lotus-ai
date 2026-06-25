@@ -28,6 +28,7 @@ def test_queue_policy_catalog_declares_policy_for_each_executable_phase1_pack() 
         "dpm_operations_handoff_summary.pack@v1",
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",
+        "idea_explanation.pack@v1",
         "outcome_review_narrative.pack@v1",
         "pm_quality_summary.pack@v1",
         "proposal_memo_commentary.pack@v1",
@@ -67,6 +68,26 @@ def test_advisor_brief_queue_policy_protects_latency_sensitive_lane() -> None:
         requirement.evidence_type == "capacity_evaluation"
         for requirement in policy.evidence_requirements
     )
+
+
+def test_idea_explanation_queue_policy_is_review_gated_and_operator_visible() -> None:
+    policy = get_workflow_pack_queue_policy_descriptor(
+        pack_id="idea_explanation.pack",
+        version="v1",
+    )
+
+    assert policy is not None
+    assert policy.policy_id == "queue-policy.idea-explanation.v1"
+    assert policy.default_lane == WorkflowPackQueueLane.REVIEW_SUPPORT
+    assert policy.allowed_lanes == [
+        WorkflowPackQueueLane.REVIEW_SUPPORT,
+        WorkflowPackQueueLane.OPERATOR,
+    ]
+    assert any(
+        requirement.evidence_type == "registry_authorization"
+        for requirement in policy.evidence_requirements
+    )
+    assert any("Idea explanation" in line for line in policy.status_summary)
 
 
 def test_queue_policy_catalog_returns_deep_copies() -> None:

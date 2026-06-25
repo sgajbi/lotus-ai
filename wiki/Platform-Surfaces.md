@@ -136,7 +136,8 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
    `lotus-manage` `DpmWaveReportInput`, the review-gated `dpm_exception_summary.pack` contract
    for bounded `lotus-manage` monitoring exception evidence, and the review-gated
    `outcome_review_narrative.pack` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`, plus
-   `pm_quality_summary.pack` for Manage-owned `PmOperatingQualityScoreRun` evidence.
+   `pm_quality_summary.pack` for Manage-owned `PmOperatingQualityScoreRun` evidence and
+   `idea_explanation.pack` for `lotus-idea` redacted opportunity evidence packets.
    DPM proof-pack PM memo execution validates required proof-pack
    evidence, required forbidden actions, forbidden field names, forbidden requested outputs such as
    trade recommendations or client messages, and unsupported requested outputs before run, audit,
@@ -161,6 +162,10 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
    Advisory copilot execution validates evidence-packet hashes, source refs, model-risk controls,
    review-required posture, blocked client-ready posture, unsupported claims, and forbidden
    technical fields before run, audit, or task-flow records are written.
+   Idea explanation execution validates redacted evidence packet posture, bounded explanation
+   request scope, supportability, human-review requirement, unsupported claims, and forbidden
+   suitability/proposal/rebalance/client-publication authority before run, audit, or task-flow
+   records are written.
 
 ```mermaid
 flowchart LR
@@ -171,6 +176,7 @@ flowchart LR
     Wave --> HandoffPack["dpm_operations_handoff_summary.pack@v1"]
     Outcome["lotus-manage\nDpmOutcomeAiEvidenceInput"] --> OutcomePack["outcome_review_narrative.pack@v1"]
     PMQ["lotus-manage\nPmOperatingQualityScoreRun"] --> PMQPack["pm_quality_summary.pack@v1"]
+    Idea["lotus-idea\nredacted idea evidence"] --> IdeaPack["idea_explanation.pack@v1"]
     CopilotPack --> Guardrails
     Memory["lotus-manage\nportfolio_memory_context"] --> MemoPack
     Memory --> WavePack
@@ -182,6 +188,7 @@ flowchart LR
     HandoffPack --> Guardrails
     OutcomePack --> Guardrails
     PMQPack --> Guardrails
+    IdeaPack --> Guardrails
     Guardrails --> Ledger["Run ledger\nreview required"]
     Ledger --> SourceEvents["AI source events\nno raw payloads"]
     Ledger --> Operator["Operator profile\nconsumer view\nruntime status"]

@@ -99,6 +99,11 @@ _WORKFLOW_PACK_SURFACE_OWNERS = {
         "lotus-manage",
         "lotus-manage",
     ),
+    "idea_explanation.pack@v1": (
+        "idea_explanation",
+        "lotus-idea",
+        "lotus-idea",
+    ),
     "pm_quality_summary.pack@v1": (
         "pm_quality_summary",
         "lotus-manage",

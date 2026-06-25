@@ -6,8 +6,8 @@ def test_build_observability_runtime_status_returns_bounded_domain_summary() -> 
 
     assert status.service == "lotus-ai"
     assert status.domain_count == 6
-    assert status.ai_surface_supportability.supported_surface_count == 16
-    assert status.ai_surface_supportability.executable_workflow_pack_count == 16
+    assert status.ai_surface_supportability.supported_surface_count == 17
+    assert status.ai_surface_supportability.executable_workflow_pack_count == 17
     assert status.ai_surface_supportability.no_sensitive_content_telemetry is False
     assert status.ai_surface_supportability.metric_name == "lotus_ai_surface_supportability_state"
     assert status.ai_surface_supportability.metric_labels == ["surface", "posture", "source"]
@@ -23,6 +23,7 @@ def test_build_observability_runtime_status_returns_bounded_domain_summary() -> 
         "dpm_operations_handoff_summary.pack@v1",
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",
+        "idea_explanation.pack@v1",
         "outcome_review_narrative.pack@v1",
         "pm_quality_summary.pack@v1",
         "proposal_memo_commentary.pack@v1",
@@ -51,6 +52,12 @@ def test_build_observability_runtime_status_returns_bounded_domain_summary() -> 
         surface.surface_id == "dpm_wave_pm_memo"
         and surface.owning_service == "lotus-manage"
         and surface.workflow_authority_owner == "lotus-manage"
+        for surface in status.ai_surface_supportability.surfaces
+    )
+    assert any(
+        surface.surface_id == "idea_explanation"
+        and surface.owning_service == "lotus-idea"
+        and surface.workflow_authority_owner == "lotus-idea"
         for surface in status.ai_surface_supportability.surfaces
     )
     assert any(

@@ -28,6 +28,7 @@ from app.services.workflow_pack_phase1_specs import (
     DPM_EXCEPTION_SUMMARY_V1_SPEC,
     DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC,
     DPM_WAVE_PM_MEMO_V1_SPEC,
+    IDEA_EXPLANATION_V1_SPEC,
     OUTCOME_REVIEW_NARRATIVE_V1_SPEC,
     PM_QUALITY_SUMMARY_V1_SPEC,
     PROPOSAL_MEMO_COMMENTARY_V1_SPEC,
@@ -54,6 +55,7 @@ def list_workflow_pack_queue_policy_descriptors() -> list[WorkflowPackQueuePolic
         _review_support_proof_pack_pm_memo_policy(),
         _review_support_outcome_review_narrative_policy(),
         _review_support_wave_pm_memo_policy(),
+        _review_support_idea_explanation_policy(),
         _review_support_operations_handoff_summary_policy(),
         _review_support_dpm_exception_summary_policy(),
         _review_support_pm_quality_summary_policy(),
@@ -378,6 +380,29 @@ def _review_support_wave_pm_memo_policy() -> WorkflowPackQueuePolicyDescriptor:
         status_summary=[
             "DPM wave PM memo work defaults to review-support capacity because generated narrative remains support-only and review-gated.",
             "Operator capacity is reserved for controlled investigation of guardrail-blocked, unavailable, or stale wave-evidence posture.",
+        ],
+    )
+
+
+def _review_support_idea_explanation_policy() -> WorkflowPackQueuePolicyDescriptor:
+    return _build_queue_policy(
+        spec=IDEA_EXPLANATION_V1_SPEC,
+        policy_id="queue-policy.idea-explanation.v1",
+        allowed_lanes=[
+            WorkflowPackQueueLane.REVIEW_SUPPORT,
+            WorkflowPackQueueLane.OPERATOR,
+        ],
+        default_lane=WorkflowPackQueueLane.REVIEW_SUPPORT,
+        max_concurrent_runs_per_pack=2,
+        max_concurrent_runs_per_lane=1,
+        max_queued_runs_per_pack=25,
+        max_queued_runs_per_lane=10,
+        admission_timeout_seconds=20,
+        execution_timeout_seconds=300,
+        stale_queue_threshold_seconds=90,
+        status_summary=[
+            "Idea explanation work defaults to review-support capacity because generated rationale remains advisor-use and review-gated.",
+            "Operator capacity is reserved for controlled investigation of unavailable, guardrail-blocked, or stale idea-evidence posture.",
         ],
     )
 
