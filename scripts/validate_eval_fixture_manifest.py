@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SRC_ROOT = REPO_ROOT / "src"
+from _repo_imports import ensure_repo_src_first
+
+REPO_ROOT = ensure_repo_src_first(script_file=__file__)
 
 
 def main() -> int:
-    if str(SRC_ROOT) not in sys.path:
-        sys.path.insert(0, str(SRC_ROOT))
-
     from app.evals.fixture_manifest import (
         EvaluationFixtureManifestValidationError,
         load_evaluation_fixture_manifest,

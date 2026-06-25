@@ -123,7 +123,7 @@ def _validate_control_action_request(request: ProviderOperationsControlActionReq
     if request.action_type == ProviderOperationsControlActionType.RESET_QUOTA_SCOPE:
         if request.scope is None or request.scope_key is None:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=(
                     "RESET_QUOTA_SCOPE requires both `scope` and `scope_key` so the targeted quota reset remains explicit."
                 ),
@@ -132,7 +132,7 @@ def _validate_control_action_request(request: ProviderOperationsControlActionReq
 
     if request.scope is not None or request.scope_key is not None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=(
                 f"{request.action_type.value} does not accept `scope` or `scope_key`; use RESET_QUOTA_SCOPE for targeted quota resets."
             ),

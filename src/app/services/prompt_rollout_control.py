@@ -148,7 +148,7 @@ def _build_promote_transition(
         )
     if request.candidate_prompt_version is None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="candidate_prompt_version is required for PROMOTE_CANDIDATE.",
         )
 
@@ -222,7 +222,7 @@ def _build_rollback_transition(
 ) -> tuple[PromptRolloutStateRecord, list[PromptDescriptor], PromptRolloutEventRecord]:
     if request.candidate_prompt_version is not None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="candidate_prompt_version must be omitted for ROLLBACK_TO_PREVIOUS_ACTIVE.",
         )
     if rollout_state.previous_active_prompt_version is None:
