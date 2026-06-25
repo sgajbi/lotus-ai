@@ -200,7 +200,7 @@ Before treating the in-service observability layer as governed rollout posture:
 4. inspect `GET /platform/observability/governance-status` for the composed governance view
 5. confirm the embedded `observability_runtime` and `observability_governance` blocks in `GET /platform/runtime-status` match the detailed observability views
 6. confirm `GET /platform/observability/incident-summary` covers provider, retrieval, async, evaluation, prompt, and safety domains without unavailable telemetry posture
-7. inspect the `ai_surface_supportability` block in `GET /platform/observability/runtime-status` and the embedded `observability_runtime` block in `GET /platform/runtime-status` before treating AI-backed Workbench, advisory, or performance support surfaces as operator-ready
+7. inspect the `ai_surface_supportability` block in `GET /platform/observability/runtime-status` and the embedded `observability_runtime` block in `GET /platform/runtime-status` before treating AI-backed Workbench, advisory, performance, management, or idea-support surfaces as operator-ready
 8. confirm the `ai_surface_supportability.metric_name` is `lotus_ai_surface_supportability_state` and that metric labels stay bounded to `surface`, `posture`, and `source`
 9. confirm represented AI-backed surfaces carry `no_sensitive_content_telemetry=true` before treating generated commentary, rationale, or brief surfaces as free of sensitive-content telemetry gaps
 10. inspect `ai_surface_supportability.surfaces[*].supportability_reason` to distinguish no-sensitive-telemetry degradation from workflow-pack action-required, ready, historical, or supported-no-activity posture without inspecting raw prompts or generated content

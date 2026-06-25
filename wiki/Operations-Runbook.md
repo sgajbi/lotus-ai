@@ -199,6 +199,11 @@ For AI-backed product-surface support, also confirm:
     trade approvals, execution instructions, and invented missing score-run evidence as
     guardrail-blocked requests. The pack is narrative support only and does not calculate PM scores
     or own fairness analysis.
+12. `idea_explanation` remains owned by `lotus-idea` opportunity-intelligence and redacted
+    idea-evidence contracts; treat suitability approval, proposal authority, rebalance authority,
+    client-ready publication, supported-feature promotion, raw payload exposure, raw prompt/output
+    exposure, and invented missing evidence as guardrail-blocked requests. The pack is
+    review-gated explanation support only and does not own idea lifecycle truth.
 
 The owner-facing source for that procedure is:
 

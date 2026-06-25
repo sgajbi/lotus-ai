@@ -41,7 +41,7 @@ It does not own portfolio, performance, risk, advisory, management, or reporting
 
 ## Workflow-Pack Product Coverage
 
-Current executable workflow-pack coverage is implementation-backed for 16 pilot-scoped families:
+Current executable workflow-pack coverage is implementation-backed for 17 pilot-scoped families:
 
 1. `advisor_brief.pack@v1`
 2. `workspace_rationale.pack@v1`
@@ -59,6 +59,7 @@ Current executable workflow-pack coverage is implementation-backed for 16 pilot-
 14. `dpm_operations_handoff_summary.pack@v1`
 15. `outcome_review_narrative.pack@v1`
 16. `pm_quality_summary.pack@v1`
+17. `idea_explanation.pack@v1`
 
 The proposal memo and DPM packs are deliberately support-only and review-gated.
 `proposal_memo_commentary.pack@v1` consumes bounded `lotus-advise` memo evidence and records
@@ -78,6 +79,9 @@ proof-pack, wave, handoff, and outcome packs can also consume optional manage-ow
 `portfolio_memory_context` as bounded source lineage. They validate forbidden actions, forbidden
 fields, requested output scope, portfolio-memory redaction/source-authority posture, run-ledger
 posture, and source evidence before generated narrative can be treated as usable support.
+`idea_explanation.pack@v1` consumes `lotus-idea` redacted opportunity evidence packets and remains
+review-gated support-only; it cannot create suitability approval, proposal authority, rebalance
+authority, client-ready publication, supported-feature promotion, or missing source evidence.
 
 ## Supported Task Families
 

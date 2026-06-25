@@ -167,13 +167,16 @@ the owner-facing procedure and do one more truth check before treating a registr
 ## DPM PM Memo Integration
 
 `dpm_pm_memo.pack@v1`, `dpm_wave_pm_memo.pack@v1`, `dpm_exception_summary.pack@v1`,
-`dpm_operations_handoff_summary.pack@v1`, and `pm_quality_summary.pack@v1` are the current
+`dpm_operations_handoff_summary.pack@v1`, `pm_quality_summary.pack@v1`, and
+`idea_explanation.pack@v1` are the current
 `lotus-ai` owner-side execution contracts
-for governed DPM support drafting from Manage evidence. The proof-pack pack is for single
+for governed DPM and idea-support drafting from source-owned evidence. The proof-pack pack is for single
 proof-pack evidence, the wave pack is for rebalance-wave PM memo evidence, the exception pack is
 for bounded monitoring exception evidence, and the operations pack is for bounded internal handoff
 evidence that may summarize staged wave items and handoff refs. The PM quality pack is for
-support-only summaries over Manage-owned `PmOperatingQualityScoreRun` evidence.
+support-only summaries over Manage-owned `PmOperatingQualityScoreRun` evidence. The idea
+explanation pack is for bounded support explanation over `lotus-idea` redacted opportunity
+evidence packets.
 
 Use it only when the caller supplies:
 
@@ -256,14 +259,28 @@ client messages, trade approvals, execution instructions, and inferred missing s
 before run, audit, or task-flow records are written. It does not calculate PM scores or own
 fairness analysis.
 
+Use `idea_explanation.pack@v1` only when the caller supplies:
+
+1. a `redacted_evidence_packet` owned by `lotus-idea`,
+2. a bounded `explanation_request` for advisor-support explanation, evidence gaps, support
+   references, or review-ready rationale,
+3. `supportability` posture with human-review requirement and unsupported claims.
+
+The idea explanation pack blocks suitability approval, proposal authority, rebalance authority,
+client-ready publication, supported-feature promotion, raw source payload exposure, raw prompt or
+generated-output exposure, and invented missing evidence before run, audit, or task-flow records are
+written. It does not own idea lifecycle truth; that authority stays in `lotus-idea`.
+
 ```mermaid
 sequenceDiagram
     participant Manage as lotus-manage
+    participant Idea as lotus-idea
     participant AI as lotus-ai
     participant Ledger as workflow-pack ledger
     participant UI as Gateway / Workbench
     Manage->>AI: DPM memo, wave memo, exception summary, operations handoff, or PM quality pack with bounded evidence
-    AI->>AI: Validate forbidden actions, fields, requested outputs, and memory lineage
+    Idea->>AI: Idea explanation pack with redacted opportunity evidence
+    AI->>AI: Validate forbidden actions, fields, requested outputs, redaction, and source authority
     AI->>Ledger: Record review-gated run after guardrails pass
     Ledger-->>AI: workflow_pack_run_id and provenance
     AI-->>UI: Support-only memo payload plus run posture

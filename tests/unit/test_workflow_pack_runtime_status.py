@@ -248,11 +248,11 @@ def test_build_workflow_pack_runtime_status_summary_defaults_include_all_executa
 ):
     summary = build_workflow_pack_runtime_status_summary()
 
-    assert summary.registration_count == 17
-    assert summary.registered_count == 16
-    assert summary.execution_binding_count == 16
-    assert summary.executable_registration_count == 16
-    assert summary.executable_review_required_count == 16
+    assert summary.registration_count == 18
+    assert summary.registered_count == 17
+    assert summary.execution_binding_count == 17
+    assert summary.executable_registration_count == 17
+    assert summary.executable_review_required_count == 17
     assert summary.registered_without_execution_binding_count == 0
     assert summary.executable_registration_refs == [
         "advisor_brief.pack@v1",
@@ -266,6 +266,7 @@ def test_build_workflow_pack_runtime_status_summary_defaults_include_all_executa
         "dpm_operations_handoff_summary.pack@v1",
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",
+        "idea_explanation.pack@v1",
         "outcome_review_narrative.pack@v1",
         "pm_quality_summary.pack@v1",
         "proposal_memo_commentary.pack@v1",
@@ -284,6 +285,7 @@ def test_build_workflow_pack_runtime_status_summary_defaults_include_all_executa
         "dpm_operations_handoff_summary.pack@v1",
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",
+        "idea_explanation.pack@v1",
         "outcome_review_narrative.pack@v1",
         "pm_quality_summary.pack@v1",
         "proposal_memo_commentary.pack@v1",

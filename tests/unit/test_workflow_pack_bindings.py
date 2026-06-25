@@ -2,6 +2,7 @@ from dataclasses import replace
 
 from pytest import MonkeyPatch
 
+from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.contracts.tasks import (
     CallerMetadata,
     OutputLabel,
@@ -9,7 +10,6 @@ from app.contracts.tasks import (
     TaskExecutionRequest,
     TaskInputMode,
 )
-from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.task_execution_context_builder import build_task_execution_context
 from app.services.workflow_pack_bindings import (
@@ -110,6 +110,30 @@ def test_get_workflow_pack_execution_binding_returns_operations_handoff_summary_
     assert binding.task_id == "explain.v1"
     assert binding.default_workflow_surface == "dpm-operations-handoff-ai-evidence"
     assert binding.validate_task_request_payload(payload=operations_handoff_summary_payload())
+
+
+def test_get_workflow_pack_execution_binding_returns_idea_explanation_binding() -> None:
+    binding = get_workflow_pack_execution_binding(
+        pack_id="idea_explanation.pack",
+        version="v1",
+    )
+
+    assert binding is not None
+    assert binding.task_id == "explain.v1"
+    assert binding.default_workflow_surface == "idea-explanation-evidence"
+    assert binding.validate_task_request_payload(
+        payload={
+            "redacted_evidence_packet": {},
+            "explanation_request": {},
+            "supportability": {},
+        }
+    )
+    registration = get_workflow_pack_registration(
+        pack_id="idea_explanation.pack",
+        version="v1",
+    )
+    assert registration is not None
+    assert binding.supports_registration_scope(registration=registration)
 
 
 def test_workflow_pack_execution_binding_spec_requires_task_and_surface() -> None:

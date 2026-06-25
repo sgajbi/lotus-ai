@@ -58,11 +58,11 @@ Important posture limits:
 4. prompt bodies remain repository-managed even though runtime prompt selection is durable,
 5. workflow-pack registry records are control-plane metadata, not a second editable home for workflow logic,
 6. workflow-pack registrations must point to real owning-repository artifacts rather than placeholder definitions in `lotus-ai`,
-7. workflow-pack registry and control state can now run either in-memory or through a SQL-backed durable store, and the current executable workflow-pack set includes advisor brief, workspace rationale, TWR inspection support brief, the review-gated `proposal_memo_commentary.pack@v1` contract for `lotus-advise` advisor proposal memo evidence, the six review-gated `advisory_copilot_*.pack@v1` contracts for RFC-0027 `lotus-advise` evidence packets, the review-gated `dpm_pm_memo.pack@v1` contract for `lotus-manage` `DpmProofPackAiEvidenceInput`, the review-gated `dpm_wave_pm_memo.pack@v1` and `dpm_operations_handoff_summary.pack@v1` contracts for `lotus-manage` `DpmWaveReportInput`, the review-gated `dpm_exception_summary.pack@v1` contract for bounded `lotus-manage` monitoring exception evidence, and the review-gated `outcome_review_narrative.pack@v1` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`,
+7. workflow-pack registry and control state can now run either in-memory or through a SQL-backed durable store, and the current executable workflow-pack set includes advisor brief, workspace rationale, TWR inspection support brief, the review-gated `proposal_memo_commentary.pack@v1` contract for `lotus-advise` advisor proposal memo evidence, the six review-gated `advisory_copilot_*.pack@v1` contracts for RFC-0027 `lotus-advise` evidence packets, the review-gated `dpm_pm_memo.pack@v1` contract for `lotus-manage` `DpmProofPackAiEvidenceInput`, the review-gated `dpm_wave_pm_memo.pack@v1` and `dpm_operations_handoff_summary.pack@v1` contracts for `lotus-manage` `DpmWaveReportInput`, the review-gated `dpm_exception_summary.pack@v1` contract for bounded `lotus-manage` monitoring exception evidence, the review-gated `outcome_review_narrative.pack@v1` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`, and the review-gated `idea_explanation.pack@v1` contract for `lotus-idea` redacted opportunity evidence packets,
 8. the service should be treated as a governed capability layer, not a business-domain authority.
 
-For proposal memo commentary, RFC-0027 advisory copilot, DPM PM memo, exception summary, and
-operations handoff summary support, `lotus-ai` owns workflow-pack execution, provider mode, safety, guardrail validation,
+For proposal memo commentary, RFC-0027 advisory copilot, DPM PM memo, exception summary,
+operations handoff summary, and idea explanation support, `lotus-ai` owns workflow-pack execution, provider mode, safety, guardrail validation,
 run-ledger posture, queue policy, and deterministic stub behavior.
 `lotus-advise` remains the advisor proposal memo evidence, review, and client-ready boundary
 authority. The proposal memo commentary pack consumes bounded memo evidence only and cannot mutate
@@ -77,6 +77,10 @@ consume `DpmWaveReportInput`; the exception summary pack consumes bounded manage
 exception evidence. These packs are pilot-scoped, support-only, and review-gated; they must not
 approve rebalances, place orders, produce client messages, score PMs, claim external execution,
 produce routing instructions, or invent missing proof-pack, wave, exception, or handoff evidence.
+`lotus-idea` remains the opportunity-intelligence and idea-evidence authority. The idea explanation
+pack consumes only redacted evidence packets, bounded explanation requests, and supportability
+posture from `lotus-idea`; it cannot create suitability approval, proposal authority, rebalance
+authority, client-ready publication, supported-feature promotion, or missing source evidence.
 
 For DPM portfolio-memory support, the proof-pack PM memo, wave PM memo, operations handoff summary,
 and outcome-review narrative packs can consume optional `portfolio_memory_context` emitted by

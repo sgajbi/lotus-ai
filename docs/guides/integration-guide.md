@@ -350,6 +350,30 @@ flowchart LR
     RunLedger --> Consumers["Gateway / Workbench\nfuture PM memo surface"]
 ```
 
+### lotus-idea
+
+Use `idea_explanation.pack@v1` only when the caller supplies:
+
+1. a `redacted_evidence_packet` owned by `lotus-idea`,
+2. a bounded `explanation_request` that asks for advisor-support explanation, evidence gaps,
+   support references, or review-ready rationale,
+3. `supportability` posture that states source readiness, human-review need, and unsupported
+   claims.
+
+The pack is review-gated and support-only. It blocks suitability approval, proposal authority,
+rebalance authority, client-ready publication, supported-feature promotion, raw source payload
+exposure, raw prompt or generated-output exposure, and invented missing evidence. `lotus-idea`
+remains the opportunity-intelligence, idea lifecycle, and idea-evidence authority; `lotus-ai`
+provides the governed workflow-pack runtime, review posture, queue policy, and safety guardrails.
+
+```mermaid
+flowchart LR
+    Idea["lotus-idea\nredacted idea evidence"] --> AI["lotus-ai\nidea_explanation.pack@v1"]
+    AI --> Guardrails["Suitability, proposal,\nrebalance, publication,\nand raw-payload guardrails"]
+    Guardrails --> Ledger["Workflow-pack run ledger\nreview required"]
+    Ledger --> Consumers["lotus-idea / lotus-gateway\nfuture bounded consumer"]
+```
+
 The memo flows are support-only. `lotus-ai` may draft review-gated memo posture from bounded
 proof-pack or wave evidence, but `lotus-manage` keeps proof-pack truth, wave truth, and any
 downstream PM/CIO/operations workflow authority.

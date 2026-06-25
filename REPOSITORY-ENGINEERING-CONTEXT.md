@@ -44,7 +44,7 @@ Current repository posture:
    `advisory_copilot_client_follow_up_draft.pack`, `twr_inspection_support_brief.pack`,
    `dpm_pm_memo.pack`, `dpm_wave_pm_memo.pack`, `dpm_exception_summary.pack`,
    `dpm_operations_handoff_summary.pack`, `outcome_review_narrative.pack`, and
-   `pm_quality_summary.pack`), with runtime state
+   `pm_quality_summary.pack`, and `idea_explanation.pack`), with runtime state
    kept separate from review state,
    bounded actor-attributed review transitions available through the ledger API, bounded
    ledger-compatible `allowed_review_actions` emitted for consumers, governed workflow-pack
@@ -74,6 +74,11 @@ Current repository posture:
    that validate Manage-owned `PmOperatingQualityScoreRun` evidence, required non-use guardrails,
    source refs, bounded requested outputs, and optional source-lineage-only
    `portfolio_memory_context` before run/audit/task-flow side effects. The
+   deterministic idea explanation registration validates `lotus-idea` ownership, required
+   redacted evidence packet, bounded explanation request, supportability posture, review-required
+   posture, and forbidden suitability/proposal/rebalance/client-publication authority before
+   downstream product claims can consume the contract.
+   The
    portfolio-memory context is consumed only as bounded lineage with matching portfolio identity,
    `NO_RAW_PAYLOADS` redaction, capped event refs, source content hash, and explicit
    no-reconstruction source-authority policy; generated outputs expose compact lineage summaries

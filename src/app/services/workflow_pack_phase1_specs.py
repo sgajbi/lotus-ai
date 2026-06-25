@@ -261,6 +261,33 @@ DPM_WAVE_PM_MEMO_V1_SPEC = WorkflowPackPhase1VersionSpec(
 )
 
 
+IDEA_EXPLANATION_V1_SPEC = WorkflowPackPhase1VersionSpec(
+    pack_id="idea_explanation.pack",
+    pack_family="idea_explanation",
+    version="v1",
+    owner_repository="lotus-idea",
+    owner_service="lotus-idea",
+    truth_owner_services=(
+        "lotus-idea",
+        "lotus-core",
+        "lotus-performance",
+        "lotus-risk",
+        "lotus-advise",
+        "lotus-manage",
+        "lotus-report",
+    ),
+    primary_use_case="governed_idea_explanation",
+    workflow_authority_owner="lotus-idea",
+    supported_callers=("lotus-idea", "lotus-gateway"),
+    surface_scope=("idea-explanation-evidence",),
+    default_workflow_surface="idea-explanation-evidence",
+    execution_task_id="explain.v1",
+    required_payload_keys=frozenset(
+        {"redacted_evidence_packet", "explanation_request", "supportability"}
+    ),
+)
+
+
 DPM_OPERATIONS_HANDOFF_SUMMARY_V1_SPEC = WorkflowPackPhase1VersionSpec(
     pack_id="dpm_operations_handoff_summary.pack",
     pack_family="dpm_operations_handoff_summary",

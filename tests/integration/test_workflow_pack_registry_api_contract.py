@@ -13,8 +13,8 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["phase"] == "foundation"
-    assert body["registration_count"] == 17
-    assert body["registered_count"] == 16
+    assert body["registration_count"] == 18
+    assert body["registered_count"] == 17
     assert body["production_eligible_count"] == 0
     advisor_brief_registration = next(
         registration
@@ -55,6 +55,11 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         registration
         for registration in body["registrations"]
         if registration["pack_id"] == "pm_quality_summary.pack"
+    )
+    idea_explanation_registration = next(
+        registration
+        for registration in body["registrations"]
+        if registration["pack_id"] == "idea_explanation.pack"
     )
     proposal_memo_commentary_registration = next(
         registration
@@ -111,6 +116,11 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         for binding in body["execution_bindings"]
         if binding["pack_id"] == "pm_quality_summary.pack"
     )
+    idea_explanation_binding = next(
+        binding
+        for binding in body["execution_bindings"]
+        if binding["pack_id"] == "idea_explanation.pack"
+    )
     proposal_memo_commentary_binding = next(
         binding
         for binding in body["execution_bindings"]
@@ -161,6 +171,12 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         policy
         for policy in body["queue_policies"]
         if policy["workflow_pack_id"] == "pm_quality_summary.pack"
+        and policy["workflow_pack_version"] == "v1"
+    )
+    idea_explanation_queue_policy = next(
+        policy
+        for policy in body["queue_policies"]
+        if policy["workflow_pack_id"] == "idea_explanation.pack"
         and policy["workflow_pack_version"] == "v1"
     )
     proposal_memo_commentary_queue_policy = next(
@@ -220,6 +236,19 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         "lotus-manage",
         "lotus-gateway",
     ]
+    assert idea_explanation_registration["version"] == "v1"
+    assert idea_explanation_registration["owner_repository"] == "lotus-idea"
+    assert idea_explanation_registration["workflow_authority_owner"] == "lotus-idea"
+    assert idea_explanation_registration["supported_callers"] == [
+        "lotus-idea",
+        "lotus-gateway",
+    ]
+    assert any(
+        definition_ref["repository"] == "lotus-idea"
+        and definition_ref["path"] == "src/app/domain/ai_governance.py"
+        and definition_ref["required_for_registration"] is True
+        for definition_ref in idea_explanation_registration["definition_refs"]
+    )
     assert proposal_memo_commentary_registration["version"] == "v1"
     assert proposal_memo_commentary_registration["owner_repository"] == "lotus-advise"
     assert proposal_memo_commentary_registration["workflow_authority_owner"] == "lotus-advise"
@@ -308,6 +337,14 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         "summary_request",
         "supportability",
     ]
+    assert idea_explanation_binding["version"] == "v1"
+    assert idea_explanation_binding["task_id"] == "explain.v1"
+    assert idea_explanation_binding["default_workflow_surface"] == "idea-explanation-evidence"
+    assert idea_explanation_binding["required_payload_keys"] == [
+        "explanation_request",
+        "redacted_evidence_packet",
+        "supportability",
+    ]
     assert proposal_memo_commentary_binding["version"] == "v1"
     assert proposal_memo_commentary_binding["task_id"] == "explain.v1"
     assert proposal_memo_commentary_binding["default_workflow_surface"] == (
@@ -360,6 +397,8 @@ def test_workflow_pack_registry_catalog_route(client: TestClient) -> None:
         "REVIEW_SUPPORT",
         "OPERATOR",
     ]
+    assert idea_explanation_queue_policy["default_lane"] == "REVIEW_SUPPORT"
+    assert idea_explanation_queue_policy["allowed_lanes"] == ["REVIEW_SUPPORT", "OPERATOR"]
     assert proposal_memo_commentary_queue_policy["default_lane"] == "REVIEW_SUPPORT"
     assert proposal_memo_commentary_queue_policy["allowed_lanes"] == [
         "REVIEW_SUPPORT",
@@ -446,6 +485,24 @@ def test_workflow_pack_default_version_route_resolves_dpm_exception_pack_default
     assert body["execution_binding"]["required_payload_keys"] == [
         "exception_summary_input",
         "exception_summary_request",
+        "supportability",
+    ]
+    assert body["queue_policy"]["allowed_lanes"] == ["REVIEW_SUPPORT", "OPERATOR"]
+
+
+def test_workflow_pack_default_version_route_resolves_idea_pack_default(
+    client: TestClient,
+) -> None:
+    response = client.get("/platform/workflow-packs/registry/idea_explanation.pack/default")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["default_registration_ref"] == "idea_explanation.pack@v1"
+    assert body["registration"]["owner_repository"] == "lotus-idea"
+    assert body["registration"]["workflow_authority_owner"] == "lotus-idea"
+    assert body["execution_binding"]["required_payload_keys"] == [
+        "explanation_request",
+        "redacted_evidence_packet",
         "supportability",
     ]
     assert body["queue_policy"]["allowed_lanes"] == ["REVIEW_SUPPORT", "OPERATOR"]

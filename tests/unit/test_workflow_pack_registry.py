@@ -26,8 +26,8 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
 
     assert catalog.service == "lotus-ai"
     assert catalog.phase == "foundation"
-    assert catalog.registration_count == 17
-    assert catalog.registered_count == 16
+    assert catalog.registration_count == 18
+    assert catalog.registered_count == 17
     assert catalog.production_eligible_count == 0
     advisor_brief_registration = next(
         registration
@@ -83,6 +83,11 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         registration
         for registration in catalog.registrations
         if registration.pack_id == "pm_quality_summary.pack"
+    )
+    idea_explanation_registration = next(
+        registration
+        for registration in catalog.registrations
+        if registration.pack_id == "idea_explanation.pack"
     )
     assert (
         advisor_brief_registration.registration_status == WorkflowPackRegistrationStatus.REGISTERED
@@ -226,8 +231,26 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
         and definition_ref.required_for_registration is True
         for definition_ref in pm_quality_summary_registration.definition_refs
     )
-    assert len(catalog.execution_bindings) == 16
-    assert len(catalog.queue_policies) == 16
+    assert idea_explanation_registration.registration_status == (
+        WorkflowPackRegistrationStatus.REGISTERED
+    )
+    assert idea_explanation_registration.owner_repository == "lotus-idea"
+    assert idea_explanation_registration.workflow_authority_owner == "lotus-idea"
+    assert idea_explanation_registration.supported_callers == [
+        "lotus-idea",
+        "lotus-gateway",
+    ]
+    assert idea_explanation_registration.default_execution_mode == (
+        WorkflowPackExecutionMode.REVIEW_GATED
+    )
+    assert any(
+        definition_ref.repository == "lotus-idea"
+        and definition_ref.path == "src/app/domain/ai_governance.py"
+        and definition_ref.required_for_registration is True
+        for definition_ref in idea_explanation_registration.definition_refs
+    )
+    assert len(catalog.execution_bindings) == 17
+    assert len(catalog.queue_policies) == 17
     assert any(
         binding.pack_id == "advisor_brief.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
@@ -290,6 +313,16 @@ def test_build_workflow_pack_registry_catalog_exposes_registration_posture() -> 
     assert any(
         binding.pack_id == "pm_quality_summary.pack" and binding.task_id == "explain.v1"
         for binding in catalog.execution_bindings
+    )
+    assert any(
+        binding.pack_id == "idea_explanation.pack" and binding.task_id == "explain.v1"
+        for binding in catalog.execution_bindings
+    )
+    assert any(
+        policy.workflow_pack_id == "idea_explanation.pack"
+        and policy.workflow_pack_version == "v1"
+        and policy.default_lane.value == "REVIEW_SUPPORT"
+        for policy in catalog.queue_policies
     )
 
 

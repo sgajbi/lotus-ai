@@ -97,8 +97,8 @@ def test_platform_workflow_pack_registry_contract(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["phase"] == "foundation"
-    assert body["registration_count"] == 17
-    assert body["registered_count"] == 16
+    assert body["registration_count"] == 18
+    assert body["registered_count"] == 17
     assert any(
         registration["pack_id"] == "advisor_brief.pack"
         and registration["activation_state"] == "PILOT"
@@ -421,11 +421,11 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["workflow_pack_task_flow_store"]["status"] == "READY"
     assert body["workflow_pack_queue_event_store"]["mode"] == "memory"
     assert body["workflow_pack_queue_event_store"]["status"] == "READY"
-    assert body["workflow_pack_runtime"]["registration_count"] == 17
-    assert body["workflow_pack_runtime"]["registered_count"] == 16
-    assert body["workflow_pack_runtime"]["execution_binding_count"] == 16
-    assert body["workflow_pack_runtime"]["executable_registration_count"] == 16
-    assert body["workflow_pack_runtime"]["executable_review_required_count"] == 16
+    assert body["workflow_pack_runtime"]["registration_count"] == 18
+    assert body["workflow_pack_runtime"]["registered_count"] == 17
+    assert body["workflow_pack_runtime"]["execution_binding_count"] == 17
+    assert body["workflow_pack_runtime"]["executable_registration_count"] == 17
+    assert body["workflow_pack_runtime"]["executable_review_required_count"] == 17
     assert body["workflow_pack_runtime"]["executable_without_review_count"] == 0
     assert body["workflow_pack_runtime"]["registered_without_execution_binding_count"] == 0
     assert body["workflow_pack_runtime"]["executable_registration_refs"] == [
@@ -440,6 +440,7 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
         "dpm_operations_handoff_summary.pack@v1",
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",
+        "idea_explanation.pack@v1",
         "outcome_review_narrative.pack@v1",
         "pm_quality_summary.pack@v1",
         "proposal_memo_commentary.pack@v1",
@@ -458,6 +459,7 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
         "dpm_operations_handoff_summary.pack@v1",
         "dpm_pm_memo.pack@v1",
         "dpm_wave_pm_memo.pack@v1",
+        "idea_explanation.pack@v1",
         "outcome_review_narrative.pack@v1",
         "pm_quality_summary.pack@v1",
         "proposal_memo_commentary.pack@v1",
