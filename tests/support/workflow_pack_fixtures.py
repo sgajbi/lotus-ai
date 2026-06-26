@@ -1228,3 +1228,113 @@ def pm_quality_summary_workflow_pack_execution_request_json(
     if workflow_surface is not None:
         request["workflow_surface"] = workflow_surface
     return request
+
+
+def idea_explanation_payload(*, requested_outputs: list[str] | None = None) -> dict[str, object]:
+    return {
+        "redacted_evidence_packet": {
+            "candidate_id": "idea_high_cash_001",
+            "family": "HIGH_CASH",
+            "lifecycle_status": "READY_FOR_REVIEW",
+            "review_posture": "ADVISOR_REVIEW_REQUIRED",
+            "evidence_packet_id": "idea_evidence_high_cash_001",
+            "evidence_content_hash": "sha256:idea-evidence-high-cash-001",
+            "supportability": "READY",
+            "score_policy_version": "idea-score-policy.v1",
+            "score": "0.82",
+            "source_signal_count": 3,
+            "reason_codes": [
+                "HIGH_CASH_WEIGHT",
+                "BENCHMARK_DRIFT_ATTENTION",
+            ],
+            "source_refs": [
+                {
+                    "source_system": "lotus-core",
+                    "product_id": "core-position-snapshot",
+                    "product_version": "2026.06",
+                    "source_id": "PB_SG_GLOBAL_BAL_001:positions:2026-06-25",
+                    "content_hash": "sha256:core-position-snapshot-001",
+                },
+                {
+                    "source_system": "lotus-risk",
+                    "product_id": "risk-concentration-snapshot",
+                    "product_version": "2026.06",
+                    "source_id": "PB_SG_GLOBAL_BAL_001:risk:2026-06-25",
+                    "content_hash": "sha256:risk-concentration-snapshot-001",
+                },
+            ],
+        },
+        "explanation_request": {
+            "request_id": "idea-explanation-request-001",
+            "workflow_pack_id": "lotus-ai:idea-explanation:v1",
+            "workflow_pack_version": "v1",
+            "purpose": "unsupported_claim_verification",
+            "evaluation_ref": "idea-explanation-eval-pack.v1",
+            "audience": "advisor",
+            "requested_outputs": requested_outputs
+            or [
+                "advisor_review_summary",
+                "source_evidence_summary",
+                "unsupported_claim_check",
+            ],
+        },
+        "supportability": {
+            "human_review_required": True,
+            "client_ready_publication": "BLOCKED",
+            "forbidden_actions": [
+                "approve_suitability",
+                "contact_client",
+                "invent_missing_evidence",
+                "make_final_recommendation",
+                "place_orders",
+            ],
+            "unsupported_claims": [
+                "client_ready_publication",
+                "final_investment_recommendation",
+                "suitability_approval",
+                "trade_or_order_action",
+            ],
+        },
+    }
+
+
+def idea_explanation_workflow_pack_execution_request_json(
+    *,
+    correlation_id: str,
+    task_id: str = "explain.v1",
+    caller_app: str = "lotus-idea",
+    workflow_surface: str | None = "idea-explanation-evidence",
+    environment: str = "DEVELOPMENT",
+    caller_identity_class: str = "INTERNAL_SERVICE",
+    requested_outputs: list[str] | None = None,
+) -> dict[str, object]:
+    request: dict[str, object] = {
+        "pack_id": "idea_explanation.pack",
+        "version": "v1",
+        "environment": environment,
+        "caller_identity_class": caller_identity_class,
+        "task_request": {
+            "task_id": task_id,
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": caller_app,
+                "correlation_id": correlation_id,
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": (
+                    "Generate a review-gated Idea explanation from redacted source evidence."
+                ),
+                "payload": idea_explanation_payload(requested_outputs=requested_outputs),
+                "source_refs": [
+                    "lotus-idea:evidence-packet:idea_evidence_high_cash_001",
+                    "lotus-core:positions:PB_SG_GLOBAL_BAL_001:2026-06-25",
+                    "lotus-risk:concentration:PB_SG_GLOBAL_BAL_001:2026-06-25",
+                ],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    }
+    if workflow_surface is not None:
+        request["workflow_surface"] = workflow_surface
+    return request

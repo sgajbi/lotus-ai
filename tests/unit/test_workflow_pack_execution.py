@@ -9,6 +9,7 @@ from app.services.workflow_pack_bindings import get_workflow_pack_execution_bind
 from tests.support.workflow_pack_fixtures import (
     advisory_copilot_workflow_pack_execution_request_json,
     dpm_exception_summary_workflow_pack_execution_request_json,
+    idea_explanation_workflow_pack_execution_request_json,
     operations_handoff_summary_workflow_pack_execution_request_json,
     outcome_review_narrative_workflow_pack_execution_request_json,
     pm_quality_summary_workflow_pack_execution_request_json,
@@ -126,6 +127,49 @@ def test_execute_workflow_pack_records_review_gated_advisory_copilot_output() ->
     assert structured_output["model_risk"]["evaluation_pack_ref"] == (
         "advisory-copilot-eval-pack.v1"
     )
+
+
+def test_execute_workflow_pack_records_review_gated_idea_explanation_output() -> None:
+    request = WorkflowPackExecutionRequest.model_validate(
+        idea_explanation_workflow_pack_execution_request_json(
+            correlation_id="corr-execution-idea-explanation"
+        )
+    )
+
+    response = execute_workflow_pack(request)
+
+    structured_output = response.execution.result.structured_output
+    assert response.execution.status.value == "COMPLETED"
+    assert response.workflow_pack_run.pack_id == "idea_explanation.pack"
+    assert response.workflow_pack_run.workflow_authority_owner == "lotus-idea"
+    assert structured_output["workflow_pack_family"] == "idea_explanation"
+    assert structured_output["state"] == "REVIEW_REQUIRED"
+    assert structured_output["client_ready_publication"] == "BLOCKED"
+    assert structured_output["downstream_authority"] == "BLOCKED"
+    assert structured_output["evidence_content_hash"] == "sha256:idea-evidence-high-cash-001"
+    assert structured_output["human_review_required"] is True
+    assert structured_output["source_ref_count"] == 2
+
+
+def test_validate_workflow_pack_execution_binding_runs_idea_explanation_guardrails() -> None:
+    request_payload = idea_explanation_workflow_pack_execution_request_json(
+        correlation_id="corr-execution-idea-explanation-guardrail",
+        requested_outputs=["advisor_review_summary", "client_message"],
+    )
+    request = WorkflowPackExecutionRequest.model_validate(request_payload)
+    binding = get_workflow_pack_execution_binding(
+        pack_id="idea_explanation.pack",
+        version="v1",
+    )
+    assert binding is not None
+
+    try:
+        validate_workflow_pack_execution_binding(request=request, binding=binding)
+    except HTTPException as exc:
+        assert exc.status_code == 422
+        assert "Forbidden Idea explanation outputs requested: client_message" in str(exc.detail)
+    else:
+        raise AssertionError("expected Idea explanation guardrails to reject client output")
 
 
 def test_validate_workflow_pack_execution_binding_runs_advisory_copilot_guardrails() -> None:

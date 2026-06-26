@@ -203,7 +203,9 @@ For AI-backed product-surface support, also confirm:
     idea-evidence contracts; treat suitability approval, proposal authority, rebalance authority,
     client-ready publication, supported-feature promotion, raw payload exposure, raw prompt/output
     exposure, and invented missing evidence as guardrail-blocked requests. The pack is
-    review-gated explanation support only and does not own idea lifecycle truth.
+    review-gated explanation support only and does not own idea lifecycle truth. The caller policy
+    should allow `lotus-idea` only for restricted-tenant `explain.v1` execution and should not grant
+    live-provider or control-plane privilege.
 
 The owner-facing source for that procedure is:
 

@@ -123,6 +123,18 @@ def test_authorize_request_allows_advise_singapore_tenant_for_canonical_workflow
     assert decision.outcome == AuthorizationOutcome.ALLOWED
 
 
+def test_authorize_request_allows_lotus_idea_review_gated_task() -> None:
+    decision = authorize_request(
+        caller_app="lotus-idea",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        tenant_id="tenant-sg-001",
+        task_id="explain.v1",
+    )
+
+    assert decision.allowed is True
+    assert decision.outcome == AuthorizationOutcome.ALLOWED
+
+
 def test_authorize_request_uses_sql_backed_registry_when_configured(tmp_path: Path) -> None:
     database_url = f"sqlite:///{tmp_path / 'access-control-authorization.db'}"
     upgrade_database_to_head(database_url)
