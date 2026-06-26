@@ -1,7 +1,9 @@
 from typing import Any, cast
 
 from fastapi import HTTPException
+import pytest
 
+from app.providers.idea_explanation_stub import build_idea_explanation_stub_result
 from app.services.idea_explanation_guardrails import validate_idea_explanation_payload
 from tests.support.workflow_pack_fixtures import idea_explanation_payload
 
@@ -61,3 +63,123 @@ def test_idea_explanation_guardrails_require_review_and_forbidden_actions() -> N
         assert "make_final_recommendation" in str(exc.detail)
     else:
         raise AssertionError("expected missing forbidden actions to block execution")
+
+
+@pytest.mark.parametrize(
+    ("mutator", "expected_detail"),
+    [
+        (
+            lambda payload: cast(dict[str, Any], payload["redacted_evidence_packet"]).pop(
+                "candidate_id"
+            ),
+            "redacted evidence missing: candidate_id",
+        ),
+        (
+            lambda payload: cast(dict[str, Any], payload["redacted_evidence_packet"]).__setitem__(
+                "evidence_content_hash",
+                "md5:not-supported",
+            ),
+            "must carry a sha256 content hash",
+        ),
+        (
+            lambda payload: cast(dict[str, Any], payload["redacted_evidence_packet"]).__setitem__(
+                "source_refs",
+                [],
+            ),
+            "redacted evidence missing: source_refs",
+        ),
+        (
+            lambda payload: cast(dict[str, Any], payload["redacted_evidence_packet"]).__setitem__(
+                "source_refs",
+                ["not-structured"],
+            ),
+            "source refs must be structured objects",
+        ),
+        (
+            lambda payload: cast(
+                list[dict[str, Any]],
+                cast(dict[str, Any], payload["redacted_evidence_packet"])["source_refs"],
+            )[0].pop("source_system"),
+            "source refs must include source_system",
+        ),
+        (
+            lambda payload: cast(
+                list[dict[str, Any]],
+                cast(dict[str, Any], payload["redacted_evidence_packet"])["source_refs"],
+            )[0].pop("product_id"),
+            "source refs must include product_id",
+        ),
+        (
+            lambda payload: cast(dict[str, Any], payload["explanation_request"]).pop("request_id"),
+            "request must include request_id",
+        ),
+        (
+            lambda payload: cast(dict[str, Any], payload["explanation_request"]).__setitem__(
+                "workflow_pack_id",
+                "wrong.pack",
+            ),
+            "must identify the Idea workflow pack",
+        ),
+        (
+            lambda payload: cast(dict[str, Any], payload["explanation_request"]).__setitem__(
+                "requested_outputs",
+                ["advisor_review_summary", "unsupported_output"],
+            ),
+            "Unsupported Idea explanation outputs requested: unsupported_output",
+        ),
+        (
+            lambda payload: cast(dict[str, Any], payload["supportability"]).__setitem__(
+                "client_ready_publication",
+                "ALLOWED",
+            ),
+            "must block client-ready publication",
+        ),
+        (
+            lambda payload: cast(dict[str, Any], payload["supportability"]).__setitem__(
+                "unsupported_claims",
+                ["client_ready_publication"],
+            ),
+            "missing unsupported claims",
+        ),
+        (
+            lambda payload: payload.__setitem__("redacted_evidence_packet", []),
+            "payload requires `redacted_evidence_packet`",
+        ),
+        (
+            lambda payload: cast(dict[str, Any], payload["explanation_request"]).__setitem__(
+                "requested_outputs",
+                "advisor_review_summary",
+            ),
+            "must include bounded requested_outputs",
+        ),
+    ],
+)
+def test_idea_explanation_guardrails_reject_invalid_source_safe_contracts(
+    mutator: Any,
+    expected_detail: str,
+) -> None:
+    payload = cast(dict[str, Any], idea_explanation_payload())
+    mutator(payload)
+
+    with pytest.raises(HTTPException) as exc_info:
+        validate_idea_explanation_payload(payload)
+
+    assert exc_info.value.status_code == 422
+    assert expected_detail in str(exc_info.value.detail)
+
+
+def test_idea_explanation_stub_ignores_non_idea_context_payload() -> None:
+    assert build_idea_explanation_stub_result(context_payload={}) is None
+
+
+def test_idea_explanation_stub_coerces_malformed_lists_to_empty_output() -> None:
+    payload = cast(dict[str, Any], idea_explanation_payload())
+    cast(dict[str, Any], payload["redacted_evidence_packet"])["reason_codes"] = "not-a-list"
+    cast(dict[str, Any], payload["explanation_request"])["requested_outputs"] = "not-a-list"
+
+    result = build_idea_explanation_stub_result(context_payload=payload)
+
+    assert result is not None
+    _, structured_output = result
+    assert structured_output["reason_codes"] == []
+    assert structured_output["requested_outputs"] == []
