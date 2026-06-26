@@ -269,7 +269,9 @@ Use `idea_explanation.pack@v1` only when the caller supplies:
 The idea explanation pack blocks suitability approval, proposal authority, rebalance authority,
 client-ready publication, supported-feature promotion, raw source payload exposure, raw prompt or
 generated-output exposure, and invented missing evidence before run, audit, or task-flow records are
-written. It does not own idea lifecycle truth; that authority stays in `lotus-idea`.
+written. It does not own idea lifecycle truth; that authority stays in `lotus-idea`. The
+`lotus-idea` caller policy is restricted to `explain.v1` for the governed tenant scope and does not
+grant live-provider or control-plane privilege.
 
 ```mermaid
 sequenceDiagram

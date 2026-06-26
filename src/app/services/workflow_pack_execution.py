@@ -38,6 +38,7 @@ from app.services.advisory_copilot_guardrails import validate_advisory_copilot_p
 from app.services.dpm_exception_summary_guardrails import (
     validate_dpm_exception_summary_payload,
 )
+from app.services.idea_explanation_guardrails import validate_idea_explanation_payload
 from app.services.outcome_review_narrative_guardrails import (
     validate_outcome_review_narrative_payload,
 )
@@ -169,6 +170,8 @@ def validate_workflow_pack_execution_binding(
         validate_dpm_exception_summary_payload(request.task_request.context.payload)
     if request.pack_id == "pm_quality_summary.pack" and request.version == "v1":
         validate_pm_quality_summary_payload(request.task_request.context.payload)
+    if request.pack_id == "idea_explanation.pack" and request.version == "v1":
+        validate_idea_explanation_payload(request.task_request.context.payload)
     if request.pack_id.startswith("advisory_copilot_") and request.version == "v1":
         validate_advisory_copilot_payload(request.task_request.context.payload)
 

@@ -365,6 +365,8 @@ rebalance authority, client-ready publication, supported-feature promotion, raw 
 exposure, raw prompt or generated-output exposure, and invented missing evidence. `lotus-idea`
 remains the opportunity-intelligence, idea lifecycle, and idea-evidence authority; `lotus-ai`
 provides the governed workflow-pack runtime, review posture, queue policy, and safety guardrails.
+The `lotus-idea` caller policy is restricted to `explain.v1` for the governed tenant scope and does
+not grant live-provider or control-plane privilege.
 
 ```mermaid
 flowchart LR

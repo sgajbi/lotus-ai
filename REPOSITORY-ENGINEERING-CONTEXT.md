@@ -74,10 +74,11 @@ Current repository posture:
    that validate Manage-owned `PmOperatingQualityScoreRun` evidence, required non-use guardrails,
    source refs, bounded requested outputs, and optional source-lineage-only
    `portfolio_memory_context` before run/audit/task-flow side effects. The
-   deterministic idea explanation registration validates `lotus-idea` ownership, required
-   redacted evidence packet, bounded explanation request, supportability posture, review-required
-   posture, and forbidden suitability/proposal/rebalance/client-publication authority before
-   downstream product claims can consume the contract.
+   deterministic idea explanation execution validates `lotus-idea` caller authorization,
+   required redacted evidence packet, bounded explanation request, supportability posture,
+   review-required posture, unsupported claims, forbidden actions, and forbidden
+   suitability/proposal/rebalance/client-publication authority before run/audit/task-flow side
+   effects.
    The
    portfolio-memory context is consumed only as bounded lineage with matching portfolio identity,
    `NO_RAW_PAYLOADS` redaction, capped event refs, source content hash, and explicit

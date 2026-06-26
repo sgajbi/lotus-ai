@@ -24,6 +24,7 @@ from tests.support.workflow_pack_fixtures import outcome_review_narrative_payloa
 from tests.support.workflow_pack_fixtures import operations_handoff_summary_payload
 from tests.support.workflow_pack_fixtures import proof_pack_pm_memo_payload
 from tests.support.workflow_pack_fixtures import wave_pm_memo_payload
+from tests.support.workflow_pack_fixtures import idea_explanation_payload
 
 
 def test_get_workflow_pack_execution_binding_returns_phase1_binding() -> None:
@@ -121,13 +122,7 @@ def test_get_workflow_pack_execution_binding_returns_idea_explanation_binding() 
     assert binding is not None
     assert binding.task_id == "explain.v1"
     assert binding.default_workflow_surface == "idea-explanation-evidence"
-    assert binding.validate_task_request_payload(
-        payload={
-            "redacted_evidence_packet": {},
-            "explanation_request": {},
-            "supportability": {},
-        }
-    )
+    assert binding.validate_task_request_payload(payload=idea_explanation_payload())
     registration = get_workflow_pack_registration(
         pack_id="idea_explanation.pack",
         version="v1",

@@ -80,7 +80,10 @@ produce routing instructions, or invent missing proof-pack, wave, exception, or 
 `lotus-idea` remains the opportunity-intelligence and idea-evidence authority. The idea explanation
 pack consumes only redacted evidence packets, bounded explanation requests, and supportability
 posture from `lotus-idea`; it cannot create suitability approval, proposal authority, rebalance
-authority, client-ready publication, supported-feature promotion, or missing source evidence.
+authority, client-ready publication, supported-feature promotion, or missing source evidence. The
+caller policy recognizes `lotus-idea` only for restricted-tenant, review-gated `explain.v1`
+execution and does not grant live-provider, prompt-control, provider-control, or async-control
+privilege.
 
 For DPM portfolio-memory support, the proof-pack PM memo, wave PM memo, operations handoff summary,
 and outcome-review narrative packs can consume optional `portfolio_memory_context` emitted by
