@@ -10,6 +10,13 @@ from typing import Protocol
 from app.config import settings
 
 
+def _is_redis_idle_timeout(exc: Exception) -> bool:
+    return (
+        exc.__class__.__name__ == "TimeoutError"
+        and exc.__class__.__module__.startswith("redis")
+    )
+
+
 @dataclass(frozen=True)
 class AsyncQueueDeliveryMessage:
     delivery_id: str
@@ -156,7 +163,12 @@ class RedisAsyncDeliveryQueue:
 
     def dequeue(self, *, timeout_seconds: int) -> AsyncQueueDeliveryMessage | None:
         client = self._get_client()
-        result = client.blpop(self._queue_name, timeout=timeout_seconds)
+        try:
+            result = client.blpop(self._queue_name, timeout=timeout_seconds)
+        except Exception as exc:
+            if _is_redis_idle_timeout(exc):
+                return None
+            raise
         if result is None:
             return None
         client.hincrby(f"{self._queue_name}:stats", "dequeued_delivery_count", 1)
