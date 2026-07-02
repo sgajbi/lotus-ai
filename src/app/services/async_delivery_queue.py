@@ -11,10 +11,7 @@ from app.config import settings
 
 
 def _is_redis_idle_timeout(exc: Exception) -> bool:
-    return (
-        exc.__class__.__name__ == "TimeoutError"
-        and exc.__class__.__module__.startswith("redis")
-    )
+    return exc.__class__.__name__ == "TimeoutError" and exc.__class__.__module__.startswith("redis")
 
 
 @dataclass(frozen=True)
