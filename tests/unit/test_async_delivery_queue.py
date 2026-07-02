@@ -235,6 +235,34 @@ def test_redis_async_delivery_queue_dequeues_and_reports_snapshot(
     assert snapshot.dequeued_delivery_count == 1
 
 
+def test_redis_async_delivery_queue_treats_idle_timeout_as_empty_queue(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    redis_timeout_error = type(
+        "TimeoutError",
+        (Exception,),
+        {"__module__": "redis.exceptions"},
+    )
+
+    class FakeRedisClient:
+        def blpop(self, queue_name: str, timeout: int) -> None:
+            raise redis_timeout_error("Timeout reading from socket")
+
+    fake_redis_module = SimpleNamespace(
+        Redis=SimpleNamespace(from_url=lambda url, decode_responses: FakeRedisClient())
+    )
+    monkeypatch.setattr(
+        "app.services.async_delivery_queue.importlib.import_module",
+        lambda module_name: fake_redis_module,
+    )
+    queue = RedisAsyncDeliveryQueue(
+        redis_url="redis://localhost:6379/0",
+        queue_name="lotus-ai:async:jobs",
+    )
+
+    assert queue.dequeue(timeout_seconds=3) is None
+
+
 def test_redis_async_delivery_queue_snapshot_reports_backend_unavailable(
     monkeypatch: MonkeyPatch,
 ) -> None:
