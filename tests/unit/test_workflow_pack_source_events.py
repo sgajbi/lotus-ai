@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from _pytest.monkeypatch import MonkeyPatch
+
 import app.services.workflow_pack_source_events as source_events
 from app.contracts.workflow_pack_runs import WorkflowPackRunSupportabilityStatus
 from app.repositories.memory_workflow_pack_run_repository import InMemoryWorkflowPackRunRepository
@@ -76,7 +78,7 @@ def _run_record() -> WorkflowPackRunRecord:
 
 
 def test_source_event_catalog_uses_filtered_run_query_without_broad_scan(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
 ) -> None:
     repository = _NoBroadListWorkflowPackRunRepository()
     repository.save_run(_run_record())
