@@ -50,6 +50,11 @@ This means:
 4. provider rollout must remain explicit and inspectable,
 5. approval-gate posture must stay visible through runtime evidence.
 
+Live-provider error handling is also a governed boundary. Managed OpenAI and local
+OpenAI-compatible text execution use bounded retries for transient failures and report the actual
+retry count after a successful retry. Text and embedding live-provider failures return Lotus-owned
+safe error text rather than raw upstream provider `error.message` payloads.
+
 ## Data Handling and Output Policy
 
 The initial data-handling posture is deliberately conservative:

@@ -57,6 +57,22 @@ Current audit evidence retained for executions now includes:
 3. enforced safety-control identifiers,
 4. output label and prompt/provider context already attached to the execution.
 
+## Provider Error Boundary
+
+Live-provider failures are mapped to stable Lotus failure categories before they cross the API
+boundary. Managed OpenAI and local OpenAI-compatible text execution use the same bounded retry
+controls. Text and embedding live-provider failures use the same safe-error behavior:
+
+1. transient text timeout, rate-limit, and retryable upstream HTTP failures can retry up to the configured
+   `LOTUS_AI_PROVIDER_RETRY_LIMIT`,
+2. successful retry evidence records the actual retry count,
+3. exhausted failures retain the typed `ProviderFailureCategory`,
+4. caller-facing error detail uses Lotus-owned safe text rather than raw upstream `error.message`
+   payloads.
+
+Raw provider prompts, generated output, credentials, account details, client identifiers, and local
+endpoint internals must not be returned in API errors.
+
 ## Deferred Security Work
 
 1. secret scanning for prompt assets,

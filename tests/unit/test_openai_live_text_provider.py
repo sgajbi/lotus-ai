@@ -17,8 +17,23 @@ from app.providers.openai_compatible_text_transport import (
     parse_json_object,
     strip_json_code_fence,
 )
+from app.providers.local_openai_compatible_text_provider import LocalOpenAICompatibleTextProvider
 from app.providers.openai_live_text_provider import OpenAILiveTextProvider, _post_openai_response
 from tests.unit.test_provider_gateway import _request
+
+
+class _OpenAICompatibleResponse:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    def __enter__(self) -> "_OpenAICompatibleResponse":
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self._payload
 
 
 def test_openai_live_text_provider_returns_usage_and_cost(monkeypatch: MonkeyPatch) -> None:
@@ -371,7 +386,8 @@ def test_openai_live_text_provider_maps_rate_limit_errors(monkeypatch: MonkeyPat
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
-        assert exc.message == "Rate limit hit"
+        assert exc.message == "OpenAI provider rate limit exceeded."
+        assert "Rate limit hit" not in exc.message
     else:
         raise AssertionError("Expected ProviderExecutionError for rate-limited provider response")
 
@@ -397,7 +413,8 @@ def test_openai_live_text_provider_maps_upstream_http_errors(monkeypatch: Monkey
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-        assert exc.message == "Transient upstream failure"
+        assert exc.message == "OpenAI provider request failed at the upstream provider boundary."
+        assert "Transient upstream failure" not in exc.message
     else:
         raise AssertionError("Expected ProviderExecutionError for upstream provider response")
 
@@ -417,6 +434,9 @@ def test_openai_live_text_provider_maps_timeout_errors(monkeypatch: MonkeyPatch)
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
+        assert exc.message == (
+            "OpenAI provider request did not complete within the configured timeout."
+        )
     else:
         raise AssertionError("Expected ProviderExecutionError for provider timeout")
 
@@ -436,7 +456,10 @@ def test_openai_live_text_provider_maps_url_errors(monkeypatch: MonkeyPatch) -> 
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
-        assert "connection refused" in exc.message
+        assert exc.message == (
+            "OpenAI provider request did not complete within the configured timeout."
+        )
+        assert "connection refused" not in exc.message
     else:
         raise AssertionError("Expected ProviderExecutionError for provider URL error")
 
@@ -444,17 +467,12 @@ def test_openai_live_text_provider_maps_url_errors(monkeypatch: MonkeyPatch) -> 
 def test_openai_live_text_provider_posts_successfully_through_urlopen(
     monkeypatch: MonkeyPatch,
 ) -> None:
-    class _Response:
-        def __enter__(self) -> "_Response":
-            return self
-
-        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
-            return None
-
-        def read(self) -> bytes:
-            return b'{"id": "resp_ok", "output_text": "OK"}'
-
-    monkeypatch.setattr("urllib.request.urlopen", lambda *args, **kwargs: _Response())
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        lambda *args, **kwargs: _OpenAICompatibleResponse(
+            b'{"id": "resp_ok", "output_text": "OK"}'
+        ),
+    )
 
     payload = _post_openai_response(
         api_base="https://api.openai.com/v1",
@@ -465,6 +483,119 @@ def test_openai_live_text_provider_posts_successfully_through_urlopen(
 
     payload_dict = cast(dict[str, Any], payload)
     assert payload_dict["id"] == "resp_ok"
+    assert payload_dict["_lotus_retry_count"] == 0
+
+
+def test_openai_live_text_provider_retries_managed_transient_failure_then_success(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.live_text_provider_api_key = "secret"
+    attempts = {"count": 0}
+
+    def _urlopen(*args: object, **kwargs: object) -> object:
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            raise error.HTTPError(
+                url="https://api.openai.com/v1/responses",
+                code=503,
+                msg="Service Unavailable",
+                hdrs=Message(),
+                fp=BytesIO(b'{"error": {"message": "raw upstream detail should not leak"}}'),
+            )
+        return _OpenAICompatibleResponse(
+            b'{"id": "resp_retry_ok", "model": "gpt-5.4", "output_text": "OK"}'
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    response = OpenAILiveTextProvider().execute(_request(retry_limit=2))
+
+    assert attempts["count"] == 2
+    assert response.retry_count == 1
+    assert response.provider_request_id == "resp_retry_ok"
+    assert response.structured_output["retry_count"] == 1
+
+
+def test_openai_compatible_transport_retries_local_transient_failure_then_success(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.live_text_model_id = "qwen3:8b"
+    attempts = {"count": 0}
+
+    def _urlopen(*args: object, **kwargs: object) -> object:
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            raise TimeoutError()
+        return _OpenAICompatibleResponse(b'{"id": "resp_local_retry_ok", "output_text": "OK"}')
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    response = LocalOpenAICompatibleTextProvider().execute(_request(retry_limit=1))
+
+    assert attempts["count"] == 2
+    assert response.retry_count == 1
+    assert response.provider_request_id == "resp_local_retry_ok"
+    assert response.structured_output["retry_count"] == 1
+
+
+def test_openai_compatible_transport_preserves_category_when_retries_exhaust(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    attempts = {"count": 0}
+
+    def _urlopen(*args: object, **kwargs: object) -> object:
+        attempts["count"] += 1
+        raise error.HTTPError(
+            url="https://api.openai.com/v1/responses",
+            code=429,
+            msg="Too Many Requests",
+            hdrs=Message(),
+            fp=BytesIO(b'{"error": {"message": "raw account detail should not leak"}}'),
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    try:
+        _post_openai_response(
+            api_base="https://api.openai.com/v1",
+            api_key="secret",
+            payload={"model": "gpt-5.4"},
+            timeout_seconds=4.0,
+            retry_limit=2,
+        )
+    except ProviderExecutionError as exc:
+        assert attempts["count"] == 3
+        assert exc.category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
+        assert exc.message == "OpenAI provider rate limit exceeded."
+        assert "raw account detail" not in exc.message
+    else:
+        raise AssertionError("Expected ProviderExecutionError after exhausted retries")
+
+
+def test_openai_compatible_transport_does_not_retry_invalid_configuration(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    attempts = {"count": 0}
+
+    def _urlopen(*args: object, **kwargs: object) -> object:
+        attempts["count"] += 1
+        return _OpenAICompatibleResponse(b'{"id": "unexpected"}')
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    try:
+        _post_openai_response(
+            api_base="https://api.openai.com/v1",
+            api_key=None,
+            payload={"model": "gpt-5.4"},
+            timeout_seconds=4.0,
+            retry_limit=2,
+        )
+    except ProviderExecutionError as exc:
+        assert attempts["count"] == 0
+        assert exc.category == ProviderFailureCategory.INVALID_LIVE_CONFIGURATION
+    else:
+        raise AssertionError("Expected ProviderExecutionError for missing credentials")
 
 
 def test_openai_live_text_provider_handles_non_json_error_bodies(monkeypatch: MonkeyPatch) -> None:
@@ -488,7 +619,7 @@ def test_openai_live_text_provider_handles_non_json_error_bodies(monkeypatch: Mo
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-        assert exc.message == "OpenAI provider request failed."
+        assert exc.message == "OpenAI provider request failed at the upstream provider boundary."
     else:
         raise AssertionError("Expected ProviderExecutionError for invalid JSON error body")
 

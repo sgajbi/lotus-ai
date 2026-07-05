@@ -11,7 +11,6 @@ from app.providers.openai_live_embedding_provider import (
     OpenAILiveEmbeddingProvider,
     _as_str,
     _extract_embedding,
-    _extract_error_message,
     _load_error_payload,
     _post_openai_embedding,
 )
@@ -82,7 +81,8 @@ def test_openai_live_embedding_provider_maps_rate_limit_errors(
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
-        assert exc.message == "Embedding rate limit hit"
+        assert exc.message == "OpenAI embedding provider rate limit exceeded."
+        assert "Embedding rate limit hit" not in exc.message
     else:
         raise AssertionError("Expected rate-limited embedding request to fail")
 
@@ -109,7 +109,9 @@ def test_openai_live_embedding_provider_maps_upstream_http_errors(
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-        assert exc.message == "OpenAI embedding provider request failed."
+        assert exc.message == (
+            "OpenAI embedding provider request failed at the upstream provider boundary."
+        )
     else:
         raise AssertionError("Expected upstream embedding request to fail")
 
@@ -128,6 +130,9 @@ def test_openai_live_embedding_provider_maps_timeout_errors(monkeypatch: MonkeyP
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
+        assert exc.message == (
+            "OpenAI embedding provider request did not complete within the configured timeout."
+        )
     else:
         raise AssertionError("Expected timeout embedding request to fail")
 
@@ -146,7 +151,10 @@ def test_openai_live_embedding_provider_maps_url_errors(monkeypatch: MonkeyPatch
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
-        assert "connection refused" in exc.message
+        assert exc.message == (
+            "OpenAI embedding provider request did not complete within the configured timeout."
+        )
+        assert "connection refused" not in exc.message
     else:
         raise AssertionError("Expected URL failure to map to timeout posture")
 
@@ -185,7 +193,6 @@ def test_openai_live_embedding_provider_helpers_cover_fallback_branches() -> Non
     )
 
     assert _load_error_payload(http_error) == {}
-    assert _extract_error_message({}, fallback="fallback") == "fallback"
     assert _as_str(" model ") == " model "
     assert _as_str("   ") is None
 
