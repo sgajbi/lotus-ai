@@ -135,6 +135,22 @@ def test_portfolio_memory_context_guardrails_block_invalid_event_refs() -> None:
     first_ref.pop("event_time")
     _assert_rejected(missing_event_time, "Missing portfolio_memory_context event_refs[0] fields")
 
+    non_integer_rank = portfolio_memory_context_payload()
+    event_refs = non_integer_rank["event_refs"]
+    assert isinstance(event_refs, list)
+    first_ref = event_refs[0]
+    assert isinstance(first_ref, dict)
+    first_ref["event_ref_selection_rank"] = "1"
+    _assert_rejected(non_integer_rank, "must include integer event_ref_selection_rank")
+
+    blank_event_time = portfolio_memory_context_payload()
+    event_refs = blank_event_time["event_refs"]
+    assert isinstance(event_refs, list)
+    first_ref = event_refs[0]
+    assert isinstance(first_ref, dict)
+    first_ref["event_time"] = ""
+    _assert_rejected(blank_event_time, "must include event_time")
+
     non_contiguous_rank = portfolio_memory_context_payload()
     event_refs = non_contiguous_rank["event_refs"]
     assert isinstance(event_refs, list)
@@ -147,11 +163,30 @@ def test_portfolio_memory_context_guardrails_block_invalid_event_refs() -> None:
     mismatched_returned_count["event_refs_returned"] = 1
     _assert_rejected(mismatched_returned_count, "event_refs_returned must match")
 
+    mismatched_omitted_count = portfolio_memory_context_payload(event_ref_count=2)
+    mismatched_omitted_count["event_count"] = 5
+    mismatched_omitted_count["event_refs_omitted"] = 0
+    _assert_rejected(mismatched_omitted_count, "event_refs_omitted must match")
+
     mismatched_truncation = portfolio_memory_context_payload(event_ref_count=2)
     mismatched_truncation["event_count"] = 5
     mismatched_truncation["event_refs_omitted"] = 3
     mismatched_truncation["event_refs_truncated"] = False
     _assert_rejected(mismatched_truncation, "event_refs_truncated must match")
+
+
+def test_portfolio_memory_context_guardrails_block_limits_and_mapping_shapes() -> None:
+    invalid_limit = portfolio_memory_context_payload()
+    invalid_limit["event_ref_limit"] = 999
+    _assert_rejected(invalid_limit, "event_ref_limit must be within the bounded limit")
+
+    missing_policy = portfolio_memory_context_payload()
+    missing_policy["event_ref_selection_policy"] = ""
+    _assert_rejected(missing_policy, "requires an event_ref_selection_policy")
+
+    non_object_governance = portfolio_memory_context_payload()
+    non_object_governance["governance_policy"] = "not-an-object"
+    _assert_rejected(non_object_governance, "requires object field `governance_policy`")
 
 
 def test_portfolio_memory_context_summary_handles_unbounded_shapes() -> None:

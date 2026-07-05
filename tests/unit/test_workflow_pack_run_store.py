@@ -130,6 +130,42 @@ def test_sqlalchemy_workflow_pack_run_repository_queries_filtered_newest_records
     )
 
 
+def test_memory_workflow_pack_run_repository_lists_oldest_by_default_and_newest_with_limit() -> (
+    None
+):
+    repository = InMemoryWorkflowPackRunRepository()
+    repository.save_run(
+        _workflow_pack_run_record(run_id="run-old", created_at="2026-04-19T09:00:00Z")
+    )
+    repository.save_run(
+        _workflow_pack_run_record(run_id="run-new", created_at="2026-04-19T11:00:00Z")
+    )
+
+    assert [record.run_id for record in repository.list_runs()] == ["run-old", "run-new"]
+    assert [record.run_id for record in repository.list_runs(limit=1)] == ["run-new"]
+    assert repository.list_runs(limit=-1) == []
+
+
+def test_sqlalchemy_workflow_pack_run_repository_lists_and_handles_missing_run(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'nested' / 'workflow-pack-runs.db'}"
+    repository = SqlAlchemyWorkflowPackRunRepository(database_url)
+    upgrade_database_to_head(database_url)
+    repository.save_run(
+        _workflow_pack_run_record(run_id="run-old", created_at="2026-04-19T09:00:00Z")
+    )
+    repository.save_run(
+        _workflow_pack_run_record(run_id="run-new", created_at="2026-04-19T11:00:00Z")
+    )
+
+    assert (tmp_path / "nested").is_dir()
+    assert repository.get_run(run_id="missing-run") is None
+    assert [record.run_id for record in repository.list_runs()] == ["run-old", "run-new"]
+    assert [record.run_id for record in repository.list_runs(limit=1)] == ["run-new"]
+    assert repository.list_runs(limit=-1) == []
+
+
 def test_workflow_pack_run_store_rejects_invalid_configuration() -> None:
     settings.workflow_pack_run_store_mode = "sqlalchemy"
     settings.database_url = None
