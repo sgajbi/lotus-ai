@@ -272,14 +272,16 @@ Before treating any workflow-pack-enabled path as operator-ready:
    AI-owned source-event lineage. Treat these routes as no-raw-payload source projections from the
    run ledger: they expose AI event identity, event type, run/pack identity, workflow-authority
    owner, supportability posture, artifact refs, bounded source refs, and portfolio-memory
-   status/count/hash when supplied, but they must not be used to reconstruct raw generated output,
+   status/count/hash plus bounded context-envelope truncation posture when supplied, but they must not be used to reconstruct raw generated output,
    raw prompts, raw source payloads, or raw portfolio-memory event bodies. The source-event catalog
    uses repository-backed run filters before loading ledger events and artifact summaries; inspect
    `source_run_limit` and `source_run_count` in `filters_applied` when explaining why a filtered
    source-event result set is bounded. For retry/replay-created runs, inspect `recovery_lineage`
    on run detail, operator profile, consumer view, and source-event output to connect the new run
    to the source queue item, recovery decision event, attempt number, operator evidence ref, and
-   source workflow-pack run id when structured run evidence can resolve it
+   source workflow-pack run id when structured run evidence can resolve it. For idea explanation
+   runs, inspect `idea_lineage` to reconcile the AI run to the `lotus-idea` candidate and redacted
+   evidence packet without reading raw artifact payloads
 17. apply `POST /platform/workflow-packs/runs/{run_id}/review-actions` only to record bounded ledger review posture; do not treat it as business approval, consent, booking, or workflow-authority transfer, and during the current bounded rollout limit callers to the original active registered workflow caller app or a caller authorized for async control-plane actions
 18. when using `REVISE` or `SUPERSEDE`, confirm the replacement run id belongs to the same pack family so lineage remains reconstructable
 19. when `LOTUS_AI_WORKFLOW_PACK_RUN_STORE_MODE=sqlalchemy`, confirm the embedded `workflow_pack_run_store` block in `GET /platform/runtime-status` reports `READY` before treating the run ledger as restart-safe durable truth

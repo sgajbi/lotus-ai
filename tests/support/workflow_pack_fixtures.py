@@ -7,6 +7,7 @@ from app.contracts.tasks import (
     TaskExecutionRequest,
     TaskInputMode,
 )
+from app.services.portfolio_memory_context_guardrails import PORTFOLIO_MEMORY_EVENT_REF_LIMIT
 
 
 def advisor_brief_payload(
@@ -603,6 +604,8 @@ def portfolio_memory_context_payload(
             "source_system": "lotus-manage",
             "source_type": ("DPM_PRE_TRADE_PROOF_PACK" if index == 0 else "DPM_OUTCOME_REVIEW"),
             "source_id": "dpp_c09f73d0" if index == 0 else "or_pb_sg_001",
+            "event_time": f"2026-05-{10 + index:02d}T09:00:00Z",
+            "event_ref_selection_rank": index + 1,
             "content_hash": f"sha256:portfolio-memory-source-{index:03d}",
             "retention_policy": "DPM_PORTFOLIO_MEMORY_SOURCE_LINEAGE_7Y",
             "redaction_policy": "NO_RAW_PAYLOADS",
@@ -614,6 +617,13 @@ def portfolio_memory_context_payload(
     return {
         "portfolio_id": portfolio_id,
         "supportability_state": "READY",
+        "context_content_hash": "sha256:portfolio-memory-context-envelope-001",
+        "support_boundary": "AI_SOURCE_LINEAGE_ONLY_NO_RECONSTRUCTION",
+        "event_ref_limit": PORTFOLIO_MEMORY_EVENT_REF_LIMIT,
+        "event_ref_selection_policy": "MOST_RECENT_SOURCE_AUTHORITY_EVENTS",
+        "event_refs_returned": event_ref_count,
+        "event_refs_omitted": 0,
+        "event_refs_truncated": False,
         "event_count": event_ref_count,
         "source_systems": ["lotus-manage"],
         "reason_codes": ["PORTFOLIO_MEMORY_READY"],
