@@ -9,6 +9,8 @@ from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.contracts.tasks import TaskExecutionResponse
 from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.contracts.workflow_pack_runs import (
+    WorkflowPackRunRecoveryActionType,
+    WorkflowPackRunRecoveryLineageDescriptor,
     WorkflowPackRunCatalogResponse,
     WorkflowPackRunDescriptor,
     WorkflowPackRunDetailResponse,
@@ -252,6 +254,7 @@ def record_registered_workflow_pack_run(
     response: TaskExecutionResponse,
     registration: WorkflowPackRegistrationDescriptor,
     workflow_surface: str | None,
+    recovery_lineage: WorkflowPackRunRecoveryLineageDescriptor | None = None,
 ) -> WorkflowPackRunDescriptor:
     ensure_workflow_pack_run_store_ready()
     run_id = _build_workflow_pack_run_id(
@@ -301,6 +304,27 @@ def record_registered_workflow_pack_run(
         artifact_refs=[artifact_ref],
         supersedes_run_id=None,
         superseded_by_run_id=None,
+        recovery_action_type=(
+            recovery_lineage.recovery_action_type.value if recovery_lineage is not None else None
+        ),
+        source_queue_item_id=(
+            recovery_lineage.source_queue_item_id if recovery_lineage is not None else None
+        ),
+        recovery_decision_event_id=(
+            recovery_lineage.recovery_decision_event_id if recovery_lineage is not None else None
+        ),
+        recovery_attempt_number=(
+            recovery_lineage.recovery_attempt_number if recovery_lineage is not None else None
+        ),
+        source_workflow_pack_run_id=(
+            recovery_lineage.source_workflow_pack_run_id if recovery_lineage is not None else None
+        ),
+        recovery_requested_by=(
+            recovery_lineage.requested_by if recovery_lineage is not None else None
+        ),
+        recovery_evidence_ref=(
+            recovery_lineage.evidence_ref if recovery_lineage is not None else None
+        ),
         created_at=created_at,
         completed_at=created_at,
         last_updated_at=created_at,
@@ -388,9 +412,30 @@ def map_workflow_pack_run_record(
         supersedes_run_id=record.supersedes_run_id,
         superseded_by_run_id=record.superseded_by_run_id,
         replacement_run_id=record.superseded_by_run_id,
+        recovery_lineage=_build_recovery_lineage_descriptor(record),
         created_at=record.created_at,
         completed_at=record.completed_at,
         last_updated_at=record.last_updated_at,
+    )
+
+
+def _build_recovery_lineage_descriptor(
+    record: WorkflowPackRunRecord,
+) -> WorkflowPackRunRecoveryLineageDescriptor | None:
+    if (
+        record.recovery_action_type is None
+        or record.source_queue_item_id is None
+        or record.recovery_decision_event_id is None
+    ):
+        return None
+    return WorkflowPackRunRecoveryLineageDescriptor(
+        recovery_action_type=WorkflowPackRunRecoveryActionType(record.recovery_action_type),
+        source_queue_item_id=record.source_queue_item_id,
+        recovery_decision_event_id=record.recovery_decision_event_id,
+        recovery_attempt_number=record.recovery_attempt_number,
+        source_workflow_pack_run_id=record.source_workflow_pack_run_id,
+        requested_by=record.recovery_requested_by,
+        evidence_ref=record.recovery_evidence_ref,
     )
 
 

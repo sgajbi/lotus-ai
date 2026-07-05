@@ -47,9 +47,43 @@ class WorkflowPackRunSupportabilityStatus(str, Enum):
     HISTORICAL = "HISTORICAL"
 
 
+class WorkflowPackRunRecoveryActionType(str, Enum):
+    RETRY = "RETRY"
+    REPLAY = "REPLAY"
+
+
 class WorkflowPackRunFindingSeverity(str, Enum):
     INFO = "INFO"
     ACTION_REQUIRED = "ACTION_REQUIRED"
+
+
+class WorkflowPackRunRecoveryLineageDescriptor(BaseModel):
+    recovery_action_type: WorkflowPackRunRecoveryActionType = Field(
+        description="Queue recovery action that produced this run."
+    )
+    source_queue_item_id: str = Field(
+        description="Queue item whose retained request snapshot was used for recovery execution."
+    )
+    recovery_decision_event_id: str = Field(
+        description="Queue event id that recorded the retry or replay decision."
+    )
+    recovery_attempt_number: int | None = Field(
+        default=None,
+        ge=1,
+        description="Retry or replay attempt number recorded by queue recovery policy.",
+    )
+    source_workflow_pack_run_id: str | None = Field(
+        default=None,
+        description="Original workflow-pack run id when recoverable from structured run evidence.",
+    )
+    requested_by: str | None = Field(
+        default=None,
+        description="Operator, caller, or automation actor that requested recovery.",
+    )
+    evidence_ref: str | None = Field(
+        default=None,
+        description="Bounded evidence reference supporting the recovery execution.",
+    )
 
 
 class WorkflowPackRunDescriptor(BaseModel):
@@ -124,6 +158,10 @@ class WorkflowPackRunDescriptor(BaseModel):
     replacement_run_id: str | None = Field(
         default=None,
         description="Replacement workflow-pack run identifier when the current run is revised or superseded.",
+    )
+    recovery_lineage: WorkflowPackRunRecoveryLineageDescriptor | None = Field(
+        default=None,
+        description="Bounded queue recovery lineage when this run was created by retry or replay.",
     )
     created_at: str = Field(description="UTC timestamp when the run record was created.")
     completed_at: str | None = Field(
@@ -228,6 +266,10 @@ class WorkflowPackSourceEventDescriptor(BaseModel):
     )
     evidence_descriptor_count: int = Field(
         description="Number of execution evidence descriptors linked to the source event."
+    )
+    recovery_lineage: WorkflowPackRunRecoveryLineageDescriptor | None = Field(
+        default=None,
+        description="Bounded queue recovery lineage when this source event came from retry or replay.",
     )
     recorded_at: str = Field(description="UTC timestamp when the source event was recorded.")
 
@@ -463,6 +505,10 @@ class WorkflowPackRunConsumerLineageDescriptor(BaseModel):
         default=None,
         description="Newer workflow-pack run that superseded this run, when applicable.",
     )
+    recovery_lineage: WorkflowPackRunRecoveryLineageDescriptor | None = Field(
+        default=None,
+        description="Bounded queue recovery lineage when this run was created by retry or replay.",
+    )
 
 
 class WorkflowPackRunConsumerProvenanceDescriptor(BaseModel):
@@ -630,6 +676,10 @@ class WorkflowPackRunOperatorProfileResponse(BaseModel):
     replacement_run_id: str | None = Field(
         default=None,
         description="Replacement workflow-pack run identifier when the current run is superseded or revised.",
+    )
+    recovery_lineage: WorkflowPackRunRecoveryLineageDescriptor | None = Field(
+        default=None,
+        description="Bounded queue recovery lineage when this run was created by retry or replay.",
     )
     current_summary_note: str = Field(
         description="Single operator-facing note summarizing the current run posture."

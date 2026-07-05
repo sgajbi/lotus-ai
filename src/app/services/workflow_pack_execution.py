@@ -9,7 +9,10 @@ from app.contracts.workflow_packs import (
     WorkflowPackExecutionRequest,
     WorkflowPackExecutionResponse,
 )
-from app.contracts.workflow_pack_runs import WorkflowPackRunDescriptor
+from app.contracts.workflow_pack_runs import (
+    WorkflowPackRunDescriptor,
+    WorkflowPackRunRecoveryLineageDescriptor,
+)
 from app.services.task_execution_pipeline import (
     build_failed_task_execution_response,
     build_task_execution_response,
@@ -50,7 +53,11 @@ from app.services.proof_pack_pm_memo_guardrails import validate_proof_pack_pm_me
 from app.services.wave_pm_memo_guardrails import validate_wave_pm_memo_payload
 
 
-def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPackExecutionResponse:
+def execute_workflow_pack(
+    request: WorkflowPackExecutionRequest,
+    *,
+    recovery_lineage: WorkflowPackRunRecoveryLineageDescriptor | None = None,
+) -> WorkflowPackExecutionResponse:
     binding = get_workflow_pack_execution_binding(pack_id=request.pack_id, version=request.version)
     if binding is None:
         raise HTTPException(
@@ -118,6 +125,7 @@ def execute_workflow_pack(request: WorkflowPackExecutionRequest) -> WorkflowPack
             response=response,
             registration=registration,
             workflow_surface=workflow_surface,
+            recovery_lineage=recovery_lineage,
         )
         record_task_flow_for_workflow_pack_run(
             context=context,

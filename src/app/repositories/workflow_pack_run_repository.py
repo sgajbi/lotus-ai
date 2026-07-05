@@ -35,6 +35,13 @@ class WorkflowPackRunRecord:
     created_at: str
     completed_at: str | None
     last_updated_at: str
+    recovery_action_type: str | None = None
+    source_queue_item_id: str | None = None
+    recovery_decision_event_id: str | None = None
+    recovery_attempt_number: int | None = None
+    source_workflow_pack_run_id: str | None = None
+    recovery_requested_by: str | None = None
+    recovery_evidence_ref: str | None = None
 
 
 @dataclass(frozen=True)

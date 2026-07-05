@@ -324,11 +324,28 @@ def test_workflow_pack_queue_retry_execution_replays_retained_request_snapshot(
     body = response.json()
     assert body["decision_event"]["event_type"] == "RETRY_RECORDED"
     assert body["decision_event"]["artifact_refs"]
-    assert body["execution"]["workflow_pack_run"]["registration_ref"] == "advisor_brief.pack@v1"
-    assert (
-        body["execution"]["execution"]["audit"]["workflow_pack_run_id"]
-        == (body["execution"]["workflow_pack_run"]["run_id"])
+    run = body["execution"]["workflow_pack_run"]
+    assert run["registration_ref"] == "advisor_brief.pack@v1"
+    assert run["recovery_lineage"] == {
+        "recovery_action_type": "RETRY",
+        "source_queue_item_id": lease.queue_item_id,
+        "recovery_decision_event_id": body["decision_event"]["event_id"],
+        "recovery_attempt_number": 1,
+        "source_workflow_pack_run_id": None,
+        "requested_by": "operator-a",
+        "evidence_ref": "support-ticket-queue-retry-execution-api",
+    }
+    assert body["execution"]["execution"]["audit"]["workflow_pack_run_id"] == run["run_id"]
+    detail_response = client.get(f"/platform/workflow-packs/runs/{run['run_id']}")
+    source_events_response = client.get(
+        f"/platform/workflow-packs/runs/{run['run_id']}/source-events"
     )
+    operator_response = client.get(
+        f"/platform/workflow-packs/runs/{run['run_id']}/operator-profile"
+    )
+    assert detail_response.json()["run"]["recovery_lineage"] == run["recovery_lineage"]
+    assert source_events_response.json()["events"][0]["recovery_lineage"] == run["recovery_lineage"]
+    assert operator_response.json()["recovery_lineage"] == run["recovery_lineage"]
     assert any(
         "executed from the retained request snapshot" in line for line in body["status_summary"]
     )
@@ -461,11 +478,29 @@ def test_workflow_pack_queue_replay_execution_uses_normal_execution_path(
     assert response.status_code == 200
     body = response.json()
     assert body["decision_event"]["event_type"] == "REPLAY_RECORDED"
-    assert body["execution"]["workflow_pack_run"]["registration_ref"] == "advisor_brief.pack@v1"
-    assert (
-        body["execution"]["workflow_pack_run"]["run_id"]
-        != (execute_response.json()["workflow_pack_run"]["run_id"])
+    original_run_id = execute_response.json()["workflow_pack_run"]["run_id"]
+    run = body["execution"]["workflow_pack_run"]
+    assert run["registration_ref"] == "advisor_brief.pack@v1"
+    assert run["run_id"] != original_run_id
+    assert run["recovery_lineage"] == {
+        "recovery_action_type": "REPLAY",
+        "source_queue_item_id": source_queue_item_id,
+        "recovery_decision_event_id": body["decision_event"]["event_id"],
+        "recovery_attempt_number": 1,
+        "source_workflow_pack_run_id": original_run_id,
+        "requested_by": "operator-a",
+        "evidence_ref": "support-ticket-queue-replay-execution-api",
+    }
+    detail_response = client.get(f"/platform/workflow-packs/runs/{run['run_id']}")
+    source_events_response = client.get(
+        f"/platform/workflow-packs/runs/{run['run_id']}/source-events"
     )
+    operator_response = client.get(
+        f"/platform/workflow-packs/runs/{run['run_id']}/operator-profile"
+    )
+    assert detail_response.json()["run"]["recovery_lineage"] == run["recovery_lineage"]
+    assert source_events_response.json()["events"][0]["recovery_lineage"] == run["recovery_lineage"]
+    assert operator_response.json()["recovery_lineage"] == run["recovery_lineage"]
 
 
 def test_workflow_pack_queue_event_detail_rejects_unknown_item(client: TestClient) -> None:
