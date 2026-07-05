@@ -89,16 +89,16 @@ class SqlAlchemyPromptRepository(SqlAlchemyRepositoryBase):
             return self._to_rollout_state(state)
 
     def list_prompt_rollout_events(
-        self, task_id: str | None = None
+        self, task_id: str | None = None, limit: int = 20
     ) -> list[PromptRolloutEventRecord]:
         with self._session_factory() as session:
             statement = select(PromptRolloutEventModel).order_by(
-                PromptRolloutEventModel.recorded_at,
-                PromptRolloutEventModel.event_id,
+                PromptRolloutEventModel.recorded_at.desc(),
+                PromptRolloutEventModel.event_id.desc(),
             )
             if task_id is not None:
                 statement = statement.where(PromptRolloutEventModel.task_id == task_id)
-            events = session.scalars(statement).all()
+            events = session.scalars(statement.limit(max(limit, 1))).all()
             return [self._to_rollout_event(event) for event in events]
 
     def save_prompt_rollout_transition(

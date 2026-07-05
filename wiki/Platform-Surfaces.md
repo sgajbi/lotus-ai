@@ -261,7 +261,7 @@ Prefix:
 This family covers:
 
 1. prompt catalog and prompt-by-task detail
-2. prompt governance and control history
+2. prompt governance and newest-first bounded control history
 3. prompt control actions
 4. runtime, activation, runbook, evidence, and governance readiness
 

@@ -23,7 +23,7 @@ class PromptRepository(Protocol):
     def get_prompt_rollout_state(self, task_id: str) -> PromptRolloutStateRecord | None: ...
 
     def list_prompt_rollout_events(
-        self, task_id: str | None = None
+        self, task_id: str | None = None, limit: int = 20
     ) -> list[PromptRolloutEventRecord]: ...
 
     def save_prompt_rollout_transition(

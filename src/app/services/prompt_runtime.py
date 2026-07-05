@@ -147,7 +147,7 @@ def _build_latest_control_event_descriptor(task_id: str) -> PromptControlEventDe
     events = get_prompt_repository().list_prompt_rollout_events(task_id=task_id)
     if not events:
         return None
-    return _map_control_event(events[-1])
+    return _map_control_event(events[0])
 
 
 def _map_control_event(event: PromptRolloutEventRecord) -> PromptControlEventDescriptor:

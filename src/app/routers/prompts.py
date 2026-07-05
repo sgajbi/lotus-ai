@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.contracts.prompts import (
     PromptActivationReadinessResponse,
@@ -81,8 +81,14 @@ async def get_prompt_governance_route() -> PromptGovernanceStatusResponse:
 )
 async def get_prompt_control_history_route(
     task_id: str | None = None,
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=200,
+        description="Maximum number of newest prompt control events to return.",
+    ),
 ) -> PromptControlHistoryResponse:
-    return build_prompt_control_history(task_id=task_id)
+    return build_prompt_control_history(task_id=task_id, limit=limit)
 
 
 @router.post(

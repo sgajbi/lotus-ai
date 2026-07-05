@@ -614,7 +614,12 @@ async def submit_workflow_pack_async_execution_route(
 async def get_workflow_pack_control_history_route(
     pack_id: str | None = None,
     version: str | None = None,
-    limit: int = 20,
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=200,
+        description="Maximum number of newest workflow-pack control events to return.",
+    ),
 ) -> WorkflowPackControlHistoryResponse:
     try:
         return build_workflow_pack_control_history(pack_id=pack_id, version=version, limit=limit)

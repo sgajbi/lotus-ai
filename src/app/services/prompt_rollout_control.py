@@ -24,7 +24,9 @@ from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptR
 from app.services.prompt_store import get_prompt_repository
 
 
-def build_prompt_control_history(*, task_id: str | None = None) -> PromptControlHistoryResponse:
+def build_prompt_control_history(
+    *, task_id: str | None = None, limit: int = 20
+) -> PromptControlHistoryResponse:
     repository = get_prompt_repository()
     return PromptControlHistoryResponse(
         service=settings.service_name,
@@ -33,10 +35,11 @@ def build_prompt_control_history(*, task_id: str | None = None) -> PromptControl
         supported_action_types=list(PromptControlActionType),
         latest_events=[
             _map_control_event(event)
-            for event in repository.list_prompt_rollout_events(task_id=task_id)
+            for event in repository.list_prompt_rollout_events(task_id=task_id, limit=limit)
         ],
         notes=[
             "Prompt promotion and rollback are explicit control-plane actions with requested-by, approved-by, and reason metadata.",
+            "Prompt control history is returned newest-first and bounded by the route limit.",
             "Prompt bodies remain repository-managed; the live action surface only switches between durable prompt versions already known to the platform.",
             (
                 "Prompt control history survives restart because the SQL-backed prompt store is active."

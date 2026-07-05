@@ -167,6 +167,43 @@ def test_sqlalchemy_workflow_pack_registry_repository_filters_control_events(
     assert [event.event_id for event in filtered] == ["evt-advisor"]
 
 
+def test_sqlalchemy_workflow_pack_registry_repository_limits_control_events(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-pack-registry-store.db'}"
+    upgrade_database_to_head(database_url)
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    repository = SqlAlchemyWorkflowPackRegistryRepository(
+        database_url,
+        default_registrations=[registration],
+    )
+
+    for index in range(5):
+        repository.save_control_event(
+            WorkflowPackControlEventDescriptor(
+                event_id=f"evt-limit-{index}",
+                pack_id="advisor_brief.pack",
+                version="v1",
+                action_type=WorkflowPackControlActionType.PAUSE,
+                requested_by="ops.user@lotus",
+                approved_by="ops.approver@lotus",
+                reason="Limit test.",
+                prior_registration_status=WorkflowPackRegistrationStatus.REGISTERED,
+                resulting_registration_status=WorkflowPackRegistrationStatus.REGISTERED,
+                prior_activation_state=WorkflowPackActivationState.ACTIVE,
+                resulting_activation_state=WorkflowPackActivationState.PAUSED,
+                caller_app="lotus-platform",
+                authorization=_authorization(),
+                recorded_at=f"2026-04-21T00:0{index}:00Z",
+            )
+        )
+
+    events = repository.list_control_events(limit=2)
+
+    assert [event.event_id for event in events] == ["evt-limit-4", "evt-limit-3"]
+
+
 def test_sqlalchemy_workflow_pack_registry_repository_preserves_existing_rows_and_legacy_auth(
     tmp_path: Path,
 ) -> None:

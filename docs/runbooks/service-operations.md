@@ -247,7 +247,8 @@ Before treating any workflow-pack-enabled path as operator-ready:
 5. evaluate `POST /platform/workflow-packs/eligibility/evaluate` using the real caller app,
    identity class, environment, tenant, and workflow surface that will request the pack
 6. inspect `GET /platform/workflow-packs/control-history` before assuming a pack is currently active,
-   especially when pilot, paused, deprecated, or retired posture might have changed recently
+   especially when pilot, paused, deprecated, or retired posture might have changed recently; the
+   route returns newest-first bounded history with `limit` constrained to 1 through 200
 7. apply `POST /platform/workflow-packs/control-actions` only with an explicit operator reason and a
    caller authorized to act on behalf of the platform control plane through the shared caller-policy registry
 8. inspect the recorded `authorization` block on workflow-pack control events before treating a
@@ -421,7 +422,7 @@ Before applying a governed prompt promotion or rollback:
 
 Current governed control-action procedure:
 
-1. inspect `/platform/prompts/control-history?task_id=<task_id>` to review the latest promote or rollback actions for the target task
+1. inspect `/platform/prompts/control-history?task_id=<task_id>` to review the latest promote or rollback actions for the target task; the route returns newest-first bounded history with `limit` constrained to 1 through 200
 2. inspect `/platform/prompts/runtime-status` to confirm the current active, candidate, and previous-active prompt versions for that task
 3. inspect `/platform/prompts/evidence-readiness` to confirm the prompt approval gate reports `RUNTIME_PASS` before promotion
 4. apply `POST /platform/prompts/control-actions` with explicit requested-by, approved-by, and reason metadata

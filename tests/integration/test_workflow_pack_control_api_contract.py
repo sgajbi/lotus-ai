@@ -16,6 +16,14 @@ def test_workflow_pack_control_history_route(client: TestClient) -> None:
     assert "PAUSE" in body["supported_action_types"]
 
 
+def test_workflow_pack_control_history_route_rejects_oversized_limit(
+    client: TestClient,
+) -> None:
+    response = client.get("/platform/workflow-packs/control-history", params={"limit": 201})
+
+    assert response.status_code == 422
+
+
 def test_workflow_pack_control_action_route(client: TestClient) -> None:
     response = client.post(
         "/platform/workflow-packs/control-actions",
