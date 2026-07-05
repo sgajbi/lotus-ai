@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from _pytest.monkeypatch import MonkeyPatch
@@ -39,16 +41,16 @@ def _valid_retrieval_request(correlation_id: str = "corr-retrieval-error") -> di
 
 
 def _assert_problem_response(
-    response,
+    response: Any,
     *,
     status_code: int,
     error_code: str,
     correlation_id: str,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     assert response.status_code == status_code
     assert response.headers["content-type"].startswith("application/problem+json")
     assert response.headers["X-Correlation-Id"] == correlation_id
-    body = response.json()
+    body = cast(dict[str, Any], response.json())
     assert body["status"] == status_code
     assert body["error_code"] == error_code
     assert body["correlation_id"] == correlation_id
@@ -164,7 +166,7 @@ def test_not_found_error_uses_stable_problem_code(client: TestClient) -> None:
 
 
 def test_conflict_error_uses_problem_details(client: TestClient, monkeypatch: MonkeyPatch) -> None:
-    def raise_conflict(_request):
+    def raise_conflict(_request: object) -> None:
         raise HTTPException(status_code=409, detail="Retrieval execution is disabled.")
 
     monkeypatch.setattr("app.routers.retrieval.search_sources", raise_conflict)
@@ -185,7 +187,7 @@ def test_conflict_error_uses_problem_details(client: TestClient, monkeypatch: Mo
 def test_rate_limit_error_uses_problem_details(
     client: TestClient, monkeypatch: MonkeyPatch
 ) -> None:
-    def raise_rate_limit(_request):
+    def raise_rate_limit(_request: object) -> None:
         raise HTTPException(
             status_code=429, detail="Workflow-pack async queue capacity is saturated."
         )
@@ -209,7 +211,7 @@ def test_rate_limit_error_uses_problem_details(
 def test_store_unavailable_error_uses_problem_details(
     client: TestClient, monkeypatch: MonkeyPatch
 ) -> None:
-    def raise_store_unavailable(_request):
+    def raise_store_unavailable(_request: object) -> None:
         raise WorkflowPackRunStoreUnavailableError("Workflow-pack run store is not ready.")
 
     monkeypatch.setattr("app.routers.tasks.execute_task", raise_store_unavailable)
@@ -231,7 +233,7 @@ def test_store_unavailable_error_uses_problem_details(
 def test_unexpected_error_is_sanitized_with_problem_details(
     monkeypatch: MonkeyPatch,
 ) -> None:
-    def raise_unexpected(_request):
+    def raise_unexpected(_request: object) -> None:
         raise RuntimeError("secret upstream payload should not leak")
 
     monkeypatch.setattr("app.routers.tasks.execute_task", raise_unexpected)

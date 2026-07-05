@@ -199,7 +199,14 @@ def test_sqlalchemy_retrieval_repository_bounds_search_before_metadata_loading(
     )
     statements: list[str] = []
 
-    def capture_statement(_conn, _cursor, statement, _parameters, _context, _executemany):
+    def capture_statement(
+        _conn: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: object,
+    ) -> None:
         statements.append(statement)
 
     event.listen(repository._engine, "before_cursor_execute", capture_statement)
