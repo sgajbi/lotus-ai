@@ -118,6 +118,16 @@ Good examples:
    - `/platform/workflow-packs/control-history`
    - `/platform/workflow-packs/source-events`
    - `/platform/workflow-packs/runs/{run_id}/source-events`
+7. production go-live posture
+   - `/platform/production-baseline/runtime-status`
+   - `/platform/production-go-live/runtime-status`
+   - `/platform/production-go-live/governance-status`
+   - `/platform/production-go-live/use-case-approval`
+
+For production go-live, treat text-generation and embedding live-provider execution as the same
+provider-governed approval family. Configured live-provider secret material must be
+deployment-managed, and enabled retrieval must have approved retrieval governance backed by current
+runtime evaluation evidence before platform production approval is true.
 
 ## Workflow-Pack Operator Checks
 

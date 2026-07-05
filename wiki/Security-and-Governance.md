@@ -10,6 +10,11 @@ The important operational truth is that prompt rollout, provider rollout, retrie
 safety posture, evaluation approval, caller authorization, and use-case onboarding all have
 explicit runtime or governance surfaces.
 
+Production go-live approval is stricter than runtime availability. It now requires deployment-managed
+secret posture for configured live-provider secret material, including text-generation and embedding
+provider credentials, and it treats enabled retrieval as blocked until retrieval governance and
+runtime-backed evaluation evidence are approval-ready.
+
 Another distinction matters when reading the platform:
 
 1. a task can be enabled in the bounded capability catalog,
@@ -99,9 +104,10 @@ is "what does the current runtime posture actually permit?"
 Examples:
 
 1. provider support does not mean live provider rollout is approved,
-2. retrieval support does not mean broad corpus onboarding is approved,
-3. durable stores existing in code does not mean production-ready posture is satisfied,
-4. task support does not mean every caller is authorized to use that path.
+2. embedding-provider support does not mean live embedding execution is production-approved,
+3. retrieval support does not mean broad corpus onboarding or production go-live retrieval approval is approved,
+4. durable stores existing in code does not mean production-ready posture is satisfied,
+5. task support does not mean every caller is authorized to use that path.
 
 This is why the runtime and governance surfaces matter more than static repo claims.
 

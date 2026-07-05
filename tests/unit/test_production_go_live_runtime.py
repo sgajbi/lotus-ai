@@ -352,4 +352,211 @@ def test_build_managed_secret_approval_domain_reports_local_live_provider_secret
     domain = build_managed_secret_approval_domain()
 
     assert domain.status.value == "BLOCKED"
-    assert "Live-provider configuration is present" in domain.detail
+    assert "Live-provider secret material is configured for text generation" in domain.detail
+
+
+def test_build_managed_secret_approval_domain_reports_embedding_secret_blocker(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "secret_source_mode", "local_or_unspecified")
+    monkeypatch.setattr(settings, "live_embedding_provider_api_key", "super-secret-key")
+
+    domain = build_managed_secret_approval_domain()
+
+    assert domain.status.value == "BLOCKED"
+    assert "embeddings" in domain.detail
+    assert "super-secret-key" not in domain.detail
+
+
+def test_build_production_baseline_secret_posture_uses_live_secret_inventory(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "secret_source_mode", "local_or_unspecified")
+    monkeypatch.setattr(settings, "live_embedding_provider_api_key", "super-secret-key")
+
+    from app.services.production_baseline_runtime import build_production_baseline_runtime_status
+
+    status = build_production_baseline_runtime_status()
+    dependency_by_id = {dependency.dependency_id: dependency for dependency in status.dependencies}
+
+    assert dependency_by_id["secret_posture"].classification.value == "FALLBACK"
+    assert "embeddings" in dependency_by_id["secret_posture"].detail
+    assert "super-secret-key" not in dependency_by_id["secret_posture"].detail
+
+
+def test_build_production_go_live_runtime_blocks_embedding_only_live_provider_without_governance(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.embedding_provider_mode = "enabled"
+    settings.live_embedding_provider_id = "embeddings.openai"
+    settings.live_embedding_model_id = "text-embedding-3-large"
+    settings.live_embedding_provider_api_key = "secret"
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_production_baseline_runtime_status",
+        lambda app_state: ProductionBaselineRuntimeStatusResponse(
+            service="lotus-ai",
+            version="0.1.0",
+            posture=ProductionBaselinePosture.PRODUCTION_READY,
+            prod_shaped_local=True,
+            production_ready=True,
+            dependency_count=0,
+            blocked_dependency_count=0,
+            fallback_dependency_count=0,
+            dependencies=[],
+            blocking_findings=[],
+            status_summary=[],
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_managed_object_storage_approval_domain",
+        lambda: ProductionGoLiveDomainDescriptor(
+            domain_id="managed_object_storage",
+            status=ProductionGoLiveDomainStatus.APPROVED,
+            required_for_platform_approval=True,
+            configured_mode="s3",
+            review_surface="/platform/artifacts/governance-status",
+            detail="ready",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_managed_secret_approval_domain",
+        lambda: ProductionGoLiveDomainDescriptor(
+            domain_id="managed_secret_posture",
+            status=ProductionGoLiveDomainStatus.APPROVED,
+            required_for_platform_approval=True,
+            configured_mode="deployment_managed",
+            review_surface="/platform/production-baseline/runtime-status",
+            detail="ready",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_provider_governance_status",
+        lambda: type("ProviderGovernance", (), {"governance_ready": False})(),
+    )
+
+    status = build_production_go_live_runtime_status()
+    domain_by_id = {domain.domain_id: domain for domain in status.approval_domains}
+
+    assert status.platform_production_approved is False
+    assert domain_by_id["live_provider_governance"].required_for_platform_approval is True
+    assert domain_by_id["live_provider_governance"].status.value == "BLOCKED"
+    assert "embeddings" in domain_by_id["live_provider_governance"].detail
+    assert status.provider_freeze_state.value == "REVIEW_REQUIRED"
+
+
+def test_build_production_go_live_runtime_blocks_enabled_retrieval_without_governance(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.retrieval_mode = "enabled"
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_production_baseline_runtime_status",
+        lambda app_state: ProductionBaselineRuntimeStatusResponse(
+            service="lotus-ai",
+            version="0.1.0",
+            posture=ProductionBaselinePosture.PRODUCTION_READY,
+            prod_shaped_local=True,
+            production_ready=True,
+            dependency_count=0,
+            blocked_dependency_count=0,
+            fallback_dependency_count=0,
+            dependencies=[],
+            blocking_findings=[],
+            status_summary=[],
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_managed_object_storage_approval_domain",
+        lambda: ProductionGoLiveDomainDescriptor(
+            domain_id="managed_object_storage",
+            status=ProductionGoLiveDomainStatus.APPROVED,
+            required_for_platform_approval=True,
+            configured_mode="s3",
+            review_surface="/platform/artifacts/governance-status",
+            detail="ready",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_managed_secret_approval_domain",
+        lambda: ProductionGoLiveDomainDescriptor(
+            domain_id="managed_secret_posture",
+            status=ProductionGoLiveDomainStatus.APPROVED,
+            required_for_platform_approval=True,
+            configured_mode="deployment_managed",
+            review_surface="/platform/production-baseline/runtime-status",
+            detail="ready",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_provider_governance_status",
+        lambda: type("ProviderGovernance", (), {"governance_ready": True})(),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_retrieval_governance_status",
+        lambda: type("RetrievalGovernance", (), {"governance_ready": False})(),
+    )
+
+    status = build_production_go_live_runtime_status()
+    domain_by_id = {domain.domain_id: domain for domain in status.approval_domains}
+
+    assert status.platform_production_approved is False
+    assert domain_by_id["retrieval_governance"].required_for_platform_approval is True
+    assert domain_by_id["retrieval_governance"].status.value == "BLOCKED"
+    assert "Retrieval execution is enabled" in domain_by_id["retrieval_governance"].detail
+
+
+def test_build_production_go_live_runtime_can_approve_enabled_retrieval_with_governance(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.retrieval_mode = "enabled"
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_production_baseline_runtime_status",
+        lambda app_state: ProductionBaselineRuntimeStatusResponse(
+            service="lotus-ai",
+            version="0.1.0",
+            posture=ProductionBaselinePosture.PRODUCTION_READY,
+            prod_shaped_local=True,
+            production_ready=True,
+            dependency_count=0,
+            blocked_dependency_count=0,
+            fallback_dependency_count=0,
+            dependencies=[],
+            blocking_findings=[],
+            status_summary=[],
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_managed_object_storage_approval_domain",
+        lambda: ProductionGoLiveDomainDescriptor(
+            domain_id="managed_object_storage",
+            status=ProductionGoLiveDomainStatus.APPROVED,
+            required_for_platform_approval=True,
+            configured_mode="s3",
+            review_surface="/platform/artifacts/governance-status",
+            detail="ready",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_managed_secret_approval_domain",
+        lambda: ProductionGoLiveDomainDescriptor(
+            domain_id="managed_secret_posture",
+            status=ProductionGoLiveDomainStatus.APPROVED,
+            required_for_platform_approval=True,
+            configured_mode="deployment_managed",
+            review_surface="/platform/production-baseline/runtime-status",
+            detail="ready",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_provider_governance_status",
+        lambda: type("ProviderGovernance", (), {"governance_ready": True})(),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_retrieval_governance_status",
+        lambda: type("RetrievalGovernance", (), {"governance_ready": True})(),
+    )
+
+    status = build_production_go_live_runtime_status()
+    domain_by_id = {domain.domain_id: domain for domain in status.approval_domains}
+
+    assert status.platform_production_approved is True
+    assert domain_by_id["retrieval_governance"].status.value == "APPROVED"

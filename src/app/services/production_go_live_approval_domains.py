@@ -7,16 +7,19 @@ from app.contracts.production_go_live import (
 )
 from app.services.artifact_activation_readiness import build_artifact_activation_readiness
 from app.services.artifact_runtime import build_artifact_runtime_status
+from app.services.production_live_provider_inventory import build_live_provider_inventory
 
 
 def build_managed_secret_approval_domain() -> ProductionGoLiveDomainDescriptor:
     deployment_managed = settings.secret_source_mode == "deployment_managed"
+    live_secret_labels = build_live_provider_inventory().secret_capability_labels
     detail = (
         "Runtime secrets are deployment-managed, so the platform satisfies the managed-secret production approval domain."
         if deployment_managed
         else (
-            "Live-provider configuration is present, but secrets still come from a local or unspecified source, so production go-live remains blocked on managed-secret posture."
-            if settings.live_text_provider_api_key
+            "Live-provider secret material is configured for "
+            f"{', '.join(live_secret_labels)}, but secrets still come from a local or unspecified source, so production go-live remains blocked on managed-secret posture."
+            if live_secret_labels
             else "Secret posture is still local or unspecified, which remains acceptable for demos but blocks production go-live approval."
         )
     )
