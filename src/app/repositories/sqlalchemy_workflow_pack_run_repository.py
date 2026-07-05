@@ -33,6 +33,43 @@ class SqlAlchemyWorkflowPackRunRepository(SqlAlchemyRepositoryBase, WorkflowPack
             models = session.scalars(statement).all()
             return [self._to_run_record(model) for model in models]
 
+    def query_runs(
+        self,
+        *,
+        registration_ref: str | None = None,
+        pack_id: str | None = None,
+        caller_app: str | None = None,
+        tenant_id: str | None = None,
+        workflow_surface: str | None = None,
+        runtime_state: str | None = None,
+        review_state: str | None = None,
+        workflow_authority_owner: str | None = None,
+        limit: int,
+    ) -> list[WorkflowPackRunRecord]:
+        statement = select(WorkflowPackRunModel)
+        if registration_ref is not None:
+            statement = statement.where(WorkflowPackRunModel.registration_ref == registration_ref)
+        if pack_id is not None:
+            statement = statement.where(WorkflowPackRunModel.pack_id == pack_id)
+        if caller_app is not None:
+            statement = statement.where(WorkflowPackRunModel.caller_app == caller_app)
+        if tenant_id is not None:
+            statement = statement.where(WorkflowPackRunModel.tenant_id == tenant_id)
+        if workflow_surface is not None:
+            statement = statement.where(WorkflowPackRunModel.workflow_surface == workflow_surface)
+        if runtime_state is not None:
+            statement = statement.where(WorkflowPackRunModel.runtime_state == runtime_state)
+        if review_state is not None:
+            statement = statement.where(WorkflowPackRunModel.review_state == review_state)
+        if workflow_authority_owner is not None:
+            statement = statement.where(
+                WorkflowPackRunModel.workflow_authority_owner == workflow_authority_owner
+            )
+        statement = statement.order_by(WorkflowPackRunModel.created_at.desc()).limit(max(limit, 0))
+        with self._session_factory() as session:
+            models = session.scalars(statement).all()
+            return [self._to_run_record(model) for model in models]
+
     def get_run(self, *, run_id: str) -> WorkflowPackRunRecord | None:
         with self._session_factory() as session:
             model = session.get(WorkflowPackRunModel, run_id)

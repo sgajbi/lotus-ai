@@ -14,6 +14,11 @@ from app.contracts.workflow_pack_task_flows import (
     WorkflowPackTaskFlowCheckpointTransition,
     WorkflowPackTaskFlowStatus,
 )
+from app.repositories.memory_workflow_pack_task_flow_repository import (
+    InMemoryWorkflowPackTaskFlowRepository,
+)
+from app.repositories.workflow_pack_task_flow_repository import WorkflowPackTaskFlowRecord
+import app.services.workflow_pack_task_flow_service as task_flow_service
 from app.services.workflow_pack_task_flow_service import (
     WorkflowPackTaskFlowNotFoundError,
     create_task_flow,
@@ -32,6 +37,21 @@ from tests.support.workflow_pack_task_flow_fixtures import (
 
 class _UnknownReviewAction:
     value = "ESCALATE"
+
+
+class _NoBroadListTaskFlowRepository(InMemoryWorkflowPackTaskFlowRepository):
+    def __init__(self) -> None:
+        super().__init__()
+        self.run_ref_lookup_count = 0
+
+    def list_task_flows(self) -> list[WorkflowPackTaskFlowRecord]:
+        raise AssertionError("review synchronization must not scan the full task-flow catalog")
+
+    def list_task_flows_by_run_ref(
+        self, *, run_id: str, limit: int
+    ) -> list[WorkflowPackTaskFlowRecord]:
+        self.run_ref_lookup_count += 1
+        return super().list_task_flows_by_run_ref(run_id=run_id, limit=limit)
 
 
 def test_task_flow_service_records_checkpoint_and_preserves_state_boundaries() -> None:
@@ -306,6 +326,40 @@ def test_task_flow_review_action_sync_records_terminal_review_posture(
         assert updated.handoff_refs[0].owner_service == "lotus-advise"
     else:
         assert updated.handoff_refs == []
+
+
+def test_task_flow_review_action_sync_uses_run_ref_lookup_without_catalog_scan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = _NoBroadListTaskFlowRepository()
+    repository.save_task_flow(
+        WorkflowPackTaskFlowRecord(
+            descriptor=workflow_pack_task_flow_descriptor(
+                flow_status=WorkflowPackTaskFlowStatus.WAITING_FOR_REVIEW,
+                current_step_id="draft-brief",
+            )
+        )
+    )
+    monkeypatch.setattr(
+        task_flow_service,
+        "get_workflow_pack_task_flow_store",
+        lambda: repository,
+    )
+
+    synchronize_task_flow_review_action(
+        run_id="run-001",
+        review_state=WorkflowPackRunReviewState.ACCEPTED,
+        supportability_status=WorkflowPackRunSupportabilityStatus.READY,
+        action_type=WorkflowPackRunReviewActionType.ACCEPT,
+        reviewed_by="advisor-001",
+        reason="Accepted without a broad task-flow scan.",
+        recorded_at="2026-04-21T01:06:00Z",
+    )
+
+    assert repository.run_ref_lookup_count == 1
+    updated = repository.get_task_flow(task_flow_id="task-flow-001")
+    assert updated is not None
+    assert updated.descriptor.flow_status == WorkflowPackTaskFlowStatus.COMPLETED
 
 
 def test_task_flow_review_action_sync_blocks_unknown_future_review_action() -> None:

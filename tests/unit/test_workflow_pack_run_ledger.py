@@ -164,7 +164,11 @@ def test_workflow_pack_run_catalog_and_detail_expose_recorded_history() -> None:
 
     assert catalog.run_store_mode == "memory"
     assert catalog.run_count == 1
-    assert catalog.filters_applied == {"limit": 100}
+    assert catalog.filters_applied == {
+        "limit": 100,
+        "source_run_limit": 100,
+        "source_run_count": 1,
+    }
     assert catalog.awaiting_review_count == 1
     assert catalog.completed_count == 1
     assert catalog.ready_count == 0
@@ -250,6 +254,8 @@ def test_workflow_pack_run_catalog_filters_by_supportability_and_limit() -> None
 
     assert filtered_catalog.filters_applied == {
         "limit": 1,
+        "source_run_limit": 10,
+        "source_run_count": 1,
         "registration_ref": "advisor_brief.pack@v1",
         "caller_app": "lotus-gateway",
         "tenant_id": "tenant-sg-001",

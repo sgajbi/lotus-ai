@@ -40,6 +40,8 @@ SOURCE_AUTHORITY_POLICY = (
     "FX, report, or client-communication facts from this projection."
 )
 CONTENT_HASH_UNAVAILABLE = "content_hash_unavailable"
+SOURCE_EVENT_RUN_QUERY_WINDOW_MULTIPLIER = 10
+SOURCE_EVENT_RUN_QUERY_WINDOW_MAX = 500
 
 
 def build_workflow_pack_source_event_catalog(
@@ -53,31 +55,27 @@ def build_workflow_pack_source_event_catalog(
 ) -> WorkflowPackSourceEventCatalogResponse:
     ensure_workflow_pack_run_store_ready()
     store = get_workflow_pack_run_store()
-    bounded_at_source = all(
-        item is None
-        for item in (
-            pack_id,
-            caller_app,
-            tenant_id,
-            workflow_surface,
-            supportability_status,
-        )
+    source_run_limit = _source_run_query_limit(
+        limit=limit, supportability_status=supportability_status
     )
-    runs = [
+    runs = store.query_runs(
+        pack_id=pack_id,
+        caller_app=caller_app,
+        tenant_id=tenant_id,
+        workflow_surface=workflow_surface,
+        limit=source_run_limit,
+    )
+    filtered_runs = [
         record
-        for record in store.list_runs(limit=limit if bounded_at_source else None)
+        for record in runs
         if _run_matches_filters(
             record=record,
-            pack_id=pack_id,
-            caller_app=caller_app,
-            tenant_id=tenant_id,
-            workflow_surface=workflow_surface,
             supportability_status=supportability_status,
         )
     ]
     events = [
         source_event
-        for run in runs
+        for run in filtered_runs
         for source_event in _build_source_events_for_run(
             record=run,
             ledger_events=store.list_events(run_id=run.run_id),
@@ -86,6 +84,8 @@ def build_workflow_pack_source_event_catalog(
     events.sort(key=lambda item: item.recorded_at, reverse=True)
     limited_events = events[:limit]
     filters_applied: dict[str, str | int] = {"limit": limit}
+    filters_applied["source_run_limit"] = source_run_limit
+    filters_applied["source_run_count"] = len(runs)
     if pack_id is not None:
         filters_applied["pack_id"] = pack_id
     if caller_app is not None:
@@ -200,25 +200,27 @@ def _build_source_events_for_run(
 def _run_matches_filters(
     *,
     record: WorkflowPackRunRecord,
-    pack_id: str | None,
-    caller_app: str | None,
-    tenant_id: str | None,
-    workflow_surface: str | None,
     supportability_status: WorkflowPackRunSupportabilityStatus | None,
 ) -> bool:
-    if pack_id is not None and record.pack_id != pack_id:
-        return False
-    if caller_app is not None and record.caller_app != caller_app:
-        return False
-    if tenant_id is not None and record.tenant_id != tenant_id:
-        return False
-    if workflow_surface is not None and record.workflow_surface != workflow_surface:
-        return False
     if supportability_status is not None:
         resolved = resolve_workflow_pack_run_record_supportability_status(record)
         if resolved is not supportability_status:
             return False
     return True
+
+
+def _source_run_query_limit(
+    *,
+    limit: int,
+    supportability_status: WorkflowPackRunSupportabilityStatus | None,
+) -> int:
+    bounded_limit = max(limit, 0)
+    if supportability_status is None:
+        return bounded_limit
+    return min(
+        max(bounded_limit * SOURCE_EVENT_RUN_QUERY_WINDOW_MULTIPLIER, bounded_limit),
+        SOURCE_EVENT_RUN_QUERY_WINDOW_MAX,
+    )
 
 
 def _load_run_output_summary(artifact_refs: list[ArtifactDescriptor]) -> dict[str, Any]:

@@ -59,6 +59,10 @@ class WorkflowPackRunStoreUnavailableError(RuntimeError):
     pass
 
 
+RUN_CATALOG_QUERY_WINDOW_MULTIPLIER = 10
+RUN_CATALOG_QUERY_WINDOW_MAX = 500
+
+
 def load_workflow_pack_run_context(*, run_id: str) -> WorkflowPackRunLoadedContext:
     ensure_workflow_pack_run_store_ready()
     store = get_workflow_pack_run_store()
@@ -90,21 +94,21 @@ def build_workflow_pack_run_catalog(
 ) -> WorkflowPackRunCatalogResponse:
     ensure_workflow_pack_run_store_ready()
     store = get_workflow_pack_run_store()
-    bounded_at_source = all(
-        item is None
-        for item in (
-            registration_ref,
-            pack_id,
-            caller_app,
-            tenant_id,
-            workflow_surface,
-            runtime_state,
-            review_state,
-            supportability_status,
-            workflow_authority_owner,
-        )
+    source_run_limit = _run_catalog_query_limit(
+        limit=limit,
+        supportability_status=supportability_status,
     )
-    source_records = store.list_runs(limit=limit if bounded_at_source else None)
+    source_records = store.query_runs(
+        registration_ref=registration_ref,
+        pack_id=pack_id,
+        caller_app=caller_app,
+        tenant_id=tenant_id,
+        workflow_surface=workflow_surface,
+        runtime_state=runtime_state.value if runtime_state is not None else None,
+        review_state=review_state.value if review_state is not None else None,
+        workflow_authority_owner=workflow_authority_owner,
+        limit=source_run_limit,
+    )
     runs = [map_workflow_pack_run_record(record, store=store) for record in source_records]
     filtered_runs = _filter_workflow_pack_runs(
         runs=runs,
@@ -121,6 +125,8 @@ def build_workflow_pack_run_catalog(
     filtered_runs.sort(key=lambda item: item.created_at, reverse=True)
     limited_runs = filtered_runs[:limit]
     filters_applied: dict[str, str | int] = {"limit": limit}
+    filters_applied["source_run_limit"] = source_run_limit
+    filters_applied["source_run_count"] = len(source_records)
     if registration_ref is not None:
         filters_applied["registration_ref"] = registration_ref
     if pack_id is not None:
@@ -179,6 +185,20 @@ def build_workflow_pack_run_catalog(
             "Supportability counts and per-run status fields are computed server-side from the same shared run-supportability seam used by runtime status and operator profiles.",
             "Phase-1 recorded runs now emit governed workflow-pack artifact refs so support and downstream review can inspect bounded output summaries without pulling raw payloads into the ledger contract.",
         ],
+    )
+
+
+def _run_catalog_query_limit(
+    *,
+    limit: int,
+    supportability_status: WorkflowPackRunSupportabilityStatus | None,
+) -> int:
+    bounded_limit = max(limit, 0)
+    if supportability_status is None:
+        return bounded_limit
+    return min(
+        max(bounded_limit * RUN_CATALOG_QUERY_WINDOW_MULTIPLIER, bounded_limit),
+        RUN_CATALOG_QUERY_WINDOW_MAX,
     )
 
 

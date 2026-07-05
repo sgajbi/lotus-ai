@@ -24,6 +24,37 @@ class InMemoryWorkflowPackRunRepository(WorkflowPackRunRepository):
             run_ids = run_ids[: max(limit, 0)]
         return [deepcopy(self._runs[run_id]) for run_id in run_ids]
 
+    def query_runs(
+        self,
+        *,
+        registration_ref: str | None = None,
+        pack_id: str | None = None,
+        caller_app: str | None = None,
+        tenant_id: str | None = None,
+        workflow_surface: str | None = None,
+        runtime_state: str | None = None,
+        review_state: str | None = None,
+        workflow_authority_owner: str | None = None,
+        limit: int,
+    ) -> list[WorkflowPackRunRecord]:
+        records = [
+            record
+            for record in self._runs.values()
+            if (registration_ref is None or record.registration_ref == registration_ref)
+            and (pack_id is None or record.pack_id == pack_id)
+            and (caller_app is None or record.caller_app == caller_app)
+            and (tenant_id is None or record.tenant_id == tenant_id)
+            and (workflow_surface is None or record.workflow_surface == workflow_surface)
+            and (runtime_state is None or record.runtime_state == runtime_state)
+            and (review_state is None or record.review_state == review_state)
+            and (
+                workflow_authority_owner is None
+                or record.workflow_authority_owner == workflow_authority_owner
+            )
+        ]
+        records.sort(key=lambda item: item.created_at, reverse=True)
+        return deepcopy(records[: max(limit, 0)])
+
     def get_run(self, *, run_id: str) -> WorkflowPackRunRecord | None:
         record = self._runs.get(run_id)
         if record is None:
