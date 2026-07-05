@@ -157,10 +157,19 @@ def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path
             )
             assert task_history_response.status_code == 200
             assert len(task_history_response.json()["latest_events"]) == 2
+            assert task_history_response.json()["latest_events"][0]["action_type"] == (
+                "ROLLBACK_TO_PREVIOUS_ACTIVE"
+            )
             assert (
                 task_history_response.json()["latest_events"][0]["authorization"]["caller_app"]
                 == "lotus-platform"
             )
+
+
+def test_prompt_control_history_route_rejects_oversized_limit(client: TestClient) -> None:
+    response = client.get("/platform/prompts/control-history", params={"limit": 201})
+
+    assert response.status_code == 422
 
 
 def test_prompt_activation_readiness_route(client: TestClient) -> None:

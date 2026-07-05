@@ -372,6 +372,16 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         ]
         == "Workflow-pack registry store is not ready."
     )
+    workflow_pack_control_history_parameters = spec["paths"][
+        "/platform/workflow-packs/control-history"
+    ]["get"]["parameters"]
+    workflow_pack_control_history_limit = next(
+        parameter
+        for parameter in workflow_pack_control_history_parameters
+        if parameter["name"] == "limit"
+    )
+    assert workflow_pack_control_history_limit["schema"]["minimum"] == 1
+    assert workflow_pack_control_history_limit["schema"]["maximum"] == 200
     assert spec["paths"]["/platform/workflow-packs/control-actions"]["post"]["operationId"] == (
         "applyWorkflowPackControlAction"
     )
@@ -1266,6 +1276,14 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/platform/prompts/control-history"]["get"]["operationId"] == (
         "getPromptControlHistory"
     )
+    prompt_control_history_parameters = spec["paths"]["/platform/prompts/control-history"]["get"][
+        "parameters"
+    ]
+    prompt_control_history_limit = next(
+        parameter for parameter in prompt_control_history_parameters if parameter["name"] == "limit"
+    )
+    assert prompt_control_history_limit["schema"]["minimum"] == 1
+    assert prompt_control_history_limit["schema"]["maximum"] == 200
     assert spec["paths"]["/platform/prompts/control-actions"]["post"]["operationId"] == (
         "applyPromptControlAction"
     )

@@ -73,15 +73,15 @@ class InMemoryPromptRepository(PromptRepository):
         return deepcopy(state)
 
     def list_prompt_rollout_events(
-        self, task_id: str | None = None
+        self, task_id: str | None = None, limit: int = 20
     ) -> list[PromptRolloutEventRecord]:
         events = [
             deepcopy(event)
             for event in self._rollout_events
             if task_id is None or event.task_id == task_id
         ]
-        events.sort(key=lambda event: event.recorded_at)
-        return events
+        events.sort(key=lambda event: event.recorded_at, reverse=True)
+        return events[: max(limit, 1)]
 
     def save_prompt_rollout_transition(
         self,

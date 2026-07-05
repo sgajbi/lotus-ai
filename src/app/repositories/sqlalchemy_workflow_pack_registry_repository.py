@@ -77,9 +77,11 @@ class SqlAlchemyWorkflowPackRegistryRepository(
             if version is not None:
                 statement = statement.where(WorkflowPackControlEventModel.version == version)
             models = session.scalars(
-                statement.order_by(WorkflowPackControlEventModel.recorded_at.desc())
+                statement.order_by(WorkflowPackControlEventModel.recorded_at.desc()).limit(
+                    max(limit, 1)
+                )
             ).all()
-            return [self._to_control_event_descriptor(model) for model in models[: max(limit, 1)]]
+            return [self._to_control_event_descriptor(model) for model in models]
 
     def save_control_event(self, event: WorkflowPackControlEventDescriptor) -> None:
         model = WorkflowPackControlEventModel(

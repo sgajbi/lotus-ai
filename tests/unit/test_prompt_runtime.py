@@ -362,7 +362,9 @@ def test_build_prompt_selection_trace_rejects_rollout_state_removed_after_resolu
                 if prompt.task_id == task_id and prompt.prompt_version == prompt_version
             )
 
-        def list_prompt_rollout_events(self, task_id: str | None = None) -> list[object]:
+        def list_prompt_rollout_events(
+            self, task_id: str | None = None, limit: int = 20
+        ) -> list[object]:
             return []
 
     repository = FlakyPromptRepository()

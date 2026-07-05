@@ -13,6 +13,7 @@ from app.contracts.prompts import (
     PromptManagementMode,
     PromptRolloutSelectionMode,
 )
+from app.db.models import PromptRolloutEventModel
 from app.repositories.sqlalchemy_prompt_repository import SqlAlchemyPromptRepository
 from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
 from tests.support.migration_runner import upgrade_database_to_head
@@ -138,8 +139,43 @@ def test_sqlalchemy_prompt_repository_saves_rollout_transition_and_event(tmp_pat
     assert rollout_state.previous_active_prompt_version == "foundation.explain.v1"
     assert active_prompt is not None
     assert active_prompt.prompt_version == "foundation.explain.v2"
-    assert rollout_events[-1].action_type == PromptControlActionType.PROMOTE_CANDIDATE
-    assert rollout_events[-1].authorization.outcome == AuthorizationOutcome.ALLOWED
+    assert rollout_events[0].action_type == PromptControlActionType.PROMOTE_CANDIDATE
+    assert rollout_events[0].authorization.outcome == AuthorizationOutcome.ALLOWED
+
+
+def test_sqlalchemy_prompt_repository_bounds_rollout_event_history(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'prompt-registry.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyPromptRepository(database_url)
+
+    with repository._session_factory() as session:
+        for index in range(5):
+            session.add(
+                PromptRolloutEventModel(
+                    event_id=f"prompt_evt_limit_{index}",
+                    task_id="explain.v1",
+                    action_type=PromptControlActionType.PROMOTE_CANDIDATE.value,
+                    requested_by="alice@lotus.test",
+                    approved_by="bob@lotus.test",
+                    reason="Bounded history test.",
+                    prior_active_prompt_version="foundation.explain.v1",
+                    resulting_active_prompt_version="foundation.explain.v2",
+                    prior_candidate_prompt_version=None,
+                    resulting_candidate_prompt_version=None,
+                    authorization_payload=_authorization().model_dump(mode="json"),
+                    recorded_at=f"2026-03-23T09:0{index}:00Z",
+                )
+            )
+        session.commit()
+
+    rollout_events = repository.list_prompt_rollout_events("explain.v1", limit=2)
+
+    assert [event.event_id for event in rollout_events] == [
+        "prompt_evt_limit_4",
+        "prompt_evt_limit_3",
+    ]
 
 
 def test_sqlalchemy_prompt_repository_creates_parent_directory_for_sqlite_file(
