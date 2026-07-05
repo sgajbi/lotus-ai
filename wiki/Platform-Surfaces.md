@@ -21,6 +21,14 @@ Use these first when you need to answer "is the service up?" and "what mode is i
 4. `/health/live`
 5. `/health/ready`
 
+All route families share the service-level HTTP boundary and error contract:
+
+1. allowed-host, bounded CORS, secure-header, optional HSTS, and request-size controls are
+   configured through `LOTUS_AI_HTTP_*` settings,
+2. API failures use `application/problem+json` with stable `error_code` and `correlation_id`,
+3. oversized requests are rejected at the perimeter before task, retrieval, or workflow-pack
+   handlers parse the body.
+
 ## Direct Execution and Audit Surface
 
 These are the smallest public integration surfaces and the ones most downstream callers start with.

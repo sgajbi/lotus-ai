@@ -5,12 +5,16 @@ from contextlib import asynccontextmanager
 from typing import Any, cast
 
 from fastapi import FastAPI, Response, status
+from fastapi.openapi.utils import get_openapi
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_fastapi_instrumentator import routing as prometheus_routing
 from starlette.routing import Match, Mount, Route
 
+from app.api_errors import install_problem_detail_handlers
 from app.config import settings
+from app.contracts.api_errors import COMMON_PROBLEM_RESPONSES, ProblemDetails
 from app.middleware.correlation import CorrelationIdMiddleware
+from app.middleware.http_boundary import HttpBoundaryMiddleware
 from app.routers.access_control import router as access_control_router
 from app.routers.artifacts import router as artifacts_router
 from app.routers.async_runtime import router as async_runtime_router
@@ -92,6 +96,46 @@ def _resolve_effective_route(route: Route, scope: MutableMapping[str, Any]) -> A
     return starlette_route or route
 
 
+def _install_problem_details_openapi(app: FastAPI) -> None:
+    def custom_openapi() -> dict[str, Any]:
+        if app.openapi_schema:
+            return app.openapi_schema
+        spec = get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
+        )
+        schemas = spec.setdefault("components", {}).setdefault("schemas", {})
+        schemas["ProblemDetails"] = ProblemDetails.model_json_schema(
+            ref_template="#/components/schemas/{model}"
+        )
+        problem_content = {
+            "schema": {"$ref": "#/components/schemas/ProblemDetails"},
+            "example": {
+                "type": "https://lotus.ai/problems/validation-failed",
+                "title": "Request validation failed",
+                "status": 422,
+                "detail": "Request validation failed.",
+                "error_code": "LOTUS_AI_VALIDATION_FAILED",
+                "correlation_id": "corr-example",
+                "metadata": {"validation_error_count": 1},
+            },
+        }
+        for methods in spec.get("paths", {}).values():
+            for operation in methods.values():
+                responses = operation.get("responses", {})
+                for code, response in responses.items():
+                    if str(code).startswith(("4", "5")):
+                        response.setdefault("content", {})["application/problem+json"] = (
+                            problem_content
+                        )
+        app.openapi_schema = spec
+        return spec
+
+    app.openapi = custom_openapi  # type: ignore[method-assign]
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     evaluation = apply_startup_readiness_policy()
@@ -109,7 +153,10 @@ app = FastAPI(
         "not domain business truth."
     ),
     lifespan=lifespan,
+    responses=COMMON_PROBLEM_RESPONSES,
 )
+install_problem_detail_handlers(app)
+app.add_middleware(HttpBoundaryMiddleware)
 app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
 _install_fastapi_included_router_prometheus_patch()
 Instrumentator().instrument(app).expose(app)
@@ -130,6 +177,7 @@ app.include_router(use_cases_router)
 app.include_router(workflow_packs_router)
 app.include_router(tasks_router)
 app.include_router(audit_router)
+_install_problem_details_openapi(app)
 
 
 @app.get("/health")

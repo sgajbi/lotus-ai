@@ -81,6 +81,15 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "artifact_object_store_root": settings.artifact_object_store_root,
         "startup_readiness_policy": settings.startup_readiness_policy,
         "readiness_probe_policy": settings.readiness_probe_policy,
+        "http_allowed_hosts": settings.http_allowed_hosts,
+        "http_cors_allowed_origins": settings.http_cors_allowed_origins,
+        "http_cors_allowed_methods": settings.http_cors_allowed_methods,
+        "http_cors_allowed_headers": settings.http_cors_allowed_headers,
+        "http_cors_allow_credentials": settings.http_cors_allow_credentials,
+        "http_secure_headers_enabled": settings.http_secure_headers_enabled,
+        "http_hsts_enabled": settings.http_hsts_enabled,
+        "http_hsts_max_age_seconds": settings.http_hsts_max_age_seconds,
+        "http_max_request_body_bytes": settings.http_max_request_body_bytes,
         "database_url": settings.database_url,
     }
     try:
