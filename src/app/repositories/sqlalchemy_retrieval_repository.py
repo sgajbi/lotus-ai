@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
+from typing import Callable
 
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.contracts.retrieval import (
@@ -30,7 +32,13 @@ from app.db.models import (
 )
 from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
 from app.retrieval.search_eligibility import is_live_search_chunk_eligible
-from app.retrieval.search_scoring import score_terms
+from app.retrieval.search_hits import build_retrieval_search_hit
+from app.retrieval.search_scoring import score_terms, tokenize
+
+
+SEARCH_CANDIDATE_WINDOW_MIN = 50
+SEARCH_CANDIDATE_WINDOW_MULTIPLIER = 20
+SEARCH_CANDIDATE_WINDOW_MAX = 200
 
 
 class SqlAlchemyRetrievalRepository(SqlAlchemyRepositoryBase):
@@ -145,6 +153,9 @@ class SqlAlchemyRetrievalRepository(SqlAlchemyRepositoryBase):
     def search_indexed_chunks(
         self, *, query: str, source_ids: list[str], limit: int
     ) -> list[RetrievalSearchHit]:
+        query_terms = sorted(tokenize(query))
+        if not query_terms:
+            return []
         with self._session_factory() as session:
             statement = (
                 select(RetrievalChunkModel, RetrievalDocumentModel, RetrievalSourceModel)
@@ -163,37 +174,57 @@ class SqlAlchemyRetrievalRepository(SqlAlchemyRepositoryBase):
             if source_ids:
                 statement = statement.where(RetrievalChunkModel.source_id.in_(source_ids))
 
+            term_filters = [
+                or_(
+                    func.lower(RetrievalDocumentModel.title).like(f"%{term}%"),
+                    func.lower(RetrievalChunkModel.preview).like(f"%{term}%"),
+                )
+                for term in query_terms
+            ]
+            statement = (
+                statement.where(or_(*term_filters))
+                .order_by(
+                    RetrievalChunkModel.source_id,
+                    RetrievalChunkModel.document_id,
+                    RetrievalChunkModel.chunk_order,
+                    RetrievalChunkModel.chunk_id,
+                )
+                .limit(_search_candidate_window(limit))
+            )
             rows = session.execute(statement).all()
+            document_ids = {document.document_id for _chunk, document, _source in rows}
+            source_ids_in_rows = {source.source_id for _chunk, _document, source in rows}
+            versions_by_document_id = _load_document_versions_by_document_id(
+                session=session,
+                document_ids=document_ids,
+                to_descriptor=self._to_document_version_descriptor,
+            )
+            ingestion_jobs_by_document_id = _load_ingestion_jobs_by_document_id(
+                session=session,
+                document_ids=document_ids,
+                source_ids=source_ids_in_rows,
+                to_descriptor=self._to_ingestion_job_descriptor,
+            )
             ranked_hits: list[RetrievalSearchHit] = []
             for chunk, document, _source in rows:
-                document_versions = session.scalars(
-                    select(RetrievalDocumentVersionModel).where(
-                        RetrievalDocumentVersionModel.document_id == document.document_id
-                    )
-                ).all()
-                ingestion_jobs = session.scalars(
-                    select(RetrievalIngestionJobModel).where(
-                        (RetrievalIngestionJobModel.document_id == document.document_id)
-                        | (
-                            (RetrievalIngestionJobModel.source_id == document.source_id)
-                            & RetrievalIngestionJobModel.document_id.is_(None)
-                        )
-                    )
-                ).all()
                 source_descriptor = self._to_source_descriptor(_source)
-                document_descriptor = self._to_document_descriptor(session, document)
+                document_descriptor = RetrievalDocumentDescriptor(
+                    document_id=document.document_id,
+                    source_id=document.source_id,
+                    title=document.title,
+                    location=document.location,
+                    chunk_count=0,
+                    index_status=RetrievalIndexStatus(document.index_status),
+                )
                 chunk_descriptor = self._to_chunk_descriptor(chunk)
+                document_versions = versions_by_document_id[document.document_id]
+                ingestion_jobs = ingestion_jobs_by_document_id[document.document_id]
                 if not is_live_search_chunk_eligible(
                     source=source_descriptor,
                     document=document_descriptor,
                     chunk=chunk_descriptor,
-                    document_versions=[
-                        self._to_document_version_descriptor(version)
-                        for version in document_versions
-                    ],
-                    ingestion_jobs=[
-                        self._to_ingestion_job_descriptor(job) for job in ingestion_jobs
-                    ],
+                    document_versions=document_versions,
+                    ingestion_jobs=ingestion_jobs,
                 ):
                     continue
                 score = score_terms(
@@ -203,12 +234,12 @@ class SqlAlchemyRetrievalRepository(SqlAlchemyRepositoryBase):
                 if score <= 0.0:
                     continue
                 ranked_hits.append(
-                    RetrievalSearchHit(
-                        source_id=chunk.source_id,
-                        document_id=chunk.document_id,
-                        chunk_id=chunk.chunk_id,
+                    build_retrieval_search_hit(
+                        source=source_descriptor,
+                        document=document_descriptor,
+                        chunk=chunk_descriptor,
+                        document_versions=document_versions,
                         score=score,
-                        snippet=chunk.preview,
                     )
                 )
 
@@ -363,3 +394,60 @@ class SqlAlchemyRetrievalRepository(SqlAlchemyRepositoryBase):
         if not path.is_absolute():
             path = Path.cwd() / path
         path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _search_candidate_window(limit: int) -> int:
+    return min(
+        max(limit * SEARCH_CANDIDATE_WINDOW_MULTIPLIER, SEARCH_CANDIDATE_WINDOW_MIN),
+        SEARCH_CANDIDATE_WINDOW_MAX,
+    )
+
+
+def _load_document_versions_by_document_id(
+    *,
+    session: Session,
+    document_ids: set[str],
+    to_descriptor: Callable[[RetrievalDocumentVersionModel], RetrievalDocumentVersionDescriptor],
+) -> dict[str, list[RetrievalDocumentVersionDescriptor]]:
+    versions_by_document_id: dict[str, list[RetrievalDocumentVersionDescriptor]] = defaultdict(list)
+    if not document_ids:
+        return versions_by_document_id
+    versions = session.scalars(
+        select(RetrievalDocumentVersionModel).where(
+            RetrievalDocumentVersionModel.document_id.in_(document_ids)
+        )
+    ).all()
+    for version in versions:
+        versions_by_document_id[version.document_id].append(to_descriptor(version))
+    return versions_by_document_id
+
+
+def _load_ingestion_jobs_by_document_id(
+    *,
+    session: Session,
+    document_ids: set[str],
+    source_ids: set[str],
+    to_descriptor: Callable[[RetrievalIngestionJobModel], RetrievalIngestionJobDescriptor],
+) -> dict[str, list[RetrievalIngestionJobDescriptor]]:
+    jobs_by_document_id: dict[str, list[RetrievalIngestionJobDescriptor]] = defaultdict(list)
+    if not document_ids:
+        return jobs_by_document_id
+    jobs = session.scalars(
+        select(RetrievalIngestionJobModel).where(
+            or_(
+                RetrievalIngestionJobModel.document_id.in_(document_ids),
+                and_(
+                    RetrievalIngestionJobModel.source_id.in_(source_ids),
+                    RetrievalIngestionJobModel.document_id.is_(None),
+                ),
+            )
+        )
+    ).all()
+    for job in jobs:
+        descriptor = to_descriptor(job)
+        if job.document_id is not None:
+            jobs_by_document_id[job.document_id].append(descriptor)
+            continue
+        for document_id in document_ids:
+            jobs_by_document_id[document_id].append(descriptor)
+    return jobs_by_document_id

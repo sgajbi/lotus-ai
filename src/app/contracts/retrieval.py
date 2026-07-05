@@ -500,10 +500,42 @@ class RetrievalSearchRequest(BaseModel):
 
 class RetrievalSearchHit(BaseModel):
     source_id: str = Field(description="Retrieval source identifier that produced the hit.")
+    source_kind: RetrievalSourceKind | None = Field(
+        default=None,
+        description="Governed source category that produced the hit, when available.",
+    )
     document_id: str = Field(description="Retrieval document identifier that produced the hit.")
+    document_title: str | None = Field(
+        default=None,
+        description="Human-readable title for the document that produced the hit, when available.",
+    )
+    document_location: str | None = Field(
+        default=None,
+        description="Repository-relative or logical document location used for citation lineage.",
+    )
     chunk_id: str = Field(description="Retrieval chunk identifier that produced the hit.")
+    chunk_order: int | None = Field(
+        default=None,
+        description="Stable chunk order within the cited document, when available.",
+    )
     score: float = Field(description="Relevance score associated with the hit.")
     snippet: str = Field(description="Short snippet preview for the hit.")
+    active_version_id: str | None = Field(
+        default=None,
+        description="Active governed document-version identifier used for citation lineage.",
+    )
+    active_version_lifecycle_status: RetrievalDocumentVersionLifecycleStatus | None = Field(
+        default=None,
+        description="Lifecycle status of the active document version used for citation lineage.",
+    )
+    active_version_created_at: str | None = Field(
+        default=None,
+        description="Timestamp for the active document version used for citation lineage.",
+    )
+    citation_ref: str | None = Field(
+        default=None,
+        description="Stable bounded citation reference combining source, document, active version, and chunk identity.",
+    )
 
 
 class RetrievalSearchResponse(BaseModel):

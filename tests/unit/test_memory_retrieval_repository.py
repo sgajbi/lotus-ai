@@ -161,6 +161,9 @@ def test_memory_retrieval_repository_searches_only_indexed_enabled_chunks() -> N
     assert hits[0].source_id == "lotus-platform-rfcs"
     assert hits[0].document_id == "lotus-platform-rfc-0069"
     assert hits[0].chunk_id == "chunk_rfc_0069_0001"
+    assert hits[0].document_location is not None
+    assert hits[0].active_version_id == "ver_lotus_platform_rfc_0069_2026_03_22"
+    assert hits[0].citation_ref is not None
 
 
 def test_memory_retrieval_repository_excludes_staged_chunks_from_live_search() -> None:
