@@ -61,6 +61,7 @@ TASK_FLOW_TERMINAL_STATUSES = {
 
 GENERATED_IDENTIFIER_MAX_LENGTH = 128
 GENERATED_IDENTIFIER_DIGEST_LENGTH = 24
+TASK_FLOW_REVIEW_SYNC_RUN_REF_LIMIT = 20
 
 
 def ensure_workflow_pack_task_flow_store_ready() -> None:
@@ -79,6 +80,35 @@ def list_task_flows(
     ensure_workflow_pack_task_flow_store_ready()
     task_flow_store = store or get_workflow_pack_task_flow_store()
     return [record.descriptor for record in task_flow_store.list_task_flows()]
+
+
+def query_task_flows(
+    *,
+    workflow_pack_id: str | None = None,
+    caller: str | None = None,
+    tenant_id: str | None = None,
+    workflow_surface: str | None = None,
+    flow_status: WorkflowPackTaskFlowStatus | None = None,
+    supportability_status: WorkflowPackRunSupportabilityStatus | None = None,
+    limit: int = 100,
+    store: WorkflowPackTaskFlowRepository | None = None,
+) -> list[WorkflowPackTaskFlowDescriptor]:
+    ensure_workflow_pack_task_flow_store_ready()
+    task_flow_store = store or get_workflow_pack_task_flow_store()
+    return [
+        record.descriptor
+        for record in task_flow_store.query_task_flows(
+            workflow_pack_id=workflow_pack_id,
+            caller=caller,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+            flow_status=flow_status.value if flow_status is not None else None,
+            supportability_status=(
+                supportability_status.value if supportability_status is not None else None
+            ),
+            limit=limit,
+        )
+    ]
 
 
 def get_task_flow(
@@ -152,18 +182,15 @@ def build_workflow_pack_task_flow_catalog(
     supportability_status: WorkflowPackRunSupportabilityStatus | None = None,
     limit: int = 100,
 ) -> WorkflowPackTaskFlowCatalogResponse:
-    task_flows = list_task_flows()
-    filtered = _sort_task_flows_newest_first(
-        _filter_task_flows(
-            task_flows,
-            workflow_pack_id=workflow_pack_id,
-            caller=caller,
-            tenant_id=tenant_id,
-            workflow_surface=workflow_surface,
-            flow_status=flow_status,
-            supportability_status=supportability_status,
-        )
-    )[:limit]
+    filtered = query_task_flows(
+        workflow_pack_id=workflow_pack_id,
+        caller=caller,
+        tenant_id=tenant_id,
+        workflow_surface=workflow_surface,
+        flow_status=flow_status,
+        supportability_status=supportability_status,
+        limit=limit,
+    )
     return WorkflowPackTaskFlowCatalogResponse(
         service=settings.service_name,
         phase=settings.delivery_phase,
@@ -187,41 +214,6 @@ def build_workflow_pack_task_flow_catalog(
             limit=limit,
         ),
         task_flows=filtered,
-    )
-
-
-def _filter_task_flows(
-    task_flows: list[WorkflowPackTaskFlowDescriptor],
-    *,
-    workflow_pack_id: str | None,
-    caller: str | None,
-    tenant_id: str | None,
-    workflow_surface: str | None,
-    flow_status: WorkflowPackTaskFlowStatus | None,
-    supportability_status: WorkflowPackRunSupportabilityStatus | None,
-) -> list[WorkflowPackTaskFlowDescriptor]:
-    return [
-        task_flow
-        for task_flow in task_flows
-        if (workflow_pack_id is None or task_flow.workflow_pack_id == workflow_pack_id)
-        and (caller is None or task_flow.caller == caller)
-        and (tenant_id is None or task_flow.tenant_id == tenant_id)
-        and (workflow_surface is None or task_flow.workflow_surface == workflow_surface)
-        and (flow_status is None or task_flow.flow_status == flow_status)
-        and (
-            supportability_status is None
-            or task_flow.supportability_status == supportability_status
-        )
-    ]
-
-
-def _sort_task_flows_newest_first(
-    task_flows: list[WorkflowPackTaskFlowDescriptor],
-) -> list[WorkflowPackTaskFlowDescriptor]:
-    return sorted(
-        task_flows,
-        key=lambda task_flow: (task_flow.updated_at, task_flow.created_at, task_flow.task_flow_id),
-        reverse=True,
     )
 
 
@@ -280,8 +272,23 @@ def synchronize_task_flow_review_action(
         if replacement_run_id is not None
         else None
     )
-    for record in task_flow_store.list_task_flows():
+    task_flows = task_flow_store.list_task_flows_by_run_ref(
+        run_id=run_id,
+        limit=TASK_FLOW_REVIEW_SYNC_RUN_REF_LIMIT,
+    )
+    if replacement_run_id is not None:
+        task_flows.extend(
+            task_flow_store.list_task_flows_by_run_ref(
+                run_id=replacement_run_id,
+                limit=TASK_FLOW_REVIEW_SYNC_RUN_REF_LIMIT,
+            )
+        )
+    seen_task_flow_ids: set[str] = set()
+    for record in task_flows:
         task_flow = record.descriptor
+        if task_flow.task_flow_id in seen_task_flow_ids:
+            continue
+        seen_task_flow_ids.add(task_flow.task_flow_id)
         if run_id in task_flow.run_refs:
             _record_review_checkpoint(
                 task_flow_store=task_flow_store,

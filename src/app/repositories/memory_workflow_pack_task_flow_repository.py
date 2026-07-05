@@ -21,6 +21,56 @@ class InMemoryWorkflowPackTaskFlowRepository(WorkflowPackTaskFlowRepository):
         )
         return deepcopy(records)
 
+    def query_task_flows(
+        self,
+        *,
+        workflow_pack_id: str | None = None,
+        caller: str | None = None,
+        tenant_id: str | None = None,
+        workflow_surface: str | None = None,
+        flow_status: str | None = None,
+        supportability_status: str | None = None,
+        limit: int,
+    ) -> list[WorkflowPackTaskFlowRecord]:
+        records = [
+            record
+            for record in self._task_flows.values()
+            if (workflow_pack_id is None or record.descriptor.workflow_pack_id == workflow_pack_id)
+            and (caller is None or record.descriptor.caller == caller)
+            and (tenant_id is None or record.descriptor.tenant_id == tenant_id)
+            and (workflow_surface is None or record.descriptor.workflow_surface == workflow_surface)
+            and (flow_status is None or record.descriptor.flow_status.value == flow_status)
+            and (
+                supportability_status is None
+                or record.descriptor.supportability_status.value == supportability_status
+            )
+        ]
+        records.sort(
+            key=lambda record: (
+                record.descriptor.updated_at,
+                record.descriptor.created_at,
+                record.descriptor.task_flow_id,
+            ),
+            reverse=True,
+        )
+        return deepcopy(records[: max(limit, 0)])
+
+    def list_task_flows_by_run_ref(
+        self, *, run_id: str, limit: int
+    ) -> list[WorkflowPackTaskFlowRecord]:
+        records = [
+            record for record in self._task_flows.values() if run_id in record.descriptor.run_refs
+        ]
+        records.sort(
+            key=lambda record: (
+                record.descriptor.updated_at,
+                record.descriptor.created_at,
+                record.descriptor.task_flow_id,
+            ),
+            reverse=True,
+        )
+        return deepcopy(records[: max(limit, 0)])
+
     def get_task_flow(self, *, task_flow_id: str) -> WorkflowPackTaskFlowRecord | None:
         record = self._task_flows.get(task_flow_id)
         if record is None:

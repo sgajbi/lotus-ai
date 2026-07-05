@@ -60,7 +60,11 @@ def test_workflow_pack_run_catalog_starts_empty(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["run_store_mode"] == "memory"
     assert body["run_count"] == 0
-    assert body["filters_applied"] == {"limit": 100}
+    assert body["filters_applied"] == {
+        "limit": 100,
+        "source_run_limit": 100,
+        "source_run_count": 0,
+    }
     assert body["ready_count"] == 0
     assert body["action_required_count"] == 0
     assert body["historical_count"] == 0
@@ -81,7 +85,11 @@ def test_workflow_pack_run_catalog_and_detail_record_advisor_brief_execution(
     assert catalog_response.status_code == 200
     catalog_body = catalog_response.json()
     assert catalog_body["run_count"] == 1
-    assert catalog_body["filters_applied"] == {"limit": 100}
+    assert catalog_body["filters_applied"] == {
+        "limit": 100,
+        "source_run_limit": 100,
+        "source_run_count": 1,
+    }
     assert catalog_body["awaiting_review_count"] == 1
     assert catalog_body["completed_count"] == 1
     assert catalog_body["ready_count"] == 0
@@ -186,6 +194,8 @@ def test_workflow_pack_run_catalog_route_supports_bounded_filters(
     body = filtered_response.json()
     assert body["filters_applied"] == {
         "limit": 1,
+        "source_run_limit": 10,
+        "source_run_count": 1,
         "registration_ref": "advisor_brief.pack@v1",
         "caller_app": "lotus-gateway",
         "tenant_id": "tenant-sg-001",
@@ -436,6 +446,8 @@ def test_workflow_pack_source_event_catalog_filters_and_reports_review_lineage(
     body = catalog_response.json()
     assert body["filters_applied"] == {
         "limit": 10,
+        "source_run_limit": 100,
+        "source_run_count": 1,
         "pack_id": "dpm_pm_memo.pack",
         "caller_app": "lotus-manage",
         "tenant_id": "tenant-sg-001",

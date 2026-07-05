@@ -32,6 +32,65 @@ class SqlAlchemyWorkflowPackTaskFlowRepository(
             ).all()
             return [self._to_task_flow_record(model) for model in models]
 
+    def query_task_flows(
+        self,
+        *,
+        workflow_pack_id: str | None = None,
+        caller: str | None = None,
+        tenant_id: str | None = None,
+        workflow_surface: str | None = None,
+        flow_status: str | None = None,
+        supportability_status: str | None = None,
+        limit: int,
+    ) -> list[WorkflowPackTaskFlowRecord]:
+        statement = select(WorkflowPackTaskFlowModel)
+        if workflow_pack_id is not None:
+            statement = statement.where(
+                WorkflowPackTaskFlowModel.workflow_pack_id == workflow_pack_id
+            )
+        if caller is not None:
+            statement = statement.where(WorkflowPackTaskFlowModel.caller == caller)
+        if tenant_id is not None:
+            statement = statement.where(WorkflowPackTaskFlowModel.tenant_id == tenant_id)
+        if workflow_surface is not None:
+            statement = statement.where(
+                WorkflowPackTaskFlowModel.workflow_surface == workflow_surface
+            )
+        if flow_status is not None:
+            statement = statement.where(WorkflowPackTaskFlowModel.flow_status == flow_status)
+        if supportability_status is not None:
+            statement = statement.where(
+                WorkflowPackTaskFlowModel.supportability_status == supportability_status
+            )
+        statement = statement.order_by(
+            WorkflowPackTaskFlowModel.updated_at.desc(),
+            WorkflowPackTaskFlowModel.created_at.desc(),
+            WorkflowPackTaskFlowModel.task_flow_id.desc(),
+        ).limit(max(limit, 0))
+        with self._session_factory() as session:
+            models = session.scalars(statement).all()
+            return [self._to_task_flow_record(model) for model in models]
+
+    def list_task_flows_by_run_ref(
+        self, *, run_id: str, limit: int
+    ) -> list[WorkflowPackTaskFlowRecord]:
+        statement = (
+            select(WorkflowPackTaskFlowModel)
+            .order_by(
+                WorkflowPackTaskFlowModel.updated_at.desc(),
+                WorkflowPackTaskFlowModel.created_at.desc(),
+                WorkflowPackTaskFlowModel.task_flow_id.desc(),
+            )
+            .limit(max(limit, 0))
+        )
+        with self._session_factory() as session:
+            models = session.scalars(statement).all()
+            return [
+                record
+                for record in (self._to_task_flow_record(model) for model in models)
+                if run_id in record.descriptor.run_refs
+            ]
+
     def get_task_flow(self, *, task_flow_id: str) -> WorkflowPackTaskFlowRecord | None:
         with self._session_factory() as session:
             model = session.get(WorkflowPackTaskFlowModel, task_flow_id)

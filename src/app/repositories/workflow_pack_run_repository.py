@@ -53,6 +53,21 @@ class WorkflowPackRunRepository(Protocol):
     def list_runs(self, *, limit: int | None = None) -> list[WorkflowPackRunRecord]:
         """List persisted workflow-pack run records, optionally bounded to newest records."""
 
+    def query_runs(
+        self,
+        *,
+        registration_ref: str | None = None,
+        pack_id: str | None = None,
+        caller_app: str | None = None,
+        tenant_id: str | None = None,
+        workflow_surface: str | None = None,
+        runtime_state: str | None = None,
+        review_state: str | None = None,
+        workflow_authority_owner: str | None = None,
+        limit: int,
+    ) -> list[WorkflowPackRunRecord]:
+        """List newest workflow-pack run records matching repository-owned filters."""
+
     def get_run(self, *, run_id: str) -> WorkflowPackRunRecord | None:
         """Fetch one persisted workflow-pack run record."""
 
