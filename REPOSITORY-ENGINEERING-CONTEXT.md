@@ -102,7 +102,10 @@ Current repository posture:
    explicit `metric_labels` truth for `lotus_ai_surface_supportability_state`, so operators can
    distinguish no-sensitive-telemetry degradation from workflow-pack run posture without relying on
    raw prompts, generated content, portfolio identifiers, correlation ids, or trace ids,
-9. the service is designed to support Lotus apps without stealing domain ownership from them.
+9. the FastAPI perimeter now has explicit service-owned HTTP boundary controls for allowed hosts,
+   bounded CORS, secure response headers, opt-in HSTS, maximum request body size, and
+   problem-details API errors with stable `error_code` and body/header correlation context,
+10. the service is designed to support Lotus apps without stealing domain ownership from them.
 
 ## Architecture And Module Map
 
@@ -140,7 +143,9 @@ Runtime model:
    route over registered, activation-eligible, non-superseded versions; it does not auto-promote
    discovered or dark successor versions,
 5. workflow-pack registry records, workflow-pack run records, RFC-0097 task-flow records, and RFC-0098 queue-event records provide bounded, inspectable runtime posture without taking workflow authority, and these workflow-pack source-truth seams can move between in-memory and SQL-backed runtime posture through explicit governed store-mode seams,
-6. does not replace upstream domain logic or workflow authority.
+6. does not replace upstream domain logic or workflow authority,
+7. owns a thin HTTP boundary and shared problem-details error envelope while keeping business
+   rules in routers/services and domain guardrails.
 
 Boundary rules:
 

@@ -64,6 +64,19 @@ class Settings(BaseSettings):
     deployment_split_stage: str = "unified"
     startup_readiness_policy: str = "warn"
     readiness_probe_policy: str = "observe"
+    http_allowed_hosts: str = "*"
+    http_cors_allowed_origins: str = (
+        "http://localhost,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:3000"
+    )
+    http_cors_allowed_methods: str = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    http_cors_allowed_headers: str = (
+        "Authorization,Content-Type,X-Correlation-Id,X-Caller-App,X-Tenant-Id"
+    )
+    http_cors_allow_credentials: bool = False
+    http_secure_headers_enabled: bool = True
+    http_hsts_enabled: bool = False
+    http_hsts_max_age_seconds: int = 31536000
+    http_max_request_body_bytes: int = 1048576
     database_url: str | None = None
 
     model_config = SettingsConfigDict(env_prefix="LOTUS_AI_", extra="ignore")

@@ -51,7 +51,26 @@ Owns:
 2. provider mode settings,
 3. retrieval mode settings,
 4. safety mode settings,
-5. startup readiness and readiness-probe policy settings.
+5. startup readiness and readiness-probe policy settings,
+6. HTTP boundary settings for allowed hosts, bounded CORS, secure headers, optional HSTS, and
+   maximum request body size.
+
+### HTTP Boundary And API Errors
+
+- `src/app/middleware/http_boundary.py`
+- `src/app/api_errors.py`
+- `src/app/contracts/api_errors.py`
+
+Owns:
+
+1. transport-only host, CORS, secure-header, HSTS, and request-size controls,
+2. `application/problem+json` response mapping for validation, route, service, perimeter, and
+   unexpected failures,
+3. stable `error_code` and correlation context in error bodies without exposing raw upstream
+   exception text, stack traces, prompts, generated output, credentials, or tenant-sensitive data.
+
+This layer is intentionally not a business policy layer. Task, retrieval, workflow-pack, prompt,
+provider, and domain guardrails remain in their existing routers and services.
 
 ### Services
 

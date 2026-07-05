@@ -96,6 +96,37 @@
 - First production use-case runbook readiness: /platform/use-cases/first-production-use-case/runbook-readiness
 - First production use-case governance status: /platform/use-cases/first-production-use-case/governance-status
 
+## HTTP Boundary Controls
+
+The FastAPI application enforces a service-owned HTTP boundary before request payloads reach task,
+retrieval, workflow-pack, prompt, provider, or audit handlers.
+
+Relevant settings:
+
+1. `LOTUS_AI_HTTP_ALLOWED_HOSTS`
+2. `LOTUS_AI_HTTP_CORS_ALLOWED_ORIGINS`
+3. `LOTUS_AI_HTTP_CORS_ALLOWED_METHODS`
+4. `LOTUS_AI_HTTP_CORS_ALLOWED_HEADERS`
+5. `LOTUS_AI_HTTP_CORS_ALLOW_CREDENTIALS`
+6. `LOTUS_AI_HTTP_SECURE_HEADERS_ENABLED`
+7. `LOTUS_AI_HTTP_HSTS_ENABLED`
+8. `LOTUS_AI_HTTP_HSTS_MAX_AGE_SECONDS`
+9. `LOTUS_AI_HTTP_MAX_REQUEST_BODY_BYTES`
+
+Operator interpretation:
+
+1. host and CORS policy are owned by `lotus-ai` for direct service access, while ingress may add
+   stricter environment controls,
+2. HSTS is opt-in because TLS may terminate before the service container,
+3. oversized requests return `413 application/problem+json` before endpoint handlers parse the
+   body,
+4. all problem responses carry `X-Correlation-Id` plus body-level `correlation_id`,
+5. secure headers should be present on success and rejection responses when
+   `LOTUS_AI_HTTP_SECURE_HEADERS_ENABLED=true`.
+
+API clients should treat error responses as `application/problem+json` with stable
+`error_code` values rather than parsing prose in `detail`.
+
 ## Startup Readiness Policy
 
 - `LOTUS_AI_STARTUP_READINESS_POLICY=warn`

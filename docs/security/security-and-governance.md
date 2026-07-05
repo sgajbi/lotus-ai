@@ -73,6 +73,36 @@ controls. Text and embedding live-provider failures use the same safe-error beha
 Raw provider prompts, generated output, credentials, account details, client identifiers, and local
 endpoint internals must not be returned in API errors.
 
+## HTTP Boundary And API Error Contract
+
+`lotus-ai` owns a thin FastAPI perimeter in addition to any ingress or gateway controls. The
+service-owned boundary is transport-only and must not contain task, workflow-pack, retrieval,
+prompt, provider, or domain business logic.
+
+Environment-backed controls use the `LOTUS_AI_` prefix:
+
+1. `LOTUS_AI_HTTP_ALLOWED_HOSTS`
+2. `LOTUS_AI_HTTP_CORS_ALLOWED_ORIGINS`
+3. `LOTUS_AI_HTTP_CORS_ALLOWED_METHODS`
+4. `LOTUS_AI_HTTP_CORS_ALLOWED_HEADERS`
+5. `LOTUS_AI_HTTP_CORS_ALLOW_CREDENTIALS`
+6. `LOTUS_AI_HTTP_SECURE_HEADERS_ENABLED`
+7. `LOTUS_AI_HTTP_HSTS_ENABLED`
+8. `LOTUS_AI_HTTP_HSTS_MAX_AGE_SECONDS`
+9. `LOTUS_AI_HTTP_MAX_REQUEST_BODY_BYTES`
+
+The service adds secure response headers, enforces configured host and CORS posture, and rejects
+oversized requests with `413` before endpoint handlers parse AI task, retrieval, or workflow-pack
+payloads. HSTS is disabled by default because TLS termination may sit at ingress; enable it only
+when the deployment boundary is correct for service-emitted HSTS.
+
+API errors now use a bounded `application/problem+json` response envelope with stable fields:
+`type`, `title`, `status`, `detail`, `error_code`, `correlation_id`, and optional source-safe
+`metadata`. FastAPI validation errors, router/service `HTTPException` failures, perimeter
+rejections, and unexpected failures are mapped through the same handler. Unexpected failures return
+sanitized detail and must not expose stack traces, raw upstream payloads, credentials, prompts,
+generated output, tenant-sensitive identifiers, or internal endpoint internals.
+
 ## Deferred Security Work
 
 1. secret scanning for prompt assets,

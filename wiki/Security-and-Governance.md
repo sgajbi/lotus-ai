@@ -55,6 +55,16 @@ OpenAI-compatible text execution use bounded retries for transient failures and 
 retry count after a successful retry. Text and embedding live-provider failures return Lotus-owned
 safe error text rather than raw upstream provider `error.message` payloads.
 
+The FastAPI HTTP perimeter is now also explicit. `lotus-ai` owns service-level allowed-host,
+bounded CORS, secure-header, optional HSTS, and maximum request body-size controls under
+`LOTUS_AI_HTTP_*` settings. These controls are transport-only; they do not contain task,
+workflow-pack, retrieval, prompt, provider, or domain business logic. Ingress can be stricter, but
+direct service access is no longer left to implicit defaults.
+
+All API failures use a bounded `application/problem+json` envelope with stable `error_code`,
+`correlation_id`, and optional source-safe metadata. Clients and support tooling should use those
+fields instead of parsing prose-only FastAPI `detail` values.
+
 ## Data Handling and Output Policy
 
 The initial data-handling posture is deliberately conservative:
