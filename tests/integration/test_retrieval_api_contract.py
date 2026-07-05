@@ -426,6 +426,9 @@ def test_retrieval_search_route_returns_catalog_only_hits_for_enabled_sources(
     assert body["execution_stage"] == "CATALOG_ONLY"
     assert body["hits"][0]["source_id"] == "lotus-platform-rfcs"
     assert body["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
+    assert body["hits"][0]["document_location"]
+    assert body["hits"][0]["active_version_id"] == "ver_lotus_platform_rfc_0069_2026_03_22"
+    assert body["hits"][0]["citation_ref"]
     assert "catalog-only hits" in body["message"]
 
 
@@ -501,6 +504,9 @@ def test_retrieval_search_route_returns_live_hits_when_enabled(client: TestClien
     assert body["hits"][0]["source_id"] == "lotus-platform-rfcs"
     assert body["hits"][0]["document_id"] == "lotus-platform-rfc-0069"
     assert body["hits"][0]["chunk_id"] == "chunk_rfc_0069_0001"
+    assert body["hits"][0]["document_location"]
+    assert body["hits"][0]["active_version_id"] == "ver_lotus_platform_rfc_0069_2026_03_22"
+    assert body["hits"][0]["citation_ref"]
 
 
 def test_retrieval_search_route_rejects_live_requests_after_rollback(client: TestClient) -> None:

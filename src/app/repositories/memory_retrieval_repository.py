@@ -19,6 +19,7 @@ from app.contracts.retrieval import (
 )
 from app.repositories.retrieval_repository import RetrievalRepository
 from app.retrieval.search_eligibility import is_live_search_chunk_eligible
+from app.retrieval.search_hits import build_retrieval_search_hit
 from app.retrieval.search_scoring import score_terms
 
 
@@ -342,16 +343,17 @@ class InMemoryRetrievalRepository(RetrievalRepository):
             if allowed_source_ids and source.source_id not in allowed_source_ids:
                 continue
             for document in self._documents.get(source.source_id, []):
+                document_versions = [
+                    version
+                    for version in self._document_versions
+                    if version.document_id == document.document_id
+                ]
                 for chunk in self._chunks.get(document.document_id, []):
                     if not is_live_search_chunk_eligible(
                         source=source,
                         document=document,
                         chunk=chunk,
-                        document_versions=[
-                            version
-                            for version in self._document_versions
-                            if version.document_id == document.document_id
-                        ],
+                        document_versions=document_versions,
                         ingestion_jobs=[
                             job
                             for job in self._ingestion_jobs
@@ -367,12 +369,12 @@ class InMemoryRetrievalRepository(RetrievalRepository):
                     if score <= 0.0:
                         continue
                     ranked_hits.append(
-                        RetrievalSearchHit(
-                            source_id=chunk.source_id,
-                            document_id=chunk.document_id,
-                            chunk_id=chunk.chunk_id,
+                        build_retrieval_search_hit(
+                            source=source,
+                            document=document,
+                            chunk=chunk,
+                            document_versions=document_versions,
                             score=score,
-                            snippet=chunk.preview,
                         )
                     )
 

@@ -25,6 +25,28 @@ def test_build_catalog_only_hits_returns_empty_when_no_sources_are_enabled() -> 
     assert hits == []
 
 
+def test_build_catalog_only_hits_carries_active_version_citation_lineage() -> None:
+    repository = InMemoryRetrievalRepository()
+    request = RetrievalExecutionRequest(
+        query="shared ai platform service",
+        caller_app="lotus-workbench",
+        correlation_id="corr-ret-gateway-citation",
+        source_ids=["lotus-platform-rfcs"],
+    )
+
+    hits = _build_catalog_only_hits(request, repository=repository)
+
+    assert hits
+    assert hits[0].document_location is not None
+    assert hits[0].chunk_order == 1
+    assert hits[0].active_version_id == "ver_lotus_platform_rfc_0069_2026_03_22"
+    assert hits[0].active_version_lifecycle_status == "ACTIVE"
+    assert hits[0].citation_ref == (
+        "lotus-platform-rfcs/lotus-platform-rfc-0069"
+        "@ver_lotus_platform_rfc_0069_2026_03_22#chunk_rfc_0069_0001"
+    )
+
+
 def test_execute_retrieval_search_returns_live_ready_with_no_matching_hits() -> None:
     settings.retrieval_mode = "enabled"
     repository = InMemoryRetrievalRepository()

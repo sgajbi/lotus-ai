@@ -12,6 +12,7 @@ from app.contracts.retrieval import (
 from app.repositories.retrieval_repository import RetrievalRepository
 from app.retrieval.document_governance import build_retrieval_document_governance
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
+from app.retrieval.search_hits import build_retrieval_search_hit
 from app.retrieval.search_scoring import score_terms
 from app.services.retrieval_store import get_retrieval_repository
 
@@ -125,8 +126,12 @@ def _build_catalog_only_hits(
         return []
 
     ranked_hits: list[RetrievalSearchHit] = []
+    versions = repository.list_document_versions()
     for source in enabled_sources:
         for document in repository.list_documents_for_source(source.source_id):
+            document_versions = [
+                version for version in versions if version.document_id == document.document_id
+            ]
             for chunk in repository.list_chunks_for_document(document.document_id):
                 score = score_terms(
                     query=request.query,
@@ -135,31 +140,14 @@ def _build_catalog_only_hits(
                 if score <= 0.0:
                     continue
                 ranked_hits.append(
-                    build_catalog_only_hit(
-                        source_id=chunk.source_id,
-                        document_id=chunk.document_id,
-                        chunk_id=chunk.chunk_id,
-                        snippet=chunk.preview,
+                    build_retrieval_search_hit(
+                        source=source,
+                        document=document,
+                        chunk=chunk,
+                        document_versions=document_versions,
                         score=score,
                     )
                 )
 
     ranked_hits.sort(key=lambda hit: (-hit.score, hit.source_id, hit.document_id, hit.chunk_id))
     return ranked_hits[: request.limit]
-
-
-def build_catalog_only_hit(
-    *,
-    source_id: str,
-    document_id: str,
-    chunk_id: str,
-    snippet: str,
-    score: float,
-) -> RetrievalSearchHit:
-    return RetrievalSearchHit(
-        source_id=source_id,
-        document_id=document_id,
-        chunk_id=chunk_id,
-        score=score,
-        snippet=snippet,
-    )

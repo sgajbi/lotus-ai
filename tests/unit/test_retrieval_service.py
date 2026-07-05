@@ -14,6 +14,7 @@ from app.contracts.retrieval import (
     RetrievalStatus,
 )
 from app.repositories.memory_retrieval_repository import InMemoryRetrievalRepository
+from app.services.audit_store import get_audit_store
 from app.services.retrieval_service import search_sources
 
 
@@ -31,8 +32,39 @@ def test_search_sources_returns_catalog_only_hits_for_enabled_seeded_sources() -
     assert response.execution_stage == RetrievalExecutionStage.CATALOG_ONLY
     assert response.hits[0].source_id == "lotus-platform-rfcs"
     assert response.hits[0].document_id == "lotus-platform-rfc-0069"
+    assert response.hits[0].citation_ref is not None
     assert response.hits[0].score > 0.0
     assert "catalog-only hits" in response.message
+
+
+def test_search_sources_records_safe_direct_search_audit_evidence() -> None:
+    raw_query = "shared ai platform service"
+    request = RetrievalSearchRequest(
+        query=raw_query,
+        caller_app="lotus-workbench",
+        correlation_id="corr-ret-audit",
+        source_ids=["lotus-platform-rfcs"],
+    )
+
+    response = search_sources(request)
+    records = [
+        record
+        for record in get_audit_store().list(task_id="knowledge_search.v1", limit=10)
+        if record.correlation_id == "corr-ret-audit"
+    ]
+
+    assert response.hits
+    assert len(records) == 1
+    record = records[0]
+    assert record.correlation_id == "corr-ret-audit"
+    assert record.structured_output["query_length"] == len(raw_query)
+    assert record.structured_output["raw_query_recorded"] is False
+    assert record.structured_output["raw_snippets_recorded"] is False
+    assert response.hits[0].citation_ref in record.source_refs
+    assert all("#chunk_" in source_ref for source_ref in record.source_refs)
+    assert record.structured_output["hit_refs"][0]["citation_ref"] == response.hits[0].citation_ref
+    assert raw_query not in str(record.structured_output)
+    assert response.hits[0].snippet not in str(record.structured_output)
 
 
 def test_search_sources_rejects_disabled_source_ids_before_execution() -> None:

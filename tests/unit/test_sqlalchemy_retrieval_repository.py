@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
+from sqlalchemy import event
 
 from app.contracts.retrieval import (
     RetrievalDocumentVersionDescriptor,
@@ -10,7 +11,10 @@ from app.contracts.retrieval import (
     RetrievalIngestionJobStatus,
     RetrievalJobStatus,
 )
-from app.repositories.sqlalchemy_retrieval_repository import SqlAlchemyRetrievalRepository
+from app.repositories.sqlalchemy_retrieval_repository import (
+    SqlAlchemyRetrievalRepository,
+    _search_candidate_window,
+)
 from tests.support.migration_runner import upgrade_database_to_head
 
 
@@ -178,6 +182,53 @@ def test_sqlalchemy_retrieval_repository_searches_indexed_chunks(tmp_path: Path)
     assert hits[0].source_id == "lotus-platform-rfcs"
     assert hits[0].document_id == "lotus-platform-rfc-0069"
     assert hits[0].chunk_id == "chunk_rfc_0069_0001"
+    assert hits[0].document_location is not None
+    assert hits[0].active_version_id == "ver_lotus_platform_rfc_0069_2026_03_22"
+    assert hits[0].citation_ref is not None
+
+
+def test_sqlalchemy_retrieval_repository_bounds_search_before_metadata_loading(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-retrieval.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyRetrievalRepository(database_url)
+    repository.set_source_index_status(
+        source_id="lotus-platform-rfcs",
+        index_status="INDEXED",
+    )
+    statements: list[str] = []
+
+    def capture_statement(_conn, _cursor, statement, _parameters, _context, _executemany):
+        statements.append(statement)
+
+    event.listen(repository._engine, "before_cursor_execute", capture_statement)
+    try:
+        hits = repository.search_indexed_chunks(
+            query="shared ai platform service",
+            source_ids=["lotus-platform-rfcs"],
+            limit=1,
+        )
+    finally:
+        event.remove(repository._engine, "before_cursor_execute", capture_statement)
+
+    assert hits
+    assert _search_candidate_window(1) == 50
+    candidate_queries = [
+        statement
+        for statement in statements
+        if "retrieval_chunks" in statement and "JOIN retrieval_documents" in statement
+    ]
+    version_queries = [
+        statement for statement in statements if "FROM retrieval_document_versions" in statement
+    ]
+    ingestion_queries = [
+        statement for statement in statements if "FROM retrieval_ingestion_jobs" in statement
+    ]
+    assert len(candidate_queries) == 1
+    assert "LIMIT" in candidate_queries[0]
+    assert len(version_queries) == 1
+    assert len(ingestion_queries) == 1
 
 
 def test_sqlalchemy_retrieval_repository_preserves_live_search_state_across_restart_and_rollback(
