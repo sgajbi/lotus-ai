@@ -23,6 +23,7 @@ from app.services.runtime_readiness import (
     get_provider_operations_store_runtime_status,
     get_retrieval_store_runtime_status,
 )
+from app.services.production_live_provider_inventory import build_live_provider_inventory
 
 
 def build_production_baseline_runtime_status(
@@ -334,6 +335,7 @@ def _classify_artifact_object_store(
 
 
 def _classify_secret_posture() -> ProductionBaselineDependencyDescriptor:
+    live_secret_labels = build_live_provider_inventory().secret_capability_labels
     if settings.secret_source_mode == "deployment_managed":
         return ProductionBaselineDependencyDescriptor(
             dependency_id="secret_posture",
@@ -348,8 +350,9 @@ def _classify_secret_posture() -> ProductionBaselineDependencyDescriptor:
         production_required=True,
         configured_mode=settings.secret_source_mode,
         detail=(
-            "Secret posture is still local or unspecified while live-provider configuration is present, so the runtime remains demo-capable or prod-shaped local but not production-ready."
-            if settings.live_text_provider_api_key
+            "Secret posture is still local or unspecified while live-provider secret material is configured for "
+            f"{', '.join(live_secret_labels)}, so the runtime remains demo-capable or prod-shaped local but not production-ready."
+            if live_secret_labels
             else "Secret posture is still local or unspecified, which is acceptable for demos but not for the RFC-0020 production baseline."
         ),
     )

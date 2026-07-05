@@ -11,11 +11,8 @@ from app.contracts.production_go_live import (
     ProductionGoLiveUseCaseState,
 )
 from app.contracts.production_baseline import ProductionBaselineRuntimeStatusResponse
-from app.contracts.providers import (
-    ProviderExecutionMode,
-    ProviderGovernanceStatusResponse,
-    ProviderRolloutState,
-)
+from app.contracts.providers import ProviderGovernanceStatusResponse, ProviderRolloutState
+from app.contracts.retrieval import RetrievalGovernanceStatusResponse
 from app.contracts.use_cases import FirstUseCaseGovernanceStatusResponse
 from app.services.first_use_case_governance import build_first_use_case_governance_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
@@ -23,7 +20,9 @@ from app.services.production_go_live_approval_domains import (
     build_managed_object_storage_approval_domain,
     build_managed_secret_approval_domain,
 )
+from app.services.production_live_provider_inventory import build_live_provider_inventory
 from app.services.provider_governance_status import build_provider_governance_status
+from app.services.retrieval_governance_status import build_retrieval_governance_status
 
 
 def build_production_go_live_runtime_status(
@@ -32,6 +31,7 @@ def build_production_go_live_runtime_status(
     baseline: ProductionBaselineRuntimeStatusResponse | None = None,
     provider_governance: ProviderGovernanceStatusResponse | None = None,
     first_use_case_governance: FirstUseCaseGovernanceStatusResponse | None = None,
+    retrieval_governance: RetrievalGovernanceStatusResponse | None = None,
 ) -> ProductionGoLiveRuntimeStatusResponse:
     baseline = (
         baseline if baseline is not None else build_production_baseline_runtime_status(app_state)
@@ -46,6 +46,14 @@ def build_production_go_live_runtime_status(
         if first_use_case_governance is not None
         else build_first_use_case_governance_status()
     )
+    retrieval_governance = (
+        retrieval_governance
+        if retrieval_governance is not None
+        else build_retrieval_governance_status()
+    )
+    live_provider_inventory = build_live_provider_inventory()
+    live_provider_required = live_provider_inventory.execution_requested
+    retrieval_required = settings.retrieval_mode == "enabled"
     managed_secret = build_managed_secret_approval_domain()
     managed_object_store = build_managed_object_storage_approval_domain()
 
@@ -54,18 +62,42 @@ def build_production_go_live_runtime_status(
         managed_object_store,
         ProductionGoLiveDomainDescriptor(
             domain_id="live_provider_governance",
-            status=_provider_domain_status(provider_governance.governance_ready),
-            required_for_platform_approval=settings.provider_mode
-            in {
-                ProviderExecutionMode.OPENAI.value,
-                ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
-            },
-            configured_mode=settings.provider_mode,
+            status=_provider_domain_status(
+                governance_ready=provider_governance.governance_ready,
+                required_for_platform_approval=live_provider_required,
+            ),
+            required_for_platform_approval=live_provider_required,
+            configured_mode=live_provider_inventory.configured_mode_summary,
             review_surface="/platform/providers/governance-status",
             detail=(
-                "Live-provider governance is currently ready for the configured provider posture."
+                "Live-provider governance is currently ready for the configured provider posture covering "
+                f"{', '.join(live_provider_inventory.execution_capability_labels)}."
                 if provider_governance.governance_ready
-                else "Live-provider execution may be technically enabled, but provider governance is not yet approved for production go-live."
+                else (
+                    "Live-provider execution is requested for "
+                    f"{', '.join(live_provider_inventory.execution_capability_labels)}, but provider governance is not yet approved for production go-live."
+                    if live_provider_required
+                    else "Live-provider execution is not requested in the current runtime posture."
+                )
+            ),
+        ),
+        ProductionGoLiveDomainDescriptor(
+            domain_id="retrieval_governance",
+            status=_retrieval_domain_status(
+                governance_ready=retrieval_governance.governance_ready,
+                required_for_platform_approval=retrieval_required,
+            ),
+            required_for_platform_approval=retrieval_required,
+            configured_mode=settings.retrieval_mode,
+            review_surface="/platform/retrieval/governance-status",
+            detail=(
+                "Retrieval governance is currently approved for active retrieval execution."
+                if retrieval_governance.governance_ready
+                else (
+                    "Retrieval execution is enabled, but runtime-backed retrieval governance and evaluation evidence are not yet approved for production go-live."
+                    if retrieval_required
+                    else "Retrieval execution is disabled or outside the current production route, so retrieval governance is informational for production go-live."
+                )
             ),
         ),
         ProductionGoLiveDomainDescriptor(
@@ -93,18 +125,12 @@ def build_production_go_live_runtime_status(
         baseline.production_ready
         and managed_secret.status is ProductionGoLiveDomainStatus.APPROVED
         and managed_object_store.status is ProductionGoLiveDomainStatus.APPROVED
-        and (
-            settings.provider_mode
-            not in {
-                ProviderExecutionMode.OPENAI.value,
-                ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
-            }
-            or provider_governance.governance_ready
-        )
+        and (not live_provider_required or provider_governance.governance_ready)
+        and (not retrieval_required or retrieval_governance.governance_ready)
     )
     use_case_production_approved = first_use_case_governance.active_production_ready
     provider_freeze_state = _resolve_provider_freeze_state(
-        provider_mode=settings.provider_mode,
+        live_provider_required=live_provider_required,
         rollout_state=settings.provider_rollout_state,
         provider_governance_ready=provider_governance.governance_ready,
     )
@@ -177,12 +203,24 @@ def build_production_go_live_runtime_status(
     )
 
 
-def _provider_domain_status(governance_ready: bool) -> ProductionGoLiveDomainStatus:
-    return (
-        ProductionGoLiveDomainStatus.APPROVED
-        if governance_ready
-        else ProductionGoLiveDomainStatus.INFORMATIONAL
-    )
+def _provider_domain_status(
+    *, governance_ready: bool, required_for_platform_approval: bool
+) -> ProductionGoLiveDomainStatus:
+    if governance_ready:
+        return ProductionGoLiveDomainStatus.APPROVED
+    if required_for_platform_approval:
+        return ProductionGoLiveDomainStatus.BLOCKED
+    return ProductionGoLiveDomainStatus.INFORMATIONAL
+
+
+def _retrieval_domain_status(
+    *, governance_ready: bool, required_for_platform_approval: bool
+) -> ProductionGoLiveDomainStatus:
+    if governance_ready:
+        return ProductionGoLiveDomainStatus.APPROVED
+    if required_for_platform_approval:
+        return ProductionGoLiveDomainStatus.BLOCKED
+    return ProductionGoLiveDomainStatus.INFORMATIONAL
 
 
 def _use_case_domain_status(
@@ -216,29 +254,19 @@ def _resolve_use_case_state(
 
 
 def _resolve_provider_freeze_state(
-    *, provider_mode: str, rollout_state: str, provider_governance_ready: bool
+    *, live_provider_required: bool, rollout_state: str, provider_governance_ready: bool
 ) -> ProductionGoLiveFreezeState:
-    if provider_mode not in {
-        ProviderExecutionMode.OPENAI.value,
-        ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
-    }:
+    if not live_provider_required:
         return ProductionGoLiveFreezeState.NOT_APPLICABLE
+    if rollout_state == ProviderRolloutState.ALLOWLISTED_DISABLED.value:
+        return ProductionGoLiveFreezeState.FROZEN
+    if not provider_governance_ready:
+        return ProductionGoLiveFreezeState.REVIEW_REQUIRED
     if rollout_state in {
         ProviderRolloutState.DOCUMENTED_ONLY.value,
         ProviderRolloutState.STUB_DEFAULT.value,
     }:
         return ProductionGoLiveFreezeState.NOT_APPLICABLE
-    if rollout_state == ProviderRolloutState.ALLOWLISTED_DISABLED.value:
-        return ProductionGoLiveFreezeState.FROZEN
-    if (
-        rollout_state
-        in {
-            ProviderRolloutState.CANARY_ENABLED.value,
-            ProviderRolloutState.ROLLED_OUT.value,
-        }
-        and not provider_governance_ready
-    ):
-        return ProductionGoLiveFreezeState.REVIEW_REQUIRED
     return ProductionGoLiveFreezeState.ACTIVE
 
 

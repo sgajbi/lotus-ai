@@ -158,12 +158,15 @@ Before treating any environment as the accepted RFC-0020 production baseline:
 3. inspect `GET /platform/production-baseline/runbook-readiness` when operator-readiness blockers need detail
 4. inspect `GET /platform/production-baseline/governance-status` for the composed go-live view
 5. inspect `GET /platform/production-go-live/runtime-status` to distinguish technically running, production-capable, platform-production-approved, and downstream approval posture
-6. inspect `GET /platform/production-go-live/activation-readiness` and `GET /platform/production-go-live/governance-status` before treating live-provider success as approved production traffic
-7. when live-provider production review falls below expectations, treat `provider_rollout_state=ALLOWLISTED_DISABLED` as the bounded freeze and rollback target rather than tearing down the wider platform
-8. inspect `GET /platform/production-go-live/use-case-approval` to distinguish first-use-case limited-rollout readiness from active-production approval before exposing the downstream path to real production traffic
-5. confirm the embedded `production_baseline` and `production_baseline_governance` blocks in `GET /platform/runtime-status` match the detailed production-baseline views
-6. treat PostgreSQL-backed durable stores plus Redis and dedicated workers as the minimum prod-shaped local boundary, not as full production readiness
-7. keep local env-file secret handling and filesystem or memory-backed artifact payload storage classified as non-production even if Docker bring-up and live-provider execution both succeed
+6. verify the `managed_secret_posture` approval domain before production go-live; configured live-provider secret material for either text generation or embeddings must use deployment-managed secret posture
+7. inspect `GET /platform/production-go-live/activation-readiness` and `GET /platform/production-go-live/governance-status` before treating live-provider success as approved production traffic
+8. treat the `live_provider_governance` approval domain as covering every live-provider execution capability currently requested, including embedding execution when `LOTUS_AI_EMBEDDING_PROVIDER_MODE=enabled`
+9. when live-provider production review falls below expectations, treat `provider_rollout_state=ALLOWLISTED_DISABLED` as the bounded freeze and rollback target rather than tearing down the wider platform
+10. when retrieval execution is enabled, require the `retrieval_governance` production go-live domain to be approved from current retrieval governance and runtime-backed evaluation evidence before claiming platform production approval
+11. inspect `GET /platform/production-go-live/use-case-approval` to distinguish first-use-case limited-rollout readiness from active-production approval before exposing the downstream path to real production traffic
+12. confirm the embedded `production_baseline` and `production_baseline_governance` blocks in `GET /platform/runtime-status` match the detailed production-baseline views
+13. treat PostgreSQL-backed durable stores plus Redis and dedicated workers as the minimum prod-shaped local boundary, not as full production readiness
+14. keep local env-file secret handling and filesystem or memory-backed artifact payload storage classified as non-production even if Docker bring-up and live-provider execution both succeed
 
 ## Deployment-Split Governance
 
@@ -472,7 +475,8 @@ Before any future live-retrieval activation slice:
 9. inspect `GET /platform/retrieval/ingestion-jobs/{job_id}` and the attached `artifact_refs` when a corpus-change job reaches failed or completed posture and bounded diagnostics are needed
 10. confirm reindex, replay, rollback, and retrieval incident-review procedures are documented and approved
 11. treat technical, operational, and evidence blockers as separate activation gates that all must be satisfied
-12. only then proceed with any live-retrieval activation rollout review
+12. confirm enabled retrieval also reports an approved `retrieval_governance` domain in `GET /platform/production-go-live/runtime-status` before claiming platform production approval
+13. only then proceed with any live-retrieval activation rollout review
 
 ## Durable Retrieval Recovery
 
