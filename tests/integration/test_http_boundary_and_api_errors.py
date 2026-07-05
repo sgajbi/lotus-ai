@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import json
 from typing import Any, cast
 
 from fastapi import HTTPException
+from starlette.requests import Request
 from fastapi.testclient import TestClient
 from _pytest.monkeypatch import MonkeyPatch
 
 from app.config import settings
 from app.main import app
+from app.middleware.http_boundary import current_http_boundary_posture, _validate_request_size
 from app.services.workflow_pack_run_ledger import WorkflowPackRunStoreUnavailableError
 
 
@@ -135,6 +138,76 @@ def test_http_boundary_rejects_oversized_request_before_handler(
     assert body["metadata"]["max_request_body_bytes"] == 16
 
 
+def test_http_boundary_rejects_invalid_content_length_with_problem_response() -> None:
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/health",
+            "headers": [
+                (b"content-length", b"not-a-number"),
+                (b"x-correlation-id", b"corr-invalid-length"),
+            ],
+        }
+    )
+
+    response = _validate_request_size(request, current_http_boundary_posture())
+
+    assert response is not None
+    assert response.status_code == 400
+    assert response.media_type == "application/problem+json"
+    body = json.loads(bytes(response.body))
+    assert body["error_code"] == "LOTUS_AI_INVALID_CONTENT_LENGTH"
+    assert body["correlation_id"] == "corr-invalid-length"
+    assert body["metadata"] == {"boundary_control": "request_size"}
+
+
+def test_http_boundary_allows_preflight_for_allowed_origin(client: TestClient) -> None:
+    response = client.options(
+        "/ai/tasks/execute",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            "X-Correlation-Id": "corr-cors-ok",
+        },
+    )
+
+    assert response.status_code == 204
+    assert response.headers["Access-Control-Allow-Origin"] == "http://localhost:3000"
+    assert response.headers["Access-Control-Allow-Methods"]
+
+
+def test_http_boundary_can_disable_secure_headers_and_enable_wildcard_cors(
+    client: TestClient, monkeypatch: MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "http_secure_headers_enabled", False)
+    monkeypatch.setattr(settings, "http_cors_allowed_origins", "*")
+    monkeypatch.setattr(settings, "http_cors_allow_credentials", True)
+
+    response = client.get(
+        "/health",
+        headers={"Origin": "https://desk.lotus.example", "X-Correlation-Id": "corr-cors-any"},
+    )
+
+    assert response.status_code == 200
+    assert "X-Frame-Options" not in response.headers
+    assert response.headers["Access-Control-Allow-Origin"] == "*"
+    assert response.headers["Access-Control-Allow-Credentials"] == "true"
+
+
+def test_http_boundary_adds_hsts_when_enabled(client: TestClient, monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "http_hsts_enabled", True)
+    monkeypatch.setattr(settings, "http_hsts_max_age_seconds", 123)
+
+    response = client.get(
+        "/health",
+        headers={"X-Correlation-Id": "corr-hsts"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["Strict-Transport-Security"] == "max-age=123; includeSubDomains"
+
+
 def test_validation_error_uses_problem_details_and_correlation(client: TestClient) -> None:
     response = client.post(
         "/ai/tasks/execute",
@@ -228,6 +301,83 @@ def test_store_unavailable_error_uses_problem_details(
         error_code="LOTUS_AI_RUNTIME_STORE_UNAVAILABLE",
         correlation_id="corr-store-unavailable",
     )
+
+
+def test_http_exception_dict_detail_preserves_explicit_problem_metadata(
+    client: TestClient, monkeypatch: MonkeyPatch
+) -> None:
+    def raise_explicit_problem(_request: object) -> None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "detail": "Bounded queue policy conflict.",
+                "error_code": "LOTUS_AI_EXPLICIT_CONFLICT",
+                "metadata": {"policy_id": "queue-policy.advisor-brief.v1"},
+            },
+        )
+
+    monkeypatch.setattr("app.routers.retrieval.search_sources", raise_explicit_problem)
+
+    response = client.post(
+        "/platform/retrieval/search",
+        json=_valid_retrieval_request("corr-explicit-problem"),
+        headers={"X-Correlation-Id": "corr-explicit-problem"},
+    )
+
+    body = _assert_problem_response(
+        response,
+        status_code=409,
+        error_code="LOTUS_AI_EXPLICIT_CONFLICT",
+        correlation_id="corr-explicit-problem",
+    )
+    assert body["detail"] == "Bounded queue policy conflict."
+    assert body["metadata"] == {"policy_id": "queue-policy.advisor-brief.v1"}
+
+
+def test_http_exception_unknown_status_uses_http_error_code(
+    client: TestClient, monkeypatch: MonkeyPatch
+) -> None:
+    def raise_unknown_status(_request: object) -> None:
+        raise HTTPException(status_code=418, detail="Short and stout.")
+
+    monkeypatch.setattr("app.routers.retrieval.search_sources", raise_unknown_status)
+
+    response = client.post(
+        "/platform/retrieval/search",
+        json=_valid_retrieval_request("corr-teapot"),
+        headers={"X-Correlation-Id": "corr-teapot"},
+    )
+
+    body = _assert_problem_response(
+        response,
+        status_code=418,
+        error_code="LOTUS_AI_HTTP_ERROR",
+        correlation_id="corr-teapot",
+    )
+    assert body["title"] == "I'm a Teapot"
+
+
+def test_http_exception_nonstandard_status_uses_generic_title(
+    client: TestClient, monkeypatch: MonkeyPatch
+) -> None:
+    def raise_nonstandard_status(_request: object) -> None:
+        raise HTTPException(status_code=599, detail="Gateway extension failure.")
+
+    monkeypatch.setattr("app.routers.retrieval.search_sources", raise_nonstandard_status)
+
+    response = client.post(
+        "/platform/retrieval/search",
+        json=_valid_retrieval_request("corr-nonstandard-status"),
+        headers={"X-Correlation-Id": "corr-nonstandard-status"},
+    )
+
+    body = _assert_problem_response(
+        response,
+        status_code=599,
+        error_code="LOTUS_AI_HTTP_ERROR",
+        correlation_id="corr-nonstandard-status",
+    )
+    assert body["title"] == "HTTP error"
 
 
 def test_unexpected_error_is_sanitized_with_problem_details(

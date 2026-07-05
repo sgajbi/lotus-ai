@@ -15,6 +15,9 @@ from app.services.workflow_pack_queue_events import build_workflow_pack_queue_ev
 from app.services.workflow_pack_queue_recovery import (
     REPLAY_BLOCKED_REASON_CODE,
     RETRY_BLOCKED_REASON_CODE,
+    _latest_terminal_event,
+    _load_history,
+    _resolve_policy,
     record_workflow_pack_queue_replay_decision,
     record_workflow_pack_queue_retry_decision,
 )
@@ -132,6 +135,34 @@ def test_queue_recovery_requires_actor_reason_and_evidence() -> None:
 
     assert exc_info.value.status_code == 422
     assert "requires non-empty requested_by, reason, and evidence_ref" in str(exc_info.value.detail)
+
+
+def test_queue_recovery_reports_missing_history_terminal_event_and_policy() -> None:
+    with pytest.raises(HTTPException) as missing_history:
+        _load_history("missing-queue-item")
+    assert missing_history.value.status_code == 404
+
+    active_lease = _acquire_advisor_brief_lease()
+    active_history = build_workflow_pack_queue_event_detail(
+        queue_item_id=active_lease.queue_item_id
+    )
+    with pytest.raises(HTTPException) as non_terminal:
+        _latest_terminal_event(active_history.events)
+    assert non_terminal.value.status_code == 409
+    assert "terminal queue event" in str(non_terminal.value.detail)
+
+    timed_out_queue_item_id = _timed_out_advisor_brief_queue_item()
+    timed_out_history = build_workflow_pack_queue_event_detail(
+        queue_item_id=timed_out_queue_item_id
+    )
+    terminal_event = _latest_terminal_event(timed_out_history.events)
+    missing_policy_event = terminal_event.model_copy(
+        update={"workflow_pack_id": "missing.pack", "workflow_pack_version": "v404"}
+    )
+    with pytest.raises(HTTPException) as missing_policy:
+        _resolve_policy(missing_policy_event)
+    assert missing_policy.value.status_code == 409
+    assert "declared queue policy" in str(missing_policy.value.detail)
 
 
 def test_queue_attention_surfaces_blocked_retry_and_replay() -> None:

@@ -13,6 +13,9 @@ from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueStatusResponse,
 )
 from app.services.workflow_pack_queue_attention import (
+    _build_failure_cluster_attention_items,
+    _build_recovery_blocked_attention_items,
+    _build_terminal_queue_attention_items,
     _cluster_attention_reason,
     _cluster_attention_type,
     _recovery_blocked_event_to_attention_item,
@@ -264,3 +267,44 @@ def test_queue_attention_maps_terminal_and_recovery_blocked_events() -> None:
         )
         is None
     )
+
+
+def test_queue_attention_deduplicates_terminal_and_recovery_blocked_events() -> None:
+    timed_out = _queue_event(
+        WorkflowPackQueueEventType.ADMISSION_TIMED_OUT,
+        queue_item_id="queue-duplicate-terminal",
+    )
+    retry_blocked = _queue_event(
+        WorkflowPackQueueEventType.RETRY_BLOCKED,
+        queue_item_id="queue-duplicate-retry",
+    )
+
+    terminal_items = _build_terminal_queue_attention_items(events=[timed_out, timed_out])
+    recovery_items = _build_recovery_blocked_attention_items(events=[retry_blocked, retry_blocked])
+
+    assert len(terminal_items) == 1
+    assert terminal_items[0].queue_item_id == "queue-duplicate-terminal"
+    assert len(recovery_items) == 1
+    assert recovery_items[0].queue_item_id == "queue-duplicate-retry"
+
+
+def test_queue_attention_failure_cluster_skips_events_without_policy_or_lane() -> None:
+    no_lane_events = [
+        _queue_event(
+            WorkflowPackQueueEventType.ADMISSION_TIMED_OUT,
+            lane=None,
+            queue_item_id=f"queue-no-lane-{index}",
+        )
+        for index in range(3)
+    ]
+    missing_policy_events = [
+        _queue_event(
+            WorkflowPackQueueEventType.ADMISSION_TIMED_OUT,
+            workflow_pack_id="missing.pack",
+            queue_item_id=f"queue-missing-policy-{index}",
+        )
+        for index in range(3)
+    ]
+
+    assert _build_failure_cluster_attention_items(events=no_lane_events) == []
+    assert _build_failure_cluster_attention_items(events=missing_policy_events) == []

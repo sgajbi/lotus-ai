@@ -572,6 +572,32 @@ def test_openai_compatible_transport_preserves_category_when_retries_exhaust(
         raise AssertionError("Expected ProviderExecutionError after exhausted retries")
 
 
+def test_openai_compatible_transport_retries_url_error_before_timeout_failure(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    attempts = {"count": 0}
+
+    def _urlopen(*args: object, **kwargs: object) -> object:
+        attempts["count"] += 1
+        raise error.URLError("temporary resolver failure")
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    try:
+        _post_openai_response(
+            api_base="https://api.openai.com/v1",
+            api_key="secret",
+            payload={"model": "gpt-5.4"},
+            timeout_seconds=4.0,
+            retry_limit=1,
+        )
+    except ProviderExecutionError as exc:
+        assert attempts["count"] == 2
+        assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
+    else:
+        raise AssertionError("Expected ProviderExecutionError after retried URL error")
+
+
 def test_openai_compatible_transport_does_not_retry_invalid_configuration(
     monkeypatch: MonkeyPatch,
 ) -> None:
@@ -675,6 +701,7 @@ def test_openai_compatible_transport_returns_plain_structured_output_for_non_adv
 def test_openai_compatible_transport_parses_non_dict_json_as_none() -> None:
     assert parse_json_object('["not", "an", "object"]') is None
     assert parse_json_object("prefix with no braces") is None
+    assert parse_json_object('prefix {"broken": } suffix') is None
 
 
 def test_openai_compatible_transport_strips_generic_code_fence() -> None:
