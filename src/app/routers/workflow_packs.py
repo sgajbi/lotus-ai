@@ -377,6 +377,7 @@ async def record_workflow_pack_queue_retry_decision_route(
     try:
         event = record_workflow_pack_queue_retry_decision(
             queue_item_id=queue_item_id,
+            caller_app=request.caller_app,
             failure_code=request.failure_code,
             requested_by=request.requested_by,
             reason=request.reason,
@@ -422,6 +423,7 @@ async def execute_workflow_pack_queue_retry_route(
     try:
         return execute_workflow_pack_queue_retry(
             queue_item_id=queue_item_id,
+            caller_app=request.caller_app,
             failure_code=request.failure_code,
             requested_by=request.requested_by,
             reason=request.reason,
@@ -456,6 +458,7 @@ async def record_workflow_pack_queue_replay_decision_route(
     try:
         event = record_workflow_pack_queue_replay_decision(
             queue_item_id=queue_item_id,
+            caller_app=request.caller_app,
             requested_by=request.requested_by,
             reason=request.reason,
             evidence_ref=request.evidence_ref,
@@ -500,6 +503,7 @@ async def execute_workflow_pack_queue_replay_route(
     try:
         return execute_workflow_pack_queue_replay(
             queue_item_id=queue_item_id,
+            caller_app=request.caller_app,
             requested_by=request.requested_by,
             reason=request.reason,
             evidence_ref=request.evidence_ref,

@@ -26,6 +26,7 @@ def test_queue_retry_records_once_then_blocks_retry_amplification() -> None:
 
     retry_event = record_workflow_pack_queue_retry_decision(
         queue_item_id=queue_item_id,
+        caller_app="lotus-platform",
         failure_code="EXECUTION_TIMEOUT",
         requested_by="operator-a",
         reason="Retry once after timeout investigation.",
@@ -33,6 +34,7 @@ def test_queue_retry_records_once_then_blocks_retry_amplification() -> None:
     )
     blocked_event = record_workflow_pack_queue_retry_decision(
         queue_item_id=queue_item_id,
+        caller_app="lotus-platform",
         failure_code="EXECUTION_TIMEOUT",
         requested_by="operator-a",
         reason="Second retry would exceed queue policy.",
@@ -60,6 +62,7 @@ def test_queue_retry_blocks_non_retryable_failure_code() -> None:
 
     blocked_event = record_workflow_pack_queue_retry_decision(
         queue_item_id=queue_item_id,
+        caller_app="lotus-platform",
         failure_code="CALLER_NOT_AUTHORIZED",
         requested_by="operator-a",
         reason="Caller policy failure must not be retried.",
@@ -76,6 +79,7 @@ def test_queue_retry_blocks_completed_handoff_even_with_retryable_failure_code()
 
     blocked_event = record_workflow_pack_queue_retry_decision(
         queue_item_id=queue_item_id,
+        caller_app="lotus-platform",
         failure_code="EXECUTION_TIMEOUT",
         requested_by="operator-a",
         reason="Completed handoff should use replay, not retry.",
@@ -92,12 +96,14 @@ def test_queue_replay_records_once_then_blocks_duplicate_replay() -> None:
 
     replay_event = record_workflow_pack_queue_replay_decision(
         queue_item_id=queue_item_id,
+        caller_app="lotus-platform",
         requested_by="operator-a",
         reason="Replay for controlled evidence comparison.",
         evidence_ref="support-ticket-queue-replay-1",
     )
     blocked_event = record_workflow_pack_queue_replay_decision(
         queue_item_id=queue_item_id,
+        caller_app="lotus-platform",
         requested_by="operator-a",
         reason="Duplicate replay should be blocked.",
         evidence_ref="support-ticket-queue-replay-2",
@@ -117,6 +123,7 @@ def test_queue_recovery_requires_actor_reason_and_evidence() -> None:
     with pytest.raises(HTTPException) as exc_info:
         record_workflow_pack_queue_retry_decision(
             queue_item_id=queue_item_id,
+            caller_app="lotus-platform",
             failure_code="EXECUTION_TIMEOUT",
             requested_by="operator-a",
             reason=" ",
@@ -131,6 +138,7 @@ def test_queue_attention_surfaces_blocked_retry_and_replay() -> None:
     retry_queue_item_id = _timed_out_advisor_brief_queue_item()
     record_workflow_pack_queue_retry_decision(
         queue_item_id=retry_queue_item_id,
+        caller_app="lotus-platform",
         failure_code="CALLER_NOT_AUTHORIZED",
         requested_by="operator-a",
         reason="Caller policy failure must not be retried.",
@@ -139,12 +147,14 @@ def test_queue_attention_surfaces_blocked_retry_and_replay() -> None:
     replay_queue_item_id = _completed_advisor_brief_queue_item()
     record_workflow_pack_queue_replay_decision(
         queue_item_id=replay_queue_item_id,
+        caller_app="lotus-platform",
         requested_by="operator-a",
         reason="Replay for controlled evidence comparison.",
         evidence_ref="support-ticket-queue-replay-3",
     )
     record_workflow_pack_queue_replay_decision(
         queue_item_id=replay_queue_item_id,
+        caller_app="lotus-platform",
         requested_by="operator-a",
         reason="Duplicate replay should be blocked.",
         evidence_ref="support-ticket-queue-replay-4",
@@ -186,6 +196,30 @@ def test_queue_attention_surfaces_repeated_failure_clusters() -> None:
     assert all(item.active_count == 0 for item in cluster_items)
     assert all(item.event_count == 2 for item in cluster_items)
     assert all(item.queue_item_id is None for item in cluster_items)
+
+
+def test_queue_attention_reports_sampled_event_window_when_older_attention_is_outside_sample() -> (
+    None
+):
+    retry_queue_item_id = _timed_out_advisor_brief_queue_item()
+    record_workflow_pack_queue_retry_decision(
+        queue_item_id=retry_queue_item_id,
+        caller_app="lotus-platform",
+        failure_code="CALLER_NOT_AUTHORIZED",
+        requested_by="operator-a",
+        reason="Caller policy failure must not be retried.",
+        evidence_ref="support-ticket-queue-retry-sampled-window",
+    )
+    for _ in range(101):
+        _completed_advisor_brief_queue_item()
+
+    summary = build_workflow_pack_queue_attention_summary()
+
+    assert summary.event_sample_limit == 100
+    assert summary.event_sample_count == 100
+    assert summary.event_window_truncated is True
+    assert summary.recovery_blocked_count == 0
+    assert any("bounded sample" in line for line in summary.status_summary)
 
 
 def _timed_out_advisor_brief_queue_item() -> str:

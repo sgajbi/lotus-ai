@@ -500,6 +500,10 @@ class WorkflowPackQueueEventDetailResponse(BaseModel):
 
 
 class WorkflowPackQueueRetryDecisionRequest(BaseModel):
+    caller_app: str = Field(
+        min_length=1,
+        description="Caller application authorized to record or execute workflow-pack queue retry posture.",
+    )
     failure_code: str = Field(
         min_length=1,
         description="Bounded failure code being evaluated against the pack queue retry policy.",
@@ -519,6 +523,10 @@ class WorkflowPackQueueRetryDecisionRequest(BaseModel):
 
 
 class WorkflowPackQueueReplayDecisionRequest(BaseModel):
+    caller_app: str = Field(
+        min_length=1,
+        description="Caller application authorized to record or execute workflow-pack queue replay posture.",
+    )
     requested_by: str = Field(
         min_length=1,
         description="Operator, caller, or platform automation actor requesting replay posture.",

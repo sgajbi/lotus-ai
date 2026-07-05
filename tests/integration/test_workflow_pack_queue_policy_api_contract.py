@@ -279,6 +279,7 @@ def test_workflow_pack_execution_records_queue_request_snapshot_artifact(
     replay_response = client.post(
         f"/platform/workflow-packs/queue-events/{matching_events[0]['queue_item_id']}/replay-decisions",
         json={
+            "caller_app": "lotus-platform",
             "requested_by": "operator-a",
             "reason": "Replay after comparing queue request snapshot evidence.",
             "evidence_ref": "support-ticket-queue-snapshot-replay",
@@ -311,6 +312,7 @@ def test_workflow_pack_queue_retry_execution_replays_retained_request_snapshot(
     response = client.post(
         f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/retry-executions",
         json={
+            "caller_app": "lotus-platform",
             "failure_code": "EXECUTION_TIMEOUT",
             "requested_by": "operator-a",
             "reason": "Retry after bounded queue timeout.",
@@ -346,6 +348,7 @@ def test_workflow_pack_queue_retry_execution_requires_executable_snapshot(
     response = client.post(
         f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/retry-executions",
         json={
+            "caller_app": "lotus-platform",
             "failure_code": "EXECUTION_TIMEOUT",
             "requested_by": "operator-a",
             "reason": "Retry should require a retained request snapshot.",
@@ -358,6 +361,71 @@ def test_workflow_pack_queue_retry_execution_requires_executable_snapshot(
     detail_response = client.get(f"/platform/workflow-packs/queue-events/{lease.queue_item_id}")
     assert all(
         event["event_type"] != "RETRY_RECORDED" for event in detail_response.json()["events"]
+    )
+
+
+def test_workflow_pack_queue_recovery_routes_reject_unauthorized_callers(
+    client: TestClient,
+) -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    retry_lease = acquire_workflow_pack_queue_admission(registration=registration)
+    release_workflow_pack_queue_admission(
+        retry_lease.queue_item_id,
+        now_utc=datetime.now(UTC) + timedelta(minutes=10),
+    )
+    replay_lease = acquire_workflow_pack_queue_admission(registration=registration)
+    release_workflow_pack_queue_admission(replay_lease.queue_item_id)
+
+    retry_body = {
+        "caller_app": "lotus-workbench",
+        "failure_code": "EXECUTION_TIMEOUT",
+        "requested_by": "operator-a",
+        "reason": "Unauthorized caller must not record retry posture.",
+        "evidence_ref": "support-ticket-queue-retry-unauthorized",
+    }
+    replay_body = {
+        "caller_app": "lotus-workbench",
+        "requested_by": "operator-a",
+        "reason": "Unauthorized caller must not record replay posture.",
+        "evidence_ref": "support-ticket-queue-replay-unauthorized",
+    }
+
+    retry_decision_response = client.post(
+        f"/platform/workflow-packs/queue-events/{retry_lease.queue_item_id}/retry-decisions",
+        json=retry_body,
+    )
+    retry_execution_response = client.post(
+        f"/platform/workflow-packs/queue-events/{retry_lease.queue_item_id}/retry-executions",
+        json=retry_body,
+    )
+    replay_decision_response = client.post(
+        f"/platform/workflow-packs/queue-events/{replay_lease.queue_item_id}/replay-decisions",
+        json=replay_body,
+    )
+    replay_execution_response = client.post(
+        f"/platform/workflow-packs/queue-events/{replay_lease.queue_item_id}/replay-executions",
+        json=replay_body,
+    )
+
+    assert retry_decision_response.status_code == 403
+    assert retry_execution_response.status_code == 403
+    assert replay_decision_response.status_code == 403
+    assert replay_execution_response.status_code == 403
+
+    retry_detail = client.get(
+        f"/platform/workflow-packs/queue-events/{retry_lease.queue_item_id}"
+    ).json()
+    replay_detail = client.get(
+        f"/platform/workflow-packs/queue-events/{replay_lease.queue_item_id}"
+    ).json()
+    assert all(
+        event["event_type"] not in {"RETRY_RECORDED", "RETRY_BLOCKED"}
+        for event in retry_detail["events"]
+    )
+    assert all(
+        event["event_type"] not in {"REPLAY_RECORDED", "REPLAY_BLOCKED"}
+        for event in replay_detail["events"]
     )
 
 
@@ -383,6 +451,7 @@ def test_workflow_pack_queue_replay_execution_uses_normal_execution_path(
     response = client.post(
         f"/platform/workflow-packs/queue-events/{source_queue_item_id}/replay-executions",
         json={
+            "caller_app": "lotus-platform",
             "requested_by": "operator-a",
             "reason": "Replay from governed queue snapshot.",
             "evidence_ref": "support-ticket-queue-replay-execution-api",
@@ -419,6 +488,7 @@ def test_workflow_pack_queue_retry_decision_route_records_recovery_metadata(
     decision_response = client.post(
         f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/retry-decisions",
         json={
+            "caller_app": "lotus-platform",
             "failure_code": "EXECUTION_TIMEOUT",
             "requested_by": "operator-a",
             "reason": "Retry after bounded queue timeout.",
@@ -445,6 +515,7 @@ def test_workflow_pack_queue_retry_decision_route_records_recovery_metadata(
     assert retry_events[0]["recovery_action_type"] == "RETRY"
     assert retry_events[0]["recovery_attempt_number"] == 1
     assert retry_events[0]["requested_by"] == "operator-a"
+    assert retry_events[0]["caller_app"] == "lotus-platform"
     assert retry_events[0]["evidence_ref"] == "support-ticket-queue-recovery-api"
 
 
@@ -459,6 +530,7 @@ def test_workflow_pack_queue_replay_decision_route_blocks_duplicate_replay(
     first_response = client.post(
         f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/replay-decisions",
         json={
+            "caller_app": "lotus-platform",
             "requested_by": "operator-a",
             "reason": "Replay for controlled evidence comparison.",
             "evidence_ref": "support-ticket-queue-replay-api-1",
@@ -467,6 +539,7 @@ def test_workflow_pack_queue_replay_decision_route_blocks_duplicate_replay(
     second_response = client.post(
         f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/replay-decisions",
         json={
+            "caller_app": "lotus-platform",
             "requested_by": "operator-a",
             "reason": "Duplicate replay should be blocked.",
             "evidence_ref": "support-ticket-queue-replay-api-2",
