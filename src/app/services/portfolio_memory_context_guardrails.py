@@ -8,6 +8,13 @@ REQUIRED_CONTEXT_KEYS = frozenset(
     {
         "portfolio_id",
         "supportability_state",
+        "context_content_hash",
+        "support_boundary",
+        "event_ref_limit",
+        "event_ref_selection_policy",
+        "event_refs_returned",
+        "event_refs_omitted",
+        "event_refs_truncated",
         "event_count",
         "source_systems",
         "reason_codes",
@@ -35,6 +42,8 @@ REQUIRED_EVENT_REF_KEYS = frozenset(
         "source_system",
         "source_type",
         "source_id",
+        "event_time",
+        "event_ref_selection_rank",
         "retention_policy",
         "redaction_policy",
         "audit_policy",
@@ -71,8 +80,26 @@ def validate_optional_portfolio_memory_context(
         reject("Portfolio memory context portfolio_id must match AI evidence portfolio_id.")
     if not isinstance(context.get("content_hash"), str) or not context["content_hash"]:
         reject("Portfolio memory context requires a source content_hash.")
+    if (
+        not isinstance(context.get("context_content_hash"), str)
+        or not context["context_content_hash"]
+    ):
+        reject("Portfolio memory context requires a context_content_hash.")
+    if not isinstance(context.get("support_boundary"), str) or not context["support_boundary"]:
+        reject("Portfolio memory context requires a support_boundary.")
     if not isinstance(context.get("event_count"), int) or context["event_count"] < 0:
         reject("Portfolio memory context event_count must be a non-negative integer.")
+    if (
+        not isinstance(context.get("event_ref_limit"), int)
+        or context["event_ref_limit"] < 0
+        or context["event_ref_limit"] > PORTFOLIO_MEMORY_EVENT_REF_LIMIT
+    ):
+        reject("Portfolio memory context event_ref_limit must be within the bounded limit.")
+    if (
+        not isinstance(context.get("event_ref_selection_policy"), str)
+        or not context["event_ref_selection_policy"]
+    ):
+        reject("Portfolio memory context requires an event_ref_selection_policy.")
 
     _require_string_list(context, "source_systems", reject)
     _require_string_list(context, "reason_codes", reject)
@@ -98,6 +125,7 @@ def validate_optional_portfolio_memory_context(
             "Portfolio memory context event_refs exceeds bounded limit "
             f"{PORTFOLIO_MEMORY_EVENT_REF_LIMIT}."
         )
+    ranks: list[int] = []
     for index, event_ref in enumerate(event_refs):
         if not isinstance(event_ref, dict):
             reject(f"Portfolio memory context event_refs[{index}] must be an object.")
@@ -113,6 +141,28 @@ def validate_optional_portfolio_memory_context(
                 f"Portfolio memory context event_refs[{index}] must enforce "
                 "NO_RAW_PAYLOADS redaction policy."
             )
+        rank = event_ref.get("event_ref_selection_rank")
+        if not isinstance(rank, int):
+            reject(
+                f"Portfolio memory context event_refs[{index}] must include integer "
+                "event_ref_selection_rank."
+            )
+            continue
+        ranks.append(rank)
+        if not isinstance(event_ref.get("event_time"), str) or not event_ref["event_time"]:
+            reject(f"Portfolio memory context event_refs[{index}] must include event_time.")
+    if ranks != list(range(1, len(event_refs) + 1)):
+        reject("Portfolio memory context event_ref_selection_rank must be contiguous from 1.")
+    returned = context.get("event_refs_returned")
+    omitted = context.get("event_refs_omitted")
+    truncated = context.get("event_refs_truncated")
+    if returned != len(event_refs):
+        reject("Portfolio memory context event_refs_returned must match event_refs length.")
+    expected_omitted = max(0, context["event_count"] - len(event_refs))
+    if omitted != expected_omitted:
+        reject("Portfolio memory context event_refs_omitted must match omitted event count.")
+    if truncated is not (expected_omitted > 0):
+        reject("Portfolio memory context event_refs_truncated must match omitted event posture.")
 
     return context
 
@@ -123,8 +173,11 @@ def portfolio_memory_context_summary(context_payload: dict[str, object]) -> dict
         return {
             "portfolio_memory_status": "not_supplied",
             "portfolio_memory_content_hash": "",
+            "portfolio_memory_context_content_hash": "",
             "portfolio_memory_event_count": 0,
             "portfolio_memory_event_ref_count": 0,
+            "portfolio_memory_event_refs_omitted": 0,
+            "portfolio_memory_event_refs_truncated": False,
             "portfolio_memory_source_systems": [],
             "portfolio_memory_event_types": [],
             "portfolio_memory_supportability_state": "",
@@ -135,8 +188,11 @@ def portfolio_memory_context_summary(context_payload: dict[str, object]) -> dict
     return {
         "portfolio_memory_status": "supplied",
         "portfolio_memory_content_hash": context.get("content_hash", ""),
+        "portfolio_memory_context_content_hash": context.get("context_content_hash", ""),
         "portfolio_memory_event_count": context.get("event_count", 0),
         "portfolio_memory_event_ref_count": len(event_refs) if isinstance(event_refs, list) else 0,
+        "portfolio_memory_event_refs_omitted": context.get("event_refs_omitted", 0),
+        "portfolio_memory_event_refs_truncated": context.get("event_refs_truncated", False),
         "portfolio_memory_source_systems": (
             sorted(item for item in source_systems if isinstance(item, str))
             if isinstance(source_systems, list)

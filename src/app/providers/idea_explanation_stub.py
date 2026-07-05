@@ -39,6 +39,7 @@ def build_idea_explanation_stub_result(
         "review_posture": _as_str(redacted_evidence.get("review_posture")),
         "source_ref_count": len(source_refs) if isinstance(source_refs, list) else 0,
         "source_signal_count": _int_or_zero(redacted_evidence.get("source_signal_count")),
+        "score_policy_version": _as_str(redacted_evidence.get("score_policy_version")),
         "reason_codes": reason_codes,
         "requested_outputs": requested_outputs,
         "purpose": _as_str(explanation_request.get("purpose")),

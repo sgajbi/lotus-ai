@@ -86,6 +86,25 @@ class WorkflowPackRunRecoveryLineageDescriptor(BaseModel):
     )
 
 
+class WorkflowPackIdeaLineageDescriptor(BaseModel):
+    candidate_id: str = Field(description="Lotus Idea candidate identifier supplied to lotus-ai.")
+    evidence_packet_id: str = Field(
+        description="Redacted Lotus Idea evidence packet identifier supplied to lotus-ai."
+    )
+    evidence_content_hash: str = Field(
+        description="Content hash for the redacted Lotus Idea evidence packet."
+    )
+    family: str = Field(description="Idea family or strategy grouping supplied by lotus-idea.")
+    lifecycle_status: str = Field(description="Lotus Idea lifecycle status supplied to lotus-ai.")
+    review_posture: str = Field(description="Idea review posture supplied to lotus-ai.")
+    source_ref_count: int = Field(description="Number of bounded source refs supplied.")
+    source_signal_count: int = Field(description="Number of source signals represented.")
+    score_policy_version: str | None = Field(
+        default=None,
+        description="Idea score-policy version when supplied in the safe structured output.",
+    )
+
+
 class WorkflowPackRunDescriptor(BaseModel):
     run_id: str = Field(description="Stable workflow-pack run identifier.")
     pack_id: str = Field(description="Workflow-pack family identifier.")
@@ -247,8 +266,20 @@ class WorkflowPackSourceEventDescriptor(BaseModel):
     portfolio_memory_content_hash: str = Field(
         description="Portfolio-memory context hash when supplied, otherwise an empty string."
     )
+    portfolio_memory_context_content_hash: str = Field(
+        default="",
+        description="Manage bounded context-envelope hash when supplied, otherwise an empty string.",
+    )
     event_ref_count: int = Field(
         description="Number of bounded source event references represented by the AI run output."
+    )
+    portfolio_memory_event_refs_omitted: int = Field(
+        default=0,
+        description="Number of Manage portfolio-memory event refs omitted from the bounded context.",
+    )
+    portfolio_memory_event_refs_truncated: bool = Field(
+        default=False,
+        description="Whether the Manage portfolio-memory event refs were truncated.",
     )
     retention_policy: str = Field(description="Retention policy for the source-event projection.")
     redaction_policy: str = Field(description="Redaction posture for the source-event projection.")
@@ -270,6 +301,10 @@ class WorkflowPackSourceEventDescriptor(BaseModel):
     recovery_lineage: WorkflowPackRunRecoveryLineageDescriptor | None = Field(
         default=None,
         description="Bounded queue recovery lineage when this source event came from retry or replay.",
+    )
+    idea_lineage: WorkflowPackIdeaLineageDescriptor | None = Field(
+        default=None,
+        description="Bounded Lotus Idea evidence lineage for idea explanation runs.",
     )
     recorded_at: str = Field(description="UTC timestamp when the source event was recorded.")
 
@@ -508,6 +543,10 @@ class WorkflowPackRunConsumerLineageDescriptor(BaseModel):
     recovery_lineage: WorkflowPackRunRecoveryLineageDescriptor | None = Field(
         default=None,
         description="Bounded queue recovery lineage when this run was created by retry or replay.",
+    )
+    idea_lineage: WorkflowPackIdeaLineageDescriptor | None = Field(
+        default=None,
+        description="Bounded Lotus Idea evidence lineage for idea explanation runs.",
     )
 
 

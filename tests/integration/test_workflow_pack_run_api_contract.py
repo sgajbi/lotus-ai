@@ -20,6 +20,7 @@ from tests.support.workflow_pack_fixtures import (
     advisor_brief_workflow_pack_execution_request_json,
     advisory_copilot_workflow_pack_execution_request_json,
     dpm_exception_summary_workflow_pack_execution_request_json,
+    idea_explanation_workflow_pack_execution_request_json,
     outcome_review_narrative_workflow_pack_execution_request_json,
     pm_quality_summary_workflow_pack_execution_request_json,
     proof_pack_pm_memo_workflow_pack_execution_request_json,
@@ -388,7 +389,13 @@ def test_workflow_pack_source_events_project_ai_run_without_raw_payloads(
     assert source_event["supportability_status"] == "ACTION_REQUIRED"
     assert source_event["portfolio_memory_status"] == "supplied"
     assert source_event["portfolio_memory_content_hash"] == "sha256:portfolio-memory-context-001"
+    assert (
+        source_event["portfolio_memory_context_content_hash"]
+        == "sha256:portfolio-memory-context-envelope-001"
+    )
     assert source_event["event_ref_count"] == 2
+    assert source_event["portfolio_memory_event_refs_omitted"] == 0
+    assert source_event["portfolio_memory_event_refs_truncated"] is False
     assert source_event["retention_policy"] == "AI_WORKFLOW_PACK_SOURCE_EVENT_7Y"
     assert source_event["redaction_policy"] == "NO_RAW_PAYLOADS"
     assert source_event["audit_policy"] == "AUDIT_READ_AND_EXPORT"
@@ -407,6 +414,43 @@ def test_workflow_pack_source_events_project_ai_run_without_raw_payloads(
     assert "Outcome review or_pb_sg_001 for portfolio" not in response_text
     assert '"raw_payload":' not in response_text
     assert "portfolio-memory-source-000" not in response_text
+
+
+def test_idea_explanation_source_events_and_consumer_view_expose_safe_idea_lineage(
+    client: TestClient,
+) -> None:
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=idea_explanation_workflow_pack_execution_request_json(
+            correlation_id="corr-idea-source-lineage-001",
+        ),
+    )
+    assert execute_response.status_code == 200
+    run_id = execute_response.json()["workflow_pack_run"]["run_id"]
+
+    source_events_response = client.get(f"/platform/workflow-packs/runs/{run_id}/source-events")
+    consumer_view_response = client.get(f"/platform/workflow-packs/runs/{run_id}/consumer-view")
+
+    assert source_events_response.status_code == 200
+    assert consumer_view_response.status_code == 200
+    source_event = source_events_response.json()["events"][0]
+    idea_lineage = {
+        "candidate_id": "idea_high_cash_001",
+        "evidence_packet_id": "idea_evidence_high_cash_001",
+        "evidence_content_hash": "sha256:idea-evidence-high-cash-001",
+        "family": "HIGH_CASH",
+        "lifecycle_status": "READY_FOR_REVIEW",
+        "review_posture": "ADVISOR_REVIEW_REQUIRED",
+        "source_ref_count": 2,
+        "source_signal_count": 3,
+        "score_policy_version": "idea-score-policy.v1",
+    }
+    assert source_event["idea_lineage"] == idea_lineage
+    assert consumer_view_response.json()["lineage"]["idea_lineage"] == idea_lineage
+    response_text = source_events_response.text + consumer_view_response.text
+    assert '"raw_payload":' not in response_text
+    assert "raw_prompt" not in response_text
+    assert "raw_provider_output" not in response_text
 
 
 def test_workflow_pack_source_event_catalog_filters_and_reports_review_lineage(

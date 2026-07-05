@@ -14,6 +14,10 @@ from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunRecord,
 )
 from app.services.workflow_pack_run_ledger import load_workflow_pack_run_context
+from app.services.workflow_pack_run_output_summary import (
+    build_idea_lineage_from_run_output_summary,
+    load_workflow_pack_run_output_summary,
+)
 from app.services.workflow_pack_run_provenance_summary import (
     build_workflow_pack_run_provenance_summary,
 )
@@ -69,6 +73,7 @@ def _build_lineage_descriptor(
     *,
     run: WorkflowPackRunDescriptor,
 ) -> WorkflowPackRunConsumerLineageDescriptor:
+    artifact_payload = load_workflow_pack_run_output_summary(record.artifact_refs)
     return WorkflowPackRunConsumerLineageDescriptor(
         run_id=record.run_id,
         pack_id=record.pack_id,
@@ -85,6 +90,7 @@ def _build_lineage_descriptor(
         supersedes_run_id=record.supersedes_run_id,
         superseded_by_run_id=record.superseded_by_run_id,
         recovery_lineage=run.recovery_lineage,
+        idea_lineage=build_idea_lineage_from_run_output_summary(artifact_payload),
     )
 
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from app.services.portfolio_memory_context_guardrails import (
     portfolio_memory_context_summary,
     validate_optional_portfolio_memory_context,
@@ -70,6 +69,14 @@ def test_portfolio_memory_context_guardrails_block_invalid_identity_and_counts()
     invalid_count["event_count"] = -1
     _assert_rejected(invalid_count, "event_count must be a non-negative integer")
 
+    missing_context_hash = portfolio_memory_context_payload()
+    missing_context_hash["context_content_hash"] = ""
+    _assert_rejected(missing_context_hash, "requires a context_content_hash")
+
+    invalid_boundary = portfolio_memory_context_payload()
+    invalid_boundary["support_boundary"] = ""
+    _assert_rejected(invalid_boundary, "requires a support_boundary")
+
 
 def test_portfolio_memory_context_guardrails_block_invalid_governance() -> None:
     invalid_sources = portfolio_memory_context_payload()
@@ -120,13 +127,42 @@ def test_portfolio_memory_context_guardrails_block_invalid_event_refs() -> None:
     first_ref["redaction_policy"] = "RAW_PAYLOADS_ALLOWED"
     _assert_rejected(raw_ref, "event_refs[0] must enforce NO_RAW_PAYLOADS")
 
+    missing_event_time = portfolio_memory_context_payload()
+    event_refs = missing_event_time["event_refs"]
+    assert isinstance(event_refs, list)
+    first_ref = event_refs[0]
+    assert isinstance(first_ref, dict)
+    first_ref.pop("event_time")
+    _assert_rejected(missing_event_time, "Missing portfolio_memory_context event_refs[0] fields")
+
+    non_contiguous_rank = portfolio_memory_context_payload()
+    event_refs = non_contiguous_rank["event_refs"]
+    assert isinstance(event_refs, list)
+    second_ref = event_refs[1]
+    assert isinstance(second_ref, dict)
+    second_ref["event_ref_selection_rank"] = 9
+    _assert_rejected(non_contiguous_rank, "event_ref_selection_rank must be contiguous")
+
+    mismatched_returned_count = portfolio_memory_context_payload()
+    mismatched_returned_count["event_refs_returned"] = 1
+    _assert_rejected(mismatched_returned_count, "event_refs_returned must match")
+
+    mismatched_truncation = portfolio_memory_context_payload(event_ref_count=2)
+    mismatched_truncation["event_count"] = 5
+    mismatched_truncation["event_refs_omitted"] = 3
+    mismatched_truncation["event_refs_truncated"] = False
+    _assert_rejected(mismatched_truncation, "event_refs_truncated must match")
+
 
 def test_portfolio_memory_context_summary_handles_unbounded_shapes() -> None:
     assert portfolio_memory_context_summary({}) == {
         "portfolio_memory_status": "not_supplied",
         "portfolio_memory_content_hash": "",
+        "portfolio_memory_context_content_hash": "",
         "portfolio_memory_event_count": 0,
         "portfolio_memory_event_ref_count": 0,
+        "portfolio_memory_event_refs_omitted": 0,
+        "portfolio_memory_event_refs_truncated": False,
         "portfolio_memory_source_systems": [],
         "portfolio_memory_event_types": [],
         "portfolio_memory_supportability_state": "",
@@ -136,7 +172,10 @@ def test_portfolio_memory_context_summary_handles_unbounded_shapes() -> None:
         {
             "portfolio_memory_context": {
                 "content_hash": "sha256:test",
+                "context_content_hash": "sha256:context",
                 "event_count": 1,
+                "event_refs_omitted": 0,
+                "event_refs_truncated": False,
                 "source_systems": ["lotus-manage", 7],
                 "event_refs": [{"event_type": "DPM_EXCEPTION"}, {"event_type": 42}, "bad-ref"],
                 "supportability_state": "READY",

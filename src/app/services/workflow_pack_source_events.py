@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from app.config import settings
@@ -18,8 +17,10 @@ from app.repositories.workflow_pack_run_repository import (
     WorkflowPackRunEventRecord,
     WorkflowPackRunRecord,
 )
-from app.services.artifact_object_store import StoredArtifactObject
-from app.services.artifact_store import get_artifact_object_store
+from app.services.workflow_pack_run_output_summary import (
+    build_idea_lineage_from_run_output_summary,
+    load_workflow_pack_run_output_summary,
+)
 from app.services.workflow_pack_run_ledger import (
     ensure_workflow_pack_run_store_ready,
     load_workflow_pack_run_context,
@@ -141,7 +142,7 @@ def _build_source_events_for_run(
     ledger_events: list[WorkflowPackRunEventRecord],
 ) -> list[WorkflowPackSourceEventDescriptor]:
     run_descriptor = map_workflow_pack_run_record(record)
-    artifact_payload = _load_run_output_summary(record.artifact_refs)
+    artifact_payload = load_workflow_pack_run_output_summary(record.artifact_refs)
     content_hash = _content_hash(record.artifact_refs)
     source_refs = _source_refs(artifact_payload)
     portfolio_id = _string_from_structured_output(artifact_payload, "portfolio_id")
@@ -153,10 +154,23 @@ def _build_source_events_for_run(
         artifact_payload,
         "portfolio_memory_content_hash",
     )
+    portfolio_memory_context_content_hash = _string_from_structured_output(
+        artifact_payload,
+        "portfolio_memory_context_content_hash",
+    )
     event_ref_count = _int_from_structured_output(
         artifact_payload,
         "portfolio_memory_event_ref_count",
     )
+    event_refs_omitted = _int_from_structured_output(
+        artifact_payload,
+        "portfolio_memory_event_refs_omitted",
+    )
+    event_refs_truncated = _bool_from_structured_output(
+        artifact_payload,
+        "portfolio_memory_event_refs_truncated",
+    )
+    idea_lineage = build_idea_lineage_from_run_output_summary(artifact_payload)
 
     return [
         WorkflowPackSourceEventDescriptor(
@@ -183,7 +197,10 @@ def _build_source_events_for_run(
             supportability_status=run_descriptor.supportability_status,
             portfolio_memory_status=portfolio_memory_status,
             portfolio_memory_content_hash=portfolio_memory_content_hash,
+            portfolio_memory_context_content_hash=portfolio_memory_context_content_hash,
             event_ref_count=event_ref_count,
+            portfolio_memory_event_refs_omitted=event_refs_omitted,
+            portfolio_memory_event_refs_truncated=event_refs_truncated,
             retention_policy=SOURCE_EVENT_RETENTION_POLICY,
             redaction_policy=SOURCE_EVENT_REDACTION_POLICY,
             audit_policy=SOURCE_EVENT_AUDIT_POLICY,
@@ -192,6 +209,7 @@ def _build_source_events_for_run(
             artifact_refs=[artifact.model_copy(deep=True) for artifact in record.artifact_refs],
             evidence_descriptor_count=len(record.evidence_descriptors),
             recovery_lineage=run_descriptor.recovery_lineage,
+            idea_lineage=idea_lineage,
             recorded_at=event.recorded_at,
         )
         for event in ledger_events
@@ -224,32 +242,6 @@ def _source_run_query_limit(
     )
 
 
-def _load_run_output_summary(artifact_refs: list[ArtifactDescriptor]) -> dict[str, Any]:
-    summary_artifact = next(
-        (
-            artifact
-            for artifact in artifact_refs
-            if artifact.domain == "workflow_pack"
-            and artifact.artifact_type == "run_output_summary"
-            and artifact.storage_reference
-        ),
-        None,
-    )
-    if summary_artifact is None:
-        return {}
-    _, _, object_key = summary_artifact.storage_reference.partition("://")
-    stored_object: StoredArtifactObject | None = get_artifact_object_store().get_object(
-        object_key=object_key
-    )
-    if stored_object is None:
-        return {}
-    try:
-        payload = json.loads(stored_object.payload.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        return {}
-    return payload if isinstance(payload, dict) else {}
-
-
 def _source_refs(artifact_payload: dict[str, Any]) -> list[str]:
     source_refs = artifact_payload.get("source_refs")
     if not isinstance(source_refs, list):
@@ -271,6 +263,14 @@ def _int_from_structured_output(artifact_payload: dict[str, Any], key: str) -> i
         return 0
     value = structured_output.get(key)
     return value if isinstance(value, int) else 0
+
+
+def _bool_from_structured_output(artifact_payload: dict[str, Any], key: str) -> bool:
+    structured_output = artifact_payload.get("structured_output")
+    if not isinstance(structured_output, dict):
+        return False
+    value = structured_output.get(key)
+    return value if isinstance(value, bool) else False
 
 
 def _content_hash(artifact_refs: list[ArtifactDescriptor]) -> str:
