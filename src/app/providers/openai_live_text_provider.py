@@ -9,6 +9,7 @@ from app.providers.openai_compatible_text_transport import (
     build_structured_output as _build_structured_output,
     build_user_message as _build_user_message,
     extract_output_text as _extract_output_text,
+    extract_retry_count as _extract_retry_count,
     extract_usage as _extract_usage,
     post_openai_compatible_response as _post_openai_response_transport,
 )
@@ -45,6 +46,7 @@ class OpenAILiveTextProvider(TextGenerationProviderAdapter):
             api_key=settings.live_text_provider_api_key,
             payload=payload,
             timeout_seconds=max(request.timeout_ms / 1000.0, 1.0),
+            retry_limit=request.retry_limit,
         )
         output_message = _extract_output_text(response_payload)
         message, structured_output = _build_structured_output(
@@ -60,7 +62,7 @@ class OpenAILiveTextProvider(TextGenerationProviderAdapter):
             adapter_kind=self.descriptor.adapter_kind,
             failure_category=None,
             timeout_ms=request.timeout_ms,
-            retry_count=0,
+            retry_count=_extract_retry_count(response_payload),
             max_output_tokens=request.max_output_tokens,
             model_id=_as_str(response_payload.get("model")) or settings.live_text_model_id,
             provider_request_id=_as_str(response_payload.get("id")),
@@ -80,6 +82,7 @@ def _post_openai_response(
     api_key: str | None,
     payload: dict[str, object],
     timeout_seconds: float,
+    retry_limit: int = 0,
 ) -> dict[str, object]:
     return _post_openai_response_transport(
         api_base=api_base,
@@ -88,4 +91,5 @@ def _post_openai_response(
         timeout_seconds=timeout_seconds,
         provider_display_name="OpenAI provider",
         require_api_key=True,
+        retry_limit=retry_limit,
     )

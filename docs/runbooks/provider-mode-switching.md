@@ -78,6 +78,7 @@ LOTUS_AI_LIVE_TEXT_MODEL_ID=<approved model>
 LOTUS_AI_LIVE_TEXT_PROVIDER_API_KEY=<deployment secret>
 LOTUS_AI_LIVE_TEXT_ALLOWED_TASK_IDS=explain.v1
 LOTUS_AI_PROVIDER_TIMEOUT_MS=45000
+LOTUS_AI_PROVIDER_RETRY_LIMIT=1
 LOTUS_AI_PROVIDER_MAX_OUTPUT_TOKENS=4096
 ```
 
@@ -121,6 +122,7 @@ LOTUS_AI_LIVE_TEXT_MODEL_ID=qwen3:8b
 LOTUS_AI_LIVE_TEXT_API_BASE=http://ollama:11434/v1
 LOTUS_AI_LIVE_TEXT_ALLOWED_TASK_IDS=explain.v1
 LOTUS_AI_PROVIDER_TIMEOUT_MS=45000
+LOTUS_AI_PROVIDER_RETRY_LIMIT=1
 LOTUS_AI_PROVIDER_MAX_OUTPUT_TOKENS=4096
 ```
 
@@ -164,6 +166,7 @@ LOTUS_AI_LIVE_TEXT_PROVIDER_ID=text.local
 LOTUS_AI_LIVE_TEXT_MODEL_ID=mistralai/Mistral-7B-Instruct-v0.2
 LOTUS_AI_LIVE_TEXT_API_BASE=http://host.docker.internal:8000/v1
 LOTUS_AI_LIVE_TEXT_ALLOWED_TASK_IDS=explain.v1
+LOTUS_AI_PROVIDER_RETRY_LIMIT=1
 ```
 
 Expected verification:
@@ -182,3 +185,16 @@ If any provider-mode change produces ambiguous results:
 3. verify the deterministic stub profile is restored before investigating the failed live path
 
 Do not leave the platform in a half-switched live configuration.
+
+## Retry And Error Boundary Rule
+
+Managed OpenAI and local OpenAI-compatible text execution share the same HTTP retry controls. Text
+and embedding live-provider failures share the same safe error boundary.
+
+Operator expectations:
+
+1. `LOTUS_AI_PROVIDER_RETRY_LIMIT` is a bounded retry count for transient timeout, rate-limit, and retryable upstream HTTP failures.
+2. successful responses report the actual retry count in provider execution evidence.
+3. exhausted retries preserve the typed `ProviderFailureCategory` used by provider operations and degradation tracking.
+4. caller-facing API errors use Lotus-owned safe text and must not include raw provider `error.message` content, raw prompt fragments, generated output, credentials, account metadata, client identifiers, or local endpoint internals.
+5. use `/platform/providers/operations-status` and provider degradation counters for triage instead of relying on raw upstream error bodies.

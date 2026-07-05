@@ -58,6 +58,7 @@ def execute_openai_compatible_text_request(
         timeout_seconds=max(request.timeout_ms / 1000.0, 1.0),
         provider_display_name=descriptor.display_name,
         require_api_key=require_api_key,
+        retry_limit=request.retry_limit,
     )
     output_message = extract_output_text(response_payload)
     message, structured_output = build_structured_output(
@@ -73,7 +74,7 @@ def execute_openai_compatible_text_request(
         adapter_kind=descriptor.adapter_kind,
         failure_category=None,
         timeout_ms=request.timeout_ms,
-        retry_count=0,
+        retry_count=extract_retry_count(response_payload),
         max_output_tokens=request.max_output_tokens,
         model_id=as_str(response_payload.get("model")) or settings.live_text_model_id,
         provider_request_id=as_str(response_payload.get("id")),
@@ -120,6 +121,7 @@ def post_openai_compatible_response(
     timeout_seconds: float,
     provider_display_name: str,
     require_api_key: bool,
+    retry_limit: int = 0,
 ) -> dict[str, Any]:
     if require_api_key and api_key is None:
         raise ProviderExecutionError(
@@ -131,40 +133,59 @@ def post_openai_compatible_response(
     headers = {"Content-Type": "application/json"}
     if api_key is not None:
         headers["Authorization"] = f"Bearer {api_key}"
-    request = urllib_request.Request(
-        endpoint,
-        data=body,
-        headers=headers,
-        method="POST",
-    )
-    try:
-        with urllib_request.urlopen(request, timeout=timeout_seconds) as response:
-            return cast(dict[str, Any], json.loads(response.read().decode("utf-8")))
-    except error.HTTPError as exc:
-        payload = load_error_payload(exc)
-        if exc.code == 429:
+    bounded_retry_limit = max(retry_limit, 0)
+    for attempt_index in range(bounded_retry_limit + 1):
+        provider_request = urllib_request.Request(
+            endpoint,
+            data=body,
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urllib_request.urlopen(provider_request, timeout=timeout_seconds) as response:
+                response_payload = cast(dict[str, Any], json.loads(response.read().decode("utf-8")))
+                response_payload["_lotus_retry_count"] = attempt_index
+                return response_payload
+        except error.HTTPError as exc:
+            load_error_payload(exc)
+            category = failure_category_for_http_status(exc.code)
+            retryable = is_retryable_provider_failure(category=category, http_status_code=exc.code)
+            if retryable and attempt_index < bounded_retry_limit:
+                continue
             raise ProviderExecutionError(
-                category=ProviderFailureCategory.PROVIDER_RATE_LIMITED,
-                message=extract_error_message(
-                    payload, fallback=f"{provider_display_name} rate limit exceeded."
+                category=category,
+                message=safe_provider_error_message(
+                    category=category,
+                    provider_display_name=provider_display_name,
                 ),
             ) from exc
-        raise ProviderExecutionError(
+        except TimeoutError as exc:
+            if attempt_index < bounded_retry_limit:
+                continue
+            raise ProviderExecutionError(
+                category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+                message=safe_provider_error_message(
+                    category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+                    provider_display_name=provider_display_name,
+                ),
+            ) from exc
+        except error.URLError as exc:
+            if attempt_index < bounded_retry_limit:
+                continue
+            raise ProviderExecutionError(
+                category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+                message=safe_provider_error_message(
+                    category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+                    provider_display_name=provider_display_name,
+                ),
+            ) from exc
+    raise ProviderExecutionError(
+        category=ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
+        message=safe_provider_error_message(
             category=ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
-            message=extract_error_message(
-                payload, fallback=f"{provider_display_name} request failed."
-            ),
-        ) from exc
-    except TimeoutError as exc:
-        raise ProviderExecutionError(
-            category=ProviderFailureCategory.PROVIDER_TIMEOUT,
-            message=f"{provider_display_name} request exceeded the configured timeout.",
-        ) from exc
-    except error.URLError as exc:
-        raise ProviderExecutionError(
-            category=ProviderFailureCategory.PROVIDER_TIMEOUT,
-            message=f"{provider_display_name} request failed before completion: {exc.reason}",
-        ) from exc
+            provider_display_name=provider_display_name,
+        ),
+    )
 
 
 def load_error_payload(exc: error.HTTPError) -> dict[str, Any]:
@@ -174,13 +195,37 @@ def load_error_payload(exc: error.HTTPError) -> dict[str, Any]:
         return {}
 
 
-def extract_error_message(payload: dict[str, Any], *, fallback: str) -> str:
-    error_payload = payload.get("error")
-    if isinstance(error_payload, dict):
-        message = error_payload.get("message")
-        if isinstance(message, str) and message.strip():
-            return message
-    return fallback
+def failure_category_for_http_status(http_status_code: int) -> ProviderFailureCategory:
+    if http_status_code == 429:
+        return ProviderFailureCategory.PROVIDER_RATE_LIMITED
+    return ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
+
+
+def is_retryable_provider_failure(
+    *, category: ProviderFailureCategory, http_status_code: int | None = None
+) -> bool:
+    if category in {
+        ProviderFailureCategory.PROVIDER_TIMEOUT,
+        ProviderFailureCategory.PROVIDER_RATE_LIMITED,
+    }:
+        return True
+    return category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR and http_status_code in {
+        408,
+        500,
+        502,
+        503,
+        504,
+    }
+
+
+def safe_provider_error_message(
+    *, category: ProviderFailureCategory, provider_display_name: str
+) -> str:
+    if category == ProviderFailureCategory.PROVIDER_RATE_LIMITED:
+        return f"{provider_display_name} rate limit exceeded."
+    if category == ProviderFailureCategory.PROVIDER_TIMEOUT:
+        return f"{provider_display_name} request did not complete within the configured timeout."
+    return f"{provider_display_name} request failed at the upstream provider boundary."
 
 
 def extract_output_text(payload: dict[str, Any]) -> str:
@@ -221,6 +266,10 @@ def extract_usage(payload: dict[str, Any]) -> tuple[int | None, int | None, int 
     )
 
 
+def extract_retry_count(payload: dict[str, Any]) -> int:
+    return as_int(payload.get("_lotus_retry_count")) or 0
+
+
 def as_str(value: object) -> str | None:
     return value if isinstance(value, str) and value.strip() else None
 
@@ -250,6 +299,7 @@ def build_structured_output(
         "safety_mode": request.safety_mode,
         "redaction_posture": request.redaction_posture,
         "source_refs": request.source_refs,
+        "retry_count": extract_retry_count(response_payload),
     }
     input_tokens, output_tokens, total_tokens = extract_usage(response_payload)
     structured_output.update(

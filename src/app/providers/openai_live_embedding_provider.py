@@ -14,6 +14,10 @@ from app.contracts.providers import (
     ProviderFailureCategory,
 )
 from app.providers.base import ProviderAdapterDescriptor, ProviderExecutionError
+from app.providers.openai_compatible_text_transport import (
+    failure_category_for_http_status,
+    safe_provider_error_message,
+)
 
 
 class OpenAILiveEmbeddingProvider:
@@ -87,29 +91,30 @@ def _post_openai_embedding(
         ) as response:
             return cast(dict[str, Any], json.loads(response.read().decode("utf-8")))
     except error.HTTPError as exc:
-        payload = _load_error_payload(exc)
-        if exc.code == 429:
-            raise ProviderExecutionError(
-                category=ProviderFailureCategory.PROVIDER_RATE_LIMITED,
-                message=_extract_error_message(
-                    payload, fallback="OpenAI embedding provider rate limit exceeded."
-                ),
-            ) from exc
+        _load_error_payload(exc)
+        category = failure_category_for_http_status(exc.code)
         raise ProviderExecutionError(
-            category=ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
-            message=_extract_error_message(
-                payload, fallback="OpenAI embedding provider request failed."
+            category=category,
+            message=safe_provider_error_message(
+                category=category,
+                provider_display_name="OpenAI embedding provider",
             ),
         ) from exc
     except TimeoutError as exc:
         raise ProviderExecutionError(
             category=ProviderFailureCategory.PROVIDER_TIMEOUT,
-            message="OpenAI embedding provider request exceeded the configured timeout.",
+            message=safe_provider_error_message(
+                category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+                provider_display_name="OpenAI embedding provider",
+            ),
         ) from exc
     except error.URLError as exc:
         raise ProviderExecutionError(
             category=ProviderFailureCategory.PROVIDER_TIMEOUT,
-            message=f"OpenAI embedding provider request failed before completion: {exc.reason}",
+            message=safe_provider_error_message(
+                category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+                provider_display_name="OpenAI embedding provider",
+            ),
         ) from exc
 
 
@@ -118,15 +123,6 @@ def _load_error_payload(exc: error.HTTPError) -> dict[str, Any]:
         return cast(dict[str, Any], json.loads(exc.read().decode("utf-8")))
     except json.JSONDecodeError:
         return {}
-
-
-def _extract_error_message(payload: dict[str, Any], *, fallback: str) -> str:
-    error_payload = payload.get("error")
-    if isinstance(error_payload, dict):
-        message = error_payload.get("message")
-        if isinstance(message, str) and message.strip():
-            return message
-    return fallback
 
 
 def _extract_embedding(payload: dict[str, Any]) -> list[float]:
