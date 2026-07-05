@@ -191,6 +191,7 @@ def _build_source_events_for_run(
             source_refs=source_refs,
             artifact_refs=[artifact.model_copy(deep=True) for artifact in record.artifact_refs],
             evidence_descriptor_count=len(record.evidence_descriptors),
+            recovery_lineage=run_descriptor.recovery_lineage,
             recorded_at=event.recorded_at,
         )
         for event in ledger_events

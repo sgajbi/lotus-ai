@@ -429,6 +429,17 @@ class WorkflowPackRunModel(Base):
     artifact_refs: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
     supersedes_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     superseded_by_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    recovery_action_type: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    source_queue_item_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    recovery_decision_event_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, index=True
+    )
+    recovery_attempt_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_workflow_pack_run_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, index=True
+    )
+    recovery_requested_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    recovery_evidence_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     completed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
     last_updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

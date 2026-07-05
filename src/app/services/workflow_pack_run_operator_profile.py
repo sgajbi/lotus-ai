@@ -71,6 +71,7 @@ def build_workflow_pack_run_operator_profile(
         review_transition_count=len(review_events),
         event_type_counts=_build_event_type_counts(events),
         replacement_run_id=run.superseded_by_run_id,
+        recovery_lineage=run.recovery_lineage,
         current_summary_note=_build_current_summary_note(run, supportability_status),
         findings=findings,
         inspection_surfaces=[

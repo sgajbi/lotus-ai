@@ -399,6 +399,9 @@ def test_workflow_pack_source_events_project_ai_run_without_raw_payloads(
     ]
     assert source_event["artifact_refs"][0]["source_object_id"] == run_id
     assert source_event["evidence_descriptor_count"] >= 1
+    assert source_event["recovery_lineage"] is None
+    detail_response = client.get(f"/platform/workflow-packs/runs/{run_id}")
+    assert detail_response.json()["run"]["recovery_lineage"] is None
 
     response_text = source_events_response.text
     assert "Outcome review or_pb_sg_001 for portfolio" not in response_text

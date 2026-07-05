@@ -37,7 +37,7 @@ def build_workflow_pack_run_consumer_view(*, run_id: str) -> WorkflowPackRunCons
             record=loaded.record,
             events=loaded.events,
         ),
-        lineage=_build_lineage_descriptor(loaded.record),
+        lineage=_build_lineage_descriptor(loaded.record, run=loaded.run),
         provenance=_build_provenance_descriptor(loaded.record),
         provenance_summary=build_workflow_pack_run_provenance_summary(run=loaded.run),
         supportability=_build_supportability_descriptor(loaded.run),
@@ -66,6 +66,8 @@ def _build_runtime_descriptor(
 
 def _build_lineage_descriptor(
     record: WorkflowPackRunRecord,
+    *,
+    run: WorkflowPackRunDescriptor,
 ) -> WorkflowPackRunConsumerLineageDescriptor:
     return WorkflowPackRunConsumerLineageDescriptor(
         run_id=record.run_id,
@@ -82,6 +84,7 @@ def _build_lineage_descriptor(
         workflow_authority_owner=record.workflow_authority_owner,
         supersedes_run_id=record.supersedes_run_id,
         superseded_by_run_id=record.superseded_by_run_id,
+        recovery_lineage=run.recovery_lineage,
     )
 
 
