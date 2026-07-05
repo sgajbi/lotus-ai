@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException, status
 
+from app.contracts.access_control import AuthorizationCapabilityType, AuthorizationDecision
 from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueEventDetailResponse,
     WorkflowPackQueueEventDescriptor,
@@ -10,6 +11,7 @@ from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueRecoveryActionType,
     WorkflowPackQueueState,
 )
+from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.workflow_pack_queue_events import (
     build_workflow_pack_queue_event_detail,
     record_workflow_pack_queue_event,
@@ -25,12 +27,14 @@ REPLAY_BLOCKED_REASON_CODE = "QUEUE_REPLAY_BLOCKED_BY_POLICY"
 def record_workflow_pack_queue_retry_decision(
     *,
     queue_item_id: str,
+    caller_app: str,
     failure_code: str,
     requested_by: str,
     reason: str,
     evidence_ref: str,
 ) -> WorkflowPackQueueEventDescriptor:
     _require_recovery_evidence(requested_by=requested_by, reason=reason, evidence_ref=evidence_ref)
+    authorization = authorize_workflow_pack_queue_recovery_caller(caller_app=caller_app)
     history = _load_history(queue_item_id).events
     terminal_event = _latest_terminal_event(history)
     policy = _resolve_policy(terminal_event)
@@ -59,6 +63,7 @@ def record_workflow_pack_queue_retry_decision(
             recovery_attempt_number=attempt_number,
             requested_by=requested_by,
             evidence_ref=evidence_ref,
+            authorization=authorization,
             message=(
                 "Workflow-pack queue retry blocked by policy for "
                 f"`{terminal_event.workflow_pack_id}@{terminal_event.workflow_pack_version}` "
@@ -74,6 +79,7 @@ def record_workflow_pack_queue_retry_decision(
         recovery_attempt_number=attempt_number,
         requested_by=requested_by,
         evidence_ref=evidence_ref,
+        authorization=authorization,
         message=(
             "Workflow-pack queue retry recorded as governed evidence for "
             f"`{terminal_event.workflow_pack_id}@{terminal_event.workflow_pack_version}` "
@@ -85,11 +91,13 @@ def record_workflow_pack_queue_retry_decision(
 def record_workflow_pack_queue_replay_decision(
     *,
     queue_item_id: str,
+    caller_app: str,
     requested_by: str,
     reason: str,
     evidence_ref: str,
 ) -> WorkflowPackQueueEventDescriptor:
     _require_recovery_evidence(requested_by=requested_by, reason=reason, evidence_ref=evidence_ref)
+    authorization = authorize_workflow_pack_queue_recovery_caller(caller_app=caller_app)
     history = _load_history(queue_item_id).events
     terminal_event = _latest_terminal_event(history)
     _resolve_policy(terminal_event)
@@ -108,6 +116,7 @@ def record_workflow_pack_queue_replay_decision(
             recovery_attempt_number=attempt_number,
             requested_by=requested_by,
             evidence_ref=evidence_ref,
+            authorization=authorization,
             message=(
                 "Workflow-pack queue replay blocked because a replay decision already exists for "
                 f"`{terminal_event.workflow_pack_id}@{terminal_event.workflow_pack_version}`: {reason}"
@@ -122,6 +131,7 @@ def record_workflow_pack_queue_replay_decision(
         recovery_attempt_number=attempt_number,
         requested_by=requested_by,
         evidence_ref=evidence_ref,
+        authorization=authorization,
         message=(
             "Workflow-pack queue replay recorded as governed evidence for "
             f"`{terminal_event.workflow_pack_id}@{terminal_event.workflow_pack_version}`: {reason}"
@@ -145,6 +155,15 @@ def _require_recovery_evidence(*, requested_by: str, reason: str, evidence_ref: 
                 "evidence_ref."
             ),
         )
+
+
+def authorize_workflow_pack_queue_recovery_caller(*, caller_app: str) -> AuthorizationDecision:
+    return require_authorized(
+        authorize_request(
+            caller_app=caller_app,
+            capability_type=AuthorizationCapabilityType.ASYNC_CONTROL,
+        )
+    )
 
 
 def _load_history(queue_item_id: str) -> WorkflowPackQueueEventDetailResponse:
@@ -206,6 +225,7 @@ def _record_recovery_event(
     recovery_attempt_number: int,
     requested_by: str,
     evidence_ref: str,
+    authorization: AuthorizationDecision,
     message: str,
 ) -> WorkflowPackQueueEventDescriptor:
     return record_workflow_pack_queue_event(
@@ -217,7 +237,7 @@ def _record_recovery_event(
         message=message,
         policy_id=source_event.policy_id,
         lane=source_event.lane,
-        caller_app=source_event.caller_app,
+        caller_app=authorization.caller_app,
         correlation_id=source_event.correlation_id,
         tenant_id=source_event.tenant_id,
         workflow_surface=source_event.workflow_surface,

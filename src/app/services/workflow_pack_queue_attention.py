@@ -20,6 +20,7 @@ from app.services.workflow_pack_queue_events import build_workflow_pack_queue_ev
 
 WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT = 5
 WORKFLOW_PACK_QUEUE_FAILURE_CLUSTER_THRESHOLD = 2
+WORKFLOW_PACK_QUEUE_EVENT_SAMPLE_LIMIT = 100
 
 
 def build_workflow_pack_queue_attention_summary(
@@ -46,13 +47,18 @@ def build_workflow_pack_queue_attention_summary(
         for lane_status in queue_status.lane_statuses
         if lane_status.saturation_status.value == "SATURATED"
     ]
+    event_catalog = build_workflow_pack_queue_event_catalog(
+        limit=WORKFLOW_PACK_QUEUE_EVENT_SAMPLE_LIMIT
+    )
+    event_sample_count = event_catalog.event_count
+    event_window_truncated = event_sample_count >= WORKFLOW_PACK_QUEUE_EVENT_SAMPLE_LIMIT
     stale_items = _build_stale_queue_attention_items(
         active_items=queue_status.active_items,
         now=now,
     )
-    terminal_items = _build_terminal_queue_attention_items()
-    recovery_blocked_items = _build_recovery_blocked_attention_items()
-    failure_cluster_items = _build_failure_cluster_attention_items()
+    terminal_items = _build_terminal_queue_attention_items(events=event_catalog.events)
+    recovery_blocked_items = _build_recovery_blocked_attention_items(events=event_catalog.events)
+    failure_cluster_items = _build_failure_cluster_attention_items(events=event_catalog.events)
     attention_items = (
         saturated_items
         + stale_items
@@ -69,6 +75,12 @@ def build_workflow_pack_queue_attention_summary(
         status_summary.append(
             "Returned queue attention items are truncated to the bounded attention limit; use attention_count to measure the full backlog."
         )
+    if event_window_truncated:
+        status_summary.append(
+            "Durable event-derived queue attention counts are based on the latest "
+            f"{event_sample_count} queue events; older terminal or recovery-blocked events may "
+            "exist outside this bounded sample."
+        )
     return WorkflowPackQueueAttentionSummaryResponse(
         heartbeat_status="READY" if not attention_items else "ATTENTION_REQUIRED",
         attention_count=len(attention_items),
@@ -77,6 +89,9 @@ def build_workflow_pack_queue_attention_summary(
         terminal_event_count=len(terminal_items),
         recovery_blocked_count=len(recovery_blocked_items),
         failure_cluster_count=len(failure_cluster_items),
+        event_sample_limit=WORKFLOW_PACK_QUEUE_EVENT_SAMPLE_LIMIT,
+        event_sample_count=event_sample_count,
+        event_window_truncated=event_window_truncated,
         active_admission_count=queue_status.active_admission_count,
         queue_source_mode=queue_status.queue_source_mode,
         attention_limit=WORKFLOW_PACK_QUEUE_ATTENTION_LIMIT,
@@ -124,10 +139,12 @@ def _build_stale_queue_attention_items(
     return items
 
 
-def _build_terminal_queue_attention_items() -> list[WorkflowPackQueueAttentionItemResponse]:
+def _build_terminal_queue_attention_items(
+    *, events: list[WorkflowPackQueueEventDescriptor]
+) -> list[WorkflowPackQueueAttentionItemResponse]:
     terminal_events = [
         event
-        for event in build_workflow_pack_queue_event_catalog(limit=100).events
+        for event in events
         if event.event_type
         in {
             WorkflowPackQueueEventType.ADMISSION_CANCELLED,
@@ -147,10 +164,12 @@ def _build_terminal_queue_attention_items() -> list[WorkflowPackQueueAttentionIt
     return items
 
 
-def _build_recovery_blocked_attention_items() -> list[WorkflowPackQueueAttentionItemResponse]:
+def _build_recovery_blocked_attention_items(
+    *, events: list[WorkflowPackQueueEventDescriptor]
+) -> list[WorkflowPackQueueAttentionItemResponse]:
     blocked_events = [
         event
-        for event in build_workflow_pack_queue_event_catalog(limit=100).events
+        for event in events
         if event.event_type
         in {
             WorkflowPackQueueEventType.RETRY_BLOCKED,
@@ -169,12 +188,14 @@ def _build_recovery_blocked_attention_items() -> list[WorkflowPackQueueAttention
     return items
 
 
-def _build_failure_cluster_attention_items() -> list[WorkflowPackQueueAttentionItemResponse]:
+def _build_failure_cluster_attention_items(
+    *, events: list[WorkflowPackQueueEventDescriptor]
+) -> list[WorkflowPackQueueAttentionItemResponse]:
     clustered_events: dict[
         tuple[str, str, str, str | None],
         list[WorkflowPackQueueEventDescriptor],
     ] = {}
-    for event in build_workflow_pack_queue_event_catalog(limit=100).events:
+    for event in events:
         if event.event_type not in {
             WorkflowPackQueueEventType.ADMISSION_TIMED_OUT,
             WorkflowPackQueueEventType.ADMISSION_CANCELLED,

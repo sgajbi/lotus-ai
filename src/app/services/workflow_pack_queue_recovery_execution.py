@@ -13,6 +13,7 @@ from app.contracts.workflow_pack_queue_recovery import (
 from app.contracts.workflow_packs import WorkflowPackExecutionRequest
 from app.services.workflow_pack_execution import execute_workflow_pack
 from app.services.workflow_pack_queue_recovery import (
+    authorize_workflow_pack_queue_recovery_caller,
     get_workflow_pack_queue_recovery_source_event,
     record_workflow_pack_queue_replay_decision,
     record_workflow_pack_queue_retry_decision,
@@ -25,16 +26,19 @@ from app.services.workflow_pack_queue_request_snapshots import (
 def execute_workflow_pack_queue_retry(
     *,
     queue_item_id: str,
+    caller_app: str,
     failure_code: str,
     requested_by: str,
     reason: str,
     evidence_ref: str,
 ) -> WorkflowPackQueueRecoveryExecutionResponse:
+    authorize_workflow_pack_queue_recovery_caller(caller_app=caller_app)
     execution_request = _build_execution_request(
         source_event=get_workflow_pack_queue_recovery_source_event(queue_item_id=queue_item_id)
     )
     event = record_workflow_pack_queue_retry_decision(
         queue_item_id=queue_item_id,
+        caller_app=caller_app,
         failure_code=failure_code,
         requested_by=requested_by,
         reason=reason,
@@ -65,15 +69,18 @@ def execute_workflow_pack_queue_retry(
 def execute_workflow_pack_queue_replay(
     *,
     queue_item_id: str,
+    caller_app: str,
     requested_by: str,
     reason: str,
     evidence_ref: str,
 ) -> WorkflowPackQueueRecoveryExecutionResponse:
+    authorize_workflow_pack_queue_recovery_caller(caller_app=caller_app)
     execution_request = _build_execution_request(
         source_event=get_workflow_pack_queue_recovery_source_event(queue_item_id=queue_item_id)
     )
     event = record_workflow_pack_queue_replay_decision(
         queue_item_id=queue_item_id,
+        caller_app=caller_app,
         requested_by=requested_by,
         reason=reason,
         evidence_ref=evidence_ref,

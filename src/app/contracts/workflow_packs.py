@@ -583,6 +583,18 @@ class WorkflowPackQueueAttentionSummaryResponse(BaseModel):
         default=0,
         description="Number of repeated terminal or blocked-recovery queue event clusters requiring operator attention.",
     )
+    event_sample_limit: int = Field(
+        default=0,
+        description="Maximum number of durable queue events sampled for event-derived attention counts.",
+    )
+    event_sample_count: int = Field(
+        default=0,
+        description="Number of durable queue events actually sampled for event-derived attention counts.",
+    )
+    event_window_truncated: bool = Field(
+        default=False,
+        description="Whether event-derived attention counts are based on a bounded sample that may omit older durable queue events.",
+    )
     degraded_source_count: int = Field(
         default=0,
         description="Number of configured queue source dependencies currently preventing queue attention from being computed.",
