@@ -32,6 +32,7 @@ from app.routers.tasks import router as tasks_router
 from app.routers.task_runtime import router as task_runtime_router
 from app.routers.use_cases import router as use_cases_router
 from app.routers.workflow_packs import router as workflow_packs_router
+from app.routers.workflow_run_attestations import router as workflow_run_attestations_router
 from app.services.startup_policy import apply_startup_readiness_policy
 
 SERVICE_NAME = settings.service_name
@@ -175,6 +176,7 @@ app.include_router(safety_router)
 app.include_router(task_runtime_router)
 app.include_router(use_cases_router)
 app.include_router(workflow_packs_router)
+app.include_router(workflow_run_attestations_router)
 app.include_router(tasks_router)
 app.include_router(audit_router)
 _install_problem_details_openapi(app)
