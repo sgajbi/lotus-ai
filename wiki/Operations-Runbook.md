@@ -1,5 +1,19 @@
 # Operations Runbook
 
+## Current Scope
+
+This runbook covers implemented first-response and operating procedures for the unified
+`lotus-ai` service. A green process health check is necessary but does not prove provider,
+workflow-pack, model-risk, attestation, or durable-store readiness.
+
+| Situation | First action | Continue with |
+|---|---|---|
+| Process or traffic failure | Check `/health/live` and `/health/ready` | [Operational Entry Points](#operational-entry-points) |
+| Degraded AI surface | Inspect `/platform/runtime-status` | [Operator-First Route Families](#operator-first-route-families) |
+| Workflow-pack delay or rejection | Inspect registry, queue, run, and review posture | [Workflow-Pack Operator Checks](#workflow-pack-operator-checks) |
+| Attestation rejection | Inspect run supportability, model approval, and key discovery | [Workflow-Run Attestation Checks](#workflow-run-attestation-checks) |
+| Provider rollout change | Recreate services and verify provider operations | [Provider Changes](#provider-changes) |
+
 ## Operational Entry Points
 
 The most important operator-facing endpoints are:
@@ -242,6 +256,32 @@ For AI-backed product-surface support, also confirm:
     review-gated explanation support only and does not own idea lifecycle truth. The caller policy
     should allow `lotus-idea` only for restricted-tenant `explain.v1` execution and should not grant
     live-provider or control-plane privilege.
+
+## Workflow-Run Attestation Checks
+
+Signed workflow-run provenance is a fail-closed release control, not a general run-detail export.
+Use these checks when a downstream consumer reports missing or rejected attestation evidence:
+
+| Signal | First check | Required interpretation |
+|---|---|---|
+| Run not found | `GET /platform/workflow-packs/runs/{run_id}/attestation` | Confirm the durable run store and exact run ID before checking keys |
+| `supportability_not_ready` | Run detail, review state, evidence, and output-summary artifact | Do not bypass review or evidence requirements |
+| `model_risk_not_approved` | Exact provider mode/ID, model ID/version, pack scope, approval window | Partial or expired inventory matches remain non-certifying |
+| Signing unavailable | `GET /.well-known/lotus-ai-workflow-attestation-keys` | Require one active valid key and no duplicate key IDs |
+| Consumer signature failure | Key ID, rotation epoch, issuer, audience, issue/expiry time | Refresh discovery; unknown or revoked keys fail closed |
+| Replay rejection | Consumer receipt ledger | Replay protection belongs to the consuming application trust boundary |
+
+Operational controls:
+
+1. inject the raw Ed25519 private key only through the approved runtime secret mechanism,
+2. never place private material in source, image layers, build arguments, labels, logs, or manifests,
+3. retain rotated public keys until their governed verification and audit window ends,
+4. publish compromised keys as `revoked` rather than silently removing trust history,
+5. keep attestation TTL between 1 and 3600 seconds; the default is 300 seconds,
+6. treat stub execution as `test_only`; it cannot receive an approved attestation.
+
+The authoritative configuration, model-inventory schema, and rotation procedure are in
+`docs/guides/workflow-run-attestations.md`.
 
 The owner-facing source for that procedure is:
 

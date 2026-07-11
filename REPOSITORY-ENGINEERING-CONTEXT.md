@@ -106,6 +106,10 @@ Current repository posture:
    bounded CORS, secure response headers, opt-in HSTS, maximum request body size, and
    problem-details API errors with stable `error_code` and body/header correlation context,
 10. the service is designed to support Lotus apps without stealing domain ownership from them.
+11. workflow-run attestation is an internal bounded module inside the existing deployable service:
+    durable run facts, exact time-bounded model-risk inventory decisions, canonical serialization,
+    Ed25519 signing, public-key discovery, and fail-closed issuance use separate interfaces without
+    adding a runtime service boundary. Consumers own receipt persistence and replay protection.
 
 ## Architecture And Module Map
 

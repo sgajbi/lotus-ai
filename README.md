@@ -85,6 +85,12 @@ caller policy recognizes `lotus-idea` only for restricted-tenant, review-gated `
 execution and does not grant live-provider, prompt-control, provider-control, or async-control
 privilege.
 
+Completed, reviewed, supportable non-stub workflow-pack runs can expose short-lived signed
+provenance through `/platform/workflow-packs/runs/{run_id}/attestation`, with public Ed25519 key
+discovery at `/.well-known/lotus-ai-workflow-attestation-keys`. Issuance requires an exact effective
+model-risk inventory match and excludes raw prompts, generated output, and client or portfolio
+payloads. See [Workflow-Run Attestations](docs/guides/workflow-run-attestations.md).
+
 For DPM portfolio-memory support, the proof-pack PM memo, wave PM memo, operations handoff summary,
 and outcome-review narrative packs can consume optional `portfolio_memory_context` emitted by
 `lotus-manage` report-input handoffs. `lotus-ai` validates that the context is portfolio-matched,
