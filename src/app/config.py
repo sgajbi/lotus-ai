@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     workflow_pack_run_store_mode: str = "memory"
     workflow_pack_task_flow_store_mode: str = "memory"
     workflow_pack_queue_event_store_mode: str = "memory"
+    workflow_run_attestation_key_id: str | None = None
+    workflow_run_attestation_rotation_epoch: int | None = None
+    workflow_run_attestation_private_key_base64url: str | None = None
+    workflow_run_attestation_key_not_before_utc: str | None = None
+    workflow_run_attestation_key_not_after_utc: str | None = None
+    workflow_run_attestation_rotated_public_keys_json: str = "[]"
     async_cutover_state: str = "in_process_only"
     async_queue_backend_mode: str = "none"
     async_queue_redis_url: str | None = None
