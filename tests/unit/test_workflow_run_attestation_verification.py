@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from app.contracts.workflow_run_attestation import (
     WorkflowRunAttestationClaims,
+    WorkflowRunAttestationEnvelope,
     WorkflowRunAttestationKeyDiscoveryResponse,
     WorkflowRunAttestationPublicKey,
 )
@@ -48,7 +49,7 @@ def _claims(**overrides: object) -> WorkflowRunAttestationClaims:
         "supportability_status": "READY",
     }
     values.update(overrides)
-    return WorkflowRunAttestationClaims(**values)
+    return WorkflowRunAttestationClaims.model_validate(values)
 
 
 def _public_key(
@@ -69,7 +70,9 @@ def _public_key(
     )
 
 
-def _signed(private_key: Ed25519PrivateKey, **claim_overrides: object):
+def _signed(
+    private_key: Ed25519PrivateKey, **claim_overrides: object
+) -> WorkflowRunAttestationEnvelope:
     return sign_workflow_run_attestation(
         claims=_claims(**claim_overrides),
         signer=Ed25519WorkflowRunAttestationSigner(
