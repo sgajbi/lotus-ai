@@ -1,5 +1,18 @@
 # Integrations
 
+## Current Scope
+
+This page documents implemented `lotus-ai` integration contracts and ownership boundaries. It
+separates direct task execution, workflow-pack execution, source-safe provenance, and operational
+inspection so consumers do not mistake an available route for transferred business authority.
+
+| Reader need | Start here | Evidence or decision |
+|---|---|---|
+| Execute a bounded AI task | [Primary Executable Contracts](#primary-executable-contracts) | Request, response, audit, and evidence contract |
+| Integrate a workflow pack | [Workflow-Pack Integration](#workflow-pack-integration) | Registration, eligibility, review, and authority boundary |
+| Verify portable provenance | [Signed Workflow-Run Provenance](#signed-workflow-run-provenance) | Signed claims and public-key discovery |
+| Diagnose provider or safety posture | [Provider and Safety Expectations](#provider-and-safety-expectations) | Runtime operator surfaces and fail-closed controls |
+
 ## Integration Model
 
 `lotus-ai` is consumed through governed task and platform contracts.
@@ -310,6 +323,37 @@ payload, provider response, trace, or correlation fields before run, audit, or t
 written. They are execution support for `lotus-advise`; they do not make `lotus-ai` the advisory
 workflow authority.
 
+## Signed Workflow-Run Provenance
+
+Consumers that need authenticated portable execution evidence use:
+
+1. `GET /platform/workflow-packs/runs/{run_id}/attestation`,
+2. `GET /.well-known/lotus-ai-workflow-attestation-keys`.
+
+```mermaid
+sequenceDiagram
+    participant Consumer as Lotus consumer
+    participant AI as lotus-ai
+    participant Ledger as durable run ledger
+    participant Keys as governed key configuration
+    Consumer->>AI: Request attestation for run_id
+    AI->>Ledger: Load immutable run and governance facts
+    AI->>AI: Require completed, reviewed, supportable, approved non-stub run
+    AI->>Keys: Sign canonical bounded claims
+    AI-->>Consumer: Claims, signature, key-discovery path
+    Consumer->>AI: Refresh public verification keys
+    Consumer->>Consumer: Verify bindings and persist replay-safe receipt
+```
+
+`lotus-ai` owns provider, model, evaluator, digest, timing, supportability, and signing truth.
+The consumer owns expected audience/workflow binding, receipt persistence, replay protection, and
+domain-safe failure behavior. For `lotus-idea`, a valid attestation does not approve suitability,
+create a recommendation, promote a supported feature, publish to a client, or replace human review.
+
+Attestations exclude prompts, raw provider responses, generated content, unrestricted evidence,
+and client, portfolio, tenant, advisor, candidate, or correlation identifiers. The detailed
+contract and rotation procedure are in `docs/guides/workflow-run-attestations.md`.
+
 ## Provider and Safety Expectations
 
 Callers must not assume that one successful response means unrestricted live-provider or safety
@@ -334,6 +378,7 @@ When the integration depends on blocked, redacted, or label-sensitive output han
 - `docs/guides/integration-guide.md`
 - `docs/guides/task-execution-contract.md`
 - `docs/guides/workflow-pack-owner-onboarding.md`
+- `docs/guides/workflow-run-attestations.md`
 - `docs/guides/prompt-registry-and-audit.md`
 - `docs/guides/retrieval-and-vector-store.md`
 - `docs/guides/lotus-performance-first-use-case.md`
