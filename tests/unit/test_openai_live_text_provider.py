@@ -38,6 +38,7 @@ class _OpenAICompatibleResponse:
 
 def test_openai_live_text_provider_returns_usage_and_cost(monkeypatch: MonkeyPatch) -> None:
     settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_model_version = "2026-06-01"
     settings.live_text_input_cost_per_1k_tokens = 0.01
     settings.live_text_output_cost_per_1k_tokens = 0.03
 
@@ -57,6 +58,7 @@ def test_openai_live_text_provider_returns_usage_and_cost(monkeypatch: MonkeyPat
     assert response.provider_mode == "openai"
     assert response.stubbed is False
     assert response.model_id == "gpt-5.4"
+    assert response.model_version == "2026-06-01"
     assert response.provider_request_id == "resp_123"
     assert response.input_tokens == 200
     assert response.output_tokens == 50

@@ -60,6 +60,7 @@ def map_task_execution_response(
             provider_id=resolved.provider_execution.provider_id,
             adapter_kind=resolved.provider_execution.adapter_kind,
             model_id=resolved.provider_execution.model_id,
+            model_version=resolved.provider_execution.model_version,
             safety=resolved.safety_outcome,
             authorization=context.authorization,
             generated_at=_utcnow(),

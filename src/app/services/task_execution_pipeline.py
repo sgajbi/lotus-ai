@@ -94,6 +94,7 @@ def build_failed_task_execution_response(
             provider_id=settings.live_text_provider_id or "provider.unavailable",
             adapter_kind=None,
             model_id=settings.live_text_model_id,
+            model_version=settings.live_text_model_version,
             safety=context.safety_outcome,
             authorization=context.authorization,
             generated_at=_utcnow(),

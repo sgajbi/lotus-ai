@@ -59,7 +59,7 @@ def capture_workflow_run_attestation_source(
     )
     provider_id = response.audit.provider_id
     model_id = response.audit.model_id or "deterministic-stub"
-    model_version = _safe_text(response.result.structured_output.get("model_version")) or (
+    model_version = response.audit.model_version or (
         "stub.v1" if response.audit.stubbed else "model-version-unavailable"
     )
     model_risk_status = "test_only" if response.audit.stubbed else "approval_unverified"
@@ -84,7 +84,3 @@ def _sha256(payload: dict[str, object]) -> str:
         payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True
     ).encode("ascii")
     return hashlib.sha256(canonical).hexdigest()
-
-
-def _safe_text(value: object) -> str | None:
-    return value if isinstance(value, str) and value.strip() else None

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     provider_rollout_state: str = "STUB_DEFAULT"
     live_text_provider_id: str | None = None
     live_text_model_id: str | None = None
+    live_text_model_version: str | None = None
     live_text_provider_api_key: str | None = None
     live_embedding_provider_id: str | None = None
     live_embedding_model_id: str | None = None
