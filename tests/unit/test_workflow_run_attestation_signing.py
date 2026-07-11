@@ -50,7 +50,7 @@ def _claims(**overrides: object) -> WorkflowRunAttestationClaims:
         "supportability_status": "READY",
     }
     values.update(overrides)
-    return WorkflowRunAttestationClaims(**values)
+    return WorkflowRunAttestationClaims.model_validate(values)
 
 
 def test_ed25519_signature_verifies_exact_canonical_claims() -> None:
