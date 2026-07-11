@@ -47,3 +47,24 @@ class WorkflowRunAttestationEnvelope(BaseModel):
     claims: WorkflowRunAttestationClaims
     signature: WorkflowRunAttestationSignature
     key_discovery_path: str = Field(pattern=r"^/\.well-known/lotus-ai-workflow-attestation-keys$")
+
+
+class WorkflowRunAttestationPublicKey(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key_id: str = Field(min_length=1, max_length=128)
+    algorithm: str = Field(pattern=r"^EdDSA$")
+    curve: str = Field(pattern=r"^Ed25519$")
+    public_key_base64url: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
+    rotation_epoch: int = Field(ge=1)
+    status: str = Field(pattern=r"^(active|rotated|revoked)$")
+    not_before_utc: str
+    not_after_utc: str | None = None
+
+
+class WorkflowRunAttestationKeyDiscoveryResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = Field(pattern=r"^lotus-ai\.workflow-run-attestation-keys\.v1$")
+    issuer: str = Field(pattern=r"^lotus-ai$")
+    keys: list[WorkflowRunAttestationPublicKey]
