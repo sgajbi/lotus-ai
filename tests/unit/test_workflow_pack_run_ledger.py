@@ -67,6 +67,10 @@ def test_record_workflow_pack_run_for_advisor_brief_task_execution() -> None:
     assert artifact.source_object_kind == "workflow_pack_run"
     assert artifact.source_object_id == recorded.run_id
     assert artifact.retention_posture == "retained_for_review"
+    persisted = get_workflow_pack_run_store().get_run(run_id=recorded.run_id)
+    assert persisted is not None
+    assert persisted.execution_started_at == context.execution_started_at
+    assert persisted.completed_at == response.audit.generated_at
 
 
 def test_record_workflow_pack_run_preserves_failed_runtime_posture() -> None:

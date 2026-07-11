@@ -19,4 +19,4 @@ def test_build_task_execution_context_resolves_runtime_fields() -> None:
     assert context.safety_outcome.disposition == "DOCUMENTED_ONLY"
     assert context.safety_outcome.runtime_redaction_active is False
     assert context.request_id.startswith("air_")
-    assert context.generated_at.endswith("+00:00")
+    assert context.execution_started_at.endswith("+00:00")

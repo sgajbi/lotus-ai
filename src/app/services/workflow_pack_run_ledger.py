@@ -343,6 +343,7 @@ def record_registered_workflow_pack_run(
         input_evidence_sha256=attestation_source.input_evidence_sha256,
         output_content_sha256=attestation_source.output_content_sha256,
         replay_nonce=attestation_source.replay_nonce,
+        execution_started_at=context.execution_started_at,
         created_at=created_at,
         completed_at=created_at,
         last_updated_at=created_at,

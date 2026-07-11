@@ -32,7 +32,7 @@ def _task_execution_context(*, request_id: str) -> TaskExecutionContext:
         prompt_selection=None,  # type: ignore[arg-type]
         safety_outcome=None,  # type: ignore[arg-type]
         request_id=request_id,
-        generated_at="2026-04-21T01:00:00Z",
+        execution_started_at="2026-04-21T01:00:00Z",
     )
 
 

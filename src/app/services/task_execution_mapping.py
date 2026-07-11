@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.contracts.audit import AuditRecordResponse
@@ -61,7 +62,7 @@ def map_task_execution_response(
             model_id=resolved.provider_execution.model_id,
             safety=resolved.safety_outcome,
             authorization=context.authorization,
-            generated_at=context.generated_at,
+            generated_at=_utcnow(),
             stubbed=resolved.provider_execution.stubbed,
         ),
     )
@@ -82,6 +83,10 @@ def build_task_result_payload(
     ):
         payload["caller_app"] = context.request.caller.caller_app
     return payload
+
+
+def _utcnow() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def map_audit_record(

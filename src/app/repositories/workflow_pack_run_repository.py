@@ -51,6 +51,7 @@ class WorkflowPackRunRecord:
     input_evidence_sha256: str = "unverifiable"
     output_content_sha256: str = "unverifiable"
     replay_nonce: str = "unverifiable"
+    execution_started_at: str = "unverifiable"
 
 
 @dataclass(frozen=True)
