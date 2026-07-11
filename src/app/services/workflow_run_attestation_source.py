@@ -17,6 +17,7 @@ class WorkflowRunAttestationSource:
     model_id: str
     model_version: str
     model_risk_status: str
+    model_risk_approval_ref: str
     input_evidence_sha256: str
     output_content_sha256: str
     replay_nonce: str
@@ -33,6 +34,8 @@ def capture_workflow_run_attestation_source(
     context: TaskExecutionContext,
     response: TaskExecutionResponse,
     registration: WorkflowPackRegistrationDescriptor,
+    model_risk_status: str,
+    model_risk_approval_ref: str | None,
 ) -> WorkflowRunAttestationSource:
     evaluator_id, evaluator_policy_version = EVALUATOR_POLICY_BY_PACK.get(
         registration.pack_id,
@@ -62,7 +65,6 @@ def capture_workflow_run_attestation_source(
     model_version = response.audit.model_version or (
         "stub.v1" if response.audit.stubbed else "model-version-unavailable"
     )
-    model_risk_status = "test_only" if response.audit.stubbed else "approval_unverified"
     replay_nonce = hashlib.sha256(
         f"{run_id}\x1f{context.request_id}\x1f{input_digest}\x1f{output_digest}".encode("utf-8")
     ).hexdigest()
@@ -73,6 +75,7 @@ def capture_workflow_run_attestation_source(
         model_id=model_id,
         model_version=model_version,
         model_risk_status=model_risk_status,
+        model_risk_approval_ref=model_risk_approval_ref or "unverifiable",
         input_evidence_sha256=input_digest,
         output_content_sha256=output_digest,
         replay_nonce=replay_nonce,

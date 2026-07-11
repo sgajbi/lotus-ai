@@ -446,6 +446,7 @@ class WorkflowPackRunModel(Base):
     model_id: Mapped[str] = mapped_column(String(128), nullable=False)
     model_version: Mapped[str] = mapped_column(String(64), nullable=False)
     model_risk_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    model_risk_approval_ref: Mapped[str] = mapped_column(String(256), nullable=False)
     input_evidence_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     output_content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     replay_nonce: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

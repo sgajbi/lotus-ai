@@ -4,7 +4,10 @@ from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
 from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.services.task_execution_context_builder import build_task_execution_context
 from app.services.task_execution_models import TaskExecutionContext
-from app.services.task_execution_pipeline import build_task_execution_response, resolve_task_execution
+from app.services.task_execution_pipeline import (
+    build_task_execution_response,
+    resolve_task_execution,
+)
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.workflow_run_attestation_source import capture_workflow_run_attestation_source
 from tests.support.workflow_pack_fixtures import (
@@ -36,6 +39,8 @@ def test_idea_workflow_attestation_source_captures_governed_stub_posture() -> No
         context=context,
         response=response,
         registration=registration,
+        model_risk_status="test_only",
+        model_risk_approval_ref=None,
     )
 
     assert source.evaluator_id == "idea-explanation-guardrails"
@@ -62,18 +67,24 @@ def test_workflow_attestation_source_is_deterministic_and_stores_no_business_pay
         context=context,
         response=response,
         registration=registration,
+        model_risk_status="test_only",
+        model_risk_approval_ref=None,
     )
     repeated = capture_workflow_run_attestation_source(
         run_id="workflow-run-001",
         context=context,
         response=response,
         registration=registration,
+        model_risk_status="test_only",
+        model_risk_approval_ref=None,
     )
     different_run = capture_workflow_run_attestation_source(
         run_id="workflow-run-002",
         context=context,
         response=response,
         registration=registration,
+        model_risk_status="test_only",
+        model_risk_approval_ref=None,
     )
 
     assert repeated == first

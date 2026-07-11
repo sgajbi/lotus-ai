@@ -35,6 +35,10 @@ from app.services.workflow_pack_run_artifacts import persist_workflow_pack_run_o
 from app.services.workflow_run_attestation_source import (
     capture_workflow_run_attestation_source,
 )
+from app.services.workflow_run_model_risk import evaluate_workflow_run_model_risk
+from app.providers.configured_workflow_run_model_risk_inventory import (
+    ConfiguredWorkflowRunModelRiskInventory,
+)
 from app.services.workflow_pack_run_provenance_summary import (
     build_workflow_pack_run_provenance_summary,
 )
@@ -281,11 +285,24 @@ def record_registered_workflow_pack_run(
         review_state=review_state.value,
         created_at=created_at,
     )
+    model_risk_decision = evaluate_workflow_run_model_risk(
+        inventory=ConfiguredWorkflowRunModelRiskInventory(settings=settings),
+        provider_id=response.audit.provider_id,
+        provider_mode=response.audit.provider_mode,
+        model_id=response.audit.model_id or "deterministic-stub",
+        model_version=response.audit.model_version
+        or ("stub.v1" if response.audit.stubbed else "model-version-unavailable"),
+        workflow_pack_id=registration.pack_id,
+        evaluated_at_utc=response.audit.generated_at,
+        stubbed=response.audit.stubbed,
+    )
     attestation_source = capture_workflow_run_attestation_source(
         run_id=run_id,
         context=context,
         response=response,
         registration=registration,
+        model_risk_status=model_risk_decision.status,
+        model_risk_approval_ref=model_risk_decision.approval_ref,
     )
     record = WorkflowPackRunRecord(
         run_id=run_id,
@@ -340,6 +357,7 @@ def record_registered_workflow_pack_run(
         model_id=attestation_source.model_id,
         model_version=attestation_source.model_version,
         model_risk_status=attestation_source.model_risk_status,
+        model_risk_approval_ref=attestation_source.model_risk_approval_ref,
         input_evidence_sha256=attestation_source.input_evidence_sha256,
         output_content_sha256=attestation_source.output_content_sha256,
         replay_nonce=attestation_source.replay_nonce,
