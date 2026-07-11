@@ -77,6 +77,7 @@ def execute_openai_compatible_text_request(
         retry_count=extract_retry_count(response_payload),
         max_output_tokens=request.max_output_tokens,
         model_id=as_str(response_payload.get("model")) or settings.live_text_model_id,
+        model_version=settings.live_text_model_version,
         provider_request_id=as_str(response_payload.get("id")),
         input_tokens=input_tokens,
         output_tokens=output_tokens,

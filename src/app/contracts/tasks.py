@@ -117,6 +117,10 @@ class TaskAuditMetadata(BaseModel):
         default=None,
         description="Resolved provider model identifier used for the execution when one is available.",
     )
+    model_version: str | None = Field(
+        default=None,
+        description="Governed model release or deployment version used for the execution.",
+    )
     safety: SafetyExecutionOutcome = Field(description="Safety posture resolved for the execution.")
     authorization: AuthorizationDecision = Field(
         description="Caller-authorization decision recorded for the execution."

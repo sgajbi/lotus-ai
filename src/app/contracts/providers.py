@@ -665,6 +665,10 @@ class ProviderExecutionResponse(BaseModel):
         default=None,
         description="Model identifier used for provider execution when one is available.",
     )
+    model_version: str | None = Field(
+        default=None,
+        description="Governed model release or deployment version used for provider execution.",
+    )
     provider_request_id: str | None = Field(
         default=None,
         description="Upstream provider request identifier when one is available.",
