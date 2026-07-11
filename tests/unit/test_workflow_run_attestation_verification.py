@@ -105,6 +105,7 @@ def test_active_and_rotated_keys_verify(status: str) -> None:
         ("revoked", "revoked"),
         ("unknown", "unknown or ambiguous"),
         ("audience", "audience"),
+        ("issuer", "issuer"),
         ("expired", "not currently valid"),
         ("signature", "signature verification failed"),
     ],
@@ -118,6 +119,8 @@ def test_verification_fails_closed(case: str, message: str) -> None:
     verified_at = NOW + timedelta(minutes=6) if case == "expired" else NOW + timedelta(seconds=1)
     if case == "unknown":
         discovery.keys[0].key_id = "other-key"
+    if case == "issuer":
+        envelope.claims = envelope.claims.model_copy(update={"issuer": "other-service"})
     if case == "signature":
         discovery = _discovery(_public_key(Ed25519PrivateKey.generate()))
 
