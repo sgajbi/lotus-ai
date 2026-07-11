@@ -11,6 +11,7 @@ from pydantic import TypeAdapter, ValidationError
 from app.config import Settings
 from app.contracts.workflow_run_attestation import WorkflowRunAttestationPublicKey
 from app.providers.ed25519_workflow_run_signer import Ed25519WorkflowRunAttestationSigner
+from app.services.workflow_run_attestation_signing import WorkflowRunSignature
 
 
 _PUBLIC_KEYS = TypeAdapter(list[WorkflowRunAttestationPublicKey])
@@ -27,6 +28,9 @@ class ConfiguredWorkflowRunAttestationKeys:
             key_id=key_id,
             rotation_epoch=rotation_epoch,
         )
+
+    def sign(self, payload: bytes) -> WorkflowRunSignature:
+        return self.signer().sign(payload)
 
     def public_keys(self) -> list[WorkflowRunAttestationPublicKey]:
         key_id, rotation_epoch, private_key = self._active_key_configuration()
