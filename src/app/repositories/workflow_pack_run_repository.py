@@ -42,6 +42,15 @@ class WorkflowPackRunRecord:
     source_workflow_pack_run_id: str | None = None
     recovery_requested_by: str | None = None
     recovery_evidence_ref: str | None = None
+    evaluator_id: str = "unverifiable"
+    evaluator_policy_version: str = "unverifiable"
+    provider_id: str = "unverifiable"
+    model_id: str = "unverifiable"
+    model_version: str = "unverifiable"
+    model_risk_status: str = "unverifiable"
+    input_evidence_sha256: str = "unverifiable"
+    output_content_sha256: str = "unverifiable"
+    replay_nonce: str = "unverifiable"
 
 
 @dataclass(frozen=True)

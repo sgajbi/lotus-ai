@@ -32,6 +32,9 @@ from app.services.workflow_pack_bindings import (
     resolve_workflow_pack_execution_binding_for_task,
 )
 from app.services.workflow_pack_run_artifacts import persist_workflow_pack_run_output_artifact
+from app.services.workflow_run_attestation_source import (
+    capture_workflow_run_attestation_source,
+)
 from app.services.workflow_pack_run_provenance_summary import (
     build_workflow_pack_run_provenance_summary,
 )
@@ -278,6 +281,12 @@ def record_registered_workflow_pack_run(
         review_state=review_state.value,
         created_at=created_at,
     )
+    attestation_source = capture_workflow_run_attestation_source(
+        run_id=run_id,
+        context=context,
+        response=response,
+        registration=registration,
+    )
     record = WorkflowPackRunRecord(
         run_id=run_id,
         pack_id=registration.pack_id,
@@ -325,6 +334,15 @@ def record_registered_workflow_pack_run(
         recovery_evidence_ref=(
             recovery_lineage.evidence_ref if recovery_lineage is not None else None
         ),
+        evaluator_id=attestation_source.evaluator_id,
+        evaluator_policy_version=attestation_source.evaluator_policy_version,
+        provider_id=attestation_source.provider_id,
+        model_id=attestation_source.model_id,
+        model_version=attestation_source.model_version,
+        model_risk_status=attestation_source.model_risk_status,
+        input_evidence_sha256=attestation_source.input_evidence_sha256,
+        output_content_sha256=attestation_source.output_content_sha256,
+        replay_nonce=attestation_source.replay_nonce,
         created_at=created_at,
         completed_at=created_at,
         last_updated_at=created_at,
