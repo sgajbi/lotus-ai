@@ -39,6 +39,7 @@ def _claims(**overrides: object) -> WorkflowRunAttestationClaims:
         "model_id": "gpt-5.4",
         "model_version": "2026-06-01",
         "model_risk_status": "approved",
+        "model_risk_approval_ref": "model-risk://lotus-ai/gpt-5.4/2026-06-01",
         "input_evidence_sha256": "b" * 64,
         "output_content_sha256": "c" * 64,
         "issued_at_utc": NOW.isoformat().replace("+00:00", "Z"),

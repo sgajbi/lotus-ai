@@ -22,6 +22,7 @@ class WorkflowRunAttestationClaims(BaseModel):
     model_id: str = Field(min_length=1, max_length=128)
     model_version: str = Field(min_length=1, max_length=64)
     model_risk_status: str = Field(pattern=r"^approved$")
+    model_risk_approval_ref: str = Field(min_length=1, max_length=256)
     input_evidence_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     output_content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     issued_at_utc: str

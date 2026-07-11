@@ -48,6 +48,7 @@ class WorkflowPackRunRecord:
     model_id: str = "unverifiable"
     model_version: str = "unverifiable"
     model_risk_status: str = "unverifiable"
+    model_risk_approval_ref: str = "unverifiable"
     input_evidence_sha256: str = "unverifiable"
     output_content_sha256: str = "unverifiable"
     replay_nonce: str = "unverifiable"
