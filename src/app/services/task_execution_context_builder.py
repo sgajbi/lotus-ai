@@ -43,5 +43,5 @@ def build_task_execution_context(request: TaskExecutionRequest) -> TaskExecution
         prompt_selection=build_prompt_selection_trace(request.task_id),
         safety_outcome=safety_outcome,
         request_id=f"air_{uuid4().hex}",
-        generated_at=datetime.now(UTC).isoformat(),
+        execution_started_at=datetime.now(UTC).isoformat(),
     )

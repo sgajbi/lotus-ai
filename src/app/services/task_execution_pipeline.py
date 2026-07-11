@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import HTTPException
 
 from app.config import settings
@@ -94,7 +96,7 @@ def build_failed_task_execution_response(
             model_id=settings.live_text_model_id,
             safety=context.safety_outcome,
             authorization=context.authorization,
-            generated_at=context.generated_at,
+            generated_at=_utcnow(),
             stubbed=False,
         ),
         evidence=ExecutionEvidenceBundle(
@@ -149,3 +151,7 @@ def _infer_failure_category(detail: str) -> str | None:
         return ProviderFailureCategory(prefix).value
     except ValueError:
         return None
+
+
+def _utcnow() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")

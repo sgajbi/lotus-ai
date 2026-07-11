@@ -18,7 +18,7 @@ class TaskExecutionContext:
     prompt_selection: PromptSelectionTraceDescriptor
     safety_outcome: SafetyExecutionOutcome
     request_id: str
-    generated_at: str
+    execution_started_at: str
 
 
 @dataclass(frozen=True)

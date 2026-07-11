@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from app.contracts.tasks import OutputLabel
 from app.services.task_execution_mapping import map_audit_record, map_task_execution_response
 from app.services.task_execution_pipeline import resolve_task_execution, validate_task_request
@@ -20,6 +22,9 @@ def test_map_task_execution_response_preserves_runtime_context_fields() -> None:
     assert response.audit.prompt_selection.prompt_version == "foundation.explain.v1"
     assert response.audit.prompt_selection.active_prompt_version == "foundation.explain.v1"
     assert response.audit.prompt_selection.latest_control_event is None
+    assert datetime.fromisoformat(response.audit.generated_at.replace("Z", "+00:00")) >= (
+        datetime.fromisoformat(context.execution_started_at.replace("Z", "+00:00"))
+    )
 
 
 def test_map_audit_record_preserves_sorted_context_keys() -> None:

@@ -449,6 +449,7 @@ class WorkflowPackRunModel(Base):
     input_evidence_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     output_content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     replay_nonce: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    execution_started_at: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     completed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
     last_updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
