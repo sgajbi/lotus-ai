@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     workflow_run_attestation_key_not_after_utc: str | None = None
     workflow_run_attestation_rotated_public_keys_json: str = "[]"
     workflow_run_model_risk_inventory_json: str = "[]"
+    workflow_run_attestation_ttl_seconds: int = 300
     async_cutover_state: str = "in_process_only"
     async_queue_backend_mode: str = "none"
     async_queue_redis_url: str | None = None
