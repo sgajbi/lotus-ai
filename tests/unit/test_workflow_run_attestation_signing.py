@@ -90,7 +90,19 @@ def test_canonical_payload_is_order_stable_and_source_safe() -> None:
         assert forbidden not in first.lower()
 
 
-def test_signature_rejects_mutated_output_digest() -> None:
+@pytest.mark.parametrize(
+    "mutated_claim",
+    [
+        {"run_id": "run-002"},
+        {"consumer_request_id": "idea-request-002"},
+        {"workflow_pack_id": "other.pack"},
+        {"input_evidence_sha256": "d" * 64},
+        {"output_content_sha256": "d" * 64},
+        {"model_id": "other-model"},
+        {"model_version": "2026-06-02"},
+    ],
+)
+def test_signature_rejects_mutated_governed_claim(mutated_claim: dict[str, object]) -> None:
     private_key = Ed25519PrivateKey.generate()
     claims = _claims()
     envelope = sign_workflow_run_attestation(
@@ -107,8 +119,13 @@ def test_signature_rejects_mutated_output_digest() -> None:
     with pytest.raises(InvalidSignature):
         private_key.public_key().verify(
             signature,
-            canonical_attestation_payload(_claims(output_content_sha256="d" * 64)),
+            canonical_attestation_payload(_claims(**mutated_claim)),
         )
+
+
+def test_claim_contract_rejects_unapproved_model_risk_posture() -> None:
+    with pytest.raises(ValueError):
+        _claims(model_risk_status="approval_unverified")
 
 
 @pytest.mark.parametrize(
