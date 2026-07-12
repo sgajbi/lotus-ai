@@ -481,9 +481,7 @@ class ProviderRetentionConfirmationModel(Base):
     confirmation_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     workflow_run_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     tenant_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    provider_confirmation_ref: Mapped[str] = mapped_column(
-        String(256), nullable=False, unique=True
-    )
+    provider_confirmation_ref: Mapped[str] = mapped_column(String(256), nullable=False, unique=True)
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
     request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     outcome: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
