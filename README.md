@@ -60,6 +60,11 @@ Important posture limits:
 6. workflow-pack registrations must point to real owning-repository artifacts rather than placeholder definitions in `lotus-ai`,
 7. workflow-pack registry and control state can now run either in-memory or through a SQL-backed durable store, and the current executable workflow-pack set includes advisor brief, workspace rationale, TWR inspection support brief, the review-gated `proposal_memo_commentary.pack@v1` contract for `lotus-advise` advisor proposal memo evidence, the six review-gated `advisory_copilot_*.pack@v1` contracts for RFC-0027 `lotus-advise` evidence packets, the review-gated `dpm_pm_memo.pack@v1` contract for `lotus-manage` `DpmProofPackAiEvidenceInput`, the review-gated `dpm_wave_pm_memo.pack@v1` and `dpm_operations_handoff_summary.pack@v1` contracts for `lotus-manage` `DpmWaveReportInput`, the review-gated `dpm_exception_summary.pack@v1` contract for bounded `lotus-manage` monitoring exception evidence, the review-gated `outcome_review_narrative.pack@v1` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`, and the review-gated `idea_explanation.pack@v1` contract for `lotus-idea` redacted opportunity evidence packets,
 8. the service should be treated as a governed capability layer, not a business-domain authority.
+9. AI provider operations can issue a limited, not-certified Ed25519-signed retention/deletion
+   confirmation for completed live `idea_explanation.pack` runs. The recorder is AI-owned;
+   `lotus-idea` is only the audience. SQL persistence, tenant binding, idempotency, provider failure
+   posture, and no-raw-content claims are implementation-backed, while provider-native and bank
+   approvals remain blocked.
 
 For proposal memo commentary, RFC-0027 advisory copilot, DPM PM memo, exception summary,
 operations handoff summary, and idea explanation support, `lotus-ai` owns workflow-pack execution, provider mode, safety, guardrail validation,

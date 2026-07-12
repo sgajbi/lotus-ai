@@ -1,5 +1,17 @@
 # Service Operations Runbook
 
+## Provider Retention Confirmation
+
+1. Record outcomes only through AI provider operations at
+   `POST /platform/provider-operations/workflow-runs/{run_id}/retention-confirmations`.
+2. Verify the persisted run is a completed, non-stub `idea_explanation.pack` run and the caller
+   tenant matches before investigating a rejected confirmation.
+3. Treat `PROVIDER_FAILURE` plus `BLOCKED` as unresolved provider posture, never deletion proof.
+4. Consumers verify signature, key status/rotation epoch, expiry, tenant, and replay nonce using
+   `/.well-known/lotus-ai-workflow-attestation-keys` and fail closed on any mismatch.
+5. Never put prompts, generated outputs, client identifiers, provider secrets, or API keys in the
+   request, persisted envelope, logs, or support evidence.
+
 ## Standard Commands
 
 - make lint

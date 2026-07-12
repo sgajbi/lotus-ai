@@ -32,6 +32,14 @@ The baseline rules are:
 3. no silent use of sensitive data,
 4. explicit output labeling and safety posture,
 5. full correlation and audit metadata for every AI execution.
+6. provider retention/deletion outcomes are recorded only by AI provider operations and signed for
+   bounded consumers; domain consumers cannot self-assert provider deletion.
+
+Provider retention confirmation for Idea explanation runs is currently `not_certified`. The
+implementation binds provider/model/tenant identity to the durable workflow run, signs source-safe
+outcomes with Ed25519, and persists idempotency through memory or SQL adapters. Provider-native
+confirmation, managed-key runtime proof, and bank privacy/outsourcing/model-risk approvals remain
+required; `PROVIDER_FAILURE` is explicitly blocked posture rather than deletion evidence.
 
 ## Boundary Rules
 

@@ -110,6 +110,10 @@ Current repository posture:
     durable run facts, exact time-bounded model-risk inventory decisions, canonical serialization,
     Ed25519 signing, public-key discovery, and fail-closed issuance use separate interfaces without
     adding a runtime service boundary. Consumers own receipt persistence and replay protection.
+12. `src/app/provider_retention_confirmations/` is a separate internal capability package for
+    AI-provider-operations-owned retention/deletion outcomes. It reuses workflow-attestation key
+    discovery but has its own strict claims, repository port, memory/SQL adapters, migration,
+    issuance, verification, and API contract. `lotus-idea` cannot record its own provider outcome.
 
 ## Architecture And Module Map
 
