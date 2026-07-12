@@ -18,6 +18,9 @@ from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import reset_provider_budget_state
 from app.services.provider_degradation_state import reset_provider_degradation_state
 from app.services.provider_operations_store import reset_provider_operations_store_cache
+from app.provider_retention_confirmations.store import (
+    reset_provider_retention_confirmation_store_cache,
+)
 from app.services.provider_quota_policy import reset_provider_quota_counters
 from app.services.retrieval_store import reset_retrieval_repository
 from app.services.workflow_pack_registry import reset_workflow_pack_registry_state
@@ -64,6 +67,9 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "access_control_store_mode": settings.access_control_store_mode,
         "workflow_pack_registry_store_mode": settings.workflow_pack_registry_store_mode,
         "provider_operations_store_mode": settings.provider_operations_store_mode,
+        "provider_retention_confirmation_store_mode": (
+            settings.provider_retention_confirmation_store_mode
+        ),
         "async_runtime_store_mode": settings.async_runtime_store_mode,
         "workflow_pack_run_store_mode": settings.workflow_pack_run_store_mode,
         "workflow_pack_task_flow_store_mode": settings.workflow_pack_task_flow_store_mode,
@@ -105,6 +111,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_provider_degradation_state()
         reset_provider_quota_counters()
         reset_provider_operations_store_cache()
+        reset_provider_retention_confirmation_store_cache()
         reset_local_openai_compatible_endpoint_probe_cache()
         reset_async_delivery_queue_cache()
         reset_async_runtime_store_cache()

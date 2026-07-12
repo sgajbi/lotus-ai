@@ -475,6 +475,22 @@ class WorkflowPackRunEventModel(Base):
     run: Mapped["WorkflowPackRunModel"] = relationship(back_populates="events")
 
 
+class ProviderRetentionConfirmationModel(Base):
+    __tablename__ = "provider_retention_confirmations"
+
+    confirmation_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    workflow_run_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    tenant_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    provider_confirmation_ref: Mapped[str] = mapped_column(
+        String(256), nullable=False, unique=True
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    outcome: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    envelope_payload: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
 class WorkflowPackTaskFlowModel(Base):
     __tablename__ = "workflow_pack_task_flows"
 
