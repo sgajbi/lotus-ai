@@ -22,6 +22,7 @@ from app.provider_retention_confirmations.repository import (
     ProviderRetentionConfirmationConflictError,
 )
 from app.provider_retention_confirmations.service import (
+    ProviderRetentionConfirmationNotFoundError,
     ProviderRetentionConfirmationNotIssuableError,
     issue_provider_retention_confirmation,
 )
@@ -67,6 +68,13 @@ def test_provider_failure_is_signed_as_blocked_not_deletion_proof() -> None:
     assert envelope.claims.provider_failure_code == "PROVIDER_TIMEOUT"
     assert envelope.claims.supportability_status == "BLOCKED"
     assert envelope.claims.deletion_confirmed is False
+
+
+def test_request_rejects_inconsistent_provider_failure_details() -> None:
+    with pytest.raises(ValueError, match="requires provider_failure_code"):
+        _request(outcome="PROVIDER_FAILURE")
+    with pytest.raises(ValueError, match="allowed only for provider failure"):
+        _request(provider_failure_code="UNEXPECTED_CODE")
 
 
 def test_same_input_replays_and_changed_input_conflicts() -> None:
@@ -134,6 +142,77 @@ def test_confirmation_fails_closed_for_untrusted_run_or_caller_posture(
     assert caught.value.reason_code == reason_code
 
 
+def test_confirmation_rejects_missing_run_invalid_time_and_ttl() -> None:
+    empty_runs = InMemoryWorkflowPackRunRepository()
+    confirmations = InMemoryProviderRetentionConfirmationRepository()
+    with pytest.raises(ProviderRetentionConfirmationNotFoundError):
+        _issue_with_stores(_request(), empty_runs, confirmations)
+    with pytest.raises(ValueError, match="ISO-8601"):
+        _issue(BASE_RUN, _request(provider_decision_at_utc="not-a-time"))
+    with pytest.raises(ValueError, match="timezone-aware"):
+        _issue(BASE_RUN, _request(provider_decision_at_utc="2026-07-12T01:59:00"))
+    with pytest.raises(ProviderRetentionConfirmationNotIssuableError) as caught:
+        _issue(BASE_RUN, _request(provider_decision_at_utc="2026-07-12T02:01:00Z"))
+    assert caught.value.reason_code == "provider_decision_in_future"
+    with pytest.raises(ValueError, match="TTL"):
+        issue_provider_retention_confirmation(
+            run_id=BASE_RUN.run_id,
+            request=_request(),
+            idempotency_key="invalid-ttl",
+            caller_app="lotus-ai-provider-operations",
+            tenant_id="tenant-sg-001",
+            run_repository=_runs(BASE_RUN),
+            confirmation_repository=confirmations,
+            signer=Ed25519WorkflowRunAttestationSigner(
+                private_key=PRIVATE_KEY,
+                key_id="workflow-attestation-2026-07",
+                rotation_epoch=2,
+            ),
+            issued_at_utc=NOW,
+            ttl_seconds=0,
+        )
+
+
+def test_confirmation_rejects_naive_issue_time_and_invalid_signer_result() -> None:
+    class InvalidSigner:
+        def sign(self, payload: bytes) -> object:
+            del payload
+            return type(
+                "InvalidSignatureResult",
+                (),
+                {"algorithm": "RS256", "signature": b"", "key_id": "bad", "rotation_epoch": 1},
+            )()
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        issue_provider_retention_confirmation(
+            run_id=BASE_RUN.run_id,
+            request=_request(),
+            idempotency_key="naive-issue-time",
+            caller_app="lotus-ai-provider-operations",
+            tenant_id="tenant-sg-001",
+            run_repository=_runs(BASE_RUN),
+            confirmation_repository=InMemoryProviderRetentionConfirmationRepository(),
+            signer=Ed25519WorkflowRunAttestationSigner(
+                private_key=PRIVATE_KEY,
+                key_id="workflow-attestation-2026-07",
+                rotation_epoch=2,
+            ),
+            issued_at_utc=NOW.replace(tzinfo=None),
+        )
+    with pytest.raises(ValueError, match="invalid signature"):
+        issue_provider_retention_confirmation(
+            run_id=BASE_RUN.run_id,
+            request=_request(),
+            idempotency_key="invalid-signer",
+            caller_app="lotus-ai-provider-operations",
+            tenant_id="tenant-sg-001",
+            run_repository=_runs(BASE_RUN),
+            confirmation_repository=InMemoryProviderRetentionConfirmationRepository(),
+            signer=InvalidSigner(),  # type: ignore[arg-type]
+            issued_at_utc=NOW,
+        )
+
+
 def test_verification_rejects_forged_expired_revoked_and_wrong_tenant() -> None:
     envelope = _issue(BASE_RUN, _request())
     forged = envelope.model_copy(
@@ -168,6 +247,25 @@ def test_verification_rejects_forged_expired_revoked_and_wrong_tenant() -> None:
             envelope,
             key_discovery=_discovery(),
             expected_tenant_id="tenant-other",
+            at_utc=NOW + timedelta(minutes=1),
+        )
+    with pytest.raises(ValueError, match="unknown or ambiguous"):
+        verify_provider_retention_confirmation(
+            envelope,
+            key_discovery=_discovery(key_id="another-key"),
+            expected_tenant_id="tenant-sg-001",
+            at_utc=NOW + timedelta(minutes=1),
+        )
+    naive_timestamp = envelope.model_copy(
+        update={
+            "claims": envelope.claims.model_copy(update={"issued_at_utc": "2026-07-12T02:00:00"})
+        }
+    )
+    with pytest.raises(ValueError, match="timestamp must be timezone-aware"):
+        verify_provider_retention_confirmation(
+            naive_timestamp,
+            key_discovery=_discovery(),
+            expected_tenant_id="tenant-sg-001",
             at_utc=NOW + timedelta(minutes=1),
         )
 
@@ -233,13 +331,16 @@ def _request(**overrides: object) -> ProviderRetentionConfirmationRequest:
     return ProviderRetentionConfirmationRequest.model_validate(values)
 
 
-def _discovery(status: str = "active") -> WorkflowRunAttestationKeyDiscoveryResponse:
+def _discovery(
+    status: str = "active",
+    key_id: str = "workflow-attestation-2026-07",
+) -> WorkflowRunAttestationKeyDiscoveryResponse:
     return WorkflowRunAttestationKeyDiscoveryResponse(
         schema_version="lotus-ai.workflow-run-attestation-keys.v1",
         issuer="lotus-ai",
         keys=[
             WorkflowRunAttestationPublicKey(
-                key_id="workflow-attestation-2026-07",
+                key_id=key_id,
                 algorithm="EdDSA",
                 curve="Ed25519",
                 public_key_base64url=base64.urlsafe_b64encode(
