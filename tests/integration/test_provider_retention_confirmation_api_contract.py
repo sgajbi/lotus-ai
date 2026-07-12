@@ -83,6 +83,55 @@ def test_provider_retention_confirmation_api_is_tenant_bound_and_idempotent(
         assert forbidden not in first.text.lower()
 
 
+def test_provider_retention_confirmation_api_maps_missing_run_and_signing_failure(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    headers = {
+        "Idempotency-Key": "provider-retention-api-failure",
+        "X-Caller-App": "lotus-ai-provider-operations",
+        "X-Tenant-Id": "tenant-sg-001",
+    }
+    missing = client.post(
+        "/platform/provider-operations/workflow-runs/missing-run/retention-confirmations",
+        json=_payload(),
+        headers=headers,
+    )
+    assert missing.status_code == 404
+
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=idea_explanation_workflow_pack_execution_request_json(
+            correlation_id="corr-provider-retention-signing-failure"
+        ),
+    )
+    run_id = execute_response.json()["workflow_pack_run"]["run_id"]
+    repository = get_workflow_pack_run_store()
+    run = repository.get_run(run_id=run_id)
+    assert run is not None
+    repository.save_run(
+        replace(
+            run,
+            tenant_id="tenant-sg-001",
+            provider_mode="openai",
+            provider_id="text.openai",
+            model_id="gpt-5.4",
+            model_version="2026-06-01",
+            stubbed=False,
+        )
+    )
+    monkeypatch.setattr(settings, "workflow_run_attestation_private_key_base64url", "")
+    unavailable = client.post(
+        f"/platform/provider-operations/workflow-runs/{run_id}/retention-confirmations",
+        json={**_payload(), "provider_confirmation_ref": "provider-signing-failure"},
+        headers=headers,
+    )
+    assert unavailable.status_code == 503
+    assert unavailable.json()["error_code"] == (
+        "LOTUS_AI_PROVIDER_RETENTION_CONFIRMATION_UNAVAILABLE"
+    )
+
+
 def _configure_key(monkeypatch: MonkeyPatch) -> None:
     private_key = Ed25519PrivateKey.generate()
     encoded = base64.urlsafe_b64encode(private_key.private_bytes_raw()).rstrip(b"=").decode()
