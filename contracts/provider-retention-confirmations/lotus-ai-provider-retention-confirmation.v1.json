@@ -1,0 +1,63 @@
+{
+  "contract_id": "lotus-ai-provider-retention-confirmation",
+  "contract_version": "1.0.0",
+  "product_id": "lotus-ai:ProviderRetentionConfirmation:v1",
+  "owner_repository": "lotus-ai",
+  "approved_recorder": "lotus-ai-provider-operations",
+  "approved_consumer": "lotus-idea",
+  "method": "POST",
+  "route": "/platform/provider-operations/workflow-runs/{run_id}/retention-confirmations",
+  "key_discovery_path": "/.well-known/lotus-ai-workflow-attestation-keys",
+  "signing": {
+    "algorithm": "EdDSA",
+    "curve": "Ed25519",
+    "ttl_seconds": 300,
+    "key_rotation": "active, rotated, and revoked key posture uses the workflow attestation trust bundle"
+  },
+  "outcomes": [
+    "NO_PROVIDER_STORAGE",
+    "RETENTION_CONFIRMED",
+    "DELETION_CONFIRMED",
+    "PROVIDER_FAILURE"
+  ],
+  "authority": {
+    "provider_execution_and_storage": "lotus-ai/provider operations",
+    "idea_workflow_lineage": "lotus-idea",
+    "model_and_provider_execution": "lotus-ai",
+    "client_advice_suitability_execution": "not_granted"
+  },
+  "required_headers": [
+    "Idempotency-Key",
+    "X-Caller-App",
+    "X-Tenant-Id"
+  ],
+  "required_request_fields": [
+    "provider_confirmation_ref",
+    "retention_policy_id",
+    "outcome",
+    "provider_decision_at_utc",
+    "evidence_sha256"
+  ],
+  "invariants": [
+    "Only lotus-ai-provider-operations records provider outcomes.",
+    "Only completed, non-stub, live idea_explanation.pack runs are eligible.",
+    "Provider, model, workflow, and tenant identity are derived from the persisted run.",
+    "Caller tenant must match the persisted run tenant.",
+    "PROVIDER_FAILURE is signed with BLOCKED supportability and never implies deletion.",
+    "Same-key same-input replay returns the original envelope; changed input conflicts.",
+    "Raw prompts, unrestricted outputs, client identifiers, provider secrets, and API keys are forbidden."
+  ],
+  "persistence": {
+    "memory": "local/test only",
+    "sqlalchemy": "migration-backed provider_retention_confirmations table",
+    "migration": "0039_add_provider_retention_confirmations"
+  },
+  "supportability_status": "not_certified",
+  "remaining_blockers": [
+    "provider-native confirmation integration and approval",
+    "production SQL runtime evidence",
+    "managed signing-key and rotation evidence",
+    "bank privacy, outsourcing, and model-risk approval",
+    "mainline consumer verification proof"
+  ]
+}

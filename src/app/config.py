@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     access_control_store_mode: str = "memory"
     workflow_pack_registry_store_mode: str = "memory"
     provider_operations_store_mode: str = "memory"
+    provider_retention_confirmation_store_mode: str = "memory"
     async_runtime_store_mode: str = "memory"
     workflow_pack_run_store_mode: str = "memory"
     workflow_pack_task_flow_store_mode: str = "memory"
