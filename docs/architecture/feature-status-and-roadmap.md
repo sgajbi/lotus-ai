@@ -1,5 +1,14 @@
 # Feature Status and Roadmap
 
+## Provider Retention Confirmation
+
+`lotus-ai:ProviderRetentionConfirmation:v1` is implementation-backed but `not_certified` for
+completed live `idea_explanation.pack` runs. AI provider operations records source-safe provider
+no-storage, retention, deletion, or failure evidence; Lotus AI binds it to persisted run/provider/
+model/tenant identity, persists replay state through memory or SQL adapters, and signs the envelope
+with the existing Ed25519 workflow-attestation key family. Provider-native integration, managed-key
+runtime evidence, and privacy/outsourcing/model-risk approval remain required before promotion.
+
 This document is the quickest way to understand what `lotus-ai` supports today, what is governed but still intentionally limited, and what major feature areas are next.
 
 ## Current Product Shape
