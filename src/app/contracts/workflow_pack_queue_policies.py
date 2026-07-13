@@ -459,6 +459,17 @@ class WorkflowPackQueueEventDescriptor(BaseModel):
         default=None,
         description="Bounded evidence reference supporting retry or replay posture.",
     )
+    idempotency_key: str | None = Field(
+        default=None,
+        description="Optional caller-supplied idempotency key associated with this queue event.",
+    )
+    idempotency_request_fingerprint: str | None = Field(
+        default=None,
+        description=(
+            "Stable request fingerprint used to detect reuse of an idempotency key with different "
+            "queue admission or recovery input."
+        ),
+    )
     artifact_refs: list[ArtifactDescriptor] = Field(
         default_factory=list,
         description=(
@@ -520,6 +531,16 @@ class WorkflowPackQueueRetryDecisionRequest(BaseModel):
         min_length=1,
         description="Bounded evidence reference supporting the retry decision.",
     )
+    idempotency_key: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description=(
+            "Optional caller-supplied idempotency key for retry execution commands. The same key "
+            "with the same retry command replays the first result; the same key with different "
+            "input is rejected."
+        ),
+    )
 
 
 class WorkflowPackQueueReplayDecisionRequest(BaseModel):
@@ -538,6 +559,16 @@ class WorkflowPackQueueReplayDecisionRequest(BaseModel):
     evidence_ref: str = Field(
         min_length=1,
         description="Bounded evidence reference supporting the replay decision.",
+    )
+    idempotency_key: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description=(
+            "Optional caller-supplied idempotency key for replay execution commands. The same key "
+            "with the same replay command replays the first result; the same key with different "
+            "input is rejected."
+        ),
     )
 
 

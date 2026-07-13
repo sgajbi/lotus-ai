@@ -1078,6 +1078,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "recovery_attempt_number" in workflow_pack_queue_event_schema["properties"]
     assert "requested_by" in workflow_pack_queue_event_schema["properties"]
     assert "evidence_ref" in workflow_pack_queue_event_schema["properties"]
+    assert "idempotency_key" in workflow_pack_queue_event_schema["properties"]
+    assert "idempotency_request_fingerprint" in workflow_pack_queue_event_schema["properties"]
     assert "artifact_refs" in workflow_pack_queue_event_schema["properties"]
     assert "queue_event_source_mode" in workflow_pack_queue_event_catalog_schema["properties"]
     assert "events" in workflow_pack_queue_event_catalog_schema["properties"]
@@ -1174,6 +1176,8 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         == "submitWorkflowPackAsyncExecution"
     )
     assert "async_job" in workflow_pack_async_execution_response_schema["properties"]
+    assert "idempotency_key" in workflow_pack_async_execution_response_schema["properties"]
+    assert "idempotency_status" in workflow_pack_async_execution_response_schema["properties"]
     assert "queue_event" in workflow_pack_async_execution_response_schema["properties"]
     assert "queue_item_id" in workflow_pack_async_execution_response_schema["properties"]
     assert "run_store_mode" in workflow_pack_run_catalog_schema["properties"]
