@@ -309,20 +309,37 @@ def test_workflow_pack_queue_retry_execution_replays_retained_request_snapshot(
         now_utc=datetime.now(UTC) + timedelta(minutes=10),
     )
 
+    request_body = {
+        "caller_app": "lotus-platform",
+        "failure_code": "EXECUTION_TIMEOUT",
+        "requested_by": "operator-a",
+        "reason": "Retry after bounded queue timeout.",
+        "evidence_ref": "support-ticket-queue-retry-execution-api",
+        "idempotency_key": "queue-retry-execution-key-001",
+    }
+
     response = client.post(
         f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/retry-executions",
-        json={
-            "caller_app": "lotus-platform",
-            "failure_code": "EXECUTION_TIMEOUT",
-            "requested_by": "operator-a",
-            "reason": "Retry after bounded queue timeout.",
-            "evidence_ref": "support-ticket-queue-retry-execution-api",
-        },
+        json=request_body,
+    )
+    replay_response = client.post(
+        f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/retry-executions",
+        json=request_body,
     )
 
     assert response.status_code == 200
     body = response.json()
+    replay_body = replay_response.json()
     assert body["decision_event"]["event_type"] == "RETRY_RECORDED"
+    assert body["decision_event"]["idempotency_key"] == "queue-retry-execution-key-001"
+    assert body["idempotency_status"] == "CREATED"
+    assert replay_response.status_code == 200
+    assert replay_body["idempotency_status"] == "REPLAYED"
+    assert replay_body["decision_event"]["event_id"] == body["decision_event"]["event_id"]
+    assert (
+        replay_body["execution"]["workflow_pack_run"]["run_id"]
+        == body["execution"]["workflow_pack_run"]["run_id"]
+    )
     assert body["decision_event"]["artifact_refs"]
     run = body["execution"]["workflow_pack_run"]
     assert run["registration_ref"] == "advisor_brief.pack@v1"
@@ -349,6 +366,56 @@ def test_workflow_pack_queue_retry_execution_replays_retained_request_snapshot(
     assert any(
         "executed from the retained request snapshot" in line for line in body["status_summary"]
     )
+    event_detail = client.get(f"/platform/workflow-packs/queue-events/{lease.queue_item_id}").json()
+    retry_events = [
+        event for event in event_detail["events"] if event["event_type"] == "RETRY_RECORDED"
+    ]
+    assert len(retry_events) == 1
+
+
+def test_workflow_pack_queue_retry_execution_rejects_same_key_different_payload(
+    client: TestClient,
+) -> None:
+    registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
+    assert registration is not None
+    lease = acquire_workflow_pack_queue_admission(
+        registration=registration,
+        task_request=advisor_brief_task_execution_request(
+            correlation_id="corr-queue-retry-idempotency-conflict"
+        ),
+        environment=WorkflowPackEnvironment.DEVELOPMENT,
+        caller_identity_class=WorkflowPackCallerIdentityClass.BANKER_PRODUCT,
+    )
+    release_workflow_pack_queue_admission(
+        lease.queue_item_id,
+        now_utc=datetime.now(UTC) + timedelta(minutes=10),
+    )
+    request_body = {
+        "caller_app": "lotus-platform",
+        "failure_code": "EXECUTION_TIMEOUT",
+        "requested_by": "operator-a",
+        "reason": "Retry after bounded queue timeout.",
+        "evidence_ref": "support-ticket-queue-retry-idempotency-conflict-1",
+        "idempotency_key": "queue-retry-execution-key-conflict",
+    }
+    conflicting_body = {
+        **request_body,
+        "reason": "Retry after different operator evidence.",
+        "evidence_ref": "support-ticket-queue-retry-idempotency-conflict-2",
+    }
+
+    first_response = client.post(
+        f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/retry-executions",
+        json=request_body,
+    )
+    conflict_response = client.post(
+        f"/platform/workflow-packs/queue-events/{lease.queue_item_id}/retry-executions",
+        json=conflicting_body,
+    )
+
+    assert first_response.status_code == 200
+    assert conflict_response.status_code == 409
+    assert "idempotency conflict" in conflict_response.json()["detail"]
 
 
 def test_workflow_pack_queue_retry_execution_requires_executable_snapshot(
@@ -465,23 +532,37 @@ def test_workflow_pack_queue_replay_execution_uses_normal_execution_path(
         if event["correlation_id"] == correlation_id and event["event_type"] == "ADMISSION_RELEASED"
     )
 
+    request_body = {
+        "caller_app": "lotus-platform",
+        "requested_by": "operator-a",
+        "reason": "Replay from governed queue snapshot.",
+        "evidence_ref": "support-ticket-queue-replay-execution-api",
+        "idempotency_key": "queue-replay-execution-key-001",
+    }
     response = client.post(
         f"/platform/workflow-packs/queue-events/{source_queue_item_id}/replay-executions",
-        json={
-            "caller_app": "lotus-platform",
-            "requested_by": "operator-a",
-            "reason": "Replay from governed queue snapshot.",
-            "evidence_ref": "support-ticket-queue-replay-execution-api",
-        },
+        json=request_body,
+    )
+    replay_response = client.post(
+        f"/platform/workflow-packs/queue-events/{source_queue_item_id}/replay-executions",
+        json=request_body,
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body["decision_event"]["event_type"] == "REPLAY_RECORDED"
+    assert body["decision_event"]["idempotency_key"] == "queue-replay-execution-key-001"
+    assert body["idempotency_status"] == "CREATED"
+    assert replay_response.status_code == 200
+    assert replay_response.json()["idempotency_status"] == "REPLAYED"
+    assert (
+        replay_response.json()["decision_event"]["event_id"] == body["decision_event"]["event_id"]
+    )
     original_run_id = execute_response.json()["workflow_pack_run"]["run_id"]
     run = body["execution"]["workflow_pack_run"]
     assert run["registration_ref"] == "advisor_brief.pack@v1"
     assert run["run_id"] != original_run_id
+    assert replay_response.json()["execution"]["workflow_pack_run"]["run_id"] == run["run_id"]
     assert run["recovery_lineage"] == {
         "recovery_action_type": "REPLAY",
         "source_queue_item_id": source_queue_item_id,
@@ -501,6 +582,51 @@ def test_workflow_pack_queue_replay_execution_uses_normal_execution_path(
     assert detail_response.json()["run"]["recovery_lineage"] == run["recovery_lineage"]
     assert source_events_response.json()["events"][0]["recovery_lineage"] == run["recovery_lineage"]
     assert operator_response.json()["recovery_lineage"] == run["recovery_lineage"]
+
+
+def test_workflow_pack_queue_replay_execution_rejects_same_key_different_payload(
+    client: TestClient,
+) -> None:
+    correlation_id = "corr-queue-replay-idempotency-conflict"
+    execute_response = client.post(
+        "/platform/workflow-packs/execute",
+        json=advisor_brief_workflow_pack_execution_request_json(correlation_id=correlation_id),
+    )
+    assert execute_response.status_code == 200
+    catalog_response = client.get(
+        "/platform/workflow-packs/queue-events",
+        params={"workflow_pack_id": "advisor_brief.pack"},
+    )
+    source_queue_item_id = next(
+        event["queue_item_id"]
+        for event in catalog_response.json()["events"]
+        if event["correlation_id"] == correlation_id and event["event_type"] == "ADMISSION_RELEASED"
+    )
+    request_body = {
+        "caller_app": "lotus-platform",
+        "requested_by": "operator-a",
+        "reason": "Replay from governed queue snapshot.",
+        "evidence_ref": "support-ticket-queue-replay-idempotency-conflict-1",
+        "idempotency_key": "queue-replay-execution-key-conflict",
+    }
+    conflicting_body = {
+        **request_body,
+        "reason": "Replay with different operator evidence.",
+        "evidence_ref": "support-ticket-queue-replay-idempotency-conflict-2",
+    }
+
+    first_response = client.post(
+        f"/platform/workflow-packs/queue-events/{source_queue_item_id}/replay-executions",
+        json=request_body,
+    )
+    conflict_response = client.post(
+        f"/platform/workflow-packs/queue-events/{source_queue_item_id}/replay-executions",
+        json=conflicting_body,
+    )
+
+    assert first_response.status_code == 200
+    assert conflict_response.status_code == 409
+    assert "idempotency conflict" in conflict_response.json()["detail"]
 
 
 def test_workflow_pack_queue_event_detail_rejects_unknown_item(client: TestClient) -> None:

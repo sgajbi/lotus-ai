@@ -18,6 +18,14 @@ class WorkflowPackQueueRecoveryExecutionResponse(BaseModel):
     execution: WorkflowPackExecutionResponse = Field(
         description="Workflow-pack execution response produced from the retained request snapshot."
     )
+    idempotency_key: str | None = Field(
+        default=None,
+        description="Caller-supplied recovery execution idempotency key, when provided.",
+    )
+    idempotency_status: str | None = Field(
+        default=None,
+        description="Recovery execution idempotency outcome, such as CREATED or REPLAYED.",
+    )
     status_summary: list[str] = Field(
         description="Human-readable summary of the queue recovery execution posture."
     )
