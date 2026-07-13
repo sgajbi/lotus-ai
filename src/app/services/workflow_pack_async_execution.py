@@ -49,6 +49,8 @@ from app.services.workflow_pack_execution import (
     validate_workflow_pack_execution_binding,
 )
 from app.services.workflow_pack_queue_events import (
+    WorkflowPackQueueEventStoreNotReadyError,
+    ensure_workflow_pack_queue_event_store_ready,
     record_workflow_pack_queue_event,
 )
 from app.services.workflow_pack_queue_policy_catalog import (
@@ -262,6 +264,7 @@ def _preflight_workflow_pack_execution_request(
     validate_task_request(request.task_request)
     ensure_workflow_pack_run_store_ready()
     ensure_workflow_pack_task_flow_store_ready()
+    _ensure_queue_event_store_ready_for_async_submission()
     policy = get_workflow_pack_queue_policy_descriptor(
         pack_id=request.pack_id,
         version=request.version,
@@ -279,6 +282,16 @@ def _preflight_workflow_pack_execution_request(
         policy=policy,
         workflow_surface=workflow_surface,
     )
+
+
+def _ensure_queue_event_store_ready_for_async_submission() -> None:
+    try:
+        ensure_workflow_pack_queue_event_store_ready()
+    except WorkflowPackQueueEventStoreNotReadyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
 
 def _execute_claimed_workflow_pack_job(

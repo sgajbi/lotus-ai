@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from _pytest.monkeypatch import MonkeyPatch
 
 from app.config import settings
+from app.contracts.runtime_readiness import RuntimeReadinessStatus, StoreRuntimeStatusDescriptor
 from app.contracts.workflow_packs import WorkflowPackExecutionRequest
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
@@ -17,7 +18,9 @@ from app.services.async_worker_fleet import process_next_async_delivery
 from app.services.async_job_service import build_async_job_detail
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.artifact_store import get_artifact_object_store
+from app.services.artifact_store import get_artifact_repository
 from app.services.async_runtime_store import reset_async_runtime_store_cache
+from app.services.workflow_pack_queue_event_store import get_workflow_pack_queue_event_store
 from app.services.workflow_pack_async_execution import (
     _enforce_queued_capacity,
     _load_first_snapshot_for_job,
@@ -143,6 +146,44 @@ def test_workflow_pack_async_execution_rejects_missing_policy(
 
     assert response.status_code == 409
     assert "queue policy is not declared" in response.json()["detail"]
+
+
+def test_workflow_pack_async_execution_preflights_queue_event_store_before_side_effects(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr(
+        "app.services.async_submission_shared.get_async_delivery_queue",
+        lambda: queue,
+    )
+    monkeypatch.setattr(
+        "app.services.workflow_pack_queue_events.get_workflow_pack_queue_event_store_runtime_status",
+        lambda: StoreRuntimeStatusDescriptor(
+            mode="sqlalchemy",
+            status=RuntimeReadinessStatus.MIGRATION_REQUIRED,
+            database_configured=True,
+            detail="Configured database is reachable but missing required tables: workflow_pack_queue_events.",
+        ),
+    )
+
+    response = client.post(
+        "/platform/workflow-packs/execute-async",
+        json=advisor_brief_workflow_pack_execution_request_json(
+            correlation_id="corr-workflow-pack-async-queue-store-not-ready-001"
+        ),
+    )
+
+    assert response.status_code == 503
+    assert "Workflow-pack queue event store is not ready:" in response.json()["detail"]
+    assert get_artifact_repository().list_artifacts() == []
+    assert get_workflow_pack_queue_event_store().list_events() == []
+    assert get_async_runtime_store().list_jobs() == []
+    assert queue.snapshot().pending_delivery_count == 0
+    assert queue.snapshot().published_delivery_count == 0
 
 
 def test_workflow_pack_async_execution_rejects_unsupported_lane(

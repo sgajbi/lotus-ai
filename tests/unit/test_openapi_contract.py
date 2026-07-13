@@ -361,7 +361,13 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     )
     assert (
         spec["paths"]["/platform/workflow-packs/execute"]["post"]["responses"]["503"]["description"]
-        == "Workflow-pack runtime dependency store is not ready."
+        == "Workflow-pack run, task-flow, or queue event dependency store is not ready."
+    )
+    assert (
+        spec["paths"]["/platform/workflow-packs/execute-async"]["post"]["responses"]["503"][
+            "description"
+        ]
+        == "Workflow-pack run, task-flow, or queue event dependency store is not ready."
     )
     assert spec["paths"]["/platform/workflow-packs/control-history"]["get"]["operationId"] == (
         "getWorkflowPackControlHistory"
