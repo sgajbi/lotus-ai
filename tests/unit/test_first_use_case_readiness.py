@@ -11,7 +11,10 @@ from app.services.first_use_case_readiness import (
     build_first_use_case_readiness,
 )
 from app.services.first_use_case_status import build_first_use_case_runtime_status
+from app.services.observability_governance import build_observability_governance_status
+from app.services.observability_runtime import build_observability_runtime_status
 from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.observability import build_healthy_ai_surface_supportability_summary
 from tests.support.runtime_settings import override_runtime_settings
 
 
@@ -83,7 +86,14 @@ def test_first_use_case_readiness_uses_sql_seeded_lotus_performance_policy(
             )
         )
         run_next_evaluation_execution_job(worker_id="worker-a")
-        readiness = build_first_use_case_readiness()
+        observability_runtime = build_observability_runtime_status().model_copy(
+            update={"ai_surface_supportability": build_healthy_ai_surface_supportability_summary()}
+        )
+        readiness = build_first_use_case_readiness(
+            observability_governance=build_observability_governance_status(
+                runtime_status=observability_runtime
+            )
+        )
 
     assert readiness.items[0].status == "READY"
     assert readiness.items[4].status == "READY"

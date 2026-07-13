@@ -4,19 +4,14 @@ from app.config import settings
 from app.contracts.observability import (
     AISurfaceSupportabilityReason,
     AISurfaceSupportabilitySummary,
-    ObservabilityFreshness,
     ObservabilityPosture,
-)
-from app.services.ai_surface_supportability import (
-    AI_SURFACE_SUPPORTABILITY_METRIC,
-    AI_SURFACE_SUPPORTABILITY_METRIC_LABELS,
-    build_ai_surface_supportability_summary,
 )
 from app.services.observability_activation_readiness import (
     build_observability_activation_readiness,
 )
 from app.services.observability_runtime import build_observability_runtime_status
 from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.observability import build_healthy_ai_surface_supportability_summary
 
 
 def test_observability_activation_readiness_blocks_without_durable_stores() -> None:
@@ -39,7 +34,7 @@ def test_observability_activation_readiness_reports_sql_backed_posture_ready(
     settings.database_url = f"sqlite:///{tmp_path / 'observability-activation.db'}"
     upgrade_database_to_head(settings.database_url)
     runtime_status = build_observability_runtime_status().model_copy(
-        update={"ai_surface_supportability": _healthy_ai_surface_supportability_summary()}
+        update={"ai_surface_supportability": build_healthy_ai_surface_supportability_summary()}
     )
 
     readiness = build_observability_activation_readiness(runtime_status=runtime_status)
@@ -88,38 +83,8 @@ def test_observability_activation_readiness_blocks_action_required_ai_surface(
     assert all("raw prompt" not in item.lower() for item in readiness.blocking_findings)
 
 
-def _healthy_ai_surface_supportability_summary() -> AISurfaceSupportabilitySummary:
-    summary = build_ai_surface_supportability_summary()
-    healthy_surfaces = [
-        surface.model_copy(
-            update={
-                "supportability_status": "READY",
-                "supportability_reason": AISurfaceSupportabilityReason.WORKFLOW_PACK_READY,
-                "no_sensitive_content_telemetry": True,
-            }
-        )
-        for surface in summary.surfaces
-    ]
-    return summary.model_copy(
-        update={
-            "posture": ObservabilityPosture.HEALTHY,
-            "freshness": ObservabilityFreshness.CURRENT,
-            "action_required_surface_count": 0,
-            "unavailable_surface_count": 0,
-            "no_sensitive_content_telemetry": True,
-            "metric_name": AI_SURFACE_SUPPORTABILITY_METRIC,
-            "metric_labels": list(AI_SURFACE_SUPPORTABILITY_METRIC_LABELS),
-            "surfaces": healthy_surfaces,
-            "status_summary": [
-                "No-sensitive-content telemetry is active across represented AI-backed surfaces.",
-                "Represented AI-backed surfaces currently expose ready workflow-pack posture.",
-            ],
-        }
-    )
-
-
 def _action_required_ai_surface_supportability_summary() -> AISurfaceSupportabilitySummary:
-    summary = _healthy_ai_surface_supportability_summary()
+    summary = build_healthy_ai_surface_supportability_summary()
     action_required_surface = summary.surfaces[0].model_copy(
         update={
             "supportability_status": "ACTION_REQUIRED",
