@@ -1,11 +1,24 @@
 from pathlib import Path
 
+import pytest
 from _pytest.monkeypatch import MonkeyPatch
+from fastapi import HTTPException
 
 from app.config import settings
+from app.contracts.access_control import (
+    AuthorizationCapabilityType,
+    AuthorizationDecision,
+    AuthorizationOutcome,
+    TenantPolicyMode,
+)
+from app.contracts.async_runtime import AsyncJobStatus
 from app.services.async_delivery_queue import (
     AsyncQueueDeliveryMessage,
     get_test_async_delivery_queue,
+)
+from app.services.async_delivery_recovery import (
+    quarantine_queued_async_job,
+    redrive_queued_async_job,
 )
 from app.services.async_job_service import build_async_job_detail
 from app.services.async_runtime_control import build_async_control_history
@@ -18,6 +31,7 @@ from app.services.async_worker_fleet import (
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeJobRecord,
+    AsyncRuntimeLeaseRecord,
 )
 from app.services.eval_run_service import build_evaluation_run_detail
 from app.services.eval_run_submission_service import submit_evaluation_run
@@ -26,6 +40,61 @@ from app.services.retrieval_ingestion_async_execution import submit_retrieval_in
 from app.services.retrieval_async_execution import submit_retrieval_index_job_async
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from tests.support.migration_runner import upgrade_database_to_head
+
+
+def _async_control_authorization() -> AuthorizationDecision:
+    return AuthorizationDecision(
+        caller_app="lotus-ai.operator-console",
+        capability_type=AuthorizationCapabilityType.ASYNC_CONTROL,
+        outcome=AuthorizationOutcome.ALLOWED,
+        allowed=True,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        summary="Async control-plane action authorized for test operator.",
+    )
+
+
+def _runtime_job_record(
+    job_id: str,
+    *,
+    lifecycle_status: str = AsyncJobStatus.QUEUED.value,
+    attempt_count: int = 1,
+) -> AsyncRuntimeJobRecord:
+    return AsyncRuntimeJobRecord(
+        job_id=job_id,
+        job_type="retrieval_indexing",
+        target_id="retjob_lotus_platform_rfcs",
+        lifecycle_status=lifecycle_status,
+        submitted_at="2026-03-24T00:00:00Z",
+        caller_app="lotus-platform",
+        correlation_id=f"corr-{job_id}",
+        payload_summary="Queued retrieval indexing job.",
+        execution_path="durable_runtime_worker_execution",
+        related_evaluation_run_id=None,
+        latest_message="Queued retrieval indexing job.",
+        attempt_count=attempt_count,
+        artifact_ids=[],
+    )
+
+
+def _runtime_attempt_record(
+    attempt_id: str,
+    *,
+    job_id: str,
+    lifecycle_status: str = AsyncJobStatus.QUEUED.value,
+) -> AsyncRuntimeAttemptRecord:
+    return AsyncRuntimeAttemptRecord(
+        attempt_id=attempt_id,
+        job_id=job_id,
+        attempt_number=1,
+        lifecycle_status=lifecycle_status,
+        worker_id=None,
+        claimed_at=None,
+        heartbeat_at=None,
+        started_at=None,
+        completed_at=None,
+        failure_reason=None,
+        recorded_message="Queued retrieval indexing job.",
+    )
 
 
 def test_process_next_async_delivery_executes_retrieval_job_in_dedicated_mode(
@@ -353,6 +422,121 @@ def test_process_next_async_delivery_redrives_claim_miss(
     detail = build_async_job_detail(job_id="asyncjob_claim_miss")
     assert detail.job.status.value == "QUEUED"
     assert detail.control_events[0].action_type.value == "REDRIVE_QUEUED_JOB"
+
+
+def test_redrive_queued_async_job_rejects_job_without_attempt() -> None:
+    store = get_async_runtime_store()
+    job = _runtime_job_record("asyncjob_redrive_without_attempt", attempt_count=0)
+    store.save_job(job)
+
+    with pytest.raises(HTTPException) as exc_info:
+        redrive_queued_async_job(
+            job=job,
+            requested_by="operator-a",
+            approved_by="operator-b",
+            reason="recover queued delivery without durable attempt",
+            authorization=_async_control_authorization(),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert "has no attempt to re-drive" in str(exc_info.value.detail)
+
+
+def test_redrive_queued_async_job_rejects_non_queued_job() -> None:
+    store = get_async_runtime_store()
+    job = _runtime_job_record(
+        "asyncjob_redrive_completed",
+        lifecycle_status=AsyncJobStatus.COMPLETED.value,
+    )
+    store.save_job(job)
+
+    with pytest.raises(HTTPException) as exc_info:
+        redrive_queued_async_job(
+            job=job,
+            requested_by="operator-a",
+            approved_by="operator-b",
+            reason="operator should not re-drive completed work",
+            authorization=_async_control_authorization(),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert "is not QUEUED" in str(exc_info.value.detail)
+
+
+def test_redrive_queued_async_job_rejects_non_queued_latest_attempt() -> None:
+    store = get_async_runtime_store()
+    job = _runtime_job_record("asyncjob_redrive_claimed_attempt")
+    store.save_job(job)
+    store.save_attempt(
+        _runtime_attempt_record(
+            "attempt-redrive-claimed-001",
+            job_id=job.job_id,
+            lifecycle_status=AsyncJobStatus.CLAIMED.value,
+        )
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        redrive_queued_async_job(
+            job=job,
+            requested_by="operator-a",
+            approved_by="operator-b",
+            reason="latest attempt is already claimed",
+            authorization=_async_control_authorization(),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert "latest attempt is not QUEUED" in str(exc_info.value.detail)
+
+
+def test_redrive_queued_async_job_requires_active_queue_publication() -> None:
+    settings.async_cutover_state = "in_process_only"
+    store = get_async_runtime_store()
+    job = _runtime_job_record("asyncjob_redrive_queue_inactive")
+    store.save_job(job)
+    store.save_attempt(_runtime_attempt_record("attempt-redrive-inactive-001", job_id=job.job_id))
+
+    with pytest.raises(HTTPException) as exc_info:
+        redrive_queued_async_job(
+            job=job,
+            requested_by="operator-a",
+            approved_by="operator-b",
+            reason="managed queue must be active before re-drive",
+            authorization=_async_control_authorization(),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert "managed queue publication is inactive" in str(exc_info.value.detail)
+
+
+def test_quarantine_queued_async_job_rejects_active_worker_lease() -> None:
+    store = get_async_runtime_store()
+    job = _runtime_job_record("asyncjob_quarantine_active_lease")
+    attempt = _runtime_attempt_record("attempt-quarantine-lease-001", job_id=job.job_id)
+    store.save_job(job)
+    store.save_attempt(attempt)
+    store.save_lease(
+        AsyncRuntimeLeaseRecord(
+            lease_id="lease-quarantine-lease-001",
+            job_id=job.job_id,
+            attempt_id=attempt.attempt_id,
+            worker_id="worker-a",
+            claimed_at="2026-03-24T00:00:00Z",
+            heartbeat_at="2026-03-24T00:00:03Z",
+            lease_expires_at="2026-03-24T00:05:00Z",
+        )
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        quarantine_queued_async_job(
+            job=job,
+            requested_by="operator-a",
+            approved_by="operator-b",
+            reason="active worker lease must fence operator quarantine",
+            authorization=_async_control_authorization(),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert "has an active lease" in str(exc_info.value.detail)
 
 
 def test_process_next_async_delivery_quarantines_missing_runtime_job(
