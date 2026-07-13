@@ -348,16 +348,10 @@ def _safety_governance_domain_detail(
     *, governance_ready: bool, required_for_platform_approval: bool
 ) -> str:
     if not required_for_platform_approval:
-        return (
-            "Runtime safety enforcement is not active, so safety governance remains informational for production go-live."
-        )
+        return "Runtime safety enforcement is not active, so safety governance remains informational for production go-live."
     if governance_ready:
-        return (
-            "Runtime safety enforcement is active, and safety governance is approved for production go-live."
-        )
-    return (
-        "Runtime safety enforcement is active, but safety governance is not yet approved for production go-live."
-    )
+        return "Runtime safety enforcement is active, and safety governance is approved for production go-live."
+    return "Runtime safety enforcement is active, but safety governance is not yet approved for production go-live."
 
 
 def _use_case_domain_status(
