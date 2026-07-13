@@ -57,6 +57,8 @@ def record_workflow_pack_queue_event(
     recovery_attempt_number: int | None = None,
     requested_by: str | None = None,
     evidence_ref: str | None = None,
+    idempotency_key: str | None = None,
+    idempotency_request_fingerprint: str | None = None,
     artifact_refs: list[ArtifactDescriptor] | None = None,
 ) -> WorkflowPackQueueEventDescriptor:
     ensure_workflow_pack_queue_event_store_ready()
@@ -79,6 +81,8 @@ def record_workflow_pack_queue_event(
         recovery_attempt_number=recovery_attempt_number,
         requested_by=requested_by,
         evidence_ref=evidence_ref,
+        idempotency_key=idempotency_key,
+        idempotency_request_fingerprint=idempotency_request_fingerprint,
         artifact_refs=[artifact.model_copy(deep=True) for artifact in artifact_refs or []],
         message=message,
         recorded_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),

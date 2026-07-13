@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import hashlib
+import json
+from threading import RLock
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -50,6 +53,7 @@ from app.services.workflow_pack_execution import (
 )
 from app.services.workflow_pack_queue_events import (
     WorkflowPackQueueEventStoreNotReadyError,
+    build_workflow_pack_queue_event_detail,
     ensure_workflow_pack_queue_event_store_ready,
     record_workflow_pack_queue_event,
 )
@@ -71,6 +75,7 @@ _ACTIVE_ASYNC_JOB_STATUSES = {
     AsyncJobStatus.CLAIMED.value,
     AsyncJobStatus.RUNNING.value,
 }
+_async_submission_idempotency_lock = RLock()
 
 
 @dataclass(frozen=True)
@@ -88,110 +93,134 @@ def submit_workflow_pack_execution_async(
     queue_item_id = f"wpq_{uuid4().hex}"
     lane = request.queue_lane or resolved.policy.default_lane
     _validate_lane(policy=resolved.policy, lane=lane)
-    _reject_duplicate_active_submission(request=request, policy=resolved.policy)
-    _enforce_queued_capacity(policy=resolved.policy, lane=lane)
-
-    now = _utc_now_timestamp()
-    snapshot_ref = persist_workflow_pack_queue_request_snapshot(
-        queue_item_id=queue_item_id,
-        registration=resolved.registration,
-        lane=lane,
-        task_request=request.task_request,
-        workflow_surface=resolved.workflow_surface,
-        environment=request.environment,
-        caller_identity_class=request.caller_identity_class,
-        created_at=now,
-    )
-    requested_event = _record_queue_event(
-        queue_item_id=queue_item_id,
-        event_type=WorkflowPackQueueEventType.ADMISSION_REQUESTED,
-        policy=resolved.policy,
-        lane=lane,
-        state=WorkflowPackQueueState.NOT_ADMITTED,
+    idempotency_key = _build_async_submission_idempotency_key(request=request)
+    request_fingerprint = _fingerprint_async_execution_request(
         request=request,
-        workflow_surface=resolved.workflow_surface,
-        artifact_refs=[snapshot_ref],
-        message=(
-            "Workflow-pack async execution requested durable queued-worker posture for "
-            f"`{request.pack_id}@{request.version}`."
-        ),
-    )
-    queued_event = _record_queue_event(
-        queue_item_id=queue_item_id,
-        event_type=WorkflowPackQueueEventType.ADMISSION_QUEUED,
-        policy=resolved.policy,
         lane=lane,
-        state=_transition(
-            current_state=requested_event.state,
-            next_state=WorkflowPackQueueState.QUEUED,
-        ),
-        request=request,
         workflow_surface=resolved.workflow_surface,
-        artifact_refs=[snapshot_ref],
-        message=(
-            "Workflow-pack async execution queued in durable async runtime state for "
-            f"`{request.pack_id}@{request.version}`."
-        ),
     )
+    with _async_submission_idempotency_lock:
+        existing_response = _resolve_existing_idempotent_async_submission(
+            request=request,
+            policy=resolved.policy,
+            workflow_surface=resolved.workflow_surface,
+            request_fingerprint=request_fingerprint,
+            idempotency_key=idempotency_key,
+        )
+        if existing_response is not None:
+            return existing_response
+        _reject_duplicate_active_submission(request=request, policy=resolved.policy)
+        _enforce_queued_capacity(policy=resolved.policy, lane=lane)
 
-    job_id = f"asyncjob_workflow_pack_execution_{uuid4().hex[:12]}"
-    attempt_id = f"{job_id}_attempt_001"
-    job_record = AsyncRuntimeJobRecord(
-        job_id=job_id,
-        job_type=WORKFLOW_PACK_EXECUTION_ASYNC_JOB_TYPE,
-        target_id=queue_item_id,
-        lifecycle_status=AsyncJobStatus.QUEUED.value,
-        submitted_at=now,
-        caller_app=request.task_request.caller.caller_app,
-        correlation_id=request.task_request.caller.correlation_id,
-        payload_summary=(
-            f"Durable workflow-pack execution for {request.pack_id}@{request.version} "
-            f"on queue item {queue_item_id}."
-        ),
-        execution_path="durable_runtime_worker_execution",
-        related_evaluation_run_id=None,
-        latest_message="Workflow-pack execution accepted into durable async runtime state.",
-        attempt_count=1,
-        artifact_ids=[snapshot_ref.artifact_id],
-    )
-    attempt_record = AsyncRuntimeAttemptRecord(
-        attempt_id=attempt_id,
-        job_id=job_id,
-        attempt_number=1,
-        lifecycle_status="SUBMITTED",
-        worker_id=None,
-        claimed_at=None,
-        heartbeat_at=None,
-        started_at=None,
-        completed_at=None,
-        failure_reason=None,
-        recorded_message="Initial workflow-pack async execution submission recorded.",
-    )
-    store = get_async_runtime_store()
-    store.save_job(job_record)
-    store.save_attempt(attempt_record)
-    delivery_published = publish_async_attempt_if_configured(
-        job=job_record,
-        attempt=attempt_record,
-    )
-    return WorkflowPackAsyncExecutionSubmissionResponse(
-        service=settings.service_name,
-        version=settings.service_version,
-        phase=settings.delivery_phase,
-        accepted=True,
-        queue_item_id=queue_item_id,
-        async_job=map_async_runtime_job(job_record),
-        queue_event=queued_event,
-        status_summary=[
-            "Workflow-pack execution was persisted as a durable async runtime job.",
-            "The retained queue request snapshot is the executable worker input; raw task payloads are not embedded in queue events.",
-            (
-                "The async attempt was published to the managed delivery queue."
-                if delivery_published
-                else "The async job is durable; managed queue publication is inactive under the current async cutover posture."
+        now = _utc_now_timestamp()
+        snapshot_ref = persist_workflow_pack_queue_request_snapshot(
+            queue_item_id=queue_item_id,
+            registration=resolved.registration,
+            lane=lane,
+            task_request=request.task_request,
+            workflow_surface=resolved.workflow_surface,
+            environment=request.environment,
+            caller_identity_class=request.caller_identity_class,
+            created_at=now,
+            idempotency_key=idempotency_key,
+            idempotency_request_fingerprint=request_fingerprint,
+        )
+        requested_event = _record_queue_event(
+            queue_item_id=queue_item_id,
+            event_type=WorkflowPackQueueEventType.ADMISSION_REQUESTED,
+            policy=resolved.policy,
+            lane=lane,
+            state=WorkflowPackQueueState.NOT_ADMITTED,
+            request=request,
+            workflow_surface=resolved.workflow_surface,
+            artifact_refs=[snapshot_ref],
+            idempotency_key=idempotency_key,
+            idempotency_request_fingerprint=request_fingerprint,
+            message=(
+                "Workflow-pack async execution requested durable queued-worker posture for "
+                f"`{request.pack_id}@{request.version}`."
             ),
-        ],
-    )
+        )
+        queued_event = _record_queue_event(
+            queue_item_id=queue_item_id,
+            event_type=WorkflowPackQueueEventType.ADMISSION_QUEUED,
+            policy=resolved.policy,
+            lane=lane,
+            state=_transition(
+                current_state=requested_event.state,
+                next_state=WorkflowPackQueueState.QUEUED,
+            ),
+            request=request,
+            workflow_surface=resolved.workflow_surface,
+            artifact_refs=[snapshot_ref],
+            idempotency_key=idempotency_key,
+            idempotency_request_fingerprint=request_fingerprint,
+            message=(
+                "Workflow-pack async execution queued in durable async runtime state for "
+                f"`{request.pack_id}@{request.version}`."
+            ),
+        )
+
+        job_id = f"asyncjob_workflow_pack_execution_{uuid4().hex[:12]}"
+        attempt_id = f"{job_id}_attempt_001"
+        job_record = AsyncRuntimeJobRecord(
+            job_id=job_id,
+            job_type=WORKFLOW_PACK_EXECUTION_ASYNC_JOB_TYPE,
+            target_id=queue_item_id,
+            lifecycle_status=AsyncJobStatus.QUEUED.value,
+            submitted_at=now,
+            caller_app=request.task_request.caller.caller_app,
+            correlation_id=request.task_request.caller.correlation_id,
+            payload_summary=(
+                f"Durable workflow-pack execution for {request.pack_id}@{request.version} "
+                f"on queue item {queue_item_id}."
+            ),
+            execution_path="durable_runtime_worker_execution",
+            related_evaluation_run_id=None,
+            latest_message="Workflow-pack execution accepted into durable async runtime state.",
+            attempt_count=1,
+            artifact_ids=[snapshot_ref.artifact_id],
+        )
+        attempt_record = AsyncRuntimeAttemptRecord(
+            attempt_id=attempt_id,
+            job_id=job_id,
+            attempt_number=1,
+            lifecycle_status="SUBMITTED",
+            worker_id=None,
+            claimed_at=None,
+            heartbeat_at=None,
+            started_at=None,
+            completed_at=None,
+            failure_reason=None,
+            recorded_message="Initial workflow-pack async execution submission recorded.",
+        )
+        store = get_async_runtime_store()
+        store.save_job(job_record)
+        store.save_attempt(attempt_record)
+        delivery_published = publish_async_attempt_if_configured(
+            job=job_record,
+            attempt=attempt_record,
+        )
+        return WorkflowPackAsyncExecutionSubmissionResponse(
+            service=settings.service_name,
+            version=settings.service_version,
+            phase=settings.delivery_phase,
+            accepted=True,
+            idempotency_key=idempotency_key,
+            idempotency_status="CREATED",
+            queue_item_id=queue_item_id,
+            async_job=map_async_runtime_job(job_record),
+            queue_event=queued_event,
+            status_summary=[
+                "Workflow-pack execution was persisted as a durable async runtime job.",
+                "The retained queue request snapshot is the executable worker input; raw task payloads are not embedded in queue events.",
+                (
+                    "The async attempt was published to the managed delivery queue."
+                    if delivery_published
+                    else "The async job is durable; managed queue publication is inactive under the current async cutover posture."
+                ),
+            ],
+        )
 
 
 def run_next_workflow_pack_execution_job(
@@ -292,6 +321,172 @@ def _ensure_queue_event_store_ready_for_async_submission() -> None:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
+
+
+def _resolve_existing_idempotent_async_submission(
+    *,
+    request: WorkflowPackExecutionRequest,
+    policy: WorkflowPackQueuePolicyDescriptor,
+    workflow_surface: str,
+    request_fingerprint: str,
+    idempotency_key: str,
+) -> WorkflowPackAsyncExecutionSubmissionResponse | None:
+    for job in get_async_runtime_store().list_jobs():
+        if (
+            job.job_type != WORKFLOW_PACK_EXECUTION_ASYNC_JOB_TYPE
+            or job.caller_app != request.task_request.caller.caller_app
+        ):
+            continue
+        snapshot = _load_first_snapshot_for_job(job=job)
+        if snapshot is None:
+            continue
+        if snapshot.get("pack_id") != policy.workflow_pack_id:
+            continue
+        if snapshot.get("pack_version") != policy.workflow_pack_version:
+            continue
+        existing_idempotency_key = _resolve_snapshot_idempotency_key(payload=snapshot)
+        if existing_idempotency_key != idempotency_key:
+            continue
+        existing_fingerprint = _fingerprint_async_snapshot_payload(payload=snapshot)
+        if existing_fingerprint != request_fingerprint:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Workflow-pack async idempotency conflict: idempotency key "
+                    f"`{idempotency_key}` was reused with different execution input for "
+                    f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}`."
+                ),
+            )
+        queue_event = _load_queued_event_for_existing_submission(job=job)
+        return WorkflowPackAsyncExecutionSubmissionResponse(
+            service=settings.service_name,
+            version=settings.service_version,
+            phase=settings.delivery_phase,
+            accepted=True,
+            idempotency_key=idempotency_key,
+            idempotency_status="REPLAYED",
+            queue_item_id=queue_event.queue_item_id,
+            async_job=map_async_runtime_job(job),
+            queue_event=queue_event,
+            status_summary=[
+                "Workflow-pack async submission reused an existing durable async runtime job for the same idempotent command.",
+                (
+                    "The retained queue request snapshot matched the current request fingerprint; "
+                    "no duplicate queue event, async job, attempt, or managed queue delivery was created."
+                ),
+                f"The existing async job is currently `{job.lifecycle_status}`.",
+            ],
+        )
+    return None
+
+
+def _load_queued_event_for_existing_submission(
+    *,
+    job: AsyncRuntimeJobRecord,
+) -> WorkflowPackQueueEventDescriptor:
+    if job.target_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Existing workflow-pack async job `{job.job_id}` does not include a queue item."
+            ),
+        )
+    detail = build_workflow_pack_queue_event_detail(queue_item_id=job.target_id)
+    queued_events = [
+        event
+        for event in detail.events
+        if event.event_type is WorkflowPackQueueEventType.ADMISSION_QUEUED
+    ]
+    if not queued_events:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Existing workflow-pack async job `{job.job_id}` is missing queued event truth."
+            ),
+        )
+    return queued_events[-1]
+
+
+def _build_async_submission_idempotency_key(*, request: WorkflowPackExecutionRequest) -> str:
+    explicit_key = _normalize_idempotency_key(request.idempotency_key)
+    if explicit_key is not None:
+        return explicit_key
+    source = _canonical_json(
+        {
+            "operation": "workflow-pack-execute-async",
+            "caller_app": request.task_request.caller.caller_app,
+            "pack_id": request.pack_id,
+            "version": request.version,
+            "correlation_id": request.task_request.caller.correlation_id,
+        }
+    )
+    return "wp_async_" + hashlib.sha256(source).hexdigest()[:32]
+
+
+def _resolve_snapshot_idempotency_key(*, payload: dict[str, object]) -> str | None:
+    existing_key = payload.get("idempotency_key")
+    if isinstance(existing_key, str) and existing_key.strip():
+        return existing_key.strip()
+    task_request = payload.get("task_request")
+    if not isinstance(task_request, dict):
+        return None
+    caller = task_request.get("caller")
+    if not isinstance(caller, dict):
+        return None
+    source = _canonical_json(
+        {
+            "operation": "workflow-pack-execute-async",
+            "caller_app": caller.get("caller_app"),
+            "pack_id": payload.get("pack_id"),
+            "version": payload.get("pack_version"),
+            "correlation_id": caller.get("correlation_id"),
+        }
+    )
+    return "wp_async_" + hashlib.sha256(source).hexdigest()[:32]
+
+
+def _normalize_idempotency_key(idempotency_key: str | None) -> str | None:
+    if idempotency_key is None:
+        return None
+    normalized = idempotency_key.strip()
+    return normalized or None
+
+
+def _fingerprint_async_execution_request(
+    *,
+    request: WorkflowPackExecutionRequest,
+    lane: WorkflowPackQueueLane,
+    workflow_surface: str,
+) -> str:
+    payload = {
+        "pack_id": request.pack_id,
+        "pack_version": request.version,
+        "workflow_surface": workflow_surface,
+        "environment": request.environment.value,
+        "caller_identity_class": request.caller_identity_class.value,
+        "queue_lane": lane.value,
+        "task_request": request.task_request.model_dump(mode="json"),
+    }
+    return hashlib.sha256(_canonical_json(payload)).hexdigest()
+
+
+def _fingerprint_async_snapshot_payload(*, payload: dict[str, object]) -> str:
+    normalized = {
+        "pack_id": payload.get("pack_id"),
+        "pack_version": payload.get("pack_version"),
+        "workflow_surface": payload.get("workflow_surface"),
+        "environment": payload.get("environment"),
+        "caller_identity_class": payload.get("caller_identity_class"),
+        "queue_lane": payload.get("queue_lane"),
+        "task_request": payload.get("task_request"),
+    }
+    return hashlib.sha256(_canonical_json(normalized)).hexdigest()
+
+
+def _canonical_json(payload: object) -> bytes:
+    return json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True).encode(
+        "ascii"
+    )
 
 
 def _execute_claimed_workflow_pack_job(
@@ -611,6 +806,8 @@ def _record_queue_event(
     tenant_id: str | None = None,
     artifact_refs: list[ArtifactDescriptor] | None = None,
     reason_code: str | None = None,
+    idempotency_key: str | None = None,
+    idempotency_request_fingerprint: str | None = None,
 ) -> WorkflowPackQueueEventDescriptor:
     resolved_workflow_pack_id = (
         policy.workflow_pack_id
@@ -647,6 +844,8 @@ def _record_queue_event(
         tenant_id=request.task_request.caller.tenant_id if request is not None else tenant_id,
         workflow_surface=workflow_surface,
         reason_code=reason_code,
+        idempotency_key=idempotency_key,
+        idempotency_request_fingerprint=idempotency_request_fingerprint,
         artifact_refs=artifact_refs or [],
         message=message,
     )

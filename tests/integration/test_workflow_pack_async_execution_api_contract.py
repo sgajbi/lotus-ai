@@ -57,6 +57,8 @@ def test_workflow_pack_async_execution_route_persists_queue_snapshot_and_job(
     assert response.status_code == 200
     body = response.json()
     assert body["accepted"] is True
+    assert body["idempotency_key"].startswith("wp_async_")
+    assert body["idempotency_status"] == "CREATED"
     assert body["queue_item_id"].startswith("wpq_")
     assert body["async_job"]["job_type"] == "workflow_pack_execution"
     assert body["async_job"]["target_id"] == body["queue_item_id"]
@@ -65,6 +67,8 @@ def test_workflow_pack_async_execution_route_persists_queue_snapshot_and_job(
     assert body["queue_event"]["event_type"] == "ADMISSION_QUEUED"
     assert body["queue_event"]["queue_item_id"] == body["queue_item_id"]
     assert body["queue_event"]["artifact_refs"] == body["async_job"]["artifact_refs"]
+    assert body["queue_event"]["idempotency_key"] == body["idempotency_key"]
+    assert len(body["queue_event"]["idempotency_request_fingerprint"]) == 64
     assert any("durable async runtime job" in line for line in body["status_summary"])
 
     detail_response = client.get(f"/platform/workflow-packs/queue-events/{body['queue_item_id']}")
@@ -206,13 +210,98 @@ def test_workflow_pack_async_execution_rejects_duplicate_active_correlation(
     request = advisor_brief_workflow_pack_execution_request_json(
         correlation_id="corr-workflow-pack-async-duplicate-001"
     )
+    request["idempotency_key"] = "wp-async-duplicate-command-001"
 
     first_response = client.post("/platform/workflow-packs/execute-async", json=request)
     second_response = client.post("/platform/workflow-packs/execute-async", json=request)
 
     assert first_response.status_code == 200
-    assert second_response.status_code == 409
-    assert "already owns correlation id" in second_response.json()["detail"]
+    assert second_response.status_code == 200
+    first_body = first_response.json()
+    second_body = second_response.json()
+    assert second_body["idempotency_status"] == "REPLAYED"
+    assert second_body["idempotency_key"] == "wp-async-duplicate-command-001"
+    assert second_body["idempotency_key"] == first_body["idempotency_key"]
+    assert second_body["queue_item_id"] == first_body["queue_item_id"]
+    assert second_body["async_job"]["job_id"] == first_body["async_job"]["job_id"]
+    assert len(get_async_runtime_store().list_jobs()) == 1
+
+
+def test_workflow_pack_async_execution_rejects_same_key_different_payload(
+    client: TestClient,
+) -> None:
+    request = advisor_brief_workflow_pack_execution_request_json(
+        correlation_id="corr-workflow-pack-async-idempotency-conflict-001"
+    )
+    request["idempotency_key"] = "wp-async-conflict-command-001"
+    conflicting_request = advisor_brief_workflow_pack_execution_request_json(
+        correlation_id="corr-workflow-pack-async-idempotency-conflict-001",
+        queue_lane="REVIEW_SUPPORT",
+    )
+    conflicting_request["idempotency_key"] = "wp-async-conflict-command-001"
+
+    first_response = client.post("/platform/workflow-packs/execute-async", json=request)
+    conflict_response = client.post(
+        "/platform/workflow-packs/execute-async",
+        json=conflicting_request,
+    )
+
+    assert first_response.status_code == 200
+    assert conflict_response.status_code == 409
+    assert "idempotency conflict" in conflict_response.json()["detail"]
+    assert len(get_async_runtime_store().list_jobs()) == 1
+
+
+def test_workflow_pack_async_execution_honors_explicit_idempotency_key(
+    client: TestClient,
+) -> None:
+    request = advisor_brief_workflow_pack_execution_request_json(
+        correlation_id="corr-workflow-pack-async-explicit-key-001"
+    )
+    request["idempotency_key"] = "workflow-pack-async-client-key-001"
+    replay_request = advisor_brief_workflow_pack_execution_request_json(
+        correlation_id="corr-workflow-pack-async-explicit-key-002"
+    )
+    replay_request["idempotency_key"] = "workflow-pack-async-client-key-001"
+
+    first_response = client.post("/platform/workflow-packs/execute-async", json=request)
+    conflict_response = client.post("/platform/workflow-packs/execute-async", json=replay_request)
+    replay_request["task_request"]["caller"]["correlation_id"] = (
+        "corr-workflow-pack-async-explicit-key-001"
+    )
+    replay_response = client.post("/platform/workflow-packs/execute-async", json=replay_request)
+
+    assert first_response.status_code == 200
+    assert conflict_response.status_code == 409
+    assert "idempotency conflict" in conflict_response.json()["detail"]
+    assert replay_response.status_code == 200
+    assert replay_response.json()["idempotency_key"] == "workflow-pack-async-client-key-001"
+    assert replay_response.json()["idempotency_status"] == "REPLAYED"
+    assert replay_response.json()["queue_item_id"] == first_response.json()["queue_item_id"]
+
+
+def test_workflow_pack_async_execution_replays_completed_prior_submission(
+    client: TestClient,
+) -> None:
+    request = advisor_brief_workflow_pack_execution_request_json(
+        correlation_id="corr-workflow-pack-async-idempotency-completed-001"
+    )
+    first_response = client.post("/platform/workflow-packs/execute-async", json=request)
+    assert first_response.status_code == 200
+
+    result = run_next_workflow_pack_execution_job(worker_id="worker-a")
+    replay_response = client.post("/platform/workflow-packs/execute-async", json=request)
+
+    assert result is not None
+    assert result.terminal_status == "COMPLETED"
+    assert replay_response.status_code == 200
+    assert replay_response.json()["idempotency_status"] == "REPLAYED"
+    assert replay_response.json()["async_job"]["status"] == "COMPLETED"
+    assert (
+        replay_response.json()["async_job"]["job_id"]
+        == first_response.json()["async_job"]["job_id"]
+    )
+    assert len(get_async_runtime_store().list_jobs()) == 1
 
 
 def test_workflow_pack_async_execution_enforces_persisted_queue_capacity(

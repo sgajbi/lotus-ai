@@ -31,6 +31,8 @@ def persist_workflow_pack_queue_request_snapshot(
     environment: WorkflowPackEnvironment | None,
     caller_identity_class: WorkflowPackCallerIdentityClass | None,
     created_at: str,
+    idempotency_key: str | None = None,
+    idempotency_request_fingerprint: str | None = None,
 ) -> ArtifactDescriptor:
     payload = json.dumps(
         {
@@ -45,6 +47,8 @@ def persist_workflow_pack_queue_request_snapshot(
             "caller_identity_class": (
                 caller_identity_class.value if caller_identity_class is not None else None
             ),
+            "idempotency_key": idempotency_key,
+            "idempotency_request_fingerprint": idempotency_request_fingerprint,
             "task_request": task_request.model_dump(mode="json"),
         },
         sort_keys=True,
@@ -76,6 +80,7 @@ def build_workflow_pack_execution_request_from_queue_snapshot(
             "caller_identity_class": payload["caller_identity_class"],
             "workflow_surface": payload.get("workflow_surface"),
             "queue_lane": payload.get("queue_lane"),
+            "idempotency_key": payload.get("idempotency_key"),
             "task_request": payload["task_request"],
         }
     )

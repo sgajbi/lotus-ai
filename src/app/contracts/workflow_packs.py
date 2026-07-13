@@ -799,6 +799,16 @@ class WorkflowPackExecutionRequest(BaseModel):
         default=None,
         description="Optional governed queue lane requested for this explicit workflow-pack execution. Omit to use the pack policy default lane.",
     )
+    idempotency_key: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description=(
+            "Optional caller-supplied mutation idempotency key. Workflow-pack async submission "
+            "uses this key to replay the same durable queue submission and to reject the same key "
+            "with different execution input."
+        ),
+    )
     task_request: TaskExecutionRequest = Field(
         description=(
             "Bounded lotus-ai task request that carries the structured execution context for the "
@@ -829,6 +839,16 @@ class WorkflowPackAsyncExecutionSubmissionResponse(BaseModel):
     version: str = Field(description="Current lotus-ai service version.")
     phase: str = Field(description="Current delivery phase for lotus-ai.")
     accepted: bool = Field(description="Whether the workflow-pack execution was durably queued.")
+    idempotency_key: str = Field(
+        description=(
+            "Workflow-pack async command identity, using a caller-supplied idempotency key when "
+            "provided and otherwise a source-safe fallback derived from caller, pack version, and "
+            "caller correlation id."
+        )
+    )
+    idempotency_status: str = Field(
+        description="Idempotency outcome for this submission, such as CREATED or REPLAYED."
+    )
     queue_item_id: str = Field(
         description="Workflow-pack queue item identifier that owns the persisted worker execution."
     )
