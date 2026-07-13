@@ -102,7 +102,11 @@ Current repository posture:
 8. RFC-0108 AI surface supportability now carries bounded `supportability_reason` values and
    explicit `metric_labels` truth for `lotus_ai_surface_supportability_state`, so operators can
    distinguish no-sensitive-telemetry degradation from workflow-pack run posture without relying on
-   raw prompts, generated content, portfolio identifiers, correlation ids, or trace ids,
+   raw prompts, generated content, portfolio identifiers, correlation ids, or trace ids. The
+   observability activation-readiness and governance surfaces consume this same supportability
+   summary and remain blocked while AI-backed surfaces report degraded or unavailable posture,
+   missing no-sensitive-content telemetry, action-required supportability, or unavailable surface
+   posture,
 9. the FastAPI perimeter now has explicit service-owned HTTP boundary controls for allowed hosts,
    bounded CORS, secure response headers, opt-in HSTS, maximum request body size, and
    problem-details API errors with stable `error_code` and body/header correlation context,
