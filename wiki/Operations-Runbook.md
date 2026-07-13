@@ -143,6 +143,7 @@ Good examples:
 3. async posture
    - `/platform/async/runtime-status`
    - `/platform/async/jobs`
+   - `/platform/async/control-plane-actions`
 4. prompt posture
    - `/platform/prompts/runtime-status`
    - `/platform/prompts/control-history`
@@ -368,6 +369,11 @@ detail:
 4. `/platform/async/runtime-status`
 5. `/platform/workflow-packs/control-history`
 6. `/platform/workflow-packs/runs`
+
+For dedicated-worker async execution, treat `enqueued_job_count > 0` with
+`queue_backlog_count == 0` and no active worker leases as queue/database divergence. Use
+`REDRIVE_QUEUED_JOB` to republish the existing queued attempt, or `QUARANTINE_QUEUED_JOB` to
+abandon the queued job with operator evidence; do not repair this state with ad hoc table edits.
 
 ## Detailed Runbook Sources
 
