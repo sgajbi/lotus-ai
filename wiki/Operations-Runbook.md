@@ -167,7 +167,10 @@ Good examples:
 For production go-live, treat text-generation and embedding live-provider execution as the same
 provider-governed approval family. Configured live-provider secret material must be
 deployment-managed, and enabled retrieval must have approved retrieval governance backed by current
-runtime evaluation evidence before platform production approval is true.
+runtime evaluation evidence before platform production approval is true. Live prompt activation
+through SQL-backed prompt and evaluation-runtime stores must also report approved
+`prompt_governance`, and `LOTUS_AI_SAFETY_MODE=runtime_enforced` must report approved
+`safety_governance`, before platform production approval is true.
 
 ## Workflow-Pack Operator Checks
 
