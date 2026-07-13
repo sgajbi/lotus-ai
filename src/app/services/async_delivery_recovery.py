@@ -144,14 +144,29 @@ def recover_unhandled_delivery(
     delivery_job_id: str,
     delivery_attempt_id: str,
     delivery_job_type: str,
+    delivery_target_id: str | None,
+    delivery_caller_app: str,
+    delivery_correlation_id: str,
+    delivery_submitted_at: str,
     worker_id: str,
     reason: str,
 ) -> None:
     store = get_async_runtime_store()
     job = store.get_job(job_id=delivery_job_id)
     if job is None:
+        job = _quarantine_missing_delivery(
+            delivery_job_id=delivery_job_id,
+            delivery_attempt_id=delivery_attempt_id,
+            delivery_job_type=delivery_job_type,
+            delivery_target_id=delivery_target_id,
+            delivery_caller_app=delivery_caller_app,
+            delivery_correlation_id=delivery_correlation_id,
+            delivery_submitted_at=delivery_submitted_at,
+            reason=reason,
+        )
         store.save_control_event(
             _missing_delivery_control_event(
+                job=job,
                 delivery_job_id=delivery_job_id,
                 delivery_attempt_id=delivery_attempt_id,
                 delivery_job_type=delivery_job_type,
@@ -187,8 +202,58 @@ def recover_unhandled_delivery(
     store.save_control_event(event)
 
 
+def _quarantine_missing_delivery(
+    *,
+    delivery_job_id: str,
+    delivery_attempt_id: str,
+    delivery_job_type: str,
+    delivery_target_id: str | None,
+    delivery_caller_app: str,
+    delivery_correlation_id: str,
+    delivery_submitted_at: str,
+    reason: str,
+) -> AsyncRuntimeJobRecord:
+    store = get_async_runtime_store()
+    now = _utcnow()
+    job = AsyncRuntimeJobRecord(
+        job_id=delivery_job_id,
+        job_type=delivery_job_type,
+        target_id=delivery_target_id,
+        lifecycle_status=AsyncJobStatus.ABANDONED.value,
+        submitted_at=delivery_submitted_at,
+        caller_app=delivery_caller_app,
+        correlation_id=delivery_correlation_id,
+        payload_summary=(
+            "Quarantined orphaned dedicated-worker delivery without matching runtime job."
+        ),
+        execution_path="dedicated_worker_delivery_recovery",
+        related_evaluation_run_id=None,
+        latest_message=f"Missing durable async job delivery quarantined: {reason}",
+        attempt_count=1,
+        artifact_ids=[],
+    )
+    store.save_job(job)
+    store.save_attempt(
+        AsyncRuntimeAttemptRecord(
+            attempt_id=delivery_attempt_id,
+            job_id=delivery_job_id,
+            attempt_number=1,
+            lifecycle_status=AsyncJobStatus.ABANDONED.value,
+            worker_id=None,
+            claimed_at=None,
+            heartbeat_at=None,
+            started_at=None,
+            completed_at=now,
+            failure_reason="MISSING_RUNTIME_JOB",
+            recorded_message=f"Missing durable async job delivery quarantined: {reason}",
+        )
+    )
+    return job
+
+
 def _missing_delivery_control_event(
     *,
+    job: AsyncRuntimeJobRecord,
     delivery_job_id: str,
     delivery_attempt_id: str,
     delivery_job_type: str,
@@ -206,7 +271,7 @@ def _missing_delivery_control_event(
             f"`{delivery_job_type}`: {reason}"
         ),
         prior_status="MISSING_RUNTIME_JOB",
-        resulting_status="QUARANTINED_DELIVERY",
+        resulting_status=job.lifecycle_status,
         affected_attempt_id=delivery_attempt_id,
         authorization=_system_authorization_for_job_type(job_type=delivery_job_type),
         recorded_at=_utcnow(),
