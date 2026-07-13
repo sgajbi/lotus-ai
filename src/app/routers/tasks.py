@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.contracts.tasks import TaskExecutionRequest, TaskExecutionResponse
+from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.task_executor import execute_task
 from app.services.workflow_pack_run_ledger import WorkflowPackRunStoreUnavailableError
 from app.services.workflow_pack_task_flow_service import WorkflowPackTaskFlowStoreNotReadyError
@@ -34,7 +35,10 @@ router = APIRouter(prefix="/ai/tasks", tags=["tasks"])
         500: {"description": "Unexpected server error."},
     },
 )
-async def execute_task_route(request: TaskExecutionRequest) -> TaskExecutionResponse:
+async def execute_task_route(
+    request: TaskExecutionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
+) -> TaskExecutionResponse:
     try:
         return execute_task(request)
     except WorkflowPackRunStoreUnavailableError as exc:

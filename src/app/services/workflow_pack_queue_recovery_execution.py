@@ -15,6 +15,7 @@ from app.contracts.workflow_pack_queue_recovery import (
     WorkflowPackQueueRecoveryExecutionResponse,
 )
 from app.contracts.workflow_packs import WorkflowPackExecutionRequest
+from app.http.authenticated_caller import bind_internal_authenticated_caller
 from app.services.workflow_pack_execution import execute_workflow_pack
 from app.services.workflow_pack_queue_recovery import (
     authorize_workflow_pack_queue_recovery_caller,
@@ -56,14 +57,18 @@ def execute_workflow_pack_queue_retry(
                 f"by policy. Blocking event: {event.event_id}."
             ),
         )
-    execution = execute_workflow_pack(
-        execution_request,
-        recovery_lineage=_build_recovery_lineage(
-            source_event=source_event,
-            decision_event=event,
-            action_type=WorkflowPackRunRecoveryActionType.RETRY,
-        ),
-    )
+    with bind_internal_authenticated_caller(
+        caller_app=execution_request.task_request.caller.caller_app,
+        trust_source="retained_queue_request_snapshot",
+    ):
+        execution = execute_workflow_pack(
+            execution_request,
+            recovery_lineage=_build_recovery_lineage(
+                source_event=source_event,
+                decision_event=event,
+                action_type=WorkflowPackRunRecoveryActionType.RETRY,
+            ),
+        )
     return WorkflowPackQueueRecoveryExecutionResponse(
         service=execution.service,
         version=execution.version,
@@ -103,14 +108,18 @@ def execute_workflow_pack_queue_replay(
                 f"by policy. Blocking event: {event.event_id}."
             ),
         )
-    execution = execute_workflow_pack(
-        execution_request,
-        recovery_lineage=_build_recovery_lineage(
-            source_event=source_event,
-            decision_event=event,
-            action_type=WorkflowPackRunRecoveryActionType.REPLAY,
-        ),
-    )
+    with bind_internal_authenticated_caller(
+        caller_app=execution_request.task_request.caller.caller_app,
+        trust_source="retained_queue_request_snapshot",
+    ):
+        execution = execute_workflow_pack(
+            execution_request,
+            recovery_lineage=_build_recovery_lineage(
+                source_event=source_event,
+                decision_event=event,
+                action_type=WorkflowPackRunRecoveryActionType.REPLAY,
+            ),
+        )
     return WorkflowPackQueueRecoveryExecutionResponse(
         service=execution.service,
         version=execution.version,

@@ -79,6 +79,16 @@ endpoint internals must not be returned in API errors.
 service-owned boundary is transport-only and must not contain task, workflow-pack, retrieval,
 prompt, provider, or domain business logic.
 
+Protected data-plane and control-plane POST routes require a trusted `X-Caller-App` header from
+ingress or an equivalent service-to-service boundary. The request body `caller_app` remains part of
+the API contract for audit and evidence, but it is treated as declared metadata and must match the
+authenticated HTTP caller before task execution, retrieval execution, async submission or control,
+prompt control, provider control, workflow-pack execution, workflow-pack review, or queue recovery
+side effects run. Authorization decisions now preserve `authenticated_caller_app`,
+`caller_identity_source`, and `caller_identity_bound` so operators can distinguish trusted
+caller-binding evidence from legacy body-only metadata. The current header represents a Lotus
+service caller, not a human end-user entitlement model.
+
 Environment-backed controls use the `LOTUS_AI_` prefix:
 
 1. `LOTUS_AI_HTTP_ALLOWED_HOSTS`
@@ -95,6 +105,13 @@ The service adds secure response headers, enforces configured host and CORS post
 oversized requests with `413` before endpoint handlers parse AI task, retrieval, or workflow-pack
 payloads. HSTS is disabled by default because TLS termination may sit at ingress; enable it only
 when the deployment boundary is correct for service-emitted HSTS.
+
+This service-level caller binding does not replace caller-policy authorization. The existing
+caller-policy registry still decides whether the authenticated caller is active and allowed to use a
+capability. Missing caller identity, empty caller identity, unknown callers, disabled callers, and
+body/header caller mismatches fail closed with a safe `403` response. Tokens, upstream credentials,
+raw request bodies, prompts, tenant-sensitive identifiers, and caller spoofing details must not be
+logged or echoed in problem responses.
 
 API errors now use a bounded `application/problem+json` response envelope with stable fields:
 `type`, `title`, `status`, `detail`, `error_code`, `correlation_id`, and optional source-safe

@@ -44,6 +44,7 @@ class AuthorizationOutcome(str, Enum):
     BLOCKED_ASYNC_CONTROL_NOT_ALLOWED = "BLOCKED_ASYNC_CONTROL_NOT_ALLOWED"
     BLOCKED_PROMPT_CONTROL_NOT_ALLOWED = "BLOCKED_PROMPT_CONTROL_NOT_ALLOWED"
     BLOCKED_PROVIDER_CONTROL_NOT_ALLOWED = "BLOCKED_PROVIDER_CONTROL_NOT_ALLOWED"
+    BLOCKED_CALLER_IDENTITY_MISMATCH = "BLOCKED_CALLER_IDENTITY_MISMATCH"
     BLOCKED_TENANT_REQUIRED = "BLOCKED_TENANT_REQUIRED"
     BLOCKED_TENANT_NOT_ALLOWED = "BLOCKED_TENANT_NOT_ALLOWED"
 
@@ -85,6 +86,18 @@ class CallerPolicyDescriptor(BaseModel):
 
 class AuthorizationDecision(BaseModel):
     caller_app: str = Field(description="Caller application evaluated by the access-control layer.")
+    authenticated_caller_app: str | None = Field(
+        default=None,
+        description="Authenticated HTTP caller identity bound to this authorization decision, when present.",
+    )
+    caller_identity_source: str = Field(
+        default="body_metadata_only",
+        description="Source used to bind caller identity for this authorization decision.",
+    )
+    caller_identity_bound: bool = Field(
+        default=False,
+        description="Whether the request-declared caller matched an authenticated HTTP caller identity.",
+    )
     capability_type: AuthorizationCapabilityType = Field(
         description="Capability class evaluated by the access-control layer."
     )

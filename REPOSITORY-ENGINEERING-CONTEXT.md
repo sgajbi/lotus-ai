@@ -35,8 +35,9 @@ Current repository posture:
 2. live provider rollout remains controlled and deliberately constrained, with production go-live
    governance covering both text-generation and embedding execution posture,
 3. retrieval, prompts, safety, provider policy, evaluation, async runtime, and governance are real first-class seams; enabled retrieval, live SQL-backed prompt activation, and runtime-enforced safety each remain production go-live blockers until their governance and runtime-backed evidence are approval-ready,
-4. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity, with owner-artifact references that must resolve back to the real downstream repository and with one governed store-mode seam that can keep activation state and control history in memory or in a migration-backed SQL store,
-5. workflow-pack run-ledger foundations now exist as a separate runtime seam for the current
+4. protected task, retrieval, async, prompt, provider, workflow-pack, review, and queue-recovery POST routes now bind caller-policy authorization to trusted `X-Caller-App` HTTP caller identity before side effects while preserving body-level caller metadata for audit and evidence,
+5. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity, with owner-artifact references that must resolve back to the real downstream repository and with one governed store-mode seam that can keep activation state and control history in memory or in a migration-backed SQL store,
+6. workflow-pack run-ledger foundations now exist as a separate runtime seam for the current
    executable workflow-pack families (`advisor_brief.pack`, `workspace_rationale.pack`,
    `proposal_memo_commentary.pack`, `advisory_copilot_proposal_explanation.pack`,
    `advisory_copilot_evidence_qa.pack`, `advisory_copilot_meeting_preparation.pack`,

@@ -9,6 +9,7 @@ from app.contracts.access_control import (
     CallerLifecycleStatus,
     TenantPolicyMode,
 )
+from app.http.authenticated_caller import get_authenticated_caller
 from app.services.caller_policy_store import get_caller_policy_repository
 
 
@@ -17,6 +18,12 @@ def require_active_registered_caller(
     *,
     blocked_summary: str,
 ) -> None:
+    authenticated_caller = get_authenticated_caller()
+    if authenticated_caller is not None and authenticated_caller.caller_app != caller_app:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Request caller_app does not match the authenticated HTTP caller identity.",
+        )
     policy = get_caller_policy_repository().get_policy(caller_app)
     if policy is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=blocked_summary)
@@ -33,10 +40,37 @@ def authorize_request(
     source_ids: list[str] | None = None,
 ) -> AuthorizationDecision:
     requested_source_ids = list(source_ids or [])
+    authenticated_caller = get_authenticated_caller()
+    identity_source = (
+        authenticated_caller.trust_source if authenticated_caller else "body_metadata_only"
+    )
+    identity_bound = (
+        authenticated_caller is not None and authenticated_caller.caller_app == caller_app
+    )
+    if authenticated_caller is not None and not identity_bound:
+        return AuthorizationDecision(
+            caller_app=caller_app,
+            authenticated_caller_app=authenticated_caller.caller_app,
+            caller_identity_source=identity_source,
+            caller_identity_bound=False,
+            capability_type=capability_type,
+            outcome=AuthorizationOutcome.BLOCKED_CALLER_IDENTITY_MISMATCH,
+            allowed=False,
+            tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            summary=("Request caller_app does not match the authenticated HTTP caller identity."),
+        )
     policy = get_caller_policy_repository().get_policy(caller_app)
     if policy is None:
         return AuthorizationDecision(
             caller_app=caller_app,
+            authenticated_caller_app=(
+                authenticated_caller.caller_app if authenticated_caller else None
+            ),
+            caller_identity_source=identity_source,
+            caller_identity_bound=identity_bound,
             capability_type=capability_type,
             outcome=AuthorizationOutcome.BLOCKED_UNKNOWN_CALLER,
             allowed=False,
@@ -53,6 +87,11 @@ def authorize_request(
     if policy.lifecycle_status != CallerLifecycleStatus.ACTIVE:
         return AuthorizationDecision(
             caller_app=caller_app,
+            authenticated_caller_app=(
+                authenticated_caller.caller_app if authenticated_caller else None
+            ),
+            caller_identity_source=identity_source,
+            caller_identity_bound=identity_bound,
             capability_type=capability_type,
             outcome=AuthorizationOutcome.BLOCKED_CALLER_DISABLED,
             allowed=False,
@@ -139,6 +178,11 @@ def authorize_request(
         if task_id not in policy.allowed_task_ids:
             return AuthorizationDecision(
                 caller_app=caller_app,
+                authenticated_caller_app=(
+                    authenticated_caller.caller_app if authenticated_caller else None
+                ),
+                caller_identity_source=identity_source,
+                caller_identity_bound=identity_bound,
                 capability_type=capability_type,
                 outcome=AuthorizationOutcome.BLOCKED_TASK_NOT_ALLOWED,
                 allowed=False,
@@ -209,6 +253,11 @@ def authorize_request(
         if not policy.allow_live_provider:
             return AuthorizationDecision(
                 caller_app=caller_app,
+                authenticated_caller_app=(
+                    authenticated_caller.caller_app if authenticated_caller else None
+                ),
+                caller_identity_source=identity_source,
+                caller_identity_bound=identity_bound,
                 capability_type=capability_type,
                 outcome=AuthorizationOutcome.BLOCKED_LIVE_PROVIDER_NOT_ALLOWED,
                 allowed=False,
@@ -251,11 +300,23 @@ def _evaluate_tenant_policy(
     tenant_policy_mode: TenantPolicyMode,
     restricted_tenant_ids: list[str],
 ) -> AuthorizationDecision | None:
+    authenticated_caller = get_authenticated_caller()
+    identity_source = (
+        authenticated_caller.trust_source if authenticated_caller else "body_metadata_only"
+    )
+    identity_bound = (
+        authenticated_caller is not None and authenticated_caller.caller_app == caller_app
+    )
     if tenant_policy_mode == TenantPolicyMode.OPTIONAL:
         return None
     if tenant_id is None:
         return AuthorizationDecision(
             caller_app=caller_app,
+            authenticated_caller_app=(
+                authenticated_caller.caller_app if authenticated_caller else None
+            ),
+            caller_identity_source=identity_source,
+            caller_identity_bound=identity_bound,
             capability_type=capability_type,
             outcome=AuthorizationOutcome.BLOCKED_TENANT_REQUIRED,
             allowed=False,
@@ -271,6 +332,11 @@ def _evaluate_tenant_policy(
     if tenant_policy_mode == TenantPolicyMode.RESTRICTED and tenant_id not in restricted_tenant_ids:
         return AuthorizationDecision(
             caller_app=caller_app,
+            authenticated_caller_app=(
+                authenticated_caller.caller_app if authenticated_caller else None
+            ),
+            caller_identity_source=identity_source,
+            caller_identity_bound=identity_bound,
             capability_type=capability_type,
             outcome=AuthorizationOutcome.BLOCKED_TENANT_NOT_ALLOWED,
             allowed=False,
@@ -296,11 +362,23 @@ def _evaluate_retrieval_sources(
     tenant_id: str | None,
     tenant_policy_mode: TenantPolicyMode,
 ) -> AuthorizationDecision | None:
+    authenticated_caller = get_authenticated_caller()
+    identity_source = (
+        authenticated_caller.trust_source if authenticated_caller else "body_metadata_only"
+    )
+    identity_bound = (
+        authenticated_caller is not None and authenticated_caller.caller_app == caller_app
+    )
     allowed_source_id_set = set(allowed_source_ids)
     if requested_source_ids:
         if not set(requested_source_ids).issubset(allowed_source_id_set):
             return AuthorizationDecision(
                 caller_app=caller_app,
+                authenticated_caller_app=(
+                    authenticated_caller.caller_app if authenticated_caller else None
+                ),
+                caller_identity_source=identity_source,
+                caller_identity_bound=identity_bound,
                 capability_type=capability_type,
                 outcome=AuthorizationOutcome.BLOCKED_RETRIEVAL_SOURCE_NOT_ALLOWED,
                 allowed=False,
@@ -317,6 +395,11 @@ def _evaluate_retrieval_sources(
     if not allowed_source_ids:
         return AuthorizationDecision(
             caller_app=caller_app,
+            authenticated_caller_app=(
+                authenticated_caller.caller_app if authenticated_caller else None
+            ),
+            caller_identity_source=identity_source,
+            caller_identity_bound=identity_bound,
             capability_type=capability_type,
             outcome=AuthorizationOutcome.BLOCKED_RETRIEVAL_SOURCE_NOT_ALLOWED,
             allowed=False,
@@ -343,8 +426,18 @@ def _allowed_decision(
     effective_source_ids: list[str],
     summary: str,
 ) -> AuthorizationDecision:
+    authenticated_caller = get_authenticated_caller()
     return AuthorizationDecision(
         caller_app=caller_app,
+        authenticated_caller_app=(
+            authenticated_caller.caller_app if authenticated_caller else None
+        ),
+        caller_identity_source=(
+            authenticated_caller.trust_source if authenticated_caller else "body_metadata_only"
+        ),
+        caller_identity_bound=(
+            authenticated_caller is not None and authenticated_caller.caller_app == caller_app
+        ),
         capability_type=capability_type,
         outcome=AuthorizationOutcome.ALLOWED,
         allowed=True,
@@ -370,9 +463,21 @@ def _evaluate_control_capability(
     blocked_summary: str,
     allowed_summary: str,
 ) -> AuthorizationDecision:
+    authenticated_caller = get_authenticated_caller()
+    identity_source = (
+        authenticated_caller.trust_source if authenticated_caller else "body_metadata_only"
+    )
+    identity_bound = (
+        authenticated_caller is not None and authenticated_caller.caller_app == caller_app
+    )
     if not allowed:
         return AuthorizationDecision(
             caller_app=caller_app,
+            authenticated_caller_app=(
+                authenticated_caller.caller_app if authenticated_caller else None
+            ),
+            caller_identity_source=identity_source,
+            caller_identity_bound=identity_bound,
             capability_type=capability_type,
             outcome=blocked_outcome,
             allowed=False,

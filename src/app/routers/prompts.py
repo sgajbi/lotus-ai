@@ -14,6 +14,7 @@ from app.contracts.prompts import (
     PromptRunbookReadinessResponse,
     PromptRuntimeStatusResponse,
 )
+from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.prompt_activation_readiness import build_prompt_activation_readiness
 from app.services.prompt_evidence_readiness import build_prompt_evidence_readiness
 from app.services.prompt_governance import build_prompt_governance_status
@@ -110,6 +111,7 @@ async def get_prompt_control_history_route(
 )
 async def apply_prompt_control_action_route(
     request: PromptControlActionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> PromptControlActionResponse:
     return apply_prompt_control_action(request)
 
