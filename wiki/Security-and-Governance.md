@@ -12,8 +12,11 @@ explicit runtime or governance surfaces.
 
 Production go-live approval is stricter than runtime availability. It now requires deployment-managed
 secret posture for configured live-provider secret material, including text-generation and embedding
-provider credentials, and it treats enabled retrieval as blocked until retrieval governance and
-runtime-backed evaluation evidence are approval-ready.
+provider credentials. It treats enabled retrieval as blocked until retrieval governance and
+runtime-backed evaluation evidence are approval-ready, treats SQL-backed live prompt activation as
+blocked until prompt governance is approval-ready, and treats runtime-enforced safety as blocked
+until safety governance is approval-ready. Memory-backed prompt posture and documented-only safety
+posture remain visible but informational for production go-live.
 
 Another distinction matters when reading the platform:
 

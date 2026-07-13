@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from _pytest.monkeypatch import MonkeyPatch
 
 from app.config import settings
@@ -35,6 +37,8 @@ def test_build_production_go_live_runtime_status_distinguishes_platform_and_use_
     assert status.provider_rollback_target_state is None
     assert any(domain.domain_id == "managed_secret_posture" for domain in status.approval_domains)
     assert any(domain.domain_id == "managed_object_storage" for domain in status.approval_domains)
+    assert any(domain.domain_id == "prompt_governance" for domain in status.approval_domains)
+    assert any(domain.domain_id == "safety_governance" for domain in status.approval_domains)
 
 
 def test_build_production_go_live_runtime_status_blocks_platform_approval_on_managed_domains() -> (
@@ -47,6 +51,10 @@ def test_build_production_go_live_runtime_status_blocks_platform_approval_on_man
     assert domain_by_id["managed_secret_posture"].status.value == "BLOCKED"
     assert domain_by_id["managed_object_storage"].required_for_platform_approval is True
     assert domain_by_id["managed_object_storage"].status.value == "BLOCKED"
+    assert domain_by_id["prompt_governance"].required_for_platform_approval is False
+    assert domain_by_id["prompt_governance"].status.value == "INFORMATIONAL"
+    assert domain_by_id["safety_governance"].required_for_platform_approval is False
+    assert domain_by_id["safety_governance"].status.value == "INFORMATIONAL"
     assert status.blocked_domain_count == 2
 
 
@@ -560,3 +568,139 @@ def test_build_production_go_live_runtime_can_approve_enabled_retrieval_with_gov
 
     assert status.platform_production_approved is True
     assert domain_by_id["retrieval_governance"].status.value == "APPROVED"
+
+
+def test_build_production_go_live_runtime_blocks_live_prompt_activation_without_governance(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.prompt_store_mode = "sqlalchemy"
+    settings.evaluation_runtime_store_mode = "sqlalchemy"
+    _patch_production_ready_core_domains(monkeypatch)
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_prompt_governance_status_summary",
+        lambda: SimpleNamespace(governance_ready=False),
+    )
+
+    status = build_production_go_live_runtime_status()
+    domain_by_id = {domain.domain_id: domain for domain in status.approval_domains}
+
+    assert status.platform_production_approved is False
+    assert domain_by_id["prompt_governance"].required_for_platform_approval is True
+    assert domain_by_id["prompt_governance"].status.value == "BLOCKED"
+    assert (
+        "SQL-backed prompt and evaluation-runtime stores"
+        in domain_by_id["prompt_governance"].detail
+    )
+
+
+def test_build_production_go_live_runtime_approves_live_prompt_activation_with_governance(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.prompt_store_mode = "sqlalchemy"
+    settings.evaluation_runtime_store_mode = "sqlalchemy"
+    _patch_production_ready_core_domains(monkeypatch)
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_prompt_governance_status_summary",
+        lambda: SimpleNamespace(governance_ready=True),
+    )
+
+    status = build_production_go_live_runtime_status()
+    domain_by_id = {domain.domain_id: domain for domain in status.approval_domains}
+
+    assert status.platform_production_approved is True
+    assert domain_by_id["prompt_governance"].required_for_platform_approval is True
+    assert domain_by_id["prompt_governance"].status.value == "APPROVED"
+
+
+def test_build_production_go_live_runtime_blocks_runtime_enforced_safety_without_governance(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.safety_mode = "runtime_enforced"
+    _patch_production_ready_core_domains(monkeypatch)
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_safety_governance_status",
+        lambda: SimpleNamespace(governance_ready=False),
+    )
+
+    status = build_production_go_live_runtime_status()
+    domain_by_id = {domain.domain_id: domain for domain in status.approval_domains}
+
+    assert status.platform_production_approved is False
+    assert domain_by_id["safety_governance"].required_for_platform_approval is True
+    assert domain_by_id["safety_governance"].status.value == "BLOCKED"
+    assert "Runtime safety enforcement is active" in domain_by_id["safety_governance"].detail
+
+
+def test_build_production_go_live_runtime_approves_runtime_enforced_safety_with_governance(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.safety_mode = "runtime_enforced"
+    _patch_production_ready_core_domains(monkeypatch)
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_safety_governance_status",
+        lambda: SimpleNamespace(governance_ready=True),
+    )
+
+    status = build_production_go_live_runtime_status()
+    domain_by_id = {domain.domain_id: domain for domain in status.approval_domains}
+
+    assert status.platform_production_approved is True
+    assert domain_by_id["safety_governance"].required_for_platform_approval is True
+    assert domain_by_id["safety_governance"].status.value == "APPROVED"
+
+
+def _patch_production_ready_core_domains(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_production_baseline_runtime_status",
+        lambda app_state: ProductionBaselineRuntimeStatusResponse(
+            service="lotus-ai",
+            version="0.1.0",
+            posture=ProductionBaselinePosture.PRODUCTION_READY,
+            prod_shaped_local=True,
+            production_ready=True,
+            dependency_count=0,
+            blocked_dependency_count=0,
+            fallback_dependency_count=0,
+            dependencies=[],
+            blocking_findings=[],
+            status_summary=[],
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_managed_object_storage_approval_domain",
+        lambda: ProductionGoLiveDomainDescriptor(
+            domain_id="managed_object_storage",
+            status=ProductionGoLiveDomainStatus.APPROVED,
+            required_for_platform_approval=True,
+            configured_mode="s3",
+            review_surface="/platform/artifacts/governance-status",
+            detail="ready",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_managed_secret_approval_domain",
+        lambda: ProductionGoLiveDomainDescriptor(
+            domain_id="managed_secret_posture",
+            status=ProductionGoLiveDomainStatus.APPROVED,
+            required_for_platform_approval=True,
+            configured_mode="deployment_managed",
+            review_surface="/platform/production-baseline/runtime-status",
+            detail="ready",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_provider_governance_status",
+        lambda: SimpleNamespace(governance_ready=True),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_retrieval_governance_status",
+        lambda: SimpleNamespace(governance_ready=True),
+    )
+    monkeypatch.setattr(
+        "app.services.production_go_live_runtime.build_first_use_case_governance_status",
+        lambda: SimpleNamespace(
+            active_production_ready=False,
+            governance_ready=True,
+            rollout_stage=SimpleNamespace(value="LIMITED_ROLLOUT"),
+        ),
+    )

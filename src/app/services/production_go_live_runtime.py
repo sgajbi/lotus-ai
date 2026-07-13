@@ -11,8 +11,10 @@ from app.contracts.production_go_live import (
     ProductionGoLiveUseCaseState,
 )
 from app.contracts.production_baseline import ProductionBaselineRuntimeStatusResponse
+from app.contracts.prompts import PromptGovernanceStatusSummaryResponse
 from app.contracts.providers import ProviderGovernanceStatusResponse, ProviderRolloutState
 from app.contracts.retrieval import RetrievalGovernanceStatusResponse
+from app.contracts.safety import SafetyGovernanceStatusResponse
 from app.contracts.use_cases import FirstUseCaseGovernanceStatusResponse
 from app.services.first_use_case_governance import build_first_use_case_governance_status
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status
@@ -21,8 +23,10 @@ from app.services.production_go_live_approval_domains import (
     build_managed_secret_approval_domain,
 )
 from app.services.production_live_provider_inventory import build_live_provider_inventory
+from app.services.prompt_governance_status import build_prompt_governance_status_summary
 from app.services.provider_governance_status import build_provider_governance_status
 from app.services.retrieval_governance_status import build_retrieval_governance_status
+from app.services.safety_governance_status import build_safety_governance_status
 
 
 def build_production_go_live_runtime_status(
@@ -32,6 +36,8 @@ def build_production_go_live_runtime_status(
     provider_governance: ProviderGovernanceStatusResponse | None = None,
     first_use_case_governance: FirstUseCaseGovernanceStatusResponse | None = None,
     retrieval_governance: RetrievalGovernanceStatusResponse | None = None,
+    prompt_governance: PromptGovernanceStatusSummaryResponse | None = None,
+    safety_governance: SafetyGovernanceStatusResponse | None = None,
 ) -> ProductionGoLiveRuntimeStatusResponse:
     baseline = (
         baseline if baseline is not None else build_production_baseline_runtime_status(app_state)
@@ -54,6 +60,18 @@ def build_production_go_live_runtime_status(
     live_provider_inventory = build_live_provider_inventory()
     live_provider_required = live_provider_inventory.execution_requested
     retrieval_required = settings.retrieval_mode == "enabled"
+    prompt_governance_required = _live_prompt_activation_required()
+    safety_governance_required = settings.safety_mode == "runtime_enforced"
+    prompt_governance = _resolve_prompt_governance(
+        prompt_governance=prompt_governance,
+        required_for_platform_approval=prompt_governance_required,
+    )
+    safety_governance = _resolve_safety_governance(
+        safety_governance=safety_governance,
+        required_for_platform_approval=safety_governance_required,
+    )
+    prompt_governance_ready = _optional_governance_ready(prompt_governance)
+    safety_governance_ready = _optional_governance_ready(safety_governance)
     managed_secret = build_managed_secret_approval_domain()
     managed_object_store = build_managed_object_storage_approval_domain()
 
@@ -101,6 +119,34 @@ def build_production_go_live_runtime_status(
             ),
         ),
         ProductionGoLiveDomainDescriptor(
+            domain_id="prompt_governance",
+            status=_active_control_domain_status(
+                governance_ready=prompt_governance_ready,
+                required_for_platform_approval=prompt_governance_required,
+            ),
+            required_for_platform_approval=prompt_governance_required,
+            configured_mode=_prompt_governance_configured_mode(),
+            review_surface="/platform/prompts/governance-status",
+            detail=_prompt_governance_domain_detail(
+                governance_ready=prompt_governance_ready,
+                required_for_platform_approval=prompt_governance_required,
+            ),
+        ),
+        ProductionGoLiveDomainDescriptor(
+            domain_id="safety_governance",
+            status=_active_control_domain_status(
+                governance_ready=safety_governance_ready,
+                required_for_platform_approval=safety_governance_required,
+            ),
+            required_for_platform_approval=safety_governance_required,
+            configured_mode=settings.safety_mode,
+            review_surface="/platform/safety/governance-status",
+            detail=_safety_governance_domain_detail(
+                governance_ready=safety_governance_ready,
+                required_for_platform_approval=safety_governance_required,
+            ),
+        ),
+        ProductionGoLiveDomainDescriptor(
             domain_id="downstream_use_case_production",
             status=_use_case_domain_status(
                 use_case_production_approved=first_use_case_governance.active_production_ready,
@@ -127,6 +173,8 @@ def build_production_go_live_runtime_status(
         and managed_object_store.status is ProductionGoLiveDomainStatus.APPROVED
         and (not live_provider_required or provider_governance.governance_ready)
         and (not retrieval_required or retrieval_governance.governance_ready)
+        and (not prompt_governance_required or prompt_governance_ready)
+        and (not safety_governance_required or safety_governance_ready)
     )
     use_case_production_approved = first_use_case_governance.active_production_ready
     provider_freeze_state = _resolve_provider_freeze_state(
@@ -187,7 +235,7 @@ def build_production_go_live_runtime_status(
             (
                 "Platform production approval is currently satisfied."
                 if platform_production_approved
-                else "Platform production approval remains blocked pending managed infrastructure approval domains."
+                else "Platform production approval remains blocked pending required approval domains."
             ),
             (
                 "Downstream use-case production approval remains separate from platform approval and is not yet active for the current first use case."
@@ -221,6 +269,95 @@ def _retrieval_domain_status(
     if required_for_platform_approval:
         return ProductionGoLiveDomainStatus.BLOCKED
     return ProductionGoLiveDomainStatus.INFORMATIONAL
+
+
+def _active_control_domain_status(
+    *, governance_ready: bool, required_for_platform_approval: bool
+) -> ProductionGoLiveDomainStatus:
+    if not required_for_platform_approval:
+        return ProductionGoLiveDomainStatus.INFORMATIONAL
+    if governance_ready:
+        return ProductionGoLiveDomainStatus.APPROVED
+    return ProductionGoLiveDomainStatus.BLOCKED
+
+
+def _optional_governance_ready(
+    governance: PromptGovernanceStatusSummaryResponse | SafetyGovernanceStatusResponse | None,
+) -> bool:
+    return bool(governance and governance.governance_ready)
+
+
+def _resolve_prompt_governance(
+    *,
+    prompt_governance: PromptGovernanceStatusSummaryResponse | None,
+    required_for_platform_approval: bool,
+) -> PromptGovernanceStatusSummaryResponse | None:
+    if prompt_governance is not None:
+        return prompt_governance
+    if required_for_platform_approval:
+        return build_prompt_governance_status_summary()
+    return None
+
+
+def _resolve_safety_governance(
+    *,
+    safety_governance: SafetyGovernanceStatusResponse | None,
+    required_for_platform_approval: bool,
+) -> SafetyGovernanceStatusResponse | None:
+    if safety_governance is not None:
+        return safety_governance
+    if required_for_platform_approval:
+        return build_safety_governance_status()
+    return None
+
+
+def _live_prompt_activation_required() -> bool:
+    return (
+        settings.prompt_store_mode == "sqlalchemy"
+        and settings.evaluation_runtime_store_mode == "sqlalchemy"
+    )
+
+
+def _prompt_governance_configured_mode() -> str:
+    return (
+        f"prompt_store={settings.prompt_store_mode}; "
+        f"evaluation_runtime_store={settings.evaluation_runtime_store_mode}"
+    )
+
+
+def _prompt_governance_domain_detail(
+    *, governance_ready: bool, required_for_platform_approval: bool
+) -> str:
+    if not required_for_platform_approval:
+        return (
+            "Live prompt activation is not enabled through both SQL-backed prompt and evaluation-runtime stores, "
+            "so prompt governance remains informational for production go-live."
+        )
+    if governance_ready:
+        return (
+            "Live prompt activation is enabled through SQL-backed prompt and evaluation-runtime stores, "
+            "and prompt governance is approved for production go-live."
+        )
+    return (
+        "Live prompt activation is enabled through SQL-backed prompt and evaluation-runtime stores, "
+        "but prompt governance is not yet approved for production go-live."
+    )
+
+
+def _safety_governance_domain_detail(
+    *, governance_ready: bool, required_for_platform_approval: bool
+) -> str:
+    if not required_for_platform_approval:
+        return (
+            "Runtime safety enforcement is not active, so safety governance remains informational for production go-live."
+        )
+    if governance_ready:
+        return (
+            "Runtime safety enforcement is active, and safety governance is approved for production go-live."
+        )
+    return (
+        "Runtime safety enforcement is active, but safety governance is not yet approved for production go-live."
+    )
 
 
 def _use_case_domain_status(

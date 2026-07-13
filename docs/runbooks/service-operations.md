@@ -206,10 +206,12 @@ Before treating any environment as the accepted RFC-0020 production baseline:
 8. treat the `live_provider_governance` approval domain as covering every live-provider execution capability currently requested, including embedding execution when `LOTUS_AI_EMBEDDING_PROVIDER_MODE=enabled`
 9. when live-provider production review falls below expectations, treat `provider_rollout_state=ALLOWLISTED_DISABLED` as the bounded freeze and rollback target rather than tearing down the wider platform
 10. when retrieval execution is enabled, require the `retrieval_governance` production go-live domain to be approved from current retrieval governance and runtime-backed evaluation evidence before claiming platform production approval
-11. inspect `GET /platform/production-go-live/use-case-approval` to distinguish first-use-case limited-rollout readiness from active-production approval before exposing the downstream path to real production traffic
-12. confirm the embedded `production_baseline` and `production_baseline_governance` blocks in `GET /platform/runtime-status` match the detailed production-baseline views
-13. treat PostgreSQL-backed durable stores plus Redis and dedicated workers as the minimum prod-shaped local boundary, not as full production readiness
-14. keep local env-file secret handling and filesystem or memory-backed artifact payload storage classified as non-production even if Docker bring-up and live-provider execution both succeed
+11. when live prompt activation is backed by both SQL prompt rollout state and SQL evaluation runtime evidence, require the `prompt_governance` production go-live domain to be approved before claiming platform production approval
+12. when `LOTUS_AI_SAFETY_MODE=runtime_enforced`, require the `safety_governance` production go-live domain to be approved before claiming platform production approval
+13. inspect `GET /platform/production-go-live/use-case-approval` to distinguish first-use-case limited-rollout readiness from active-production approval before exposing the downstream path to real production traffic
+14. confirm the embedded `production_baseline` and `production_baseline_governance` blocks in `GET /platform/runtime-status` match the detailed production-baseline views
+15. treat PostgreSQL-backed durable stores plus Redis and dedicated workers as the minimum prod-shaped local boundary, not as full production readiness
+16. keep local env-file secret handling and filesystem or memory-backed artifact payload storage classified as non-production even if Docker bring-up and live-provider execution both succeed
 
 ## Deployment-Split Governance
 
