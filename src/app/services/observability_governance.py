@@ -53,7 +53,7 @@ def build_observability_governance_status(
             (
                 "Activation readiness is satisfied because all governed domains expose incident evidence and the supporting audit and caller-policy stores are SQL-backed."
                 if activation_readiness.activation_ready
-                else "Activation readiness remains blocked until the supporting audit and caller-policy stores are SQL-backed and restart-safe."
+                else "Activation readiness remains blocked; inspect bounded findings for store, domain, incident-evidence, and AI no-sensitive telemetry posture before rollout."
             ),
             (
                 "Runbook readiness is complete for runtime review, incident review, and authorization-aware breakdown inspection."

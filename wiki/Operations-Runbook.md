@@ -109,6 +109,10 @@ For RFC-0108 AI-backed surface supportability, inspect the `ai_surface_supportab
 represented advisor brief, TWR inspection support brief, workspace rationale, and outcome-review
 narrative surfaces, plus the DPM proof-pack PM memo and DPM wave PM memo surfaces; it is sourced from workflow-pack runtime,
 provider operations, and safety runtime rather than from model availability alone.
+`/platform/observability/activation-readiness` and
+`/platform/observability/governance-status` consume the same summary and remain blocked while it
+reports degraded or unavailable posture, missing no-sensitive-content telemetry, action-required
+surfaces, or unavailable surface supportability.
 
 ```mermaid
 flowchart LR
@@ -217,9 +221,12 @@ For AI-backed product-surface support, also confirm:
    supported-no-activity posture without raw prompts or generated content,
 4. each represented surface has `no_sensitive_content_telemetry=true` before treating generated
    commentary, rationale, or brief surfaces as supportable without sensitive-content telemetry gaps,
-5. `twr_inspection_support_brief` remains owned by `lotus-performance`; do not reintroduce old
+5. observability activation/governance stays blocked while the summary reports degraded or
+   unavailable posture, missing no-sensitive-content telemetry, action-required surfaces, or
+   unavailable surface supportability,
+6. `twr_inspection_support_brief` remains owned by `lotus-performance`; do not reintroduce old
    `pa` naming in operator evidence or supportability records.
-6. `dpm_pm_memo` remains owned by `lotus-manage` proof-pack evidence contracts; treat trade
+7. `dpm_pm_memo` remains owned by `lotus-manage` proof-pack evidence contracts; treat trade
    recommendations, order tickets, rebalance approvals, client messages, PM scoring, control
    overrides, and invented missing evidence as guardrail-blocked requests, not as prompt-tuning
    opportunities. Optional `portfolio_memory_context` is source-lineage-only context; investigate
