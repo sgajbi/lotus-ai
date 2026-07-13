@@ -23,7 +23,9 @@ from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_degradation_state import record_provider_failure
 from app.contracts.prompts import PromptControlActionRequest, PromptControlActionType
 from app.services.provider_operations_store import reset_provider_operations_store_cache
+from app.services.observability_runtime import build_observability_runtime_status
 from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.observability import build_healthy_ai_surface_supportability_summary
 
 
 def test_resolve_startup_readiness_state_defaults_when_app_state_missing() -> None:
@@ -375,6 +377,12 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     monkeypatch.setattr(
         "app.services.async_operational_state.get_async_delivery_queue", lambda: queue
     )
+    monkeypatch.setattr(
+        "app.services.platform_status.build_observability_runtime_status",
+        lambda **kwargs: build_observability_runtime_status(**kwargs).model_copy(
+            update={"ai_surface_supportability": build_healthy_ai_surface_supportability_summary()}
+        ),
+    )
     for target in (
         "get_audit_store_runtime_status",
         "get_prompt_store_runtime_status",
@@ -401,6 +409,7 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     assert status.deployment_split.configured_stage.value == "UNIFIED"
     assert status.deployment_split.effective_stage.value == "UNIFIED"
     assert status.deployment_split_governance.governance_ready is True
+    assert status.deployment_split_governance.observability_governance_ready is True
     assert status.evaluation_runtime.async_execution_route_mode.value == "UNIFIED_INTERNAL"
     assert status.resilience_runtime.posture.value == "PARTIAL_RUNTIME_DURABILITY"
     assert status.resilience_runtime.delivery_stage.value == "DRILL_VERIFIED"
