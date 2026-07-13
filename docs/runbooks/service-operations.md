@@ -367,7 +367,7 @@ Current recovery expectations:
 2. lease expiry should record an `ABANDONED` attempt and queue a new retryable attempt rather than mutating the prior attempt in place
 3. retrieval index jobs submitted through `POST /platform/retrieval/index-jobs/{job_id}/submit-async` should remain linked to their async runtime records after restart
 4. duplicate runtime-backed retrieval-index submissions should be rejected while an active queued, claimed, or running job already owns the same caller and target
-5. operator retry, replay, requeue, and abandon actions should be applied through `/platform/async/control-plane-actions/apply` rather than ad hoc table edits
+5. operator retry, replay, requeue, abandon, queued-job redrive, and queued-job quarantine actions should be applied through `/platform/async/control-plane-actions/apply` rather than ad hoc table edits
 6. when `cutover_state=dedicated_workers_active`, queue backlog, duplicate/redelivery counts, active worker identities, and degraded findings should be reviewed through `/platform/async/runtime-status`
 7. `LOTUS_AI_ASYNC_WORKER_DRAIN_ENABLED=true` should prevent new dedicated worker claims while leaving queued runtime truth and governed replay/requeue actions intact
 8. runtime-backed evaluation runs should preserve queued, claimed, running, completed, failed, and abandoned attempt history across async replay and recovery actions
@@ -376,8 +376,9 @@ Current dedicated worker operational checks:
 
 1. review `/platform/async/runtime-status` for `queue_backlog_count`, `active_worker_ids`, `duplicate_delivery_count`, `redelivery_count`, `drain_mode_active`, and `degraded_findings`
 2. if queue backlog is growing while `active_worker_ids` is empty, treat the worker fleet as unavailable rather than assuming in-process execution has taken over
-3. if `drain_mode_active=true`, expect queued jobs to remain queued until drain mode is cleared; do not bypass the queue by manually invoking in-process worker paths
-4. if `cutover_state=degraded_fallback`, treat the worker fleet as explicitly degraded and require operator review before considering the rollout healthy again
+3. if `enqueued_job_count > 0`, `queue_backlog_count == 0`, and no active leases are visible in dedicated-worker mode, treat it as queue/database divergence; use `REDRIVE_QUEUED_JOB` to republish the existing queued attempt or `QUARANTINE_QUEUED_JOB` to abandon the queued job with operator evidence
+4. if `drain_mode_active=true`, expect queued jobs to remain queued until drain mode is cleared; do not bypass the queue by manually invoking in-process worker paths
+5. if `cutover_state=degraded_fallback`, treat the worker fleet as explicitly degraded and require operator review before considering the rollout healthy again
 
 Current governed control-action procedure:
 
@@ -385,7 +386,7 @@ Current governed control-action procedure:
 2. inspect `/platform/async/jobs/{job_id}` to confirm the current runtime attempt history, active lease posture, and existing control events
 3. apply `POST /platform/async/control-plane-actions/apply` with explicit operator reason and approver metadata
 4. verify the resulting control-plane event is visible in both `/platform/async/control-plane-actions` and `/platform/async/jobs/{job_id}`
-5. confirm the resulting job status and attempt history match the intended retry, replay, requeue, or abandon action
+5. confirm the resulting job status and attempt history match the intended retry, replay, requeue, abandon, redrive, or quarantine action. Redrive keeps the job `QUEUED` and publishes a fresh delivery identity so Redis dedupe cannot block recovery after destructive dequeue; quarantine moves the queued job to `ABANDONED` with `DELIVERY_QUARANTINED` attempt evidence. Missing durable-job deliveries are recorded as abandoned recovery records plus bounded quarantine control events in async control history.
 
 ## Evaluation Approval Review
 
