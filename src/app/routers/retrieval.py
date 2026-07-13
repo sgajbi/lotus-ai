@@ -25,6 +25,10 @@ from app.contracts.retrieval import (
     RetrievalSourceCatalogResponse,
     RetrievalSourceGovernanceResponse,
 )
+from app.http.authenticated_caller import (
+    AuthenticatedCallerDependency,
+    require_authenticated_caller_matches,
+)
 from app.retrieval.source_registry import list_retrieval_sources
 from app.services.retrieval_catalog_service import (
     get_chunks_for_document,
@@ -217,7 +221,9 @@ async def submit_retrieval_ingestion_job_async_route(
     job_id: str,
     caller_app: str,
     correlation_id: str,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> AsyncJobSubmissionResponse:
+    require_authenticated_caller_matches(caller_app)
     return submit_retrieval_ingestion_job_async(
         job_id=job_id,
         caller_app=caller_app,
@@ -391,7 +397,9 @@ async def submit_retrieval_index_job_async_route(
     job_id: str,
     caller_app: str,
     correlation_id: str,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> AsyncJobSubmissionResponse:
+    require_authenticated_caller_matches(caller_app)
     return submit_retrieval_index_job_async(
         job_id=job_id,
         caller_app=caller_app,
@@ -453,5 +461,6 @@ async def list_retrieval_chunks_route(document_id: str) -> RetrievalChunkCatalog
 )
 async def search_retrieval_sources_route(
     request: RetrievalSearchRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> RetrievalSearchResponse:
     return search_sources(request)

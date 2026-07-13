@@ -17,6 +17,7 @@ from app.contracts.providers import (
     ProviderQuotaPolicyResponse,
     ProviderRunbookReadinessResponse,
 )
+from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.provider_activation_readiness import build_provider_activation_readiness
 from app.services.provider_budget_policy import build_provider_budget_policy
 from app.services.provider_catalog import build_provider_catalog
@@ -183,6 +184,7 @@ async def get_provider_operations_control_history_route() -> (
 )
 async def apply_provider_operations_control_action_route(
     request: ProviderOperationsControlActionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> ProviderOperationsControlActionResponse:
     return apply_provider_operations_control_action(request)
 

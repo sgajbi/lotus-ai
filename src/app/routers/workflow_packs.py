@@ -49,6 +49,10 @@ from app.contracts.workflow_pack_task_flows import (
     WorkflowPackTaskFlowDetailResponse,
     WorkflowPackTaskFlowStatus,
 )
+from app.http.authenticated_caller import (
+    AuthenticatedCallerDependency,
+    require_authenticated_caller_matches,
+)
 from app.services.workflow_pack_run_consumer_view import build_workflow_pack_run_consumer_view
 from app.services.workflow_pack_run_operator_profile import build_workflow_pack_run_operator_profile
 from app.services.workflow_pack_control import (
@@ -373,6 +377,7 @@ async def get_workflow_pack_queue_event_detail_route(
 async def record_workflow_pack_queue_retry_decision_route(
     queue_item_id: str,
     request: WorkflowPackQueueRetryDecisionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> WorkflowPackQueueRecoveryDecisionResponse:
     try:
         event = record_workflow_pack_queue_retry_decision(
@@ -419,6 +424,7 @@ async def record_workflow_pack_queue_retry_decision_route(
 async def execute_workflow_pack_queue_retry_route(
     queue_item_id: str,
     request: WorkflowPackQueueRetryDecisionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> WorkflowPackQueueRecoveryExecutionResponse:
     try:
         return execute_workflow_pack_queue_retry(
@@ -454,6 +460,7 @@ async def execute_workflow_pack_queue_retry_route(
 async def record_workflow_pack_queue_replay_decision_route(
     queue_item_id: str,
     request: WorkflowPackQueueReplayDecisionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> WorkflowPackQueueRecoveryDecisionResponse:
     try:
         event = record_workflow_pack_queue_replay_decision(
@@ -499,6 +506,7 @@ async def record_workflow_pack_queue_replay_decision_route(
 async def execute_workflow_pack_queue_replay_route(
     queue_item_id: str,
     request: WorkflowPackQueueReplayDecisionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> WorkflowPackQueueRecoveryExecutionResponse:
     try:
         return execute_workflow_pack_queue_replay(
@@ -556,7 +564,9 @@ async def evaluate_workflow_pack_eligibility_route(
 )
 async def execute_workflow_pack_route(
     request: WorkflowPackExecutionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> WorkflowPackExecutionResponse:
+    require_authenticated_caller_matches(request.task_request.caller.caller_app)
     try:
         return execute_workflow_pack(request)
     except WorkflowPackRegistryUnavailableError as exc:
@@ -590,7 +600,9 @@ async def execute_workflow_pack_route(
 )
 async def submit_workflow_pack_async_execution_route(
     request: WorkflowPackExecutionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> WorkflowPackAsyncExecutionSubmissionResponse:
+    require_authenticated_caller_matches(request.task_request.caller.caller_app)
     try:
         return submit_workflow_pack_execution_async(request)
     except WorkflowPackRegistryUnavailableError as exc:
@@ -1006,6 +1018,7 @@ async def get_workflow_pack_run_operator_profile_route(
 async def apply_workflow_pack_run_review_action_route(
     run_id: str,
     request: WorkflowPackRunReviewActionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> WorkflowPackRunReviewActionResponse:
     try:
         return apply_workflow_pack_run_review_action(run_id=run_id, request=request)
@@ -1038,6 +1051,7 @@ async def apply_workflow_pack_run_review_action_route(
 )
 async def apply_workflow_pack_control_action_route(
     request: WorkflowPackControlActionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> WorkflowPackControlActionResponse:
     try:
         return apply_workflow_pack_control_action(request)

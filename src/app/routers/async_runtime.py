@@ -17,6 +17,10 @@ from app.contracts.async_runtime import (
     AsyncRuntimeStatusResponse,
     AsyncWorkerExecutionCatalogResponse,
 )
+from app.http.authenticated_caller import (
+    AuthenticatedCallerDependency,
+    require_authenticated_caller_matches,
+)
 from app.services.async_activation_readiness_service import build_async_activation_readiness
 from app.services.async_runtime_control import (
     apply_async_control_action,
@@ -179,6 +183,7 @@ async def get_async_control_history_route() -> AsyncControlHistoryResponse:
 )
 async def apply_async_control_action_route(
     request: AsyncControlActionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> AsyncControlActionResponse:
     return apply_async_control_action(request)
 
@@ -239,5 +244,7 @@ async def get_async_job_detail_route(job_id: str) -> AsyncJobDetailResponse:
 )
 async def submit_async_job_route(
     request: AsyncJobSubmissionRequest,
+    _authenticated_caller: AuthenticatedCallerDependency,
 ) -> AsyncJobSubmissionResponse:
+    require_authenticated_caller_matches(request.caller_app)
     return submit_async_job(request)

@@ -134,7 +134,16 @@ Operator interpretation:
    body,
 4. all problem responses carry `X-Correlation-Id` plus body-level `correlation_id`,
 5. secure headers should be present on success and rejection responses when
-   `LOTUS_AI_HTTP_SECURE_HEADERS_ENABLED=true`.
+   `LOTUS_AI_HTTP_SECURE_HEADERS_ENABLED=true`,
+6. protected task execution, retrieval execution, async submission/control, prompt/provider
+   control, and workflow-pack mutation routes require the trusted upstream caller identity in
+   `X-Caller-App`,
+7. the `X-Caller-App` value must match request-declared `caller_app` metadata before protected
+   routes mutate state, retain audit/control evidence, invoke retrieval/provider execution, or run
+   workflow-pack retry/replay execution,
+8. missing, empty, unknown, disabled, or mismatched caller identity should fail closed with a safe
+   `403` problem response and without logging service tokens, raw prompts, request payloads, or
+   tenant-sensitive identifiers.
 
 API clients should treat error responses as `application/problem+json` with stable
 `error_code` values rather than parsing prose in `detail`.
@@ -506,14 +515,16 @@ Before treating caller identity and tenant isolation as fully governed rollout p
 4. inspect `GET /platform/access-control/governance-status` for the composed governance view
 5. confirm the embedded `access_control_runtime` and `access_control_governance` blocks in `GET /platform/runtime-status` match the detailed access-control views
 6. confirm unknown callers still fail closed on protected data-plane and control-plane paths
-7. treat SQL-backed caller policy storage as the activation gate for restart-safe access-control governance
+7. confirm protected POST routes receive a trusted `X-Caller-App` value from ingress or service-to-service routing and reject missing, empty, unknown, disabled, or body-mismatched caller identities before side effects
+8. treat SQL-backed caller policy storage as the activation gate for restart-safe access-control governance
 
 Current operational expectations:
 
 1. caller onboarding, revocation, tenant restriction changes, blocked-authorization review, and emergency-override posture are documented runbook items
 2. there is no hidden emergency bypass API in RFC-0012; fail-closed behavior is intentional and should be treated as the documented emergency posture
-3. blocked task requests should be reviewed through `/ai/audit` and task execution evidence, while blocked control-plane actions should be reviewed through the relevant control history endpoint
-4. authorized async, prompt, and provider control actions must preserve the recorded caller authorization decision in durable control history
+3. body-level `caller_app` fields remain contract and audit metadata, but operators should treat `authorization.authenticated_caller_app`, `authorization.caller_identity_source`, and `authorization.caller_identity_bound` as the evidence that request metadata was bound to trusted HTTP caller identity
+4. blocked task requests should be reviewed through `/ai/audit` and task execution evidence, while blocked control-plane actions should be reviewed through the relevant control history endpoint
+5. authorized async, prompt, provider, workflow-pack, and queue-recovery control actions must preserve the recorded caller authorization decision in durable control history
 
 ## Retrieval Activation Governance
 

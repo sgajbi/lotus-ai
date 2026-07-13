@@ -72,6 +72,12 @@ bounded CORS, secure-header, optional HSTS, and maximum request body-size contro
 workflow-pack, retrieval, prompt, provider, or domain business logic. Ingress can be stricter, but
 direct service access is no longer left to implicit defaults.
 
+Protected data-plane and control-plane routes require a trusted upstream caller identity in
+`X-Caller-App`. `lotus-ai` binds that authenticated caller to request-declared `caller_app`
+metadata before protected routes mutate state, invoke retrieval or provider execution, retain
+audit/control evidence, or run workflow-pack retry/replay execution. Missing, empty, unknown,
+disabled, or mismatched caller identity fails closed with a safe `403` response.
+
 All API failures use a bounded `application/problem+json` envelope with stable `error_code`,
 `correlation_id`, and optional source-safe metadata. Clients and support tooling should use those
 fields instead of parsing prose-only FastAPI `detail` values.
@@ -134,6 +140,13 @@ Examples:
 3. retrieval support does not mean broad corpus onboarding or production go-live retrieval approval is approved,
 4. durable stores existing in code does not mean production-ready posture is satisfied,
 5. task support does not mean every caller is authorized to use that path.
+
+Protected POST routes now bind caller-policy authorization to a trusted `X-Caller-App` HTTP caller
+identity supplied by ingress or service-to-service routing. Body-level `caller_app` remains API and
+audit metadata, but missing, empty, unknown, disabled, or body-mismatched caller identity fails
+closed before protected task, retrieval, async, prompt, provider, workflow-pack, review, or queue
+recovery side effects. Authorization evidence preserves the authenticated caller, identity source,
+and match result for operator review.
 
 This is why the runtime and governance surfaces matter more than static repo claims.
 
