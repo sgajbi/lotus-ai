@@ -25,6 +25,10 @@ from app.services.eval_attempt_runtime import (
 )
 from app.services.async_job_mapping import map_async_runtime_control_event
 from app.services.access_control_authorization import authorize_request, require_authorized
+from app.services.async_delivery_recovery import (
+    quarantine_queued_async_job,
+    redrive_queued_async_job,
+)
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.async_runtime_transitions import queue_next_async_attempt
 
@@ -110,6 +114,24 @@ def _apply_control_action(
         affected_attempt_id = _abandon_active_job(job=job, reason=request.reason)
         _sync_evaluation_abandon(job=job, reason=request.reason)
         resulting_status = AsyncJobStatus.ABANDONED.value
+    elif action_type == AsyncControlActionType.REDRIVE_QUEUED_JOB:
+        event = redrive_queued_async_job(
+            job=job,
+            requested_by=request.requested_by,
+            approved_by=request.approved_by,
+            reason=request.reason,
+            authorization=authorization,
+        )
+        return event
+    elif action_type == AsyncControlActionType.QUARANTINE_QUEUED_JOB:
+        event = quarantine_queued_async_job(
+            job=job,
+            requested_by=request.requested_by,
+            approved_by=request.approved_by,
+            reason=request.reason,
+            authorization=authorization,
+        )
+        return event
     else:
         raise RuntimeError("Unsupported async control action.")
 

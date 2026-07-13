@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.config import settings
-from app.contracts.async_runtime import AsyncCutoverState
+from app.contracts.async_runtime import AsyncCutoverState, AsyncJobStatus
 from app.services.async_delivery_queue import (
     AsyncQueueObservabilitySnapshot,
     get_async_delivery_queue,
@@ -25,6 +25,11 @@ def build_async_operational_state() -> AsyncOperationalState:
     active_worker_ids = sorted(
         {lease.worker_id for lease in get_async_runtime_store().list_leases()}
     )
+    queued_jobs = [
+        job
+        for job in get_async_runtime_store().list_jobs()
+        if job.lifecycle_status == AsyncJobStatus.QUEUED.value
+    ]
     queue_snapshot = get_async_delivery_queue().snapshot()
     drain_mode_active = settings.async_worker_drain_enabled
     degraded_findings: list[str] = []
@@ -45,6 +50,10 @@ def build_async_operational_state() -> AsyncOperationalState:
         if queue_snapshot.pending_delivery_count > 0 and not active_worker_ids:
             degraded_findings.append(
                 "Queue backlog exists for dedicated-worker execution, but no active worker leases are currently visible."
+            )
+        if queued_jobs and queue_snapshot.pending_delivery_count == 0 and not active_worker_ids:
+            degraded_findings.append(
+                "Queued async runtime jobs exist without pending managed-queue deliveries or active worker leases; use REDRIVE_QUEUED_JOB or QUARANTINE_QUEUED_JOB to reconcile queue/database truth."
             )
 
     return AsyncOperationalState(

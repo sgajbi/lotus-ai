@@ -13,6 +13,7 @@ def publish_async_attempt_if_configured(
     *,
     job: AsyncRuntimeJobRecord,
     attempt: AsyncRuntimeAttemptRecord,
+    delivery_id: str | None = None,
 ) -> bool:
     posture = get_async_runtime_posture()
     if posture.cutover_state not in {
@@ -23,7 +24,7 @@ def publish_async_attempt_if_configured(
         return False
     result = get_async_delivery_queue().enqueue(
         message=AsyncQueueDeliveryMessage(
-            delivery_id=attempt.attempt_id,
+            delivery_id=delivery_id or attempt.attempt_id,
             job_id=job.job_id,
             attempt_id=attempt.attempt_id,
             job_type=job.job_type,

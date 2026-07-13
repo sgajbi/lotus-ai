@@ -152,8 +152,8 @@ async def get_async_governance_status_route() -> AsyncGovernanceStatusResponse:
     operation_id="getAsyncControlHistory",
     summary="Get lotus-ai async control-plane history",
     description=(
-        "Returns the recent governed async retry, replay, requeue, and abandon actions recorded "
-        "for runtime-backed async jobs."
+        "Returns the recent governed async retry, replay, requeue, abandon, redrive, and "
+        "quarantine actions recorded for runtime-backed async jobs."
     ),
     responses={
         200: {"description": "Async control-plane history returned successfully."},
@@ -170,8 +170,8 @@ async def get_async_control_history_route() -> AsyncControlHistoryResponse:
     operation_id="applyAsyncControlAction",
     summary="Apply a lotus-ai async control-plane action",
     description=(
-        "Applies one governed async retry, replay, requeue, or abandon action and records "
-        "operator reason plus approval metadata for later review."
+        "Applies one governed async retry, replay, requeue, abandon, redrive, or quarantine "
+        "action and records operator reason plus approval metadata for later review."
     ),
     responses={
         200: {"description": "Async control-plane action applied successfully."},
