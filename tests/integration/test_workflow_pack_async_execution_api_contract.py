@@ -263,13 +263,16 @@ def test_workflow_pack_async_execution_honors_explicit_idempotency_key(
         correlation_id="corr-workflow-pack-async-explicit-key-002"
     )
     replay_request["idempotency_key"] = "workflow-pack-async-client-key-001"
+    replay_matching_request = advisor_brief_workflow_pack_execution_request_json(
+        correlation_id="corr-workflow-pack-async-explicit-key-001"
+    )
+    replay_matching_request["idempotency_key"] = "workflow-pack-async-client-key-001"
 
     first_response = client.post("/platform/workflow-packs/execute-async", json=request)
     conflict_response = client.post("/platform/workflow-packs/execute-async", json=replay_request)
-    replay_request["task_request"]["caller"]["correlation_id"] = (
-        "corr-workflow-pack-async-explicit-key-001"
+    replay_response = client.post(
+        "/platform/workflow-packs/execute-async", json=replay_matching_request
     )
-    replay_response = client.post("/platform/workflow-packs/execute-async", json=replay_request)
 
     assert first_response.status_code == 200
     assert conflict_response.status_code == 409
