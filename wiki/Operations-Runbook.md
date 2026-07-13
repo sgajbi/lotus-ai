@@ -210,7 +210,9 @@ Use this sequence:
     already-running synchronous execution was interrupted, and treat `RETRY_RECORDED` or
     `REPLAY_RECORDED` as recovery-decision evidence unless it is returned by the explicit
     retry/replay execution route with a new workflow-pack execution response; durable async worker execution should appear as a `workflow_pack_execution` async job linked to the queue item,
-16. when reading the embedded workflow-pack attention queue, treat `queue_depth` as the full actionable backlog and `items` as only the newest bounded sample up to `queue_limit`.
+16. for `POST /platform/workflow-packs/execute-async`, provide `idempotency_key` when the caller has a stable client command key. If omitted, lotus-ai derives a source-safe key from caller app, pack, version, and correlation id. Same-key/same-payload submissions replay the existing queue item and async job, including completed jobs; same-key/different-payload submissions return `409` before new queue, job, attempt, or delivery side effects.
+17. for retry/replay execution routes, provide `idempotency_key` with the operator command. Same-key/same-payload commands replay the first retained recovery execution response and do not create a second decision event or workflow-pack run; same-key/different-payload commands return `409` with an idempotency-conflict detail.
+18. when reading the embedded workflow-pack attention queue, treat `queue_depth` as the full actionable backlog and `items` as only the newest bounded sample up to `queue_limit`.
 
 For AI-backed product-surface support, also confirm:
 

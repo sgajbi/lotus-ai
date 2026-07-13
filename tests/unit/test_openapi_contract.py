@@ -1178,6 +1178,7 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "registration" in workflow_pack_control_action_response_schema["properties"]
     assert "task_request" in workflow_pack_execution_request_schema["properties"]
     assert "queue_lane" in workflow_pack_execution_request_schema["properties"]
+    assert "idempotency_key" in workflow_pack_execution_request_schema["properties"]
     assert "eligibility" in workflow_pack_execution_response_schema["properties"]
     assert "execution" in workflow_pack_execution_response_schema["properties"]
     assert "workflow_pack_run" in workflow_pack_execution_response_schema["properties"]
