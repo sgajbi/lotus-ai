@@ -356,11 +356,15 @@ def test_process_next_async_delivery_redrives_claim_miss(
 
 
 def test_process_next_async_delivery_quarantines_missing_runtime_job(
+    tmp_path: Path,
     monkeypatch: MonkeyPatch,
 ) -> None:
+    settings.async_runtime_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-worker-missing-delivery.db'}"
     settings.async_cutover_state = "dedicated_workers_active"
     settings.async_queue_backend_mode = "redis"
     settings.async_queue_redis_url = "redis://localhost:6379/0"
+    upgrade_database_to_head(settings.database_url)
     queue = get_test_async_delivery_queue()
     monkeypatch.setattr(
         "app.services.async_worker_fleet.get_async_delivery_queue",
@@ -380,14 +384,18 @@ def test_process_next_async_delivery_quarantines_missing_runtime_job(
     )
 
     result = process_next_async_delivery(worker_id="worker-a", timeout_seconds=0)
+    detail = build_async_job_detail(job_id="asyncjob_missing_delivery")
     history = build_async_control_history()
 
     assert result is not None
     assert result.handled is False
+    assert detail.job.status.value == "ABANDONED"
+    assert detail.job.execution_path == "dedicated_worker_delivery_recovery"
+    assert detail.attempts[0].failure_reason == "MISSING_RUNTIME_JOB"
     assert history.latest_events[0].job_id == "asyncjob_missing_delivery"
     assert history.latest_events[0].action_type.value == "QUARANTINE_QUEUED_JOB"
     assert history.latest_events[0].prior_status == "MISSING_RUNTIME_JOB"
-    assert history.latest_events[0].resulting_status == "QUARANTINED_DELIVERY"
+    assert history.latest_events[0].resulting_status == "ABANDONED"
     assert history.latest_events[0].affected_attempt_id == "attempt-missing-delivery-001"
 
 
