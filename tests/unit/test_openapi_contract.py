@@ -992,6 +992,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     workflow_pack_queue_recovery_execution_schema = spec["components"]["schemas"][
         "WorkflowPackQueueRecoveryExecutionResponse"
     ]
+    workflow_pack_queue_retry_request_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueRetryDecisionRequest"
+    ]
+    workflow_pack_queue_replay_request_schema = spec["components"]["schemas"][
+        "WorkflowPackQueueReplayDecisionRequest"
+    ]
     workflow_pack_queue_lane_status_schema = spec["components"]["schemas"][
         "WorkflowPackQueueLaneStatusDescriptor"
     ]
@@ -1087,8 +1093,12 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "events" in workflow_pack_queue_event_detail_schema["properties"]
     assert "event" in workflow_pack_queue_recovery_decision_schema["properties"]
     assert "status_summary" in workflow_pack_queue_recovery_decision_schema["properties"]
+    assert "idempotency_key" in workflow_pack_queue_retry_request_schema["properties"]
+    assert "idempotency_key" in workflow_pack_queue_replay_request_schema["properties"]
     assert "decision_event" in workflow_pack_queue_recovery_execution_schema["properties"]
     assert "execution" in workflow_pack_queue_recovery_execution_schema["properties"]
+    assert "idempotency_key" in workflow_pack_queue_recovery_execution_schema["properties"]
+    assert "idempotency_status" in workflow_pack_queue_recovery_execution_schema["properties"]
     assert "status_summary" in workflow_pack_queue_recovery_execution_schema["properties"]
     assert "active_count" in workflow_pack_queue_lane_status_schema["properties"]
     assert "saturation_status" in workflow_pack_queue_lane_status_schema["properties"]

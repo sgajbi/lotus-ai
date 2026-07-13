@@ -32,6 +32,8 @@ def record_workflow_pack_queue_retry_decision(
     requested_by: str,
     reason: str,
     evidence_ref: str,
+    idempotency_key: str | None = None,
+    idempotency_request_fingerprint: str | None = None,
 ) -> WorkflowPackQueueEventDescriptor:
     _require_recovery_evidence(requested_by=requested_by, reason=reason, evidence_ref=evidence_ref)
     authorization = authorize_workflow_pack_queue_recovery_caller(caller_app=caller_app)
@@ -63,6 +65,8 @@ def record_workflow_pack_queue_retry_decision(
             recovery_attempt_number=attempt_number,
             requested_by=requested_by,
             evidence_ref=evidence_ref,
+            idempotency_key=idempotency_key,
+            idempotency_request_fingerprint=idempotency_request_fingerprint,
             authorization=authorization,
             message=(
                 "Workflow-pack queue retry blocked by policy for "
@@ -79,6 +83,8 @@ def record_workflow_pack_queue_retry_decision(
         recovery_attempt_number=attempt_number,
         requested_by=requested_by,
         evidence_ref=evidence_ref,
+        idempotency_key=idempotency_key,
+        idempotency_request_fingerprint=idempotency_request_fingerprint,
         authorization=authorization,
         message=(
             "Workflow-pack queue retry recorded as governed evidence for "
@@ -95,6 +101,8 @@ def record_workflow_pack_queue_replay_decision(
     requested_by: str,
     reason: str,
     evidence_ref: str,
+    idempotency_key: str | None = None,
+    idempotency_request_fingerprint: str | None = None,
 ) -> WorkflowPackQueueEventDescriptor:
     _require_recovery_evidence(requested_by=requested_by, reason=reason, evidence_ref=evidence_ref)
     authorization = authorize_workflow_pack_queue_recovery_caller(caller_app=caller_app)
@@ -116,6 +124,8 @@ def record_workflow_pack_queue_replay_decision(
             recovery_attempt_number=attempt_number,
             requested_by=requested_by,
             evidence_ref=evidence_ref,
+            idempotency_key=idempotency_key,
+            idempotency_request_fingerprint=idempotency_request_fingerprint,
             authorization=authorization,
             message=(
                 "Workflow-pack queue replay blocked because a replay decision already exists for "
@@ -131,6 +141,8 @@ def record_workflow_pack_queue_replay_decision(
         recovery_attempt_number=attempt_number,
         requested_by=requested_by,
         evidence_ref=evidence_ref,
+        idempotency_key=idempotency_key,
+        idempotency_request_fingerprint=idempotency_request_fingerprint,
         authorization=authorization,
         message=(
             "Workflow-pack queue replay recorded as governed evidence for "
@@ -225,6 +237,8 @@ def _record_recovery_event(
     recovery_attempt_number: int,
     requested_by: str,
     evidence_ref: str,
+    idempotency_key: str | None,
+    idempotency_request_fingerprint: str | None,
     authorization: AuthorizationDecision,
     message: str,
 ) -> WorkflowPackQueueEventDescriptor:
@@ -247,5 +261,7 @@ def _record_recovery_event(
         recovery_attempt_number=recovery_attempt_number,
         requested_by=requested_by,
         evidence_ref=evidence_ref,
+        idempotency_key=idempotency_key,
+        idempotency_request_fingerprint=idempotency_request_fingerprint,
         artifact_refs=source_event.artifact_refs,
     )

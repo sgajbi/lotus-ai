@@ -387,6 +387,7 @@ async def record_workflow_pack_queue_retry_decision_route(
             requested_by=request.requested_by,
             reason=request.reason,
             evidence_ref=request.evidence_ref,
+            idempotency_key=request.idempotency_key,
         )
     except WorkflowPackQueueEventStoreNotReadyError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -434,6 +435,7 @@ async def execute_workflow_pack_queue_retry_route(
             requested_by=request.requested_by,
             reason=request.reason,
             evidence_ref=request.evidence_ref,
+            idempotency_key=request.idempotency_key,
         )
     except WorkflowPackQueueEventStoreNotReadyError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -469,6 +471,7 @@ async def record_workflow_pack_queue_replay_decision_route(
             requested_by=request.requested_by,
             reason=request.reason,
             evidence_ref=request.evidence_ref,
+            idempotency_key=request.idempotency_key,
         )
     except WorkflowPackQueueEventStoreNotReadyError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -515,6 +518,7 @@ async def execute_workflow_pack_queue_replay_route(
             requested_by=request.requested_by,
             reason=request.reason,
             evidence_ref=request.evidence_ref,
+            idempotency_key=request.idempotency_key,
         )
     except WorkflowPackQueueEventStoreNotReadyError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
