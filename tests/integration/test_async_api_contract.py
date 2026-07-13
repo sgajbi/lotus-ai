@@ -4,8 +4,13 @@ from app.services.async_worker_runtime import (
     complete_async_job,
     start_async_job,
 )
+from app.repositories.async_runtime_repository import (
+    AsyncRuntimeAttemptRecord,
+    AsyncRuntimeJobRecord,
+)
 from app.config import settings
 from app.services.async_delivery_queue import get_test_async_delivery_queue
+from app.services.async_runtime_store import get_async_runtime_store
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from fastapi.testclient import TestClient
 
@@ -61,6 +66,32 @@ def test_async_runtime_status_route_reports_dedicated_worker_cutover(
     assert body["active_worker_execution"] == "queue_backed_workers"
     assert body["queue_backlog_count"] == 0
     assert body["degraded_findings"] == []
+
+
+def test_async_runtime_status_route_flags_queued_job_without_delivery(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr(
+        "app.services.async_operational_state.get_async_delivery_queue",
+        lambda: queue,
+    )
+    _persist_queued_async_job(job_id="asyncjob_stranded_status")
+
+    response = client.get("/platform/async/runtime-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["enqueued_job_count"] == 1
+    assert body["queue_backlog_count"] == 0
+    assert any(
+        "Queued async runtime jobs exist without pending managed-queue deliveries" in finding
+        for finding in body["degraded_findings"]
+    )
 
 
 def test_async_queue_backend_catalog_route(client: TestClient) -> None:
@@ -358,6 +389,67 @@ def test_async_control_action_route_records_manual_replay_event(client: TestClie
     assert detail_body["control_events"][0]["action_type"] == "REPLAY_TERMINAL_JOB"
 
 
+def test_async_control_action_route_redrives_stranded_queued_job(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr(
+        "app.services.async_submission_shared.get_async_delivery_queue",
+        lambda: queue,
+    )
+    _persist_queued_async_job(job_id="asyncjob_redrive_control")
+
+    action_response = client.post(
+        "/platform/async/control-plane-actions/apply",
+        json={
+            "job_id": "asyncjob_redrive_control",
+            "action_type": "REDRIVE_QUEUED_JOB",
+            "caller_app": "lotus-platform",
+            "requested_by": "operator-a",
+            "approved_by": "approver-a",
+            "reason": "Re-drive queued job after missing managed queue delivery.",
+        },
+    )
+
+    assert action_response.status_code == 200
+    body = action_response.json()
+    assert body["event"]["action_type"] == "REDRIVE_QUEUED_JOB"
+    assert body["event"]["prior_status"] == "QUEUED"
+    assert body["event"]["resulting_status"] == "QUEUED"
+    assert queue.snapshot().pending_delivery_count == 1
+
+
+def test_async_control_action_route_quarantines_stranded_queued_job(
+    client: TestClient,
+) -> None:
+    _persist_queued_async_job(job_id="asyncjob_quarantine_control")
+
+    action_response = client.post(
+        "/platform/async/control-plane-actions/apply",
+        json={
+            "job_id": "asyncjob_quarantine_control",
+            "action_type": "QUARANTINE_QUEUED_JOB",
+            "caller_app": "lotus-platform",
+            "requested_by": "operator-a",
+            "approved_by": "approver-a",
+            "reason": "Quarantine queued job after missing managed queue delivery.",
+        },
+    )
+    detail_response = client.get("/platform/async/jobs/asyncjob_quarantine_control")
+
+    assert action_response.status_code == 200
+    assert action_response.json()["event"]["action_type"] == "QUARANTINE_QUEUED_JOB"
+    assert action_response.json()["event"]["prior_status"] == "QUEUED"
+    assert action_response.json()["event"]["resulting_status"] == "ABANDONED"
+    assert detail_response.status_code == 200
+    assert detail_response.json()["job"]["status"] == "ABANDONED"
+    assert detail_response.json()["attempts"][0]["failure_reason"] == "DELIVERY_QUARANTINED"
+
+
 def test_async_job_submit_route_rejects_documentation_only_job_type(client: TestClient) -> None:
     response = client.post(
         "/platform/async/jobs/submit",
@@ -465,3 +557,39 @@ def test_async_job_submit_route_returns_not_found_for_unknown_job_type(
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Unknown lotus-ai async job type: missing_job_type"
+
+
+def _persist_queued_async_job(*, job_id: str) -> None:
+    store = get_async_runtime_store()
+    store.save_job(
+        AsyncRuntimeJobRecord(
+            job_id=job_id,
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            lifecycle_status="QUEUED",
+            submitted_at="2026-03-24T00:00:00Z",
+            caller_app="lotus-platform",
+            correlation_id=f"corr-{job_id}",
+            payload_summary="Queued job for async recovery contract test.",
+            execution_path="durable_runtime_worker_execution",
+            related_evaluation_run_id=None,
+            latest_message="Queued job awaiting managed delivery.",
+            attempt_count=1,
+            artifact_ids=[],
+        )
+    )
+    store.save_attempt(
+        AsyncRuntimeAttemptRecord(
+            attempt_id=f"{job_id}_attempt_001",
+            job_id=job_id,
+            attempt_number=1,
+            lifecycle_status="QUEUED",
+            worker_id=None,
+            claimed_at=None,
+            heartbeat_at=None,
+            started_at=None,
+            completed_at=None,
+            failure_reason=None,
+            recorded_message="Queued job awaiting managed delivery.",
+        )
+    )

@@ -6,6 +6,7 @@ from time import sleep
 from app.config import settings
 from app.contracts.async_runtime import AsyncCutoverState
 from app.services.async_delivery_queue import AsyncQueueDeliveryMessage, get_async_delivery_queue
+from app.services.async_delivery_recovery import recover_unhandled_delivery
 from app.services.async_runtime_posture import get_async_runtime_posture
 from app.services.eval_async_execution import run_evaluation_execution_job_by_id
 from app.services.retrieval_ingestion_async_execution import run_retrieval_ingestion_job_by_id
@@ -35,7 +36,23 @@ def process_next_async_delivery(
     delivery = get_async_delivery_queue().dequeue(timeout_seconds=timeout_seconds)
     if delivery is None:
         return None
-    return _dispatch_delivery(worker_id=worker_id, delivery=delivery)
+    result = _dispatch_delivery(worker_id=worker_id, delivery=delivery)
+    if not result.handled:
+        recover_unhandled_delivery(
+            delivery_job_id=delivery.job_id,
+            delivery_attempt_id=delivery.attempt_id,
+            delivery_job_type=delivery.job_type,
+            delivery_target_id=delivery.target_id,
+            delivery_caller_app=delivery.caller_app,
+            delivery_correlation_id=delivery.correlation_id,
+            delivery_submitted_at=delivery.submitted_at,
+            worker_id=worker_id,
+            reason=(
+                "Dedicated worker delivery was dequeued but no durable claim or execution "
+                f"was completed for delivery `{delivery.delivery_id}`."
+            ),
+        )
+    return result
 
 
 def run_dedicated_worker_loop(

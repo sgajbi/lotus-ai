@@ -199,6 +199,9 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
         spec["paths"]["/platform/async/control-plane-actions/apply"]["post"]["operationId"]
         == "applyAsyncControlAction"
     )
+    async_control_action_type_schema = spec["components"]["schemas"]["AsyncControlActionType"]
+    assert "REDRIVE_QUEUED_JOB" in async_control_action_type_schema["enum"]
+    assert "QUARANTINE_QUEUED_JOB" in async_control_action_type_schema["enum"]
     assert spec["paths"]["/platform/async/jobs"]["get"]["operationId"] == "getAsyncJobCatalog"
     assert spec["paths"]["/platform/async/jobs/{job_id}"]["get"]["operationId"] == (
         "getAsyncJobDetail"

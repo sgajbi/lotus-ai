@@ -8,10 +8,16 @@ from app.services.async_delivery_queue import (
     get_test_async_delivery_queue,
 )
 from app.services.async_job_service import build_async_job_detail
+from app.services.async_runtime_control import build_async_control_history
+from app.services.async_runtime_store import get_async_runtime_store
 from app.services.async_runtime_store import reset_async_runtime_store_cache
 from app.services.async_worker_fleet import (
     process_next_async_delivery,
     run_dedicated_worker_loop,
+)
+from app.repositories.async_runtime_repository import (
+    AsyncRuntimeAttemptRecord,
+    AsyncRuntimeJobRecord,
 )
 from app.services.eval_run_service import build_evaluation_run_detail
 from app.services.eval_run_submission_service import submit_evaluation_run
@@ -216,6 +222,39 @@ def test_process_next_async_delivery_marks_unknown_job_type_unhandled(
         "app.services.async_worker_fleet.get_async_delivery_queue",
         lambda: queue,
     )
+    store = get_async_runtime_store()
+    store.save_job(
+        AsyncRuntimeJobRecord(
+            job_id="asyncjob_unknown",
+            job_type="unknown_job_type",
+            target_id=None,
+            lifecycle_status="QUEUED",
+            submitted_at="2026-03-24T00:00:00Z",
+            caller_app="lotus-platform",
+            correlation_id="corr-unknown-001",
+            payload_summary="Unsupported async delivery should be quarantined.",
+            execution_path="durable_runtime_worker_execution",
+            related_evaluation_run_id=None,
+            latest_message="Queued unsupported async job.",
+            attempt_count=1,
+            artifact_ids=[],
+        )
+    )
+    store.save_attempt(
+        AsyncRuntimeAttemptRecord(
+            attempt_id="attempt-unknown-001",
+            job_id="asyncjob_unknown",
+            attempt_number=1,
+            lifecycle_status="QUEUED",
+            worker_id=None,
+            claimed_at=None,
+            heartbeat_at=None,
+            started_at=None,
+            completed_at=None,
+            failure_reason=None,
+            recorded_message="Queued unsupported delivery.",
+        )
+    )
     queue.enqueue(
         message=AsyncQueueDeliveryMessage(
             delivery_id="delivery-unknown-001",
@@ -234,6 +273,122 @@ def test_process_next_async_delivery_marks_unknown_job_type_unhandled(
     assert result is not None
     assert result.handled is False
     assert result.terminal_status is None
+    detail = build_async_job_detail(job_id="asyncjob_unknown")
+    assert detail.job.status.value == "ABANDONED"
+    assert detail.control_events[0].action_type.value == "QUARANTINE_QUEUED_JOB"
+    assert detail.attempts[0].failure_reason == "DELIVERY_QUARANTINED"
+
+
+def test_process_next_async_delivery_redrives_claim_miss(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr(
+        "app.services.async_worker_fleet.get_async_delivery_queue",
+        lambda: queue,
+    )
+    monkeypatch.setattr(
+        "app.services.async_submission_shared.get_async_delivery_queue",
+        lambda: queue,
+    )
+    monkeypatch.setattr(
+        "app.services.async_worker_fleet.run_retrieval_index_job_by_id",
+        lambda *, async_job_id, worker_id: None,
+    )
+    store = get_async_runtime_store()
+    store.save_job(
+        AsyncRuntimeJobRecord(
+            job_id="asyncjob_claim_miss",
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            lifecycle_status="QUEUED",
+            submitted_at="2026-03-24T00:00:00Z",
+            caller_app="lotus-platform",
+            correlation_id="corr-claim-miss-001",
+            payload_summary="Claim miss should be redriven.",
+            execution_path="durable_runtime_worker_execution",
+            related_evaluation_run_id=None,
+            latest_message="Queued retrieval indexing job.",
+            attempt_count=1,
+            artifact_ids=[],
+        )
+    )
+    store.save_attempt(
+        AsyncRuntimeAttemptRecord(
+            attempt_id="asyncjob_claim_miss_attempt_001",
+            job_id="asyncjob_claim_miss",
+            attempt_number=1,
+            lifecycle_status="QUEUED",
+            worker_id=None,
+            claimed_at=None,
+            heartbeat_at=None,
+            started_at=None,
+            completed_at=None,
+            failure_reason=None,
+            recorded_message="Queued retrieval indexing job.",
+        )
+    )
+    queue.enqueue(
+        message=AsyncQueueDeliveryMessage(
+            delivery_id="asyncjob_claim_miss_attempt_001",
+            job_id="asyncjob_claim_miss",
+            attempt_id="asyncjob_claim_miss_attempt_001",
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-claim-miss-001",
+            submitted_at="2026-03-24T00:00:00Z",
+        )
+    )
+
+    result = process_next_async_delivery(worker_id="worker-a", timeout_seconds=0)
+
+    assert result is not None
+    assert result.handled is False
+    assert queue.snapshot().pending_delivery_count == 1
+    assert queue.snapshot().redelivery_count == 1
+    detail = build_async_job_detail(job_id="asyncjob_claim_miss")
+    assert detail.job.status.value == "QUEUED"
+    assert detail.control_events[0].action_type.value == "REDRIVE_QUEUED_JOB"
+
+
+def test_process_next_async_delivery_quarantines_missing_runtime_job(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    settings.async_cutover_state = "dedicated_workers_active"
+    settings.async_queue_backend_mode = "redis"
+    settings.async_queue_redis_url = "redis://localhost:6379/0"
+    queue = get_test_async_delivery_queue()
+    monkeypatch.setattr(
+        "app.services.async_worker_fleet.get_async_delivery_queue",
+        lambda: queue,
+    )
+    queue.enqueue(
+        message=AsyncQueueDeliveryMessage(
+            delivery_id="delivery-missing-job-001",
+            job_id="asyncjob_missing_delivery",
+            attempt_id="attempt-missing-delivery-001",
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-missing-delivery-001",
+            submitted_at="2026-03-24T00:00:00Z",
+        )
+    )
+
+    result = process_next_async_delivery(worker_id="worker-a", timeout_seconds=0)
+    history = build_async_control_history()
+
+    assert result is not None
+    assert result.handled is False
+    assert history.latest_events[0].job_id == "asyncjob_missing_delivery"
+    assert history.latest_events[0].action_type.value == "QUARANTINE_QUEUED_JOB"
+    assert history.latest_events[0].prior_status == "MISSING_RUNTIME_JOB"
+    assert history.latest_events[0].resulting_status == "QUARANTINED_DELIVERY"
+    assert history.latest_events[0].affected_attempt_id == "attempt-missing-delivery-001"
 
 
 def test_process_next_async_delivery_executes_document_ingestion_job_in_dedicated_mode(
