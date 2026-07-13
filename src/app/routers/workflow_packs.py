@@ -558,7 +558,11 @@ async def evaluate_workflow_pack_eligibility_route(
         404: {"description": "Workflow-pack registration not found."},
         409: {"description": "Workflow-pack execution binding is not available for this request."},
         422: {"description": "Workflow-pack execution payload is invalid for the requested pack."},
-        503: {"description": "Workflow-pack runtime dependency store is not ready."},
+        503: {
+            "description": (
+                "Workflow-pack run, task-flow, or queue event dependency store is not ready."
+            )
+        },
         500: {"description": "Unexpected server error."},
     },
 )
@@ -594,7 +598,11 @@ async def execute_workflow_pack_route(
         409: {"description": "Workflow-pack async execution conflicts with queue policy."},
         422: {"description": "Workflow-pack execution payload is invalid."},
         429: {"description": "Workflow-pack async queue capacity is saturated."},
-        503: {"description": "Workflow-pack runtime dependency store is not ready."},
+        503: {
+            "description": (
+                "Workflow-pack run, task-flow, or queue event dependency store is not ready."
+            )
+        },
         500: {"description": "Unexpected server error."},
     },
 )
