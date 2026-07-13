@@ -212,7 +212,7 @@ def test_validation_error_uses_problem_details_and_correlation(client: TestClien
     response = client.post(
         "/ai/tasks/execute",
         json={},
-        headers={"X-Correlation-Id": "corr-validation"},
+        headers={"X-Correlation-Id": "corr-validation", "X-Caller-App": "lotus-manage"},
     )
 
     body = _assert_problem_response(
