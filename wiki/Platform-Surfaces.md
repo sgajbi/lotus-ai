@@ -11,6 +11,18 @@ quickly without reading one long endpoint dump.
 The groupings below are derived from the current FastAPI router layout in `src/app/main.py` and
 `src/app/routers/`.
 
+## Reader Map
+
+Current-state scope: this page summarizes implemented `lotus-ai` route families and the
+source-backed supportability evidence operators should use before treating a surface as ready.
+
+| Reader | Start With | Evidence Posture |
+| --- | --- | --- |
+| Integrating service owner | Direct execution, workflow-pack, and platform governance surfaces | Routes are grouped from current FastAPI router layout and contract tests |
+| Operator or support engineer | Health, runtime, observability, activation, and governance surfaces | Use runtime-status, readiness, and bounded supportability fields before rollout decisions |
+| AI surface owner | Workflow-pack and observability supportability sections | AI supportability is source-backed by workflow-pack runtime, provider operations, and safety runtime |
+| Future agent | This reader map, then the relevant route family | Do not infer support from old surface lists; check current tests and runtime payloads |
+
 ## Service Identity and Health Surface
 
 Use these first when you need to answer "is the service up?" and "what mode is it running in?"
@@ -415,9 +427,15 @@ This family covers:
 1. runtime, activation, runbook, and governance posture
 2. incident summary
 3. bounded summaries by provider, retrieval, async, evaluation, prompt, and safety
-4. AI-backed surface supportability for advisor brief, TWR inspection support brief, workspace
-   rationale, DPM PM memo, DPM wave PM memo, and outcome-review narrative surfaces, including bounded `supportability_reason` values and explicit
-   `metric_labels` truth for `lotus_ai_surface_supportability_state`
+4. AI-backed surface supportability for the current 17-surface executable workflow-pack inventory
+   exposed through `/platform/observability/runtime-status.ai_surface_supportability`, including
+   Advise-owned advisor brief, proposal commentary, and RFC-0027 advisory-copilot surfaces;
+   Performance-owned TWR inspection support brief; Workbench-owned workspace rationale;
+   Manage-owned DPM proof-pack, wave, operations handoff, exception, outcome-review, and PM quality
+   surfaces; and Idea-owned opportunity explanation supportability. The summary carries bounded
+   `supportability_reason` values and explicit `metric_labels` truth for
+   `lotus_ai_surface_supportability_state` without requiring raw prompt, generated-content, or
+   portfolio-memory payload inspection
 5. breakdown views for operator analysis
 
 ## Access-Control Surface
