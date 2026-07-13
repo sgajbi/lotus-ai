@@ -26,6 +26,7 @@ from app.services.workflow_pack_async_execution import (
     _load_first_snapshot_for_job,
     _reject_duplicate_active_submission,
     _record_queue_event,
+    _resolve_snapshot_idempotency_key,
     _transition,
     run_next_workflow_pack_execution_job,
     run_workflow_pack_execution_job_by_id,
@@ -281,6 +282,30 @@ def test_workflow_pack_async_execution_honors_explicit_idempotency_key(
     assert replay_response.json()["idempotency_key"] == "workflow-pack-async-client-key-001"
     assert replay_response.json()["idempotency_status"] == "REPLAYED"
     assert replay_response.json()["queue_item_id"] == first_response.json()["queue_item_id"]
+
+
+def test_workflow_pack_async_execution_derives_legacy_snapshot_idempotency_key() -> None:
+    payload = advisor_brief_workflow_pack_execution_request_json(
+        correlation_id="corr-workflow-pack-async-legacy-snapshot-key-001"
+    )
+    legacy_snapshot = {
+        "pack_id": payload["pack_id"],
+        "pack_version": payload["version"],
+        "task_request": payload["task_request"],
+    }
+
+    derived_key = _resolve_snapshot_idempotency_key(payload=legacy_snapshot)
+
+    assert derived_key is not None
+    assert derived_key.startswith("wp_async_")
+    assert _resolve_snapshot_idempotency_key(payload={"pack_id": payload["pack_id"]}) is None
+    assert _resolve_snapshot_idempotency_key(payload={"task_request": {"caller": None}}) is None
+    assert (
+        _resolve_snapshot_idempotency_key(
+            payload={**legacy_snapshot, "idempotency_key": " explicit-key "}
+        )
+        == "explicit-key"
+    )
 
 
 def test_workflow_pack_async_execution_replays_completed_prior_submission(
