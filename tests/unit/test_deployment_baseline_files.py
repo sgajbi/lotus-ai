@@ -26,6 +26,8 @@ def test_env_example_matches_prod_shaped_local_baseline() -> None:
     assert "LOTUS_AI_ARTIFACT_OBJECT_STORE_MODE=filesystem" in env_example_text
     assert "LOTUS_AI_SECRET_SOURCE_MODE=local_or_unspecified" in env_example_text
     assert "LOTUS_AI_ASYNC_CUTOVER_STATE=dedicated_workers_active" in env_example_text
+    assert "LOTUS_AI_WORKFLOW_RUN_ATTESTATION_KEY_ID=\n" in env_example_text
+    assert "LOTUS_AI_WORKFLOW_RUN_ATTESTATION_ROTATION_EPOCH=1" in env_example_text
     assert "LOTUS_AI_WORKFLOW_RUN_ATTESTATION_PRIVATE_KEY_BASE64URL=\n" in env_example_text
     assert "LOTUS_AI_WORKFLOW_RUN_ATTESTATION_ROTATED_PUBLIC_KEYS_JSON=[]" in env_example_text
     assert "LOTUS_AI_WORKFLOW_RUN_MODEL_RISK_INVENTORY_JSON=[]" in env_example_text
