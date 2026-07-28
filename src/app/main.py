@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, MutableMapping
+from collections.abc import AsyncIterator, MutableMapping, Sequence
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
@@ -8,7 +8,7 @@ from fastapi import FastAPI, Response, status
 from fastapi.openapi.utils import get_openapi
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_fastapi_instrumentator import routing as prometheus_routing
-from starlette.routing import Match, Mount, Route
+from starlette.routing import BaseRoute, Match, Mount
 
 from app.api_errors import install_problem_detail_handlers
 from app.config import settings
@@ -48,13 +48,18 @@ def _install_fastapi_included_router_prometheus_patch() -> None:
     global _PROMETHEUS_ROUTING_PATCHED
     if _PROMETHEUS_ROUTING_PATCHED:
         return
-    prometheus_routing._get_route_name = _get_prometheus_route_name
+    # The private prometheus-fastapi-instrumentator hook has changed annotations
+    # across supported dependency versions: some expose two parameters, others
+    # include the accumulated route name. The runtime call remains compatible
+    # because the accumulator is optional; keep the cast at the assignment
+    # boundary so route traversal stays strongly typed.
+    prometheus_routing._get_route_name = cast(Any, _get_prometheus_route_name)
     _PROMETHEUS_ROUTING_PATCHED = True
 
 
 def _get_prometheus_route_name(
     scope: MutableMapping[str, Any],
-    routes: list[Route],
+    routes: Sequence[BaseRoute],
     route_name: str | None = None,
 ) -> str | None:
     """Resolve route names across Starlette routes and FastAPI deferred routers."""
@@ -71,7 +76,7 @@ def _get_prometheus_route_name(
             route_name = route_path
             if isinstance(matched_route, Mount) and matched_route.routes:
                 child_route_name = _get_prometheus_route_name(
-                    child_scope, cast(list[Route], matched_route.routes), route_name
+                    child_scope, matched_route.routes, route_name
                 )
                 if child_route_name is None:
                     route_name = None
@@ -85,7 +90,7 @@ def _get_prometheus_route_name(
     return None
 
 
-def _resolve_effective_route(route: Route, scope: MutableMapping[str, Any]) -> Any:
+def _resolve_effective_route(route: BaseRoute, scope: MutableMapping[str, Any]) -> Any:
     match_method = getattr(route, "_match", None)
     if not callable(match_method):
         return route
