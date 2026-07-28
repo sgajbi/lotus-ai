@@ -119,6 +119,13 @@ Current repository posture:
     AI-provider-operations-owned retention/deletion outcomes. It reuses workflow-attestation key
     discovery but has its own strict claims, repository port, memory/SQL adapters, migration,
     issuance, verification, and API contract. `lotus-idea` cannot record its own provider outcome.
+13. `scripts/generate_rfc0002_idea_explanation_proof.py` is the repo-native RFC-0002 local-dev
+    proof gate for `idea_explanation.pack@v1`. It exercises the governed HTTP execution boundary,
+    reviewer transition, source-safe consumer/source-event projections, and local stub-mode
+    fail-closed attestation/retention boundaries. It does not certify live-provider execution,
+    approved model-risk inventory, signed non-stub attestation, provider-native retention/deletion,
+    or downstream Idea consumption. Its handoff artifact is governed by
+    `contracts/rfc-0002/lotus-ai-idea-explanation-workflow-proof.v1.json`.
 
 ## Architecture And Module Map
 
@@ -181,6 +188,8 @@ Use these commands as the primary local contract:
    `make runtime-mode-smoke`
 5. Docker build
    `make docker-build`
+6. RFC-0002 Idea explanation proof gate
+   `make rfc0002-idea-proof-gate`
 
 ## Validation And CI Expectations
 
@@ -193,9 +202,10 @@ Use these commands as the primary local contract:
 Important validation expectations:
 
 1. OpenAPI, evaluation-manifest, evaluation-run, async-job, and migration gates are active,
-2. security and dependency health are part of the real CI contract,
-3. coverage and Docker build are part of the merge gate,
-4. AI posture changes should remain evidence-backed and bounded rather than speculative.
+2. RFC-0002 Idea explanation local-dev proof is part of `make check` and `make ci`,
+3. security and dependency health are part of the real CI contract,
+4. coverage and Docker build are part of the merge gate,
+5. AI posture changes should remain evidence-backed and bounded rather than speculative.
 
 ## Standards And RFCs That Govern This Repository
 

@@ -82,6 +82,9 @@ posture, and source evidence before generated narrative can be treated as usable
 `idea_explanation.pack@v1` consumes `lotus-idea` redacted opportunity evidence packets and remains
 review-gated support-only; it cannot create suitability approval, proposal authority, rebalance
 authority, client-ready publication, supported-feature promotion, or missing source evidence.
+`make rfc0002-idea-proof-gate` now provides a deterministic local-dev proof that this execution,
+review, source-safe lineage, and fail-closed attestation/provider-retention boundary remain intact.
+Live-provider certification and downstream Idea consumption remain separate evidence classes.
 
 ## Supported Task Families
 

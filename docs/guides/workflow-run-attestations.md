@@ -110,3 +110,32 @@ python -m pytest tests/unit/test_workflow_run_attestation_signing.py `
 
 The suite covers canonical serialization, claim tampering, key lifecycle, issuer/audience/expiry,
 exact model approval, source safety, issuance gates, API errors, and OpenAPI serialization.
+
+## RFC-0002 Idea Explanation Proof
+
+`idea_explanation.pack@v1` has an explicit local-dev proof gate for the Lotus Idea RFC-0002 Slice
+09/17 dependency:
+
+```powershell
+python scripts/generate_rfc0002_idea_explanation_proof.py
+```
+
+The gate executes the Idea explanation workflow pack through the protected HTTP boundary, applies a
+reviewer acceptance, verifies source-safe consumer/source-event lineage, and verifies that local
+stub execution remains unable to issue:
+
+1. a signed workflow-run attestation, because there is no approved non-stub model-risk decision,
+2. a provider-retention confirmation, because there is no live provider execution.
+
+When a downstream handoff artifact is needed, write it under ignored `output/`:
+
+```powershell
+python scripts/generate_rfc0002_idea_explanation_proof.py `
+  --output output/rfc0002-idea-explanation-proof.json
+```
+
+This artifact is intentionally source-safe and partial. It can clear local owner-repo execution,
+review, guardrail, and lineage proof, but it must not be used as live-provider certification,
+provider-native retention/deletion proof, supported-feature promotion proof, or downstream Idea
+consumption proof. Its machine-readable contract is
+`contracts/rfc-0002/lotus-ai-idea-explanation-workflow-proof.v1.json`.

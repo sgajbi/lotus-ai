@@ -14,6 +14,7 @@ The repo-native commands are designed to map to those lanes rather than to ad ho
 
 - `make check` - fast local gate
 - `make ci` - PR-grade local gate
+- `make rfc0002-idea-proof-gate` - RFC-0002 Idea explanation local-dev proof gate
 - `make runtime-mode-smoke` - targeted startup and runtime-mode smoke
 - `make migration-apply` - apply Alembic migrations
 - `make docker-build` - Docker build validation
@@ -28,9 +29,15 @@ The repo-native commands are designed to map to those lanes rather than to ad ho
 4. evaluation manifest validation,
 5. evaluation run artifact validation,
 6. async job artifact validation,
-7. migration smoke,
-8. runtime-mode smoke,
-9. unit-test execution.
+7. RFC-0002 Idea explanation local-dev proof validation,
+8. migration smoke,
+9. runtime-mode smoke,
+10. unit-test execution.
+
+The RFC-0002 proof gate executes `idea_explanation.pack@v1` through the governed HTTP boundary,
+accepts the review-gated run, validates source-safe consumer/source-event evidence, and proves that
+local stub execution cannot issue signed attestation or provider-retention confirmation. It is not
+live-provider, provider-native retention/deletion, or downstream Idea consumption evidence.
 
 Use it for:
 
@@ -85,6 +92,7 @@ just developer convenience.
 
 - `Makefile`
 - `REPOSITORY-ENGINEERING-CONTEXT.md`
+- `scripts/generate_rfc0002_idea_explanation_proof.py`
 - `docs/evals/evaluation-strategy.md`
 - `docs/runbooks/service-operations.md`
 
