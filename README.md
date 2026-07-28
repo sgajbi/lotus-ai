@@ -192,6 +192,9 @@ Local Docker runtime notes:
 - `make install` - install development dependencies
 - `make check` - fast local gate
 - `make ci` - PR-grade local gate
+- `make rfc0002-idea-proof-gate` - deterministic local-dev proof for
+  `idea_explanation.pack@v1` execution, review, source-safe lineage, and fail-closed live-provider
+  certification boundaries
 - `make runtime-mode-smoke` - verify startup, migration, and runtime-mode posture
 - `make migration-apply` - apply Alembic migrations
 - `make docker-build` - Docker build validation
@@ -218,10 +221,26 @@ The enforced gates currently include:
 3. evaluation fixture manifest validation,
 4. evaluation run artifact validation,
 5. async job artifact validation,
-6. migration smoke,
-7. dependency health and security audit,
-8. coverage-backed test execution,
-9. Docker build validation.
+6. RFC-0002 Idea explanation local-dev proof validation,
+7. migration smoke,
+8. dependency health and security audit,
+9. coverage-backed test execution,
+10. Docker build validation.
+
+The RFC-0002 Idea proof gate is intentionally conservative. It executes
+`idea_explanation.pack@v1` through the governed HTTP boundary, applies a reviewer acceptance,
+verifies source-safe consumer/source-event projections, and verifies that signed workflow-run
+attestation and provider-retention confirmation remain non-issuable in local stub mode. It clears
+local owner-repo proof for guardrails and lineage, but preserves live-provider, approved
+model-risk-inventory, signed non-stub attestation, and provider-native retention/deletion blockers.
+The artifact contract is
+`contracts/rfc-0002/lotus-ai-idea-explanation-workflow-proof.v1.json`.
+Generate a source-safe handoff artifact when needed:
+
+```powershell
+python scripts/generate_rfc0002_idea_explanation_proof.py `
+  --output output/rfc0002-idea-explanation-proof.json
+```
 
 ## Integration Contract
 

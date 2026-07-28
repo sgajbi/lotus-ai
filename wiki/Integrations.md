@@ -354,6 +354,19 @@ Attestations exclude prompts, raw provider responses, generated content, unrestr
 and client, portfolio, tenant, advisor, candidate, or correlation identifiers. The detailed
 contract and rotation procedure are in `docs/guides/workflow-run-attestations.md`.
 
+For RFC-0002 local-dev evidence, run:
+
+```powershell
+python scripts/generate_rfc0002_idea_explanation_proof.py `
+  --output output/rfc0002-idea-explanation-proof.json
+```
+
+That proof is deliberately partial: it confirms governed Idea explanation execution, review,
+source-safe lineage, and fail-closed local stub posture. It does not certify live provider
+execution, signed non-stub attestation, provider-native retention/deletion, or downstream Idea
+consumption. The artifact shape is governed by
+`contracts/rfc-0002/lotus-ai-idea-explanation-workflow-proof.v1.json`.
+
 ## Provider and Safety Expectations
 
 Callers must not assume that one successful response means unrestricted live-provider or safety
