@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.lotus.internal/lotus-ai/rfc-0002/lotus-ai-idea-explanation-workflow-proof.v1.json",
+  "title": "Lotus AI RFC-0002 Idea Explanation Workflow Proof",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at_utc",
+    "repository",
+    "issue_url",
+    "rfc",
+    "slices",
+    "proof_status",
+    "workflow_pack",
+    "execution",
+    "source_lineage",
+    "guardrails",
+    "attestation",
+    "provider_retention",
+    "blockers_cleared",
+    "blockers_preserved",
+    "non_claim_boundaries",
+    "validation_command",
+    "contract_path"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "lotus-ai.rfc0002.idea-explanation-workflow-proof.v1"
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "repository": {
+      "const": "lotus-ai"
+    },
+    "issue_url": {
+      "const": "https://github.com/sgajbi/lotus-ai/issues/122"
+    },
+    "rfc": {
+      "const": "RFC-0002"
+    },
+    "slices": {
+      "type": "array",
+      "items": {
+        "enum": ["09", "17"]
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true
+    },
+    "proof_status": {
+      "enum": ["LOCAL_DEV_PARTIAL_BLOCKED", "LIVE_PROVIDER_CERTIFIED"]
+    },
+    "workflow_pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pack_id",
+        "pack_version",
+        "registration_ref",
+        "workflow_surface",
+        "workflow_authority_owner",
+        "caller_app"
+      ],
+      "properties": {
+        "pack_id": {
+          "const": "idea_explanation.pack"
+        },
+        "pack_version": {
+          "const": "v1"
+        },
+        "registration_ref": {
+          "const": "idea_explanation.pack@v1"
+        },
+        "workflow_surface": {
+          "const": "idea-explanation-evidence"
+        },
+        "workflow_authority_owner": {
+          "const": "lotus-idea"
+        },
+        "caller_app": {
+          "const": "lotus-idea"
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime_state",
+        "review_state",
+        "review_required",
+        "supportability_status",
+        "provider_mode",
+        "stubbed",
+        "artifact_ref_count",
+        "structured_output_key_count"
+      ],
+      "properties": {
+        "runtime_state": {
+          "const": "COMPLETED"
+        },
+        "review_state": {
+          "const": "ACCEPTED"
+        },
+        "review_required": {
+          "const": true
+        },
+        "supportability_status": {
+          "const": "READY"
+        },
+        "provider_mode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stubbed": {
+          "type": "boolean"
+        },
+        "artifact_ref_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "structured_output_key_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "source_lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "no_raw_payloads",
+        "source_authority_policy_present",
+        "source_event_count",
+        "idea_lineage_present",
+        "idea_source_ref_count",
+        "idea_source_signal_count",
+        "evidence_hash_present"
+      ],
+      "properties": {
+        "no_raw_payloads": {
+          "const": true
+        },
+        "source_authority_policy_present": {
+          "const": true
+        },
+        "source_event_count": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "idea_lineage_present": {
+          "const": true
+        },
+        "idea_source_ref_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "idea_source_signal_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evidence_hash_present": {
+          "const": true
+        }
+      }
+    },
+    "guardrails": {
+      "type": "object"
+    },
+    "attestation": {
+      "type": "object"
+    },
+    "provider_retention": {
+      "type": "object"
+    },
+    "blockers_cleared": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "blockers_preserved": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "non_claim_boundaries": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "validation_command": {
+      "const": "python scripts/generate_rfc0002_idea_explanation_proof.py"
+    },
+    "contract_path": {
+      "const": "contracts/rfc-0002/lotus-ai-idea-explanation-workflow-proof.v1.json"
+    }
+  }
+}
