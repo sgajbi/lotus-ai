@@ -1,4 +1,4 @@
-.PHONY: install lint monetary-float-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke migration-apply runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
+.PHONY: install lint monetary-float-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke migration-apply runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
 
 install:
 	python -m pip install --upgrade pip
@@ -28,6 +28,9 @@ eval-run-gate:
 
 async-job-gate:
 	python scripts/validate_async_job_artifacts.py
+
+rfc0002-idea-proof-gate:
+	python scripts/generate_rfc0002_idea_explanation_proof.py
 
 migration-smoke:
 	python scripts/migration_contract_check.py --mode alembic-sql
@@ -60,9 +63,9 @@ test-coverage:
 security-audit:
 	python scripts/dependency_health_check.py
 
-check: lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke runtime-mode-smoke test
+check: lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke runtime-mode-smoke test
 
-ci: verify-dependencies lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate migration-smoke runtime-mode-smoke security-audit test-coverage docker-build
+ci: verify-dependencies lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke runtime-mode-smoke security-audit test-coverage docker-build
 
 docker-build:
 	docker build -t backend-service:ci-test .
