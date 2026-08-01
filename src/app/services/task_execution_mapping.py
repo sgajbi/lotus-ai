@@ -74,6 +74,8 @@ def build_task_result_payload(
     context: TaskExecutionContext,
     resolved: ResolvedTaskExecution,
 ) -> dict[str, object]:
+    if _is_domain_only_workflow_pack_output(resolved.provider_execution.structured_output):
+        return dict(resolved.provider_execution.structured_output)
     payload = {
         **resolved.provider_execution.structured_output,
         "input_mode": context.request.input_mode,
@@ -84,6 +86,13 @@ def build_task_result_payload(
     ):
         payload["caller_app"] = context.request.caller.caller_app
     return payload
+
+
+def _is_domain_only_workflow_pack_output(payload: dict[str, object]) -> bool:
+    workflow_pack_family = payload.get("workflow_pack_family")
+    return isinstance(workflow_pack_family, str) and workflow_pack_family.startswith(
+        "advisory_copilot_"
+    )
 
 
 def _utcnow() -> str:
