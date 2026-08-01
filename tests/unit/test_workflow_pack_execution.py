@@ -124,9 +124,84 @@ def test_execute_workflow_pack_records_review_gated_advisory_copilot_output() ->
     assert structured_output["client_ready_publication"] == "BLOCKED"
     assert structured_output["human_review_required"] is True
     assert structured_output["evidence_packet_hash"] == "sha256:copilot-evidence-packet-001"
+    assert structured_output["sections"][0]["claims"][0]["source_refs"] == [
+        "lotus-advise:POLICY_EVALUATION:policy_eval_sg_001:sha256:policy-evaluation"
+    ]
+    assert "policy_eval_sg_001" not in structured_output["sections"][0]["text"]
+    assert "caller_app" not in structured_output
+    assert "input_mode" not in structured_output
+    assert "source_refs" not in structured_output
+    assert "context_summary" not in structured_output
+    assert "phase" not in structured_output
+    assert "output_label" not in structured_output
+    assert "safety_mode" not in structured_output
+    assert "redaction_posture" not in structured_output
+    assert "context_keys" not in structured_output
+    assert "stub_reason" not in structured_output
+    assert structured_output["model_risk"]["approved_provider_id"] == "lotus-ai"
+    assert structured_output["model_risk"]["approved_model_version"] == (
+        "lotus-ai-governed-model.v1"
+    )
     assert structured_output["model_risk"]["evaluation_pack_ref"] == (
         "advisory-copilot-eval-pack.v1"
     )
+
+
+def test_execute_workflow_pack_preserves_advisory_copilot_no_content_hash_grounding() -> None:
+    request_payload = advisory_copilot_workflow_pack_execution_request_json(
+        correlation_id="corr-execution-advisory-copilot-operations-handoff"
+    )
+    request_payload["pack_id"] = "advisory_copilot_operations_report_handoff.pack"
+    request_payload["workflow_surface"] = "advisory-copilot-operations-report-handoff"
+    task_request = request_payload["task_request"]
+    assert isinstance(task_request, dict)
+    context = task_request["context"]
+    assert isinstance(context, dict)
+    payload = context["payload"]
+    assert isinstance(payload, dict)
+    copilot_request = payload["copilot_request"]
+    assert isinstance(copilot_request, dict)
+    copilot_request["action_family"] = "OPERATIONS_REPORT_HANDOFF"
+    evidence_packet = payload["copilot_evidence_packet"]
+    assert isinstance(evidence_packet, dict)
+    evidence_packet["action_family"] = "OPERATIONS_REPORT_HANDOFF"
+    evidence_packet["sections"] = [
+        {
+            "section_key": "OPERATIONS_HANDOFF",
+            "title": "Operations handoff",
+            "evidence_class": "OPERATIONS_HANDOFF_EVIDENCE",
+            "summary_items": [
+                "Latest implementation handoff posture is EXECUTION_READY.",
+            ],
+            "source_refs": [
+                {
+                    "source_system": "lotus-advise",
+                    "source_type": "PROPOSAL_WORKFLOW_EVENT",
+                    "source_ref_token": "tok_source-ref_001",
+                    "content_hash": None,
+                    "access_class": "OPERATIONS_HANDOFF_EVIDENCE",
+                }
+            ],
+        }
+    ]
+    context["source_refs"] = [
+        "lotus-advise:copilot-evidence-packet:copilot_packet_pb_sg_001",
+        "lotus-advise:PROPOSAL_WORKFLOW_EVENT:event_execution_ready_001:no-content-hash",
+    ]
+    request = WorkflowPackExecutionRequest.model_validate(request_payload)
+
+    response = execute_workflow_pack(request)
+
+    structured_output = response.execution.result.structured_output
+    assert response.execution.status.value == "COMPLETED"
+    assert response.workflow_pack_run.pack_id == "advisory_copilot_operations_report_handoff.pack"
+    assert structured_output["workflow_pack_family"] == (
+        "advisory_copilot_operations_report_handoff"
+    )
+    assert structured_output["section_count"] == 1
+    assert structured_output["sections"][0]["claims"][0]["source_refs"] == [
+        "lotus-advise:PROPOSAL_WORKFLOW_EVENT:event_execution_ready_001:no-content-hash"
+    ]
 
 
 def test_execute_workflow_pack_records_review_gated_idea_explanation_output() -> None:

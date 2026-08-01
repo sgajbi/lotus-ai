@@ -232,6 +232,8 @@ def advisory_copilot_payload(*, requested_outputs: list[str] | None = None) -> d
             "requested_by": "advisor_001",
         },
         "model_risk_controls": {
+            "approved_provider_id": "lotus-ai",
+            "approved_model_version": "lotus-ai-governed-model.v1",
             "approved_instruction_set": "advisory-copilot-instructions.v1",
             "prompt_template_version": "advisory-copilot-prompt-template.v1",
             "output_schema_version": "advisory-copilot-output-schema.v1",
@@ -273,7 +275,10 @@ def advisory_copilot_workflow_pack_execution_request_json(
             "context": {
                 "summary": "Generate review-gated advisory copilot draft from bounded evidence.",
                 "payload": advisory_copilot_payload(requested_outputs=requested_outputs),
-                "source_refs": ["lotus-advise:copilot-evidence-packet:copilot_packet_pb_sg_001"],
+                "source_refs": [
+                    "lotus-advise:copilot-evidence-packet:copilot_packet_pb_sg_001",
+                    ("lotus-advise:POLICY_EVALUATION:policy_eval_sg_001:sha256:policy-evaluation"),
+                ],
             },
             "expected_output_label": "EXPLANATION_ONLY",
         },

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from typing import cast
 
@@ -181,7 +182,12 @@ def test_validate_advisory_copilot_payload_rejects_technical_leakage_anywhere() 
 
 
 def test_build_advisory_copilot_stub_result_returns_review_gated_output() -> None:
-    result = build_advisory_copilot_stub_result(context_payload=_payload())
+    result = build_advisory_copilot_stub_result(
+        context_payload=_payload(),
+        source_refs=[
+            ("lotus-advise:POLICY_EVALUATION:policy_eval_sg_001:sha256:policy-evaluation")
+        ],
+    )
 
     assert result is not None
     message, structured_output = result
@@ -192,6 +198,12 @@ def test_build_advisory_copilot_stub_result_returns_review_gated_output() -> Non
     assert structured_output["client_ready_publication"] == "BLOCKED"
     assert structured_output["human_review_required"] is True
     assert structured_output["section_count"] == 1
+    section = structured_output["sections"][0]
+    assert "policy_eval_sg_001" not in section["text"]
+    assert "PB_SG_GLOBAL_BAL_001" not in section["text"]
+    assert section["claims"][0]["source_refs"] == [
+        "lotus-advise:POLICY_EVALUATION:policy_eval_sg_001:sha256:policy-evaluation"
+    ]
     assert structured_output["unsupported_evidence_count"] == 0
     unsupported_claims = structured_output["unsupported_claims"]
     assert isinstance(unsupported_claims, list)
@@ -199,7 +211,53 @@ def test_build_advisory_copilot_stub_result_returns_review_gated_output() -> Non
 
     model_risk = structured_output["model_risk"]
     assert isinstance(model_risk, dict)
+    assert model_risk["approved_provider_id"] == "lotus-ai"
+    assert model_risk["approved_model_version"] == "lotus-ai-governed-model.v1"
     assert model_risk["evaluation_pack_ref"] == "advisory-copilot-eval-pack.v1"
+    assert len(json.dumps(structured_output, sort_keys=True, separators=(",", ":"))) < 2500
+
+
+def test_build_advisory_copilot_stub_result_preserves_no_content_hash_grounding() -> None:
+    payload = _payload()
+    evidence_packet = _dict_at(payload, "copilot_evidence_packet")
+    evidence_packet["action_family"] = "OPERATIONS_REPORT_HANDOFF"
+    evidence_packet["sections"] = [
+        {
+            "section_key": "OPERATIONS_HANDOFF",
+            "title": "Operations handoff",
+            "evidence_class": "OPERATIONS_HANDOFF_EVIDENCE",
+            "summary_items": [
+                "Latest implementation handoff posture is EXECUTION_READY.",
+            ],
+            "source_refs": [
+                {
+                    "source_system": "lotus-advise",
+                    "source_type": "PROPOSAL_WORKFLOW_EVENT",
+                    "source_ref_token": "tok_source-ref_001",
+                    "content_hash": None,
+                    "access_class": "OPERATIONS_HANDOFF_EVIDENCE",
+                }
+            ],
+        }
+    ]
+    _dict_at(payload, "copilot_request")["action_family"] = "OPERATIONS_REPORT_HANDOFF"
+
+    result = build_advisory_copilot_stub_result(
+        context_payload=payload,
+        source_refs=[
+            "lotus-advise:PROPOSAL_WORKFLOW_EVENT:event_execution_ready_001:no-content-hash"
+        ],
+    )
+
+    assert result is not None
+    _, structured_output = result
+    assert structured_output["workflow_pack_family"] == (
+        "advisory_copilot_operations_report_handoff"
+    )
+    assert structured_output["section_count"] == 1
+    assert structured_output["sections"][0]["claims"][0]["source_refs"] == [
+        "lotus-advise:PROPOSAL_WORKFLOW_EVENT:event_execution_ready_001:no-content-hash"
+    ]
 
 
 def test_build_advisory_copilot_stub_result_requires_governed_context_sections() -> None:
