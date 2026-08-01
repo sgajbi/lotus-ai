@@ -198,10 +198,13 @@ def test_build_advisory_copilot_stub_result_returns_review_gated_output() -> Non
     assert structured_output["client_ready_publication"] == "BLOCKED"
     assert structured_output["human_review_required"] is True
     assert structured_output["section_count"] == 1
-    section = structured_output["sections"][0]
-    assert "policy_eval_sg_001" not in section["text"]
-    assert "PB_SG_GLOBAL_BAL_001" not in section["text"]
-    assert section["claims"][0]["source_refs"] == [
+    sections = cast(list[dict[str, object]], structured_output["sections"])
+    section = sections[0]
+    section_text = cast(str, section["text"])
+    section_claims = cast(list[dict[str, object]], section["claims"])
+    assert "policy_eval_sg_001" not in section_text
+    assert "PB_SG_GLOBAL_BAL_001" not in section_text
+    assert section_claims[0]["source_refs"] == [
         "lotus-advise:POLICY_EVALUATION:policy_eval_sg_001:sha256:policy-evaluation"
     ]
     assert structured_output["unsupported_evidence_count"] == 0
@@ -255,7 +258,9 @@ def test_build_advisory_copilot_stub_result_preserves_no_content_hash_grounding(
         "advisory_copilot_operations_report_handoff"
     )
     assert structured_output["section_count"] == 1
-    assert structured_output["sections"][0]["claims"][0]["source_refs"] == [
+    sections = cast(list[dict[str, object]], structured_output["sections"])
+    section_claims = cast(list[dict[str, object]], sections[0]["claims"])
+    assert section_claims[0]["source_refs"] == [
         "lotus-advise:PROPOSAL_WORKFLOW_EVENT:event_execution_ready_001:no-content-hash"
     ]
 
