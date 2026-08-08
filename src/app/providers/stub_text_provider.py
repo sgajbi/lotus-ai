@@ -85,14 +85,17 @@ class StubTextProvider:
         )
         if request.task_id == "explain.v1" and advisory_copilot_result:
             message, structured_output = advisory_copilot_result
+            provider_id, model_version = _advisory_copilot_model_risk_identity(structured_output)
             return ProviderExecutionResponse(
-                provider_id=self.descriptor.provider_id,
+                provider_id=provider_id,
                 provider_mode=settings.provider_mode,
                 adapter_kind=self.descriptor.adapter_kind,
                 failure_category=None,
                 timeout_ms=request.timeout_ms,
                 retry_count=0,
                 max_output_tokens=request.max_output_tokens,
+                model_id="advisory-copilot-deterministic-stub",
+                model_version=model_version,
                 stubbed=True,
                 message=message,
                 structured_output=structured_output,
@@ -100,6 +103,7 @@ class StubTextProvider:
         proposal_memo_commentary_result = build_proposal_memo_commentary_stub_result(
             context_payload=request.context_payload,
         )
+
         if request.task_id == "explain.v1" and proposal_memo_commentary_result:
             message, structured_output = proposal_memo_commentary_result
             return ProviderExecutionResponse(
@@ -419,3 +423,21 @@ class StubTextProvider:
                 ),
             },
         )
+
+
+def _advisory_copilot_model_risk_identity(
+    structured_output: dict[str, object],
+) -> tuple[str, str | None]:
+    model_risk = structured_output.get("model_risk")
+    if not isinstance(model_risk, dict):
+        return StubTextProvider.descriptor.provider_id, None
+    provider_id = model_risk.get("approved_provider_id")
+    model_version = model_risk.get("approved_model_version")
+    return (
+        (
+            provider_id
+            if isinstance(provider_id, str) and provider_id
+            else StubTextProvider.descriptor.provider_id
+        ),
+        model_version if isinstance(model_version, str) and model_version else None,
+    )
