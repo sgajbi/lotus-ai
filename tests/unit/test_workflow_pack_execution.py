@@ -6,6 +6,7 @@ from app.services.workflow_pack_execution import (
     validate_workflow_pack_execution_binding,
 )
 from app.services.workflow_pack_bindings import get_workflow_pack_execution_binding
+from app.services.workflow_pack_run_ledger import load_workflow_pack_run_context
 from tests.support.workflow_pack_fixtures import (
     advisory_copilot_workflow_pack_execution_request_json,
     dpm_exception_summary_workflow_pack_execution_request_json,
@@ -145,6 +146,14 @@ def test_execute_workflow_pack_records_review_gated_advisory_copilot_output() ->
     assert structured_output["model_risk"]["evaluation_pack_ref"] == (
         "advisory-copilot-eval-pack.v1"
     )
+    assert response.execution.audit.provider_id == "lotus-ai"
+    assert response.execution.audit.model_version == "lotus-ai-governed-model.v1"
+    assert response.execution.audit.adapter_kind is not None
+    assert response.execution.audit.adapter_kind.value == "STUB"
+    assert response.execution.audit.stubbed is True
+    recorded_run = load_workflow_pack_run_context(run_id=response.workflow_pack_run.run_id).record
+    assert recorded_run.provider_id == "lotus-ai"
+    assert recorded_run.model_version == "lotus-ai-governed-model.v1"
 
 
 def test_execute_workflow_pack_preserves_advisory_copilot_no_content_hash_grounding() -> None:
