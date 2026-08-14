@@ -1,0 +1,23 @@
+name: Merged PR Main Releasability Dispatch
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch-main-releasability:
+    name: Dispatch Main Releasability
+    if: >
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Dispatch main releasability gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run main-releasability.yml --repo "$GITHUB_REPOSITORY" --ref main

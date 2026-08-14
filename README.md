@@ -207,6 +207,10 @@ Local Docker runtime notes:
 2. `Pull Request Merge Gate`
 3. `Main Releasability Gate`
 
+Merged pull requests to `main` also dispatch `main-releasability.yml` through
+`.github/workflows/merged-pr-main-releasability.yml`, giving RFC and release-governance work
+exact-main evidence instead of relying on stale branch checks or manual reruns.
+
 Repo-native validation mapping:
 
 - fast local gate: `make check`

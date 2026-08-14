@@ -199,6 +199,10 @@ Use these commands as the primary local contract:
 2. `Pull Request Merge Gate`
 3. `Main Releasability Gate`
 
+Merged PRs to `main` dispatch `main-releasability.yml` through
+`.github/workflows/merged-pr-main-releasability.yml`, so post-merge RFC and release evidence can
+bind to the exact mainline commit.
+
 Important validation expectations:
 
 1. OpenAPI, evaluation-manifest, evaluation-run, async-job, and migration gates are active,

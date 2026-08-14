@@ -9,6 +9,9 @@
 3. `Main Releasability Gate`
 
 The repo-native commands are designed to map to those lanes rather than to ad hoc local habits.
+When a PR is merged into `main`, `.github/workflows/merged-pr-main-releasability.yml` dispatches
+`main-releasability.yml` on `main` so release evidence and RFC closure can cite exact-main proof
+rather than branch-only checks.
 
 ## Primary Commands
 
