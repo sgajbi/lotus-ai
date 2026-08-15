@@ -19,10 +19,11 @@ def test_merged_pr_main_releasability_dispatcher_targets_main_gate() -> None:
     assert 'gh workflow run main-releasability.yml --repo "$GITHUB_REPOSITORY" --ref main' in text
 
 
-def test_main_releasability_gate_remains_dispatchable() -> None:
+def test_main_releasability_gate_is_dispatchable_without_duplicate_push_trigger() -> None:
     workflow = WORKFLOW_DIR / "main-releasability.yml"
     text = workflow.read_text(encoding="utf-8")
 
     assert "workflow_dispatch:" in text
-    assert 'branches: [ "main" ]' in text
+    assert "push:" not in text
+    assert 'branches: [ "main" ]' not in text
     assert "name: Main Releasability Gate" in text
