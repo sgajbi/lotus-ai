@@ -508,6 +508,22 @@ def _absent_ref_creation_block_end_index(text: str) -> int | None:
     return None
 
 
+def _has_dispatch_ref_reassignment_between(text: str, *, start_index: int, end_index: int) -> bool:
+    lines = text.splitlines()
+    depth = 0
+    for line in lines[start_index + 1 : end_index + 1]:
+        stripped_line = line.strip()
+        if not stripped_line or _is_shell_comment(stripped_line):
+            continue
+        if depth == 0 and stripped_line.startswith("dispatch_ref="):
+            return True
+        if _opens_nested_shell_scope(stripped_line):
+            depth += 1
+        if _closes_nested_shell_scope(stripped_line):
+            depth -= 1
+    return False
+
+
 def _dispatches_after_absent_ref_creation(text: str) -> bool:
     dispatch_commands = _main_releasability_dispatch_commands(text)
     creation_block_end_index = _absent_ref_creation_block_end_index(text)
@@ -515,6 +531,11 @@ def _dispatches_after_absent_ref_creation(text: str) -> bool:
         len(dispatch_commands) == 1
         and creation_block_end_index is not None
         and dispatch_commands[0][0] > creation_block_end_index
+        and not _has_dispatch_ref_reassignment_between(
+            text,
+            start_index=creation_block_end_index,
+            end_index=dispatch_commands[0][0],
+        )
         and _is_exact_main_releasability_dispatch_command(dispatch_commands[0][1])
     )
 
@@ -927,6 +948,22 @@ def test_merged_pr_main_releasability_dispatcher_rejects_nested_dispatch_command
             '              -f triggering_pr="$PR_NUMBER"\n'
             "          fi"
         ),
+        1,
+    )
+
+    errors = _merged_pr_dispatch_contract_errors(text)
+
+    assert (
+        "merged-pr-main-releasability.yml must run the main releasability dispatch "
+        "only after the absent immutable-ref creation branch has completed"
+    ) in errors
+
+
+def test_merged_pr_main_releasability_dispatcher_rejects_dispatch_ref_reassignment() -> None:
+    workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
+    text = workflow.read_text(encoding="utf-8").replace(
+        "          gh workflow run main-releasability.yml \\",
+        "          dispatch_ref=main\n          gh workflow run main-releasability.yml \\",
         1,
     )
 
