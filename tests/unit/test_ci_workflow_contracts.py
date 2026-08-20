@@ -17,6 +17,8 @@ IMMUTABLE_REF_LOOKUP_CONDITIONS = (
 )
 IMMUTABLE_REF_LOOKUP_CONDITION = IMMUTABLE_REF_LOOKUP_CONDITIONS[0]
 IMMUTABLE_REF_MISMATCH_CONDITION = 'if [ "$existing_ref_sha" != "$MERGE_COMMIT_SHA" ]; then'
+IMMUTABLE_REF_CREATION_CONDITION = 'if [ -z "$existing_ref_sha" ]; then'
+IMMUTABLE_REF_CREATION_COMMAND = 'gh api "repos/$GITHUB_REPOSITORY/git/refs"'
 
 
 def _merged_pr_dispatch_contract_errors(text: str) -> list[str]:
@@ -59,6 +61,11 @@ def _merged_pr_dispatch_contract_errors(text: str) -> list[str]:
         errors.append(
             "merged-pr-main-releasability.yml must not mask immutable-ref lookup "
             "failures with shell OR fallbacks"
+        )
+    if not _conditionally_creates_absent_immutable_ref(text):
+        errors.append(
+            "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
+            "inside the empty existing-ref branch"
         )
     return errors
 
@@ -239,6 +246,40 @@ def _guarded_lookup_success_arms_fail_on_ref_mismatch(text: str) -> bool:
     return bool(guarded_blocks) and all(
         _outer_lookup_then_arm_has_mismatch_exit(block) for block in guarded_blocks
     )
+
+
+def _conditionally_creates_absent_immutable_ref(text: str) -> bool:
+    lines = text.splitlines()
+    depth = 0
+    for index, line in enumerate(lines):
+        stripped_line = line.strip()
+        if stripped_line == IMMUTABLE_REF_CREATION_CONDITION and depth == 0:
+            direct_executable_commands: list[str] = []
+            creation_depth = 1
+            for follow in lines[index + 1 :]:
+                stripped_follow = follow.strip()
+                if stripped_follow == "fi" and creation_depth == 1:
+                    break
+                if not stripped_follow or _is_shell_comment(stripped_follow):
+                    continue
+                if creation_depth == 1:
+                    direct_executable_commands.append(stripped_follow)
+                if _opens_nested_shell_scope(stripped_follow):
+                    creation_depth += 1
+                if _closes_nested_shell_scope(stripped_follow):
+                    creation_depth -= 1
+            return any(
+                command == IMMUTABLE_REF_CREATION_COMMAND
+                or command.startswith(f"{IMMUTABLE_REF_CREATION_COMMAND} ")
+                for command in direct_executable_commands
+            )
+        if not stripped_line or _is_shell_comment(stripped_line):
+            continue
+        if _opens_nested_shell_scope(stripped_line):
+            depth += 1
+        if _closes_nested_shell_scope(stripped_line):
+            depth -= 1
+    return False
 
 
 def test_merged_pr_main_releasability_dispatcher_targets_main_gate() -> None:
@@ -452,6 +493,31 @@ def test_merged_pr_main_releasability_dispatcher_rejects_subshell_masked_mismatc
     assert (
         "merged-pr-main-releasability.yml must fail closed with exit 1 when "
         "an existing immutable dispatch ref points to a different SHA"
+    ) in errors
+
+
+def test_merged_pr_main_releasability_dispatcher_rejects_unconditional_ref_creation() -> None:
+    workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
+    text = workflow.read_text(encoding="utf-8").replace(
+        (
+            '          if [ -z "$existing_ref_sha" ]; then\n'
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" \\\n'
+            '              -f ref="refs/tags/$dispatch_ref" \\\n'
+            '              -f sha="$MERGE_COMMIT_SHA" >/dev/null\n'
+            "          fi"
+        ),
+        (
+            '          gh api "repos/$GITHUB_REPOSITORY/git/refs" \\\n'
+            '            -f ref="refs/tags/$dispatch_ref" \\\n'
+            '            -f sha="$MERGE_COMMIT_SHA" >/dev/null'
+        ),
+    )
+
+    errors = _merged_pr_dispatch_contract_errors(text)
+
+    assert (
+        "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
+        "inside the empty existing-ref branch"
     ) in errors
 
 
