@@ -1210,6 +1210,7 @@ def test_main_releasability_gate_is_dispatchable_without_duplicate_push_trigger(
     assert "expected_sha:" in text
     assert "triggering_pr:" in text
     assert "git rev-parse HEAD" in text
+    assert "group: ${{ github.workflow }}-${{ inputs.expected_sha || github.sha }}" in text
     assert "push:" not in text
     assert 'branches: [ "main" ]' not in text
     assert "name: Main Releasability Gate" in text
