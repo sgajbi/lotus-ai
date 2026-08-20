@@ -19,6 +19,8 @@ IMMUTABLE_REF_LOOKUP_CONDITION = IMMUTABLE_REF_LOOKUP_CONDITIONS[0]
 IMMUTABLE_REF_MISMATCH_CONDITION = 'if [ "$existing_ref_sha" != "$MERGE_COMMIT_SHA" ]; then'
 IMMUTABLE_REF_CREATION_CONDITION = 'if [ -z "$existing_ref_sha" ]; then'
 IMMUTABLE_REF_CREATION_COMMAND = 'gh api "repos/$GITHUB_REPOSITORY/git/refs"'
+IMMUTABLE_REF_CREATION_REF_FIELD = '-f ref="refs/tags/$dispatch_ref"'
+IMMUTABLE_REF_CREATION_SHA_FIELD = '-f sha="$MERGE_COMMIT_SHA"'
 
 
 def _merged_pr_dispatch_contract_errors(text: str) -> list[str]:
@@ -65,7 +67,7 @@ def _merged_pr_dispatch_contract_errors(text: str) -> list[str]:
     if not _conditionally_creates_absent_immutable_ref(text):
         errors.append(
             "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
-            "inside the empty existing-ref branch"
+            "inside the empty existing-ref branch with exact ref and SHA fields"
         )
     return errors
 
@@ -268,10 +270,15 @@ def _conditionally_creates_absent_immutable_ref(text: str) -> bool:
                     creation_depth += 1
                 if _closes_nested_shell_scope(stripped_follow):
                     creation_depth -= 1
-            return any(
-                command == IMMUTABLE_REF_CREATION_COMMAND
-                or command.startswith(f"{IMMUTABLE_REF_CREATION_COMMAND} ")
-                for command in direct_executable_commands
+            creation_text = "\n".join(direct_executable_commands)
+            return (
+                any(
+                    command == IMMUTABLE_REF_CREATION_COMMAND
+                    or command.startswith(f"{IMMUTABLE_REF_CREATION_COMMAND} ")
+                    for command in direct_executable_commands
+                )
+                and IMMUTABLE_REF_CREATION_REF_FIELD in creation_text
+                and IMMUTABLE_REF_CREATION_SHA_FIELD in creation_text
             )
         if not stripped_line or _is_shell_comment(stripped_line):
             continue
@@ -517,7 +524,22 @@ def test_merged_pr_main_releasability_dispatcher_rejects_unconditional_ref_creat
 
     assert (
         "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
-        "inside the empty existing-ref branch"
+        "inside the empty existing-ref branch with exact ref and SHA fields"
+    ) in errors
+
+
+def test_merged_pr_main_releasability_dispatcher_rejects_wrong_ref_creation_payload() -> None:
+    workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
+    text = workflow.read_text(encoding="utf-8").replace(
+        '-f sha="$MERGE_COMMIT_SHA" >/dev/null',
+        '-f sha="$WRONG_SHA" >/dev/null',
+    )
+
+    errors = _merged_pr_dispatch_contract_errors(text)
+
+    assert (
+        "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
+        "inside the empty existing-ref branch with exact ref and SHA fields"
     ) in errors
 
 
