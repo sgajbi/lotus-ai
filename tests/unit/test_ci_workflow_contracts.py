@@ -27,18 +27,34 @@ def _step_block(text: str, step_name: str) -> str:
     start = text.find(f"- name: {step_name}")
     if start == -1:
         return ""
-    next_step = text.find("\n      - name:", start + 1)
-    next_uses = text.find("\n      - uses:", start + 1)
-    candidates = [index for index in (next_step, next_uses) if index != -1]
-    end = min(candidates) if candidates else len(text)
+    next_step = text.find("\n      - ", start + 1)
+    end = next_step if next_step != -1 else len(text)
     return text[start:end]
+
+
+def _strip_shell_inline_comment(stripped_line: str) -> str:
+    in_single_quote = False
+    in_double_quote = False
+    for index, character in enumerate(stripped_line):
+        if character == "'" and not in_double_quote:
+            in_single_quote = not in_single_quote
+        elif character == '"' and not in_single_quote:
+            in_double_quote = not in_double_quote
+        elif (
+            character == "#"
+            and not in_single_quote
+            and not in_double_quote
+            and (index == 0 or stripped_line[index - 1].isspace())
+        ):
+            return stripped_line[:index].rstrip()
+    return stripped_line
 
 
 def _continued_shell_command(lines: list[str], start_index: int) -> tuple[str, int]:
     command_parts: list[str] = []
     index = start_index
     while index < len(lines):
-        stripped = lines[index].strip()
+        stripped = _strip_shell_inline_comment(lines[index].strip())
         if stripped.endswith("\\"):
             command_parts.append(stripped[:-1].rstrip())
             index += 1
@@ -658,6 +674,40 @@ def test_merged_pr_main_releasability_dispatcher_rejects_split_run_steps() -> No
     ) in errors
 
 
+def test_merged_pr_main_releasability_dispatcher_rejects_split_unnamed_run_step() -> None:
+    workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
+    text = workflow.read_text(encoding="utf-8").replace(
+        (
+            '          if [ -z "$existing_ref_sha" ]; then\n'
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" \\\n'
+            '              -f ref="refs/tags/$dispatch_ref" \\\n'
+            '              -f sha="$MERGE_COMMIT_SHA" >/dev/null\n'
+            "          fi\n"
+            "          gh workflow run main-releasability.yml \\"
+        ),
+        (
+            "      - run: |\n"
+            '          if [ -z "$existing_ref_sha" ]; then\n'
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" \\\n'
+            '              -f ref="refs/tags/$dispatch_ref" \\\n'
+            '              -f sha="$MERGE_COMMIT_SHA" >/dev/null\n'
+            "          fi\n"
+            "          gh workflow run main-releasability.yml \\"
+        ),
+    )
+
+    errors = _merged_pr_dispatch_contract_errors(text)
+
+    assert (
+        "merged-pr-main-releasability.yml missing `gh workflow run main-releasability.yml`"
+        in errors
+    )
+    assert (
+        "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
+        "inside the empty existing-ref branch with exact ref and SHA fields"
+    ) in errors
+
+
 def test_merged_pr_main_releasability_dispatcher_rejects_trailing_ref_creation() -> None:
     workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
     text = workflow.read_text(encoding="utf-8").replace(
@@ -670,6 +720,28 @@ def test_merged_pr_main_releasability_dispatcher_rejects_trailing_ref_creation()
             "          gh workflow run main-releasability.yml \\"
         ),
         1,
+    )
+
+    errors = _merged_pr_dispatch_contract_errors(text)
+
+    assert (
+        "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
+        "inside the empty existing-ref branch with exact ref and SHA fields"
+    ) in errors
+
+
+def test_merged_pr_main_releasability_dispatcher_rejects_commented_payload_fields() -> None:
+    workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
+    text = workflow.read_text(encoding="utf-8").replace(
+        (
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" \\\n'
+            '              -f ref="refs/tags/$dispatch_ref" \\\n'
+            '              -f sha="$MERGE_COMMIT_SHA" >/dev/null'
+        ),
+        (
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" '
+            '# -f ref="refs/tags/$dispatch_ref" -f sha="$MERGE_COMMIT_SHA"'
+        ),
     )
 
     errors = _merged_pr_dispatch_contract_errors(text)
