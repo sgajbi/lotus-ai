@@ -325,6 +325,8 @@ def _outer_lookup_then_arm_has_mismatch_exit(block: str) -> bool:
     condition_depth = 1
     for index, line in enumerate(then_arm):
         stripped_line = line.strip()
+        if condition_depth == 1 and stripped_line.startswith("existing_ref_sha="):
+            return False
         if stripped_line != IMMUTABLE_REF_MISMATCH_CONDITION or condition_depth != 1:
             if _opens_nested_shell_scope(stripped_line):
                 condition_depth += 1
@@ -417,7 +419,8 @@ def _conditionally_creates_absent_immutable_ref(text: str) -> bool:
         if _closes_nested_shell_scope(stripped_line):
             depth -= 1
     return (
-        bool(guarded_creation_commands)
+        len(creation_commands) == 1
+        and len(guarded_creation_commands) == 1
         and len(guarded_creation_commands) == len(creation_commands)
         and all(
             _is_exact_immutable_ref_creation_command(command)
@@ -676,6 +679,34 @@ def test_merged_pr_main_releasability_dispatcher_rejects_nested_mismatch_conditi
     ) in errors
 
 
+def test_merged_pr_main_releasability_dispatcher_rejects_ref_sha_mutation_before_mismatch() -> None:
+    workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
+    text = workflow.read_text(encoding="utf-8").replace(
+        (
+            '            if [ "$existing_ref_sha" != "$MERGE_COMMIT_SHA" ]; then\n'
+            '              echo "::error::Dispatch ref $dispatch_ref points to '
+            '$existing_ref_sha, expected $MERGE_COMMIT_SHA"\n'
+            "              exit 1\n"
+            "            fi"
+        ),
+        (
+            '            existing_ref_sha="$MERGE_COMMIT_SHA"\n'
+            '            if [ "$existing_ref_sha" != "$MERGE_COMMIT_SHA" ]; then\n'
+            '              echo "::error::Dispatch ref $dispatch_ref points to '
+            '$existing_ref_sha, expected $MERGE_COMMIT_SHA"\n'
+            "              exit 1\n"
+            "            fi"
+        ),
+    )
+
+    errors = _merged_pr_dispatch_contract_errors(text)
+
+    assert (
+        "merged-pr-main-releasability.yml must fail closed with exit 1 when "
+        "an existing immutable dispatch ref points to a different SHA"
+    ) in errors
+
+
 def test_merged_pr_main_releasability_dispatcher_rejects_subshell_masked_mismatch_exit() -> None:
     workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
     text = workflow.read_text(encoding="utf-8").replace(
@@ -826,6 +857,32 @@ def test_merged_pr_main_releasability_dispatcher_rejects_trailing_ref_creation()
             "          gh workflow run main-releasability.yml \\"
         ),
         1,
+    )
+
+    errors = _merged_pr_dispatch_contract_errors(text)
+
+    assert (
+        "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
+        "inside the empty existing-ref branch with exact ref and SHA fields"
+    ) in errors
+
+
+def test_merged_pr_main_releasability_dispatcher_rejects_duplicate_guarded_ref_creation() -> None:
+    workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
+    text = workflow.read_text(encoding="utf-8").replace(
+        (
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" \\\n'
+            '              -f ref="refs/tags/$dispatch_ref" \\\n'
+            '              -f sha="$MERGE_COMMIT_SHA" >/dev/null'
+        ),
+        (
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" \\\n'
+            '              -f ref="refs/tags/$dispatch_ref" \\\n'
+            '              -f sha="$MERGE_COMMIT_SHA" >/dev/null\n'
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" \\\n'
+            '              -f ref="refs/tags/$dispatch_ref" \\\n'
+            '              -f sha="$MERGE_COMMIT_SHA" >/dev/null'
+        ),
     )
 
     errors = _merged_pr_dispatch_contract_errors(text)
