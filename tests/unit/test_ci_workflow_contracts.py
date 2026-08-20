@@ -179,6 +179,7 @@ def _is_exact_immutable_ref_creation_command(command: str) -> bool:
             command == IMMUTABLE_REF_CREATION_COMMAND
             or command.startswith(f"{IMMUTABLE_REF_CREATION_COMMAND} ")
         )
+        and "||" not in command
         and IMMUTABLE_REF_CREATION_REF_FIELD in command
         and IMMUTABLE_REF_CREATION_SHA_FIELD in command
     )
@@ -214,9 +215,16 @@ def _immutable_ref_lookup_blocks(text: str) -> list[str]:
 def _immutable_ref_lookup_guard_blocks(text: str) -> list[str]:
     lines = text.splitlines()
     blocks: list[str] = []
+    outer_depth = 0
     for index, line in enumerate(lines):
         stripped_line = line.strip()
-        if stripped_line not in IMMUTABLE_REF_LOOKUP_CONDITIONS:
+        if stripped_line not in IMMUTABLE_REF_LOOKUP_CONDITIONS or outer_depth != 0:
+            if not stripped_line or _is_shell_comment(stripped_line):
+                continue
+            if _opens_nested_shell_scope(stripped_line):
+                outer_depth += 1
+            if _closes_nested_shell_scope(stripped_line):
+                outer_depth -= 1
             continue
 
         block_lines = [line]
@@ -231,6 +239,10 @@ def _immutable_ref_lookup_guard_blocks(text: str) -> list[str]:
             if depth == 0:
                 break
         blocks.append("\n".join(block_lines))
+        if _opens_nested_shell_scope(stripped_line):
+            outer_depth += 1
+        if _closes_nested_shell_scope(stripped_line):
+            outer_depth -= 1
     return blocks
 
 
@@ -750,6 +762,61 @@ def test_merged_pr_main_releasability_dispatcher_rejects_commented_payload_field
         "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
         "inside the empty existing-ref branch with exact ref and SHA fields"
     ) in errors
+
+
+def test_merged_pr_main_releasability_dispatcher_rejects_masked_ref_creation_failure() -> None:
+    workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
+    text = workflow.read_text(encoding="utf-8").replace(
+        (
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" \\\n'
+            '              -f ref="refs/tags/$dispatch_ref" \\\n'
+            '              -f sha="$MERGE_COMMIT_SHA" >/dev/null'
+        ),
+        (
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" '
+            '-f ref="refs/tags/$dispatch_ref" -f sha="$MERGE_COMMIT_SHA" || true'
+        ),
+    )
+
+    errors = _merged_pr_dispatch_contract_errors(text)
+
+    assert (
+        "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
+        "inside the empty existing-ref branch with exact ref and SHA fields"
+    ) in errors
+
+
+def test_merged_pr_main_releasability_dispatcher_rejects_function_scoped_lookup_guard() -> None:
+    workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
+    text = (
+        workflow.read_text(encoding="utf-8")
+        .replace(
+            (
+                '          if existing_ref_sha="$(gh api '
+                '"repos/$GITHUB_REPOSITORY/git/ref/tags/$dispatch_ref" '
+                '--jq .object.sha 2>/dev/null)"; then\n'
+            ),
+            (
+                "          lookup_dispatch_ref() {\n"
+                '            if existing_ref_sha="$(gh api '
+                '"repos/$GITHUB_REPOSITORY/git/ref/tags/$dispatch_ref" '
+                '--jq .object.sha 2>/dev/null)"; then\n'
+            ),
+            1,
+        )
+        .replace(
+            ('          fi\n          if [ -z "$existing_ref_sha" ]; then\n'),
+            ('            fi\n          }\n          if [ -z "$existing_ref_sha" ]; then\n'),
+            1,
+        )
+    )
+
+    errors = _merged_pr_dispatch_contract_errors(text)
+
+    assert (
+        "merged-pr-main-releasability.yml must guard immutable-ref lookup with an if/else reset "
+        "before dispatch" in errors
+    )
 
 
 def test_merged_pr_main_releasability_dispatcher_binds_payload_to_creation_command() -> None:
