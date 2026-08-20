@@ -174,6 +174,7 @@ def _immutable_ref_creation_commands(text: str) -> list[str]:
 
 
 def _is_exact_immutable_ref_creation_command(command: str) -> bool:
+    padded_command = f" {command} "
     return (
         (
             command == IMMUTABLE_REF_CREATION_COMMAND
@@ -181,6 +182,9 @@ def _is_exact_immutable_ref_creation_command(command: str) -> bool:
         )
         and "||" not in command
         and not command.rstrip().endswith("&")
+        and "--method" not in padded_command
+        and " -X" not in padded_command
+        and "--input" not in padded_command
         and IMMUTABLE_REF_CREATION_REF_FIELD in command
         and IMMUTABLE_REF_CREATION_SHA_FIELD in command
     )
@@ -798,6 +802,28 @@ def test_merged_pr_main_releasability_dispatcher_rejects_backgrounded_ref_creati
         (
             '            gh api "repos/$GITHUB_REPOSITORY/git/refs" '
             '-f ref="refs/tags/$dispatch_ref" -f sha="$MERGE_COMMIT_SHA" &'
+        ),
+    )
+
+    errors = _merged_pr_dispatch_contract_errors(text)
+
+    assert (
+        "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
+        "inside the empty existing-ref branch with exact ref and SHA fields"
+    ) in errors
+
+
+def test_merged_pr_main_releasability_dispatcher_rejects_non_post_ref_creation_override() -> None:
+    workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
+    text = workflow.read_text(encoding="utf-8").replace(
+        (
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" \\\n'
+            '              -f ref="refs/tags/$dispatch_ref" \\\n'
+            '              -f sha="$MERGE_COMMIT_SHA" >/dev/null'
+        ),
+        (
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" --method GET '
+            '-f ref="refs/tags/$dispatch_ref" -f sha="$MERGE_COMMIT_SHA"'
         ),
     )
 
