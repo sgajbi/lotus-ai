@@ -180,6 +180,7 @@ def _is_exact_immutable_ref_creation_command(command: str) -> bool:
             or command.startswith(f"{IMMUTABLE_REF_CREATION_COMMAND} ")
         )
         and "||" not in command
+        and not command.rstrip().endswith("&")
         and IMMUTABLE_REF_CREATION_REF_FIELD in command
         and IMMUTABLE_REF_CREATION_SHA_FIELD in command
     )
@@ -775,6 +776,28 @@ def test_merged_pr_main_releasability_dispatcher_rejects_masked_ref_creation_fai
         (
             '            gh api "repos/$GITHUB_REPOSITORY/git/refs" '
             '-f ref="refs/tags/$dispatch_ref" -f sha="$MERGE_COMMIT_SHA" || true'
+        ),
+    )
+
+    errors = _merged_pr_dispatch_contract_errors(text)
+
+    assert (
+        "merged-pr-main-releasability.yml must create the immutable dispatch ref only "
+        "inside the empty existing-ref branch with exact ref and SHA fields"
+    ) in errors
+
+
+def test_merged_pr_main_releasability_dispatcher_rejects_backgrounded_ref_creation() -> None:
+    workflow = WORKFLOW_DIR / "merged-pr-main-releasability.yml"
+    text = workflow.read_text(encoding="utf-8").replace(
+        (
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" \\\n'
+            '              -f ref="refs/tags/$dispatch_ref" \\\n'
+            '              -f sha="$MERGE_COMMIT_SHA" >/dev/null'
+        ),
+        (
+            '            gh api "repos/$GITHUB_REPOSITORY/git/refs" '
+            '-f ref="refs/tags/$dispatch_ref" -f sha="$MERGE_COMMIT_SHA" &'
         ),
     )
 
