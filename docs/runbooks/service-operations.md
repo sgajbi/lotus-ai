@@ -527,6 +527,11 @@ Current operational expectations:
 3. body-level `caller_app` fields remain contract and audit metadata, but operators should treat `authorization.authenticated_caller_app`, `authorization.caller_identity_source`, and `authorization.caller_identity_bound` as the evidence that request metadata was bound to trusted HTTP caller identity
 4. blocked task requests should be reviewed through `/ai/audit` and task execution evidence, while blocked control-plane actions should be reviewed through the relevant control history endpoint
 5. authorized async, prompt, provider, workflow-pack, and queue-recovery control actions must preserve the recorded caller authorization decision in durable control history
+6. call `GET /ai/audit` and `GET /ai/audit/{request_id}` with the real trusted `X-Caller-App`; never use a caller-supplied tenant filter to widen or switch scope
+7. restricted callers receive only policy-owned tenant records; a cross-scope request and a missing request intentionally return the same `404` contract
+8. reserve `allow_audit_read_all_tenants` for the governed platform operator identity; all-tenant reads include legacy unattributed records and synchronously persist a separate identifier-minimized access event
+9. treat failure to persist an all-tenant access event as a hard read failure; do not add a log-only fallback, bypass the access ledger, or retry by changing caller identity
+10. until issue #149 supplies verified service JWT or mTLS identity, treat trusted-header establishment as an ingress/deployment control that must be independently protected and reviewed
 
 ## Retrieval Activation Governance
 

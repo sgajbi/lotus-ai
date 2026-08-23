@@ -17,12 +17,17 @@ The next high-value shared-platform gap is that caller and tenant identity are n
 
 ## Implementation Notes
 
-RFC-0012 is now implemented in four slices:
+RFC-0012 is now implemented in five slices:
 
 1. a durable caller-policy registry seam with memory and SQL-backed repositories,
 2. enforced data-plane authorization for task execution, retrieval execution, and live-provider execution with typed authorization decisions persisted into audit and execution evidence,
 3. enforced control-plane authorization for async control, prompt control, and provider control actions with durable authorization context preserved in control history,
 4. dedicated activation-readiness, runbook-readiness, and composed governance surfaces so access-control rollout posture is inspectable and not overstated.
+5. server-derived tenant isolation for audit-record reads, with an explicit all-tenant platform capability, indistinguishable cross-scope/missing detail responses, and a separate fail-closed access-evidence ledger for all-tenant inspection.
+
+The current HTTP caller trust source remains the deployment-established `X-Caller-App` boundary.
+Cryptographically verified service identity is deliberately separate and remains owned by issue
+#149; this RFC implementation does not claim JWT or mTLS caller proof.
 
 ## Why This Is Next
 
@@ -30,7 +35,7 @@ The platform already carries identity-like metadata:
 
 1. task, provider, retrieval, and audit contracts carry `caller_app`, optional `requested_by`, and optional `tenant_id`,
 2. provider quotas already model caller- and tenant-aware scopes,
-3. audit inspection can filter by caller, requester, and tenant,
+3. audit inspection can filter by caller and requester while tenant scope is derived from caller policy,
 4. async jobs, retrieval submission, and evaluation submission all preserve caller identity in durable state.
 
 But that identity is still mostly descriptive:

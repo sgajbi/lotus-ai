@@ -146,8 +146,14 @@ The current enterprise posture is:
 3. `category`
 4. `output_label`
 5. `requested_by`
-6. `tenant_id`
-7. `limit`
+6. `limit`
+
+Both audit-read routes require trusted `X-Caller-App` service identity. Tenant scope is resolved
+from the active caller-policy record and is not a public query filter. A legacy `tenant_id` query is
+rejected with `422` instead of being silently ignored. Restricted callers cannot observe
+unattributed legacy records, and cross-tenant detail lookup returns the same `404` shape as a
+missing record. The explicit platform all-tenant capability includes legacy unattributed records
+and writes a separate identifier-minimized access event before the response can succeed.
 
 ## Future Direction
 
