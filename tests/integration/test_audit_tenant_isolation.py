@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 import pytest
 
+from app.config import settings
 from app.services.audit_store import get_audit_store
 
 
@@ -120,6 +121,24 @@ def test_platform_all_tenant_reads_are_capability_gated_and_durably_audited(
     event_payload = event.model_dump(mode="json")
     assert "tenant_id" not in event_payload
     assert "request_id" not in event_payload
+
+
+def test_platform_header_only_all_tenant_read_fails_closed_outside_local_posture(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "startup_readiness_policy", "warn")
+    monkeypatch.setattr(settings, "readiness_probe_policy", "degrade")
+
+    response = client.get(
+        "/ai/audit",
+        headers={"X-Caller-App": "lotus-platform"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == (
+        "Caller is not authorized to inspect lotus-ai audit records."
+    )
 
 
 @pytest.mark.parametrize("path", ["/ai/audit", "/ai/audit/missing"])
