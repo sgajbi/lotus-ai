@@ -491,6 +491,13 @@ def test_sqlalchemy_audit_repository_round_trips_authorization_payload(tmp_path:
     )
     assert loaded is not None
     assert loaded.authorization == authorization
+    assert (
+        repository.get(
+            "air_sql_authorized",
+            scope=AuditReadScope.restricted(frozenset({"tenant-sg-001"})),
+        )
+        is None
+    )
 
 
 def test_sqlalchemy_audit_repository_handles_relative_sqlite_path(

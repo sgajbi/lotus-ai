@@ -163,8 +163,16 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
             "generated_at": "2026-03-22T01:00:00Z",
         }
     )
+    legacy_unattributed = first.model_copy(
+        update={
+            "request_id": "air_legacy_unattributed",
+            "tenant_id": None,
+            "generated_at": "2026-03-22T02:00:00Z",
+        }
+    )
     store.save(first)
     store.save(second)
+    store.save(legacy_unattributed)
 
     all_scope = AuditReadScope.all_tenants()
     us_scope = AuditReadScope.restricted(frozenset({"tenant-us-002"}))
@@ -178,7 +186,11 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
         requested_by="advisor.user@lotus",
     )
 
-    assert [record.request_id for record in all_records] == ["air_new", "air_old"]
+    assert [record.request_id for record in all_records] == [
+        "air_legacy_unattributed",
+        "air_new",
+        "air_old",
+    ]
     assert [record.request_id for record in advise_records] == ["air_new"]
     assert [record.request_id for record in summarize_records] == ["air_new"]
     assert [record.request_id for record in draft_records] == ["air_new"]
@@ -191,6 +203,7 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
         )
         is None
     )
+    assert store.get("air_legacy_unattributed", scope=us_scope) is None
 
 
 def test_in_memory_audit_store_records_identifier_minimized_access_event() -> None:

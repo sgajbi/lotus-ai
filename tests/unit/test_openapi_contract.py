@@ -1453,3 +1453,23 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert spec["paths"]["/ai/audit"]["get"]["operationId"] == "listAuditRecords"
     assert spec["paths"]["/metadata"]["get"]["operationId"] == "getServiceMetadata"
     assert spec["paths"]["/"]["get"]["operationId"] == "getServiceOverview"
+
+
+def test_audit_read_contract_is_caller_scoped_and_has_no_tenant_query_override() -> None:
+    spec = app.openapi()
+
+    for path in ("/ai/audit", "/ai/audit/{request_id}"):
+        operation = spec["paths"][path]["get"]
+        parameters = operation["parameters"]
+        assert any(
+            parameter["in"] == "header" and parameter["name"] == "X-Caller-App"
+            for parameter in parameters
+        )
+        assert "403" in operation["responses"]
+        assert "application/problem+json" in operation["responses"]["403"]["content"]
+
+    catalog_parameters = spec["paths"]["/ai/audit"]["get"]["parameters"]
+    assert not any(
+        parameter["in"] == "query" and parameter["name"] == "tenant_id"
+        for parameter in catalog_parameters
+    )
