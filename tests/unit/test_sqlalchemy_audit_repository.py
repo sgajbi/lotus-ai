@@ -16,6 +16,7 @@ from app.contracts.audit_access import (
     AuditAccessOperation,
     AuditAccessOutcome,
     AuditReadScope,
+    AuditReadScopeMode,
 )
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
@@ -234,7 +235,7 @@ def test_sqlalchemy_audit_repository_round_trips_access_event(tmp_path: Path) ->
         event_id="audit_access_sql_001",
         caller_app="lotus-platform",
         caller_trust_source="trusted_http_header",
-        scope_mode="ALL_TENANTS",
+        scope_mode=AuditReadScopeMode.ALL_TENANTS,
         operation=AuditAccessOperation.GET_RECORD,
         outcome=AuditAccessOutcome.NOT_FOUND,
         returned_record_count=0,

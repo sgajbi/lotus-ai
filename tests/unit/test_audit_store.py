@@ -10,6 +10,7 @@ from app.contracts.audit_access import (
     AuditAccessOperation,
     AuditAccessOutcome,
     AuditReadScope,
+    AuditReadScopeMode,
 )
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
@@ -212,7 +213,7 @@ def test_in_memory_audit_store_records_identifier_minimized_access_event() -> No
         event_id="audit_access_memory_001",
         caller_app="lotus-platform",
         caller_trust_source="trusted_http_header",
-        scope_mode="ALL_TENANTS",
+        scope_mode=AuditReadScopeMode.ALL_TENANTS,
         operation=AuditAccessOperation.LIST_RECORDS,
         outcome=AuditAccessOutcome.SUCCEEDED,
         returned_record_count=2,
