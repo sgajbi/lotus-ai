@@ -45,7 +45,7 @@ def _probe_sql_tables(expected_tables: Iterable[str]) -> tuple[RuntimeReadinessS
 def get_audit_store_runtime_status() -> StoreRuntimeStatusDescriptor:
     return _build_store_runtime_status(
         configured_mode=settings.audit_store_mode,
-        expected_tables=["audit_records"],
+        expected_tables=["audit_records", "audit_access_events"],
         memory_detail="In-memory audit store is active for local or foundation-phase execution.",
         unsupported_detail="Configured audit store mode is not supported by lotus-ai.",
     )

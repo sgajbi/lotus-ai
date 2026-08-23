@@ -12,6 +12,7 @@ from app.contracts.task_runtime import (
     TaskRetrievalExecutionTaskSample,
 )
 from app.services.audit_store import get_audit_store
+from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
 
 _RETRIEVAL_TASK_IDS = {"knowledge_search.v1", "knowledge_answer.v1"}
 
@@ -21,7 +22,10 @@ def build_task_retrieval_execution_summary(
 ) -> TaskRetrievalExecutionSummaryResponse:
     records = [
         record
-        for record in get_audit_store().list(limit=limit)
+        for record in get_audit_store().list(
+            scope=INTERNAL_AGGREGATE_AUDIT_SCOPE,
+            limit=limit,
+        )
         if record.task_id in _RETRIEVAL_TASK_IDS
     ]
     task_counts = Counter(record.task_id for record in records)

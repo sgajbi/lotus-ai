@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from collections.abc import Sequence
 
 from sqlalchemy import select
+from sqlalchemy.sql import Select
 
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
@@ -11,6 +13,13 @@ from app.contracts.access_control import (
     TenantPolicyMode,
 )
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.audit_access import (
+    AuditAccessEvent,
+    AuditAccessOperation,
+    AuditAccessOutcome,
+    AuditReadScope,
+    AuditReadScopeMode,
+)
 from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.prompts import (
     PromptRolloutRole,
@@ -19,7 +28,7 @@ from app.contracts.prompts import (
 from app.contracts.providers import ProviderAdapterKind
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
-from app.db.models import AuditRecordModel
+from app.db.models import AuditAccessEventModel, AuditRecordModel
 from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
 from app.services.safety_runtime import build_safety_execution_outcome_from_record
 
@@ -62,9 +71,11 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
             session.merge(model)
             session.commit()
 
-    def get(self, request_id: str) -> AuditRecordResponse | None:
+    def get(self, request_id: str, *, scope: AuditReadScope) -> AuditRecordResponse | None:
         with self._session_factory() as session:
-            model = session.get(AuditRecordModel, request_id)
+            statement = select(AuditRecordModel).where(AuditRecordModel.request_id == request_id)
+            statement = _apply_scope(statement, scope)
+            model = session.execute(statement).scalar_one_or_none()
             if model is None:
                 return None
             return self._to_contract(model)
@@ -77,12 +88,13 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
         category: str | None = None,
         output_label: str | None = None,
         requested_by: str | None = None,
-        tenant_id: str | None = None,
+        scope: AuditReadScope,
         limit: int = 20,
     ) -> list[AuditRecordResponse]:
         statement = (
             select(AuditRecordModel).order_by(AuditRecordModel.generated_at.desc()).limit(limit)
         )
+        statement = _apply_scope(statement, scope)
         if caller_app is not None:
             statement = statement.where(AuditRecordModel.caller_app == caller_app)
         if task_id is not None:
@@ -93,11 +105,46 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
             statement = statement.where(AuditRecordModel.output_label == output_label)
         if requested_by is not None:
             statement = statement.where(AuditRecordModel.requested_by == requested_by)
-        if tenant_id is not None:
-            statement = statement.where(AuditRecordModel.tenant_id == tenant_id)
         with self._session_factory() as session:
             models = session.execute(statement).scalars().all()
             return [self._to_contract(model) for model in models]
+
+    def save_access_event(self, event: AuditAccessEvent) -> None:
+        model = AuditAccessEventModel(
+            event_id=event.event_id,
+            caller_app=event.caller_app,
+            caller_trust_source=event.caller_trust_source,
+            scope_mode=event.scope_mode.value,
+            operation=event.operation.value,
+            outcome=event.outcome.value,
+            returned_record_count=event.returned_record_count,
+            recorded_at=event.recorded_at,
+        )
+        with self._session_factory() as session:
+            session.add(model)
+            session.commit()
+
+    def list_access_events(self, *, limit: int = 100) -> Sequence[AuditAccessEvent]:
+        statement = (
+            select(AuditAccessEventModel)
+            .order_by(AuditAccessEventModel.recorded_at.desc())
+            .limit(limit)
+        )
+        with self._session_factory() as session:
+            models = session.execute(statement).scalars().all()
+            return [
+                AuditAccessEvent(
+                    event_id=model.event_id,
+                    caller_app=model.caller_app,
+                    caller_trust_source=model.caller_trust_source,
+                    scope_mode=AuditReadScopeMode(model.scope_mode),
+                    operation=AuditAccessOperation(model.operation),
+                    outcome=AuditAccessOutcome(model.outcome),
+                    returned_record_count=model.returned_record_count,
+                    recorded_at=model.recorded_at,
+                )
+                for model in models
+            ]
 
     def _to_contract(self, model: AuditRecordModel) -> AuditRecordResponse:
         output_label = OutputLabel(model.output_label)
@@ -268,3 +315,12 @@ def _default_adapter_kind(provider_mode: str) -> ProviderAdapterKind | None:
     if provider_mode == "local_openai_compatible":
         return ProviderAdapterKind.OPENAI_COMPATIBLE_LOCAL
     return None
+
+
+def _apply_scope(
+    statement: Select[tuple[AuditRecordModel]],
+    scope: AuditReadScope,
+) -> Select[tuple[AuditRecordModel]]:
+    if scope.mode == AuditReadScopeMode.ALL_TENANTS:
+        return statement
+    return statement.where(AuditRecordModel.tenant_id.in_(sorted(scope.tenant_ids)))

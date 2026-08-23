@@ -75,6 +75,10 @@ class CallerPolicyDescriptor(BaseModel):
     allow_provider_control: bool = Field(
         description="Whether this caller may issue provider control-plane actions when enforcement is active."
     )
+    allow_audit_read_all_tenants: bool = Field(
+        default=False,
+        description="Whether this caller may inspect audit records across every tenant.",
+    )
     tenant_policy_mode: TenantPolicyMode = Field(
         description="Whether tenant identity is optional, required, or restricted for this caller."
     )

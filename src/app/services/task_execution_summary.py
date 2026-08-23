@@ -9,10 +9,11 @@ from app.contracts.task_runtime import (
     TaskExecutionSummaryResponse,
 )
 from app.services.audit_store import get_audit_store
+from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
 
 
 def build_task_execution_summary(*, limit: int = 100) -> TaskExecutionSummaryResponse:
-    records = get_audit_store().list(limit=limit)
+    records = get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=limit)
     category_counts = Counter(record.category for record in records)
     provider_mode_counts = Counter(record.provider_mode for record in records)
     latest_generated_at = records[0].generated_at if records else None

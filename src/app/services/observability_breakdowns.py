@@ -14,6 +14,7 @@ from app.contracts.observability import (
 )
 from app.services.async_job_service import build_async_job_catalog
 from app.services.audit_store import get_audit_store
+from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
 
 _RETRIEVAL_TASK_IDS = {"knowledge_search.v1", "knowledge_answer.v1"}
 _NON_LIVE_PROVIDER_MODES = {"disabled", "stub", "catalog_only"}
@@ -22,7 +23,7 @@ _NON_LIVE_PROVIDER_MODES = {"disabled", "stub", "catalog_only"}
 def build_observability_breakdown_summary(
     *, limit: int = 100
 ) -> ObservabilityBreakdownSummaryResponse:
-    records = get_audit_store().list(limit=limit)
+    records = get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=limit)
     jobs = build_async_job_catalog().jobs
     return ObservabilityBreakdownSummaryResponse(
         service=settings.service_name,
