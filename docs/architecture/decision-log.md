@@ -1214,4 +1214,7 @@ Current posture:
 1. `GET /ai/audit` and `GET /ai/audit/{request_id}` require trusted caller identity,
 2. all-tenant access is a separate caller-policy capability initially limited to `lotus-platform`,
 3. every all-tenant read synchronously writes an identifier-minimized access event and fails closed if that write fails,
-4. verified service JWT or mTLS identity remains separately owned by issue #149.
+4. header-only identity may exercise all-tenant access only in the explicit local `warn`/`observe`
+   posture; promoted postures reject it,
+5. verified service JWT or mTLS identity remains separately owned by issue #149; this boundary
+   recognizes verified trust-source types without claiming that verification is already delivered.

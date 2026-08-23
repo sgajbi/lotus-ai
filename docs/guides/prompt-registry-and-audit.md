@@ -154,7 +154,9 @@ rejected with `422` instead of being silently ignored. Restricted callers cannot
 unattributed legacy records, and cross-tenant detail lookup returns the same `404` shape as a
 missing record. The explicit platform all-tenant capability includes legacy unattributed records
 with `tenant_state=LEGACY_UNATTRIBUTED` and writes a separate identifier-minimized access event
-before the response can succeed.
+before the response can succeed. Header-only identity can use that capability only in the local
+`warn`/`observe` startup posture; promoted postures require a verified service JWT or mTLS SAN trust
+source and otherwise return `403`.
 
 ## Future Direction
 
