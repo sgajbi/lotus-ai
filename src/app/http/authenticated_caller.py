@@ -8,13 +8,40 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
+from app.config import settings
+
 AUTHENTICATED_CALLER_HEADER = "X-Caller-App"
 AUTHENTICATED_CALLER_TRUST_SOURCE = "trusted_http_header"
+VERIFIED_AUTHENTICATED_CALLER_TRUST_SOURCES = frozenset({"verified_service_jwt", "mtls_san"})
+LOCAL_HEADER_CALLER_STARTUP_FINDING = (
+    "caller identity: trusted HTTP header mode is local-only; privileged all-tenant audit "
+    "reads fail closed outside the local warn/observe posture until verified service identity "
+    "is delivered by issue #149"
+)
 
 
 class AuthenticatedCaller(BaseModel):
     caller_app: str = Field(description="Authenticated caller application identity.")
     trust_source: str = Field(description="Trusted source used to resolve the caller identity.")
+
+
+def is_local_header_caller_posture() -> bool:
+    """Return whether the documented local-only header identity posture is active."""
+
+    return (
+        settings.startup_readiness_policy == "warn" and settings.readiness_probe_policy == "observe"
+    )
+
+
+def is_privileged_caller_identity_accepted(caller: AuthenticatedCaller) -> bool:
+    """Accept privileged identity only when verified or explicitly local-only."""
+
+    if caller.trust_source in VERIFIED_AUTHENTICATED_CALLER_TRUST_SOURCES:
+        return True
+    return (
+        caller.trust_source == AUTHENTICATED_CALLER_TRUST_SOURCE
+        and is_local_header_caller_posture()
+    )
 
 
 _authenticated_caller: ContextVar[AuthenticatedCaller | None] = ContextVar(

@@ -13,7 +13,10 @@ from app.contracts.audit_access import (
     AuditReadScope,
     AuditReadScopeMode,
 )
-from app.http.authenticated_caller import AuthenticatedCaller
+from app.http.authenticated_caller import (
+    AuthenticatedCaller,
+    is_privileged_caller_identity_accepted,
+)
 from app.services.audit_store import get_audit_store
 from app.services.caller_policy_store import get_caller_policy_repository
 
@@ -27,7 +30,7 @@ def resolve_audit_read_scope(caller: AuthenticatedCaller) -> AuditReadScope:
 
     tenant_ids = _normalized_tenant_ids(policy.restricted_tenant_ids)
     if policy.allow_audit_read_all_tenants:
-        if tenant_ids:
+        if tenant_ids or not is_privileged_caller_identity_accepted(caller):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_ACCESS_DENIED_DETAIL)
         return AuditReadScope.all_tenants()
     if not tenant_ids:
