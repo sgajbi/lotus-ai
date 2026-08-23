@@ -44,6 +44,7 @@ class SqlAlchemyCallerPolicyRepository(SqlAlchemyRepositoryBase):
             allow_async_control=model.allow_async_control,
             allow_prompt_control=model.allow_prompt_control,
             allow_provider_control=model.allow_provider_control,
+            allow_audit_read_all_tenants=model.allow_audit_read_all_tenants,
             tenant_policy_mode=TenantPolicyMode(model.tenant_policy_mode),
             restricted_tenant_ids=list(model.restricted_tenant_ids),
         )

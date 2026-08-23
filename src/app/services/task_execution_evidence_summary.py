@@ -10,12 +10,13 @@ from app.contracts.task_runtime import (
     TaskExecutionEvidenceTypeSample,
 )
 from app.services.audit_store import get_audit_store
+from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
 
 
 def build_task_execution_evidence_summary(
     *, limit: int = 100
 ) -> TaskExecutionEvidenceSummaryResponse:
-    records = get_audit_store().list(limit=limit)
+    records = get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=limit)
     answer_modes = [
         answer_mode
         for record in records

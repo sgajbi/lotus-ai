@@ -17,6 +17,7 @@ from app.services.app_capability_rollout_catalog import (
 )
 from app.services.async_job_service import build_async_job_catalog
 from app.services.audit_store import get_audit_store
+from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
 from app.services.runtime_readiness import get_audit_store_runtime_status
 
 
@@ -30,7 +31,7 @@ def build_app_capability_rollout_observability_summary(
     )
     catalog = build_app_capability_rollout_catalog(app_state, context=rollout_context)
     audit_store_ready = get_audit_store_runtime_status().status in {"READY", "DEGRADED"}
-    audit_records = get_audit_store().list(limit=100)
+    audit_records = get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=100)
     async_jobs = build_async_job_catalog().jobs
     items = [
         _build_observability_item(
@@ -107,7 +108,9 @@ def _build_observability_item(
         context=context,
     )
     source_audit_records = (
-        audit_records if audit_records is not None else get_audit_store().list(limit=100)
+        audit_records
+        if audit_records is not None
+        else get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=100)
     )
     source_async_jobs = async_jobs if async_jobs is not None else build_async_job_catalog().jobs
     matching_audit_records = [

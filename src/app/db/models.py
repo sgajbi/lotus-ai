@@ -36,6 +36,19 @@ class AuditRecordModel(Base):
     evidence: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
 
 
+class AuditAccessEventModel(Base):
+    __tablename__ = "audit_access_events"
+
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    caller_app: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    caller_trust_source: Mapped[str] = mapped_column(String(64), nullable=False)
+    scope_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    operation: Mapped[str] = mapped_column(String(32), nullable=False)
+    outcome: Mapped[str] = mapped_column(String(32), nullable=False)
+    returned_record_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
 class RetrievalSourceModel(Base):
     __tablename__ = "retrieval_sources"
 
@@ -252,6 +265,7 @@ class CallerPolicyModel(Base):
     allow_async_control: Mapped[bool] = mapped_column(Boolean, nullable=False)
     allow_prompt_control: Mapped[bool] = mapped_column(Boolean, nullable=False)
     allow_provider_control: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    allow_audit_read_all_tenants: Mapped[bool] = mapped_column(Boolean, nullable=False)
     tenant_policy_mode: Mapped[str] = mapped_column(String(32), nullable=False)
     restricted_tenant_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

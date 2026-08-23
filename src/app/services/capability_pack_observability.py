@@ -6,6 +6,7 @@ from app.contracts.audit import AuditRecordResponse
 from app.contracts.capability_packs import CapabilityPackObservabilitySummaryResponse
 from app.services.async_job_service import build_async_job_catalog
 from app.services.audit_store import get_audit_store
+from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
 from app.services.capability_pack_catalog import get_capability_pack_by_id
 from app.services.runtime_readiness import get_audit_store_runtime_status
 
@@ -16,7 +17,10 @@ def build_capability_pack_observability_summary(
     _require_pack(pack_id=pack_id)
     records = [
         record
-        for record in get_audit_store().list(limit=100)
+        for record in get_audit_store().list(
+            scope=INTERNAL_AGGREGATE_AUDIT_SCOPE,
+            limit=100,
+        )
         if _matches_pack_record(record, pack_id)
     ]
     jobs = [job for job in build_async_job_catalog().jobs if _matches_pack_job(job, pack_id)]
