@@ -492,6 +492,7 @@ def test_sqlalchemy_audit_repository_round_trips_authorization_payload(tmp_path:
     )
     assert loaded is not None
     assert loaded.authorization == authorization
+    assert loaded.tenant_state.value == "LEGACY_UNATTRIBUTED"
     assert (
         repository.get(
             "air_sql_authorized",

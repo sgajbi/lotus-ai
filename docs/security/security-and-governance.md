@@ -119,8 +119,9 @@ query override. Restricted callers see only records for their configured tenant 
 cross-scope identifier is indistinguishable from a missing identifier through the same safe `404`
 contract. Only the explicit `allow_audit_read_all_tenants` capability grants an all-tenant read; the
 initial capability is limited to `lotus-platform`. All-tenant reads include legacy unattributed
-records and synchronously write a separate, identifier-minimized access event. If that evidence
-cannot be persisted, the read fails closed before an audit response is returned.
+records, label them `tenant_state=LEGACY_UNATTRIBUTED`, and synchronously write a separate,
+identifier-minimized access event. If that evidence cannot be persisted, the read fails closed
+before an audit response is returned.
 
 The current `X-Caller-App` trust boundary is deployment-established service identity, not
 cryptographic proof. Issue #149 owns verified service JWT or mTLS identity and remains required for

@@ -205,6 +205,7 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
         is None
     )
     assert store.get("air_legacy_unattributed", scope=us_scope) is None
+    assert legacy_unattributed.tenant_state.value == "LEGACY_UNATTRIBUTED"
 
 
 def test_in_memory_audit_store_records_identifier_minimized_access_event() -> None:
