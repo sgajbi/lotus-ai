@@ -12,6 +12,7 @@ def add_authenticated_caller_header_to_protected_posts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     original_post = TestClient.post
+    original_get = TestClient.get
 
     def authenticated_post(
         self: TestClient,
@@ -31,6 +32,20 @@ def add_authenticated_caller_header_to_protected_posts(
         return original_post(self, url, *args, **kwargs)
 
     monkeypatch.setattr(TestClient, "post", authenticated_post)
+
+    def authenticated_get(
+        self: TestClient,
+        url: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        headers = dict(kwargs.get("headers") or {})
+        if str(url).startswith("/ai/audit") and not _has_caller_header(headers):
+            headers["X-Caller-App"] = "lotus-platform"
+            kwargs["headers"] = headers
+        return original_get(self, url, *args, **kwargs)
+
+    monkeypatch.setattr(TestClient, "get", authenticated_get)
 
 
 @pytest.fixture

@@ -15,6 +15,7 @@ from app.contracts.retrieval import (
 )
 from app.repositories.memory_retrieval_repository import InMemoryRetrievalRepository
 from app.services.audit_store import get_audit_store
+from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
 from app.services.retrieval_service import search_sources
 
 
@@ -49,7 +50,11 @@ def test_search_sources_records_safe_direct_search_audit_evidence() -> None:
     response = search_sources(request)
     records = [
         record
-        for record in get_audit_store().list(task_id="knowledge_search.v1", limit=10)
+        for record in get_audit_store().list(
+            scope=INTERNAL_AGGREGATE_AUDIT_SCOPE,
+            task_id="knowledge_search.v1",
+            limit=10,
+        )
         if record.correlation_id == "corr-ret-audit"
     ]
 

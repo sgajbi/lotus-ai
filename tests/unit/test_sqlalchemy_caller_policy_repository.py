@@ -30,6 +30,7 @@ def test_sqlalchemy_caller_policy_repository_survives_reopen(tmp_path: Path) -> 
     lotus_performance_policy = second_repository.get_policy("lotus-performance")
     lotus_gateway_policy = second_repository.get_policy("lotus-gateway")
     lotus_idea_policy = second_repository.get_policy("lotus-idea")
+    lotus_platform_policy = second_repository.get_policy("lotus-platform")
 
     assert first_policy is not None
     assert second_policy is not None
@@ -52,6 +53,13 @@ def test_sqlalchemy_caller_policy_repository_survives_reopen(tmp_path: Path) -> 
     assert lotus_idea_policy.allow_live_provider is False
     assert lotus_idea_policy.tenant_policy_mode == "RESTRICTED"
     assert lotus_idea_policy.restricted_tenant_ids == ["tenant-sg-001"]
+    assert lotus_platform_policy is not None
+    assert lotus_platform_policy.allow_audit_read_all_tenants is True
+    assert all(
+        not policy.allow_audit_read_all_tenants
+        for policy in second_repository.list_policies()
+        if policy.caller_app != "lotus-platform"
+    )
 
 
 def test_sqlalchemy_caller_policy_repository_returns_none_for_unknown_caller(

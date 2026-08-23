@@ -51,3 +51,13 @@ def test_memory_caller_policy_repository_returns_none_for_unknown_caller() -> No
     repository = InMemoryCallerPolicyRepository()
 
     assert repository.get_policy("unknown-app") is None
+
+
+def test_memory_caller_policy_repository_grants_all_tenant_audit_only_to_platform() -> None:
+    repository = InMemoryCallerPolicyRepository()
+
+    policies = repository.list_policies()
+
+    assert [policy.caller_app for policy in policies if policy.allow_audit_read_all_tenants] == [
+        "lotus-platform"
+    ]

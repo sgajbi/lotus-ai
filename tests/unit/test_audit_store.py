@@ -5,6 +5,12 @@ from app.contracts.access_control import (
     TenantPolicyMode,
 )
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.audit_access import (
+    AuditAccessEvent,
+    AuditAccessOperation,
+    AuditAccessOutcome,
+    AuditReadScope,
+)
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderAdapterKind
@@ -86,8 +92,9 @@ def test_in_memory_audit_store_save_and_get() -> None:
 
     store.save(record)
 
-    assert store.get("air_test") == record
-    assert store.get("air_missing") is None
+    scope = AuditReadScope.restricted(frozenset({"tenant-sg-001"}))
+    assert store.get("air_test", scope=scope) == record
+    assert store.get("air_missing", scope=scope) is None
 
 
 def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
@@ -159,12 +166,17 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
     store.save(first)
     store.save(second)
 
-    all_records = store.list()
-    advise_records = store.list(caller_app="lotus-advise")
-    summarize_records = store.list(category="summarize")
-    draft_records = store.list(output_label="DRAFT")
-    tenant_records = store.list(tenant_id="tenant-us-002")
-    requester_records = store.list(requested_by="advisor.user@lotus")
+    all_scope = AuditReadScope.all_tenants()
+    us_scope = AuditReadScope.restricted(frozenset({"tenant-us-002"}))
+    all_records = store.list(scope=all_scope)
+    advise_records = store.list(scope=all_scope, caller_app="lotus-advise")
+    summarize_records = store.list(scope=all_scope, category="summarize")
+    draft_records = store.list(scope=all_scope, output_label="DRAFT")
+    tenant_records = store.list(scope=us_scope)
+    requester_records = store.list(
+        scope=all_scope,
+        requested_by="advisor.user@lotus",
+    )
 
     assert [record.request_id for record in all_records] == ["air_new", "air_old"]
     assert [record.request_id for record in advise_records] == ["air_new"]
@@ -172,3 +184,28 @@ def test_in_memory_audit_store_list_filters_and_orders_latest_first() -> None:
     assert [record.request_id for record in draft_records] == ["air_new"]
     assert [record.request_id for record in tenant_records] == ["air_new"]
     assert [record.request_id for record in requester_records] == ["air_new"]
+    assert (
+        store.get(
+            "air_new",
+            scope=AuditReadScope.restricted(frozenset({"tenant-sg-001"})),
+        )
+        is None
+    )
+
+
+def test_in_memory_audit_store_records_identifier_minimized_access_event() -> None:
+    store = InMemoryAuditRepository()
+    event = AuditAccessEvent(
+        event_id="audit_access_memory_001",
+        caller_app="lotus-platform",
+        caller_trust_source="trusted_http_header",
+        scope_mode="ALL_TENANTS",
+        operation=AuditAccessOperation.LIST_RECORDS,
+        outcome=AuditAccessOutcome.SUCCEEDED,
+        returned_record_count=2,
+        recorded_at="2026-08-23T00:00:00Z",
+    )
+
+    store.save_access_event(event)
+
+    assert list(store.list_access_events()) == [event]
