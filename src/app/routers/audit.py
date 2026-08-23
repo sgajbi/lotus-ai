@@ -8,6 +8,7 @@ from app.contracts.audit_access import (
     AuditAccessOutcome,
 )
 from app.contracts.audit import AuditRecordCatalogResponse, AuditRecordResponse
+from app.contracts.api_errors import problem_response
 from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.audit_read_authorization import (
     record_all_tenant_audit_access,
@@ -29,8 +30,9 @@ router = APIRouter(prefix="/ai/audit", tags=["audit"])
     ),
     responses={
         200: {"description": "Audit catalog returned successfully."},
-        422: {"description": "Invalid query parameters supplied."},
-        500: {"description": "Unexpected server error."},
+        403: problem_response("Caller is not authorized to inspect audit records."),
+        422: problem_response("Invalid audit catalog query parameters supplied."),
+        500: problem_response("Unexpected lotus-ai server error."),
     },
 )
 async def list_audit_records(
@@ -119,8 +121,9 @@ async def list_audit_records(
     ),
     responses={
         200: {"description": "Audit record returned successfully."},
-        404: {"description": "Audit record not found for the given request id."},
-        500: {"description": "Unexpected server error."},
+        403: problem_response("Caller is not authorized to inspect audit records."),
+        404: problem_response("Audit record not found for the given request id."),
+        500: problem_response("Unexpected lotus-ai server error."),
     },
 )
 async def get_audit_record(

@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import pytest
 
 from app.services.audit_store import get_audit_store
 
@@ -119,3 +120,24 @@ def test_platform_all_tenant_reads_are_capability_gated_and_durably_audited(
     event_payload = event.model_dump(mode="json")
     assert "tenant_id" not in event_payload
     assert "request_id" not in event_payload
+
+
+@pytest.mark.parametrize("path", ["/ai/audit", "/ai/audit/missing"])
+def test_platform_audit_read_fails_closed_when_access_evidence_cannot_be_saved(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+) -> None:
+    audit_store = get_audit_store()
+
+    def fail_access_evidence(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("sentinel audit access persistence failure")
+
+    monkeypatch.setattr(audit_store, "save_access_event", fail_access_evidence)
+
+    failure_client = TestClient(client.app, raise_server_exceptions=False)
+    response = failure_client.get(path, headers={"X-Caller-App": "lotus-platform"})
+
+    assert response.status_code == 500
+    assert response.json()["error_code"] == "LOTUS_AI_INTERNAL_ERROR"
+    assert "sentinel" not in response.text
