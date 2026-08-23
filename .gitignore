@@ -9,4 +9,5 @@ __pycache__/
 .coverage*
 dist/
 build/
+*.egg-info/
 output/
