@@ -123,17 +123,16 @@ def test_platform_all_tenant_reads_are_capability_gated_and_durably_audited(
     assert "request_id" not in event_payload
 
 
+@pytest.mark.parametrize("path", ["/ai/audit", "/ai/audit/request-platform"])
 def test_platform_header_only_all_tenant_read_fails_closed_outside_local_posture(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
+    path: str,
 ) -> None:
     monkeypatch.setattr(settings, "startup_readiness_policy", "warn")
     monkeypatch.setattr(settings, "readiness_probe_policy", "degrade")
 
-    response = client.get(
-        "/ai/audit",
-        headers={"X-Caller-App": "lotus-platform"},
-    )
+    response = client.get(path, headers={"X-Caller-App": "lotus-platform"})
 
     assert response.status_code == 403
     assert response.json()["detail"] == (
