@@ -436,25 +436,36 @@ def test_audit_catalog_route_returns_filtered_records(client: TestClient) -> Non
     assert response.status_code == 200
     body = response.json()
     assert body["service"] == "lotus-ai"
-    assert body["filters_applied"] == {"limit": 10, "caller_app": "lotus-advise"}
+    assert body["filters_applied"] == {
+        "limit": 10,
+        "tenant_scope": "ALL_TENANTS",
+        "caller_app": "lotus-advise",
+    }
     assert body["record_count"] >= 1
     assert all(record["caller_app"] == "lotus-advise" for record in body["records"])
 
-    identity_filtered_response = client.get(
+    rejected_tenant_filter_response = client.get(
         "/ai/audit",
         params={
-            "requested_by": "advisor.user@lotus",
             "tenant_id": "tenant-us-002",
             "limit": 10,
         },
+    )
+
+    assert rejected_tenant_filter_response.status_code == 422
+
+    identity_filtered_response = client.get(
+        "/ai/audit",
+        params={"requested_by": "advisor.user@lotus", "limit": 10},
+        headers={"X-Caller-App": "lotus-advise"},
     )
 
     assert identity_filtered_response.status_code == 200
     identity_body = identity_filtered_response.json()
     assert identity_body["filters_applied"] == {
         "limit": 10,
+        "tenant_scope": "RESTRICTED_TENANTS",
         "requested_by": "advisor.user@lotus",
-        "tenant_id": "tenant-us-002",
     }
     assert identity_body["record_count"] >= 1
     assert all(
@@ -475,6 +486,7 @@ def test_audit_catalog_route_returns_filtered_records(client: TestClient) -> Non
     retrieval_body = retrieval_filtered_response.json()
     assert retrieval_body["filters_applied"] == {
         "limit": 10,
+        "tenant_scope": "ALL_TENANTS",
         "category": "knowledge_answer",
         "output_label": "RETRIEVAL_ANSWER",
     }
@@ -488,8 +500,7 @@ def test_audit_record_route_returns_not_found_for_unknown_request(client: TestCl
 
     assert response.status_code == 404
     assert (
-        response.json()["detail"]
-        == "No lotus-ai audit record found for request_id: missing_request_id"
+        response.json()["detail"] == "No lotus-ai audit record found for the requested identifier."
     )
 
 

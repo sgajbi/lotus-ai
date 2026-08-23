@@ -11,6 +11,12 @@ from app.contracts.access_control import (
     TenantPolicyMode,
 )
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.audit_access import (
+    AuditAccessEvent,
+    AuditAccessOperation,
+    AuditAccessOutcome,
+    AuditReadScope,
+)
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderAdapterKind
@@ -108,10 +114,11 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
 
     repository.save(record)
 
-    loaded = repository.get("air_sql_1")
+    scope = AuditReadScope.restricted(frozenset({"tenant-sg-001"}))
+    loaded = repository.get("air_sql_1", scope=scope)
     assert loaded == record
     assert loaded.prompt_selection.prompt_version == "foundation.explain.v1"
-    assert repository.get("air_missing") is None
+    assert repository.get("air_missing", scope=scope) is None
 
 
 def test_sqlalchemy_audit_repository_creates_parent_directory_for_sqlite_file(
@@ -191,12 +198,18 @@ def test_sqlalchemy_audit_repository_list_filters_and_orders_latest_first(
     repository.save(old_record)
     repository.save(new_record)
 
-    all_records = repository.list()
-    advise_records = repository.list(caller_app="lotus-advise", limit=10)
-    summarize_records = repository.list(category="summarize", limit=10)
-    draft_records = repository.list(output_label="DRAFT", limit=10)
-    tenant_records = repository.list(tenant_id="tenant-us-002", limit=10)
-    requester_records = repository.list(requested_by="advisor.user@lotus", limit=10)
+    all_scope = AuditReadScope.all_tenants()
+    us_scope = AuditReadScope.restricted(frozenset({"tenant-us-002"}))
+    all_records = repository.list(scope=all_scope)
+    advise_records = repository.list(scope=all_scope, caller_app="lotus-advise", limit=10)
+    summarize_records = repository.list(scope=all_scope, category="summarize", limit=10)
+    draft_records = repository.list(scope=all_scope, output_label="DRAFT", limit=10)
+    tenant_records = repository.list(scope=us_scope, limit=10)
+    requester_records = repository.list(
+        scope=all_scope,
+        requested_by="advisor.user@lotus",
+        limit=10,
+    )
 
     assert [record.request_id for record in all_records] == ["air_sql_new", "air_sql_old"]
     assert [record.request_id for record in advise_records] == ["air_sql_new"]
@@ -204,6 +217,33 @@ def test_sqlalchemy_audit_repository_list_filters_and_orders_latest_first(
     assert [record.request_id for record in draft_records] == ["air_sql_new"]
     assert [record.request_id for record in tenant_records] == ["air_sql_new"]
     assert [record.request_id for record in requester_records] == ["air_sql_new"]
+    assert (
+        repository.get(
+            "air_sql_new",
+            scope=AuditReadScope.restricted(frozenset({"tenant-sg-001"})),
+        )
+        is None
+    )
+
+
+def test_sqlalchemy_audit_repository_round_trips_access_event(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-audit-access.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyAuditRepository(database_url)
+    event = AuditAccessEvent(
+        event_id="audit_access_sql_001",
+        caller_app="lotus-platform",
+        caller_trust_source="trusted_http_header",
+        scope_mode="ALL_TENANTS",
+        operation=AuditAccessOperation.GET_RECORD,
+        outcome=AuditAccessOutcome.NOT_FOUND,
+        returned_record_count=0,
+        recorded_at="2026-08-23T00:00:00Z",
+    )
+
+    repository.save_access_event(event)
+
+    assert list(repository.list_access_events()) == [event]
 
 
 def test_sqlalchemy_audit_repository_round_trips_exact_blocked_safety_outcome(
@@ -275,7 +315,10 @@ def test_sqlalchemy_audit_repository_round_trips_exact_blocked_safety_outcome(
 
     repository.save(record)
 
-    loaded = repository.get("air_sql_blocked")
+    loaded = repository.get(
+        "air_sql_blocked",
+        scope=AuditReadScope.restricted(frozenset({"tenant-sg-001"})),
+    )
     assert loaded == record
     assert loaded.prompt_selection.prompt_version == "foundation.explain.v1"
 
@@ -370,7 +413,7 @@ def test_sqlalchemy_audit_repository_falls_back_for_legacy_records_without_safet
             },
         )
 
-    loaded = repository.get("air_sql_legacy")
+    loaded = repository.get("air_sql_legacy", scope=AuditReadScope.all_tenants())
     assert loaded is not None
     assert loaded.execution_status == TaskExecutionStatus.COMPLETED
     assert loaded.safety_outcome.disposition == SafetyExecutionDisposition.DOCUMENTED_ONLY
@@ -442,7 +485,10 @@ def test_sqlalchemy_audit_repository_round_trips_authorization_payload(tmp_path:
 
     repository.save(record)
 
-    loaded = repository.get("air_sql_authorized")
+    loaded = repository.get(
+        "air_sql_authorized",
+        scope=AuditReadScope.all_tenants(),
+    )
     assert loaded is not None
     assert loaded.authorization == authorization
 
