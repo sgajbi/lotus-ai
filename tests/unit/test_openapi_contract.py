@@ -1458,6 +1458,13 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
 def test_audit_read_contract_is_caller_scoped_and_has_no_tenant_query_override() -> None:
     spec = app.openapi()
 
+    audit_schema = spec["components"]["schemas"]["AuditRecordResponse"]
+    assert audit_schema["properties"]["tenant_state"]["readOnly"] is True
+    assert set(spec["components"]["schemas"]["AuditTenantState"]["enum"]) == {
+        "ATTRIBUTED",
+        "LEGACY_UNATTRIBUTED",
+    }
+
     for path in ("/ai/audit", "/ai/audit/{request_id}"):
         operation = spec["paths"][path]["get"]
         parameters = operation["parameters"]

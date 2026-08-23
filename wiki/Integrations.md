@@ -42,8 +42,9 @@ Audit inspection is caller-policy scoped. Both `GET /ai/audit` and
 through a query parameter. Restricted services see only their configured tenants, cross-scope
 detail is returned as the same safe `404` as a missing record, and only the explicit
 `lotus-platform` capability can inspect all tenants and legacy unattributed records. Every
-all-tenant read must persist a separate identifier-minimized access event before a response is
-returned. Verified service JWT or mTLS identity remains separate follow-up work under issue #149.
+legacy row is explicitly labeled `tenant_state=LEGACY_UNATTRIBUTED`, and every all-tenant read must
+persist a separate identifier-minimized access event before a response is returned. Verified
+service JWT or mTLS identity remains separate follow-up work under issue #149.
 
 The task execution contract itself requires:
 

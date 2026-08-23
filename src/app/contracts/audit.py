@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evidence import ExecutionEvidenceBundle
@@ -10,6 +11,11 @@ from app.contracts.prompts import PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderAdapterKind
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
+
+
+class AuditTenantState(str, Enum):
+    ATTRIBUTED = "ATTRIBUTED"
+    LEGACY_UNATTRIBUTED = "LEGACY_UNATTRIBUTED"
 
 
 class AuditRecordResponse(BaseModel):
@@ -30,6 +36,7 @@ class AuditRecordResponse(BaseModel):
         default=None,
         description="Optional tenant or environment ownership marker for the request.",
     )
+
     prompt_version: str = Field(description="Prompt version associated with the execution.")
     prompt_selection: PromptSelectionTraceDescriptor = Field(
         description="Detailed prompt rollout selection trace associated with the audit record."
@@ -70,6 +77,17 @@ class AuditRecordResponse(BaseModel):
     evidence: ExecutionEvidenceBundle = Field(
         description="Structured execution evidence preserved with the audit record."
     )
+
+    @computed_field(  # type: ignore[prop-decorator]
+        description="Explicit tenant-attribution posture for audit inspection."
+    )
+    @property
+    def tenant_state(self) -> AuditTenantState:
+        return (
+            AuditTenantState.ATTRIBUTED
+            if self.tenant_id is not None
+            else AuditTenantState.LEGACY_UNATTRIBUTED
+        )
 
 
 class AuditRecordCatalogResponse(BaseModel):

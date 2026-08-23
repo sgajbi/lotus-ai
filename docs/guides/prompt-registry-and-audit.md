@@ -153,7 +153,8 @@ from the active caller-policy record and is not a public query filter. A legacy 
 rejected with `422` instead of being silently ignored. Restricted callers cannot observe
 unattributed legacy records, and cross-tenant detail lookup returns the same `404` shape as a
 missing record. The explicit platform all-tenant capability includes legacy unattributed records
-and writes a separate identifier-minimized access event before the response can succeed.
+with `tenant_state=LEGACY_UNATTRIBUTED` and writes a separate identifier-minimized access event
+before the response can succeed.
 
 ## Future Direction
 
