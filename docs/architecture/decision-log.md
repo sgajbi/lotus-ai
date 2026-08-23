@@ -1192,3 +1192,26 @@ Current posture:
 1. platform runtime status includes both `async_runtime` and `async_governance`,
 2. async governance remains separately inspectable through `/platform/async/governance-status`,
 3. foundation phase continues to report blocked async governance in both views.
+
+## Decision 45: Audit Reads Derive Tenant Scope From Caller Policy
+
+Decision:
+
+`lotus-ai` does not accept caller-selected tenant scope for audit-record reads. Both audit GET
+routes resolve a non-optional read scope from the active caller-policy record. Restricted callers
+see only their configured tenants; only an explicit platform capability can read all tenants and
+legacy unattributed records.
+
+Why:
+
+1. audit records contain tenant-sensitive execution, prompt, provider, safety, and lineage evidence,
+2. accepting a tenant query parameter makes authorization depend on untrusted request input,
+3. cross-scope and missing identifiers must remain indistinguishable to prevent existence disclosure,
+4. privileged inspection needs durable evidence independent of the records being inspected.
+
+Current posture:
+
+1. `GET /ai/audit` and `GET /ai/audit/{request_id}` require trusted caller identity,
+2. all-tenant access is a separate caller-policy capability initially limited to `lotus-platform`,
+3. every all-tenant read synchronously writes an identifier-minimized access event and fails closed if that write fails,
+4. verified service JWT or mTLS identity remains separately owned by issue #149.

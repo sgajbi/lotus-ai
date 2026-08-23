@@ -56,6 +56,12 @@ The separation matters:
 2. `/platform/workflow-packs/execute` is the explicit workflow-pack execution contract when a caller needs registered-pack eligibility, run recording, and explicit run identity in one step,
 3. `/ai/audit` is the persisted execution and evidence review surface.
 
+The audit review surface is not an unrestricted catalog. Both audit GET routes require trusted
+caller identity and derive tenant scope from caller policy. Restricted callers cannot override the
+tenant in query parameters or distinguish a cross-scope identifier from a missing one. The
+explicit platform all-tenant capability includes legacy unattributed records and records each read
+in a separate identifier-minimized access ledger; evidence-write failure blocks the response.
+
 ## Capability and Task-Runtime Surface
 
 These surfaces tell you what `lotus-ai` can do and how task execution is behaving in practice.

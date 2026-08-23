@@ -113,6 +113,19 @@ body/header caller mismatches fail closed with a safe `403` response. Tokens, up
 raw request bodies, prompts, tenant-sensitive identifiers, and caller spoofing details must not be
 logged or echoed in problem responses.
 
+Audit-record reads use the same caller-policy authority. `GET /ai/audit` and
+`GET /ai/audit/{request_id}` derive their tenant scope on the server; callers cannot supply a tenant
+query override. Restricted callers see only records for their configured tenant set, and a
+cross-scope identifier is indistinguishable from a missing identifier through the same safe `404`
+contract. Only the explicit `allow_audit_read_all_tenants` capability grants an all-tenant read; the
+initial capability is limited to `lotus-platform`. All-tenant reads include legacy unattributed
+records and synchronously write a separate, identifier-minimized access event. If that evidence
+cannot be persisted, the read fails closed before an audit response is returned.
+
+The current `X-Caller-App` trust boundary is deployment-established service identity, not
+cryptographic proof. Issue #149 owns verified service JWT or mTLS identity and remains required for
+the promoted-production boundary; audit tenant isolation does not weaken or absorb that work.
+
 API errors now use a bounded `application/problem+json` response envelope with stable fields:
 `type`, `title`, `status`, `detail`, `error_code`, `correlation_id`, and optional source-safe
 `metadata`. FastAPI validation errors, router/service `HTTPException` failures, perimeter

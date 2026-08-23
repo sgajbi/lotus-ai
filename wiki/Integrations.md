@@ -37,6 +37,14 @@ These three routes cover the real minimum integration loop:
 2. receive a structured result plus audit and evidence metadata,
 3. inspect the persisted audit trail when support or governance review is required.
 
+Audit inspection is caller-policy scoped. Both `GET /ai/audit` and
+`GET /ai/audit/{request_id}` require trusted `X-Caller-App`; consumers cannot select tenant scope
+through a query parameter. Restricted services see only their configured tenants, cross-scope
+detail is returned as the same safe `404` as a missing record, and only the explicit
+`lotus-platform` capability can inspect all tenants and legacy unattributed records. Every
+all-tenant read must persist a separate identifier-minimized access event before a response is
+returned. Verified service JWT or mTLS identity remains separate follow-up work under issue #149.
+
 The task execution contract itself requires:
 
 1. `task_id`
