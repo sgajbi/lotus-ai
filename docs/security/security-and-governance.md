@@ -121,11 +121,15 @@ contract. Only the explicit `allow_audit_read_all_tenants` capability grants an 
 initial capability is limited to `lotus-platform`. All-tenant reads include legacy unattributed
 records, label them `tenant_state=LEGACY_UNATTRIBUTED`, and synchronously write a separate,
 identifier-minimized access event. If that evidence cannot be persisted, the read fails closed
-before an audit response is returned.
+before an audit response is returned. Header-only identity may exercise this privileged capability
+only in the explicit local `startup_readiness_policy=warn` and
+`readiness_probe_policy=observe` posture. In every promoted posture it fails closed until the
+caller trust source is a verified service JWT or mTLS SAN.
 
 The current `X-Caller-App` trust boundary is deployment-established service identity, not
-cryptographic proof. Issue #149 owns verified service JWT or mTLS identity and remains required for
-the promoted-production boundary; audit tenant isolation does not weaken or absorb that work.
+cryptographic proof. Issue #149 owns delivery of verified service JWT or mTLS identity and remains
+required for the promoted-production boundary; audit tenant isolation recognizes those trust-source
+types without claiming that their verification mechanism already exists.
 
 API errors now use a bounded `application/problem+json` response envelope with stable fields:
 `type`, `title`, `status`, `detail`, `error_code`, `correlation_id`, and optional source-safe

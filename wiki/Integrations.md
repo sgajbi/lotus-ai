@@ -43,8 +43,10 @@ through a query parameter. Restricted services see only their configured tenants
 detail is returned as the same safe `404` as a missing record, and only the explicit
 `lotus-platform` capability can inspect all tenants and legacy unattributed records. Every
 legacy row is explicitly labeled `tenant_state=LEGACY_UNATTRIBUTED`, and every all-tenant read must
-persist a separate identifier-minimized access event before a response is returned. Verified
-service JWT or mTLS identity remains separate follow-up work under issue #149.
+persist a separate identifier-minimized access event before a response is returned. Header-only
+identity may use that privileged capability only in the local `warn`/`observe` posture; promoted
+postures fail closed until the trust source is a verified service JWT or mTLS SAN. The verification
+mechanism remains separate follow-up work under issue #149.
 
 The task execution contract itself requires:
 
