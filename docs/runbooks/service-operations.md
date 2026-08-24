@@ -529,9 +529,9 @@ Current operational expectations:
 5. authorized async, prompt, provider, workflow-pack, and queue-recovery control actions must preserve the recorded caller authorization decision in durable control history
 6. call `GET /ai/audit` and `GET /ai/audit/{request_id}` with the real trusted `X-Caller-App`; never use a caller-supplied tenant filter to widen or switch scope
 7. restricted callers receive only policy-owned tenant records; a cross-scope request and a missing request intentionally return the same `404` contract
-8. reserve `allow_audit_read_all_tenants` for the governed platform operator identity; header-only identity may exercise it only under the local `warn` plus `observe` startup/readiness posture, while every promoted posture requires a verified service JWT or mTLS SAN trust source
+8. reserve `allow_audit_read_all_tenants` for the governed platform operator identity; header-only identity may exercise it only when the default-closed `LOTUS_AI_LOCAL_HEADER_CALLER_IDENTITY_ENABLED=true` setting is explicitly configured for a local runtime, while every promoted runtime requires a verified service JWT or mTLS SAN trust source
 9. treat failure to persist an all-tenant access event as a hard read failure; do not add a log-only fallback, bypass the access ledger, or retry by changing caller identity
-10. expect the local header posture to appear as an explicit startup readiness finding; until issue #149 supplies verified service JWT or mTLS identity, privileged all-tenant inspection must return `403` outside that local posture
+10. inspect `local_header_caller_identity_enabled` in `GET /platform/runtime-status`; changing startup or readiness policy must never change this authorization posture, and until issue #149 supplies verified service JWT or mTLS identity, privileged all-tenant inspection must return `403` unless local header identity is explicitly enabled
 
 ## Retrieval Activation Governance
 

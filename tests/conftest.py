@@ -88,6 +88,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "artifact_object_store_root": settings.artifact_object_store_root,
         "startup_readiness_policy": settings.startup_readiness_policy,
         "readiness_probe_policy": settings.readiness_probe_policy,
+        "local_header_caller_identity_enabled": settings.local_header_caller_identity_enabled,
         "http_allowed_hosts": settings.http_allowed_hosts,
         "http_cors_allowed_origins": settings.http_cors_allowed_origins,
         "http_cors_allowed_methods": settings.http_cors_allowed_methods,

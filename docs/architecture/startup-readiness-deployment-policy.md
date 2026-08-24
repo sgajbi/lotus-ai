@@ -36,6 +36,12 @@ These controls answer different questions:
 
 ## Environment Matrix
 
+Readiness controls own availability posture only. They must never enable privileged caller
+identity or change authorization outcomes. Local header identity for privileged all-tenant audit
+reads is controlled independently by the default-closed
+`LOTUS_AI_LOCAL_HEADER_CALLER_IDENTITY_ENABLED` security setting and must remain disabled outside an
+explicit local runtime.
+
 ### Local Development
 
 Recommended posture:

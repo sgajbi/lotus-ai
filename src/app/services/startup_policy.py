@@ -4,10 +4,6 @@ import logging
 from dataclasses import dataclass
 
 from app.config import settings
-from app.http.authenticated_caller import (
-    LOCAL_HEADER_CALLER_STARTUP_FINDING,
-    is_local_header_caller_posture,
-)
 from app.services.runtime_readiness import (
     get_audit_store_runtime_status,
     get_retrieval_store_runtime_status,
@@ -36,9 +32,6 @@ def evaluate_startup_readiness() -> StartupReadinessEvaluation:
     workflow_pack_run_status = get_workflow_pack_run_store_runtime_status()
     workflow_pack_task_flow_status = get_workflow_pack_task_flow_store_runtime_status()
     workflow_pack_queue_event_status = get_workflow_pack_queue_event_store_runtime_status()
-
-    if is_local_header_caller_posture():
-        findings.append(LOCAL_HEADER_CALLER_STARTUP_FINDING)
 
     if audit_status.status != "READY":
         findings.append(f"audit store: {audit_status.detail}")

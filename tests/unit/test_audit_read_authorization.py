@@ -42,11 +42,37 @@ def test_resolve_audit_read_scope_keeps_restricted_tenant_access_in_promoted_pos
     assert scope.include_legacy_unattributed is False
 
 
-def test_resolve_audit_read_scope_allows_header_operator_only_in_local_posture(
+def test_resolve_audit_read_scope_denies_header_operator_by_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(settings, "startup_readiness_policy", "warn")
-    monkeypatch.setattr(settings, "readiness_probe_policy", "observe")
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        resolve_audit_read_scope(
+            AuthenticatedCaller(caller_app="lotus-platform", trust_source="trusted_http_header")
+        )
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "Caller is not authorized to inspect lotus-ai audit records."
+
+
+@pytest.mark.parametrize(
+    ("startup_policy", "readiness_policy"),
+    [
+        ("warn", "observe"),
+        ("warn", "degrade"),
+        ("enforce", "observe"),
+        ("enforce", "degrade"),
+    ],
+)
+def test_resolve_audit_read_scope_allows_header_operator_only_when_explicitly_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+    startup_policy: str,
+    readiness_policy: str,
+) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+    monkeypatch.setattr(settings, "startup_readiness_policy", startup_policy)
+    monkeypatch.setattr(settings, "readiness_probe_policy", readiness_policy)
 
     scope = resolve_audit_read_scope(
         AuthenticatedCaller(caller_app="lotus-platform", trust_source="trusted_http_header")
@@ -60,17 +86,19 @@ def test_resolve_audit_read_scope_allows_header_operator_only_in_local_posture(
 @pytest.mark.parametrize(
     ("startup_policy", "readiness_policy"),
     [
+        ("warn", "observe"),
         ("warn", "degrade"),
         ("enforce", "degrade"),
         ("enforce", "observe"),
         ("unknown", "observe"),
     ],
 )
-def test_resolve_audit_read_scope_denies_header_operator_outside_local_posture(
+def test_resolve_audit_read_scope_denies_header_operator_when_disabled_independent_of_readiness(
     monkeypatch: pytest.MonkeyPatch,
     startup_policy: str,
     readiness_policy: str,
 ) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", False)
     monkeypatch.setattr(settings, "startup_readiness_policy", startup_policy)
     monkeypatch.setattr(settings, "readiness_probe_policy", readiness_policy)
 
@@ -88,6 +116,7 @@ def test_resolve_audit_read_scope_allows_verified_operator_in_promoted_posture(
     monkeypatch: pytest.MonkeyPatch,
     trust_source: str,
 ) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", False)
     monkeypatch.setattr(settings, "startup_readiness_policy", "enforce")
     monkeypatch.setattr(settings, "readiness_probe_policy", "degrade")
 
@@ -101,6 +130,7 @@ def test_resolve_audit_read_scope_allows_verified_operator_in_promoted_posture(
 def test_resolve_audit_read_scope_denies_unknown_operator_trust_source(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
     monkeypatch.setattr(settings, "startup_readiness_policy", "warn")
     monkeypatch.setattr(settings, "readiness_probe_policy", "observe")
 

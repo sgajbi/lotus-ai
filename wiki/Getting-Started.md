@@ -62,8 +62,9 @@ Important defaults from `.env.example`:
 5. `LOTUS_AI_EVALUATION_RUNTIME_STORE_MODE=sqlalchemy`
 6. `LOTUS_AI_STARTUP_READINESS_POLICY=warn`
 7. `LOTUS_AI_READINESS_PROBE_POLICY=observe`
-8. `LOTUS_AI_RETRIEVAL_MODE=disabled`
-9. `LOTUS_AI_EMBEDDING_PROVIDER_MODE=disabled`
+8. `LOTUS_AI_LOCAL_HEADER_CALLER_IDENTITY_ENABLED=true` for this explicit local runtime only
+9. `LOTUS_AI_RETRIEVAL_MODE=disabled`
+10. `LOTUS_AI_EMBEDDING_PROVIDER_MODE=disabled`
 
 ## First Checks
 

@@ -61,8 +61,10 @@ caller identity and derive tenant scope from caller policy. Restricted callers c
 tenant in query parameters or distinguish a cross-scope identifier from a missing one. The
 explicit platform all-tenant capability includes legacy unattributed records and records each read
 in a separate identifier-minimized access ledger; evidence-write failure blocks the response.
-Header-only identity can exercise this privileged view only in the explicit local `warn`/`observe`
-posture. Promoted postures require a verified service JWT or mTLS SAN trust source.
+Header-only identity can exercise this privileged view only when the default-closed
+`local_header_caller_identity_enabled` setting is explicitly enabled for a local runtime. Readiness
+settings do not alter authorization. Promoted runtimes require a verified service JWT or mTLS SAN
+trust source. `/platform/runtime-status` exposes the effective local-header setting.
 
 ## Capability and Task-Runtime Surface
 

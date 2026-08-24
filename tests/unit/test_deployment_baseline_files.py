@@ -33,6 +33,16 @@ def test_env_example_matches_prod_shaped_local_baseline() -> None:
     assert "LOTUS_AI_WORKFLOW_RUN_MODEL_RISK_INVENTORY_JSON=[]" in env_example_text
 
 
+def test_local_runtime_entrypoints_explicitly_enable_header_identity() -> None:
+    expected_setting = "LOTUS_AI_LOCAL_HEADER_CALLER_IDENTITY_ENABLED=true"
+
+    assert expected_setting in Path(".env.example").read_text(encoding="utf-8")
+    assert expected_setting in Path("canonical-stub.env.example").read_text(encoding="utf-8")
+    assert expected_setting in Path(
+        "demo/lotus-performance-first-use-case/run-demo-docker.ps1"
+    ).read_text(encoding="utf-8")
+
+
 def test_readme_documents_internal_infra_ports_stay_unpublished() -> None:
     readme_text = Path("README.md").read_text(encoding="utf-8")
 

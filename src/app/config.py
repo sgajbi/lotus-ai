@@ -74,6 +74,7 @@ class Settings(BaseSettings):
     deployment_split_stage: str = "unified"
     startup_readiness_policy: str = "warn"
     readiness_probe_policy: str = "observe"
+    local_header_caller_identity_enabled: bool = False
     http_allowed_hosts: str = "*"
     http_cors_allowed_origins: str = (
         "http://localhost,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:3000"
