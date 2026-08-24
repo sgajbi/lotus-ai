@@ -224,7 +224,11 @@ def test_validation_error_uses_problem_details_and_correlation(client: TestClien
     assert body["metadata"]["validation_error_count"] >= 1
 
 
-def test_not_found_error_uses_stable_problem_code(client: TestClient) -> None:
+def test_not_found_error_uses_stable_problem_code(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
     response = client.get(
         "/ai/audit/not-found",
         headers={"X-Correlation-Id": "corr-audit-missing"},
