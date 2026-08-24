@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from _pytest.monkeypatch import MonkeyPatch
 
+from app.config import settings
 from app.main import app
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from tests.support.migration_runner import upgrade_database_to_head
@@ -261,7 +262,12 @@ def test_task_execute_contract_reflects_promoted_prompt_lineage(tmp_path: Path) 
     assert prompt_evidence["attributes"]["prompt_version"] == "foundation.explain.v2"
 
 
-def test_audit_record_route_returns_saved_execution(client: TestClient) -> None:
+def test_audit_record_route_returns_saved_execution(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+
     execute_response = client.post(
         "/ai/tasks/execute",
         json={
@@ -313,9 +319,9 @@ def test_task_execute_contract_returns_rejected_result_when_runtime_safety_block
     client: TestClient,
     monkeypatch: MonkeyPatch,
 ) -> None:
-    from app.config import settings
     from app.contracts.providers import ProviderExecutionResponse
 
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
     settings.safety_mode = "runtime_enforced"
     monkeypatch.setattr(
         "app.services.task_execution_pipeline.execute_text_generation",
@@ -371,7 +377,12 @@ def test_task_execute_contract_returns_rejected_result_when_runtime_safety_block
     settings.safety_mode = "documented_only"
 
 
-def test_audit_catalog_route_returns_filtered_records(client: TestClient) -> None:
+def test_audit_catalog_route_returns_filtered_records(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+
     client.post(
         "/ai/tasks/execute",
         json={
@@ -495,7 +506,12 @@ def test_audit_catalog_route_returns_filtered_records(client: TestClient) -> Non
     assert all(record["output_label"] == "RETRIEVAL_ANSWER" for record in retrieval_body["records"])
 
 
-def test_audit_record_route_returns_not_found_for_unknown_request(client: TestClient) -> None:
+def test_audit_record_route_returns_not_found_for_unknown_request(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+
     response = client.get("/ai/audit/missing_request_id")
 
     assert response.status_code == 404
