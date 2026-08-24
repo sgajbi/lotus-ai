@@ -1,21 +1,20 @@
 import pytest
 
 from app.config import settings
-from app.http.authenticated_caller import LOCAL_HEADER_CALLER_STARTUP_FINDING
 from app.main import app, health_ready
 from app.services.startup_policy import evaluate_startup_readiness
 
 
-def test_startup_readiness_reports_local_header_identity_posture(
+def test_startup_readiness_is_independent_of_local_header_identity_setting(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(settings, "startup_readiness_policy", "warn")
-    monkeypatch.setattr(settings, "readiness_probe_policy", "observe")
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+    monkeypatch.setattr(settings, "startup_readiness_policy", "enforce")
 
     evaluation = evaluate_startup_readiness()
 
     assert evaluation.blocking is False
-    assert LOCAL_HEADER_CALLER_STARTUP_FINDING in evaluation.findings
+    assert evaluation.findings == []
 
 
 def test_startup_readiness_warn_policy_records_non_ready_sql_store_without_blocking() -> None:

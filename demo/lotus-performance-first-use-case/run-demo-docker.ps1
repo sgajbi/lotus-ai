@@ -66,6 +66,7 @@ function Write-DockerEnvFile() {
         "LOTUS_AI_PROVIDER_OPERATIONS_STORE_MODE=sqlalchemy",
         "LOTUS_AI_STARTUP_READINESS_POLICY=warn",
         "LOTUS_AI_READINESS_PROBE_POLICY=observe",
+        "LOTUS_AI_LOCAL_HEADER_CALLER_IDENTITY_ENABLED=true",
         "LOTUS_AI_RETRIEVAL_MODE=disabled",
         "LOTUS_AI_EMBEDDING_PROVIDER_MODE=disabled"
     )

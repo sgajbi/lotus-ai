@@ -181,6 +181,7 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         delivery_phase=settings.delivery_phase,
         startup_readiness_policy=settings.startup_readiness_policy,
         readiness_probe_policy=settings.readiness_probe_policy,
+        local_header_caller_identity_enabled=settings.local_header_caller_identity_enabled,
         provider_mode=settings.provider_mode,
         retrieval_mode=settings.retrieval_mode,
         embedding_provider_mode=settings.embedding_provider_mode,

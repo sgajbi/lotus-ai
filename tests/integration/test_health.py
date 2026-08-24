@@ -404,6 +404,7 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["delivery_phase"] == "foundation"
     assert body["startup_readiness_policy"] == "warn"
     assert body["readiness_probe_policy"] == "observe"
+    assert body["local_header_caller_identity_enabled"] is False
     assert body["audit_store"]["mode"] == "memory"
     assert body["audit_store"]["status"] == "READY"
     assert body["retrieval_store"]["mode"] == "memory"
@@ -667,6 +668,18 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["migration_contract_enforced"] is True
     assert body["startup_readiness_blocking"] is False
     assert body["prompt_count"] >= 3
+
+
+def test_platform_runtime_status_reports_explicit_local_header_identity_setting(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+
+    response = client.get("/platform/runtime-status")
+
+    assert response.status_code == 200
+    assert response.json()["local_header_caller_identity_enabled"] is True
 
 
 def test_service_metadata_exposes_store_modes(client: TestClient) -> None:

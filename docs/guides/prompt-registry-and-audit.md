@@ -154,9 +154,10 @@ rejected with `422` instead of being silently ignored. Restricted callers cannot
 unattributed legacy records, and cross-tenant detail lookup returns the same `404` shape as a
 missing record. The explicit platform all-tenant capability includes legacy unattributed records
 with `tenant_state=LEGACY_UNATTRIBUTED` and writes a separate identifier-minimized access event
-before the response can succeed. Header-only identity can use that capability only in the local
-`warn`/`observe` startup posture; promoted postures require a verified service JWT or mTLS SAN trust
-source and otherwise return `403`.
+before the response can succeed. Header-only identity can use that capability only when the
+default-closed `LOTUS_AI_LOCAL_HEADER_CALLER_IDENTITY_ENABLED` security setting is explicitly
+enabled for a local runtime. Readiness settings do not alter authorization; promoted runtimes
+require a verified service JWT or mTLS SAN trust source and otherwise return `403`.
 
 ## Future Direction
 

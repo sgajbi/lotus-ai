@@ -26,8 +26,9 @@ RFC-0012 is now implemented in five slices:
 5. server-derived tenant isolation for audit-record reads, with an explicit all-tenant platform capability, indistinguishable cross-scope/missing detail responses, and a separate fail-closed access-evidence ledger for all-tenant inspection.
 
 The current HTTP caller trust source remains the deployment-established `X-Caller-App` boundary.
-It may exercise the privileged all-tenant audit capability only in the explicit local
-`warn`/`observe` startup posture; promoted postures reject that operation. Cryptographically
+It may exercise the privileged all-tenant audit capability only when the default-closed
+`local_header_caller_identity_enabled` security setting is explicitly enabled for a local runtime;
+readiness settings do not alter authorization. Cryptographically
 verified service identity is deliberately separate and remains owned by issue #149; this RFC
 recognizes verified JWT and mTLS SAN trust-source types without claiming that their verification
 mechanism already exists.

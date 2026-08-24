@@ -87,7 +87,9 @@ def test_audit_routes_enforce_server_derived_tenant_scope_and_indistinguishable_
 
 def test_platform_all_tenant_reads_are_capability_gated_and_durably_audited(
     client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
     sg_request_id = _execute_task(
         client,
         caller_app="lotus-manage",
@@ -146,6 +148,7 @@ def test_platform_audit_read_fails_closed_when_access_evidence_cannot_be_saved(
     monkeypatch: pytest.MonkeyPatch,
     path: str,
 ) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
     audit_store = get_audit_store()
 
     def fail_access_evidence(*args: object, **kwargs: object) -> None:
