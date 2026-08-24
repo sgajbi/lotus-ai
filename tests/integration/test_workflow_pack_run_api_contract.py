@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
+from app.config import settings
 from app.main import app
 from app.services.workflow_pack_queue_admission import (
     acquire_workflow_pack_queue_admission,
@@ -823,7 +824,10 @@ def test_workflow_pack_execute_route_rejects_denied_surface(client: TestClient) 
 
 def test_workflow_pack_execute_route_rejects_full_queue_lane_without_side_effects(
     client: TestClient,
+    monkeypatch: MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+
     registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
     assert registration is not None
     first_lease = acquire_workflow_pack_queue_admission(registration=registration)
@@ -889,7 +893,10 @@ def test_workflow_pack_execute_route_uses_requested_allowed_queue_lane(
 
 def test_workflow_pack_execute_route_rejects_unsupported_queue_lane_without_side_effects(
     client: TestClient,
+    monkeypatch: MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+
     baseline_audit_response = client.get(
         "/ai/audit",
         params={"caller_app": "lotus-gateway", "limit": 10},
@@ -918,7 +925,10 @@ def test_workflow_pack_execute_route_rejects_unsupported_queue_lane_without_side
 
 def test_pack_backed_task_route_rejects_full_queue_lane_without_side_effects(
     client: TestClient,
+    monkeypatch: MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+
     registration = get_workflow_pack_registration(pack_id="advisor_brief.pack", version="v1")
     assert registration is not None
     first_lease = acquire_workflow_pack_queue_admission(registration=registration)
@@ -1023,6 +1033,7 @@ def test_pack_backed_execution_routes_degrade_when_sql_run_store_is_unmigrated(
     with override_runtime_settings(
         workflow_pack_run_store_mode="sqlalchemy",
         workflow_pack_task_flow_store_mode="sqlalchemy",
+        local_header_caller_identity_enabled=True,
         database_url=database_url,
     ):
         with TestClient(app) as durable_client:
@@ -1066,6 +1077,7 @@ def test_pack_backed_execution_routes_degrade_when_sql_task_flow_store_is_unmigr
 
     with override_runtime_settings(
         workflow_pack_task_flow_store_mode="sqlalchemy",
+        local_header_caller_identity_enabled=True,
         database_url=database_url,
     ):
         with TestClient(app) as durable_client:
