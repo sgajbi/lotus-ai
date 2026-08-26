@@ -1,4 +1,21 @@
 from pathlib import Path
+import re
+import subprocess
+
+
+_LOCAL_HEADER_IDENTITY_SETTING = re.compile(
+    r"^(?!\s*[#;])\s*[\"']?LOTUS_AI_LOCAL_HEADER_CALLER_IDENTITY_ENABLED\s*"
+    r"(?:=|:)\s*[\"']?true[\"']?\s*,?\s*(?:#.*)?$",
+    flags=re.IGNORECASE | re.MULTILINE,
+)
+_LOCAL_HEADER_IDENTITY_ENTRYPOINTS = {
+    ".env.example",
+    "canonical-stub.env.example",
+    "demo/lotus-performance-first-use-case/run-demo-docker.ps1",
+}
+_CONFIGURATION_SUFFIXES = frozenset(
+    {".env", ".example", ".json", ".ps1", ".sh", ".toml", ".yaml", ".yml"}
+)
 
 
 def test_docker_compose_represents_prod_shaped_local_baseline() -> None:
@@ -33,14 +50,31 @@ def test_env_example_matches_prod_shaped_local_baseline() -> None:
     assert "LOTUS_AI_WORKFLOW_RUN_MODEL_RISK_INVENTORY_JSON=[]" in env_example_text
 
 
-def test_local_runtime_entrypoints_explicitly_enable_header_identity() -> None:
-    expected_setting = "LOTUS_AI_LOCAL_HEADER_CALLER_IDENTITY_ENABLED=true"
+def test_only_governed_local_entrypoints_enable_header_identity() -> None:
+    tracked_paths = (
+        subprocess.run(
+            ["git", "ls-files", "-z"],
+            check=True,
+            capture_output=True,
+        )
+        .stdout.decode("utf-8")
+        .split("\0")
+    )
+    enabled_paths = {
+        path
+        for path in tracked_paths
+        if path
+        and _is_configuration_surface(Path(path))
+        and _LOCAL_HEADER_IDENTITY_SETTING.search(
+            Path(path).read_text(encoding="utf-8", errors="ignore")
+        )
+    }
 
-    assert expected_setting in Path(".env.example").read_text(encoding="utf-8")
-    assert expected_setting in Path("canonical-stub.env.example").read_text(encoding="utf-8")
-    assert expected_setting in Path(
-        "demo/lotus-performance-first-use-case/run-demo-docker.ps1"
-    ).read_text(encoding="utf-8")
+    assert enabled_paths == _LOCAL_HEADER_IDENTITY_ENTRYPOINTS
+
+
+def _is_configuration_surface(path: Path) -> bool:
+    return path.name.startswith("Dockerfile") or path.suffix.lower() in _CONFIGURATION_SUFFIXES
 
 
 def test_readme_documents_internal_infra_ports_stay_unpublished() -> None:
