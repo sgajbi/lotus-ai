@@ -1,51 +1,42 @@
 from collections.abc import Iterator
 from typing import Any
+from urllib.parse import urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import PUBLIC_UNAUTHENTICATED_PATHS, app
 
 
 @pytest.fixture(autouse=True)
-def add_authenticated_caller_header_to_protected_posts(
+def add_authenticated_caller_header_to_protected_routes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    original_post = TestClient.post
-    original_get = TestClient.get
+    original_request = TestClient.request
 
-    def authenticated_post(
+    def authenticated_request(
         self: TestClient,
+        method: str,
         url: str,
         *args: Any,
         **kwargs: Any,
     ) -> Any:
         headers = dict(kwargs.get("headers") or {})
-        if _is_protected_post_path(str(url)) and not _has_caller_header(headers):
-            caller_app = _resolve_declared_caller_app(
-                json_body=kwargs.get("json"),
-                params=kwargs.get("params"),
+        path = urlsplit(str(url)).path
+        if path not in PUBLIC_UNAUTHENTICATED_PATHS and not _has_caller_header(headers):
+            caller_app = (
+                None
+                if method.upper() in {"GET", "HEAD"}
+                else _resolve_declared_caller_app(
+                    json_body=kwargs.get("json"),
+                    params=kwargs.get("params"),
+                )
             )
-            if caller_app:
-                headers["X-Caller-App"] = caller_app
-                kwargs["headers"] = headers
-        return original_post(self, url, *args, **kwargs)
-
-    monkeypatch.setattr(TestClient, "post", authenticated_post)
-
-    def authenticated_get(
-        self: TestClient,
-        url: str,
-        *args: Any,
-        **kwargs: Any,
-    ) -> Any:
-        headers = dict(kwargs.get("headers") or {})
-        if str(url).startswith("/ai/audit") and not _has_caller_header(headers):
-            headers["X-Caller-App"] = "lotus-platform"
+            headers["X-Caller-App"] = caller_app or "lotus-platform"
             kwargs["headers"] = headers
-        return original_get(self, url, *args, **kwargs)
+        return original_request(self, method, url, *args, **kwargs)
 
-    monkeypatch.setattr(TestClient, "get", authenticated_get)
+    monkeypatch.setattr(TestClient, "request", authenticated_request)
 
 
 @pytest.fixture
@@ -56,26 +47,6 @@ def client() -> Iterator[TestClient]:
 
 def _has_caller_header(headers: dict[str, str]) -> bool:
     return any(header_name.lower() == "x-caller-app" for header_name in headers)
-
-
-def _is_protected_post_path(path: str) -> bool:
-    return (
-        path == "/ai/tasks/execute"
-        or path == "/platform/retrieval/search"
-        or path.endswith("/submit-async")
-        or path == "/platform/prompts/control-actions"
-        or path == "/platform/providers/control-plane-actions/reset"
-        or path == "/platform/async/control-plane-actions/apply"
-        or path == "/platform/async/jobs/submit"
-        or path == "/platform/workflow-packs/execute"
-        or path == "/platform/workflow-packs/execute-async"
-        or path == "/platform/workflow-packs/control-actions"
-        or path.endswith("/review-actions")
-        or path.endswith("/retry-decisions")
-        or path.endswith("/retry-executions")
-        or path.endswith("/replay-decisions")
-        or path.endswith("/replay-executions")
-    )
 
 
 def _resolve_declared_caller_app(
