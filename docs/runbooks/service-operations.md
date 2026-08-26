@@ -517,7 +517,7 @@ Before treating caller identity and tenant isolation as fully governed rollout p
 4. inspect `GET /platform/access-control/governance-status` for the composed governance view
 5. confirm the embedded `access_control_runtime` and `access_control_governance` blocks in `GET /platform/runtime-status` match the detailed access-control views
 6. confirm unknown callers still fail closed on protected data-plane and control-plane paths
-7. confirm protected POST routes receive a trusted `X-Caller-App` value from ingress or service-to-service routing and reject missing, empty, unknown, disabled, or body-mismatched caller identities before side effects
+7. confirm every route from a named product router receives a trusted `X-Caller-App` value from ingress or service-to-service routing and rejects missing, empty, unknown, or disabled caller identities; routes declaring body-level caller metadata must also reject mismatches before side effects
 8. treat SQL-backed caller policy storage as the activation gate for restart-safe access-control governance
 
 Current operational expectations:

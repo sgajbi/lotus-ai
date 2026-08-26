@@ -79,12 +79,12 @@ endpoint internals must not be returned in API errors.
 service-owned boundary is transport-only and must not contain task, workflow-pack, retrieval,
 prompt, provider, or domain business logic.
 
-Protected data-plane and control-plane POST routes require a trusted `X-Caller-App` header from
-ingress or an equivalent service-to-service boundary. The request body `caller_app` remains part of
-the API contract for audit and evidence, but it is treated as declared metadata and must match the
-authenticated HTTP caller before task execution, retrieval execution, async submission or control,
-prompt control, provider control, workflow-pack execution, workflow-pack review, or queue recovery
-side effects run. Authorization decisions now preserve `authenticated_caller_app`,
+Every route included from the 19 named product routers requires a trusted `X-Caller-App` header from
+ingress or an equivalent service-to-service boundary. Where a request declares `caller_app`, it
+remains audit and evidence metadata and must match the authenticated HTTP caller before task
+execution, retrieval execution, async submission or control, prompt control, provider control,
+workflow-pack execution, workflow-pack review, or queue recovery side effects run. Authorization
+decisions now preserve `authenticated_caller_app`,
 `caller_identity_source`, and `caller_identity_bound` so operators can distinguish trusted
 caller-binding evidence from legacy body-only metadata. The current header represents a Lotus
 service caller, not a human end-user entitlement model.
