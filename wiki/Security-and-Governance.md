@@ -73,7 +73,9 @@ workflow-pack, retrieval, prompt, provider, or domain business logic. Ingress ca
 direct service access is no longer left to implicit defaults.
 
 Protected data-plane and control-plane routes require a trusted upstream caller identity in
-`X-Caller-App`. `lotus-ai` binds that authenticated caller to request-declared `caller_app`
+`X-Caller-App`. Measured on `main`: of **173 published operations, the 167 that are not on the
+public allowlist all refuse a caller with no identity**; the six allowlisted paths (`/`, `/health`,
+`/health/live`, `/health/ready`, `/metadata`, `/metrics`) still answer. `lotus-ai` binds that authenticated caller to request-declared `caller_app`
 metadata before protected routes mutate state, invoke retrieval or provider execution, retain
 audit/control evidence, or run workflow-pack retry/replay execution. Missing, empty, unknown,
 disabled, or mismatched caller identity fails closed with a safe `403` response.
@@ -141,8 +143,17 @@ Examples:
 4. durable stores existing in code does not mean production-ready posture is satisfied,
 5. task support does not mean every caller is authorized to use that path.
 
-Every route included from a named product router now binds caller-policy authorization to a trusted
-`X-Caller-App` HTTP caller identity supplied by ingress or service-to-service routing. Where a
+Every published non-public operation binds caller-policy authorization to a trusted `X-Caller-App`
+HTTP caller identity supplied by ingress or service-to-service routing. The guarantee is stated over
+the *published* surface rather than over a list of routers on purpose: a router included outside the
+protected inventory would otherwise be unenforced and invisible to the check that claims to cover
+it.
+
+**This identity is asserted by the upstream, not cryptographically verified.** The trust source is
+`trusted_http_header`, so the guarantee holds only as far as ingress is trusted to set the header
+and to strip any value a client supplies. A caller that can reach the service directly can assert
+any identity. Binding coverage is complete; verification is not, and issue #149 remains open for it.
+Do not read `403` on a missing header as proof that the caller is who it claims to be. Where a
 route declares body-level `caller_app`, it remains API and audit metadata, and missing, empty,
 unknown, disabled, or body-mismatched caller identity fails closed before protected task, retrieval,
 async, prompt, provider, workflow-pack, review, or queue recovery side effects. Authorization
