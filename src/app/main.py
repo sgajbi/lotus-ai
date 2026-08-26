@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator, MutableMapping, Sequence
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
-from fastapi import FastAPI, Response, status
+from fastapi import Depends, FastAPI, Response, status
 from fastapi.openapi.utils import get_openapi
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_fastapi_instrumentator import routing as prometheus_routing
@@ -13,6 +13,7 @@ from starlette.routing import BaseRoute, Match, Mount
 from app.api_errors import install_problem_detail_handlers
 from app.config import settings
 from app.contracts.api_errors import COMMON_PROBLEM_RESPONSES, ProblemDetails
+from app.http.authenticated_caller import require_authenticated_caller
 from app.middleware.correlation import CorrelationIdMiddleware
 from app.middleware.http_boundary import HttpBoundaryMiddleware
 from app.routers.access_control import router as access_control_router
@@ -42,6 +43,30 @@ SERVICE_NAME = settings.service_name
 SERVICE_VERSION = settings.service_version
 ROUNDING_POLICY_VERSION = "v1"
 _PROMETHEUS_ROUTING_PATCHED = False
+PUBLIC_UNAUTHENTICATED_PATHS = frozenset(
+    {"/", "/health", "/health/live", "/health/ready", "/metadata", "/metrics"}
+)
+PROTECTED_ROUTER_BINDINGS = (
+    ("platform", platform_router),
+    ("artifacts", artifacts_router),
+    ("observability", observability_router),
+    ("access_control", access_control_router),
+    ("async_runtime", async_runtime_router),
+    ("capabilities", capabilities_router),
+    ("capability_packs", capability_packs_router),
+    ("evals", evals_router),
+    ("providers", providers_router),
+    ("prompts", prompts_router),
+    ("retrieval", retrieval_router),
+    ("safety", safety_router),
+    ("task_runtime", task_runtime_router),
+    ("use_cases", use_cases_router),
+    ("workflow_packs", workflow_packs_router),
+    ("workflow_run_attestations", workflow_run_attestations_router),
+    ("provider_retention_confirmations", provider_retention_confirmations_router),
+    ("tasks", tasks_router),
+    ("audit", audit_router),
+)
 
 
 def _install_fastapi_included_router_prometheus_patch() -> None:
@@ -169,25 +194,11 @@ app.add_middleware(HttpBoundaryMiddleware)
 app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
 _install_fastapi_included_router_prometheus_patch()
 Instrumentator().instrument(app).expose(app)
-app.include_router(platform_router)
-app.include_router(artifacts_router)
-app.include_router(observability_router)
-app.include_router(access_control_router)
-app.include_router(async_runtime_router)
-app.include_router(capabilities_router)
-app.include_router(capability_packs_router)
-app.include_router(evals_router)
-app.include_router(providers_router)
-app.include_router(prompts_router)
-app.include_router(retrieval_router)
-app.include_router(safety_router)
-app.include_router(task_runtime_router)
-app.include_router(use_cases_router)
-app.include_router(workflow_packs_router)
-app.include_router(workflow_run_attestations_router)
-app.include_router(provider_retention_confirmations_router)
-app.include_router(tasks_router)
-app.include_router(audit_router)
+for _router_name, protected_router in PROTECTED_ROUTER_BINDINGS:
+    app.include_router(
+        protected_router,
+        dependencies=[Depends(require_authenticated_caller)],
+    )
 _install_problem_details_openapi(app)
 
 
