@@ -141,12 +141,12 @@ Examples:
 4. durable stores existing in code does not mean production-ready posture is satisfied,
 5. task support does not mean every caller is authorized to use that path.
 
-Protected POST routes now bind caller-policy authorization to a trusted `X-Caller-App` HTTP caller
-identity supplied by ingress or service-to-service routing. Body-level `caller_app` remains API and
-audit metadata, but missing, empty, unknown, disabled, or body-mismatched caller identity fails
-closed before protected task, retrieval, async, prompt, provider, workflow-pack, review, or queue
-recovery side effects. Authorization evidence preserves the authenticated caller, identity source,
-and match result for operator review.
+Every route included from a named product router now binds caller-policy authorization to a trusted
+`X-Caller-App` HTTP caller identity supplied by ingress or service-to-service routing. Where a
+route declares body-level `caller_app`, it remains API and audit metadata, and missing, empty,
+unknown, disabled, or body-mismatched caller identity fails closed before protected task, retrieval,
+async, prompt, provider, workflow-pack, review, or queue recovery side effects. Authorization
+evidence preserves the authenticated caller, identity source, and match result for operator review.
 
 This is why the runtime and governance surfaces matter more than static repo claims.
 
