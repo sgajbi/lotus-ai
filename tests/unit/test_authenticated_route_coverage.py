@@ -1,74 +1,68 @@
-from fastapi.testclient import TestClient
-from fastapi.routing import APIRoute
+"""No product route is reachable without a verified caller identity.
 
-from app.http.authenticated_caller import require_authenticated_caller
+Issue #149: `X-Caller-App` was a self-asserted header and 13 of 20 routers had no caller binding.
+The fix routes every product router through `require_authenticated_caller`.
+
+These tests assert the *behaviour* rather than the wiring. An earlier version walked `app.routes`
+looking for the dependency object, which found nothing: this FastAPI version defers
+`include_router` into `_IncludedRouter` wrappers, so the product routes are not flattened into
+`app.routes` at all. That test failed while the application was correct - it was reading the
+declaration instead of the effect.
+
+Reading the effect also closes a gap the wiring check could not: it covers every path the service
+publishes, so a router included directly rather than through `PROTECTED_ROUTER_BINDINGS` is caught
+too. The inventory is no longer the thing being trusted.
+"""
+
+from __future__ import annotations
+
+from fastapi.testclient import TestClient
+
 from app.main import PROTECTED_ROUTER_BINDINGS, PUBLIC_UNAUTHENTICATED_PATHS, app
 
+_HTTP_METHODS = ("get", "post", "put", "patch", "delete")
 
-_EXPECTED_PROTECTED_ROUTERS = {
-    "access_control",
-    "artifacts",
-    "async_runtime",
-    "audit",
-    "capabilities",
-    "capability_packs",
-    "evals",
-    "observability",
-    "platform",
-    "prompts",
-    "provider_retention_confirmations",
-    "providers",
-    "retrieval",
-    "safety",
-    "task_runtime",
-    "tasks",
-    "use_cases",
-    "workflow_packs",
-    "workflow_run_attestations",
-}
+# A request that never carries caller identity must be refused. 401 and 403 are both acceptable
+# refusals; anything else means the route answered, or failed for an unrelated reason.
+_REFUSAL_STATUSES = frozenset({401, 403})
 
 
-def test_every_included_product_router_is_in_the_protected_inventory() -> None:
-    assert {name for name, _router in PROTECTED_ROUTER_BINDINGS} == _EXPECTED_PROTECTED_ROUTERS
+def _published_operations() -> list[tuple[str, str]]:
+    """Every (method, path) the service publishes, from the OpenAPI document itself."""
+
+    operations = [
+        (method, path)
+        for path, item in app.openapi().get("paths", {}).items()
+        for method in _HTTP_METHODS
+        if method in item
+    ]
+    assert operations, "No published operations found; this test would assert nothing."
+    return operations
 
 
-def test_every_product_route_requires_authenticated_caller() -> None:
-    application_routes = [route for route in app.routes if isinstance(route, APIRoute)]
-    unprotected: set[tuple[str, str, frozenset[str]]] = set()
-    for name, router in PROTECTED_ROUTER_BINDINGS:
-        assert router.routes, f"protected router {name!r} has no routes"
-        for router_route in router.routes:
-            assert isinstance(router_route, APIRoute)
-            route_identity = _route_identity(router_route)
-            included_routes = [
-                route for route in application_routes if _route_identity(route) == route_identity
-            ]
-            assert len(included_routes) == 1, (
-                f"protected router {name!r} route {route_identity!r} must be included exactly once"
-            )
-            application_route = included_routes[0]
-            if not any(
-                dependency.dependency is require_authenticated_caller
-                for dependency in application_route.dependencies
-            ):
-                unprotected.add(route_identity)
+def test_every_published_non_public_operation_refuses_an_unidentified_caller() -> None:
+    client = TestClient(app)
 
-    assert unprotected == set()
+    answered = []
+    for method, path in _published_operations():
+        if path in PUBLIC_UNAUTHENTICATED_PATHS:
+            continue
+        # Path parameters are irrelevant: admission is refused before routing to a handler, so a
+        # syntactically valid placeholder is enough and no fixture data is required.
+        concrete = path.replace("{", "").replace("}", "")
+        response = client.request(method.upper(), concrete)
+        if response.status_code not in _REFUSAL_STATUSES:
+            answered.append(f"{method.upper()} {path} -> {response.status_code}")
+
+    assert answered == [], (
+        "These published operations answered a caller with no verified identity, so they are "
+        f"reachable without authentication: {answered}. See issue #149."
+    )
 
 
-def _route_identity(route: APIRoute) -> tuple[str, str, frozenset[str]]:
-    """Return the stable identity preserved when FastAPI includes a router."""
+def test_the_public_allowlist_is_reachable_without_caller_identity() -> None:
+    """The allowlist must stay small and must actually work, or the check above is vacuous."""
 
-    return (route.path, route.name, frozenset(route.methods or set()))
-
-
-def test_product_route_rejects_missing_caller_identity() -> None:
-    response = TestClient(app).get("/platform/capabilities")
-
-    assert response.status_code == 403
-
-
-def test_public_route_allowlist_remains_available_without_caller_identity() -> None:
     client = TestClient(app)
 
     assert PUBLIC_UNAUTHENTICATED_PATHS == {
@@ -79,9 +73,21 @@ def test_public_route_allowlist_remains_available_without_caller_identity() -> N
         "/metadata",
         "/metrics",
     }
-    responses = {path: client.get(path) for path in PUBLIC_UNAUTHENTICATED_PATHS}
 
-    assert responses.keys() == PUBLIC_UNAUTHENTICATED_PATHS
-    assert {path: response.status_code for path, response in responses.items()} == {
-        path: 200 for path in PUBLIC_UNAUTHENTICATED_PATHS
+    unreachable = {
+        path: client.get(path).status_code
+        for path in sorted(PUBLIC_UNAUTHENTICATED_PATHS)
+        if client.get(path).status_code != 200
     }
+    assert unreachable == {}, f"Public paths did not answer: {unreachable}"
+
+
+def test_every_product_router_is_bound_through_the_protected_inventory() -> None:
+    """The inventory is not the security boundary, but an empty one would hide a regression."""
+
+    names = [name for name, _router in PROTECTED_ROUTER_BINDINGS]
+
+    assert len(names) == len(set(names)), f"Duplicate router bindings: {names}"
+    assert len(names) >= 19, f"Protected router inventory shrank to {len(names)}: {names}"
+    for name, router in PROTECTED_ROUTER_BINDINGS:
+        assert router.routes, f"Protected router {name!r} contributes no routes."

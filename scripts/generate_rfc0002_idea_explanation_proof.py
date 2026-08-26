@@ -23,6 +23,11 @@ FORBIDDEN_PROOF_KEYS = {
 }
 
 
+# Every call this proof makes is a product route, and product routes require a verified caller
+# identity (#149). Reads needed the header just as much as writes; only the writes had it.
+_CALLER_HEADERS = {"X-Caller-App": "lotus-idea"}
+
+
 class IdeaExplanationProofError(AssertionError):
     """Raised when the RFC-0002 Idea explanation proof is incomplete or unsafe."""
 
@@ -53,7 +58,7 @@ def build_rfc0002_idea_explanation_proof() -> dict[str, Any]:
     execute_response = client.post(
         "/platform/workflow-packs/execute",
         json=_idea_explanation_request(),
-        headers={"X-Caller-App": "lotus-idea"},
+        headers=_CALLER_HEADERS,
     )
     _expect_http(execute_response.status_code, 200, "Idea explanation execution")
     execution = execute_response.json()
@@ -75,24 +80,33 @@ def build_rfc0002_idea_explanation_proof() -> dict[str, Any]:
             "reviewed_by": "idea-reviewer.sg.001",
             "reason": "Accepted for RFC-0002 local owner-repo proof boundary.",
         },
-        headers={"X-Caller-App": "lotus-idea"},
+        headers=_CALLER_HEADERS,
     )
     _expect_http(review_response.status_code, 200, "Idea explanation review action")
     reviewed_run = _require_dict(review_response.json(), "run")
     _expect_value(reviewed_run.get("review_state"), "ACCEPTED", "review_state")
     _expect_value(reviewed_run.get("supportability_status"), "READY", "supportability_status")
 
-    consumer_response = client.get(f"/platform/workflow-packs/runs/{run_id}/consumer-view")
+    consumer_response = client.get(
+        f"/platform/workflow-packs/runs/{run_id}/consumer-view",
+        headers=_CALLER_HEADERS,
+    )
     _expect_http(consumer_response.status_code, 200, "Idea explanation consumer view")
     consumer_view = consumer_response.json()
     _validate_consumer_view(consumer_view)
 
-    source_events_response = client.get(f"/platform/workflow-packs/runs/{run_id}/source-events")
+    source_events_response = client.get(
+        f"/platform/workflow-packs/runs/{run_id}/source-events",
+        headers=_CALLER_HEADERS,
+    )
     _expect_http(source_events_response.status_code, 200, "Idea explanation source events")
     source_events = source_events_response.json()
     _validate_source_events(source_events)
 
-    attestation_response = client.get(f"/platform/workflow-packs/runs/{run_id}/attestation")
+    attestation_response = client.get(
+        f"/platform/workflow-packs/runs/{run_id}/attestation",
+        headers=_CALLER_HEADERS,
+    )
     _expect_http(attestation_response.status_code, 409, "local-dev attestation boundary")
     attestation_problem = attestation_response.json()
     _expect_problem_reason(
