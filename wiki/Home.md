@@ -5,15 +5,46 @@ execution and operator-facing control planes so downstream Lotus applications ca
 retrieval, safety controls, evaluation gates, async execution, and provider-routing seams without
 moving business authority out of the domain services that already own it.
 
+## Why It Exists
+
+Every Lotus application has work that an AI model could help with — explaining a performance
+result, drafting commentary, classifying an exception, answering from governed documents. Built
+per-application, each of those needs its own provider integration, prompt versioning, spend control,
+safety labelling, audit trail and evaluation. Built five times, they drift, and the bank ends up
+unable to answer a simple question: *what did the AI actually do, for whom, on what evidence?*
+
+`lotus-ai` is that capability built once, with the governance attached rather than added later:
+
+- **Domain authority stays where it belongs.** The service holds no portfolio, position or client
+  record. Every output carries a label declaring its intended use, and no label authorises business
+  execution. An application decides how output is applied; `lotus-ai` decides only that it was
+  produced under policy.
+- **Every execution leaves evidence.** Audit records, correlation identifiers and signed
+  workflow-run attestations are produced by the execution path, not bolted on, so "what happened"
+  is answerable after the fact rather than reconstructed.
+- **Provider risk is bounded centrally.** Quota, budget, timeout, retry and circuit-breaker
+  controls, plus rollout state and degradation posture, live in one place with operator surfaces —
+  not scattered across the applications that call them.
+- **Nothing is on by default.** Provider execution, retrieval and embeddings ship disabled, and
+  activation is evidence-gated. Capability is switched on deliberately, per surface, with a readiness
+  posture an operator can inspect.
+
+The trade is explicitness over convenience: the service is deliberately larger in governance surface
+than in execution surface, because in a private-banking context the question that matters is rarely
+*can it answer* but *may it, and can we prove what it did*.
+
 ## Start Here
 
 If you need the shortest accurate orientation, read these in order:
 
-1. [Overview](./Overview.md)
-2. [Architecture](./Architecture.md)
-3. [Getting Started](./Getting-Started.md)
-4. [Validation and CI](./Validation-and-CI.md)
-5. [Operations Runbook](./Operations-Runbook.md)
+1. [Overview](./Overview.md) — role and ownership boundaries
+2. [Glossary](./Glossary.md) — the vocabulary, including the four posture questions that account for
+   a third of the API surface
+3. [Architecture](./Architecture.md) — measured shape, default posture, known gaps
+4. [Getting Started](./Getting-Started.md) — running it locally
+5. [Configuration Reference](./Configuration-Reference.md) — every setting and its default
+6. [Validation and CI](./Validation-and-CI.md) — gates, and what CI actually invokes
+7. [Operations Runbook](./Operations-Runbook.md) — operating and supporting it
 
 ## Current Posture
 
