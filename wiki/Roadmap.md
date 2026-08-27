@@ -95,6 +95,6 @@ of an AI runtime alone.
 
 ## Read Next
 
-1. use [RFC Index](./RFC-Index.md) for the governing decision inventory,
-2. use [Integrations](./Integrations.md) to see how roadmap expansion affects downstream adoption,
-3. use [Security and Governance](./Security-and-Governance.md) to understand why some expansion remains intentionally bounded.
+1. use [RFC Index](RFC-Index) for the governing decision inventory,
+2. use [Integrations](Integrations) to see how roadmap expansion affects downstream adoption,
+3. use [Security and Governance](Security-and-Governance) to understand why some expansion remains intentionally bounded.

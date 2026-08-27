@@ -92,7 +92,7 @@ The service exposes a broad platform surface. The main groups are:
 11. capability packs, workflow packs, app-capability rollouts, and first-use-case surfaces
    adoption and rollout governance rather than direct execution
 
-For the grouped route map, use [Platform Surfaces](./Platform-Surfaces.md).
+For the grouped route map, use [Platform Surfaces](Platform-Surfaces).
 
 ## Operator-First Route Families
 
@@ -383,6 +383,6 @@ abandon the queued job with operator evidence; do not repair this state with ad 
 
 ## Read Next
 
-1. use [Platform Surfaces](./Platform-Surfaces.md) for the grouped route map,
-2. use [Troubleshooting](./Troubleshooting.md) for common failure patterns,
-3. use [Security and Governance](./Security-and-Governance.md) when the question is about what the runtime is actually allowed to do.
+1. use [Platform Surfaces](Platform-Surfaces) for the grouped route map,
+2. use [Troubleshooting](Troubleshooting) for common failure patterns,
+3. use [Security and Governance](Security-and-Governance) when the question is about what the runtime is actually allowed to do.

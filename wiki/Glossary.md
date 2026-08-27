@@ -63,7 +63,7 @@ read; the request never carries it.
 **Tenant scope** — the set of tenants a caller may read audit records for, derived from caller
 policy by `resolve_audit_read_scope`. Either `RESTRICTED_TENANTS` (a named list, applied as a SQL
 predicate) or all-tenants (privileged identity only). See
-[Security and Governance](./Security-and-Governance.md) for the rules and for the one route that
+[Security and Governance](Security-and-Governance) for the rules and for the one route that
 sits outside them.
 
 **Trust source** — how the caller identity arrived: `trusted_http_header`, a verified service JWT,
@@ -100,7 +100,7 @@ and its reason, not infer from absence.
 ## Modes and stages
 
 **Store mode** — `memory` or `sqlalchemy`, chosen independently for each of fourteen stores. See
-[Configuration Reference](./Configuration-Reference.md).
+[Configuration Reference](Configuration-Reference).
 
 **Provider mode / retrieval mode / embedding provider mode** — `disabled` by default. A disabled
 mode is a governed state, not a broken one.
@@ -138,7 +138,7 @@ as accepted.
 
 ## Read next
 
-1. [Architecture](./Architecture.md) — how these pieces fit together
-2. [Platform Surfaces](./Platform-Surfaces.md) — the grouped route map
-3. [Configuration Reference](./Configuration-Reference.md) — every mode and switch
-4. [Security and Governance](./Security-and-Governance.md) — identity, labelling, evidence
+1. [Architecture](Architecture) — how these pieces fit together
+2. [Platform Surfaces](Platform-Surfaces) — the grouped route map
+3. [Configuration Reference](Configuration-Reference) — every mode and switch
+4. [Security and Governance](Security-and-Governance) — identity, labelling, evidence

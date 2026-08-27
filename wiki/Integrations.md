@@ -9,7 +9,7 @@ inspection so consumers do not mistake an available route for transferred busine
 | Reader need | Start here | Evidence or decision |
 |---|---|---|
 | Execute a bounded AI task | [Primary Executable Contracts](#primary-executable-contracts) | Request, response, audit, and evidence contract |
-| Integrate a workflow pack | [Workflow-Pack Integration](#workflow-pack-integration) | Registration, eligibility, review, and authority boundary |
+| Integrate a workflow pack | [Downstream Adoption Surfaces](#downstream-adoption-surfaces) | Registration, eligibility, review, and authority boundary |
 | Verify portable provenance | [Signed Workflow-Run Provenance](#signed-workflow-run-provenance) | Signed claims and public-key discovery |
 | Diagnose provider or safety posture | [Provider and Safety Expectations](#provider-and-safety-expectations) | Runtime operator surfaces and fail-closed controls |
 
@@ -412,7 +412,7 @@ When the integration depends on blocked, redacted, or label-sensitive output han
 
 ## Read Next
 
-1. use [Platform Surfaces](./Platform-Surfaces.md) for the grouped public route map,
-2. use [Security and Governance](./Security-and-Governance.md) for the boundary rules that constrain integrations,
-3. use [Operations Runbook](./Operations-Runbook.md) when workflow-pack rollout or operator control posture needs a live check,
-4. use [Troubleshooting](./Troubleshooting.md) when a runtime mode or provider path is not behaving as expected.
+1. use [Platform Surfaces](Platform-Surfaces) for the grouped public route map,
+2. use [Security and Governance](Security-and-Governance) for the boundary rules that constrain integrations,
+3. use [Operations Runbook](Operations-Runbook) when workflow-pack rollout or operator control posture needs a live check,
+4. use [Troubleshooting](Troubleshooting) when a runtime mode or provider path is not behaving as expected.

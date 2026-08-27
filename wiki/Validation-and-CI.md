@@ -124,6 +124,6 @@ just developer convenience.
 
 ## Read Next
 
-1. use [Development Workflow](./Development-Workflow.md) for the repo's actual working loop,
-2. use [Troubleshooting](./Troubleshooting.md) when a local gate fails for runtime or policy reasons,
-3. use [Operations Runbook](./Operations-Runbook.md) when the issue is about live runtime posture.
+1. use [Development Workflow](Development-Workflow) for the repo's actual working loop,
+2. use [Troubleshooting](Troubleshooting) when a local gate fails for runtime or policy reasons,
+3. use [Operations Runbook](Operations-Runbook) when the issue is about live runtime posture.

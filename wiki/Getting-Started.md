@@ -126,7 +126,7 @@ Source:
 
 After the service is up:
 
-1. use [Platform Surfaces](./Platform-Surfaces.md) to understand the API groups,
-2. use [Validation and CI](./Validation-and-CI.md) to choose the right gate,
-3. use [Operations Runbook](./Operations-Runbook.md) when the runtime posture matters,
-4. use [Troubleshooting](./Troubleshooting.md) when startup or readiness is not behaving as expected.
+1. use [Platform Surfaces](Platform-Surfaces) to understand the API groups,
+2. use [Validation and CI](Validation-and-CI) to choose the right gate,
+3. use [Operations Runbook](Operations-Runbook) when the runtime posture matters,
+4. use [Troubleshooting](Troubleshooting) when startup or readiness is not behaving as expected.

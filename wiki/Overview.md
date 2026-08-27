@@ -63,6 +63,6 @@ business truth. `lotus-ai` is designed to keep that line clear:
 
 ## Read Next
 
-1. use [Architecture](./Architecture.md) for the runtime shape and execution flow,
-2. use [Platform Surfaces](./Platform-Surfaces.md) for the grouped public API map,
-3. use [Roadmap](./Roadmap.md) for what is intentionally bounded versus expanding.
+1. use [Architecture](Architecture) for the runtime shape and execution flow,
+2. use [Platform Surfaces](Platform-Surfaces) for the grouped public API map,
+3. use [Roadmap](Roadmap) for what is intentionally bounded versus expanding.

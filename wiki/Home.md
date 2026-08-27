@@ -37,14 +37,14 @@ than in execution surface, because in a private-banking context the question tha
 
 If you need the shortest accurate orientation, read these in order:
 
-1. [Overview](./Overview.md) — role and ownership boundaries
-2. [Glossary](./Glossary.md) — the vocabulary, including the four posture questions that account for
+1. [Overview](Overview) — role and ownership boundaries
+2. [Glossary](Glossary) — the vocabulary, including the four posture questions that account for
    a third of the API surface
-3. [Architecture](./Architecture.md) — measured shape, default posture, known gaps
-4. [Getting Started](./Getting-Started.md) — running it locally
-5. [Configuration Reference](./Configuration-Reference.md) — every setting and its default
-6. [Validation and CI](./Validation-and-CI.md) — gates, and what CI actually invokes
-7. [Operations Runbook](./Operations-Runbook.md) — operating and supporting it
+3. [Architecture](Architecture) — measured shape, default posture, known gaps
+4. [Getting Started](Getting-Started) — running it locally
+5. [Configuration Reference](Configuration-Reference) — every setting and its default
+6. [Validation and CI](Validation-and-CI) — gates, and what CI actually invokes
+7. [Operations Runbook](Operations-Runbook) — operating and supporting it
 
 ## Current Posture
 
@@ -133,11 +133,11 @@ Current task families include:
 
 If you are:
 
-1. integrating another Lotus app, start with [Integrations](./Integrations.md)
-2. operating the service, start with [Operations Runbook](./Operations-Runbook.md)
-3. validating a change, start with [Validation and CI](./Validation-and-CI.md)
-4. learning the repository, start with [Architecture](./Architecture.md)
-5. debugging local runtime problems, start with [Troubleshooting](./Troubleshooting.md)
+1. integrating another Lotus app, start with [Integrations](Integrations)
+2. operating the service, start with [Operations Runbook](Operations-Runbook)
+3. validating a change, start with [Validation and CI](Validation-and-CI)
+4. learning the repository, start with [Architecture](Architecture)
+5. debugging local runtime problems, start with [Troubleshooting](Troubleshooting)
 
 ## Source Documents
 
