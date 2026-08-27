@@ -13,6 +13,29 @@ When a PR is merged into `main`, `.github/workflows/merged-pr-main-releasability
 `main-releasability.yml` on `main` so release evidence and RFC closure can cite exact-main proof
 rather than branch-only checks.
 
+### What CI actually invokes
+
+The mapping is deliberate but not one-to-one, and the difference matters when deciding what a green
+local run has proven. **No workflow invokes `make check` or `make ci`.** The lanes call individual
+targets, measured across `.github/workflows/*.yml` on `main`:
+
+```
+async-job-gate   docker-build   eval-manifest-gate   eval-run-gate   install
+lint             migration-smoke   openapi-gate      runtime-mode-smoke
+security-audit   test-unit      typecheck           verify-dependencies
+```
+
+Two consequences to keep in mind:
+
+1. **`rfc0002-idea-proof-gate` runs locally only.** It is a prerequisite of both `check` and `ci`,
+   and no workflow invokes it. Passing `make check` proves the RFC-0002 Idea explanation path; CI
+   does not re-prove it, so a change that breaks only that path will not be caught by a lane.
+2. CI runs `test-unit` rather than the broader `test` / `test-coverage` targets that `check` and
+   `ci` pull in. Coverage-bearing runs come from the lane's own steps, not from these targets.
+
+Neither is a defect in the commands; both are reasons to run `make check` before pushing rather than
+relying on the lanes to repeat it.
+
 ## Primary Commands
 
 - `make check` - fast local gate
