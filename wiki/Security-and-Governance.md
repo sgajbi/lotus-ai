@@ -84,6 +84,36 @@ All API failures use a bounded `application/problem+json` envelope with stable `
 `correlation_id`, and optional source-safe metadata. Clients and support tooling should use those
 fields instead of parsing prose-only FastAPI `detail` values.
 
+## Tenant Scope on Audit Reads
+
+Caller identity answers *who is calling*. Tenant scope answers *what they may read*, and it is a
+separate control implemented in `src/app/services/audit_read_authorization.py:26-38`.
+
+`resolve_audit_read_scope` derives the scope from **server-side caller policy**, never from the
+request:
+
+1. the caller's `CallerPolicyDescriptor` is looked up by the authenticated `caller_app`
+2. a missing policy, or one whose `lifecycle_status` is not `ACTIVE`, fails closed with `403`
+3. `allow_audit_read_all_tenants` grants an all-tenant scope **only** when the caller also satisfies
+   `is_privileged_caller_identity_accepted`, and only when no restricted tenant list is set as well
+4. otherwise the scope is `RESTRICTED_TENANTS` for the policy's tenant list; an empty list is `403`
+
+Two properties are worth relying on. The tenant is never taken from the caller: `/ai/audit` rejects a
+client-supplied `tenant_id` query parameter with `422`. And `RESTRICTED_TENANTS` is applied as a SQL
+predicate rather than an application-layer filter after fetching, so a scoped caller's query does not
+transit other tenants' rows.
+
+### Where this control does not currently apply
+
+`GET /platform/observability/breakdowns` performs an **unrestricted** audit read
+(`INTERNAL_AGGREGATE_AUDIT_SCOPE`) and does not call `resolve_audit_read_scope`. Any authenticated
+caller therefore receives every tenant id and per-tenant execution volume, and the access is not
+written to the audit access trail that governs `/ai/audit` reads.
+
+Read the four rules above as covering `/ai/audit`, not the whole service. Do not grant the
+breakdowns route to a caller that must not see cross-tenant data. Tracked as
+[#168](https://github.com/sgajbi/lotus-ai/issues/168).
+
 ## Data Handling and Output Policy
 
 The initial data-handling posture is deliberately conservative:
