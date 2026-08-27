@@ -127,6 +127,15 @@ enabled for a local runtime. Startup and readiness policies do not alter authori
 promoted runtime it fails closed until the caller trust source is a verified service JWT or mTLS
 SAN. The effective local-header posture is exposed by `GET /platform/runtime-status`.
 
+That authority governs the two `/ai/audit` routes. It is not service-wide.
+`GET /platform/observability/breakdowns` reads the same audit records under
+`INTERNAL_AGGREGATE_AUDIT_SCOPE` without calling `resolve_audit_read_scope`, so it returns every
+tenant id and per-tenant execution volume to any authenticated caller, and writes no access event.
+The `allow_audit_read_all_tenants` capability, the privileged-identity requirement and the
+fail-closed evidence write described above therefore do not constrain that route. Tracked as
+[#168](https://github.com/sgajbi/lotus-ai/issues/168); until it is closed, treat route-level access
+to the breakdowns surface as equivalent to granting an all-tenant audit read.
+
 The current `X-Caller-App` trust boundary is deployment-established service identity, not
 cryptographic proof. Issue #149 owns delivery of verified service JWT or mTLS identity and remains
 required for the promoted-production boundary; audit tenant isolation recognizes those trust-source
@@ -139,7 +148,25 @@ rejections, and unexpected failures are mapped through the same handler. Unexpec
 sanitized detail and must not expose stack traces, raw upstream payloads, credentials, prompts,
 generated output, tenant-sensitive identifiers, or internal endpoint internals.
 
+## Known Gaps in Delivered Behaviour
+
+Distinct from the deferred work below. These are properties of the service **as it exists on
+`main`**, verified against the implementation, and recorded so that absent behaviour is not read as
+working.
+
+| gap | effect | tracked |
+|---|---|---|
+| `GET /platform/observability/breakdowns` reads audit records under `INTERNAL_AGGREGATE_AUDIT_SCOPE` without `resolve_audit_read_scope` | any authenticated caller receives every tenant id and per-tenant execution volume; no access event is written | [#168](https://github.com/sgajbi/lotus-ai/issues/168) |
+| caller identity is asserted by the upstream, not cryptographically verified | the trust source is `trusted_http_header`; a caller able to reach the service directly can assert any identity. `403` on a missing header is not proof of who the caller is | [#149](https://github.com/sgajbi/lotus-ai/issues/149) |
+| `safety_mode` defaults to `documented_only` | redaction posture is declared per task, not enforced at runtime | — |
+| `monetary-float-guard` is declared in the `Makefile` and invoked by no lane | it does not run in CI; executed by hand it exits non-zero with findings | [#165](https://github.com/sgajbi/lotus-ai/issues/165) |
+| `GET /.well-known/lotus-ai-workflow-attestation-keys` requires caller identity (`403` without) | attestation public keys are not anonymously discoverable, so an external or offline verifier cannot fetch them | — |
+| context minimisation is the caller's responsibility | the service does not trim caller-supplied context before provider execution | — |
+
 ## Deferred Security Work
+
+Planned hardening that has not been started. Unlike the table above, nothing here describes a
+property the service currently claims.
 
 1. secret scanning for prompt assets,
 2. sensitive-data classifiers,
