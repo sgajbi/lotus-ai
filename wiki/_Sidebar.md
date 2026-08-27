@@ -4,6 +4,7 @@
 
 - [Home](Home)
 - [Overview](Overview)
+- [Glossary](Glossary)
 - [Platform Surfaces](Platform-Surfaces)
 - [Integrations](Integrations)
 - [Roadmap](Roadmap)
