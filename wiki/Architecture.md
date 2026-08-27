@@ -1,91 +1,214 @@
 # Architecture
 
-## Architectural Shape
+Implementation-backed description of `lotus-ai` as it exists on `main`. Every measurement below was
+taken from the running application or the source tree; where something is planned rather than built,
+it says so. Counts were measured on 2026-08-27.
 
-`lotus-ai` is a FastAPI service built around explicit seams and bounded control planes. The
-architecture is designed so the service can expose governed AI capabilities without hiding policy,
-audit, or rollout behavior behind framework abstractions.
+## What this service is
 
-The core runtime principle is:
+`lotus-ai` is a **governed AI execution service**, and in surface area it is overwhelmingly a
+control plane. Measured from the published OpenAPI document:
 
-1. keep public contracts explicit,
-2. keep policy and rollout state inspectable,
-3. keep audit and evidence generation part of execution rather than an afterthought,
-4. keep the service stateless at the API-serving layer while durable state moves into governed
-   stores.
+| segment | operations |
+|---|---|
+| `/platform/**` — governance, rollout, evidence | **163** |
+| `/ai/**` — the AI data plane | **3** |
+| operational and discovery (`/`, `/health`, `/health/live`, `/health/ready`, `/metadata`, `/metrics`, `/.well-known/lotus-ai-workflow-attestation-keys`) | 7 |
+| **total published operations** | **173** |
 
-## Primary Runtime Areas
+The entire AI data plane is three endpoints:
 
-1. `src/app/contracts/`
-   public task and platform contract models.
-2. `src/app/services/`
-   orchestration logic, runtime-context building, response mapping, and audit flow.
-3. `src/app/providers/`
-   provider adapters, rollout, quota, budget, and degradation handling.
-4. `src/app/prompts/`
-   prompt definitions, rollout state, control history, and runtime selection.
-5. `src/app/retrieval/`
-   source governance, document governance, indexed-search posture, and retrieval execution seams.
-6. `src/app/safety/`
-   output-label-aware policy and runtime safety behavior.
-7. `src/app/evals/`
-   fixture inventory, runtime execution, approval gates, and evaluation artifacts.
-8. `src/app/routers/`
-   public API surfaces for task execution and platform inspection.
+```
+POST /ai/tasks/execute      execute a governed task
+GET  /ai/audit              list audit records, tenant-scoped
+GET  /ai/audit/{request_id} read one audit record, tenant-scoped
+```
 
-## Execution Flow
+Everything else exists to decide whether that execution is allowed, with what prompt, against which
+provider, under which policy — and to prove afterwards what happened. A new engineer who expects an
+"AI service" will find a governance service with an AI seam, and reading it the other way round is
+the fastest way to get lost.
 
-The task runtime is intentionally split into small stages:
+The largest `/platform` groups, by operation count: `workflow-packs` (29), `retrieval` (21),
+`observability` (12), `providers` (12), `async` (11), `prompts` (10), `app-capability-rollouts` (8),
+`capability-packs` (8).
 
-1. validate the task and request shape,
-2. build one shared runtime context,
-3. resolve prompt and safety posture,
-4. execute through the provider or retrieval seam,
-5. assemble evidence and operator-facing metadata,
-6. persist the audit record.
+## Runtime shape
 
-This keeps the runtime understandable and makes later rollout changes less dangerous than embedding
-policy, prompt, safety, and response logic in one orchestration block.
+```mermaid
+flowchart LR
+  subgraph edge["HTTP edge"]
+    MW["middleware<br/>correlation · http_boundary"]
+  end
+  subgraph api["API process (src/app/main.py)"]
+    DP["/ai — data plane<br/>3 operations"]
+    CP["/platform — control plane<br/>163 operations"]
+  end
+  subgraph work["Worker process (src/app/worker_main.py)"]
+    WF["async_worker_fleet<br/>run_dedicated_worker_loop"]
+  end
+  subgraph stores["Repository seams (14 independent store modes)"]
+    MEM["in-memory<br/>DEFAULT"]
+    SQL["SQLAlchemy<br/>requires LOTUS_AI_DATABASE_URL"]
+  end
+  PROV["provider adapters<br/>DEFAULT: disabled"]
+  RET["retrieval<br/>DEFAULT: disabled"]
 
-## Durability Model
+  MW --> DP
+  MW --> CP
+  DP --> PROV
+  DP --> RET
+  DP --> stores
+  CP --> stores
+  WF --> stores
+```
 
-The architecture supports memory-backed and SQL-backed modes through repository seams.
+Two deployable processes share one codebase and one configuration surface: the FastAPI application,
+and a dedicated worker (`src/app/worker_main.py` → `run_dedicated_worker_loop`) driven by
+`LOTUS_AI_ASYNC_WORKER_ID` and `LOTUS_AI_ASYNC_WORKER_QUEUE_POLL_SECONDS`.
 
-Important examples:
+## The default posture is non-durable and non-live
 
-1. prompt rollout state can be durable,
-2. audit persistence can be durable,
-3. retrieval metadata can be durable,
-4. provider operations state can be durable,
-5. async runtime and evaluation runtime can be durable.
+This is the single most operationally important fact about the service, and it is easy to miss
+because it is spread across fourteen independent settings.
 
-The durable path matters because `lotus-ai` is designed for restart-safe governance rather than
-process-local convenience.
+**Every durable store defaults to `memory`.** A restart loses all of it.
 
-## Architectural Boundaries
+```
+audit_store_mode                          prompt_store_mode
+retrieval_store_mode                      access_control_store_mode
+workflow_pack_registry_store_mode         provider_operations_store_mode
+provider_retention_confirmation_store_mode  async_runtime_store_mode
+workflow_pack_run_store_mode              workflow_pack_task_flow_store_mode
+workflow_pack_queue_event_store_mode      evaluation_runtime_store_mode
+artifact_store_mode                       artifact_object_store_mode
+```
 
-The service is intentionally not the place for:
+**Every outbound capability defaults to off:**
 
-1. business-domain ownership,
-2. uncontrolled autonomous tool use in production-facing paths,
-3. opaque orchestration frameworks becoming the public architecture,
-4. unstated rollout assumptions.
+| setting | default | meaning at default |
+|---|---|---|
+| `provider_mode` | `disabled` | no live model calls |
+| `retrieval_mode` | `disabled` | no retrieval execution |
+| `embedding_provider_mode` | `disabled` | no embedding calls |
+| `safety_mode` | `documented_only` | safety posture is declared, not enforced at runtime |
+| `async_queue_backend_mode` | `none` | no managed queue |
+| `local_header_caller_identity_enabled` | `false` | header-asserted identity is not accepted as privileged |
 
-The current framework stance is conservative: use libraries where they reduce plumbing, but do not
-let them obscure task contracts, audit boundaries, or policy gates.
+All settings take the `LOTUS_AI_` environment prefix (`src/app/config.py:93`,
+`env_prefix="LOTUS_AI_"`). Store modes accept exactly `memory` or `sqlalchemy`.
 
-## Source Documents
+### How the switches behave
 
-For the detailed architecture and implementation rationale, read:
+Selection is fail-closed, which is worth relying on (`src/app/services/audit_store.py:12-24` is the
+pattern the other stores follow):
 
-- `docs/architecture/system-overview.md`
-- `docs/architecture/scalability-and-deployment-model.md`
-- `docs/architecture/startup-readiness-deployment-policy.md`
-- `docs/architecture/decision-log.md`
-- `docs/architecture/feature-status-and-roadmap.md`
+- `sqlalchemy` **without** `LOTUS_AI_DATABASE_URL` → `RuntimeError`, naming the missing variable.
+- any value that is neither `memory` nor `sqlalchemy` → `RuntimeError: Unsupported ..._STORE_MODE.`
 
-## Read Next
+The settings are plain `str` fields with no `Literal` constraint, so a typo is caught at first use
+rather than at startup validation. Treat a store-mode change as needing a smoke request against a
+route that touches that store.
 
-1. use [Platform Surfaces](./Platform-Surfaces.md) for the grouped public route map,
-2. use [Getting Started](./Getting-Started.md) for local runtime choices,
-3. use [Development Workflow](./Development-Workflow.md) for the working loop.
+## Request lifecycle
+
+For `POST /ai/tasks/execute`, the runtime is deliberately staged rather than one orchestration block:
+
+1. validate the task and request shape against the contracts in `src/app/contracts/`
+2. build one shared runtime context
+3. resolve prompt selection and safety posture
+4. execute through the provider or retrieval seam
+5. assemble evidence and operator-facing metadata
+6. persist the audit record
+
+Stages 3–6 are where the governance surfaces attach; the split exists so a rollout or policy change
+does not require editing the execution path.
+
+## Caller identity and tenant scope
+
+Protected routes require a trusted upstream caller identity in `X-Caller-App`. Measured on `main`:
+of 173 published operations, the **167** not on the public allowlist all refuse a caller with no
+identity; the six allowlisted paths (`/`, `/health`, `/health/live`, `/health/ready`, `/metadata`,
+`/metrics`) still answer. This is enforced by a test derived from the published OpenAPI surface
+rather than a hand-maintained list, so a new route is covered the moment it is published.
+
+Audit reads are additionally **tenant-scoped from server-side policy**
+(`src/app/services/audit_read_authorization.py:26-38`):
+
+- the caller's `CallerPolicyDescriptor` is looked up by authenticated `caller_app`
+- a missing or non-`ACTIVE` policy → `403`
+- `allow_audit_read_all_tenants` grants all-tenant reads **only** for a privileged identity
+  (`is_privileged_caller_identity_accepted`), and only when no restricted tenant list is also set
+- otherwise the scope is restricted to the policy's tenant list; an empty list → `403`
+
+The tenant is never taken from the request: `/ai/audit` rejects a client-supplied `tenant_id` query
+parameter with `422`. `RESTRICTED_TENANTS` is applied as a SQL predicate, not an application-layer
+filter after fetching.
+
+### Attestation keys are not publicly discoverable
+
+`GET /.well-known/lotus-ai-workflow-attestation-keys` is **not** in `PUBLIC_UNAUTHENTICATED_PATHS`
+and returns **`403`** to a caller without identity — verified against the running application.
+
+This is worth stating explicitly because it cuts against the convention of the `.well-known`
+namespace, which exists so that a party who does *not* yet hold credentials can discover a service's
+public material. As implemented, only an already-trusted caller can fetch the public keys needed to
+verify a workflow-run attestation.
+
+If the intended verifiers are all internal trusted callers, this is correct and simply
+non-obvious — integrators should not plan on anonymous key fetch. If an external or offline verifier
+is ever in scope, the endpoint's placement in the protected set needs revisiting. Recorded here as
+observed behaviour, not as a defect judgement.
+
+## Known gaps
+
+Recorded so they are not mistaken for behaviour that works. Each is a tracked issue.
+
+| gap | effect | issue |
+|---|---|---|
+| `GET /platform/observability/breakdowns` performs an all-tenant audit read with no per-caller scope check | any authenticated caller can enumerate every tenant id and per-tenant execution volume; not recorded in the audit access trail | [#168](https://github.com/sgajbi/lotus-ai/issues/168) |
+| `monetary-float-guard` is declared in the `Makefile` and invoked by nothing | run by hand it exits 1 with five findings, two genuinely monetary | [#165](https://github.com/sgajbi/lotus-ai/issues/165) |
+| `safety_mode` defaults to `documented_only` | redaction posture is declared per task, not enforced at runtime | — |
+| callers remain responsible for context minimisation | the service does not trim caller-supplied context | — |
+
+The `#168` gap matters for how you read the tenant-scope section above: that model is real and
+enforced on `/ai/audit`, and one observability route currently sits outside it.
+
+## Architectural boundaries
+
+The service deliberately does not own:
+
+1. business-domain state — it holds no portfolio, position or client record
+2. uncontrolled autonomous tool use on production-facing paths
+3. orchestration frameworks as public architecture — libraries may reduce plumbing, but task
+   contracts, audit boundaries and policy gates stay explicit
+4. context minimisation on the caller's behalf
+
+## Source map
+
+| area | path | notes |
+|---|---|---|
+| API composition, allowlist | `src/app/main.py` | single `include_router` loop over `PROTECTED_ROUTER_BINDINGS` |
+| public contracts | `src/app/contracts/` | 32 modules |
+| routers | `src/app/routers/` | 20 modules, one per surface group |
+| orchestration and runtime | `src/app/services/` | 229 modules — the bulk of the service |
+| repository seams | `src/app/repositories/` | 38 modules; memory and SQLAlchemy pairs |
+| provider adapters | `src/app/providers/` | rollout, quota, budget, degradation |
+| retrieval | `src/app/retrieval/` | source and document governance, search posture |
+| safety | `src/app/safety/` | output-label-aware policy |
+| evaluations | `src/app/evals/` | fixtures, runtime, approval gates |
+| middleware | `src/app/middleware/` | `correlation`, `http_boundary` |
+| worker entrypoint | `src/app/worker_main.py` | dedicated fleet loop |
+| settings | `src/app/config.py` | 96 lines; every posture switch |
+
+Deeper rationale lives in `docs/architecture/system-overview.md`,
+`docs/architecture/scalability-and-deployment-model.md`,
+`docs/architecture/startup-readiness-deployment-policy.md` and
+`docs/architecture/decision-log.md`.
+
+## Read next
+
+1. [Platform Surfaces](./Platform-Surfaces.md) — the grouped route map
+2. [Security and Governance](./Security-and-Governance.md) — caller identity, output labelling, evidence
+3. [Getting Started](./Getting-Started.md) — local runtime choices
+4. [Operations Runbook](./Operations-Runbook.md) — running and supporting the service
