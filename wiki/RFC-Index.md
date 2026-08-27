@@ -93,6 +93,6 @@ Do not load the entire RFC estate unless the task is specifically governance-hea
 
 ## Read Next
 
-1. use [Roadmap](./Roadmap.md) for how the RFC program translates into platform phases,
-2. use [Security and Governance](./Security-and-Governance.md) for the practical runtime interpretation,
-3. use [Development Workflow](./Development-Workflow.md) when the RFC work implies code and docs changes in the same slice.
+1. use [Roadmap](Roadmap) for how the RFC program translates into platform phases,
+2. use [Security and Governance](Security-and-Governance) for the practical runtime interpretation,
+3. use [Development Workflow](Development-Workflow) when the RFC work implies code and docs changes in the same slice.

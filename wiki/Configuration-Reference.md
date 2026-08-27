@@ -191,11 +191,11 @@ is exposed by `GET /platform/runtime-status`.
 
 Caller identity itself is **asserted by the upstream, not cryptographically verified**
 ([#149](https://github.com/sgajbi/lotus-ai/issues/149)); see
-[Security and Governance](./Security-and-Governance.md).
+[Security and Governance](Security-and-Governance).
 
 ## Read next
 
-1. [Getting Started](./Getting-Started.md) — choosing a local runtime posture
-2. [Architecture](./Architecture.md) — what these switches select between
-3. [Operations Runbook](./Operations-Runbook.md) — changing posture on a running service
-4. [Security and Governance](./Security-and-Governance.md) — the controls these settings bound
+1. [Getting Started](Getting-Started) — choosing a local runtime posture
+2. [Architecture](Architecture) — what these switches select between
+3. [Operations Runbook](Operations-Runbook) — changing posture on a running service
+4. [Security and Governance](Security-and-Governance) — the controls these settings bound

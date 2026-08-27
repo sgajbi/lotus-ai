@@ -76,6 +76,6 @@ Use these as the main working references:
 
 ## Read Next
 
-1. use [Validation and CI](./Validation-and-CI.md) for the gate meanings,
-2. use [Platform Surfaces](./Platform-Surfaces.md) when the change touches public APIs,
-3. use [RFC Index](./RFC-Index.md) when the change is governed by a specific capability RFC family.
+1. use [Validation and CI](Validation-and-CI) for the gate meanings,
+2. use [Platform Surfaces](Platform-Surfaces) when the change touches public APIs,
+3. use [RFC Index](RFC-Index) when the change is governed by a specific capability RFC family.

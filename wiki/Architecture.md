@@ -208,7 +208,7 @@ Deeper rationale lives in `docs/architecture/system-overview.md`,
 
 ## Read next
 
-1. [Platform Surfaces](./Platform-Surfaces.md) — the grouped route map
-2. [Security and Governance](./Security-and-Governance.md) — caller identity, output labelling, evidence
-3. [Getting Started](./Getting-Started.md) — local runtime choices
-4. [Operations Runbook](./Operations-Runbook.md) — running and supporting the service
+1. [Platform Surfaces](Platform-Surfaces) — the grouped route map
+2. [Security and Governance](Security-and-Governance) — caller identity, output labelling, evidence
+3. [Getting Started](Getting-Started) — local runtime choices
+4. [Operations Runbook](Operations-Runbook) — running and supporting the service

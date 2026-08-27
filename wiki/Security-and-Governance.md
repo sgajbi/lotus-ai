@@ -158,7 +158,7 @@ The key governance surfaces are grouped by domain:
 7. use cases
    - bounded downstream rollout readiness and onboarding templates
 
-For the grouped route map, use [Platform Surfaces](./Platform-Surfaces.md).
+For the grouped route map, use [Platform Surfaces](Platform-Surfaces).
 
 ## Operational Security Interpretation
 
@@ -210,6 +210,6 @@ Some security work is intentionally not being overstated as complete:
 
 ## Read Next
 
-1. use [Platform Surfaces](./Platform-Surfaces.md) for the grouped governance route map,
-2. use [RFC Index](./RFC-Index.md) to find the decision trail behind a capability area,
-3. use [Troubleshooting](./Troubleshooting.md) when the runtime posture and expected governance state do not align.
+1. use [Platform Surfaces](Platform-Surfaces) for the grouped governance route map,
+2. use [RFC Index](RFC-Index) to find the decision trail behind a capability area,
+3. use [Troubleshooting](Troubleshooting) when the runtime posture and expected governance state do not align.

@@ -138,8 +138,8 @@ change can still affect a large platform surface.
 
 Use:
 
-- [Validation and CI](./Validation-and-CI.md)
-- [Development Workflow](./Development-Workflow.md)
+- [Validation and CI](Validation-and-CI)
+- [Development Workflow](Development-Workflow)
 
 ## The Wiki or Docs Feel Out of Sync with the Runtime
 
@@ -157,9 +157,9 @@ Start from code:
 
 Then compare against:
 
-1. [Platform Surfaces](./Platform-Surfaces.md)
-2. [Security and Governance](./Security-and-Governance.md)
-3. [Roadmap](./Roadmap.md)
+1. [Platform Surfaces](Platform-Surfaces)
+2. [Security and Governance](Security-and-Governance)
+3. [Roadmap](Roadmap)
 
 In `lotus-ai`, docs are part of the control-plane contract. If the runtime truth changed, the docs
 should change in the same slice.

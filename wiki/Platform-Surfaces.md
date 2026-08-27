@@ -503,6 +503,6 @@ one isolated task call.
 
 ## Read Next
 
-1. use [Integrations](./Integrations.md) for how downstream systems should consume these surfaces,
-2. use [Operations Runbook](./Operations-Runbook.md) for the runtime interpretation of these groups,
-3. use [Troubleshooting](./Troubleshooting.md) when one surface says something different from another.
+1. use [Integrations](Integrations) for how downstream systems should consume these surfaces,
+2. use [Operations Runbook](Operations-Runbook) for the runtime interpretation of these groups,
+3. use [Troubleshooting](Troubleshooting) when one surface says something different from another.
