@@ -262,7 +262,15 @@ Before treating the in-service observability layer as governed rollout posture:
 9. confirm represented AI-backed surfaces carry `no_sensitive_content_telemetry=true` before treating generated commentary, rationale, or brief surfaces as free of sensitive-content telemetry gaps
 10. inspect `ai_surface_supportability.surfaces[*].supportability_reason` to distinguish no-sensitive-telemetry degradation from workflow-pack action-required, ready, historical, or supported-no-activity posture without inspecting raw prompts or generated content
 11. treat `GET /platform/observability/activation-readiness` and `GET /platform/observability/governance-status` as blocked while `ai_surface_supportability` reports degraded or unavailable posture, missing no-sensitive-content telemetry, action-required surfaces, or unavailable surface supportability
-12. confirm `GET /platform/observability/breakdowns` still exposes bounded caller, tenant, and capability samples without leaking unauthorized tenant data
+12. treat `GET /platform/observability/breakdowns` as an **all-tenant** read. It performs an
+    unrestricted audit read (`INTERNAL_AGGREGATE_AUDIT_SCOPE`) and applies no per-caller tenant
+    scope, so any authenticated caller receives every tenant id and per-tenant execution volume,
+    and the access is not written to the audit access trail. Do not grant this route to a caller
+    that must not see cross-tenant data, and do not treat its output as scoped. Tracked as
+    [#168](https://github.com/sgajbi/lotus-ai/issues/168); the `resolve_audit_read_scope` fence that
+    governs `/ai/audit` is not applied here. This item previously read "confirm ... without leaking
+    unauthorized tenant data", which asserted a property the implementation does not provide and
+    offered no way to check it.
 13. confirm observability incident items now expose governed artifact descriptors rather than raw payloads or backend URLs
 14. treat SQL-backed audit and caller-policy stores as the restart-safe activation gate that composes with domain coverage, incident evidence, and AI no-sensitive telemetry posture
 
