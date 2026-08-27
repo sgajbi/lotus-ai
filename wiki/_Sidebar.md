@@ -13,6 +13,7 @@
 
 - [Architecture](Architecture)
 - [Getting Started](Getting-Started)
+- [Configuration Reference](Configuration-Reference)
 - [Development Workflow](Development-Workflow)
 - [Validation and CI](Validation-and-CI)
 
