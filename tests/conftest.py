@@ -28,6 +28,9 @@ from app.services.workflow_pack_queue_admission import reset_workflow_pack_queue
 from app.services.workflow_pack_queue_event_store import reset_workflow_pack_queue_event_store_cache
 from app.services.workflow_pack_run_store import reset_workflow_pack_run_store_cache
 from app.services.workflow_pack_task_flow_store import reset_workflow_pack_task_flow_store_cache
+from app.workflow_pack_execution_idempotency.store import (
+    reset_workflow_pack_execution_idempotency_store_cache,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -124,3 +127,4 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_workflow_pack_queue_event_store_cache()
         reset_workflow_pack_run_store_cache()
         reset_workflow_pack_task_flow_store_cache()
+        reset_workflow_pack_execution_idempotency_store_cache()
