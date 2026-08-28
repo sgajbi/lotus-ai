@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Lock
+from unittest.mock import Mock
 
 from fastapi import HTTPException
 import pytest
@@ -16,8 +17,10 @@ from app.workflow_pack_execution_idempotency.memory_repository import (
     InMemoryWorkflowPackExecutionIdempotencyRepository,
 )
 from app.workflow_pack_execution_idempotency.repository import (
+    WorkflowPackExecutionIdempotencyOwnershipError,
     WorkflowPackExecutionIdempotencyRecord,
     WorkflowPackExecutionIdempotencyState,
+    WorkflowPackExecutionReservation,
 )
 from app.workflow_pack_execution_idempotency.service import (
     build_workflow_pack_execution_idempotency_record_id,
@@ -179,19 +182,11 @@ def test_corrupted_retained_response_is_not_replayed() -> None:
         idempotency_key="advisor-memo-corrupted",
     )
     repository.reserve(
-        WorkflowPackExecutionIdempotencyRecord(
+        _record_for_request(
+            request,
             record_id=record_id,
-            caller_app=request.task_request.caller.caller_app,
-            tenant_scope=request.task_request.caller.tenant_id or "__NO_TENANT__",
             idempotency_key="advisor-memo-corrupted",
-            request_fingerprint=fingerprint_workflow_pack_execution_request(request),
-            state=WorkflowPackExecutionIdempotencyState.IN_PROGRESS,
             owner_token="owner-corrupted",
-            response_payload=None,
-            response_checksum_sha256=None,
-            failure_code=None,
-            created_at="2026-08-28T01:00:00Z",
-            updated_at="2026-08-28T01:00:00Z",
         )
     )
     repository.complete(
@@ -213,6 +208,63 @@ def test_corrupted_retained_response_is_not_replayed() -> None:
     assert "workflow_pack_execution_idempotency_result_integrity_mismatch" in str(
         caught.value.detail
     )
+
+
+def test_completed_execution_without_retained_response_is_not_replayed() -> None:
+    request = _request(idempotency_key="advisor-memo-missing-response")
+    record = _record_for_request(
+        request,
+        record_id="wpe_sync_" + "a" * 32,
+        idempotency_key="advisor-memo-missing-response",
+        state=WorkflowPackExecutionIdempotencyState.COMPLETED,
+        owner_token="owner-completed",
+    )
+    repository = Mock()
+    repository.reserve.return_value = WorkflowPackExecutionReservation(
+        record=record,
+        acquired=False,
+    )
+
+    with pytest.raises(HTTPException) as caught:
+        execute_workflow_pack_idempotently(
+            request,
+            execute=execute_workflow_pack,
+            repository=repository,
+        )
+
+    assert caught.value.status_code == 409
+    assert "workflow_pack_execution_idempotency_result_missing" in str(caught.value.detail)
+
+
+def test_repository_transition_failure_does_not_mask_original_execution_failure() -> None:
+    request = _request(idempotency_key="advisor-memo-provider-failure")
+    proposed = _record_for_request(
+        request,
+        record_id="wpe_sync_" + "b" * 32,
+        idempotency_key="advisor-memo-provider-failure",
+        owner_token="owner-provider-failure",
+    )
+    repository = Mock()
+    repository.reserve.return_value = WorkflowPackExecutionReservation(
+        record=proposed,
+        acquired=True,
+    )
+    repository.mark_indeterminate.side_effect = WorkflowPackExecutionIdempotencyOwnershipError(
+        "simulated reservation ownership loss"
+    )
+
+    def failed_executor(_: WorkflowPackExecutionRequest) -> WorkflowPackExecutionResponse:
+        raise RuntimeError("source execution failed")
+
+    with pytest.raises(RuntimeError, match="source execution failed"):
+        execute_workflow_pack_idempotently(
+            request,
+            execute=failed_executor,
+            repository=repository,
+            owner_token="owner-provider-failure",
+        )
+
+    repository.mark_indeterminate.assert_called_once()
 
 
 def test_preflight_http_failure_releases_key_for_corrected_retry() -> None:
@@ -290,3 +342,27 @@ def _request(
     payload = advisor_brief_workflow_pack_execution_request_json(correlation_id=correlation_id)
     payload["idempotency_key"] = idempotency_key
     return WorkflowPackExecutionRequest.model_validate(payload)
+
+
+def _record_for_request(
+    request: WorkflowPackExecutionRequest,
+    *,
+    record_id: str,
+    idempotency_key: str,
+    owner_token: str,
+    state: WorkflowPackExecutionIdempotencyState = WorkflowPackExecutionIdempotencyState.IN_PROGRESS,
+) -> WorkflowPackExecutionIdempotencyRecord:
+    return WorkflowPackExecutionIdempotencyRecord(
+        record_id=record_id,
+        caller_app=request.task_request.caller.caller_app,
+        tenant_scope=request.task_request.caller.tenant_id or "__NO_TENANT__",
+        idempotency_key=idempotency_key,
+        request_fingerprint=fingerprint_workflow_pack_execution_request(request),
+        state=state,
+        owner_token=owner_token,
+        response_payload=None,
+        response_checksum_sha256=None,
+        failure_code=None,
+        created_at="2026-08-28T01:00:00Z",
+        updated_at="2026-08-28T01:01:00Z",
+    )

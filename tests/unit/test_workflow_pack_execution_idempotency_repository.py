@@ -10,6 +10,7 @@ from app.workflow_pack_execution_idempotency.memory_repository import (
 )
 from app.workflow_pack_execution_idempotency.repository import (
     WorkflowPackExecutionIdempotencyConflictError,
+    WorkflowPackExecutionIdempotencyOwnershipError,
     WorkflowPackExecutionIdempotencyRecord,
     WorkflowPackExecutionIdempotencyState,
 )
@@ -108,6 +109,64 @@ def test_sql_repository_serializes_concurrent_same_key_reservations(tmp_path: Pa
     assert outcomes.count(False) == 7
 
 
+def test_sql_repository_rejects_reused_key_with_different_input(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-execution-conflict.sqlite3'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyWorkflowPackExecutionIdempotencyRepository(database_url)
+    repository.reserve(_record())
+
+    with pytest.raises(WorkflowPackExecutionIdempotencyConflictError):
+        repository.reserve(_record(request_fingerprint="b" * 64))
+
+    repository.close()
+
+
+def test_sql_repository_preserves_indeterminate_state_and_owner_fencing(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-execution-indeterminate.sqlite3'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyWorkflowPackExecutionIdempotencyRepository(database_url)
+    record = _record()
+    repository.reserve(record)
+
+    indeterminate = repository.mark_indeterminate(
+        record_id=record.record_id,
+        owner_token=record.owner_token,
+        failure_code="execution_result_not_persisted",
+        updated_at="2026-08-28T01:01:00Z",
+    )
+
+    assert indeterminate.state is WorkflowPackExecutionIdempotencyState.INDETERMINATE
+    assert indeterminate.failure_code == "execution_result_not_persisted"
+    with pytest.raises(WorkflowPackExecutionIdempotencyOwnershipError):
+        repository.complete(
+            record_id=record.record_id,
+            owner_token=record.owner_token,
+            response_payload={"unexpected": True},
+            response_checksum_sha256="0" * 64,
+            updated_at="2026-08-28T01:02:00Z",
+        )
+    with pytest.raises(WorkflowPackExecutionIdempotencyOwnershipError):
+        repository.release(record_id=record.record_id, owner_token=record.owner_token)
+
+    repository.close()
+
+
+def test_sql_repository_releases_only_the_active_owner(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'workflow-execution-release.sqlite3'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyWorkflowPackExecutionIdempotencyRepository(database_url)
+    record = _record()
+    repository.reserve(record)
+
+    with pytest.raises(WorkflowPackExecutionIdempotencyOwnershipError):
+        repository.release(record_id=record.record_id, owner_token="different-owner")
+
+    assert repository.get(record_id=record.record_id) == record
+    repository.release(record_id=record.record_id, owner_token=record.owner_token)
+    assert repository.get(record_id=record.record_id) is None
+    repository.close()
+
+
 def test_repository_marks_uncertain_post_provider_failures_indeterminate() -> None:
     repository = InMemoryWorkflowPackExecutionIdempotencyRepository()
     record = _record()
@@ -134,6 +193,17 @@ def test_repository_releases_only_the_active_reservation_owner() -> None:
 
     assert repository.get(record_id=record.record_id) is None
     assert repository.reserve(_record(owner_token="replacement-owner")).acquired is True
+
+
+def test_memory_repository_rejects_transition_by_non_owner() -> None:
+    repository = InMemoryWorkflowPackExecutionIdempotencyRepository()
+    record = _record()
+    repository.reserve(record)
+
+    with pytest.raises(WorkflowPackExecutionIdempotencyOwnershipError):
+        repository.release(record_id=record.record_id, owner_token="different-owner")
+
+    assert repository.get(record_id=record.record_id) == record
 
 
 def _record(**overrides: str) -> WorkflowPackExecutionIdempotencyRecord:
