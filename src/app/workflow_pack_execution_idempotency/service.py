@@ -89,6 +89,9 @@ def execute_workflow_pack_idempotently(
             updated_at=(now or _utcnow)(),
         )
         return created_response
+    except HTTPException:
+        store.release(record_id=record_id, owner_token=execution_owner_token)
+        raise
     except Exception:
         _mark_indeterminate_without_masking(
             repository=store,

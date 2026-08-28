@@ -168,6 +168,41 @@ def test_uncertain_execution_is_retained_and_blocks_automatic_retry() -> None:
     assert "workflow_pack_execution_idempotency_outcome_indeterminate" in str(caught.value.detail)
 
 
+def test_preflight_http_failure_releases_key_for_corrected_retry() -> None:
+    repository = InMemoryWorkflowPackExecutionIdempotencyRepository()
+    request = _request(idempotency_key="advisor-memo-preflight")
+    attempts = 0
+
+    def preflight_then_execute(
+        value: WorkflowPackExecutionRequest,
+    ) -> WorkflowPackExecutionResponse:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise HTTPException(status_code=403, detail="execution is not eligible")
+        return execute_workflow_pack(value)
+
+    with pytest.raises(HTTPException) as caught:
+        execute_workflow_pack_idempotently(
+            request,
+            execute=preflight_then_execute,
+            repository=repository,
+            owner_token="preflight-owner",
+        )
+
+    retried = execute_workflow_pack_idempotently(
+        request,
+        execute=preflight_then_execute,
+        repository=repository,
+        owner_token="corrected-owner",
+    )
+
+    assert caught.value.status_code == 403
+    assert attempts == 2
+    assert retried.idempotency is not None
+    assert retried.idempotency.status is WorkflowPackExecutionIdempotencyStatus.CREATED
+
+
 def test_omitted_key_preserves_non_idempotent_execution_compatibility() -> None:
     repository = InMemoryWorkflowPackExecutionIdempotencyRepository()
     request = _request()
