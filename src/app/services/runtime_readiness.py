@@ -139,7 +139,11 @@ def get_evaluation_runtime_store_runtime_status() -> StoreRuntimeStatusDescripto
 def get_workflow_pack_run_store_runtime_status() -> StoreRuntimeStatusDescriptor:
     return _build_store_runtime_status(
         configured_mode=settings.workflow_pack_run_store_mode,
-        expected_tables=["workflow_pack_runs", "workflow_pack_run_events"],
+        expected_tables=[
+            "workflow_pack_runs",
+            "workflow_pack_run_events",
+            "workflow_pack_execution_idempotency",
+        ],
         memory_detail="In-memory workflow-pack run ledger is active for foundation-phase runtime lineage work.",
         unsupported_detail="Configured workflow-pack run store mode is not supported by lotus-ai.",
     )
