@@ -89,7 +89,8 @@ Current repository posture:
    consumer views, run detail, filtered run catalog, shared review/supportability/provenance
    summaries, AI-owned source-event projections through `/platform/workflow-packs/source-events`
    and `/platform/workflow-packs/runs/{run_id}/source-events` for no-raw-payload portfolio-memory
-   lineage consumption, explicit workflow-pack execution, reusable binding registry, queue policies,
+   lineage consumption, explicit workflow-pack execution, caller/tenant-scoped synchronous
+   execution replay through the existing idempotency-key contract, reusable binding registry, queue policies,
    runtime-status activity, cross-pack attention, and RFC-0108 AI surface supportability now cover
    the expanded executable pack set. Gateway and Workbench product realization for proof-pack PM
    memo, wave PM memo, and outcome-review narrative remains downstream follow-on after the lotus-ai

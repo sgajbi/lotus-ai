@@ -53,7 +53,7 @@ These are the smallest public integration surfaces and the ones most downstream 
 The separation matters:
 
 1. `/ai/tasks/execute` is the bounded execution contract,
-2. `/platform/workflow-packs/execute` is the explicit workflow-pack execution contract when a caller needs registered-pack eligibility, run recording, and explicit run identity in one step,
+2. `/platform/workflow-packs/execute` is the explicit workflow-pack execution contract when a caller needs registered-pack eligibility, run recording, and explicit run identity in one step; a supplied business-operation `idempotency_key` adds caller/tenant-scoped completed-response replay and changed-input conflict protection without browser or consumer-owned AI deduplication,
 3. `/ai/audit` is the persisted execution and evidence review surface.
 
 The audit review surface is not an unrestricted catalog. Both audit GET routes require trusted
@@ -234,7 +234,8 @@ flowchart LR
 17. explicit `/platform/workflow-packs/execute` and `/platform/workflow-packs/execute-async` calls may request a governed `queue_lane`
     from the pack version's declared `allowed_lanes`; omitted lanes use the queue policy default,
     and unsupported lanes fail before audit, run, or task-flow side effects,
-18. `/platform/workflow-packs/registry/{pack_id}/default` exposes the current governed default
+18. synchronous `/platform/workflow-packs/execute` calls with an `idempotency_key` return machine-readable `CREATED` or `REPLAYED` posture. Replayed responses preserve the original AI request and workflow-pack run identity; active, changed-input, and indeterminate duplicates fail explicitly before another provider execution. SQL durability shares workflow-pack run-store readiness and the migration-backed execution-idempotency table,
+19. `/platform/workflow-packs/registry/{pack_id}/default` exposes the current governed default
     version for a workflow-pack family from registry truth. The route selects only registered,
     activation-eligible, non-superseded versions, and keeps discovered or dark successor versions
     visible but unpromoted.
