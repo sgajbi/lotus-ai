@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Float, Integer, String, Text
+from sqlalchemy import JSON, Boolean, ForeignKey, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -470,6 +470,30 @@ class WorkflowPackRunModel(Base):
     last_updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
     events: Mapped[list["WorkflowPackRunEventModel"]] = relationship(back_populates="run")
+
+
+class WorkflowPackExecutionIdempotencyModel(Base):
+    __tablename__ = "workflow_pack_execution_idempotency"
+    __table_args__ = (
+        UniqueConstraint(
+            "caller_app",
+            "tenant_scope",
+            "idempotency_key",
+            name="uq_workflow_pack_execution_idempotency_scope",
+        ),
+    )
+
+    record_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    caller_app: Mapped[str] = mapped_column(String(128), nullable=False)
+    tenant_scope: Mapped[str] = mapped_column(String(128), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    owner_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    failure_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
 class WorkflowPackRunEventModel(Base):
