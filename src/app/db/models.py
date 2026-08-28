@@ -491,6 +491,7 @@ class WorkflowPackExecutionIdempotencyModel(Base):
     state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     owner_token: Mapped[str] = mapped_column(String(64), nullable=False)
     response_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    response_checksum_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     failure_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

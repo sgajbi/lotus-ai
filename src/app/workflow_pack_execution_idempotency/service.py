@@ -59,6 +59,7 @@ def execute_workflow_pack_idempotently(
         state=WorkflowPackExecutionIdempotencyState.IN_PROGRESS,
         owner_token=execution_owner_token,
         response_payload=None,
+        response_checksum_sha256=None,
         failure_code=None,
         created_at=timestamp,
         updated_at=timestamp,
@@ -82,10 +83,12 @@ def execute_workflow_pack_idempotently(
             record_id=record_id,
             request_fingerprint=request_fingerprint,
         )
+        response_payload = created_response.model_dump(mode="json")
         store.complete(
             record_id=record_id,
             owner_token=execution_owner_token,
-            response_payload=created_response.model_dump(mode="json"),
+            response_payload=response_payload,
+            response_checksum_sha256=checksum_response_payload(response_payload),
             updated_at=(now or _utcnow)(),
         )
         return created_response
@@ -127,6 +130,11 @@ def _resolve_existing_reservation(
             raise _conflict(
                 "workflow_pack_execution_idempotency_result_missing",
                 "The completed idempotent execution is missing its retained response.",
+            )
+        if record.response_checksum_sha256 != checksum_response_payload(record.response_payload):
+            raise _conflict(
+                "workflow_pack_execution_idempotency_result_integrity_mismatch",
+                "The retained response failed integrity verification; automated replay is blocked.",
             )
         response = WorkflowPackExecutionResponse.model_validate(record.response_payload)
         return _with_idempotency_status(
@@ -211,6 +219,10 @@ def _canonical_json(payload: object) -> bytes:
         separators=(",", ":"),
         sort_keys=True,
     ).encode("ascii")
+
+
+def checksum_response_payload(payload: dict[str, object]) -> str:
+    return hashlib.sha256(_canonical_json(payload)).hexdigest()
 
 
 def _utcnow() -> str:

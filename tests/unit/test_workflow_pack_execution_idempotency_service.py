@@ -16,11 +16,13 @@ from app.workflow_pack_execution_idempotency.memory_repository import (
     InMemoryWorkflowPackExecutionIdempotencyRepository,
 )
 from app.workflow_pack_execution_idempotency.repository import (
+    WorkflowPackExecutionIdempotencyRecord,
     WorkflowPackExecutionIdempotencyState,
 )
 from app.workflow_pack_execution_idempotency.service import (
     build_workflow_pack_execution_idempotency_record_id,
     execute_workflow_pack_idempotently,
+    fingerprint_workflow_pack_execution_request,
 )
 from tests.support.workflow_pack_fixtures import (
     advisor_brief_workflow_pack_execution_request_json,
@@ -166,6 +168,51 @@ def test_uncertain_execution_is_retained_and_blocks_automatic_retry() -> None:
         )
     assert caught.value.status_code == 409
     assert "workflow_pack_execution_idempotency_outcome_indeterminate" in str(caught.value.detail)
+
+
+def test_corrupted_retained_response_is_not_replayed() -> None:
+    repository = InMemoryWorkflowPackExecutionIdempotencyRepository()
+    request = _request(idempotency_key="advisor-memo-corrupted")
+    record_id = build_workflow_pack_execution_idempotency_record_id(
+        caller_app=request.task_request.caller.caller_app,
+        tenant_id=request.task_request.caller.tenant_id,
+        idempotency_key="advisor-memo-corrupted",
+    )
+    repository.reserve(
+        WorkflowPackExecutionIdempotencyRecord(
+            record_id=record_id,
+            caller_app=request.task_request.caller.caller_app,
+            tenant_scope=request.task_request.caller.tenant_id or "__NO_TENANT__",
+            idempotency_key="advisor-memo-corrupted",
+            request_fingerprint=fingerprint_workflow_pack_execution_request(request),
+            state=WorkflowPackExecutionIdempotencyState.IN_PROGRESS,
+            owner_token="owner-corrupted",
+            response_payload=None,
+            response_checksum_sha256=None,
+            failure_code=None,
+            created_at="2026-08-28T01:00:00Z",
+            updated_at="2026-08-28T01:00:00Z",
+        )
+    )
+    repository.complete(
+        record_id=record_id,
+        owner_token="owner-corrupted",
+        response_payload={"tampered": True},
+        response_checksum_sha256="0" * 64,
+        updated_at="2026-08-28T01:01:00Z",
+    )
+
+    with pytest.raises(HTTPException) as caught:
+        execute_workflow_pack_idempotently(
+            request,
+            execute=execute_workflow_pack,
+            repository=repository,
+        )
+
+    assert caught.value.status_code == 409
+    assert "workflow_pack_execution_idempotency_result_integrity_mismatch" in str(
+        caught.value.detail
+    )
 
 
 def test_preflight_http_failure_releases_key_for_corrected_retry() -> None:
