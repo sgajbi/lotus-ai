@@ -804,9 +804,10 @@ class WorkflowPackExecutionRequest(BaseModel):
         min_length=1,
         max_length=128,
         description=(
-            "Optional caller-supplied mutation idempotency key. Workflow-pack async submission "
-            "uses this key to replay the same durable queue submission and to reject the same key "
-            "with different execution input."
+            "Optional caller-supplied mutation idempotency key. Synchronous execution replays the "
+            "original completed response without a second provider call, while async submission "
+            "replays the same durable queue submission. Both reject the same caller-scoped key "
+            "when it is reused with different execution input."
         ),
     )
     task_request: TaskExecutionRequest = Field(
@@ -814,6 +815,25 @@ class WorkflowPackExecutionRequest(BaseModel):
             "Bounded lotus-ai task request that carries the structured execution context for the "
             "workflow pack."
         )
+    )
+
+
+class WorkflowPackExecutionIdempotencyStatus(str, Enum):
+    CREATED = "CREATED"
+    REPLAYED = "REPLAYED"
+
+
+class WorkflowPackExecutionIdempotencyDescriptor(BaseModel):
+    status: WorkflowPackExecutionIdempotencyStatus = Field(
+        description="Whether this response created or replayed the retained synchronous result."
+    )
+    record_id: str = Field(
+        description="Support-safe identity for the scoped synchronous execution reservation."
+    )
+    request_fingerprint: str = Field(
+        min_length=64,
+        max_length=64,
+        description="SHA-256 fingerprint of the canonical workflow-pack execution input.",
     )
 
 
@@ -828,6 +848,12 @@ class WorkflowPackExecutionResponse(BaseModel):
     )
     workflow_pack_run: WorkflowPackRunDescriptor = Field(
         description="Workflow-pack run recorded for the explicit execution request."
+    )
+    idempotency: WorkflowPackExecutionIdempotencyDescriptor | None = Field(
+        default=None,
+        description=(
+            "Synchronous mutation replay posture when the caller supplied an idempotency key."
+        ),
     )
     summary: list[str] = Field(
         description="Human-readable summary of the explicit workflow-pack execution posture."
