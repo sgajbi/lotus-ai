@@ -1182,9 +1182,17 @@ def test_governed_endpoints_define_explicit_operation_ids() -> None:
     assert "task_request" in workflow_pack_execution_request_schema["properties"]
     assert "queue_lane" in workflow_pack_execution_request_schema["properties"]
     assert "idempotency_key" in workflow_pack_execution_request_schema["properties"]
+    assert (
+        "Synchronous execution replays"
+        in workflow_pack_execution_request_schema["properties"]["idempotency_key"]["description"]
+    )
     assert "eligibility" in workflow_pack_execution_response_schema["properties"]
     assert "execution" in workflow_pack_execution_response_schema["properties"]
     assert "workflow_pack_run" in workflow_pack_execution_response_schema["properties"]
+    assert "idempotency" in workflow_pack_execution_response_schema["properties"]
+    assert "WorkflowPackExecutionIdempotencyDescriptor" in str(
+        workflow_pack_execution_response_schema["properties"]["idempotency"]
+    )
     assert (
         spec["paths"]["/platform/workflow-packs/execute-async"]["post"]["operationId"]
         == "submitWorkflowPackAsyncExecution"
