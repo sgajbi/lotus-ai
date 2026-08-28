@@ -26,6 +26,7 @@ def upgrade() -> None:
         sa.Column("state", sa.String(length=32), nullable=False),
         sa.Column("owner_token", sa.String(length=64), nullable=False),
         sa.Column("response_payload", sa.JSON(), nullable=True),
+        sa.Column("response_checksum_sha256", sa.String(length=64), nullable=True),
         sa.Column("failure_code", sa.String(length=64), nullable=True),
         sa.Column("created_at", sa.String(length=64), nullable=False),
         sa.Column("updated_at", sa.String(length=64), nullable=False),

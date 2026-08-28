@@ -38,6 +38,7 @@ class InMemoryWorkflowPackExecutionIdempotencyRepository:
         record_id: str,
         owner_token: str,
         response_payload: dict[str, object],
+        response_checksum_sha256: str,
         updated_at: str,
     ) -> WorkflowPackExecutionIdempotencyRecord:
         with self._lock:
@@ -46,6 +47,7 @@ class InMemoryWorkflowPackExecutionIdempotencyRepository:
                 current,
                 state=WorkflowPackExecutionIdempotencyState.COMPLETED,
                 response_payload=response_payload,
+                response_checksum_sha256=response_checksum_sha256,
                 failure_code=None,
                 updated_at=updated_at,
             )
@@ -65,6 +67,8 @@ class InMemoryWorkflowPackExecutionIdempotencyRepository:
             indeterminate = replace(
                 current,
                 state=WorkflowPackExecutionIdempotencyState.INDETERMINATE,
+                response_payload=None,
+                response_checksum_sha256=None,
                 failure_code=failure_code,
                 updated_at=updated_at,
             )

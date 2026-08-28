@@ -29,6 +29,7 @@ class WorkflowPackExecutionIdempotencyRecord:
     state: WorkflowPackExecutionIdempotencyState
     owner_token: str
     response_payload: dict[str, object] | None
+    response_checksum_sha256: str | None
     failure_code: str | None
     created_at: str
     updated_at: str
@@ -53,6 +54,7 @@ class WorkflowPackExecutionIdempotencyRepository(Protocol):
         record_id: str,
         owner_token: str,
         response_payload: dict[str, object],
+        response_checksum_sha256: str,
         updated_at: str,
     ) -> WorkflowPackExecutionIdempotencyRecord: ...
 

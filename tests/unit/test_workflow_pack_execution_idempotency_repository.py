@@ -16,6 +16,7 @@ from app.workflow_pack_execution_idempotency.repository import (
 from app.workflow_pack_execution_idempotency.sqlalchemy_repository import (
     SqlAlchemyWorkflowPackExecutionIdempotencyRepository,
 )
+from app.workflow_pack_execution_idempotency.service import checksum_response_payload
 from tests.support.migration_runner import upgrade_database_to_head
 
 
@@ -25,10 +26,12 @@ def test_memory_repository_reserves_one_owner_and_replays_completed_record() -> 
 
     first = repository.reserve(record)
     duplicate = repository.reserve(_record(owner_token="owner-b"))
+    response_payload: dict[str, object] = {"workflow_pack_run": {"run_id": "run-001"}}
     completed = repository.complete(
         record_id=record.record_id,
         owner_token=record.owner_token,
-        response_payload={"workflow_pack_run": {"run_id": "run-001"}},
+        response_payload=response_payload,
+        response_checksum_sha256=checksum_response_payload(response_payload),
         updated_at="2026-08-28T01:01:00Z",
     )
     replay = repository.reserve(_record(owner_token="owner-c"))
@@ -68,10 +71,12 @@ def test_sql_repository_survives_restart_and_replays_completed_response(tmp_path
     first = SqlAlchemyWorkflowPackExecutionIdempotencyRepository(database_url)
     record = _record()
     assert first.reserve(record).acquired is True
+    response_payload: dict[str, object] = {"workflow_pack_run": {"run_id": "run-001"}}
     first.complete(
         record_id=record.record_id,
         owner_token=record.owner_token,
-        response_payload={"workflow_pack_run": {"run_id": "run-001"}},
+        response_payload=response_payload,
+        response_checksum_sha256=checksum_response_payload(response_payload),
         updated_at="2026-08-28T01:01:00Z",
     )
     first.close()
@@ -145,6 +150,7 @@ def _record(**overrides: str) -> WorkflowPackExecutionIdempotencyRecord:
         **values,
         state=WorkflowPackExecutionIdempotencyState.IN_PROGRESS,
         response_payload=None,
+        response_checksum_sha256=None,
         failure_code=None,
         created_at="2026-08-28T01:00:00Z",
         updated_at="2026-08-28T01:00:00Z",

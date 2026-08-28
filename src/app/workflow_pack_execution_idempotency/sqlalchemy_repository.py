@@ -61,6 +61,7 @@ class SqlAlchemyWorkflowPackExecutionIdempotencyRepository(SqlAlchemyRepositoryB
         record_id: str,
         owner_token: str,
         response_payload: dict[str, object],
+        response_checksum_sha256: str,
         updated_at: str,
     ) -> WorkflowPackExecutionIdempotencyRecord:
         return self._transition_owned_record(
@@ -68,6 +69,7 @@ class SqlAlchemyWorkflowPackExecutionIdempotencyRepository(SqlAlchemyRepositoryB
             owner_token=owner_token,
             state=WorkflowPackExecutionIdempotencyState.COMPLETED,
             response_payload=response_payload,
+            response_checksum_sha256=response_checksum_sha256,
             failure_code=None,
             updated_at=updated_at,
         )
@@ -85,6 +87,7 @@ class SqlAlchemyWorkflowPackExecutionIdempotencyRepository(SqlAlchemyRepositoryB
             owner_token=owner_token,
             state=WorkflowPackExecutionIdempotencyState.INDETERMINATE,
             response_payload=None,
+            response_checksum_sha256=None,
             failure_code=failure_code,
             updated_at=updated_at,
         )
@@ -116,6 +119,7 @@ class SqlAlchemyWorkflowPackExecutionIdempotencyRepository(SqlAlchemyRepositoryB
         owner_token: str,
         state: WorkflowPackExecutionIdempotencyState,
         response_payload: dict[str, object] | None,
+        response_checksum_sha256: str | None,
         failure_code: str | None,
         updated_at: str,
     ) -> WorkflowPackExecutionIdempotencyRecord:
@@ -131,6 +135,7 @@ class SqlAlchemyWorkflowPackExecutionIdempotencyRepository(SqlAlchemyRepositoryB
                 )
             model.state = state.value
             model.response_payload = response_payload
+            model.response_checksum_sha256 = response_checksum_sha256
             model.failure_code = failure_code
             model.updated_at = updated_at
             session.commit()
@@ -150,6 +155,7 @@ def _to_model(
         state=record.state.value,
         owner_token=record.owner_token,
         response_payload=record.response_payload,
+        response_checksum_sha256=record.response_checksum_sha256,
         failure_code=record.failure_code,
         created_at=record.created_at,
         updated_at=record.updated_at,
@@ -168,6 +174,7 @@ def _to_record(
         state=WorkflowPackExecutionIdempotencyState(model.state),
         owner_token=model.owner_token,
         response_payload=model.response_payload,
+        response_checksum_sha256=model.response_checksum_sha256,
         failure_code=model.failure_code,
         created_at=model.created_at,
         updated_at=model.updated_at,
