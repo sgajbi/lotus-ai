@@ -71,6 +71,11 @@ class InMemoryWorkflowPackExecutionIdempotencyRepository:
             self._records[record_id] = indeterminate
             return indeterminate
 
+    def release(self, *, record_id: str, owner_token: str) -> None:
+        with self._lock:
+            self._require_owned_in_progress(record_id=record_id, owner_token=owner_token)
+            del self._records[record_id]
+
     def _require_owned_in_progress(
         self, *, record_id: str, owner_token: str
     ) -> WorkflowPackExecutionIdempotencyRecord:

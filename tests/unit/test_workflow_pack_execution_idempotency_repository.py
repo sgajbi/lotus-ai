@@ -120,6 +120,17 @@ def test_repository_marks_uncertain_post_provider_failures_indeterminate() -> No
     assert indeterminate.failure_code == "execution_result_not_persisted"
 
 
+def test_repository_releases_only_the_active_reservation_owner() -> None:
+    repository = InMemoryWorkflowPackExecutionIdempotencyRepository()
+    record = _record()
+    repository.reserve(record)
+
+    repository.release(record_id=record.record_id, owner_token=record.owner_token)
+
+    assert repository.get(record_id=record.record_id) is None
+    assert repository.reserve(_record(owner_token="replacement-owner")).acquired is True
+
+
 def _record(**overrides: str) -> WorkflowPackExecutionIdempotencyRecord:
     values = {
         "record_id": "wpe_sync_" + "a" * 32,

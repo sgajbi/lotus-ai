@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 
 from app.db.models import WorkflowPackExecutionIdempotencyModel
@@ -86,6 +88,26 @@ class SqlAlchemyWorkflowPackExecutionIdempotencyRepository(SqlAlchemyRepositoryB
             failure_code=failure_code,
             updated_at=updated_at,
         )
+
+    def release(self, *, record_id: str, owner_token: str) -> None:
+        with self._session_factory() as session:
+            result = cast(
+                CursorResult[Any],
+                session.execute(
+                    delete(WorkflowPackExecutionIdempotencyModel).where(
+                        WorkflowPackExecutionIdempotencyModel.record_id == record_id,
+                        WorkflowPackExecutionIdempotencyModel.owner_token == owner_token,
+                        WorkflowPackExecutionIdempotencyModel.state
+                        == WorkflowPackExecutionIdempotencyState.IN_PROGRESS.value,
+                    )
+                ),
+            )
+            if result.rowcount != 1:
+                session.rollback()
+                raise WorkflowPackExecutionIdempotencyOwnershipError(
+                    "workflow-pack execution reservation is not owned by this execution"
+                )
+            session.commit()
 
     def _transition_owned_record(
         self,
