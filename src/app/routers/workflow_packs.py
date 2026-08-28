@@ -61,6 +61,9 @@ from app.services.workflow_pack_control import (
 )
 from app.services.workflow_pack_activation import evaluate_workflow_pack_eligibility
 from app.services.workflow_pack_execution import execute_workflow_pack
+from app.workflow_pack_execution_idempotency.service import (
+    execute_workflow_pack_idempotently,
+)
 from app.services.workflow_pack_async_execution import submit_workflow_pack_execution_async
 from app.services.workflow_pack_run_ledger import (
     WorkflowPackRunStoreUnavailableError,
@@ -554,7 +557,9 @@ async def evaluate_workflow_pack_eligibility_route(
     summary="Execute a lotus-ai workflow pack through the explicit workflow-pack seam",
     description=(
         "Evaluates workflow-pack eligibility, runs the bounded lotus-ai task pipeline for the "
-        "declared pack binding, and records an explicit workflow-pack run."
+        "declared pack binding, and records an explicit workflow-pack run. When the caller "
+        "supplies an idempotency key, same-input retries return the retained original response "
+        "without another provider execution; changed input conflicts explicitly."
     ),
     responses={
         200: {"description": "Workflow-pack executed successfully."},
@@ -576,7 +581,10 @@ async def execute_workflow_pack_route(
 ) -> WorkflowPackExecutionResponse:
     require_authenticated_caller_matches(request.task_request.caller.caller_app)
     try:
-        return execute_workflow_pack(request)
+        return execute_workflow_pack_idempotently(
+            request,
+            execute=execute_workflow_pack,
+        )
     except WorkflowPackRegistryUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except WorkflowPackRunStoreUnavailableError as exc:
