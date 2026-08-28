@@ -69,6 +69,10 @@ Important posture limits:
 For proposal memo commentary, RFC-0027 advisory copilot, DPM PM memo, exception summary,
 operations handoff summary, and idea explanation support, `lotus-ai` owns workflow-pack execution, provider mode, safety, guardrail validation,
 run-ledger posture, queue policy, and deterministic stub behavior.
+Retryable synchronous workflow-pack callers can provide a stable business-operation
+`idempotency_key`; matching retries return the retained original AI request and run lineage without
+a second provider execution, while changed-input, active, or indeterminate duplicates fail
+explicitly. Omitting the key preserves the existing one-request/one-run contract.
 `lotus-advise` remains the advisor proposal memo evidence, review, and client-ready boundary
 authority. The proposal memo commentary pack consumes bounded memo evidence only and cannot mutate
 memo status, suitability, approval, or client-ready posture.
