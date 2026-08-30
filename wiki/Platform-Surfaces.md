@@ -92,7 +92,12 @@ platform programs.
      identity as a first-class entry (provider, family, exact revision, deployment, SKU,
      lifecycle state, approval evidence, pinning posture), reconciled on read from the
      live-text settings and the approved model-risk inventory (issue #175 slice 1)
-2. app-capability rollout governance
+2. kill switches (issue #177 slice 1)
+   - `/platform/providers/kill-switches` — list activations and the enforcing count; POST
+     activates a scoped hard kill (provider, model revision, task, tenant, caller app, or
+     all live text); `/{switch_id}/clear` clears one. Enforced first at the gateway
+     preflight; a hit is a recorded routing rejection with `KILL_SWITCH_ACTIVE`.
+3. app-capability rollout governance
    - `/platform/app-capability-rollouts`
    - `/platform/app-capability-rollouts/governance-status`
    - `/platform/app-capability-rollouts/observability-summary`
@@ -101,12 +106,12 @@ platform programs.
    - `/platform/app-capability-rollouts/{downstream_app}/{capability_pack_id}/governance-status`
    - `/platform/app-capability-rollouts/{downstream_app}/{capability_pack_id}/lifecycle-status`
    - `/platform/app-capability-rollouts/{downstream_app}/{capability_pack_id}/onboarding-template`
-3. cross-cutting rollout programs
+4. cross-cutting rollout programs
    - `/platform/resilience/*`
    - `/platform/deployment-split/*`
    - `/platform/production-baseline/*`
    - `/platform/production-go-live/*`
-4. workflow-pack runtime registration
+5. workflow-pack runtime registration
    - `/platform/workflow-packs/registry`
    - `/platform/workflow-packs/registry/{pack_id}/{version}`
    - `/platform/workflow-packs/queue-policies`

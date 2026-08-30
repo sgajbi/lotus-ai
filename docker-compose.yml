@@ -31,6 +31,7 @@ services:
       LOTUS_AI_ACCESS_CONTROL_STORE_MODE: sqlalchemy
       LOTUS_AI_PROVIDER_OPERATIONS_STORE_MODE: sqlalchemy
       LOTUS_AI_MODEL_CATALOGUE_STORE_MODE: sqlalchemy
+      LOTUS_AI_KILL_SWITCH_STORE_MODE: sqlalchemy
       LOTUS_AI_ASYNC_CUTOVER_STATE: dedicated_workers_active
       LOTUS_AI_ASYNC_QUEUE_BACKEND_MODE: redis
       LOTUS_AI_ASYNC_QUEUE_REDIS_URL: redis://redis:6379/0
@@ -67,6 +68,7 @@ services:
       LOTUS_AI_ACCESS_CONTROL_STORE_MODE: sqlalchemy
       LOTUS_AI_PROVIDER_OPERATIONS_STORE_MODE: sqlalchemy
       LOTUS_AI_MODEL_CATALOGUE_STORE_MODE: sqlalchemy
+      LOTUS_AI_KILL_SWITCH_STORE_MODE: sqlalchemy
       LOTUS_AI_ASYNC_CUTOVER_STATE: dedicated_workers_active
       LOTUS_AI_ASYNC_QUEUE_BACKEND_MODE: redis
       LOTUS_AI_ASYNC_QUEUE_REDIS_URL: redis://redis:6379/0

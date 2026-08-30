@@ -22,6 +22,7 @@ from app.providers.registry import resolve_text_generation_adapter
 from app.services.access_control_authorization import authorize_request, require_authorized
 from app.config import settings
 from app.contracts.model_catalogue import derive_model_catalogue_entry_id
+from app.services.kill_switch_control import enforce_kill_switches
 from app.services.model_catalogue import bind_live_text_model_catalogue_entry
 from app.services.provider_policy import require_supported_text_generation_mode
 from app.services.provider_budget_policy import enforce_provider_budget, record_provider_spend
@@ -70,6 +71,8 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
             )
         )
         try:
+            # An operator kill switch outranks every automatic control.
+            enforce_kill_switches(request)
             enforce_provider_quota(request)
             enforce_provider_budget()
             enforce_provider_degradation_preflight()
