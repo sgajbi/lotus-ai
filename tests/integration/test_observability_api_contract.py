@@ -344,3 +344,15 @@ def test_breakdowns_fail_closed_for_unknown_and_unprivileged_callers(
         headers={"X-Caller-App": "lotus-platform"},
     )
     assert header_only_privileged.status_code == 403
+
+
+def test_retrieval_observability_summary_route(client: TestClient) -> None:
+    response = client.get("/platform/observability/retrieval-summary")
+    assert response.status_code == 200
+    assert response.json()["service"] == "lotus-ai"
+
+
+def test_async_observability_summary_route(client: TestClient) -> None:
+    response = client.get("/platform/observability/async-summary")
+    assert response.status_code == 200
+    assert response.json()["service"] == "lotus-ai"

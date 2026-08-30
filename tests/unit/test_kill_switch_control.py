@@ -300,3 +300,57 @@ def _record(**overrides: object) -> KillSwitchActivationRecord:
     }
     payload.update(overrides)
     return KillSwitchActivationRecord.model_validate(payload)
+
+
+def test_memory_repository_get_and_ordering() -> None:
+    repository = get_kill_switch_repository()
+    assert repository.get_activation("ksw_absent") is None
+    repository.upsert_activation(_record(switch_id="ksw_a", activated_at="2026-08-30T01:00:00Z"))
+    repository.upsert_activation(_record(switch_id="ksw_b", activated_at="2026-08-30T02:00:00Z"))
+    fetched = repository.get_activation("ksw_a")
+    assert fetched is not None and fetched.switch_id == "ksw_a"
+    assert [a.switch_id for a in repository.list_activations()] == ["ksw_b", "ksw_a"]
+
+
+def test_sqlalchemy_repository_prepares_each_sqlite_location_shape(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.repositories.sqlalchemy_kill_switch_repository import SqlAlchemyKillSwitchRepository
+
+    SqlAlchemyKillSwitchRepository("sqlite:///:memory:").close()
+    monkeypatch.chdir(tmp_path)
+    SqlAlchemyKillSwitchRepository("sqlite:///data/nested/kill.db").close()
+    assert (tmp_path / "data" / "nested").is_dir()
+    SqlAlchemyKillSwitchRepository("postgresql+psycopg://user:secret@localhost:5432/db").close()
+
+
+def test_store_accessor_fails_closed_on_bad_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "kill_switch_store_mode", "sqlalchemy")
+    monkeypatch.setattr(settings, "database_url", None)
+    with pytest.raises(RuntimeError, match="LOTUS_AI_DATABASE_URL is required"):
+        get_kill_switch_repository()
+    monkeypatch.setattr(settings, "kill_switch_store_mode", "carrier-pigeon")
+    with pytest.raises(RuntimeError, match="Unsupported LOTUS_AI_KILL_SWITCH_STORE_MODE"):
+        get_kill_switch_repository()
+
+
+def test_scope_matcher_rejects_an_unknown_scope_object() -> None:
+    from app.services.kill_switch_control import _matches
+
+    bogus = KillSwitchActivationRecord.model_construct(
+        switch_id="ksw_bogus",
+        scope="NOT_A_SCOPE",
+        target=None,
+        reason="r",
+        requested_by="a",
+        approved_by="b",
+        activated_at="2026-08-30T00:00:00Z",
+        expires_at_utc=None,
+        cleared_at=None,
+        cleared_by=None,
+        clear_reason=None,
+    )
+    with pytest.raises(RuntimeError, match="Unsupported kill-switch scope"):
+        _matches(bogus, request=_provider_request())

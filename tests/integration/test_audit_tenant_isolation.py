@@ -162,3 +162,17 @@ def test_platform_audit_read_fails_closed_when_access_evidence_cannot_be_saved(
     assert response.status_code == 500
     assert response.json()["error_code"] == "LOTUS_AI_INTERNAL_ERROR"
     assert "sentinel" not in response.text
+
+
+def test_audit_list_applies_the_category_filter_within_the_caller_scope(
+    client: TestClient,
+) -> None:
+    response = client.get(
+        "/ai/audit",
+        params={"category": "explain"},
+        headers={"X-Caller-App": "lotus-idea"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["filters_applied"]["category"] == "explain"
+    assert all(record["category"] == "explain" for record in body["records"])
