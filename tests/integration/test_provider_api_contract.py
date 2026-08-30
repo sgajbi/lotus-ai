@@ -459,3 +459,16 @@ def test_provider_evidence_readiness_route_reports_partial_runtime_coverage(
     body = response.json()
     assert body["approval_gate"]["evidence_state"] == "RUNTIME_PARTIAL"
     assert body["approval_gate"]["approval_ready"] is False
+
+
+def test_routing_posture_route_reports_the_fixed_policy(client: TestClient) -> None:
+    response = client.get("/platform/providers/routing-posture")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["policy_id"] == "fixed_configured_mode"
+    assert body["policy_version"] == "v1"
+    assert body["strategy"] == "FIXED"
+    assert body["candidate"]["provider_mode"] == "disabled"
+    assert body["enforcing_kill_switch_count"] == 0
+    assert body["degradation"]["status"]

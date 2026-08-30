@@ -125,6 +125,49 @@ class RoutingDecisionDescriptor(BaseModel):
     )
 
 
+class RoutingPostureCandidateDescriptor(BaseModel):
+    provider_id: str | None = Field(
+        default=None,
+        description="Configured live provider identity; null when no live identity is set.",
+    )
+    provider_mode: str = Field(description="Configured provider execution mode.")
+    model_catalogue_entry_id: str | None = Field(
+        default=None,
+        description="Governed catalogue entry the live identity resolves to, when configured.",
+    )
+    model_family: str | None = Field(default=None, description="Model family of the candidate.")
+    model_revision: str | None = Field(
+        default=None, description="Exact (or fallback) revision of the candidate."
+    )
+    revision_pinned: bool | None = Field(
+        default=None, description="Whether the catalogue entry pins an exact revision."
+    )
+    lifecycle_state: str | None = Field(
+        default=None, description="Lifecycle state of the catalogue entry."
+    )
+
+
+class RoutingPostureResponse(BaseModel):
+    service: str = Field(description="Service name emitting the routing posture.")
+    version: str = Field(description="Current lotus-ai service version.")
+    policy_id: str = Field(description="Routing policy currently in force.")
+    policy_version: str = Field(description="Version of the routing policy.")
+    strategy: RoutingStrategy = Field(description="Routing strategy the policy applies.")
+    candidate: RoutingPostureCandidateDescriptor = Field(
+        description="The single candidate the fixed policy would consider right now.",
+    )
+    degradation: "ProviderDegradationStatusDescriptor" = Field(
+        description="Current circuit-breaker posture for the live provider path.",
+    )
+    quota_enforced: bool = Field(description="Whether live-text quota enforcement is on.")
+    budget_enforced: bool = Field(description="Whether live-text budget enforcement is on.")
+    enforcing_kill_switch_count: int = Field(
+        ge=0,
+        description="Currently enforcing kill-switch activations (any scope).",
+    )
+    notes: list[str] = Field(description="Boundary statements this posture ships with.")
+
+
 class ProviderCredentialStatus(str, Enum):
     NOT_CONFIGURED = "NOT_CONFIGURED"
     CONFIGURED = "CONFIGURED"

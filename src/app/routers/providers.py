@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.contracts.providers import (
     ProviderActivationReadinessResponse,
+    RoutingPostureResponse,
     ProviderBudgetPolicyResponse,
     ProviderCatalogResponse,
     ProviderEvidenceReadinessResponse,
@@ -32,8 +33,30 @@ from app.services.provider_operator_profile import build_provider_operator_profi
 from app.services.provider_policy import build_provider_policy
 from app.services.provider_quota_policy import build_provider_quota_policy
 from app.services.provider_runbook_readiness import build_provider_runbook_readiness
+from app.services.routing_posture import build_routing_posture
 
 router = APIRouter(prefix="/platform/providers", tags=["platform"])
+
+
+@router.get(
+    "/routing-posture",
+    response_model=RoutingPostureResponse,
+    operation_id="getRoutingPosture",
+    summary="Get the current routing posture",
+    description=(
+        "Returns the routing policy currently in force, the single candidate the fixed policy "
+        "would bind for the next live execution (with its governed catalogue identity, "
+        "lifecycle state and pinning), the circuit-breaker posture, enforcement flags, and the "
+        "count of currently enforcing kill switches. Per-request gates are evaluated per "
+        "execution and recorded on its routing decision."
+    ),
+    responses={
+        200: {"description": "Routing posture returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_routing_posture_route() -> RoutingPostureResponse:
+    return build_routing_posture()
 
 
 @router.get(
