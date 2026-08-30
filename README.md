@@ -119,12 +119,13 @@ Core areas:
 2. `src/app/services/`
    orchestration, runtime-context assembly, evidence mapping, and audit flow.
 3. `src/app/providers/`
-   provider adapters, policy, rollout, quota, budget, and degradation handling.
+   provider adapters and execution transports; provider policy, rollout, quota,
+   budget, and degradation handling live in `src/app/services/` (`provider_*` modules).
 4. `src/app/prompts/`
    prompt definitions, rollout state, and prompt governance surfaces.
 5. `src/app/retrieval/`
    source governance, indexed-search posture, and retrieval execution seams.
-6. `src/app/safety/`
+6. `src/app/services/safety_*.py`
    output-label-aware policy and runtime safety posture.
 7. `src/app/evals/`
    evaluation inventory, runtime execution, and approval-gate evidence.
@@ -229,13 +230,14 @@ The enforced gates currently include:
 3. evaluation fixture manifest validation,
 4. evaluation run artifact validation,
 5. async job artifact validation,
-6. RFC-0002 Idea explanation local-dev proof validation,
-7. migration smoke,
-8. dependency health and security audit,
-9. coverage-backed test execution,
-10. Docker build validation.
+6. migration smoke,
+7. dependency health and security audit,
+8. coverage-backed test execution,
+9. Docker build validation.
 
-The RFC-0002 Idea proof gate is intentionally conservative. It executes
+The RFC-0002 Idea explanation proof gate runs locally through `make check`
+(`make rfc0002-idea-proof-gate`); it is not wired into the CI workflows.
+It is intentionally conservative. It executes
 `idea_explanation.pack@v1` through the governed HTTP boundary, applies a reviewer acceptance,
 verifies source-safe consumer/source-event projections, and verifies that signed workflow-run
 attestation and provider-retention confirmation remain non-issuable in local stub mode. It clears

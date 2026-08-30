@@ -193,9 +193,9 @@ The service deliberately does not own:
 | routers | `src/app/routers/` | 20 modules, one per surface group |
 | orchestration and runtime | `src/app/services/` | 229 modules — the bulk of the service |
 | repository seams | `src/app/repositories/` | 38 modules; memory and SQLAlchemy pairs |
-| provider adapters | `src/app/providers/` | rollout, quota, budget, degradation |
+| provider adapters | `src/app/providers/` | adapters and transports; policy, quota, budget, degradation live in `src/app/services/provider_*` |
 | retrieval | `src/app/retrieval/` | source and document governance, search posture |
-| safety | `src/app/safety/` | output-label-aware policy |
+| safety | `src/app/services/safety_*.py` | policy, enforcement, runtime posture (seven modules) |
 | evaluations | `src/app/evals/` | fixtures, runtime, approval gates |
 | middleware | `src/app/middleware/` | `correlation`, `http_boundary` |
 | worker entrypoint | `src/app/worker_main.py` | dedicated fleet loop |

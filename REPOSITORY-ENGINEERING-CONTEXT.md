@@ -139,12 +139,14 @@ Current repository posture:
 Primary areas:
 
 1. `src/app/providers/`
-   provider adapters and routing.
+   provider adapters and execution transports (provider policy, quota, budget, and
+   degradation state live in `src/app/services/`; model routing/selection does not
+   exist yet — the configured provider mode maps to exactly one adapter).
 2. `src/app/prompts/`
    prompt registry and rollout state.
 3. `src/app/retrieval/`
    retrieval and indexed-search capabilities.
-4. `src/app/safety/`
+4. `src/app/services/safety_*.py`
    output controls and safety policy.
 5. `src/app/evals/`
    evaluation and evidence foundations.
