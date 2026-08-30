@@ -100,7 +100,13 @@ def _artifact_payload(**overrides: Any) -> dict[str, Any]:
                     "headline": "Active return was -6.68%.",
                     "detail": "Portfolio 1.25% versus benchmark 7.93%.",
                     "tone": "warning",
-                    "evidence_refs": ["lotus-gateway:performance-summary:YTD"],
+                    "evidence_refs": [
+                        {
+                            "metric_label": "Active Return",
+                            "metric_value": "-6.68%",
+                            "source_ref": "lotus-gateway:performance-summary:YTD",
+                        }
+                    ],
                 }
             ],
             "risks_and_exceptions": [],
@@ -314,3 +320,43 @@ def test_content_hash_is_deterministic_and_sensitive(_wired: WireCallable) -> No
         run_id="wfr-accepted-001", caller_tenant_id=TENANT
     )
     assert context_changed.content_hash != first.content_hash
+
+
+def test_projected_evidence_refs_carry_the_metric_grounding(_wired: WireCallable) -> None:
+    """Regression for the silent grounding loss: the guardrail persists refs as
+    metric dicts, and the projection must publish them - not filter them out."""
+
+    _wired(_record(), _artifact_payload())
+    response = build_workflow_pack_run_accepted_output(
+        run_id="wfr-accepted-001", caller_tenant_id=TENANT
+    )
+    refs = response.talking_points[0].evidence_refs
+    assert len(refs) == 1
+    assert refs[0].metric_label == "Active Return"
+    assert refs[0].metric_value == "-6.68%"
+    assert refs[0].source_ref == "lotus-gateway:performance-summary:YTD"
+
+
+def test_malformed_evidence_reference_entries_fail_closed(_wired: WireCallable) -> None:
+    payload = _artifact_payload()
+    payload["structured_output"]["talking_points"][0]["evidence_refs"] = ["a-bare-string"]
+    _wired(_record(), payload)
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_artifact_malformed"
+
+    payload = _artifact_payload()
+    payload["structured_output"]["talking_points"][0]["evidence_refs"] = [
+        {"metric_label": "Active Return", "metric_value": "", "source_ref": "x"}
+    ]
+    _wired(_record(), payload)
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_artifact_malformed"
+
+    payload = _artifact_payload()
+    payload["structured_output"]["talking_points"][0]["evidence_refs"] = "not-a-list"
+    _wired(_record(), payload)
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_artifact_malformed"

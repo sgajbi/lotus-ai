@@ -65,6 +65,11 @@ def test_accepted_output_returns_the_exact_reviewed_narrative(client: TestClient
     assert body["review"]["reviewed_at"]
     assert body["grounded_summary"]
     assert body["talking_points"], "the reviewed talking points must be published"
+    first_refs = body["talking_points"][0]["evidence_refs"]
+    assert first_refs, "projected narrative items must keep their metric grounding"
+    assert first_refs[0]["metric_label"]
+    assert first_refs[0]["metric_value"]
+    assert first_refs[0]["source_ref"] == "lotus-gateway:performance-summary:YTD"
     assert body["context"]["portfolio_id"] == "PB_SG_GLOBAL_BAL_001"
     assert body["context"]["period"] == "YTD"
     assert body["source_refs"] == ["lotus-gateway:performance-summary:YTD"]

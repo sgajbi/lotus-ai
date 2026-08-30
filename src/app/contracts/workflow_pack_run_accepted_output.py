@@ -18,15 +18,34 @@ ACCEPTED_OUTPUT_SCHEMA_ADVISOR_BRIEF_V1 = (
 ACCEPTED_OUTPUT_CONTENT_HASH_ALGORITHM = "sha256"
 
 
-class AdvisorBriefAcceptedNarrativeItem(BaseModel):
-    """One bounded narrative element (talking point or risk/exception)."""
+class AdvisorBriefAcceptedEvidenceRef(BaseModel):
+    """One metric-grounded evidence reference, exactly as the generation
+    guardrail persisted it (advisor_brief_quality_guardrails)."""
 
-    headline: str = Field(description="Short reviewed statement for this element.")
-    detail: str = Field(description="Reviewed supporting detail for the headline.")
-    tone: str = Field(description="Bounded tone marker recorded with the element.")
-    evidence_refs: list[str] = Field(
+    metric_label: str = Field(description="Label of the grounding metric.")
+    metric_value: str = Field(description="Value of the grounding metric as generated.")
+    source_ref: str = Field(description="Source reference the metric was taken from.")
+
+
+class AdvisorBriefAcceptedNarrativeItem(BaseModel):
+    """One bounded narrative element (talking point or risk/exception).
+
+    Narrative strings are whitespace-collapsed plain text; markup is not
+    rejected at generation, so consumers must render them as text, never as
+    markup.
+    """
+
+    headline: str = Field(description="Short reviewed statement for this element (plain text).")
+    detail: str = Field(description="Reviewed supporting detail for the headline (plain text).")
+    tone: str = Field(
+        description=(
+            "Tone marker recorded with the element; the generation guardrail bounds it to "
+            "'positive', 'neutral', or 'warning'."
+        ),
+    )
+    evidence_refs: list[AdvisorBriefAcceptedEvidenceRef] = Field(
         default_factory=list,
-        description="Source references grounding this element, as recorded at generation.",
+        description="Metric-grounded evidence references recorded at generation.",
     )
 
 
