@@ -37,6 +37,14 @@ The baseline rules are:
 5. full correlation and audit metadata for every AI execution.
 6. provider retention/deletion outcomes are recorded only by AI provider operations and signed for
    bounded consumers; domain consumers cannot self-assert provider deletion.
+7. evaluation cases execute hermetically: every case runs under
+   `hermetic_provider_execution()`, so the live network seams (text transport,
+   embedding transport, local endpoint probe) fail closed unless the case
+   installs an explicit execution-scoped override. An eval case can never
+   reach a real provider endpoint, and its overrides are contextvar-scoped so
+   concurrent production requests never observe them. Production source is
+   guarded against test tooling and secret-shaped api-key literals by the
+   runtime-purity guard in `make lint`.
 
 Provider retention confirmation for Idea explanation runs is currently `not_certified`. The
 implementation binds provider/model/tenant identity to the durable workflow run, signs source-safe

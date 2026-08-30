@@ -45,9 +45,17 @@ from app.services.artifact_payloads import persist_json_artifact
 from app.services.embedding_live_execution_state import build_embedding_live_execution_state
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
+from app.services.local_openai_compatible_endpoint_probe import (
+    LocalOpenAICompatibleEndpointStatus,
+)
 from app.services.prompt_store import get_prompt_repository
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import build_provider_budget_policy
+from app.services.provider_execution_overrides import (
+    hermetic_provider_execution,
+    override_local_probe_status,
+    override_text_transport_post,
+)
 from app.services.provider_catalog import build_provider_catalog
 from app.services.provider_configuration_status import build_embedding_configuration_status
 from app.services.provider_degradation_state import (
@@ -946,6 +954,13 @@ def _default_eval_tenant_id(*, caller_app: str, case_tenant_id: object | None) -
     return None
 
 
+# A self-describing non-credential reference (issue #148): it satisfies the
+# key-presence validation for hermetic openai-mode cases, and because every
+# case runs under hermetic_provider_execution() it can never reach a real
+# network call. It is not a secret and must never be shaped like one.
+EVAL_HERMETIC_CREDENTIAL_REF = "credential-ref:eval-hermetic"
+
+
 @contextmanager
 def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None]:
     original_values = {
@@ -978,6 +993,9 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
     }
     try:
         with ExitStack() as stack:
+            # Every case runs hermetically: the live network seams fail
+            # closed unless the case installs an explicit override below.
+            stack.enter_context(hermetic_provider_execution())
             reset_prompt_store_cache()
             reset_retrieval_repository()
             reset_provider_operations_store_cache()
@@ -1047,7 +1065,7 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                     settings.provider_rollout_state = "CANARY_ENABLED"
                 settings.live_text_provider_id = "text.openai"
                 settings.live_text_model_id = "gpt-5.4"
-                settings.live_text_provider_api_key = "eval-secret"
+                settings.live_text_provider_api_key = EVAL_HERMETIC_CREDENTIAL_REF
                 settings.live_text_allowed_task_ids = str(input_payload.get("task_id", ""))
             if settings.provider_mode == "local_openai_compatible":
                 if "rollout_state" not in input_payload:
@@ -1068,30 +1086,25 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                 local_probe_status = input_payload.get("local_probe_status")
                 if isinstance(local_probe_status, dict):
                     stack.enter_context(
-                        _patch_target(
-                            "app.services.provider_live_execution_state.build_local_openai_compatible_endpoint_status",
-                            lambda: type(
-                                "ProbeStatus",
-                                (),
-                                {
-                                    "endpoint_reachable": bool(
-                                        local_probe_status.get("endpoint_reachable", False)
-                                    ),
-                                    "model_available": bool(
-                                        local_probe_status.get("model_available", False)
-                                    ),
-                                    "blocking_reason": local_probe_status.get("blocking_reason"),
-                                },
-                            )(),
+                        override_local_probe_status(
+                            LocalOpenAICompatibleEndpointStatus(
+                                endpoint_reachable=bool(
+                                    local_probe_status.get("endpoint_reachable", False)
+                                ),
+                                model_available=bool(
+                                    local_probe_status.get("model_available", False)
+                                ),
+                                configured_model_id=settings.live_text_model_id,
+                                blocking_reason=cast(
+                                    str | None, local_probe_status.get("blocking_reason")
+                                ),
+                            )
                         )
                     )
                 local_provider_response = input_payload.get("local_provider_response")
                 if isinstance(local_provider_response, dict):
                     stack.enter_context(
-                        _patch_target(
-                            "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
-                            lambda **_: local_provider_response,
-                        )
+                        override_text_transport_post(lambda **_: local_provider_response)
                     )
                 local_provider_error = input_payload.get("local_provider_error")
                 if isinstance(local_provider_error, dict):
@@ -1099,12 +1112,11 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                         str(local_provider_error["failure_category"])
                     )
                     stack.enter_context(
-                        _patch_target(
-                            "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
+                        override_text_transport_post(
                             lambda **_: _raise_provider_execution_error(
                                 category=failure_category,
                                 message=str(local_provider_error["message"]),
-                            ),
+                            )
                         )
                     )
             if "request_limit" in input_payload and input_payload.get("quota_scope") == "task":
@@ -1192,14 +1204,6 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
         reset_provider_operations_store_cache()
         reset_provider_quota_counters()
         reset_provider_degradation_state()
-
-
-@contextmanager
-def _patch_target(target: str, replacement: object) -> Iterator[None]:
-    from unittest.mock import patch
-
-    with patch(target, replacement):
-        yield
 
 
 def _raise_provider_execution_error(*, category: ProviderFailureCategory, message: str) -> Any:

@@ -1,4 +1,4 @@
-.PHONY: install lint monetary-float-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke migration-apply runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
+.PHONY: install lint monetary-float-guard runtime-purity-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke migration-apply runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
 
 install:
 	python -m pip install --upgrade pip
@@ -7,9 +7,13 @@ install:
 lint:
 	python -m ruff check .
 	python -m ruff format --check .
+	python scripts/check_runtime_purity.py
 
 monetary-float-guard:
 	python scripts/check_monetary_float_usage.py
+
+runtime-purity-guard:
+	python scripts/check_runtime_purity.py
 
 verify-dependencies:
 	python scripts/dependency_health_check.py --skip-audit
