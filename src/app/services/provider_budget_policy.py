@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.config import settings
+from app.services.provider_usage_accounting import resolve_effective_live_text_card
 from app.contracts.providers import (
     ProviderBudgetPolicyResponse,
     ProviderBudgetState,
@@ -71,13 +72,11 @@ def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
         findings.append(
             "Live-provider budget enforcement requires a configured hard budget threshold."
         )
-    if settings.live_text_budget_enforced and (
-        settings.live_text_input_cost_per_1k_tokens is None
-        or settings.live_text_output_cost_per_1k_tokens is None
-    ):
+    if settings.live_text_budget_enforced and resolve_effective_live_text_card() is None:
         configuration_valid = False
         findings.append(
-            "Live-provider budget enforcement requires configured input and output token rate-card values."
+            "Live-provider budget enforcement requires an effective live-text rate card "
+            "so spend can be estimated (issue #178)."
         )
 
     remaining_budget_usd = None
