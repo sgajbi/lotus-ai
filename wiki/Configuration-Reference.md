@@ -150,7 +150,7 @@ not in the public allowlist, so an anonymous verifier cannot fetch them.
 | `LOTUS_AI_WORKFLOW_RUN_ATTESTATION_KEY_NOT_AFTER_UTC` | *(none)* |
 | `LOTUS_AI_WORKFLOW_RUN_ATTESTATION_ROTATED_PUBLIC_KEYS_JSON` | `[]` |
 | `LOTUS_AI_WORKFLOW_RUN_ATTESTATION_TTL_SECONDS` | `300` |
-| `LOTUS_AI_WORKFLOW_RUN_MODEL_RISK_INVENTORY_JSON` | `[]` |
+| `LOTUS_AI_WORKFLOW_RUN_MODEL_RISK_INVENTORY_JSON` | `[]` — seed input only: mirrored into APPROVED model-catalogue rows at seed time; model-risk evaluation reads the catalogue, never this variable (#191) |
 
 ## Deployment, startup and readiness
 

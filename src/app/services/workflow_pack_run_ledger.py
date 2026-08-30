@@ -35,10 +35,7 @@ from app.services.workflow_pack_run_artifacts import persist_workflow_pack_run_o
 from app.services.workflow_run_attestation_source import (
     capture_workflow_run_attestation_source,
 )
-from app.services.workflow_run_model_risk import evaluate_workflow_run_model_risk
-from app.providers.configured_workflow_run_model_risk_inventory import (
-    ConfiguredWorkflowRunModelRiskInventory,
-)
+from app.services.workflow_run_model_risk import evaluate_workflow_run_model_risk_from_catalogue
 from app.services.workflow_pack_run_provenance_summary import (
     build_workflow_pack_run_provenance_summary,
 )
@@ -285,8 +282,7 @@ def record_registered_workflow_pack_run(
         review_state=review_state.value,
         created_at=created_at,
     )
-    model_risk_decision = evaluate_workflow_run_model_risk(
-        inventory=ConfiguredWorkflowRunModelRiskInventory(settings=settings),
+    model_risk_decision = evaluate_workflow_run_model_risk_from_catalogue(
         provider_id=response.audit.provider_id,
         provider_mode=response.audit.provider_mode,
         model_id=response.audit.model_id or "deterministic-stub",
