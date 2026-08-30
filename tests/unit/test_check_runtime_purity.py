@@ -28,16 +28,20 @@ def test_runtime_purity_guard_flags_test_tooling_and_secret_literals(tmp_path: P
         "def use(monkeypatch):\n"
         "    monkeypatch.setattr('a', 'b')\n"
         "live_text_provider_api_key = 'sk-secret'\n"
-        "settings_api_key: str = 'raw-secret'\n",
+        "settings_api_key: str = 'raw-secret'\n"
+        "settings.provider_mode = 'openai'\n"
+        "settings.live_text_seed = 7\n"
+        "settings.retry_count += 1\n",
         encoding="utf-8",
     )
 
     violations = guard._violations_for_file(tmp_path / "violations.py")
 
-    assert len(violations) == 7
+    assert len(violations) == 10
     assert sum("test-tooling import" in item for item in violations) == 3
     assert sum("'monkeypatch'" in item for item in violations) == 2
     assert sum("secret-shaped api-key literal" in item for item in violations) == 2
+    assert sum("settings attribute assignment" in item for item in violations) == 3
     assert guard.main(str(tmp_path)) == 1
 
 

@@ -339,6 +339,12 @@ def test_evaluation_run_detail_route_exposes_runtime_attempt_and_case_history(
     assert len(body["case_results"]) == 2
     assert body["case_results"][0]["outcome"] == "PASS"
     assert len(body["case_results"][0]["artifact_refs"]) == 1
+    # Every case result records the digest of the provider execution
+    # configuration it ran under (issue #148) - the reproducibility key
+    # shared with audit records.
+    for case_result in body["case_results"]:
+        digest = case_result["provider_config_sha256"]
+        assert isinstance(digest, str) and len(digest) == 64
 
 
 def test_evaluation_run_submit_route_rejects_staged_only_fixture(client: TestClient) -> None:

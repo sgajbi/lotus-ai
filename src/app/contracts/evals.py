@@ -250,6 +250,11 @@ class EvaluationCaseResultDescriptor(BaseModel):
         default_factory=list,
         description="Governed artifact descriptors attached to the persisted case outcome.",
     )
+    provider_config_sha256: str | None = Field(
+        default=None,
+        description="Digest of the provider execution configuration the case ran under "
+        "(issue #148); the reproducibility key shared with audit records.",
+    )
     recorded_at: str = Field(description="UTC timestamp when the case outcome was recorded.")
 
 

@@ -425,6 +425,7 @@ class EvaluationCaseResultModel(Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     evidence_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     artifact_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    provider_config_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
     run: Mapped["EvaluationRunModel"] = relationship(back_populates="case_results")

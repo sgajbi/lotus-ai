@@ -51,7 +51,10 @@ relying on the lanes to repeat it.
 
 1. lint (ruff check, ruff format, and the runtime-purity guard —
    `scripts/check_runtime_purity.py` fails when production code under `src/`
-   imports test tooling or assigns a secret-shaped api-key literal),
+   imports test tooling, assigns a secret-shaped api-key literal, or assigns
+   to any `settings` attribute: process configuration is immutable after
+   startup, and per-execution variation goes through the execution-scoped
+   config overrides),
 2. typecheck,
 3. OpenAPI quality,
 4. evaluation manifest validation,
