@@ -19,6 +19,7 @@ from app.contracts.model_catalogue import (
     ModelCatalogueSeedReport,
     ModelCatalogueSeedSource,
     ModelLifecycleState,
+    ModelLifecycleTransitionRequest,
     derive_model_catalogue_entry_id,
 )
 from app.contracts.providers import ProviderFailureCategory
@@ -304,3 +305,154 @@ def test_binding_refuses_an_execution_ineligible_lifecycle_state(
 
     assert excinfo.value.category is ProviderFailureCategory.MODEL_LIFECYCLE_INELIGIBLE
     assert "RETIRED" in excinfo.value.message
+
+
+def _transition_request(**overrides: object) -> ModelLifecycleTransitionRequest:
+    payload: dict[str, object] = {
+        "caller_app": "lotus-platform",
+        "to_state": ModelLifecycleState.EVALUATING,
+        "reason": "Begin evaluation for governed promotion.",
+        "requested_by": "ops.primary@lotus",
+        "approved_by": "ops.secondary@lotus",
+    }
+    payload.update(overrides)
+    return ModelLifecycleTransitionRequest.model_validate(payload)
+
+
+@pytest.fixture
+def _durable_catalogue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, _local_unpinned_settings: None
+) -> str:
+    from tests.support.migration_runner import upgrade_database_to_head
+
+    database_url = f"sqlite:///{tmp_path / 'catalogue-lifecycle.db'}"
+    upgrade_database_to_head(database_url)
+    monkeypatch.setattr(settings, "model_catalogue_store_mode", "sqlalchemy")
+    monkeypatch.setattr(settings, "database_url", database_url)
+    ensure_model_catalogue_seeded()
+    return "text.local:qwen3:8b"
+
+
+def test_lifecycle_transition_requires_authorization_and_durable_store(
+    monkeypatch: pytest.MonkeyPatch, _local_unpinned_settings: None
+) -> None:
+    from fastapi import HTTPException
+
+    from app.services.model_catalogue import apply_model_lifecycle_transition
+
+    with pytest.raises(HTTPException) as excinfo:
+        apply_model_lifecycle_transition(
+            "text.local:qwen3:8b", _transition_request(caller_app="lotus-manage")
+        )
+    assert excinfo.value.status_code == 403
+
+    with pytest.raises(HTTPException) as excinfo:
+        apply_model_lifecycle_transition("text.local:qwen3:8b", _transition_request())
+    assert excinfo.value.status_code == 409
+    assert "LOTUS_AI_MODEL_CATALOGUE_STORE_MODE" in str(excinfo.value.detail)
+
+
+def test_lifecycle_transition_walks_the_governed_edge_table(_durable_catalogue: str) -> None:
+    from fastapi import HTTPException
+
+    from app.services.model_catalogue import (
+        apply_model_lifecycle_transition,
+        build_model_catalogue_entry_detail,
+    )
+
+    entry_id = _durable_catalogue
+
+    with pytest.raises(HTTPException) as excinfo:
+        apply_model_lifecycle_transition(
+            entry_id, _transition_request(to_state=ModelLifecycleState.PRODUCTION)
+        )
+    assert excinfo.value.status_code == 422
+    assert "not allowed" in str(excinfo.value.detail)
+
+    apply_model_lifecycle_transition(entry_id, _transition_request())
+
+    with pytest.raises(HTTPException) as excinfo:
+        apply_model_lifecycle_transition(
+            entry_id, _transition_request(to_state=ModelLifecycleState.APPROVED)
+        )
+    assert excinfo.value.status_code == 422
+    assert "approval_evidence_ref" in str(excinfo.value.detail)
+
+    approved = apply_model_lifecycle_transition(
+        entry_id,
+        _transition_request(
+            to_state=ModelLifecycleState.APPROVED,
+            approval_evidence_ref="mrm-approval-2026-021",
+        ),
+    )
+    assert approved.entry.lifecycle_state is ModelLifecycleState.APPROVED
+    assert "mrm-approval-2026-021" in approved.entry.approval_evidence_refs
+
+    apply_model_lifecycle_transition(
+        entry_id, _transition_request(to_state=ModelLifecycleState.PRODUCTION)
+    )
+    apply_model_lifecycle_transition(
+        entry_id, _transition_request(to_state=ModelLifecycleState.DEPRECATED)
+    )
+    retired = apply_model_lifecycle_transition(
+        entry_id, _transition_request(to_state=ModelLifecycleState.RETIRED)
+    )
+    assert retired.entry.lifecycle_state is ModelLifecycleState.RETIRED
+
+    with pytest.raises(HTTPException) as excinfo:
+        apply_model_lifecycle_transition(
+            entry_id, _transition_request(to_state=ModelLifecycleState.CATALOGUED)
+        )
+    assert excinfo.value.status_code == 422
+    assert "terminal" in str(excinfo.value.detail)
+
+    detail = build_model_catalogue_entry_detail(entry_id)
+    assert [event.to_state for event in reversed(detail.lifecycle_events)] == [
+        ModelLifecycleState.EVALUATING,
+        ModelLifecycleState.APPROVED,
+        ModelLifecycleState.PRODUCTION,
+        ModelLifecycleState.DEPRECATED,
+        ModelLifecycleState.RETIRED,
+    ]
+    assert all(event.reason for event in detail.lifecycle_events)
+
+
+def test_seed_authority_change_never_resurrects_an_operator_terminal_state(
+    monkeypatch: pytest.MonkeyPatch, _local_unpinned_settings: None
+) -> None:
+    ensure_model_catalogue_seeded()
+    repository = get_model_catalogue_repository()
+    seeded = repository.get_entry("text.local:qwen3:8b")
+    assert seeded is not None
+    repository.upsert_entry(
+        seeded.model_copy(update={"lifecycle_state": ModelLifecycleState.RETIRED})
+    )
+
+    # The inventory now claims the same identity: a seeding-authority change
+    # that would normally re-assert APPROVED. Retirement must survive it.
+    monkeypatch.setattr(
+        settings,
+        "workflow_run_model_risk_inventory_json",
+        json.dumps(
+            [
+                {
+                    "provider_id": "text.local",
+                    "provider_mode": "local_openai_compatible",
+                    "model_id": "qwen3:8b",
+                    "model_version": "qwen3:8b",
+                    "workflow_pack_ids": ["advisor_brief.pack"],
+                    "approval_ref": "mrm-approval-2026-030",
+                    "approved_from_utc": "2026-08-01T00:00:00Z",
+                    "approved_until_utc": None,
+                }
+            ]
+        ),
+    )
+    monkeypatch.setattr(settings, "live_text_model_version", "qwen3:8b")
+
+    ensure_model_catalogue_seeded()
+
+    resurrected = repository.get_entry("text.local:qwen3:8b")
+    assert resurrected is not None
+    assert resurrected.lifecycle_state is ModelLifecycleState.RETIRED
+    assert resurrected.seed_source is ModelCatalogueSeedSource.APPROVED_WORKFLOW_RUN_MODEL_INVENTORY

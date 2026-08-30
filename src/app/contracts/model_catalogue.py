@@ -172,3 +172,115 @@ class ModelCatalogueResponse(BaseModel):
     entries: list[ModelCatalogueEntry] = Field(
         description="Catalogue entries ordered by entry id.",
     )
+
+
+# Governed lifecycle transitions (issue #175, slice 3). The edge table is the
+# policy: every reachable state change is an explicit operator action with a
+# recorded reason, and promotion to APPROVED must carry approval evidence.
+ALLOWED_MODEL_LIFECYCLE_TRANSITIONS: dict[ModelLifecycleState, frozenset[ModelLifecycleState]] = {
+    ModelLifecycleState.DISCOVERED: frozenset({ModelLifecycleState.CATALOGUED}),
+    ModelLifecycleState.CATALOGUED: frozenset(
+        {ModelLifecycleState.EVALUATING, ModelLifecycleState.DEPRECATED}
+    ),
+    ModelLifecycleState.EVALUATING: frozenset(
+        {
+            ModelLifecycleState.APPROVED,
+            ModelLifecycleState.CATALOGUED,
+            ModelLifecycleState.DEPRECATED,
+        }
+    ),
+    ModelLifecycleState.APPROVED: frozenset(
+        {
+            ModelLifecycleState.SHADOW,
+            ModelLifecycleState.CANARY,
+            ModelLifecycleState.PRODUCTION,
+            ModelLifecycleState.DEGRADED,
+            ModelLifecycleState.DEPRECATED,
+        }
+    ),
+    ModelLifecycleState.SHADOW: frozenset(
+        {
+            ModelLifecycleState.CANARY,
+            ModelLifecycleState.APPROVED,
+            ModelLifecycleState.DEPRECATED,
+        }
+    ),
+    ModelLifecycleState.CANARY: frozenset(
+        {
+            ModelLifecycleState.PRODUCTION,
+            ModelLifecycleState.APPROVED,
+            ModelLifecycleState.DEGRADED,
+            ModelLifecycleState.DEPRECATED,
+        }
+    ),
+    ModelLifecycleState.PRODUCTION: frozenset(
+        {ModelLifecycleState.DEGRADED, ModelLifecycleState.DEPRECATED}
+    ),
+    ModelLifecycleState.DEGRADED: frozenset(
+        {
+            ModelLifecycleState.PRODUCTION,
+            ModelLifecycleState.CANARY,
+            ModelLifecycleState.DEPRECATED,
+        }
+    ),
+    ModelLifecycleState.DEPRECATED: frozenset({ModelLifecycleState.RETIRED}),
+    ModelLifecycleState.RETIRED: frozenset(),
+}
+
+# States an operator has deliberately taken a model OUT of service through.
+# Nothing automatic - including a seeding-authority change - may resurrect
+# a model from these; only an explicit operator transition can.
+OPERATOR_TERMINAL_LIFECYCLE_STATES = frozenset(
+    {ModelLifecycleState.DEPRECATED, ModelLifecycleState.RETIRED}
+)
+
+
+class ModelLifecycleTransitionRecord(BaseModel):
+    """One durable lifecycle transition on a catalogue entry."""
+
+    event_id: str = Field(min_length=1, description="Server-assigned event identity.")
+    entry_id: str = Field(min_length=1, description="Catalogue entry the transition applies to.")
+    from_state: ModelLifecycleState = Field(description="State before the transition.")
+    to_state: ModelLifecycleState = Field(description="State after the transition.")
+    reason: str = Field(min_length=1, description="Operator reason recorded with the transition.")
+    requested_by: str = Field(min_length=1, description="Operator who requested the transition.")
+    approved_by: str = Field(min_length=1, description="Operator who approved the transition.")
+    approval_evidence_ref: str | None = Field(
+        default=None,
+        description="Approval evidence reference; required when transitioning to APPROVED.",
+    )
+    recorded_at: str = Field(description="Instant the transition was recorded (UTC).")
+
+
+class ModelLifecycleTransitionRequest(BaseModel):
+    caller_app: str = Field(min_length=1, description="Calling application identity.")
+    to_state: ModelLifecycleState = Field(description="Target lifecycle state.")
+    reason: str = Field(min_length=1, description="Why this transition is being made.")
+    requested_by: str = Field(min_length=1, description="Operator requesting the transition.")
+    approved_by: str = Field(min_length=1, description="Operator approving the transition.")
+    approval_evidence_ref: str | None = Field(
+        default=None,
+        description="Approval evidence reference; required when to_state is APPROVED.",
+    )
+
+
+class ModelLifecycleTransitionResponse(BaseModel):
+    service: str = Field(description="Service name emitting the response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    store_mode: str = Field(description="Where catalogue truth lives: memory or sqlalchemy.")
+    entry: ModelCatalogueEntry = Field(description="The entry after the transition.")
+    transition: ModelLifecycleTransitionRecord = Field(
+        description="The durable transition record this action created.",
+    )
+
+
+class ModelCatalogueEntryDetailResponse(BaseModel):
+    """One catalogue entry with its full lifecycle history."""
+
+    service: str = Field(description="Service name emitting the response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    store_mode: str = Field(description="Where catalogue truth lives: memory or sqlalchemy.")
+    entry: ModelCatalogueEntry = Field(description="The catalogue entry.")
+    lifecycle_events: list[ModelLifecycleTransitionRecord] = Field(
+        description="Every recorded lifecycle transition for this entry, newest first.",
+    )
