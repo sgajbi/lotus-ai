@@ -121,6 +121,17 @@ class TaskAuditMetadata(BaseModel):
         default=None,
         description="Governed model release or deployment version used for the execution.",
     )
+    model_catalogue_entry_id: str | None = Field(
+        default=None,
+        description="Governed model-catalogue entry the execution was bound to, on live paths.",
+    )
+    model_revision_pinned: bool | None = Field(
+        default=None,
+        description=(
+            "Whether the bound catalogue entry pins an exact model revision "
+            "(False means the family/tag fallback identity executed)."
+        ),
+    )
     safety: SafetyExecutionOutcome = Field(description="Safety posture resolved for the execution.")
     authorization: AuthorizationDecision = Field(
         description="Caller-authorization decision recorded for the execution."

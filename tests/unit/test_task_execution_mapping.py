@@ -60,3 +60,27 @@ def test_map_audit_record_preserves_full_caller_identity() -> None:
 
     assert audit_record.requested_by == "ops.user@lotus"
     assert audit_record.tenant_id == "tenant-sg-001"
+
+
+def test_map_audit_record_carries_governed_model_identity() -> None:
+    context = validate_task_request(
+        _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
+    )
+    resolved = resolve_task_execution(context=context)
+    # Simulate the provider gateway's catalogue stamping (#175 S2a); the
+    # mapping layer must carry the governed identity through untouched.
+    resolved.provider_execution.model_version = "gpt-5.4-2026-05-01"
+    resolved.provider_execution.model_catalogue_entry_id = "text.openai:gpt-5.4-2026-05-01"
+    resolved.provider_execution.model_revision_pinned = True
+
+    response = map_task_execution_response(resolved=resolved)
+
+    assert response.audit.model_version == "gpt-5.4-2026-05-01"
+    assert response.audit.model_catalogue_entry_id == "text.openai:gpt-5.4-2026-05-01"
+    assert response.audit.model_revision_pinned is True
+
+    audit_record = map_audit_record(context=context, response=response)
+
+    assert audit_record.model_version == "gpt-5.4-2026-05-01"
+    assert audit_record.model_catalogue_entry_id == "text.openai:gpt-5.4-2026-05-01"
+    assert audit_record.model_revision_pinned is True
