@@ -213,3 +213,45 @@ def test_build_execution_evidence_captures_live_retrieval_request_posture() -> N
     access_control_descriptor = evidence.descriptors[5]
     assert access_control_descriptor.evidence_type == "access_control"
     assert access_control_descriptor.attributes["effective_source_ids"] == ["lotus-platform-rfcs"]
+
+
+def test_provider_descriptor_carries_catalogue_binding_attributes() -> None:
+    from app.services import execution_evidence as execution_evidence_module
+
+    response = ProviderExecutionResponse(
+        provider_id="text.openai",
+        provider_mode="openai",
+        adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
+        model_id="gpt-5.4",
+        model_version="gpt-5.4",
+        model_catalogue_entry_id="text.openai:gpt-5.4",
+        model_revision_pinned=False,
+        stubbed=False,
+        message="live response",
+        structured_output={},
+    )
+
+    descriptor = execution_evidence_module._provider_descriptor(provider_execution=response)
+
+    assert descriptor.attributes["model_version"] == "gpt-5.4"
+    assert descriptor.attributes["model_catalogue_entry_id"] == "text.openai:gpt-5.4"
+    assert descriptor.attributes["model_revision_pinned"] is False
+
+
+def test_provider_descriptor_omits_catalogue_binding_when_absent() -> None:
+    from app.services import execution_evidence as execution_evidence_module
+
+    response = ProviderExecutionResponse(
+        provider_id="text.stub",
+        provider_mode="disabled",
+        adapter_kind=ProviderAdapterKind.STUB,
+        stubbed=True,
+        message="Stub execution completed.",
+        structured_output={},
+    )
+
+    descriptor = execution_evidence_module._provider_descriptor(provider_execution=response)
+
+    assert "model_catalogue_entry_id" not in descriptor.attributes
+    assert "model_revision_pinned" not in descriptor.attributes
+    assert "model_version" not in descriptor.attributes

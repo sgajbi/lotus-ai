@@ -16,11 +16,16 @@ import pytest
 
 from app.config import settings
 from app.contracts.model_catalogue import (
+    ModelCatalogueSeedReport,
     ModelCatalogueSeedSource,
     ModelLifecycleState,
     derive_model_catalogue_entry_id,
 )
+from app.contracts.providers import ProviderFailureCategory
+from app.providers.base import ProviderExecutionError
+from app.services import model_catalogue as model_catalogue_service
 from app.services.model_catalogue import (
+    bind_live_text_model_catalogue_entry,
     build_model_catalogue_response,
     build_seed_model_catalogue_entries,
     ensure_model_catalogue_seeded,
@@ -227,3 +232,75 @@ def test_sqlalchemy_repository_prepares_each_sqlite_location_shape(
     # Non-sqlite URLs are left untouched: no directory side effects at all.
     SqlAlchemyModelCatalogueRepository("postgresql+psycopg://user:secret@localhost:5432/db").close()
     assert list(tmp_path.iterdir()) == [tmp_path / "data"]
+
+
+def test_reseeding_never_reverts_an_operator_lifecycle_transition(
+    _local_unpinned_settings: None,
+) -> None:
+    ensure_model_catalogue_seeded()
+    repository = get_model_catalogue_repository()
+    seeded = repository.get_entry("text.local:qwen3:8b")
+    assert seeded is not None
+    repository.upsert_entry(
+        seeded.model_copy(update={"lifecycle_state": ModelLifecycleState.RETIRED})
+    )
+
+    report = ensure_model_catalogue_seeded()
+
+    assert report.updated_count == 0
+    retired = repository.get_entry("text.local:qwen3:8b")
+    assert retired is not None
+    assert retired.lifecycle_state is ModelLifecycleState.RETIRED
+
+
+def test_binding_returns_the_seeded_entry_for_the_configured_identity(
+    _local_unpinned_settings: None,
+) -> None:
+    entry = bind_live_text_model_catalogue_entry()
+    assert entry.entry_id == "text.local:qwen3:8b"
+    assert entry.revision_pinned is False
+    assert entry.lifecycle_state is ModelLifecycleState.CATALOGUED
+
+
+def test_binding_fails_closed_without_a_configured_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "provider_mode", "openai")
+    monkeypatch.setattr(settings, "live_text_provider_id", None)
+    monkeypatch.setattr(settings, "live_text_model_id", None)
+    monkeypatch.setattr(settings, "workflow_run_model_risk_inventory_json", "[]")
+    with pytest.raises(ProviderExecutionError) as excinfo:
+        bind_live_text_model_catalogue_entry()
+    assert excinfo.value.category is ProviderFailureCategory.MODEL_NOT_CATALOGUED
+
+
+def test_binding_fails_closed_when_the_catalogue_row_is_absent(
+    monkeypatch: pytest.MonkeyPatch, _local_unpinned_settings: None
+) -> None:
+    monkeypatch.setattr(
+        model_catalogue_service,
+        "ensure_model_catalogue_seeded",
+        lambda: ModelCatalogueSeedReport(created_count=0, updated_count=0, unchanged_count=0),
+    )
+    with pytest.raises(ProviderExecutionError) as excinfo:
+        bind_live_text_model_catalogue_entry()
+    assert excinfo.value.category is ProviderFailureCategory.MODEL_NOT_CATALOGUED
+    assert "text.local:qwen3:8b" in excinfo.value.message
+
+
+def test_binding_refuses_an_execution_ineligible_lifecycle_state(
+    _local_unpinned_settings: None,
+) -> None:
+    ensure_model_catalogue_seeded()
+    repository = get_model_catalogue_repository()
+    seeded = repository.get_entry("text.local:qwen3:8b")
+    assert seeded is not None
+    repository.upsert_entry(
+        seeded.model_copy(update={"lifecycle_state": ModelLifecycleState.RETIRED})
+    )
+
+    with pytest.raises(ProviderExecutionError) as excinfo:
+        bind_live_text_model_catalogue_entry()
+
+    assert excinfo.value.category is ProviderFailureCategory.MODEL_LIFECYCLE_INELIGIBLE
+    assert "RETIRED" in excinfo.value.message

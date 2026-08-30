@@ -149,6 +149,29 @@ def _provider_descriptor(
                 if provider_execution.adapter_kind is not None
                 else {}
             ),
+            # The catalogue-binding attributes are read defensively: responses
+            # predating the binding (and stub paths) simply omit them.
+            **(
+                {"model_version": model_version}
+                if (model_version := getattr(provider_execution, "model_version", None)) is not None
+                else {}
+            ),
+            **(
+                {"model_catalogue_entry_id": catalogue_entry_id}
+                if (
+                    catalogue_entry_id := getattr(
+                        provider_execution, "model_catalogue_entry_id", None
+                    )
+                )
+                is not None
+                else {}
+            ),
+            **(
+                {"model_revision_pinned": revision_pinned}
+                if (revision_pinned := getattr(provider_execution, "model_revision_pinned", None))
+                is not None
+                else {}
+            ),
         },
     )
 

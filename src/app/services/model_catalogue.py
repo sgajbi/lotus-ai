@@ -25,7 +25,8 @@ from app.contracts.model_catalogue import (
     ModelLifecycleState,
     derive_model_catalogue_entry_id,
 )
-from app.contracts.providers import ProviderExecutionMode
+from app.contracts.providers import ProviderExecutionMode, ProviderFailureCategory
+from app.providers.base import ProviderExecutionError
 from app.providers.configured_workflow_run_model_risk_inventory import (
     ConfiguredWorkflowRunModelRiskInventory,
 )
@@ -41,6 +42,17 @@ _LIVE_TEXT_MODES = frozenset(
 # Fields the seeder owns; created_at and last_updated_at carry row provenance
 # and are managed by the idempotency logic, not compared as seed content.
 _SEED_MANAGED_EXCLUDES = {"created_at", "last_updated_at"}
+
+# A model in one of these states must not serve new executions. Reaching them
+# requires an operator lifecycle transition (issue #175 slice 3); the fence is
+# in place first so the transition has teeth from its first use.
+_EXECUTION_INELIGIBLE_LIFECYCLE_STATES = frozenset(
+    {
+        ModelLifecycleState.DEGRADED,
+        ModelLifecycleState.DEPRECATED,
+        ModelLifecycleState.RETIRED,
+    }
+)
 
 
 def upsert_model_catalogue_entry(entry: ModelCatalogueEntry) -> None:
@@ -147,6 +159,12 @@ def ensure_model_catalogue_seeded() -> ModelCatalogueSeedReport:
             created += 1
             continue
         candidate = entry.model_copy(update={"created_at": existing.created_at})
+        if candidate.seed_source == existing.seed_source:
+            # Lifecycle state is governed, not configured: once a row exists,
+            # the seed must never revert an operator transition (e.g. RETIRED
+            # back to CATALOGUED). Only a change of seeding authority - the
+            # inventory superseding a settings row - may re-assert lifecycle.
+            candidate = candidate.model_copy(update={"lifecycle_state": existing.lifecycle_state})
         if candidate.model_dump(exclude=_SEED_MANAGED_EXCLUDES) == existing.model_dump(
             exclude=_SEED_MANAGED_EXCLUDES
         ):
@@ -159,6 +177,46 @@ def ensure_model_catalogue_seeded() -> ModelCatalogueSeedReport:
         updated_count=updated,
         unchanged_count=unchanged,
     )
+
+
+def bind_live_text_model_catalogue_entry() -> ModelCatalogueEntry:
+    """Resolve the catalogue entry for the configured live-text identity, fail-closed.
+
+    Called on the live execution path: the returned entry is the governed
+    identity this execution runs under. No entry, or an entry in an
+    execution-ineligible lifecycle state, refuses execution with a bounded
+    failure category rather than falling back to raw settings strings.
+    """
+
+    ensure_model_catalogue_seeded()
+    provider_id = settings.live_text_provider_id
+    model_id = settings.live_text_model_id
+    if not provider_id or not model_id:
+        raise ProviderExecutionError(
+            category=ProviderFailureCategory.MODEL_NOT_CATALOGUED,
+            message="Live text execution requires a configured provider and model identity.",
+        )
+    model_revision = settings.live_text_model_version or model_id
+    entry_id = derive_model_catalogue_entry_id(
+        provider_id=provider_id,
+        model_revision=model_revision,
+        deployment=None,
+    )
+    entry = get_model_catalogue_repository().get_entry(entry_id)
+    if entry is None:
+        raise ProviderExecutionError(
+            category=ProviderFailureCategory.MODEL_NOT_CATALOGUED,
+            message=f"No governed model-catalogue entry exists for '{entry_id}'.",
+        )
+    if entry.lifecycle_state in _EXECUTION_INELIGIBLE_LIFECYCLE_STATES:
+        raise ProviderExecutionError(
+            category=ProviderFailureCategory.MODEL_LIFECYCLE_INELIGIBLE,
+            message=(
+                f"Model-catalogue entry '{entry_id}' is {entry.lifecycle_state.value} "
+                "and not eligible to serve new executions."
+            ),
+        )
+    return entry
 
 
 def build_model_catalogue_response() -> ModelCatalogueResponse:
