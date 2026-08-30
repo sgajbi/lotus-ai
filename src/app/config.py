@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     provider_timeout_ms: int = 4000
     provider_retry_limit: int = 0
     provider_max_output_tokens: int = 512
+    live_text_temperature: float = 0.0
+    live_text_top_p: float | None = None
+    live_text_seed: int | None = None
     retrieval_mode: str = "disabled"
     embedding_provider_mode: str = "disabled"
     safety_mode: str = "documented_only"

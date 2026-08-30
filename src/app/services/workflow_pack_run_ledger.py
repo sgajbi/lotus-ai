@@ -317,6 +317,7 @@ def record_registered_workflow_pack_run(
         review_state=review_state.value,
         review_required=review_required,
         provider_mode=response.audit.provider_mode,
+        provider_config_sha256=response.audit.provider_config_sha256,
         stubbed=response.audit.stubbed,
         output_preview=response.result.message,
         structured_output_keys=sorted(response.result.structured_output.keys()),

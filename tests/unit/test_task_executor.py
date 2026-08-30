@@ -953,4 +953,10 @@ def test_execute_task_failure_audit_carries_the_rejected_routing_decision(
     assert any(
         descriptor.evidence_type == "routing_decision" for descriptor in failed.evidence.descriptors
     )
+    # Reproducibility identity on the failure path (#151): the prompt that
+    # would have run is recorded; sampling and config digests are not
+    # fabricated for an execution that never reached a provider.
+    assert failed.audit.prompt_content_sha256 == context.prompt.content_sha256
+    assert failed.audit.sampling_parameters is None
+    assert failed.audit.provider_config_sha256 is None
     reset_model_catalogue_store_cache()

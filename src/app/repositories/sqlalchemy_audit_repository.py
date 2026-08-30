@@ -64,6 +64,9 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
                 if record.routing_decision is not None
                 else None
             ),
+            prompt_content_sha256=record.prompt_content_sha256,
+            sampling_payload=record.sampling_parameters,
+            provider_config_sha256=record.provider_config_sha256,
             safety_mode=record.safety_mode,
             redaction_posture=record.redaction_posture.value,
             enforced_safety_controls=record.enforced_safety_controls,
@@ -207,6 +210,9 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
                 if model.routing_decision_payload is not None
                 else None
             ),
+            prompt_content_sha256=model.prompt_content_sha256,
+            sampling_parameters=model.sampling_payload,
+            provider_config_sha256=model.provider_config_sha256,
             safety_mode=model.safety_mode,
             redaction_posture=redaction_posture,
             enforced_safety_controls=model.enforced_safety_controls,

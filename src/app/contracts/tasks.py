@@ -136,6 +136,20 @@ class TaskAuditMetadata(BaseModel):
         default=None,
         description="Recorded routing-policy decision that selected the provider path.",
     )
+    prompt_content_sha256: str | None = Field(
+        default=None,
+        description="Canonical hash of the exact prompt content used (issue #151).",
+    )
+    sampling_parameters: dict[str, object] | None = Field(
+        default=None,
+        description="Explicit sampling configuration sent to the provider; null when no "
+        "provider request was built (knowledge/retrieval paths, failures before execution).",
+    )
+    provider_config_sha256: str | None = Field(
+        default=None,
+        description="Digest of the resolved execution configuration (model identity + "
+        "sampling); reproducibility key for this execution.",
+    )
     safety: SafetyExecutionOutcome = Field(description="Safety posture resolved for the execution.")
     authorization: AuthorizationDecision = Field(
         description="Caller-authorization decision recorded for the execution."
