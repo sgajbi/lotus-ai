@@ -81,3 +81,10 @@ def test_problem_responses_emit_an_error_line_with_the_bounded_code(
     assert line["error_code"]
     assert line["correlation_id"] == "corr-err-9"
     assert line["caller_app"] == "lotus-unknown-app"
+
+
+def test_metrics_endpoint_exposes_the_provider_vocabulary(client: TestClient) -> None:
+    body = client.get("/metrics").text
+    assert "lotus_ai_provider_requests_total" in body
+    assert "lotus_ai_provider_latency_seconds" in body
+    assert "lotus_ai_surface_supportability_state" in body

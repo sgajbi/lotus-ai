@@ -16,6 +16,7 @@ from app.contracts.providers import (
     ProviderFailureCategory,
 )
 from app.providers.base import ProviderAdapterDescriptor, ProviderExecutionError
+from app.services.provider_metrics import record_provider_attempt
 from app.services.structured_logging import correlation_id_var, log_event
 from app.providers.advisor_brief_quality_guardrails import (
     build_advisor_brief_user_message,
@@ -156,6 +157,13 @@ def post_openai_compatible_response(
                 response_payload["_lotus_retry_count"] = attempt_index
                 usage = response_payload.get("usage")
                 usage_fields = usage if isinstance(usage, dict) else {}
+                attempt_latency_ms = _attempt_latency_ms(attempt_started)
+                record_provider_attempt(
+                    provider_id=provider_display_name,
+                    model_id=model_identity if isinstance(model_identity, str) else None,
+                    outcome="success",
+                    latency_seconds=attempt_latency_ms / 1000.0,
+                )
                 log_event(
                     _logger,
                     "provider_attempt",
@@ -164,7 +172,7 @@ def post_openai_compatible_response(
                     attempt=attempt_index,
                     attempt_limit=bounded_retry_limit,
                     outcome="success",
-                    latency_ms=_attempt_latency_ms(attempt_started),
+                    latency_ms=attempt_latency_ms,
                     input_tokens=usage_fields.get("input_tokens"),
                     output_tokens=usage_fields.get("output_tokens"),
                 )
@@ -174,6 +182,13 @@ def post_openai_compatible_response(
             category = failure_category_for_http_status(exc.code)
             retryable = is_retryable_provider_failure(category=category, http_status_code=exc.code)
             will_retry = retryable and attempt_index < bounded_retry_limit
+            attempt_latency_ms = _attempt_latency_ms(attempt_started)
+            record_provider_attempt(
+                provider_id=provider_display_name,
+                model_id=model_identity if isinstance(model_identity, str) else None,
+                outcome="retry" if will_retry else "failed",
+                latency_seconds=attempt_latency_ms / 1000.0,
+            )
             log_event(
                 _logger,
                 "provider_attempt",
@@ -184,7 +199,7 @@ def post_openai_compatible_response(
                 outcome="retry" if will_retry else "failed",
                 failure_class=category.value,
                 http_status=exc.code,
-                latency_ms=_attempt_latency_ms(attempt_started),
+                latency_ms=attempt_latency_ms,
             )
             if will_retry:
                 continue
@@ -197,6 +212,13 @@ def post_openai_compatible_response(
             ) from exc
         except TimeoutError as exc:
             will_retry = attempt_index < bounded_retry_limit
+            attempt_latency_ms = _attempt_latency_ms(attempt_started)
+            record_provider_attempt(
+                provider_id=provider_display_name,
+                model_id=model_identity if isinstance(model_identity, str) else None,
+                outcome="retry" if will_retry else "failed",
+                latency_seconds=attempt_latency_ms / 1000.0,
+            )
             log_event(
                 _logger,
                 "provider_attempt",
@@ -206,7 +228,7 @@ def post_openai_compatible_response(
                 attempt_limit=bounded_retry_limit,
                 outcome="retry" if will_retry else "failed",
                 failure_class=ProviderFailureCategory.PROVIDER_TIMEOUT.value,
-                latency_ms=_attempt_latency_ms(attempt_started),
+                latency_ms=attempt_latency_ms,
             )
             if will_retry:
                 continue
@@ -219,6 +241,13 @@ def post_openai_compatible_response(
             ) from exc
         except error.URLError as exc:
             will_retry = attempt_index < bounded_retry_limit
+            attempt_latency_ms = _attempt_latency_ms(attempt_started)
+            record_provider_attempt(
+                provider_id=provider_display_name,
+                model_id=model_identity if isinstance(model_identity, str) else None,
+                outcome="retry" if will_retry else "failed",
+                latency_seconds=attempt_latency_ms / 1000.0,
+            )
             log_event(
                 _logger,
                 "provider_attempt",
@@ -228,7 +257,7 @@ def post_openai_compatible_response(
                 attempt_limit=bounded_retry_limit,
                 outcome="retry" if will_retry else "failed",
                 failure_class=ProviderFailureCategory.PROVIDER_TIMEOUT.value,
-                latency_ms=_attempt_latency_ms(attempt_started),
+                latency_ms=attempt_latency_ms,
             )
             if will_retry:
                 continue
