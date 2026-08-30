@@ -8,6 +8,7 @@ from app.contracts.providers import (
     ProviderExecutionMode,
     ProviderRolloutState,
 )
+from app.services.provider_execution_config import resolve_provider_execution_config
 from app.services.provider_task_allowlist import (
     list_invalid_live_text_allowlisted_task_ids,
     list_live_text_allowlisted_task_ids,
@@ -15,12 +16,13 @@ from app.services.provider_task_allowlist import (
 
 
 def build_text_generation_configuration_status() -> ProviderConfigurationStatusDescriptor:
+    config = resolve_provider_execution_config()
     rollout_state = _resolve_rollout_state()
-    configured_live_provider_id = settings.live_text_provider_id
-    configured_live_model_id = settings.live_text_model_id
-    api_key = settings.live_text_provider_api_key
-    api_base = settings.live_text_api_base
-    provider_mode = settings.provider_mode
+    configured_live_provider_id = config.provider_id
+    configured_live_model_id = config.model_id
+    api_key = config.api_key
+    api_base = config.api_base
+    provider_mode = config.provider_mode
     allowlisted_task_ids = list_live_text_allowlisted_task_ids()
     invalid_allowlisted_task_ids = list_invalid_live_text_allowlisted_task_ids()
 
@@ -183,7 +185,7 @@ def build_embedding_configuration_status() -> ProviderConfigurationStatusDescrip
 
 
 def _resolve_rollout_state() -> ProviderRolloutState | None:
-    configured_state = settings.provider_rollout_state
+    configured_state = resolve_provider_execution_config().rollout_state
     try:
         return ProviderRolloutState(configured_state)
     except ValueError:

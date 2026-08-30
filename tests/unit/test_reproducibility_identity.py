@@ -26,9 +26,9 @@ from app.repositories.sqlalchemy_workflow_pack_run_repository import (
     SqlAlchemyWorkflowPackRunRepository,
 )
 from app.services.prompt_store import get_prompt_repository
-from app.services.provider_execution_controls import (
-    build_provider_execution_controls,
+from app.services.provider_execution_config import (
     compute_provider_config_sha256,
+    resolve_provider_execution_config,
 )
 from app.services.task_executor import execute_task
 from tests.support.migration_runner import upgrade_database_to_head
@@ -114,8 +114,8 @@ def test_provider_config_digest_tracks_sampling_and_model_identity() -> None:
     assert digest != _config_digest(model_version="2026-07-01")
 
 
-def test_execution_controls_carry_sampling_settings() -> None:
-    defaults = build_provider_execution_controls()
+def test_execution_config_carries_sampling_settings() -> None:
+    defaults = resolve_provider_execution_config()
     assert defaults.temperature == 0.0
     assert defaults.top_p is None
     assert defaults.seed is None
@@ -123,7 +123,7 @@ def test_execution_controls_carry_sampling_settings() -> None:
     with override_runtime_settings(
         live_text_temperature=0.35, live_text_top_p=0.9, live_text_seed=11
     ):
-        overridden = build_provider_execution_controls()
+        overridden = resolve_provider_execution_config()
         assert overridden.temperature == 0.35
         assert overridden.top_p == 0.9
         assert overridden.seed == 11
@@ -152,6 +152,8 @@ def test_transport_sends_explicit_default_sampling(monkeypatch: MonkeyPatch) -> 
         api_base="http://localhost:1234/v1",
         api_key=None,
         require_api_key=False,
+        model_id="local-model",
+        model_version=None,
     )
 
     assert response.message == "OK"
@@ -170,7 +172,9 @@ def test_openai_live_provider_sends_explicit_sampling(monkeypatch: MonkeyPatch) 
     with override_runtime_settings(
         live_text_provider_api_key="test-key", live_text_model_id="gpt-5.4"
     ):
-        response = OpenAILiveTextProvider().execute(_provider_request())
+        response = OpenAILiveTextProvider().execute(
+            _provider_request(), config=resolve_provider_execution_config()
+        )
 
     # The managed-OpenAI path shares the payload builder with the local
     # path, so recorded sampling is truthful for both live providers.
@@ -190,6 +194,8 @@ def test_transport_sends_configured_sampling_parameters(monkeypatch: MonkeyPatch
         api_base="http://localhost:1234/v1",
         api_key=None,
         require_api_key=False,
+        model_id="local-model",
+        model_version=None,
     )
 
     assert captured["temperature"] == 0.7

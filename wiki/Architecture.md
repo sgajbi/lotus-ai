@@ -124,6 +124,13 @@ For `POST /ai/tasks/execute`, the runtime is deliberately staged rather than one
 Stages 3–6 are where the governance surfaces attach; the split exists so a rollout or policy change
 does not require editing the execution path.
 
+Stage 4 resolves one frozen `ProviderExecutionConfig` (mode, rollout, model identity, endpoint,
+credential, task allowlist, and the recorded sampling controls) at the gateway entry and threads it
+through policy checks, catalogue binding, kill-switch scope matching, and the provider adapters —
+mid-request `settings` reads on this path are gone. The evaluation runtime installs a per-case
+config through an execution-scoped override instead of mutating process settings, so a concurrent
+production request always executes under the deployed configuration (issue #148).
+
 ## Caller identity and tenant scope
 
 Protected routes require a trusted upstream caller identity in `X-Caller-App`. Measured on `main`:

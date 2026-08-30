@@ -20,8 +20,11 @@ from app.contracts.model_catalogue import ModelCatalogueEntry
 from app.providers.base import ProviderExecutionError
 from app.providers.registry import resolve_text_generation_adapter
 from app.services.access_control_authorization import authorize_request, require_authorized
-from app.config import settings
 from app.contracts.model_catalogue import derive_model_catalogue_entry_id
+from app.services.provider_execution_config import (
+    ProviderExecutionConfig,
+    resolve_provider_execution_config,
+)
 from app.services.kill_switch_control import enforce_kill_switches
 from app.services.model_catalogue import (
     bind_live_text_model_catalogue_entry,
@@ -53,6 +56,7 @@ class ProviderGatewayUnavailableError(HTTPException):
 
 
 def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecutionResponse:
+    config = resolve_provider_execution_config()
     mode = require_supported_text_generation_mode()
     live_execution_state = build_provider_live_execution_state(task_id=request.task_id)
     if mode in LIVE_TEXT_MODES and not live_execution_state.live_execution_enabled:
@@ -89,12 +93,13 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
                 routing_decision=_build_rejected_routing_decision(
                     mode_value=mode.value,
                     category=exc.category,
+                    config=config,
                 ),
             ) from exc
     adapter = resolve_text_generation_adapter(mode)
     decided_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     try:
-        response = adapter.execute(request)
+        response = adapter.execute(request, config=config)
         if catalogue_entry is not None:
             # Stamp the governed identity the execution was bound to; the
             # transport only knows settings strings and the provider echo.
@@ -126,7 +131,7 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
                 detail=f"{exc.category.value}: {exc.message}",
                 routing_decision=_build_fixed_routing_decision(
                     mode_value=mode.value,
-                    selected_provider_id=settings.live_text_provider_id or "provider.unavailable",
+                    selected_provider_id=config.provider_id or "provider.unavailable",
                     catalogue_entry=catalogue_entry,
                     decided_at=decided_at,
                 ),
@@ -141,14 +146,15 @@ def _build_rejected_routing_decision(
     *,
     mode_value: str,
     category: ProviderFailureCategory,
+    config: ProviderExecutionConfig,
 ) -> RoutingDecisionDescriptor:
-    provider_id = settings.live_text_provider_id or "provider.unavailable"
+    provider_id = config.provider_id or "provider.unavailable"
     entry_id: str | None = None
     model_revision: str | None = None
-    if settings.live_text_provider_id and settings.live_text_model_id:
-        model_revision = settings.live_text_model_version or settings.live_text_model_id
+    if config.provider_id and config.model_id:
+        model_revision = config.model_version or config.model_id
         entry_id = derive_model_catalogue_entry_id(
-            provider_id=settings.live_text_provider_id,
+            provider_id=config.provider_id,
             model_revision=model_revision,
             deployment=None,
         )

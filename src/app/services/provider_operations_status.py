@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.provider_execution_config import resolve_provider_execution_config
 from app.contracts.providers import (
     ProviderBudgetState,
     ProviderOperationsState,
@@ -30,7 +31,7 @@ def build_provider_operations_status() -> ProviderOperationsStatusResponse:
     return ProviderOperationsStatusResponse(
         service=settings.service_name,
         version=settings.service_version,
-        provider_mode=settings.provider_mode,
+        provider_mode=resolve_provider_execution_config().provider_mode,
         operations_state=operations_state,
         runtime_execution_enabled=live_execution_state.live_execution_enabled,
         rollout_blocked=operations_state == ProviderOperationsState.ROLLOUT_BLOCKED,

@@ -879,7 +879,7 @@ def test_execute_task_failure_audit_carries_the_rejected_routing_decision(
     mocker.patch("app.services.task_execution_pipeline.get_audit_store", return_value=audit_store)
 
     class _LiveAdapter:
-        def execute(self, request: object) -> object:
+        def execute(self, request: object, *, config: object | None = None) -> object:
             return type(
                 "Response",
                 (),

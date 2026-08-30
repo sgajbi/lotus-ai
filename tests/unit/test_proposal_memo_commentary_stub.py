@@ -7,6 +7,7 @@ from app.providers.proposal_memo_commentary_stub import (
     build_proposal_memo_commentary_stub_result,
 )
 from app.providers.stub_text_provider import StubTextProvider
+from app.services.provider_execution_config import resolve_provider_execution_config
 
 
 def _context_payload(**overrides: object) -> dict[str, object]:
@@ -148,7 +149,9 @@ def test_build_proposal_memo_commentary_stub_requires_memo_evidence_and_request(
 
 
 def test_stub_text_provider_routes_proposal_memo_commentary_with_common_metadata() -> None:
-    response = StubTextProvider().execute(_provider_request())
+    response = StubTextProvider().execute(
+        _provider_request(), config=resolve_provider_execution_config()
+    )
     structured_output = response.structured_output
 
     assert response.provider_id == "text.stub"

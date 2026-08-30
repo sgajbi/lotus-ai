@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.config import settings
 from app.contracts.providers import (
     ProviderCredentialStatus,
     ProviderExecutionMode,
@@ -11,6 +10,7 @@ from app.contracts.providers import (
 from app.services.local_openai_compatible_endpoint_probe import (
     build_local_openai_compatible_endpoint_status,
 )
+from app.services.provider_execution_config import resolve_provider_execution_config
 from app.services.provider_configuration_status import build_text_generation_configuration_status
 from app.services.provider_task_allowlist import is_live_text_task_allowlisted
 
@@ -33,14 +33,15 @@ class ProviderLiveExecutionState:
 def build_provider_live_execution_state(
     *, task_id: str | None = None
 ) -> ProviderLiveExecutionState:
+    config = resolve_provider_execution_config()
     configuration = build_text_generation_configuration_status()
-    mode_supported = settings.provider_mode in {
+    mode_supported = config.provider_mode in {
         ProviderExecutionMode.DISABLED.value,
         ProviderExecutionMode.STUB.value,
         ProviderExecutionMode.OPENAI.value,
         ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
     }
-    live_mode_requested = settings.provider_mode in {
+    live_mode_requested = config.provider_mode in {
         ProviderExecutionMode.OPENAI.value,
         ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
     }
@@ -68,7 +69,7 @@ def build_provider_live_execution_state(
         blocking_reason = "Live provider rollout posture does not yet permit active execution."
     elif not task_allowlisted:
         blocking_reason = f"Task '{task_id}' is not allowlisted for live text-generation execution."
-    elif settings.provider_mode == ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value:
+    elif config.provider_mode == ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value:
         endpoint_status = build_local_openai_compatible_endpoint_status()
         endpoint_reachable = endpoint_status.endpoint_reachable
         configured_model_available = endpoint_status.model_available
@@ -76,7 +77,7 @@ def build_provider_live_execution_state(
             blocking_reason = endpoint_status.blocking_reason
 
     return ProviderLiveExecutionState(
-        provider_mode=settings.provider_mode,
+        provider_mode=config.provider_mode,
         rollout_state=configuration.rollout_state,
         configuration_valid=configuration.configuration_valid,
         credentials_configured=credentials_configured,

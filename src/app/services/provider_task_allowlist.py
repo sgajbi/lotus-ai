@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from app.config import settings
 from app.services.capability_catalog import get_capability_by_task_id
+from app.services.provider_execution_config import resolve_provider_execution_config
 
 
 def list_live_text_allowlisted_task_ids() -> list[str]:
-    allowlisted = [
-        item.strip() for item in settings.live_text_allowed_task_ids.split(",") if item.strip()
-    ]
+    allowed_task_ids = resolve_provider_execution_config().allowed_task_ids
+    allowlisted = [item.strip() for item in allowed_task_ids.split(",") if item.strip()]
     return sorted(dict.fromkeys(allowlisted))
 
 

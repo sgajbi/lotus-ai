@@ -20,6 +20,7 @@ from app.providers.openai_compatible_text_transport import (
 )
 from app.providers.local_openai_compatible_text_provider import LocalOpenAICompatibleTextProvider
 from app.providers.openai_live_text_provider import OpenAILiveTextProvider
+from app.services.provider_execution_config import resolve_provider_execution_config
 from tests.unit.test_provider_gateway import _request
 
 
@@ -72,7 +73,9 @@ def test_openai_live_text_provider_returns_usage_and_cost(monkeypatch: MonkeyPat
         },
     )
 
-    response = OpenAILiveTextProvider().execute(_request())
+    response = OpenAILiveTextProvider().execute(
+        _request(), config=resolve_provider_execution_config()
+    )
 
     assert response.provider_id == "text.openai"
     assert response.provider_mode == "openai"
@@ -115,7 +118,8 @@ def test_openai_live_text_provider_parses_advisor_brief_structured_output(
     )
 
     response = OpenAILiveTextProvider().execute(
-        _request(
+        config=resolve_provider_execution_config(),
+        request=_request(
             caller_app="lotus-gateway",
             context_payload={
                 "portfolio": {
@@ -131,7 +135,7 @@ def test_openai_live_text_provider_parses_advisor_brief_structured_output(
                 "supportability": [{"label": "Return History", "value": "Ready"}],
             },
             source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
-        )
+        ),
     )
     structured_output = cast(dict[str, Any], response.structured_output)
 
@@ -172,7 +176,8 @@ def test_openai_live_text_provider_parses_fenced_advisor_brief_json(
     )
 
     response = OpenAILiveTextProvider().execute(
-        _request(
+        config=resolve_provider_execution_config(),
+        request=_request(
             caller_app="lotus-gateway",
             context_payload={
                 "portfolio": {
@@ -184,7 +189,7 @@ def test_openai_live_text_provider_parses_fenced_advisor_brief_json(
                 "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
             },
             source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
-        )
+        ),
     )
 
     structured_output = cast(dict[str, Any], response.structured_output)
@@ -211,7 +216,8 @@ def test_openai_live_text_provider_parses_advisor_json_with_trailing_text(
     )
 
     response = OpenAILiveTextProvider().execute(
-        _request(
+        config=resolve_provider_execution_config(),
+        request=_request(
             caller_app="lotus-gateway",
             context_payload={
                 "portfolio": {
@@ -223,7 +229,7 @@ def test_openai_live_text_provider_parses_advisor_json_with_trailing_text(
                 "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
             },
             source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
-        )
+        ),
     )
 
     structured_output = cast(dict[str, Any], response.structured_output)
@@ -249,7 +255,8 @@ def test_openai_live_text_provider_extracts_summary_from_truncated_advisor_json(
     )
 
     response = OpenAILiveTextProvider().execute(
-        _request(
+        config=resolve_provider_execution_config(),
+        request=_request(
             caller_app="lotus-gateway",
             context_payload={
                 "portfolio": {
@@ -261,7 +268,7 @@ def test_openai_live_text_provider_extracts_summary_from_truncated_advisor_json(
                 "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
             },
             source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
-        )
+        ),
     )
 
     structured_output = cast(dict[str, Any], response.structured_output)
@@ -273,7 +280,7 @@ def test_openai_live_text_provider_requires_api_key() -> None:
     settings.live_text_provider_api_key = None
 
     try:
-        OpenAILiveTextProvider().execute(_request())
+        OpenAILiveTextProvider().execute(_request(), config=resolve_provider_execution_config())
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.INVALID_LIVE_CONFIGURATION
     else:
@@ -330,7 +337,8 @@ def test_openai_live_text_provider_falls_back_when_advisor_summary_leaks_contrac
     )
 
     response = OpenAILiveTextProvider().execute(
-        _request(
+        config=resolve_provider_execution_config(),
+        request=_request(
             caller_app="lotus-gateway",
             context_payload={
                 "portfolio": {
@@ -346,7 +354,7 @@ def test_openai_live_text_provider_falls_back_when_advisor_summary_leaks_contrac
                 "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
             },
             source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
-        )
+        ),
     )
 
     assert response.message.startswith("PB SG GLOBAL BAL 001 delivered 1.25% over YTD")
@@ -532,7 +540,9 @@ def test_openai_live_text_provider_retries_managed_transient_failure_then_succes
 
     monkeypatch.setattr("urllib.request.urlopen", _urlopen)
 
-    response = OpenAILiveTextProvider().execute(_request(retry_limit=2))
+    response = OpenAILiveTextProvider().execute(
+        _request(retry_limit=2), config=resolve_provider_execution_config()
+    )
 
     assert attempts["count"] == 2
     assert response.retry_count == 1
@@ -554,7 +564,9 @@ def test_openai_compatible_transport_retries_local_transient_failure_then_succes
 
     monkeypatch.setattr("urllib.request.urlopen", _urlopen)
 
-    response = LocalOpenAICompatibleTextProvider().execute(_request(retry_limit=1))
+    response = LocalOpenAICompatibleTextProvider().execute(
+        _request(retry_limit=1), config=resolve_provider_execution_config()
+    )
 
     assert attempts["count"] == 2
     assert response.retry_count == 1

@@ -31,6 +31,7 @@ from app.contracts.providers import ProviderExecutionRequest, ProviderFailureCat
 from app.providers.base import ProviderExecutionError
 from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.kill_switch_store import get_kill_switch_repository
+from app.services.provider_execution_config import resolve_provider_execution_config
 
 
 def activate_kill_switch(request: KillSwitchActivationRequest) -> KillSwitchActionResponse:
@@ -161,11 +162,10 @@ def _matches(activation: KillSwitchActivationRecord, *, request: ProviderExecuti
     if activation.scope is KillSwitchScope.ALL_LIVE_TEXT:
         return True
     if activation.scope is KillSwitchScope.PROVIDER:
-        return activation.target == settings.live_text_provider_id
+        return activation.target == resolve_provider_execution_config().provider_id
     if activation.scope is KillSwitchScope.MODEL_REVISION:
-        return activation.target == (
-            settings.live_text_model_version or settings.live_text_model_id
-        )
+        config = resolve_provider_execution_config()
+        return activation.target == (config.model_version or config.model_id)
     if activation.scope is KillSwitchScope.TASK:
         return activation.target == request.task_id
     if activation.scope is KillSwitchScope.TENANT:

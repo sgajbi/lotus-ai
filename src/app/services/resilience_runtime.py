@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.provider_execution_config import resolve_provider_execution_config
 from app.contracts.resilience import (
     ResilienceDeliveryStage,
     ResilienceDependencyDescriptor,
@@ -74,7 +75,7 @@ def build_resilience_runtime_status() -> ResilienceRuntimeStatusResponse:
             message=retrieval_execution.message,
         ),
         _classify_live_provider_dependency(
-            provider_mode=settings.provider_mode,
+            provider_mode=resolve_provider_execution_config().provider_mode,
             operations_state=provider_operations.operations_state.value,
             runtime_execution_enabled=provider_operations.runtime_execution_enabled,
             findings=provider_operations.blocking_reasons,

@@ -6,7 +6,6 @@ import time
 from typing import Any, cast
 from urllib import error, request as urllib_request
 
-from app.config import settings
 from app.contracts.providers import (
     ProviderAdapterKind,
     ProviderCapability,
@@ -36,9 +35,11 @@ def execute_openai_compatible_text_request(
     api_base: str,
     api_key: str | None,
     require_api_key: bool,
+    model_id: str | None,
+    model_version: str | None,
 ) -> ProviderExecutionResponse:
     payload: dict[str, object] = {
-        "model": settings.live_text_model_id,
+        "model": model_id,
         "input": [
             {
                 "role": "system",
@@ -79,6 +80,7 @@ def execute_openai_compatible_text_request(
         request=request,
         response_payload=response_payload,
         output_message=output_message,
+        configured_model_id=model_id,
     )
     input_tokens, output_tokens, total_tokens = extract_usage(response_payload)
     return ProviderExecutionResponse(
@@ -89,8 +91,8 @@ def execute_openai_compatible_text_request(
         timeout_ms=request.timeout_ms,
         retry_count=extract_retry_count(response_payload),
         max_output_tokens=request.max_output_tokens,
-        model_id=as_str(response_payload.get("model")) or settings.live_text_model_id,
-        model_version=settings.live_text_model_version,
+        model_id=as_str(response_payload.get("model")) or model_id,
+        model_version=model_version,
         provider_request_id=as_str(response_payload.get("id")),
         input_tokens=input_tokens,
         output_tokens=output_tokens,
@@ -407,12 +409,13 @@ def build_structured_output(
     request: ProviderExecutionRequest,
     response_payload: dict[str, Any],
     output_message: str,
+    configured_model_id: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     structured_output: dict[str, Any] = {
         "provider_id": descriptor.provider_id,
         "provider_mode": descriptor.runtime_mode.value,
         "adapter_kind": descriptor.adapter_kind.value,
-        "model_id": as_str(response_payload.get("model")) or settings.live_text_model_id,
+        "model_id": as_str(response_payload.get("model")) or configured_model_id,
         "provider_request_id": as_str(response_payload.get("id")),
         "output_label": request.output_label,
         "safety_mode": request.safety_mode,

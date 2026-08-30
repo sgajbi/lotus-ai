@@ -16,6 +16,7 @@ policy (ordered_fallback, slice 3 of #176).
 from __future__ import annotations
 
 from app.config import settings
+from app.services.provider_execution_config import resolve_provider_execution_config
 from app.contracts.model_catalogue import ModelCatalogueEntry, derive_model_catalogue_entry_id
 from app.contracts.providers import (
     ROUTING_POLICY_FIXED_CONFIGURED_MODE,
@@ -53,20 +54,21 @@ def build_routing_posture() -> RoutingPostureResponse:
 
 
 def _resolve_candidate() -> RoutingPostureCandidateDescriptor:
-    provider_id = settings.live_text_provider_id
-    model_id = settings.live_text_model_id
+    config = resolve_provider_execution_config()
+    provider_id = config.provider_id
+    model_id = config.model_id
     entry: ModelCatalogueEntry | None = None
     if provider_id and model_id:
         ensure_model_catalogue_seeded()
         entry_id = derive_model_catalogue_entry_id(
             provider_id=provider_id,
-            model_revision=settings.live_text_model_version or model_id,
+            model_revision=config.model_version or model_id,
             deployment=None,
         )
         entry = get_model_catalogue_repository().get_entry(entry_id)
     return RoutingPostureCandidateDescriptor(
         provider_id=provider_id,
-        provider_mode=settings.provider_mode,
+        provider_mode=config.provider_mode,
         model_catalogue_entry_id=entry.entry_id if entry is not None else None,
         model_family=entry.model_family if entry is not None else None,
         model_revision=entry.model_revision if entry is not None else None,

@@ -13,7 +13,7 @@ from app.contracts.tasks import (
 )
 from app.services.execution_evidence import build_execution_evidence
 from app.services.task_execution_models import ResolvedTaskExecution, TaskExecutionContext
-from app.services.provider_execution_controls import compute_provider_config_sha256
+from app.services.provider_execution_config import compute_provider_config_sha256
 
 if TYPE_CHECKING:
     pass

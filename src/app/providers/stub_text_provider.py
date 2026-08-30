@@ -8,6 +8,7 @@ from app.contracts.providers import (
     ProviderExecutionRequest,
     ProviderExecutionResponse,
 )
+from app.services.provider_execution_config import ProviderExecutionConfig
 from app.providers.base import ProviderAdapterDescriptor
 from app.providers.advisory_copilot_stub import build_advisory_copilot_stub_result
 from app.providers.advisor_brief_stub import build_advisor_brief_stub_result
@@ -42,7 +43,9 @@ class StubTextProvider:
         ),
     )
 
-    def execute(self, request: ProviderExecutionRequest) -> ProviderExecutionResponse:
+    def execute(
+        self, request: ProviderExecutionRequest, *, config: ProviderExecutionConfig
+    ) -> ProviderExecutionResponse:
         idea_explanation_result = build_idea_explanation_stub_result(
             context_payload=request.context_payload,
         )
@@ -50,7 +53,7 @@ class StubTextProvider:
             message, structured_output = idea_explanation_result
             return ProviderExecutionResponse(
                 provider_id=self.descriptor.provider_id,
-                provider_mode=settings.provider_mode,
+                provider_mode=config.provider_mode,
                 adapter_kind=self.descriptor.adapter_kind,
                 failure_category=None,
                 timeout_ms=request.timeout_ms,
@@ -62,7 +65,7 @@ class StubTextProvider:
                     **structured_output,
                     "phase": settings.delivery_phase,
                     "provider_id": self.descriptor.provider_id,
-                    "provider_mode": settings.provider_mode,
+                    "provider_mode": config.provider_mode,
                     "adapter_kind": self.descriptor.adapter_kind.value,
                     "timeout_ms": request.timeout_ms,
                     "retry_count": 0,
@@ -88,7 +91,7 @@ class StubTextProvider:
             provider_id, model_version = _advisory_copilot_model_risk_identity(structured_output)
             return ProviderExecutionResponse(
                 provider_id=provider_id,
-                provider_mode=settings.provider_mode,
+                provider_mode=config.provider_mode,
                 adapter_kind=self.descriptor.adapter_kind,
                 failure_category=None,
                 timeout_ms=request.timeout_ms,
@@ -108,7 +111,7 @@ class StubTextProvider:
             message, structured_output = proposal_memo_commentary_result
             return ProviderExecutionResponse(
                 provider_id=self.descriptor.provider_id,
-                provider_mode=settings.provider_mode,
+                provider_mode=config.provider_mode,
                 adapter_kind=self.descriptor.adapter_kind,
                 failure_category=None,
                 timeout_ms=request.timeout_ms,
@@ -120,7 +123,7 @@ class StubTextProvider:
                     **structured_output,
                     "phase": settings.delivery_phase,
                     "provider_id": self.descriptor.provider_id,
-                    "provider_mode": settings.provider_mode,
+                    "provider_mode": config.provider_mode,
                     "adapter_kind": self.descriptor.adapter_kind.value,
                     "timeout_ms": request.timeout_ms,
                     "retry_count": 0,
@@ -144,7 +147,7 @@ class StubTextProvider:
             message, structured_output = pm_quality_summary_result
             return ProviderExecutionResponse(
                 provider_id=self.descriptor.provider_id,
-                provider_mode=settings.provider_mode,
+                provider_mode=config.provider_mode,
                 adapter_kind=self.descriptor.adapter_kind,
                 failure_category=None,
                 timeout_ms=request.timeout_ms,
@@ -156,7 +159,7 @@ class StubTextProvider:
                     **structured_output,
                     "phase": settings.delivery_phase,
                     "provider_id": self.descriptor.provider_id,
-                    "provider_mode": settings.provider_mode,
+                    "provider_mode": config.provider_mode,
                     "adapter_kind": self.descriptor.adapter_kind.value,
                     "timeout_ms": request.timeout_ms,
                     "retry_count": 0,
@@ -180,7 +183,7 @@ class StubTextProvider:
             message, structured_output = dpm_exception_summary_result
             return ProviderExecutionResponse(
                 provider_id=self.descriptor.provider_id,
-                provider_mode=settings.provider_mode,
+                provider_mode=config.provider_mode,
                 adapter_kind=self.descriptor.adapter_kind,
                 failure_category=None,
                 timeout_ms=request.timeout_ms,
@@ -192,7 +195,7 @@ class StubTextProvider:
                     **structured_output,
                     "phase": settings.delivery_phase,
                     "provider_id": self.descriptor.provider_id,
-                    "provider_mode": settings.provider_mode,
+                    "provider_mode": config.provider_mode,
                     "adapter_kind": self.descriptor.adapter_kind.value,
                     "timeout_ms": request.timeout_ms,
                     "retry_count": 0,
@@ -216,7 +219,7 @@ class StubTextProvider:
             message, structured_output = operations_handoff_summary_result
             return ProviderExecutionResponse(
                 provider_id=self.descriptor.provider_id,
-                provider_mode=settings.provider_mode,
+                provider_mode=config.provider_mode,
                 adapter_kind=self.descriptor.adapter_kind,
                 failure_category=None,
                 timeout_ms=request.timeout_ms,
@@ -228,7 +231,7 @@ class StubTextProvider:
                     **structured_output,
                     "phase": settings.delivery_phase,
                     "provider_id": self.descriptor.provider_id,
-                    "provider_mode": settings.provider_mode,
+                    "provider_mode": config.provider_mode,
                     "adapter_kind": self.descriptor.adapter_kind.value,
                     "timeout_ms": request.timeout_ms,
                     "retry_count": 0,
@@ -252,7 +255,7 @@ class StubTextProvider:
             message, structured_output = wave_pm_memo_result
             return ProviderExecutionResponse(
                 provider_id=self.descriptor.provider_id,
-                provider_mode=settings.provider_mode,
+                provider_mode=config.provider_mode,
                 adapter_kind=self.descriptor.adapter_kind,
                 failure_category=None,
                 timeout_ms=request.timeout_ms,
@@ -264,7 +267,7 @@ class StubTextProvider:
                     **structured_output,
                     "phase": settings.delivery_phase,
                     "provider_id": self.descriptor.provider_id,
-                    "provider_mode": settings.provider_mode,
+                    "provider_mode": config.provider_mode,
                     "adapter_kind": self.descriptor.adapter_kind.value,
                     "timeout_ms": request.timeout_ms,
                     "retry_count": 0,
@@ -288,7 +291,7 @@ class StubTextProvider:
             message, structured_output = proof_pack_pm_memo_result
             return ProviderExecutionResponse(
                 provider_id=self.descriptor.provider_id,
-                provider_mode=settings.provider_mode,
+                provider_mode=config.provider_mode,
                 adapter_kind=self.descriptor.adapter_kind,
                 failure_category=None,
                 timeout_ms=request.timeout_ms,
@@ -300,7 +303,7 @@ class StubTextProvider:
                     **structured_output,
                     "phase": settings.delivery_phase,
                     "provider_id": self.descriptor.provider_id,
-                    "provider_mode": settings.provider_mode,
+                    "provider_mode": config.provider_mode,
                     "adapter_kind": self.descriptor.adapter_kind.value,
                     "timeout_ms": request.timeout_ms,
                     "retry_count": 0,
@@ -324,7 +327,7 @@ class StubTextProvider:
             message, structured_output = outcome_review_narrative_result
             return ProviderExecutionResponse(
                 provider_id=self.descriptor.provider_id,
-                provider_mode=settings.provider_mode,
+                provider_mode=config.provider_mode,
                 adapter_kind=self.descriptor.adapter_kind,
                 failure_category=None,
                 timeout_ms=request.timeout_ms,
@@ -336,7 +339,7 @@ class StubTextProvider:
                     **structured_output,
                     "phase": settings.delivery_phase,
                     "provider_id": self.descriptor.provider_id,
-                    "provider_mode": settings.provider_mode,
+                    "provider_mode": config.provider_mode,
                     "adapter_kind": self.descriptor.adapter_kind.value,
                     "timeout_ms": request.timeout_ms,
                     "retry_count": 0,
@@ -361,7 +364,7 @@ class StubTextProvider:
             message, structured_output = advisor_brief_result
             return ProviderExecutionResponse(
                 provider_id=self.descriptor.provider_id,
-                provider_mode=settings.provider_mode,
+                provider_mode=config.provider_mode,
                 adapter_kind=self.descriptor.adapter_kind,
                 failure_category=None,
                 timeout_ms=request.timeout_ms,
@@ -373,7 +376,7 @@ class StubTextProvider:
                     **structured_output,
                     "phase": settings.delivery_phase,
                     "provider_id": self.descriptor.provider_id,
-                    "provider_mode": settings.provider_mode,
+                    "provider_mode": config.provider_mode,
                     "adapter_kind": self.descriptor.adapter_kind.value,
                     "timeout_ms": request.timeout_ms,
                     "retry_count": 0,
@@ -392,7 +395,7 @@ class StubTextProvider:
             )
         return ProviderExecutionResponse(
             provider_id=self.descriptor.provider_id,
-            provider_mode=settings.provider_mode,
+            provider_mode=config.provider_mode,
             adapter_kind=self.descriptor.adapter_kind,
             failure_category=None,
             timeout_ms=request.timeout_ms,
@@ -406,7 +409,7 @@ class StubTextProvider:
             structured_output={
                 "phase": settings.delivery_phase,
                 "provider_id": self.descriptor.provider_id,
-                "provider_mode": settings.provider_mode,
+                "provider_mode": config.provider_mode,
                 "adapter_kind": self.descriptor.adapter_kind.value,
                 "timeout_ms": request.timeout_ms,
                 "retry_count": 0,
