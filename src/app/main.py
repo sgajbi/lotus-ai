@@ -40,6 +40,7 @@ from app.routers.provider_retention_confirmations import (
     router as provider_retention_confirmations_router,
 )
 from app.services.startup_policy import apply_startup_readiness_policy
+from app.services.structured_logging import configure_structured_logging
 
 SERVICE_NAME = settings.service_name
 SERVICE_VERSION = settings.service_version
@@ -176,6 +177,7 @@ def _install_problem_details_openapi(app: FastAPI) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    configure_structured_logging()
     evaluation = apply_startup_readiness_policy()
     app.state.startup_readiness_blocking = evaluation.blocking
     app.state.startup_readiness_findings = evaluation.findings

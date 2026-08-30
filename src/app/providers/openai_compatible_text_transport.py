@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from typing import Any, cast
 from urllib import error, request as urllib_request
 
@@ -14,6 +16,7 @@ from app.contracts.providers import (
     ProviderFailureCategory,
 )
 from app.providers.base import ProviderAdapterDescriptor, ProviderExecutionError
+from app.services.structured_logging import correlation_id_var, log_event
 from app.providers.advisor_brief_quality_guardrails import (
     build_advisor_brief_user_message,
     normalize_advisor_brief_output,
@@ -134,6 +137,10 @@ def post_openai_compatible_response(
     headers = {"Content-Type": "application/json"}
     if api_key is not None:
         headers["Authorization"] = f"Bearer {api_key}"
+    correlation_id = correlation_id_var.get()
+    if correlation_id is not None:
+        headers["X-Correlation-Id"] = correlation_id
+    model_identity = payload.get("model")
     bounded_retry_limit = max(retry_limit, 0)
     for attempt_index in range(bounded_retry_limit + 1):
         provider_request = urllib_request.Request(
@@ -142,16 +149,44 @@ def post_openai_compatible_response(
             headers=headers,
             method="POST",
         )
+        attempt_started = time.perf_counter()
         try:
             with urllib_request.urlopen(provider_request, timeout=timeout_seconds) as response:
                 response_payload = cast(dict[str, Any], json.loads(response.read().decode("utf-8")))
                 response_payload["_lotus_retry_count"] = attempt_index
+                usage = response_payload.get("usage")
+                usage_fields = usage if isinstance(usage, dict) else {}
+                log_event(
+                    _logger,
+                    "provider_attempt",
+                    provider_id=provider_display_name,
+                    model_id=model_identity,
+                    attempt=attempt_index,
+                    attempt_limit=bounded_retry_limit,
+                    outcome="success",
+                    latency_ms=_attempt_latency_ms(attempt_started),
+                    input_tokens=usage_fields.get("input_tokens"),
+                    output_tokens=usage_fields.get("output_tokens"),
+                )
                 return response_payload
         except error.HTTPError as exc:
             load_error_payload(exc)
             category = failure_category_for_http_status(exc.code)
             retryable = is_retryable_provider_failure(category=category, http_status_code=exc.code)
-            if retryable and attempt_index < bounded_retry_limit:
+            will_retry = retryable and attempt_index < bounded_retry_limit
+            log_event(
+                _logger,
+                "provider_attempt",
+                provider_id=provider_display_name,
+                model_id=model_identity,
+                attempt=attempt_index,
+                attempt_limit=bounded_retry_limit,
+                outcome="retry" if will_retry else "failed",
+                failure_class=category.value,
+                http_status=exc.code,
+                latency_ms=_attempt_latency_ms(attempt_started),
+            )
+            if will_retry:
                 continue
             raise ProviderExecutionError(
                 category=category,
@@ -161,7 +196,19 @@ def post_openai_compatible_response(
                 ),
             ) from exc
         except TimeoutError as exc:
-            if attempt_index < bounded_retry_limit:
+            will_retry = attempt_index < bounded_retry_limit
+            log_event(
+                _logger,
+                "provider_attempt",
+                provider_id=provider_display_name,
+                model_id=model_identity,
+                attempt=attempt_index,
+                attempt_limit=bounded_retry_limit,
+                outcome="retry" if will_retry else "failed",
+                failure_class=ProviderFailureCategory.PROVIDER_TIMEOUT.value,
+                latency_ms=_attempt_latency_ms(attempt_started),
+            )
+            if will_retry:
                 continue
             raise ProviderExecutionError(
                 category=ProviderFailureCategory.PROVIDER_TIMEOUT,
@@ -171,7 +218,19 @@ def post_openai_compatible_response(
                 ),
             ) from exc
         except error.URLError as exc:
-            if attempt_index < bounded_retry_limit:
+            will_retry = attempt_index < bounded_retry_limit
+            log_event(
+                _logger,
+                "provider_attempt",
+                provider_id=provider_display_name,
+                model_id=model_identity,
+                attempt=attempt_index,
+                attempt_limit=bounded_retry_limit,
+                outcome="retry" if will_retry else "failed",
+                failure_class=ProviderFailureCategory.PROVIDER_TIMEOUT.value,
+                latency_ms=_attempt_latency_ms(attempt_started),
+            )
+            if will_retry:
                 continue
             raise ProviderExecutionError(
                 category=ProviderFailureCategory.PROVIDER_TIMEOUT,
@@ -187,6 +246,13 @@ def post_openai_compatible_response(
             provider_display_name=provider_display_name,
         ),
     )
+
+
+_logger = logging.getLogger("app.provider")
+
+
+def _attempt_latency_ms(started: float) -> float:
+    return round((time.perf_counter() - started) * 1000.0, 3)
 
 
 def load_error_payload(exc: error.HTTPError) -> dict[str, Any]:

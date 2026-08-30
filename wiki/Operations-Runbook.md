@@ -387,3 +387,22 @@ abandon the queued job with operator evidence; do not repair this state with ad 
 1. use [Platform Surfaces](Platform-Surfaces) for the grouped route map,
 2. use [Troubleshooting](Troubleshooting) for common failure patterns,
 3. use [Security and Governance](Security-and-Governance) when the question is about what the runtime is actually allowed to do.
+
+## Investigating an AI output (issue #152 S1)
+
+Every request carries one correlation id end to end. Given a suspect output:
+
+1. Take the `X-Correlation-Id` from the caller's response (or the consumer's records).
+2. Filter the JSON logs on `correlation_id`: the `http_request` line gives route,
+   status and duration; `provider_attempt` lines give provider/model identity,
+   attempt numbers, latency, failure classes and token counts; `problem_response`
+   lines give bounded `error_code`s. Log lines never contain prompt or output
+   text (allowlist-enforced), so this step is safe to share in an incident channel.
+3. Join to the durable record: `GET /ai/audit?caller_app=...` and match
+   `correlation_id`; the audit record carries the full model identity
+   (provider, revision, catalogue entry, pinning), the routing decision with
+   its candidates and rejection reasons, prompt version, safety outcome and
+   evidence bundle.
+4. From the audit record's evidence, follow `workflow_pack_run_id` (where
+   present) to the run ledger and its review history, and eval references to
+   the approval-gate evidence.

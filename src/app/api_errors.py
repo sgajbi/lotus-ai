@@ -3,9 +3,13 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Any, cast
 
+import logging
+
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+
+from app.services.structured_logging import log_event
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
@@ -75,6 +79,9 @@ async def unexpected_exception_handler(request: Request, exc: Exception) -> JSON
     )
 
 
+_logger = logging.getLogger("app.errors")
+
+
 def build_problem_response(
     *,
     request: Request,
@@ -94,6 +101,16 @@ def build_problem_response(
         metadata=metadata,
     )
     correlation_id = _correlation_id(request)
+    route = request.scope.get("route")
+    log_event(
+        _logger,
+        "problem_response",
+        error_code=code,
+        status_code=status_code,
+        method=request.method,
+        route=getattr(route, "path", request.url.path),
+        caller_app=request.headers.get("X-Caller-App"),
+    )
     return JSONResponse(
         status_code=status_code,
         content=problem.model_dump(exclude_none=True),
