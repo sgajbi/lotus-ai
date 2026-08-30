@@ -9,7 +9,16 @@ from app.contracts.providers import (
     ProviderExecutionResponse,
     ProviderFailureCategory,
 )
+from datetime import UTC, datetime
+
 from app.contracts.model_catalogue import ModelCatalogueEntry
+from app.contracts.routing_decision import (
+    ROUTING_POLICY_FIXED_CONFIGURED_MODE,
+    ROUTING_POLICY_VERSION_V1,
+    RoutingCandidateDescriptor,
+    RoutingDecisionDescriptor,
+    RoutingStrategy,
+)
 from app.providers.base import ProviderExecutionError
 from app.providers.registry import resolve_text_generation_adapter
 from app.services.access_control_authorization import authorize_request, require_authorized
@@ -63,6 +72,7 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
                 detail=f"{exc.category.value}: {exc.message}",
             ) from exc
     adapter = resolve_text_generation_adapter(mode)
+    decided_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     try:
         response = adapter.execute(request)
         if catalogue_entry is not None:
@@ -72,6 +82,12 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
             response.model_revision_pinned = catalogue_entry.revision_pinned
             if getattr(response, "model_version", None) is None:
                 response.model_version = catalogue_entry.model_revision
+        response.routing_decision = _build_fixed_routing_decision(
+            mode_value=mode.value,
+            selected_provider_id=response.provider_id,
+            catalogue_entry=catalogue_entry,
+            decided_at=decided_at,
+        )
         if mode in LIVE_TEXT_MODES:
             record_provider_spend(response)
             record_successful_provider_execution()
@@ -83,3 +99,35 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"{exc.category.value}: {exc.message}",
         ) from exc
+
+
+def _build_fixed_routing_decision(
+    *,
+    mode_value: str,
+    selected_provider_id: str,
+    catalogue_entry: ModelCatalogueEntry | None,
+    decided_at: str,
+) -> RoutingDecisionDescriptor:
+    entry_id = catalogue_entry.entry_id if catalogue_entry is not None else None
+    return RoutingDecisionDescriptor(
+        policy_id=ROUTING_POLICY_FIXED_CONFIGURED_MODE,
+        policy_version=ROUTING_POLICY_VERSION_V1,
+        strategy=RoutingStrategy.FIXED,
+        candidates=[
+            RoutingCandidateDescriptor(
+                provider_id=selected_provider_id,
+                provider_mode=mode_value,
+                model_catalogue_entry_id=entry_id,
+                model_revision=(
+                    catalogue_entry.model_revision if catalogue_entry is not None else None
+                ),
+            )
+        ],
+        selected_provider_id=selected_provider_id,
+        selected_model_catalogue_entry_id=entry_id,
+        decided_at=decided_at,
+        selection_reason=(
+            f"Fixed policy: configured provider mode '{mode_value}' resolves to exactly "
+            "one adapter; no alternative candidates exist under this policy."
+        ),
+    )

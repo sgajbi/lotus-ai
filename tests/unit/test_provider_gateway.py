@@ -502,6 +502,19 @@ def test_execute_text_generation_stamps_catalogue_identity_on_live_responses(
     assert response.model_catalogue_entry_id == "text.openai:gpt-5.4"
     assert response.model_revision_pinned is False
     assert response.model_version == "gpt-5.4"
+
+    decision = response.routing_decision
+    assert decision is not None
+    assert decision.policy_id == "fixed_configured_mode"
+    assert decision.policy_version == "v1"
+    assert decision.strategy.value == "FIXED"
+    assert decision.selected_provider_id == "text.openai"
+    assert decision.selected_model_catalogue_entry_id == "text.openai:gpt-5.4"
+    assert len(decision.candidates) == 1
+    assert decision.candidates[0].model_catalogue_entry_id == "text.openai:gpt-5.4"
+    assert decision.candidates[0].model_revision == "gpt-5.4"
+    assert decision.selection_reason
+    assert decision.decided_at.endswith("Z")
     reset_model_catalogue_store_cache()
 
 

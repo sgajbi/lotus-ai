@@ -9,6 +9,7 @@ from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.prompts import PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderAdapterKind
+from app.contracts.routing_decision import RoutingDecisionDescriptor
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 
@@ -65,6 +66,10 @@ class AuditRecordResponse(BaseModel):
             "Whether the bound catalogue entry pins an exact model revision "
             "(False means the family/tag fallback identity executed)."
         ),
+    )
+    routing_decision: RoutingDecisionDescriptor | None = Field(
+        default=None,
+        description="Recorded routing-policy decision that selected the provider path.",
     )
     safety_mode: str = Field(description="Safety mode applied to the execution.")
     redaction_posture: RedactionPosture = Field(

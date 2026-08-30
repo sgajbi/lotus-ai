@@ -84,3 +84,10 @@ def test_map_audit_record_carries_governed_model_identity() -> None:
     assert audit_record.model_version == "gpt-5.4-2026-05-01"
     assert audit_record.model_catalogue_entry_id == "text.openai:gpt-5.4-2026-05-01"
     assert audit_record.model_revision_pinned is True
+
+    # The stub pipeline recorded a real fixed-policy routing decision; the
+    # mapping layer must carry it into the durable audit record untouched.
+    assert response.audit.routing_decision is not None
+    assert audit_record.routing_decision == response.audit.routing_decision
+    assert audit_record.routing_decision.selected_provider_id == "text.stub"
+    assert audit_record.routing_decision.policy_id == "fixed_configured_mode"

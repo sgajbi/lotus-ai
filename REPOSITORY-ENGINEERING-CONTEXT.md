@@ -140,8 +140,10 @@ Primary areas:
 
 1. `src/app/providers/`
    provider adapters and execution transports (provider policy, quota, budget, and
-   degradation state live in `src/app/services/`; model routing/selection does not
-   exist yet — the configured provider mode maps to exactly one adapter).
+   degradation state live in `src/app/services/`; the configured provider mode maps
+   to exactly one adapter — no multi-candidate selection exists yet, and every
+   execution records that fixed-policy routing decision on its audit record and
+   evidence bundle).
 2. `src/app/prompts/`
    prompt registry and rollout state.
 3. `src/app/retrieval/`

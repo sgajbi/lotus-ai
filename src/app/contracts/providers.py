@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
+from app.contracts.routing_decision import RoutingDecisionDescriptor
 
 
 class ProviderCapability(str, Enum):
@@ -682,6 +683,13 @@ class ProviderExecutionResponse(BaseModel):
         description=(
             "Whether the bound catalogue entry pins an exact model revision "
             "(False means the family/tag fallback identity executed)."
+        ),
+    )
+    routing_decision: RoutingDecisionDescriptor | None = Field(
+        default=None,
+        description=(
+            "Recorded routing rationale for this execution: policy, considered candidates, "
+            "selection and reason. Stamped by the provider gateway."
         ),
     )
     provider_request_id: str | None = Field(

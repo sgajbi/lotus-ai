@@ -29,6 +29,7 @@ class AuditRecordModel(Base):
     model_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
     model_catalogue_entry_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
     model_revision_pinned: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    routing_decision_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     safety_mode: Mapped[str] = mapped_column(String(64), nullable=False)
     redaction_posture: Mapped[str] = mapped_column(String(64), nullable=False)
     enforced_safety_controls: Mapped[list[str]] = mapped_column(JSON, nullable=False)

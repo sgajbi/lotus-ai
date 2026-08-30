@@ -78,11 +78,21 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
         "correlation_and_audit",
     ]
     assert response.audit.safety.control_results[-1].control_id == "runtime_redaction_engine"
-    assert len(response.evidence.descriptors) == 6
+    assert len(response.evidence.descriptors) == 7
     assert response.evidence.descriptors[0].evidence_type == "task_contract"
     assert response.evidence.descriptors[1].evidence_type == "prompt_selection"
+    assert response.evidence.descriptors[3].evidence_type == "routing_decision"
+    routing_attributes = response.evidence.descriptors[3].attributes
+    assert routing_attributes["policy_id"] == "fixed_configured_mode"
+    assert routing_attributes["strategy"] == "FIXED"
+    assert routing_attributes["selected_provider_id"] == "text.stub"
+    routing_candidates = routing_attributes["candidates"]
+    assert isinstance(routing_candidates, list)
+    assert [c["provider_id"] for c in routing_candidates] == ["text.stub"]
+    assert response.audit.routing_decision is not None
+    assert response.audit.routing_decision.selected_provider_id == "text.stub"
     assert response.audit.authorization.outcome == AuthorizationOutcome.ALLOWED
-    assert response.evidence.descriptors[5].evidence_type == "access_control"
+    assert response.evidence.descriptors[6].evidence_type == "access_control"
 
 
 def test_execute_task_enforces_runtime_redaction_for_provider_backed_output() -> None:
@@ -562,6 +572,9 @@ def test_execute_task_returns_rejected_response_and_persists_audit_when_safety_b
     audit_record = cast(AuditRecordResponse, audit_store.save.call_args.args[0])
     assert audit_record.execution_status == "REJECTED"
     assert audit_record.safety_outcome.disposition == "BLOCKED"
+    # execute_text_generation is stubbed at the pipeline seam here, so the real
+    # gateway never ran and no routing decision exists - the record says so.
+    assert audit_record.routing_decision is None
     assert audit_record.evidence.descriptors[3].attributes["disposition"] == "BLOCKED"
 
     settings.safety_mode = "documented_only"
