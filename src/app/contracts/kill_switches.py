@@ -62,6 +62,12 @@ class KillSwitchActivationRecord(BaseModel):
         default=None,
         description="Optional expiry instant (UTC); an expired switch is inert but retained.",
     )
+    expiry_recorded_at: str | None = Field(
+        default=None,
+        description="Instant the durable expiry event was recorded for a lapsed TTL; the "
+        "switch is inert from expires_at_utc regardless - this marks the recorded event "
+        "(issue #177 S4). Re-activation is always a new activation.",
+    )
     cleared_at: str | None = Field(
         default=None,
         description="Instant the switch was cleared; null while active.",
@@ -118,6 +124,10 @@ class KillSwitchStatusResponse(BaseModel):
     service: str = Field(description="Service name emitting the response.")
     version: str = Field(description="Current lotus-ai service version.")
     store_mode: str = Field(description="Where kill-switch truth lives: memory or sqlalchemy.")
+    expired_count: int = Field(
+        default=0,
+        description="Activations whose TTL has lapsed (inert, retained, expiry recorded).",
+    )
     active_count: int = Field(ge=0, description="Number of currently enforcing activations.")
     activations: list[KillSwitchActivationRecord] = Field(
         description="Every recorded activation, newest first, including cleared and expired ones.",

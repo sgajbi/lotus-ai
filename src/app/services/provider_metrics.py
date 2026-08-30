@@ -23,7 +23,12 @@ METRIC_NAMES = frozenset(
         "lotus_ai_surface_supportability_state",
         "lotus_ai_provider_requests_total",
         "lotus_ai_provider_latency_seconds",
+        "lotus_ai_kill_switch_actions_total",
     }
+)
+
+KILL_SWITCH_ACTIONS = frozenset(
+    {"activated", "cleared", "expired", "refused_sync", "refused_intake"}
 )
 
 PROVIDER_ATTEMPT_OUTCOMES = frozenset({"success", "retry", "failed"})
@@ -38,6 +43,25 @@ _provider_latency_seconds = Histogram(
     "Provider attempt latency in seconds by provider and model.",
     labelnames=("provider_id", "model_id"),
 )
+
+
+_kill_switch_actions_total = Counter(
+    "lotus_ai_kill_switch_actions_total",
+    "Kill-switch lifecycle and enforcement actions by scope and semantics (issue #177 S4).",
+    labelnames=("action", "scope", "semantics"),
+)
+
+
+def record_kill_switch_action(*, action: str, scope: str, semantics: str) -> None:
+    """Record one kill-switch action; never raises (telemetry is fail-open)."""
+
+    try:
+        bounded_action = action if action in KILL_SWITCH_ACTIONS else "refused_sync"
+        _kill_switch_actions_total.labels(
+            action=bounded_action, scope=scope, semantics=semantics
+        ).inc()
+    except Exception:  # noqa: BLE001 - telemetry must never block a request
+        pass
 
 
 def record_provider_attempt(
