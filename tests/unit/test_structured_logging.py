@@ -38,15 +38,36 @@ class _CollectingHandler(logging.Handler):
 
 @pytest.fixture
 def _collector() -> Iterator["_CollectingHandler"]:
-    handler = _CollectingHandler()
+    """Deterministic collection regardless of ambient suite state: snapshot the
+    app logger tree, normalize it for the test, restore afterwards."""
+
     logger = logging.getLogger("app")
-    logger.addHandler(handler)
+    snapshot = (list(logger.handlers), logger.level, logger.propagate)
+    child_snapshots = {
+        name: (child.level, child.propagate)
+        for name in ("app.http", "app.provider", "app.errors", "app.test")
+        for child in (logging.getLogger(name),)
+    }
+    ambient_disable = logging.root.manager.disable
+
+    handler = _CollectingHandler()
+    logging.disable(logging.NOTSET)
+    logger.handlers = [handler]
     logger.setLevel(logging.INFO)
-    previous_propagate = logger.propagate
     logger.propagate = False
+    for name in child_snapshots:
+        child = logging.getLogger(name)
+        child.setLevel(logging.NOTSET)
+        child.propagate = True
     yield handler
-    logger.removeHandler(handler)
-    logger.propagate = previous_propagate
+    logger.handlers, level, propagate = snapshot[0], snapshot[1], snapshot[2]
+    logger.setLevel(level)
+    logger.propagate = propagate
+    for name, (child_level, child_propagate) in child_snapshots.items():
+        child = logging.getLogger(name)
+        child.setLevel(child_level)
+        child.propagate = child_propagate
+    logging.disable(ambient_disable)
 
 
 def test_formatter_enforces_the_field_allowlist_and_correlation_context(
@@ -105,8 +126,11 @@ def test_configure_is_idempotent_and_respects_the_level(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     logger = logging.getLogger("app")
-    original_handlers = list(logger.handlers)
+    snapshot = (list(logger.handlers), logger.level, logger.propagate)
     try:
+        # Start from an explicitly unconfigured tree: the guarantee under test
+        # is fresh-configure behavior plus idempotency of the second call.
+        logger.handlers = []
         monkeypatch.setattr(settings, "log_level", "warning")
         configure_structured_logging()
         configure_structured_logging()
@@ -118,7 +142,9 @@ def test_configure_is_idempotent_and_respects_the_level(
         assert len(structured) == 1
         assert logger.level == logging.WARNING
     finally:
-        logger.handlers = original_handlers
+        logger.handlers = snapshot[0]
+        logger.setLevel(snapshot[1])
+        logger.propagate = snapshot[2]
 
 
 def test_provider_attempts_share_the_correlation_id_across_retry_and_success(
