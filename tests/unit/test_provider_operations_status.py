@@ -11,6 +11,7 @@ from app.contracts.providers import (
 )
 from app.services.provider_degradation_state import record_provider_failure
 from app.services.provider_operations_store import reset_provider_operations_store_cache
+from app.services.rate_card_store import reset_rate_card_store_cache
 from app.services.provider_operations_status import build_provider_operations_status
 from tests.support.migration_runner import upgrade_database_to_head
 
@@ -132,7 +133,7 @@ def test_provider_operations_status_reports_invalid_budget_configuration() -> No
 
     assert status.runtime_execution_enabled is True
     assert status.operations_state == ProviderOperationsState.OPERATIONS_INVALID
-    assert any("rate-card values" in reason for reason in status.blocking_reasons)
+    assert any("effective live-text rate card" in reason for reason in status.blocking_reasons)
 
 
 def test_provider_operations_summary_mentions_local_secret_go_live_block() -> None:
@@ -336,6 +337,7 @@ def test_provider_operations_status_reports_persisted_circuit_state_after_store_
     record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
     record_provider_failure(ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR)
     reset_provider_operations_store_cache()
+    reset_rate_card_store_cache()
 
     status = build_provider_operations_status()
 
