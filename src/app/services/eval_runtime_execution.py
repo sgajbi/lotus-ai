@@ -1234,10 +1234,12 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                         card_id="eval-hermetic-live-text",
                         scope_kind=RateCardScopeKind.DEFAULT_LIVE_TEXT,
                         currency="USD",
-                        input_cost_per_1k_tokens=float(
+                        # monetary-float-ok markers: rate-card contract rates
+                        # are float-typed by design (#178 S1).
+                        input_cost_per_1k_tokens=float(  # monetary-float-ok: rate-card contract field is float-typed
                             cast(int | float | str, fixture_rates["input_cost_per_1k_tokens"])
                         ),
-                        output_cost_per_1k_tokens=float(
+                        output_cost_per_1k_tokens=float(  # monetary-float-ok: rate-card contract field is float-typed
                             cast(int | float | str, fixture_rates["output_cost_per_1k_tokens"])
                         ),
                         effective_from_utc=None,

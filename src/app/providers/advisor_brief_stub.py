@@ -377,13 +377,13 @@ def _pick_effect(value: Any) -> dict[str, str] | None:
 def _format_pct(value: Any) -> str:
     if not isinstance(value, int | float):
         return "N/A"
-    return f"{float(value):.2f}%"
+    return f"{float(value):.2f}%"  # monetary-float-ok: display formatting only
 
 
 def _format_currency(value: Any) -> str:
     if not isinstance(value, int | float):
         return "N/A"
-    return f"${float(value):,.0f}"
+    return f"${float(value):,.0f}"  # monetary-float-ok: display formatting only
 
 
 def _safe_dict(value: Any) -> dict[str, Any]:
