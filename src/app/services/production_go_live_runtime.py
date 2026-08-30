@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.production_go_live import (
     ProductionGoLiveDomainDescriptor,
     ProductionGoLiveDomainStatus,
@@ -59,9 +60,9 @@ def build_production_go_live_runtime_status(
     )
     live_provider_inventory = build_live_provider_inventory()
     live_provider_required = live_provider_inventory.execution_requested
-    retrieval_required = settings.retrieval_mode == "enabled"
+    retrieval_required = resolve_runtime_mode_config().retrieval_mode == "enabled"
     prompt_governance_required = _live_prompt_activation_required()
-    safety_governance_required = settings.safety_mode == "runtime_enforced"
+    safety_governance_required = resolve_runtime_mode_config().safety_mode == "runtime_enforced"
     prompt_governance = _resolve_prompt_governance(
         prompt_governance=prompt_governance,
         required_for_platform_approval=prompt_governance_required,
@@ -106,7 +107,7 @@ def build_production_go_live_runtime_status(
                 required_for_platform_approval=retrieval_required,
             ),
             required_for_platform_approval=retrieval_required,
-            configured_mode=settings.retrieval_mode,
+            configured_mode=resolve_runtime_mode_config().retrieval_mode,
             review_surface="/platform/retrieval/governance-status",
             detail=(
                 "Retrieval governance is currently approved for active retrieval execution."
@@ -139,7 +140,7 @@ def build_production_go_live_runtime_status(
                 required_for_platform_approval=safety_governance_required,
             ),
             required_for_platform_approval=safety_governance_required,
-            configured_mode=settings.safety_mode,
+            configured_mode=resolve_runtime_mode_config().safety_mode,
             review_surface="/platform/safety/governance-status",
             detail=_safety_governance_domain_detail(
                 governance_ready=safety_governance_ready,

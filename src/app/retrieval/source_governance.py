@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.retrieval import (
     RetrievalDocumentDescriptor,
     RetrievalDocumentVersionDescriptor,
@@ -39,7 +40,7 @@ def build_retrieval_source_governance() -> RetrievalSourceGovernanceResponse:
     ]
     return RetrievalSourceGovernanceResponse(
         service=settings.service_name,
-        retrieval_mode=settings.retrieval_mode,
+        retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
         vector_store=VECTOR_STORE_STRATEGY,
         searchable_source_count=sum(1 for source in governance_sources if source.search_enabled),
         index_pending_source_count=sum(

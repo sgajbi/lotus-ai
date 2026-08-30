@@ -5,6 +5,7 @@ from typing import Any, cast
 from urllib import error, request as urllib_request
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.providers import (
     EmbeddingExecutionRequest,
     EmbeddingExecutionResponse,
@@ -40,14 +41,17 @@ class OpenAILiveEmbeddingProvider:
     def embed(self, request: EmbeddingExecutionRequest) -> EmbeddingExecutionResponse:
         response_payload = _post_openai_embedding(
             api_base=settings.live_text_api_base,
-            api_key=settings.live_embedding_provider_api_key,
+            api_key=resolve_runtime_mode_config().embedding_api_key,
             payload={
-                "model": settings.live_embedding_model_id,
+                "model": resolve_runtime_mode_config().embedding_model_id,
                 "input": request.content,
             },
         )
         embedding = _extract_embedding(response_payload)
-        model_id = _as_str(response_payload.get("model")) or settings.live_embedding_model_id
+        model_id = (
+            _as_str(response_payload.get("model"))
+            or resolve_runtime_mode_config().embedding_model_id
+        )
         return EmbeddingExecutionResponse(
             provider_id=self.descriptor.provider_id,
             provider_mode=self.descriptor.runtime_mode.value,

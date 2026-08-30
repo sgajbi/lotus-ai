@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.providers import (
     ProviderActivationReadinessResponse,
     ProviderBudgetState,
@@ -86,7 +87,7 @@ def build_provider_activation_readiness() -> ProviderActivationReadinessResponse
         service=settings.service_name,
         version=settings.service_version,
         provider_mode=settings.provider_mode,
-        embedding_provider_mode=settings.embedding_provider_mode,
+        embedding_provider_mode=resolve_runtime_mode_config().embedding_provider_mode,
         text_generation_configuration=configuration,
         embedding_configuration=embedding_configuration,
         activation_ready=activation_ready,

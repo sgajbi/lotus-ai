@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.retrieval import RetrievalActivationReadinessResponse
 from app.retrieval.document_governance import build_retrieval_document_governance
 from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
@@ -21,7 +22,7 @@ def build_retrieval_activation_readiness() -> RetrievalActivationReadinessRespon
     )
 
     blocking_findings: list[str] = []
-    if settings.retrieval_mode != "enabled":
+    if resolve_runtime_mode_config().retrieval_mode != "enabled":
         blocking_findings.append(
             "Retrieval mode is not enabled, so the live indexed-search path is not in active rollout."
         )
@@ -68,7 +69,7 @@ def build_retrieval_activation_readiness() -> RetrievalActivationReadinessRespon
         )
 
     activation_ready = (
-        settings.retrieval_mode == "enabled"
+        resolve_runtime_mode_config().retrieval_mode == "enabled"
         and store_status.status == "READY"
         and document_governance is not None
         and document_governance.searchable_document_count > 0
@@ -87,8 +88,8 @@ def build_retrieval_activation_readiness() -> RetrievalActivationReadinessRespon
     return RetrievalActivationReadinessResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,
-        retrieval_mode=settings.retrieval_mode,
-        embedding_provider_mode=settings.embedding_provider_mode,
+        retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
+        embedding_provider_mode=resolve_runtime_mode_config().embedding_provider_mode,
         embedding_execution_enabled=embedding_runtime.embedding_execution_enabled,
         ingestion_execution_enabled=ingestion_status.live_ingestion_enabled,
         activation_ready=activation_ready,

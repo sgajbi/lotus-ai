@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.providers import ProviderExecutionResponse
 from app.contracts.safety import (
     RedactionPosture,
@@ -50,7 +50,7 @@ def resolve_safety_execution_outcome(
     *,
     safety_mode: str | None = None,
 ) -> SafetyExecutionOutcome:
-    resolved_safety_mode = safety_mode or settings.safety_mode
+    resolved_safety_mode = safety_mode or resolve_runtime_mode_config().safety_mode
     if resolved_safety_mode == "runtime_enforced":
         return _build_enforced_safety_outcome(policy, safety_mode=resolved_safety_mode)
     return SafetyExecutionOutcome(
@@ -100,7 +100,7 @@ def apply_safety_enforcement(
     policy: ResolvedSafetyPolicy,
     provider_execution: ProviderExecutionResponse,
 ) -> tuple[ProviderExecutionResponse, SafetyExecutionOutcome]:
-    if settings.safety_mode != "runtime_enforced":
+    if resolve_runtime_mode_config().safety_mode != "runtime_enforced":
         return provider_execution, resolve_safety_execution_outcome(policy)
 
     if policy.redaction_posture == RedactionPosture.DOCUMENTED_ONLY:
@@ -108,7 +108,7 @@ def apply_safety_enforcement(
             provider_execution,
             _build_enforced_safety_outcome(
                 policy,
-                safety_mode=settings.safety_mode,
+                safety_mode=resolve_runtime_mode_config().safety_mode,
                 disposition=SafetyExecutionDisposition.ENFORCED_PASSTHROUGH,
                 decision_summary=(
                     "Runtime safety enforcement is active and no redaction was required for "
@@ -125,7 +125,7 @@ def apply_safety_enforcement(
     if blocked_keys:
         blocked_outcome = _build_enforced_safety_outcome(
             policy,
-            safety_mode=settings.safety_mode,
+            safety_mode=resolve_runtime_mode_config().safety_mode,
             disposition=SafetyExecutionDisposition.BLOCKED,
             decision_summary=(
                 "Runtime safety enforcement blocked execution because the provider payload "
@@ -168,7 +168,7 @@ def apply_safety_enforcement(
         )
         outcome = _build_enforced_safety_outcome(
             policy,
-            safety_mode=settings.safety_mode,
+            safety_mode=resolve_runtime_mode_config().safety_mode,
             disposition=disposition,
             decision_summary=summary,
         )
@@ -187,7 +187,7 @@ def apply_safety_enforcement(
     degraded_message = "Safety-minimized output generated for bounded Lotus task execution."
     degraded_outcome = _build_enforced_safety_outcome(
         policy,
-        safety_mode=settings.safety_mode,
+        safety_mode=resolve_runtime_mode_config().safety_mode,
         disposition=SafetyExecutionDisposition.DEGRADED,
         decision_summary=(
             "Runtime safety enforcement produced a conservative fallback message because the "

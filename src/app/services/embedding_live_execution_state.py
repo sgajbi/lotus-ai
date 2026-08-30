@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.providers import ProviderCredentialStatus, ProviderExecutionMode
 from app.services.provider_configuration_status import build_embedding_configuration_status
 
@@ -22,12 +22,14 @@ class EmbeddingLiveExecutionState:
 
 def build_embedding_live_execution_state() -> EmbeddingLiveExecutionState:
     configuration = build_embedding_configuration_status()
-    mode_supported = settings.embedding_provider_mode in {
+    mode_supported = resolve_runtime_mode_config().embedding_provider_mode in {
         ProviderExecutionMode.DISABLED.value,
         ProviderExecutionMode.STUB.value,
         ProviderExecutionMode.ENABLED.value,
     }
-    live_mode_requested = settings.embedding_provider_mode == ProviderExecutionMode.ENABLED.value
+    live_mode_requested = (
+        resolve_runtime_mode_config().embedding_provider_mode == ProviderExecutionMode.ENABLED.value
+    )
     credentials_configured = configuration.credential_status == ProviderCredentialStatus.CONFIGURED
 
     blocking_reason: str | None = None
@@ -45,7 +47,7 @@ def build_embedding_live_execution_state() -> EmbeddingLiveExecutionState:
         blocking_reason = "Live embedding provider credentials are not fully configured."
 
     return EmbeddingLiveExecutionState(
-        provider_mode=settings.embedding_provider_mode,
+        provider_mode=resolve_runtime_mode_config().embedding_provider_mode,
         configuration_valid=configuration.configuration_valid,
         credentials_configured=credentials_configured,
         mode_supported=mode_supported,

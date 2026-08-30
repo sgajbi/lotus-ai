@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.retrieval import (
     RetrievalDocumentGovernanceResponse,
     RetrievalExecutionRequest,
@@ -19,7 +19,7 @@ from app.services.retrieval_store import get_retrieval_repository
 
 def execute_retrieval_search(request: RetrievalExecutionRequest) -> RetrievalExecutionResponse:
     repository = get_retrieval_repository()
-    if settings.retrieval_mode != "enabled":
+    if resolve_runtime_mode_config().retrieval_mode != "enabled":
         catalog_hits = _build_catalog_only_hits(request, repository=repository)
         if catalog_hits:
             return RetrievalExecutionResponse(

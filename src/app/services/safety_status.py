@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.safety import (
     SafetyControlStatus,
     SafetyExecutionDisposition,
@@ -24,11 +25,11 @@ def build_safety_runtime_status() -> SafetyRuntimeStatusResponse:
     return SafetyRuntimeStatusResponse(
         service=settings.service_name,
         version=settings.service_version,
-        safety_mode=settings.safety_mode,
-        runtime_redaction_active=settings.safety_mode == "runtime_enforced",
+        safety_mode=resolve_runtime_mode_config().safety_mode,
+        runtime_redaction_active=resolve_runtime_mode_config().safety_mode == "runtime_enforced",
         runtime_redaction_disposition=(
             SafetyExecutionDisposition.ENFORCED_PASSTHROUGH
-            if settings.safety_mode == "runtime_enforced"
+            if resolve_runtime_mode_config().safety_mode == "runtime_enforced"
             else SafetyExecutionDisposition.DOCUMENTED_ONLY
         ),
         enforced_control_ids=enforced_control_ids,
@@ -40,7 +41,7 @@ def build_safety_runtime_status() -> SafetyRuntimeStatusResponse:
                 SafetyExecutionDisposition.BLOCKED,
                 SafetyExecutionDisposition.DEGRADED,
             ]
-            if settings.safety_mode == "runtime_enforced"
+            if resolve_runtime_mode_config().safety_mode == "runtime_enforced"
             else [SafetyExecutionDisposition.DOCUMENTED_ONLY]
         ),
         task_policy_count=len(policy.task_policies),

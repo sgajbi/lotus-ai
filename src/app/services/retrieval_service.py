@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException, status
 
-from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.access_control import AuthorizationCapabilityType, AuthorizationDecision
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
@@ -137,7 +137,7 @@ def _record_direct_search_audit(
             provider_id="retrieval-store",
             adapter_kind=None,
             model_id=None,
-            safety_mode=settings.safety_mode,
+            safety_mode=resolve_runtime_mode_config().safety_mode,
             redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
             enforced_safety_controls=[
                 "correlation_and_audit",
@@ -145,7 +145,7 @@ def _record_direct_search_audit(
                 "no_raw_retrieval_payload_audit",
             ],
             safety_outcome=SafetyExecutionOutcome(
-                safety_mode=settings.safety_mode,
+                safety_mode=resolve_runtime_mode_config().safety_mode,
                 output_label=OutputLabel.RETRIEVAL_ANSWER.value,
                 redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
                 disposition=SafetyExecutionDisposition.ENFORCED_PASSTHROUGH,
