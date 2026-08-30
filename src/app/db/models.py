@@ -641,3 +641,30 @@ class WorkflowPackControlEventModel(Base):
     caller_app: Mapped[str] = mapped_column(String(128), nullable=False)
     authorization_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class ModelCatalogueEntryModel(Base):
+    __tablename__ = "model_catalogue_entries"
+
+    entry_id: Mapped[str] = mapped_column(String(256), primary_key=True)
+    provider_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    provider_mode: Mapped[str] = mapped_column(String(64), nullable=False)
+    model_family: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    model_revision: Mapped[str] = mapped_column(String(128), nullable=False)
+    deployment: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    sku: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    lifecycle_state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    revision_pinned: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    modalities: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    context_window_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    supports_structured_output: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    supports_tool_calling: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    supports_streaming: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    approved_workflow_pack_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    approval_evidence_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    approved_from_utc: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approved_until_utc: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    seed_source: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
