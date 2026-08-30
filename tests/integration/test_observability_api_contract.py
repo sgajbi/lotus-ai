@@ -96,9 +96,9 @@ def test_observability_runtime_status_route(client: TestClient) -> None:
     assert {
         surface["supportability_reason"]
         for surface in body["ai_surface_supportability"]["surfaces"]
-    } == {"NO_SENSITIVE_TELEMETRY_DEGRADED"}
+    } == {"WORKFLOW_PACK_SUPPORTED_NO_ACTIVITY"}
     assert all(
-        surface["no_sensitive_content_telemetry"] is False
+        surface["no_sensitive_content_telemetry"] is True
         for surface in body["ai_surface_supportability"]["surfaces"]
     )
     assert body["unavailable_domain_count"] == 0
@@ -118,7 +118,9 @@ def test_observability_governance_routes(client: TestClient) -> None:
     activation_body = activation_response.json()
     assert activation_body["activation_ready"] is False
     assert activation_body["domain_count"] == 6
-    assert any(
+    # Issue #150 slice 2: active redaction telemetry no longer blocks
+    # observability activation.
+    assert not any(
         "no-sensitive-content telemetry" in finding
         for finding in activation_body["blocking_findings"]
     )
@@ -134,7 +136,7 @@ def test_observability_governance_routes(client: TestClient) -> None:
     governance_body = governance_response.json()
     assert governance_body["governance_ready"] is False
     assert governance_body["activation_readiness"]["activation_ready"] is False
-    assert any(
+    assert not any(
         "no-sensitive-content telemetry" in finding
         for finding in governance_body["activation_readiness"]["blocking_findings"]
     )

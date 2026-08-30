@@ -27,6 +27,9 @@ def test_observability_governance_blocks_on_ai_no_sensitive_telemetry(
     settings.audit_store_mode = "sqlalchemy"
     settings.access_control_store_mode = "sqlalchemy"
     settings.database_url = f"sqlite:///{tmp_path / 'observability-governance.db'}"
+    # Observe mode keeps the degraded-telemetry blocking branch covered
+    # now that the redaction engine enforces by default (issue #150 S2).
+    settings.redaction_mode = "observe"
     upgrade_database_to_head(settings.database_url)
 
     governance = build_observability_governance_status()

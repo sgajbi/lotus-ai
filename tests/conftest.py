@@ -68,6 +68,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "retrieval_mode": settings.retrieval_mode,
         "embedding_provider_mode": settings.embedding_provider_mode,
         "safety_mode": settings.safety_mode,
+        "redaction_mode": settings.redaction_mode,
         "audit_store_mode": settings.audit_store_mode,
         "prompt_store_mode": settings.prompt_store_mode,
         "retrieval_store_mode": settings.retrieval_store_mode,

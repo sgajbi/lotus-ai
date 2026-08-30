@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.config import settings
 from app.services.runtime_mode_config import resolve_runtime_mode_config
+from app.services.redaction_engine import REDACTION_MODE_ENFORCE
 from app.contracts.safety import (
     SafetyControlStatus,
     SafetyExecutionDisposition,
@@ -26,11 +27,17 @@ def build_safety_runtime_status() -> SafetyRuntimeStatusResponse:
         service=settings.service_name,
         version=settings.service_version,
         safety_mode=resolve_runtime_mode_config().safety_mode,
-        # No runtime redaction engine exists (issue #150): the redaction
-        # posture is documented-only in every safety mode; key minimization
-        # is reported under its own control id in the policy catalogue.
-        runtime_redaction_active=False,
-        runtime_redaction_disposition=SafetyExecutionDisposition.DOCUMENTED_ONLY,
+        # The deterministic redaction engine (issue #150 slice 2) screens
+        # generated content independently of safety mode; it is active when
+        # the redaction mode is enforce, and observing otherwise.
+        runtime_redaction_active=(
+            resolve_runtime_mode_config().redaction_mode == REDACTION_MODE_ENFORCE
+        ),
+        runtime_redaction_disposition=(
+            SafetyExecutionDisposition.ENFORCED_PASSTHROUGH
+            if resolve_runtime_mode_config().redaction_mode == REDACTION_MODE_ENFORCE
+            else SafetyExecutionDisposition.DOCUMENTED_ONLY
+        ),
         enforced_control_ids=enforced_control_ids,
         documented_only_control_ids=documented_only_control_ids,
         supported_execution_dispositions=(

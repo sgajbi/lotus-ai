@@ -45,6 +45,12 @@ class CapabilityDescriptor(BaseModel):
     enabled: bool = Field(description="Whether the task is currently enabled.")
     output_label: OutputLabel = Field(description="Intended use label for the task output.")
     description: str = Field(description="Human-readable task description.")
+    redaction_allowlisted_types: list[str] = Field(
+        default_factory=list,
+        description="Redaction detector classes this task's output contract legitimately "
+        "carries (issue #150); an allowlisted class is skipped for this task only, never "
+        "globally.",
+    )
 
 
 class CapabilityCatalogResponse(BaseModel):

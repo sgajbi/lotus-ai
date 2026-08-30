@@ -13,7 +13,9 @@ from app.contracts.tasks import (
 )
 from app.services.execution_evidence import build_execution_evidence
 from app.services.task_execution_models import ResolvedTaskExecution, TaskExecutionContext
+from app.services.caller_policy_store import get_caller_policy_repository
 from app.services.provider_execution_config import compute_provider_config_sha256
+from app.services.safety_enforcement import redact_content_for_audit
 
 if TYPE_CHECKING:
     pass
@@ -139,6 +141,23 @@ def _provider_config_sha256(resolved: ResolvedTaskExecution) -> str | None:
     )
 
 
+def _audited_context_summary(context: TaskExecutionContext) -> str:
+    """Redact the caller-supplied summary at the persistence boundary.
+
+    The engine is deterministic, and the pipeline already merged this
+    summary's findings into the safety outcome at resolve time - only the
+    text is redacted here, never counted twice.
+    """
+
+    policy = get_caller_policy_repository().get_policy(context.request.caller.caller_app)
+    redacted, _ = redact_content_for_audit(
+        context.request.context.summary,
+        client_identifiers=(policy.redaction_client_identifiers if policy is not None else ()),
+        allowlisted_types=context.capability.redaction_allowlisted_types,
+    )
+    return redacted
+
+
 def map_audit_record(
     *,
     context: TaskExecutionContext,
@@ -174,7 +193,7 @@ def map_audit_record(
         authorization=response.audit.authorization,
         generated_at=response.audit.generated_at,
         stubbed=response.audit.stubbed,
-        context_summary=context.request.context.summary,
+        context_summary=_audited_context_summary(context),
         context_keys=sorted(context.request.context.payload.keys()),
         source_refs=context.request.context.source_refs,
         result_preview=response.result.message,

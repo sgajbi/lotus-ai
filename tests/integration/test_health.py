@@ -652,14 +652,15 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
         task["task_id"] == "knowledge_search.v1" and task["stubbed"] is False
         for task in body["task_runtime"]["tasks"]
     )
-    assert body["safety_runtime"]["runtime_redaction_active"] is False
+    assert body["safety_runtime"]["runtime_redaction_active"] is True
     assert body["safety_runtime"]["enforced_control_ids"] == [
         "response_labeling",
         "correlation_and_audit",
+        "runtime_redaction_engine",
     ]
     assert body["safety_governance"]["governance_ready"] is False
-    assert body["safety_governance"]["blocking_area_count"] == 3
-    assert body["safety_governance"]["runtime_status"]["runtime_redaction_active"] is False
+    assert body["safety_governance"]["blocking_area_count"] == 2
+    assert body["safety_governance"]["runtime_status"]["runtime_redaction_active"] is True
     assert body["safety_governance"]["runbook_readiness"]["runbook_ready"] is False
     assert body["safety_governance"]["runbook_readiness"]["completed_required_item_count"] == 3
     assert body["safety_governance"]["evidence_readiness"]["approval_gate"]["domain_id"] == (

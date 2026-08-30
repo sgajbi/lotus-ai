@@ -50,6 +50,9 @@ def test_observability_activation_readiness_blocks_no_sensitive_telemetry_degrad
     settings.audit_store_mode = "sqlalchemy"
     settings.access_control_store_mode = "sqlalchemy"
     settings.database_url = f"sqlite:///{tmp_path / 'observability-ai-supportability.db'}"
+    # Observe mode keeps the degraded-telemetry blocking branch covered
+    # now that the redaction engine enforces by default (issue #150 S2).
+    settings.redaction_mode = "observe"
     upgrade_database_to_head(settings.database_url)
 
     readiness = build_observability_activation_readiness()

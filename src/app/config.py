@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     live_text_temperature: float = 0.0
     live_text_top_p: float | None = None
     live_text_seed: int | None = None
+    redaction_mode: str = "enforce"
     retrieval_mode: str = "disabled"
     embedding_provider_mode: str = "disabled"
     safety_mode: str = "documented_only"

@@ -45,7 +45,7 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["audit"]["safety"]["safety_mode"] == "documented_only"
     assert body["audit"]["safety"]["redaction_posture"] == "MINIMIZATION_REQUIRED"
     assert body["audit"]["safety"]["disposition"] == "DOCUMENTED_ONLY"
-    assert body["audit"]["safety"]["runtime_redaction_active"] is False
+    assert body["audit"]["safety"]["runtime_redaction_active"] is True
     assert body["audit"]["authorization"]["outcome"] == "ALLOWED"
     assert len(body["evidence"]["descriptors"]) == 7
     assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
@@ -312,9 +312,10 @@ def test_audit_record_route_returns_saved_execution(
     assert body["enforced_safety_controls"] == [
         "response_labeling",
         "correlation_and_audit",
+        "runtime_redaction_engine",
     ]
     assert body["safety_outcome"]["disposition"] == "DOCUMENTED_ONLY"
-    assert body["safety_outcome"]["runtime_redaction_active"] is False
+    assert body["safety_outcome"]["runtime_redaction_active"] is True
     assert body["authorization"]["outcome"] == "ALLOWED"
     assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
     assert body["structured_output"]["caller_app"] == "lotus-advise"

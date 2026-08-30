@@ -149,6 +149,9 @@ def _record_direct_search_audit(
                 output_label=OutputLabel.RETRIEVAL_ANSWER.value,
                 redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
                 disposition=SafetyExecutionDisposition.ENFORCED_PASSTHROUGH,
+                # The redaction engine screens generated content; this
+                # direct-search audit stores request posture and citation ids
+                # only, so the engine does not run on this path.
                 runtime_redaction_active=False,
                 enforced_controls=[
                     "correlation_and_audit",

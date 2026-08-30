@@ -19,9 +19,13 @@ def test_safety_runtime_status_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["safety_mode"] == "documented_only"
-    assert body["runtime_redaction_active"] is False
-    assert body["runtime_redaction_disposition"] == "DOCUMENTED_ONLY"
-    assert body["enforced_control_ids"] == ["response_labeling", "correlation_and_audit"]
+    assert body["runtime_redaction_active"] is True
+    assert body["runtime_redaction_disposition"] == "ENFORCED_PASSTHROUGH"
+    assert body["enforced_control_ids"] == [
+        "response_labeling",
+        "correlation_and_audit",
+        "runtime_redaction_engine",
+    ]
     assert body["supported_execution_dispositions"] == ["DOCUMENTED_ONLY"]
 
 
@@ -55,6 +59,6 @@ def test_safety_governance_status_route(client: TestClient) -> None:
     body = response.json()
     assert body["service"] == "lotus-ai"
     assert body["governance_ready"] is False
-    assert body["runtime_status"]["runtime_redaction_active"] is False
+    assert body["runtime_status"]["runtime_redaction_active"] is True
     assert body["runbook_readiness"]["runbook_ready"] is False
     assert body["evidence_readiness"]["approval_gate"]["domain_id"] == "safety_enforcement"

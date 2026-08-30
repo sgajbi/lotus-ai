@@ -35,9 +35,11 @@ def test_ai_surface_supportability_summary_is_source_backed_and_bounded() -> Non
     assert summary.posture == ObservabilityPosture.DEGRADED
     assert summary.supported_surface_count == 17
     assert summary.executable_workflow_pack_count == 17
-    assert summary.action_required_surface_count == 17
+    # Issue #150 slice 2: active redaction telemetry clears the blanket
+    # action-required posture the missing engine used to impose.
+    assert summary.action_required_surface_count == 0
     assert summary.unavailable_surface_count == 0
-    assert summary.no_sensitive_content_telemetry is False
+    assert summary.no_sensitive_content_telemetry is True
     assert summary.metric_name == "lotus_ai_surface_supportability_state"
     assert summary.metric_labels == list(AI_SURFACE_SUPPORTABILITY_METRIC_LABELS)
     assert {item.surface_id: item.owning_service for item in summary.surfaces} == {
@@ -66,7 +68,7 @@ def test_ai_surface_supportability_summary_is_source_backed_and_bounded() -> Non
         == "lotus-manage"
     )
     assert {item.supportability_reason.value for item in summary.surfaces} == {
-        "NO_SENSITIVE_TELEMETRY_DEGRADED"
+        "WORKFLOW_PACK_SUPPORTED_NO_ACTIVITY"
     }
     assert all(item.workflow_authority_owner != "lotus-ai" for item in summary.surfaces)
     assert all(

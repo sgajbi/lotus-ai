@@ -24,14 +24,14 @@
       "expected": {
         "enforced_control_ids": [
           "response_labeling",
-          "correlation_and_audit"
+          "correlation_and_audit",
+          "runtime_redaction_engine"
         ],
         "documented_only_control_ids": [
           "context_minimization",
-          "structured_output_key_minimization",
-          "runtime_redaction_engine"
+          "structured_output_key_minimization"
         ],
-        "runtime_redaction_active": false
+        "runtime_redaction_active": true
       }
     }
   ]

@@ -22,13 +22,13 @@ def test_safety_policy_reports_runtime_redaction_control_as_enforced_when_activa
     )
 
     assert response.safety_mode == "runtime_enforced"
-    assert runtime_redaction.status == SafetyControlStatus.DOCUMENTED
+    assert runtime_redaction.status == SafetyControlStatus.ENFORCED
     minimization = next(
         control
         for control in response.controls
         if control.control_id == "structured_output_key_minimization"
     )
     assert minimization.status == SafetyControlStatus.ENFORCED
-    assert "not implemented" in runtime_redaction.description.lower()
+    assert "screens generated content" in runtime_redaction.description.lower()
 
     settings.safety_mode = "documented_only"

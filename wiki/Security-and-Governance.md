@@ -152,11 +152,17 @@ Current runtime nuance from the deeper security docs:
 Read the redaction posture precisely (issue #150): under runtime-enforced safety
 mode the service applies **deterministic structured-output key minimization and
 identity-echo truncation** — reported under the `structured_output_key_minimization`
-control. A **runtime redaction engine** (content screening of generated text for
-PII, account and card identifiers before persistence and egress) is **not
-implemented**; `runtime_redaction_engine` reports `DOCUMENTED_ONLY` and
-`runtime_redaction_active` is `false` in every safety mode until a real engine
-lands.
+control. Independently of safety mode, the **deterministic redaction engine**
+(`runtime_redaction_engine`) screens generated content — the response message,
+structured-output string leaves, and the audited context summary — for IBANs
+(mod-97-validated), Luhn-valid card PANs, e-mail addresses, `+`-prefixed phone
+numbers, and caller-policy-declared client identifiers before persistence and
+egress. Findings are recorded on the safety outcome as type + count pairs, never
+values. `LOTUS_AI_REDACTION_MODE=enforce` (default) redacts; `observe` counts
+without modifying content and reports the control as `OBSERVED`. Engine failure
+in enforce mode withholds the output (`SAFETY_REDACTION_UNAVAILABLE`) rather
+than releasing unscreened content. Detector classes a task's output contract
+legitimately carries can be allowlisted per task, never globally.
 
 ## Runtime Governance Surfaces
 
