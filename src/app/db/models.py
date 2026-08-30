@@ -686,6 +686,7 @@ class KillSwitchActivationModel(Base):
     approved_by: Mapped[str] = mapped_column(String(128), nullable=False)
     activated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     expires_at_utc: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    expiry_recorded_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
     cleared_at: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     cleared_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     clear_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

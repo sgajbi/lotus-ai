@@ -303,6 +303,11 @@ class ProviderOperationsStatusResponse(BaseModel):
     runtime_execution_enabled: bool = Field(
         description="Whether live-provider execution is currently enabled for any provider path."
     )
+    enforcing_kill_switch_count: int = Field(
+        default=0,
+        description="Currently enforcing operator kill switches (issue #177 S4); the "
+        "kill-switch status surface lists them individually.",
+    )
     rollout_blocked: bool = Field(
         description="Whether provider operations remain blocked by rollout or configuration posture."
     )

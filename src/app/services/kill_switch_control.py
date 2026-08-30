@@ -36,6 +36,7 @@ from app.contracts.providers import ProviderExecutionRequest, ProviderFailureCat
 from app.providers.base import ProviderExecutionError
 from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.kill_switch_store import get_kill_switch_repository
+from app.services.provider_metrics import record_kill_switch_action
 from app.services.provider_execution_config import resolve_provider_execution_config
 
 
@@ -73,6 +74,9 @@ def activate_kill_switch(request: KillSwitchActivationRequest) -> KillSwitchActi
         expires_at_utc=request.expires_at_utc,
     )
     get_kill_switch_repository().upsert_activation(activation)
+    record_kill_switch_action(
+        action="activated", scope=activation.scope.value, semantics=activation.semantics.value
+    )
     return KillSwitchActionResponse(
         service=settings.service_name,
         version=settings.service_version,
@@ -116,6 +120,9 @@ def clear_kill_switch(switch_id: str, request: KillSwitchClearRequest) -> KillSw
         }
     )
     repository.upsert_activation(cleared)
+    record_kill_switch_action(
+        action="cleared", scope=cleared.scope.value, semantics=cleared.semantics.value
+    )
     return KillSwitchActionResponse(
         service=settings.service_name,
         version=settings.service_version,
@@ -129,15 +136,46 @@ def clear_kill_switch(switch_id: str, request: KillSwitchClearRequest) -> KillSw
 
 
 def build_kill_switch_status() -> KillSwitchStatusResponse:
-    activations = get_kill_switch_repository().list_activations()
     now = _utc_now_iso()
+    activations = [
+        _record_expiry_if_lapsed(activation, now=now)
+        for activation in get_kill_switch_repository().list_activations()
+    ]
     return KillSwitchStatusResponse(
         service=settings.service_name,
         version=settings.service_version,
         store_mode=settings.kill_switch_store_mode,
+        expired_count=sum(
+            1 for activation in activations if activation.expiry_recorded_at is not None
+        ),
         active_count=sum(1 for activation in activations if _is_enforcing(activation, now=now)),
         activations=activations,
     )
+
+
+def _record_expiry_if_lapsed(
+    activation: KillSwitchActivationRecord, *, now: str
+) -> KillSwitchActivationRecord:
+    """Durably record the expiry event for a lapsed, uncleared activation.
+
+    Sweep-on-read: deterministic, replica-safe (idempotent marker upsert), and
+    requires no scheduler. The switch is inert from expires_at_utc regardless;
+    this marks the recorded event and feeds the expiry counter exactly once.
+    """
+
+    if (
+        activation.cleared_at is not None
+        or activation.expiry_recorded_at is not None
+        or activation.expires_at_utc is None
+        or _parse_utc(activation.expires_at_utc) > _parse_utc(now)
+    ):
+        return activation
+    expired = activation.model_copy(update={"expiry_recorded_at": now})
+    get_kill_switch_repository().upsert_activation(expired)
+    record_kill_switch_action(
+        action="expired", scope=expired.scope.value, semantics=expired.semantics.value
+    )
+    return expired
 
 
 _drain_completion_permitted: ContextVar[bool] = ContextVar(
@@ -184,6 +222,11 @@ def enforce_kill_switch_intake(
             continue
         if not _matches(activation, request=probe):
             continue
+        record_kill_switch_action(
+            action="refused_intake",
+            scope=activation.scope.value,
+            semantics=activation.semantics.value,
+        )
         target_note = f" target `{activation.target}`" if activation.target else ""
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -216,6 +259,11 @@ def enforce_kill_switches(request: ProviderExecutionRequest) -> None:
             ):
                 # Draining: already-claimed async work completes safely.
                 continue
+            record_kill_switch_action(
+                action="refused_sync",
+                scope=activation.scope.value,
+                semantics=activation.semantics.value,
+            )
             target_note = f" target `{activation.target}`" if activation.target else ""
             raise ProviderExecutionError(
                 category=ProviderFailureCategory.KILL_SWITCH_ACTIVE,

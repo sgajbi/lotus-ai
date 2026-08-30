@@ -8,6 +8,7 @@ from app.contracts.providers import (
     ProviderOperationsStatusResponse,
     ProviderQuotaScope,
 )
+from app.services.kill_switch_control import build_kill_switch_status
 from app.services.provider_expansion_policy import build_provider_expansion_policy
 from app.services.provider_budget_policy import build_provider_budget_policy
 from app.services.provider_degradation_state import build_provider_degradation_status
@@ -34,6 +35,7 @@ def build_provider_operations_status() -> ProviderOperationsStatusResponse:
         provider_mode=resolve_provider_execution_config().provider_mode,
         operations_state=operations_state,
         runtime_execution_enabled=live_execution_state.live_execution_enabled,
+        enforcing_kill_switch_count=build_kill_switch_status().active_count,
         rollout_blocked=operations_state == ProviderOperationsState.ROLLOUT_BLOCKED,
         quota_policy=quota_policy,
         budget_policy=budget_policy,

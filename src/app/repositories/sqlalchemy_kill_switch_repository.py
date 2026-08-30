@@ -49,6 +49,7 @@ class SqlAlchemyKillSwitchRepository(SqlAlchemyRepositoryBase):
             model.approved_by = activation.approved_by
             model.activated_at = activation.activated_at
             model.expires_at_utc = activation.expires_at_utc
+            model.expiry_recorded_at = activation.expiry_recorded_at
             model.cleared_at = activation.cleared_at
             model.cleared_by = activation.cleared_by
             model.clear_reason = activation.clear_reason
@@ -65,6 +66,7 @@ class SqlAlchemyKillSwitchRepository(SqlAlchemyRepositoryBase):
             approved_by=model.approved_by,
             activated_at=model.activated_at,
             expires_at_utc=model.expires_at_utc,
+            expiry_recorded_at=model.expiry_recorded_at,
             cleared_at=model.cleared_at,
             cleared_by=model.cleared_by,
             clear_reason=model.clear_reason,
