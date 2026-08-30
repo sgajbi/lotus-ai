@@ -32,6 +32,7 @@ from app.services.provider_degradation_state import build_provider_degradation_s
 
 
 def build_routing_posture() -> RoutingPostureResponse:
+    config = resolve_provider_execution_config()
     candidate = _resolve_candidate()
     return RoutingPostureResponse(
         service=settings.service_name,
@@ -41,8 +42,8 @@ def build_routing_posture() -> RoutingPostureResponse:
         strategy=RoutingStrategy.FIXED,
         candidate=candidate,
         degradation=build_provider_degradation_status(),
-        quota_enforced=settings.live_text_quota_enforced,
-        budget_enforced=settings.live_text_budget_enforced,
+        quota_enforced=config.enforcement.quota_enforced,
+        budget_enforced=config.enforcement.budget_enforced,
         enforcing_kill_switch_count=build_kill_switch_status().active_count,
         notes=[
             "The fixed policy maps the configured provider mode to exactly one adapter; "

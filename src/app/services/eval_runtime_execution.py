@@ -968,15 +968,6 @@ EVAL_HERMETIC_CREDENTIAL_REF = "credential-ref:eval-hermetic"
 @contextmanager
 def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None]:
     original_values = {
-        "live_text_quota_enforced": settings.live_text_quota_enforced,
-        "live_text_default_quota_limit": settings.live_text_default_quota_limit,
-        "live_text_task_quota_limits": settings.live_text_task_quota_limits,
-        "live_text_budget_enforced": settings.live_text_budget_enforced,
-        "live_text_soft_budget_usd": settings.live_text_soft_budget_usd,
-        "live_text_degraded_failure_count_threshold": settings.live_text_degraded_failure_count_threshold,
-        "live_text_circuit_open_failure_count_threshold": settings.live_text_circuit_open_failure_count_threshold,
-        "live_text_circuit_open_seconds": settings.live_text_circuit_open_seconds,
-        "live_text_hard_budget_usd": settings.live_text_hard_budget_usd,
         "live_text_input_cost_per_1k_tokens": settings.live_text_input_cost_per_1k_tokens,
         "live_text_output_cost_per_1k_tokens": settings.live_text_output_cost_per_1k_tokens,
         "live_text_degradation_enforced": settings.live_text_degradation_enforced,
@@ -1090,6 +1081,72 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                     ),
                     allowed_task_ids=str(input_payload.get("task_id", "")),
                 )
+            enforcement = case_config.enforcement
+            if "request_limit" in input_payload and input_payload.get("quota_scope") == "task":
+                enforcement = replace(
+                    enforcement,
+                    quota_enforced=True,
+                    task_quota_limits=(
+                        f"{input_payload['task_id']}="
+                        f"{int(cast(int | str, input_payload['request_limit']))}"
+                    ),
+                )
+            if "hard_budget_usd" in input_payload:
+                enforcement = replace(
+                    enforcement,
+                    budget_enforced=True,
+                    hard_budget_usd=float(
+                        cast(int | float | str, input_payload["hard_budget_usd"])
+                    ),
+                    soft_budget_usd=float(
+                        cast(
+                            int | float | str,
+                            input_payload.get(
+                                "recorded_spend_usd", input_payload.get("tracked_spend_usd", 0.5)
+                            ),
+                        )
+                    ),
+                )
+            if "degraded_failure_count_threshold" in input_payload:
+                enforcement = replace(
+                    enforcement,
+                    degradation_enforced=True,
+                    degraded_failure_count_threshold=int(
+                        cast(int | str, input_payload["degraded_failure_count_threshold"])
+                    ),
+                )
+            if "circuit_open_failure_count_threshold" in input_payload:
+                enforcement = replace(
+                    enforcement,
+                    circuit_open_failure_count_threshold=int(
+                        cast(int | str, input_payload["circuit_open_failure_count_threshold"])
+                    ),
+                )
+            if "circuit_open_seconds" in input_payload:
+                enforcement = replace(
+                    enforcement,
+                    circuit_open_seconds=int(
+                        cast(int | str, input_payload["circuit_open_seconds"])
+                    ),
+                )
+                if "degraded_failure_count_threshold" not in input_payload:
+                    # A circuit-posture case without explicit thresholds trips
+                    # the breaker on the single recorded failure below.
+                    enforcement = replace(
+                        enforcement,
+                        degradation_enforced=True,
+                        degraded_failure_count_threshold=1,
+                        circuit_open_failure_count_threshold=1,
+                    )
+            elif any(
+                key in input_payload
+                for key in (
+                    "degraded_failure_count_threshold",
+                    "circuit_open_failure_count_threshold",
+                )
+            ):
+                enforcement = replace(enforcement, circuit_open_seconds=60)
+            case_config = replace(case_config, enforcement=enforcement)
             stack.enter_context(override_provider_execution_config(case_config))
             if case_mode == "local_openai_compatible":
                 local_probe_status = input_payload.get("local_probe_status")
@@ -1129,8 +1186,6 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                         )
                     )
             if "request_limit" in input_payload and input_payload.get("quota_scope") == "task":
-                settings.live_text_quota_enforced = True
-                settings.live_text_task_quota_limits = f"{input_payload['task_id']}={int(cast(int | str, input_payload['request_limit']))}"
                 get_provider_operations_store().increment_quota_state(
                     scope=ProviderQuotaScope.TASK,
                     scope_key=str(input_payload["task_id"]),
@@ -1138,18 +1193,6 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                     updated_at=_utcnow_iso(),
                 )
             if "hard_budget_usd" in input_payload:
-                settings.live_text_budget_enforced = True
-                settings.live_text_hard_budget_usd = float(
-                    cast(int | float | str, input_payload["hard_budget_usd"])
-                )
-                settings.live_text_soft_budget_usd = float(
-                    cast(
-                        int | float | str,
-                        input_payload.get(
-                            "recorded_spend_usd", input_payload.get("tracked_spend_usd", 0.5)
-                        ),
-                    )
-                )
                 settings.live_text_input_cost_per_1k_tokens = 0.01
                 settings.live_text_output_cost_per_1k_tokens = 0.03
                 tracked_spend = float(
@@ -1169,27 +1212,6 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                     if settings.provider_operations_store_mode == "sqlalchemy":
                         reset_provider_operations_store_cache()
             if "degraded_failure_count_threshold" in input_payload:
-                settings.live_text_degradation_enforced = True
-                settings.live_text_degraded_failure_count_threshold = int(
-                    cast(int | str, input_payload["degraded_failure_count_threshold"])
-                )
-            if "circuit_open_failure_count_threshold" in input_payload:
-                settings.live_text_circuit_open_failure_count_threshold = int(
-                    cast(int | str, input_payload["circuit_open_failure_count_threshold"])
-                )
-            if "circuit_open_seconds" in input_payload:
-                settings.live_text_circuit_open_seconds = int(
-                    cast(int | str, input_payload["circuit_open_seconds"])
-                )
-            elif any(
-                key in input_payload
-                for key in (
-                    "degraded_failure_count_threshold",
-                    "circuit_open_failure_count_threshold",
-                )
-            ):
-                settings.live_text_circuit_open_seconds = 60
-            if "degraded_failure_count_threshold" in input_payload:
                 failure_count = int(
                     cast(int | str, input_payload["degraded_failure_count_threshold"])
                 )
@@ -1198,9 +1220,6 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                 if settings.provider_operations_store_mode == "sqlalchemy":
                     reset_provider_operations_store_cache()
             elif "circuit_open_seconds" in input_payload:
-                settings.live_text_degradation_enforced = True
-                settings.live_text_degraded_failure_count_threshold = 1
-                settings.live_text_circuit_open_failure_count_threshold = 1
                 record_provider_failure(ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR)
                 if settings.provider_operations_store_mode == "sqlalchemy":
                     reset_provider_operations_store_cache()

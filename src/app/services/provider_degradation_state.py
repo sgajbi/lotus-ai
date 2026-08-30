@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from app.config import settings
 from app.contracts.providers import (
     ProviderDegradationStatusDescriptor,
     ProviderFailureCategory,
@@ -11,6 +10,7 @@ from app.contracts.providers import (
 from app.providers.base import ProviderExecutionError
 from app.repositories.provider_operations_repository import ProviderDegradationStateRecord
 from app.services.provider_operations_store import get_provider_operations_store
+from app.services.provider_execution_config import resolve_provider_execution_config
 
 _DEGRADATION_KEY = "live_text_generation"
 
@@ -104,10 +104,11 @@ def reset_provider_degradation_state() -> None:
 def _resolve_provider_degradation_state() -> ProviderDegradationState:
     findings: list[str] = []
     state_record = _load_degradation_record()
-    enforcement_enabled = settings.live_text_degradation_enforced
-    degraded_threshold = settings.live_text_degraded_failure_count_threshold
-    circuit_threshold = settings.live_text_circuit_open_failure_count_threshold
-    circuit_open_seconds = settings.live_text_circuit_open_seconds
+    enforcement = resolve_provider_execution_config().enforcement
+    enforcement_enabled = enforcement.degradation_enforced
+    degraded_threshold = enforcement.degraded_failure_count_threshold
+    circuit_threshold = enforcement.circuit_open_failure_count_threshold
+    circuit_open_seconds = enforcement.circuit_open_seconds
     configuration_valid = True
 
     if not enforcement_enabled:
@@ -250,7 +251,7 @@ def _remaining_circuit_open_seconds(circuit_open_until: str | None) -> int | Non
 
 def _open_circuit() -> None:
     state_record = _load_degradation_record()
-    cooldown_seconds = settings.live_text_circuit_open_seconds or 0
+    cooldown_seconds = resolve_provider_execution_config().enforcement.circuit_open_seconds or 0
     _save_degradation_record(
         consecutive_failure_count=state_record.consecutive_failure_count,
         last_failure_category=state_record.last_failure_category,
