@@ -46,6 +46,7 @@ class AuditReadScope(BaseModel):
 class AuditAccessOperation(str, Enum):
     LIST_RECORDS = "LIST_RECORDS"
     GET_RECORD = "GET_RECORD"
+    AGGREGATE_BREAKDOWNS = "AGGREGATE_BREAKDOWNS"
 
 
 class AuditAccessOutcome(str, Enum):

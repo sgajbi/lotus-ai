@@ -12,6 +12,12 @@ from app.contracts.observability import (
     ObservabilityRuntimeStatusResponse,
 )
 from app.services.observability_activation_readiness import build_observability_activation_readiness
+from app.contracts.audit_access import AuditAccessOperation, AuditAccessOutcome
+from app.http.authenticated_caller import AuthenticatedCallerDependency
+from app.services.audit_read_authorization import (
+    record_all_tenant_audit_access,
+    resolve_audit_read_scope,
+)
 from app.services.observability_breakdowns import build_observability_breakdown_summary
 from app.services.observability_domain_summaries import (
     build_async_observability_bundle,
@@ -216,15 +222,29 @@ async def get_safety_observability_summary_route() -> DomainIncidentSummaryRespo
     operation_id="getObservabilityBreakdownSummary",
     summary="Get observability caller, tenant, and capability breakdowns",
     description=(
-        "Returns bounded caller-app, tenant, and capability breakdowns derived from recent audit records "
-        "and the current async job catalog."
+        "Returns bounded caller-app, tenant, and capability breakdowns derived from recent audit "
+        "records and the current async job catalog. Tenant scope is derived from the "
+        "authenticated caller's audit-read policy: restricted callers see only their own "
+        "tenants, and all-tenant inspection requires the governed privileged capability and "
+        "leaves a durable access event."
     ),
     responses={
         200: {"description": "Observability breakdown summary returned successfully."},
+        403: {"description": "Caller is not authorized to inspect audit-backed breakdowns."},
         500: {"description": "Unexpected server error."},
     },
 )
 async def get_observability_breakdown_summary_route(
+    authenticated_caller: AuthenticatedCallerDependency,
     limit: int = Query(default=100, ge=1, le=200),
 ) -> ObservabilityBreakdownSummaryResponse:
-    return build_observability_breakdown_summary(limit=limit)
+    scope = resolve_audit_read_scope(authenticated_caller)
+    summary = build_observability_breakdown_summary(limit=limit, scope=scope)
+    record_all_tenant_audit_access(
+        caller=authenticated_caller,
+        scope=scope,
+        operation=AuditAccessOperation.AGGREGATE_BREAKDOWNS,
+        outcome=AuditAccessOutcome.SUCCEEDED,
+        returned_record_count=summary.sampled_audit_record_count,
+    )
+    return summary

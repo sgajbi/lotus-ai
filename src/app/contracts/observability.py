@@ -173,6 +173,9 @@ class ObservabilityBreakdownSummaryResponse(BaseModel):
     sampled_audit_record_count: int = Field(
         description="Number of recent audit records actually included in the bounded breakdown sample."
     )
+    tenant_scope: str = Field(
+        description="Audit-read scope mode the breakdown was computed under (caller-derived).",
+    )
     sampled_async_job_count: int = Field(
         description="Number of async job records included in the bounded breakdown sample."
     )

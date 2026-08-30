@@ -166,13 +166,10 @@ Recorded so they are not mistaken for behaviour that works. Each is a tracked is
 
 | gap | effect | issue |
 |---|---|---|
-| `GET /platform/observability/breakdowns` performs an all-tenant audit read with no per-caller scope check | any authenticated caller can enumerate every tenant id and per-tenant execution volume; not recorded in the audit access trail | [#168](https://github.com/sgajbi/lotus-ai/issues/168) |
 | `monetary-float-guard` is declared in the `Makefile` and invoked by nothing | run by hand it exits 1 with five findings, two genuinely monetary | [#165](https://github.com/sgajbi/lotus-ai/issues/165) |
 | `safety_mode` defaults to `documented_only` | redaction posture is declared per task, not enforced at runtime | — |
 | callers remain responsible for context minimisation | the service does not trim caller-supplied context | — |
 
-The `#168` gap matters for how you read the tenant-scope section above: that model is real and
-enforced on `/ai/audit`, and one observability route currently sits outside it.
 
 ## Architectural boundaries
 
