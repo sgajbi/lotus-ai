@@ -126,7 +126,11 @@ def test_async_submission_intake_checks_kill_switches(monkeypatch: MonkeyPatch) 
     from app.services.workflow_pack_async_execution import (
         _preflight_workflow_pack_execution_request,
     )
-    from app.contracts.workflow_packs import WorkflowPackExecutionRequest
+    from app.contracts.workflow_packs import (
+        WorkflowPackCallerIdentityClass,
+        WorkflowPackEnvironment,
+        WorkflowPackExecutionRequest,
+    )
     from app.contracts.tasks import (
         CallerMetadata,
         TaskContextEnvelope,
@@ -137,8 +141,8 @@ def test_async_submission_intake_checks_kill_switches(monkeypatch: MonkeyPatch) 
     request = WorkflowPackExecutionRequest(
         pack_id="advisor_brief.pack",
         version="v1",
-        environment="PRODUCTION",
-        caller_identity_class="INTERNAL_SERVICE",
+        environment=WorkflowPackEnvironment.PRODUCTION,
+        caller_identity_class=WorkflowPackCallerIdentityClass.INTERNAL_SERVICE,
         task_request=TaskExecutionRequest(
             task_id="explain.v1",
             input_mode=TaskInputMode.STRUCTURED_CONTEXT,
