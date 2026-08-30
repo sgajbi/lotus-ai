@@ -55,10 +55,12 @@ def _collector() -> Iterator["_CollectingHandler"]:
     logger.handlers = [handler]
     logger.setLevel(logging.INFO)
     logger.propagate = False
+    logger.disabled = False
     for name in child_snapshots:
         child = logging.getLogger(name)
         child.setLevel(logging.NOTSET)
         child.propagate = True
+        child.disabled = False
     yield handler
     logger.handlers, level, propagate = snapshot[0], snapshot[1], snapshot[2]
     logger.setLevel(level)

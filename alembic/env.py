@@ -17,7 +17,11 @@ from app.db import models as _models  # noqa: E402,F401
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers defaults to True, which silently sets
+    # .disabled on every logger created before a migration runs - killing the
+    # service's structured logging whenever alembic executes in-process (the
+    # test migration runner does this hundreds of times per lane).
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
