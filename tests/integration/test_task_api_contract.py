@@ -764,7 +764,7 @@ def test_task_execute_contract_blocks_live_provider_for_caller_without_live_perm
     settings.live_text_input_cost_per_1k_tokens = 0.01
     settings.live_text_output_cost_per_1k_tokens = 0.03
     monkeypatch.setattr(
-        "app.providers.openai_live_text_provider._post_openai_response",
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
         lambda **_: {
             "id": "resp_live_unauthorized",
             "model": "gpt-5.4",
@@ -811,7 +811,7 @@ def test_task_execute_contract_allows_lotus_gateway_live_advisor_brief(
     settings.live_text_input_cost_per_1k_tokens = 0.01
     settings.live_text_output_cost_per_1k_tokens = 0.03
     monkeypatch.setattr(
-        "app.providers.openai_live_text_provider._post_openai_response",
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
         lambda **_: {
             "id": "resp_gateway_advisor_brief",
             "model": "gpt-5.4",
