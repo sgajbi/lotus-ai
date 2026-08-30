@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import cast
 
 from fastapi import HTTPException
-from pytest import MonkeyPatch
+from pytest import MonkeyPatch, raises
 from pytest_mock import MockerFixture
 
 from app.contracts.access_control import AuthorizationOutcome
@@ -863,3 +863,94 @@ def _seed_prompt_approval_gate_pass_sqlalchemy() -> None:
                 case_count=1,
             )
         )
+
+
+def test_execute_task_failure_audit_carries_the_rejected_routing_decision(
+    mocker: MockerFixture, monkeypatch: MonkeyPatch
+) -> None:
+    """A preflight veto (quota) must leave a routing decision on the failure
+    audit record: one rejected candidate, bounded reason, no selection."""
+
+    from app.config import settings
+    from app.services.model_catalogue_store import reset_model_catalogue_store_cache
+
+    reset_model_catalogue_store_cache()
+    audit_store = mocker.Mock()
+    mocker.patch("app.services.task_execution_pipeline.get_audit_store", return_value=audit_store)
+
+    class _LiveAdapter:
+        def execute(self, request: object) -> object:
+            return type(
+                "Response",
+                (),
+                {
+                    "provider_id": "text.openai",
+                    "provider_mode": "openai",
+                    "adapter_kind": None,
+                    "failure_category": None,
+                    "timeout_ms": 4000,
+                    "retry_count": 0,
+                    "max_output_tokens": 512,
+                    "model_id": "gpt-5.4",
+                    "provider_request_id": "req_reject_1",
+                    "input_tokens": 1,
+                    "output_tokens": 1,
+                    "total_tokens": 2,
+                    "estimated_cost_usd": None,
+                    "stubbed": False,
+                    "message": "live response",
+                    "structured_output": {},
+                },
+            )()
+
+    monkeypatch.setattr(settings, "provider_mode", "openai")
+    monkeypatch.setattr(settings, "provider_rollout_state", "CANARY_ENABLED")
+    monkeypatch.setattr(settings, "live_text_provider_id", "text.openai")
+    monkeypatch.setattr(settings, "live_text_model_id", "gpt-5.4")
+    monkeypatch.setattr(settings, "live_text_model_version", None)
+    monkeypatch.setattr(settings, "live_text_provider_api_key", "secret")
+    monkeypatch.setattr(settings, "live_text_allowed_task_ids", "explain.v1")
+    monkeypatch.setattr(settings, "live_text_quota_enforced", True)
+    monkeypatch.setattr(settings, "live_text_task_quota_limits", "explain.v1=1")
+    monkeypatch.setattr(settings, "live_text_budget_enforced", False)
+    monkeypatch.setattr(settings, "live_text_degradation_enforced", False)
+    monkeypatch.setattr(settings, "workflow_run_model_risk_inventory_json", "[]")
+    mocker.patch(
+        "app.services.provider_gateway.resolve_text_generation_adapter",
+        return_value=_LiveAdapter(),
+    )
+    from app.services.provider_quota_policy import reset_provider_quota_counters
+
+    reset_provider_quota_counters()
+
+    from app.services.provider_gateway import ProviderGatewayUnavailableError
+    from app.services.task_execution_pipeline import (
+        build_failed_task_execution_response,
+        validate_task_request,
+    )
+
+    first = execute_task(_request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY))
+    assert first.status == "COMPLETED"
+
+    with raises(ProviderGatewayUnavailableError) as exc_info:
+        execute_task(_request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY))
+
+    decision = exc_info.value.routing_decision
+    assert decision.selected_provider_id is None
+    assert decision.candidates[0].provider_id == "text.openai"
+    assert decision.candidates[0].rejection_reason is not None
+    assert decision.candidates[0].rejection_reason.value == "QUOTA_EXCEEDED"
+
+    # The workflow-pack execution seam consumes this exception through the
+    # failure builder: the rejected decision must land on the durable record
+    # and in the failure evidence bundle.
+    context = validate_task_request(
+        _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
+    )
+    failed = build_failed_task_execution_response(context=context, exc=exc_info.value)
+    assert failed.status == "FAILED"
+    assert failed.audit.routing_decision == decision
+    assert any(
+        descriptor.evidence_type == "routing_decision" for descriptor in failed.evidence.descriptors
+    )
+    reset_model_catalogue_store_cache()

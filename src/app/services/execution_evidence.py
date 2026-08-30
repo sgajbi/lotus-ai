@@ -3,8 +3,7 @@ from __future__ import annotations
 from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptDescriptor, PromptSelectionTraceDescriptor
-from app.contracts.providers import ProviderExecutionResponse
-from app.contracts.routing_decision import RoutingDecisionDescriptor
+from app.contracts.providers import ProviderExecutionResponse, RoutingDecisionDescriptor
 from app.contracts.retrieval import RetrievalExecutionStatusResponse
 from app.contracts.safety import SafetyExecutionOutcome
 from app.contracts.tasks import CapabilityDescriptor, TaskExecutionRequest
@@ -30,7 +29,7 @@ def build_execution_evidence(
     ]
     routing_decision = getattr(provider_execution, "routing_decision", None)
     if routing_decision is not None:
-        descriptors.append(_routing_decision_descriptor(routing_decision=routing_decision))
+        descriptors.append(build_routing_decision_descriptor(routing_decision=routing_decision))
     descriptors.extend(
         [
             _safety_descriptor(safety_outcome=safety_outcome),
@@ -44,7 +43,7 @@ def build_execution_evidence(
     return ExecutionEvidenceBundle(descriptors=descriptors)
 
 
-def _routing_decision_descriptor(
+def build_routing_decision_descriptor(
     *,
     routing_decision: RoutingDecisionDescriptor,
 ) -> ExecutionEvidenceDescriptor:
