@@ -15,6 +15,7 @@ from app.config import settings
 from app.contracts.api_errors import COMMON_PROBLEM_RESPONSES, ProblemDetails
 from app.http.authenticated_caller import require_authenticated_caller
 from app.middleware.correlation import CorrelationIdMiddleware
+from app.services.tracing_runtime import configure_tracing
 from app.middleware.http_boundary import HttpBoundaryMiddleware
 from app.routers.access_control import router as access_control_router
 from app.routers.artifacts import router as artifacts_router
@@ -196,6 +197,7 @@ app = FastAPI(
     responses=COMMON_PROBLEM_RESPONSES,
 )
 install_problem_detail_handlers(app)
+configure_tracing()
 app.add_middleware(HttpBoundaryMiddleware)
 app.add_middleware(CorrelationIdMiddleware, service_name=SERVICE_NAME)
 _install_fastapi_included_router_prometheus_patch()
