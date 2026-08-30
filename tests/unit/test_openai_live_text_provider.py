@@ -15,11 +15,31 @@ from app.providers.openai_compatible_text_transport import (
     extract_output_text,
     extract_usage,
     parse_json_object,
+    post_openai_compatible_response,
     strip_json_code_fence,
 )
 from app.providers.local_openai_compatible_text_provider import LocalOpenAICompatibleTextProvider
-from app.providers.openai_live_text_provider import OpenAILiveTextProvider, _post_openai_response
+from app.providers.openai_live_text_provider import OpenAILiveTextProvider
 from tests.unit.test_provider_gateway import _request
+
+
+def _post_openai_response(
+    *,
+    api_base: str,
+    api_key: str | None,
+    payload: dict[str, object],
+    timeout_seconds: float,
+    retry_limit: int = 0,
+) -> dict[str, Any]:
+    return post_openai_compatible_response(
+        api_base=api_base,
+        api_key=api_key,
+        payload=payload,
+        timeout_seconds=timeout_seconds,
+        provider_display_name="OpenAI Managed Text Provider",
+        require_api_key=True,
+        retry_limit=retry_limit,
+    )
 
 
 class _OpenAICompatibleResponse:
@@ -43,7 +63,7 @@ def test_openai_live_text_provider_returns_usage_and_cost(monkeypatch: MonkeyPat
     settings.live_text_output_cost_per_1k_tokens = 0.03
 
     monkeypatch.setattr(
-        "app.providers.openai_live_text_provider._post_openai_response",
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
         lambda **_: {
             "id": "resp_123",
             "model": "gpt-5.4",
@@ -75,7 +95,7 @@ def test_openai_live_text_provider_parses_advisor_brief_structured_output(
     settings.live_text_output_cost_per_1k_tokens = 0.03
 
     monkeypatch.setattr(
-        "app.providers.openai_live_text_provider._post_openai_response",
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
         lambda **_: {
             "id": "resp_advisor_123",
             "model": "gpt-5.4",
@@ -133,7 +153,7 @@ def test_openai_live_text_provider_parses_fenced_advisor_brief_json(
 ) -> None:
     settings.live_text_model_id = "gpt-5.4"
     monkeypatch.setattr(
-        "app.providers.openai_live_text_provider._post_openai_response",
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
         lambda **_: {
             "id": "resp_advisor_fenced",
             "model": "gpt-5.4",
@@ -177,7 +197,7 @@ def test_openai_live_text_provider_parses_advisor_json_with_trailing_text(
 ) -> None:
     settings.live_text_model_id = "gpt-5.4"
     monkeypatch.setattr(
-        "app.providers.openai_live_text_provider._post_openai_response",
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
         lambda **_: {
             "id": "resp_advisor_trailing_text",
             "model": "gpt-5.4",
@@ -216,7 +236,7 @@ def test_openai_live_text_provider_extracts_summary_from_truncated_advisor_json(
 ) -> None:
     settings.live_text_model_id = "gpt-5.4"
     monkeypatch.setattr(
-        "app.providers.openai_live_text_provider._post_openai_response",
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
         lambda **_: {
             "id": "resp_advisor_truncated",
             "model": "gpt-5.4",
@@ -296,7 +316,7 @@ def test_openai_live_text_provider_falls_back_when_advisor_summary_leaks_contrac
 ) -> None:
     settings.live_text_model_id = "gpt-5.4"
     monkeypatch.setattr(
-        "app.providers.openai_live_text_provider._post_openai_response",
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
         lambda **_: {
             "id": "resp_advisor_bad_summary",
             "model": "gpt-5.4",
@@ -388,7 +408,7 @@ def test_openai_live_text_provider_maps_rate_limit_errors(monkeypatch: MonkeyPat
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
-        assert exc.message == "OpenAI provider rate limit exceeded."
+        assert exc.message == "OpenAI Managed Text Provider rate limit exceeded."
         assert "Rate limit hit" not in exc.message
     else:
         raise AssertionError("Expected ProviderExecutionError for rate-limited provider response")
@@ -415,7 +435,10 @@ def test_openai_live_text_provider_maps_upstream_http_errors(monkeypatch: Monkey
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-        assert exc.message == "OpenAI provider request failed at the upstream provider boundary."
+        assert (
+            exc.message
+            == "OpenAI Managed Text Provider request failed at the upstream provider boundary."
+        )
         assert "Transient upstream failure" not in exc.message
     else:
         raise AssertionError("Expected ProviderExecutionError for upstream provider response")
@@ -437,7 +460,7 @@ def test_openai_live_text_provider_maps_timeout_errors(monkeypatch: MonkeyPatch)
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
         assert exc.message == (
-            "OpenAI provider request did not complete within the configured timeout."
+            "OpenAI Managed Text Provider request did not complete within the configured timeout."
         )
     else:
         raise AssertionError("Expected ProviderExecutionError for provider timeout")
@@ -459,7 +482,7 @@ def test_openai_live_text_provider_maps_url_errors(monkeypatch: MonkeyPatch) -> 
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
         assert exc.message == (
-            "OpenAI provider request did not complete within the configured timeout."
+            "OpenAI Managed Text Provider request did not complete within the configured timeout."
         )
         assert "connection refused" not in exc.message
     else:
@@ -483,9 +506,8 @@ def test_openai_live_text_provider_posts_successfully_through_urlopen(
         timeout_seconds=4.0,
     )
 
-    payload_dict = cast(dict[str, Any], payload)
-    assert payload_dict["id"] == "resp_ok"
-    assert payload_dict["_lotus_retry_count"] == 0
+    assert payload["id"] == "resp_ok"
+    assert payload["_lotus_retry_count"] == 0
 
 
 def test_openai_live_text_provider_retries_managed_transient_failure_then_success(
@@ -568,7 +590,7 @@ def test_openai_compatible_transport_preserves_category_when_retries_exhaust(
     except ProviderExecutionError as exc:
         assert attempts["count"] == 3
         assert exc.category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
-        assert exc.message == "OpenAI provider rate limit exceeded."
+        assert exc.message == "OpenAI Managed Text Provider rate limit exceeded."
         assert "raw account detail" not in exc.message
     else:
         raise AssertionError("Expected ProviderExecutionError after exhausted retries")
@@ -647,7 +669,10 @@ def test_openai_live_text_provider_handles_non_json_error_bodies(monkeypatch: Mo
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-        assert exc.message == "OpenAI provider request failed at the upstream provider boundary."
+        assert (
+            exc.message
+            == "OpenAI Managed Text Provider request failed at the upstream provider boundary."
+        )
     else:
         raise AssertionError("Expected ProviderExecutionError for invalid JSON error body")
 

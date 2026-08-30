@@ -162,6 +162,25 @@ def test_transport_sends_explicit_default_sampling(monkeypatch: MonkeyPatch) -> 
     assert "seed" not in captured
 
 
+def test_openai_live_provider_sends_explicit_sampling(monkeypatch: MonkeyPatch) -> None:
+    from app.providers.openai_live_text_provider import OpenAILiveTextProvider
+
+    captured = _capture_transport_payload(monkeypatch)
+
+    with override_runtime_settings(
+        live_text_provider_api_key="test-key", live_text_model_id="gpt-5.4"
+    ):
+        response = OpenAILiveTextProvider().execute(_provider_request())
+
+    # The managed-OpenAI path shares the payload builder with the local
+    # path, so recorded sampling is truthful for both live providers.
+    assert response.message == "OK"
+    assert captured["model"] == "gpt-5.4"
+    assert captured["temperature"] == 0.0
+    assert "top_p" not in captured
+    assert "seed" not in captured
+
+
 def test_transport_sends_configured_sampling_parameters(monkeypatch: MonkeyPatch) -> None:
     captured = _capture_transport_payload(monkeypatch)
 

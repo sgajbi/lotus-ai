@@ -644,7 +644,7 @@ def test_execute_task_routes_allowlisted_task_through_live_provider(
     settings.live_text_output_cost_per_1k_tokens = 0.03
 
     monkeypatch.setattr(
-        "app.providers.openai_live_text_provider._post_openai_response",
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
         lambda **_: {
             "id": "resp_live_001",
             "model": "gpt-5.4",
@@ -753,7 +753,7 @@ def test_execute_task_blocks_live_provider_for_caller_without_live_permission(
     settings.live_text_input_cost_per_1k_tokens = 0.01
     settings.live_text_output_cost_per_1k_tokens = 0.03
     monkeypatch.setattr(
-        "app.providers.openai_live_text_provider._post_openai_response",
+        "app.providers.openai_compatible_text_transport.post_openai_compatible_response",
         lambda **_: {
             "id": "resp_live_unauthorized",
             "model": "gpt-5.4",
