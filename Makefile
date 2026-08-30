@@ -8,6 +8,7 @@ lint:
 	python -m ruff check .
 	python -m ruff format --check .
 	python scripts/check_runtime_purity.py
+	python scripts/check_monetary_float_usage.py
 
 monetary-float-guard:
 	python scripts/check_monetary_float_usage.py

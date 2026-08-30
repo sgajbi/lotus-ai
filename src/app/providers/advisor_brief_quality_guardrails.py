@@ -273,7 +273,9 @@ def _has_numeric_consistency_mismatch(
     if not isinstance(performance, dict):
         return False
     allowed_percents = [
-        float(value)
+        float(
+            value
+        )  # monetary-float-ok: leak-detection comparison of caller-supplied display values
         for value in (
             performance.get("portfolio_return_pct"),
             performance.get("benchmark_return_pct"),
@@ -283,7 +285,9 @@ def _has_numeric_consistency_mismatch(
         if isinstance(value, int | float)
     ]
     allowed_currency_values = [
-        float(value)
+        float(
+            value
+        )  # monetary-float-ok: leak-detection comparison of caller-supplied display values
         for value in (
             performance.get("net_cash_flow"),
             performance.get("end_market_value"),

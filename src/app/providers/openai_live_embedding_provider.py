@@ -148,7 +148,10 @@ def _extract_embedding(payload: dict[str, Any]) -> list[float]:
             if isinstance(embedding, list) and all(
                 isinstance(value, int | float) for value in embedding
             ):
-                return [float(value) for value in embedding]
+                return [
+                    float(value)  # monetary-float-ok: embedding vector components, not money
+                    for value in embedding
+                ]
     raise ProviderExecutionError(
         category=ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
         message="OpenAI embedding provider response did not include an embedding vector.",
