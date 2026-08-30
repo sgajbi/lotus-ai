@@ -7,6 +7,10 @@ from typing import Any, cast
 from urllib import error, request as urllib_request
 
 from app.config import settings
+from app.services.provider_execution_overrides import (
+    ensure_network_execution_permitted,
+    get_local_probe_status_override,
+)
 
 
 @dataclass(frozen=True)
@@ -33,6 +37,12 @@ def reset_local_openai_compatible_endpoint_probe_cache() -> None:
 
 
 def build_local_openai_compatible_endpoint_status() -> LocalOpenAICompatibleEndpointStatus:
+    probe_override = get_local_probe_status_override()
+    if probe_override is not None:
+        return probe_override
+    ensure_network_execution_permitted(
+        seam="local_openai_compatible_endpoint_probe.build_local_openai_compatible_endpoint_status"
+    )
     api_base = settings.live_text_api_base.strip().rstrip("/")
     configured_model_id = settings.live_text_model_id
     api_key = settings.live_text_provider_api_key

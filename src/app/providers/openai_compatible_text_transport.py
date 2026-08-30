@@ -16,6 +16,10 @@ from app.contracts.providers import (
     ProviderFailureCategory,
 )
 from app.providers.base import ProviderAdapterDescriptor, ProviderExecutionError
+from app.services.provider_execution_overrides import (
+    ensure_network_execution_permitted,
+    get_text_transport_post_override,
+)
 from app.services.provider_metrics import record_provider_attempt
 from app.services.structured_logging import correlation_id_var, log_event
 from app.providers.advisor_brief_quality_guardrails import (
@@ -133,11 +137,25 @@ def post_openai_compatible_response(
     require_api_key: bool,
     retry_limit: int = 0,
 ) -> dict[str, Any]:
+    override = get_text_transport_post_override()
+    if override is not None:
+        return override(
+            api_base=api_base,
+            api_key=api_key,
+            payload=payload,
+            timeout_seconds=timeout_seconds,
+            provider_display_name=provider_display_name,
+            require_api_key=require_api_key,
+            retry_limit=retry_limit,
+        )
     if require_api_key and api_key is None:
         raise ProviderExecutionError(
             category=ProviderFailureCategory.INVALID_LIVE_CONFIGURATION,
             message=f"Live provider credentials are not configured for {provider_display_name}.",
         )
+    ensure_network_execution_permitted(
+        seam="openai_compatible_text_transport.post_openai_compatible_response"
+    )
     endpoint = api_base.rstrip("/") + "/responses"
     body = json.dumps(payload).encode("utf-8")
     headers = {"Content-Type": "application/json"}

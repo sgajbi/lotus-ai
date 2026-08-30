@@ -49,7 +49,9 @@ relying on the lanes to repeat it.
 
 `make check` is the fast local gate. It currently covers:
 
-1. lint,
+1. lint (ruff check, ruff format, and the runtime-purity guard —
+   `scripts/check_runtime_purity.py` fails when production code under `src/`
+   imports test tooling or assigns a secret-shaped api-key literal),
 2. typecheck,
 3. OpenAPI quality,
 4. evaluation manifest validation,

@@ -14,6 +14,7 @@ from app.contracts.providers import (
     ProviderFailureCategory,
 )
 from app.providers.base import ProviderAdapterDescriptor, ProviderExecutionError
+from app.services.provider_execution_overrides import ensure_network_execution_permitted
 from app.providers.openai_compatible_text_transport import (
     failure_category_for_http_status,
     safe_provider_error_message,
@@ -74,6 +75,7 @@ def _post_openai_embedding(
             category=ProviderFailureCategory.INVALID_LIVE_CONFIGURATION,
             message="Live embedding provider credentials are not configured for OpenAI execution.",
         )
+    ensure_network_execution_permitted(seam="openai_live_embedding_provider._post_openai_embedding")
     endpoint = api_base.rstrip("/") + "/embeddings"
     body = json.dumps(payload).encode("utf-8")
     request = urllib_request.Request(
