@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
+import json
+
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
@@ -30,6 +33,25 @@ class PromptRolloutSelectionMode(str, Enum):
     GOVERNED_CONTROL_ACTIONS = "GOVERNED_CONTROL_ACTIONS"
 
 
+def compute_prompt_content_sha256(*, system_instructions: str, output_contract_notes: str) -> str:
+    """Canonical content hash of a prompt version (issue #151).
+
+    Prompt text is the behaviour of the system: the hash makes an edit under a
+    fixed version label tamper-evident. Canonical JSON (sorted keys, compact
+    separators) so memory- and SQL-backed stores can never disagree.
+    """
+
+    canonical = json.dumps(
+        {
+            "system_instructions": system_instructions,
+            "output_contract_notes": output_contract_notes,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 class PromptDescriptor(BaseModel):
     task_id: str = Field(description="Stable task identifier associated with the prompt.")
     prompt_version: str = Field(description="Version of the prompt definition.")
@@ -47,6 +69,16 @@ class PromptDescriptor(BaseModel):
     output_contract_notes: str = Field(
         description="Contract notes constraining how task output should behave."
     )
+
+    @computed_field(  # type: ignore[prop-decorator]
+        description="Canonical sha256 of the prompt content; identical text always hashes identically."
+    )
+    @property
+    def content_sha256(self) -> str:
+        return compute_prompt_content_sha256(
+            system_instructions=self.system_instructions,
+            output_contract_notes=self.output_contract_notes,
+        )
 
 
 class PromptGovernanceStatusResponse(BaseModel):

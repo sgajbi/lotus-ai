@@ -403,6 +403,14 @@ Every request carries one correlation id end to end. Given a suspect output:
    (provider, revision, catalogue entry, pinning), the routing decision with
    its candidates and rejection reasons, prompt version, safety outcome and
    evidence bundle.
+   It also carries the reproducibility identity (issue #151):
+   `prompt_content_sha256` (the exact prompt text that ran — verifiable
+   against the prompt registry, which refuses in-place edits under an
+   existing version label), `sampling_parameters` (temperature, top_p, seed,
+   max output tokens as sent), and `provider_config_sha256` (a digest of the
+   resolved execution configuration — two records with the same digest ran
+   under the same model identity and sampling). Sampling fields are null on
+   retrieval paths and on failures that never reached a provider.
 4. From the audit record's evidence, follow `workflow_pack_run_id` (where
    present) to the run ledger and its review history, and eval references to
    the approval-gate evidence.

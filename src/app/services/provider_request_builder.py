@@ -27,4 +27,7 @@ def build_provider_execution_request(
         timeout_ms=controls.timeout_ms,
         retry_limit=controls.retry_limit,
         max_output_tokens=controls.max_output_tokens,
+        temperature=controls.temperature,
+        top_p=controls.top_p,
+        seed=controls.seed,
     )

@@ -729,6 +729,21 @@ class ProviderExecutionRequest(BaseModel):
     max_output_tokens: int = Field(
         description="Maximum bounded output-token budget allowed for this execution request."
     )
+    temperature: float = Field(
+        default=0.0,
+        ge=0,
+        description="Explicit sampling temperature sent to the provider (issue #151).",
+    )
+    top_p: float | None = Field(
+        default=None,
+        gt=0,
+        le=1,
+        description="Explicit nucleus-sampling bound; omitted from the provider call when null.",
+    )
+    seed: int | None = Field(
+        default=None,
+        description="Sampling seed where the provider supports it; omitted when null.",
+    )
 
 
 class EmbeddingExecutionRequest(BaseModel):

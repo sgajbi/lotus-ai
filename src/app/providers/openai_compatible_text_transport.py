@@ -54,7 +54,12 @@ def execute_openai_compatible_text_request(
             },
         ],
         "max_output_tokens": request.max_output_tokens,
+        "temperature": request.temperature,
     }
+    if request.top_p is not None:
+        payload["top_p"] = request.top_p
+    if request.seed is not None:
+        payload["seed"] = request.seed
     response_payload = post_openai_compatible_response(
         api_base=api_base,
         api_key=api_key,

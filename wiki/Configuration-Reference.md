@@ -89,6 +89,14 @@ startup — smoke-test a route that uses the store after changing one.
 | `LOTUS_AI_LIVE_TEXT_ALLOWED_TASK_IDS` | `""` — empty allows none |
 | `LOTUS_AI_LIVE_TEXT_LOCAL_PROBE_TIMEOUT_MS` | `1500` |
 | `LOTUS_AI_LIVE_TEXT_LOCAL_PROBE_CACHE_SECONDS` | `15` |
+| `LOTUS_AI_LIVE_TEXT_TEMPERATURE` | `0.0` — always sent explicitly; never left to provider defaults |
+| `LOTUS_AI_LIVE_TEXT_TOP_P` | *(none)* — omitted from provider calls when unset |
+| `LOTUS_AI_LIVE_TEXT_SEED` | *(none)* — omitted from provider calls when unset |
+
+Sampling parameters are part of the recorded reproducibility identity: every audit
+record carries the exact sampling configuration, a `provider_config_sha256` digest of
+the resolved execution configuration (model identity + sampling), and the
+`prompt_content_sha256` of the prompt text that ran.
 
 ### Cost, quota, budget and degradation
 

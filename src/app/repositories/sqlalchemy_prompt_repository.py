@@ -11,6 +11,7 @@ from app.contracts.access_control import (
     TenantPolicyMode,
 )
 from app.contracts.prompts import (
+    compute_prompt_content_sha256,
     PromptControlActionType,
     PromptDescriptor,
     PromptLifecycleStatus,
@@ -118,11 +119,27 @@ class SqlAlchemyPromptRepository(SqlAlchemyRepositoryBase):
                     raise RuntimeError(
                         "Prompt rollout transition referenced a missing prompt definition version."
                     )
+                incoming_hash = compute_prompt_content_sha256(
+                    system_instructions=prompt.system_instructions,
+                    output_contract_notes=prompt.output_contract_notes,
+                )
+                stored_hash = model.content_sha256 or compute_prompt_content_sha256(
+                    system_instructions=model.system_instructions,
+                    output_contract_notes=model.output_contract_notes,
+                )
+                if incoming_hash != stored_hash:
+                    # Prompt versions are immutable (issue #151): changing text
+                    # requires a NEW version through the eval-gated promotion
+                    # path, never an edit under an existing label.
+                    raise RuntimeError(
+                        "Prompt content is immutable for an existing version; "
+                        f"create a new version instead of editing {prompt.task_id}"
+                        f"@{prompt.prompt_version}."
+                    )
                 model.lifecycle_status = prompt.lifecycle_status.value
                 model.management_mode = prompt.management_mode.value
                 model.source_reference = prompt.source_reference
-                model.system_instructions = prompt.system_instructions
-                model.output_contract_notes = prompt.output_contract_notes
+                model.content_sha256 = stored_hash
 
             state_model = session.get(PromptRolloutStateModel, rollout_state.task_id)
             if state_model is None:
@@ -153,9 +170,26 @@ class SqlAlchemyPromptRepository(SqlAlchemyRepositoryBase):
             )
             session.commit()
 
+    def _verify_content_integrity(self, model: PromptDefinitionVersionModel) -> None:
+        if model.content_sha256 is None:
+            # Rows seeded before the hash column existed: computed on read,
+            # backfilled on the next governed transition.
+            return
+        computed = compute_prompt_content_sha256(
+            system_instructions=model.system_instructions,
+            output_contract_notes=model.output_contract_notes,
+        )
+        if computed != model.content_sha256:
+            raise RuntimeError(
+                "Prompt content hash mismatch - stored prompt text was modified "
+                f"outside governance for {model.task_id}@{model.prompt_version}."
+            )
+
     def _to_descriptor(
         self, model: PromptDefinitionModel | PromptDefinitionVersionModel
     ) -> PromptDescriptor:
+        if isinstance(model, PromptDefinitionVersionModel):
+            self._verify_content_integrity(model)
         return PromptDescriptor(
             task_id=model.task_id,
             prompt_version=model.prompt_version,

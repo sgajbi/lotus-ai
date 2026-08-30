@@ -38,20 +38,21 @@ def resolve_task_execution(
     *,
     context: TaskExecutionContext,
 ) -> ResolvedTaskExecution:
+    provider_request = None
     if context.capability.category == TaskCategory.KNOWLEDGE_SEARCH:
         provider_execution = execute_knowledge_search(context=context)
     elif context.capability.category == TaskCategory.KNOWLEDGE_ANSWER:
         provider_execution = execute_knowledge_answer(context=context)
     else:
-        provider_execution = execute_text_generation(
-            build_provider_execution_request(context=context)
-        )
+        provider_request = build_provider_execution_request(context=context)
+        provider_execution = execute_text_generation(provider_request)
     safe_provider_execution, safety_outcome = apply_safety_enforcement(
         policy=resolve_safety_policy_for_output(context.capability.output_label),
         provider_execution=provider_execution,
     )
     return ResolvedTaskExecution(
         context=context,
+        provider_request=provider_request,
         provider_execution=safe_provider_execution,
         safety_outcome=safety_outcome,
     )
@@ -135,6 +136,7 @@ def build_failed_task_execution_response(
             generated_at=_utcnow(),
             stubbed=False,
             routing_decision=routing_decision,
+            prompt_content_sha256=context.prompt.content_sha256,
         ),
         evidence=ExecutionEvidenceBundle(descriptors=failure_descriptors),
     )

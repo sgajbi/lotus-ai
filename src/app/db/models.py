@@ -30,6 +30,9 @@ class AuditRecordModel(Base):
     model_catalogue_entry_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
     model_revision_pinned: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     routing_decision_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    prompt_content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    sampling_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    provider_config_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     safety_mode: Mapped[str] = mapped_column(String(64), nullable=False)
     redaction_posture: Mapped[str] = mapped_column(String(64), nullable=False)
     enforced_safety_controls: Mapped[list[str]] = mapped_column(JSON, nullable=False)
@@ -183,6 +186,7 @@ class PromptDefinitionVersionModel(Base):
     source_reference: Mapped[str] = mapped_column(Text, nullable=False)
     system_instructions: Mapped[str] = mapped_column(Text, nullable=False)
     output_contract_notes: Mapped[str] = mapped_column(Text, nullable=False)
+    content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
@@ -470,6 +474,7 @@ class WorkflowPackRunModel(Base):
     model_version: Mapped[str] = mapped_column(String(64), nullable=False)
     model_risk_status: Mapped[str] = mapped_column(String(64), nullable=False)
     model_risk_approval_ref: Mapped[str] = mapped_column(String(256), nullable=False)
+    provider_config_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     input_evidence_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     output_content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     replay_nonce: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

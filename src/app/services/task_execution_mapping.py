@@ -13,6 +13,7 @@ from app.contracts.tasks import (
 )
 from app.services.execution_evidence import build_execution_evidence
 from app.services.task_execution_models import ResolvedTaskExecution, TaskExecutionContext
+from app.services.provider_execution_controls import compute_provider_config_sha256
 
 if TYPE_CHECKING:
     pass
@@ -64,6 +65,9 @@ def map_task_execution_response(
             model_catalogue_entry_id=resolved.provider_execution.model_catalogue_entry_id,
             model_revision_pinned=resolved.provider_execution.model_revision_pinned,
             routing_decision=resolved.provider_execution.routing_decision,
+            prompt_content_sha256=context.prompt.content_sha256,
+            sampling_parameters=_sampling_parameters(resolved),
+            provider_config_sha256=_provider_config_sha256(resolved),
             safety=resolved.safety_outcome,
             authorization=context.authorization,
             generated_at=_utcnow(),
@@ -102,6 +106,35 @@ def _utcnow() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
+def _sampling_parameters(resolved: ResolvedTaskExecution) -> dict[str, object] | None:
+    request = resolved.provider_request
+    if request is None:
+        return None
+    return {
+        "temperature": request.temperature,
+        "top_p": request.top_p,
+        "seed": request.seed,
+        "max_output_tokens": request.max_output_tokens,
+    }
+
+
+def _provider_config_sha256(resolved: ResolvedTaskExecution) -> str | None:
+    request = resolved.provider_request
+    if request is None:
+        return None
+    execution = resolved.provider_execution
+    return compute_provider_config_sha256(
+        provider_mode=execution.provider_mode,
+        provider_id=execution.provider_id,
+        model_id=execution.model_id,
+        model_version=execution.model_version,
+        temperature=request.temperature,
+        top_p=request.top_p,
+        seed=request.seed,
+        max_output_tokens=request.max_output_tokens,
+    )
+
+
 def map_audit_record(
     *,
     context: TaskExecutionContext,
@@ -127,6 +160,9 @@ def map_audit_record(
         model_catalogue_entry_id=response.audit.model_catalogue_entry_id,
         model_revision_pinned=response.audit.model_revision_pinned,
         routing_decision=response.audit.routing_decision,
+        prompt_content_sha256=response.audit.prompt_content_sha256,
+        sampling_parameters=response.audit.sampling_parameters,
+        provider_config_sha256=response.audit.provider_config_sha256,
         safety_mode=response.audit.safety.safety_mode,
         redaction_posture=response.audit.safety.redaction_posture,
         enforced_safety_controls=response.audit.safety.enforced_controls,
