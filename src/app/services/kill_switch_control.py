@@ -11,6 +11,10 @@ KILL_SWITCH_ACTIVE category (issue #176).
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
+
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -19,6 +23,7 @@ from fastapi import HTTPException, status
 from app.config import settings
 from app.contracts.access_control import AuthorizationCapabilityType
 from app.contracts.kill_switches import (
+    KillSwitchSemantics,
     TARGETLESS_KILL_SWITCH_SCOPES,
     KillSwitchActionResponse,
     KillSwitchActivationRecord,
@@ -59,6 +64,7 @@ def activate_kill_switch(request: KillSwitchActivationRequest) -> KillSwitchActi
     activation = KillSwitchActivationRecord(
         switch_id=f"ksw_{uuid4().hex[:16]}",
         scope=request.scope,
+        semantics=request.semantics,
         target=request.target,
         reason=request.reason,
         requested_by=request.requested_by,
@@ -134,6 +140,62 @@ def build_kill_switch_status() -> KillSwitchStatusResponse:
     )
 
 
+_drain_completion_permitted: ContextVar[bool] = ContextVar(
+    "lotus_ai_kill_switch_drain_completion_permitted", default=False
+)
+
+
+@contextmanager
+def drain_completion_permit() -> Iterator[None]:
+    """Mark this execution as the safe completion of already-claimed async work.
+
+    Under the permit, DRAIN activations do not refuse execution - that is the
+    entire meaning of drain. HARD_KILL refuses regardless.
+    """
+
+    token = _drain_completion_permitted.set(True)
+    try:
+        yield
+    finally:
+        _drain_completion_permitted.reset(token)
+
+
+def enforce_kill_switch_intake(
+    *,
+    task_id: str,
+    tenant_id: str | None,
+    caller_app: str,
+) -> None:
+    """Refuse new async intake in scope of any enforcing activation.
+
+    Intake stops under BOTH semantics: draining means no new work enters the
+    queue while claimed work completes. Provider/model scopes match the
+    currently configured live identity, exactly as the sync preflight does.
+    """
+
+    probe = ProviderExecutionRequest.model_construct(
+        task_id=task_id,
+        tenant_id=tenant_id,
+        caller_app=caller_app,
+    )
+    now = _utc_now_iso()
+    for activation in get_kill_switch_repository().list_activations():
+        if not _is_enforcing(activation, now=now):
+            continue
+        if not _matches(activation, request=probe):
+            continue
+        target_note = f" target `{activation.target}`" if activation.target else ""
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                f"{ProviderFailureCategory.KILL_SWITCH_ACTIVE.value}: kill switch "
+                f"`{activation.switch_id}` ({activation.semantics.value}) is active for "
+                f"scope `{activation.scope.value}`{target_note}; new async intake is "
+                "refused until it clears."
+            ),
+        )
+
+
 def enforce_kill_switches(request: ProviderExecutionRequest) -> None:
     """Refuse live execution when any enforcing activation matches the request.
 
@@ -148,6 +210,12 @@ def enforce_kill_switches(request: ProviderExecutionRequest) -> None:
         if not _is_enforcing(activation, now=now):
             continue
         if _matches(activation, request=request):
+            if (
+                activation.semantics is KillSwitchSemantics.DRAIN
+                and _drain_completion_permitted.get()
+            ):
+                # Draining: already-claimed async work completes safely.
+                continue
             target_note = f" target `{activation.target}`" if activation.target else ""
             raise ProviderExecutionError(
                 category=ProviderFailureCategory.KILL_SWITCH_ACTIVE,

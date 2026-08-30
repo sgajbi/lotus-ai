@@ -92,11 +92,15 @@ platform programs.
      identity as a first-class entry (provider, family, exact revision, deployment, SKU,
      lifecycle state, approval evidence, pinning posture), reconciled on read from the
      live-text settings and the approved model-risk inventory (issue #175 slice 1)
-2. kill switches (issue #177 slice 1)
+2. kill switches (issue #177 slices 1 and 3)
    - `/platform/providers/kill-switches` — list activations and the enforcing count; POST
-     activates a scoped hard kill (provider, model revision, task, tenant, caller app, or
+     activates a scoped switch (provider, model revision, task, tenant, caller app, or
      all live text); `/{switch_id}/clear` clears one. Enforced first at the gateway
      preflight; a hit is a recorded routing rejection with `KILL_SWITCH_ACTIVE`.
+   - Semantics per activation: `HARD_KILL` (default) refuses everything in scope
+     immediately; `DRAIN` refuses new synchronous executions and new async workflow-pack
+     intake while already-claimed async jobs complete safely. Synchronous requests are
+     never drained — they refuse immediately under either semantics.
 3. app-capability rollout governance
    - `/platform/app-capability-rollouts`
    - `/platform/app-capability-rollouts/governance-status`
