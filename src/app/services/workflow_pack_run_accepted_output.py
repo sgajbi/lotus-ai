@@ -31,6 +31,7 @@ from app.contracts.workflow_pack_run_accepted_output import (
     ACCEPTED_OUTPUT_CONTENT_HASH_ALGORITHM,
     ACCEPTED_OUTPUT_SCHEMA_ADVISOR_BRIEF_V1,
     AdvisorBriefAcceptedContextIdentity,
+    AdvisorBriefAcceptedEvidenceRef,
     AdvisorBriefAcceptedNarrativeItem,
     AdvisorBriefAcceptedReviewIdentity,
     WorkflowPackRunAcceptedOutputResponse,
@@ -291,12 +292,42 @@ def _narrative_items(raw: Any) -> list[AdvisorBriefAcceptedNarrativeItem]:
                 headline=_required_string(entry, "headline"),
                 detail=_required_string(entry, "detail"),
                 tone=_required_string(entry, "tone"),
-                evidence_refs=[
-                    ref for ref in entry.get("evidence_refs", []) if isinstance(ref, str)
-                ],
+                evidence_refs=_evidence_refs(entry.get("evidence_refs")),
             )
         )
     return items
+
+
+def _evidence_refs(raw: Any) -> list[AdvisorBriefAcceptedEvidenceRef]:
+    """Project the guardrail's persisted evidence shape; corruption fails closed.
+
+    The generation guardrail persists refs as {metric_label, metric_value,
+    source_ref} dicts with all three non-empty. An accepted artifact carrying
+    anything else is a ledger inconsistency, not a projectable variant.
+    """
+
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise AcceptedOutputNotAvailableError(
+            REASON_OUTPUT_ARTIFACT_MALFORMED,
+            "The accepted output evidence references have an unexpected shape.",
+        )
+    refs: list[AdvisorBriefAcceptedEvidenceRef] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise AcceptedOutputNotAvailableError(
+                REASON_OUTPUT_ARTIFACT_MALFORMED,
+                "The accepted output evidence references have an unexpected shape.",
+            )
+        refs.append(
+            AdvisorBriefAcceptedEvidenceRef(
+                metric_label=_required_string(entry, "metric_label"),
+                metric_value=_required_string(entry, "metric_value"),
+                source_ref=_required_string(entry, "source_ref"),
+            )
+        )
+    return refs
 
 
 def _required_string(payload: dict[str, Any], key: str) -> str:
