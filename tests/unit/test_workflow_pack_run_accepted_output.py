@@ -360,3 +360,13 @@ def test_malformed_evidence_reference_entries_fail_closed(_wired: WireCallable) 
     with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
         build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
     assert _reason(excinfo) == "output_artifact_malformed"
+
+
+def test_absent_evidence_refs_key_projects_as_empty(_wired: WireCallable) -> None:
+    payload = _artifact_payload()
+    del payload["structured_output"]["talking_points"][0]["evidence_refs"]
+    _wired(_record(), payload)
+    response = build_workflow_pack_run_accepted_output(
+        run_id="wfr-accepted-001", caller_tenant_id=TENANT
+    )
+    assert response.talking_points[0].evidence_refs == []

@@ -494,3 +494,56 @@ def test_drift_recording_distinguishes_agreement_reveal_and_repetition(
     # A different observed identity is its own observation.
     record_model_revision_drift(entry=entry, observed_model_id="qwen3:8b-q5-2026-06")
     assert len(repository.list_drift_observations(entry.entry_id)) == 2
+
+
+def test_memory_lifecycle_events_append_and_list() -> None:
+    from app.contracts.model_catalogue import ModelLifecycleTransitionRecord
+
+    repository = get_model_catalogue_repository()
+    for index, instant in enumerate(["2026-08-30T01:00:00Z", "2026-08-30T02:00:00Z"]):
+        repository.append_lifecycle_event(
+            ModelLifecycleTransitionRecord(
+                event_id=f"mlc_mem_{index}",
+                entry_id="text.local:qwen3:8b",
+                from_state=ModelLifecycleState.CATALOGUED,
+                to_state=ModelLifecycleState.EVALUATING,
+                reason="memory round trip",
+                requested_by="ops.primary@lotus",
+                approved_by="ops.secondary@lotus",
+                recorded_at=instant,
+            )
+        )
+    events = repository.list_lifecycle_events("text.local:qwen3:8b")
+    assert [event.event_id for event in events] == ["mlc_mem_1", "mlc_mem_0"]
+    assert repository.list_lifecycle_events("other:entry") == []
+
+
+def test_lifecycle_transition_on_an_unknown_entry_is_404(_durable_catalogue: str) -> None:
+    from fastapi import HTTPException
+
+    from app.services.model_catalogue import apply_model_lifecycle_transition
+
+    with pytest.raises(HTTPException) as excinfo:
+        apply_model_lifecycle_transition("text.unknown:nope", _transition_request())
+    assert excinfo.value.status_code == 404
+
+
+def test_drift_observations_survive_a_store_restart_in_sqlalchemy_mode(
+    _durable_catalogue: str,
+) -> None:
+    from app.services.model_catalogue import record_model_revision_drift
+
+    repository = get_model_catalogue_repository()
+    entry = repository.get_entry(_durable_catalogue)
+    assert entry is not None
+    record_model_revision_drift(entry=entry, observed_model_id="qwen3:8b-q4-2026-03")
+    record_model_revision_drift(entry=entry, observed_model_id="qwen3:8b-q4-2026-03")
+    record_model_revision_drift(entry=entry, observed_model_id="qwen3:8b-q5-2026-06")
+
+    # Restart: drop every in-process handle; observations must come back from SQL.
+    reset_model_catalogue_store_cache()
+    observations = get_model_catalogue_repository().list_drift_observations(_durable_catalogue)
+    by_observed = {o.observed_model_id: o for o in observations}
+    assert set(by_observed) == {"qwen3:8b-q4-2026-03", "qwen3:8b-q5-2026-06"}
+    assert by_observed["qwen3:8b-q4-2026-03"].observation_count == 2
+    assert by_observed["qwen3:8b-q5-2026-06"].observation_count == 1

@@ -91,3 +91,20 @@ def test_map_audit_record_carries_governed_model_identity() -> None:
     assert audit_record.routing_decision == response.audit.routing_decision
     assert audit_record.routing_decision.selected_provider_id == "text.stub"
     assert audit_record.routing_decision.policy_id == "fixed_configured_mode"
+
+
+def test_failure_detail_and_category_inference_fallbacks() -> None:
+    from fastapi import HTTPException
+
+    from app.services.task_execution_pipeline import (
+        _http_exception_detail,
+        _infer_failure_category,
+    )
+
+    assert (
+        _http_exception_detail(HTTPException(status_code=503, detail={"not": "a-string"}))
+        == "Workflow-pack execution failed before lotus-ai could produce a completed task result."
+    )
+    assert _http_exception_detail(HTTPException(status_code=503, detail="  padded  ")) == "padded"
+    assert _infer_failure_category("QUOTA_EXCEEDED: limit reached") == "QUOTA_EXCEEDED"
+    assert _infer_failure_category("not a known prefix") is None

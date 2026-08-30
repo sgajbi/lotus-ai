@@ -151,3 +151,56 @@ def test_resolve_audit_read_scope_denies_empty_or_unknown_policy(caller_app: str
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "Caller is not authorized to inspect lotus-ai audit records."
+
+
+def test_resolve_audit_read_scope_fails_closed_on_degenerate_policies(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.contracts.access_control import (
+        CallerLifecycleStatus,
+        CallerPolicyDescriptor,
+        TenantPolicyMode,
+    )
+
+    def _policy(restricted: list[str]) -> CallerPolicyDescriptor:
+        return CallerPolicyDescriptor(
+            caller_app="lotus-degenerate",
+            lifecycle_status=CallerLifecycleStatus.ACTIVE,
+            description="degenerate policy for fail-closed proof",
+            allowed_task_ids=[],
+            allowed_retrieval_source_ids=[],
+            allow_live_provider=False,
+            allow_async_control=False,
+            allow_prompt_control=False,
+            allow_provider_control=False,
+            allow_audit_read_all_tenants=False,
+            tenant_policy_mode=TenantPolicyMode.RESTRICTED,
+            restricted_tenant_ids=restricted,
+        )
+
+    class _StubPolicies:
+        def __init__(self, policy: object) -> None:
+            self._policy = policy
+
+        def get_policy(self, caller_app: str) -> object:
+            return self._policy
+
+    caller = AuthenticatedCaller(caller_app="lotus-degenerate", trust_source="trusted_http_header")
+
+    # A restricted policy with NO tenants grants nothing - never everything.
+    monkeypatch.setattr(
+        "app.services.audit_read_authorization.get_caller_policy_repository",
+        lambda: _StubPolicies(_policy([])),
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        resolve_audit_read_scope(caller)
+    assert exc_info.value.status_code == 403
+
+    # A malformed tenant id (surrounding whitespace) fails closed too.
+    monkeypatch.setattr(
+        "app.services.audit_read_authorization.get_caller_policy_repository",
+        lambda: _StubPolicies(_policy([" tenant-sg-001 "])),
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        resolve_audit_read_scope(caller)
+    assert exc_info.value.status_code == 403
