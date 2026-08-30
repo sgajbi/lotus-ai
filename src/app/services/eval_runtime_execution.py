@@ -51,11 +51,17 @@ from app.services.local_openai_compatible_endpoint_probe import (
 from app.services.prompt_store import get_prompt_repository
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import build_provider_budget_policy
+from app.contracts.rate_cards import RateCard, RateCardScopeKind
+from app.services.rate_card_store import (
+    get_rate_card_repository,
+    reset_rate_card_store_cache,
+)
 from app.services.runtime_mode_config import (
     override_runtime_mode_config,
     resolve_runtime_mode_config,
 )
 from app.services.provider_execution_config import (
+    compute_provider_config_sha256,
     override_provider_execution_config,
     resolve_provider_execution_config,
 )
@@ -221,6 +227,17 @@ def _evaluate_case(
     case: EvaluationFixtureRuntimeCase,
 ) -> EvaluationCaseResultRecord:
     with _apply_case_configuration(case.input_payload):
+        case_provider_config = resolve_provider_execution_config()
+        provider_config_sha256 = compute_provider_config_sha256(
+            provider_mode=case_provider_config.provider_mode,
+            provider_id=case_provider_config.provider_id,
+            model_id=case_provider_config.model_id,
+            model_version=case_provider_config.model_version,
+            temperature=case_provider_config.temperature,
+            top_p=case_provider_config.top_p,
+            seed=case_provider_config.seed,
+            max_output_tokens=case_provider_config.max_output_tokens,
+        )
         summary, outcome, evidence_refs = _execute_fixture_case(
             fixture_id=run.fixture_id,
             fixture_task_id=fixture_task_id,
@@ -243,6 +260,7 @@ def _evaluate_case(
                 "outcome": outcome.value,
                 "summary": summary,
                 "evidence_refs": evidence_refs,
+                "provider_config_sha256": provider_config_sha256,
             },
             sort_keys=True,
         ).encode("utf-8"),
@@ -257,6 +275,7 @@ def _evaluate_case(
         summary=summary,
         evidence_refs=evidence_refs,
         artifact_ids=[artifact.artifact_id],
+        provider_config_sha256=provider_config_sha256,
         recorded_at=_utcnow_iso(),
     )
 
@@ -973,10 +992,6 @@ EVAL_HERMETIC_CREDENTIAL_REF = "credential-ref:eval-hermetic"
 
 @contextmanager
 def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None]:
-    original_values = {
-        "live_text_input_cost_per_1k_tokens": settings.live_text_input_cost_per_1k_tokens,
-        "live_text_output_cost_per_1k_tokens": settings.live_text_output_cost_per_1k_tokens,
-    }
     try:
         with ExitStack() as stack:
             # Every case runs hermetically: the live network seams fail
@@ -987,6 +1002,7 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
             reset_provider_operations_store_cache()
             reset_provider_quota_counters()
             reset_provider_degradation_state()
+            reset_rate_card_store_cache()
             runtime_modes = resolve_runtime_mode_config()
             if "retrieval_mode" in input_payload:
                 runtime_modes = replace(
@@ -1209,8 +1225,20 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                     updated_at=_utcnow_iso(),
                 )
             if "hard_budget_usd" in input_payload:
-                settings.live_text_input_cost_per_1k_tokens = 0.01
-                settings.live_text_output_cost_per_1k_tokens = 0.03
+                seeded_at = _utcnow_iso()
+                get_rate_card_repository().upsert_card(
+                    RateCard(
+                        card_id="eval-hermetic-live-text",
+                        scope_kind=RateCardScopeKind.DEFAULT_LIVE_TEXT,
+                        currency="USD",
+                        input_cost_per_1k_tokens=0.01,
+                        output_cost_per_1k_tokens=0.03,
+                        effective_from_utc=None,
+                        effective_to_utc=None,
+                        created_at=seeded_at,
+                        last_updated_at=seeded_at,
+                    )
+                )
                 tracked_spend = float(
                     cast(
                         int | float | str,
@@ -1241,13 +1269,12 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                     reset_provider_operations_store_cache()
             yield
     finally:
-        for key, value in original_values.items():
-            setattr(settings, key, value)
         reset_retrieval_repository()
         reset_prompt_store_cache()
         reset_provider_operations_store_cache()
         reset_provider_quota_counters()
         reset_provider_degradation_state()
+        reset_rate_card_store_cache()
 
 
 def _raise_provider_execution_error(*, category: ProviderFailureCategory, message: str) -> Any:

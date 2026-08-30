@@ -148,9 +148,12 @@ def test_sqlalchemy_repository_prepares_each_sqlite_location_shape(
 
 
 def test_cost_scalars_are_read_only_by_config_and_the_seed() -> None:
-    """#178's single-source guard: the legacy scalars are seed inputs. A new
-    runtime reader must show up here (eval_runtime_execution still WRITES them
-    - the mutation #148 owns - and is listed until that issue lands)."""
+    """#178's single-source guard: the legacy scalars are seed inputs only.
+
+    #148's closing slice removed the last writer (the eval runtime now
+    seeds a rate card instead of mutating the scalars), so exactly the
+    definition and the seed reference them. A new reader or writer must
+    justify itself here."""
 
     pattern = re.compile(r"live_text_(?:input|output)_cost_per_1k_tokens")
     referencing = {
@@ -161,5 +164,4 @@ def test_cost_scalars_are_read_only_by_config_and_the_seed() -> None:
     assert referencing == {
         "config.py",
         "services/provider_usage_accounting.py",
-        "services/eval_runtime_execution.py",
     }

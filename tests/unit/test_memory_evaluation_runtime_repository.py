@@ -49,6 +49,7 @@ def test_memory_evaluation_runtime_repository_round_trip() -> None:
             summary="Citations remained bounded and grounded.",
             evidence_refs=["evidence://retrieval.answer.case_001"],
             artifact_ids=[],
+            provider_config_sha256="d" * 64,
             recorded_at="2026-03-23T00:05:00Z",
         )
     )
@@ -116,6 +117,7 @@ def test_memory_evaluation_runtime_repository_replaces_attempt_and_case_result_r
             summary="Initial outcome.",
             evidence_refs=["evidence://old"],
             artifact_ids=[],
+            provider_config_sha256="d" * 64,
             recorded_at="2026-03-23T00:01:00Z",
         )
     )
@@ -130,6 +132,7 @@ def test_memory_evaluation_runtime_repository_replaces_attempt_and_case_result_r
             summary="Updated outcome.",
             evidence_refs=["evidence://new"],
             artifact_ids=[],
+            provider_config_sha256="d" * 64,
             recorded_at="2026-03-23T00:02:00Z",
         )
     )

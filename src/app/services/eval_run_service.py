@@ -150,5 +150,6 @@ def _map_runtime_case_result(record: EvaluationCaseResultRecord) -> EvaluationCa
         summary=record.summary,
         evidence_refs=record.evidence_refs,
         artifact_refs=load_artifact_descriptors(artifact_ids=record.artifact_ids),
+        provider_config_sha256=record.provider_config_sha256,
         recorded_at=record.recorded_at,
     )

@@ -43,6 +43,7 @@ class EvaluationCaseResultRecord:
     summary: str
     evidence_refs: list[str]
     artifact_ids: list[str]
+    provider_config_sha256: str | None
     recorded_at: str
 
 

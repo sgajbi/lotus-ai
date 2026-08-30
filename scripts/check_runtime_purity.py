@@ -1,10 +1,11 @@
 """Production-source purity guard (issue #148).
 
 Fails when production code under src/ imports test tooling (unittest, mock,
-pytest) or references pytest's monkeypatch, and when a string literal that
-is not a self-describing credential reference is assigned to an api-key
-attribute. Production code must never depend on test-harness mechanics, and
-credentials must come from configuration or fixtures, never from literals.
+pytest) or references pytest's monkeypatch, when a string literal that is
+not a self-describing credential reference is assigned to an api-key
+attribute, and when anything assigns to a ``settings`` attribute (process
+configuration is immutable after startup - issue #148; per-execution
+variation goes through the execution-scoped config overrides).
 """
 
 from __future__ import annotations
@@ -29,6 +30,16 @@ def _violations_for_file(path: Path) -> list[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     violations: list[str] = []
     for node in ast.walk(tree):
+        if isinstance(node, ast.AugAssign):
+            target = node.target
+            if (
+                isinstance(target, ast.Attribute)
+                and isinstance(target.value, ast.Name)
+                and target.value.id == "settings"
+            ):
+                violations.append(
+                    f"{path}:{node.lineno}: settings attribute assignment 'settings.{target.attr}'"
+                )
         if isinstance(node, ast.Import):
             for alias in node.names:
                 if alias.name.split(".")[0] in FORBIDDEN_IMPORT_ROOTS:
@@ -42,6 +53,16 @@ def _violations_for_file(path: Path) -> list[str]:
             violations.append(f"{path}:{node.lineno}: test-tooling reference 'monkeypatch'")
         elif isinstance(node, ast.Assign) or isinstance(node, ast.AnnAssign):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if (
+                    isinstance(target, ast.Attribute)
+                    and isinstance(target.value, ast.Name)
+                    and target.value.id == "settings"
+                ):
+                    violations.append(
+                        f"{path}:{node.lineno}: settings attribute assignment "
+                        f"'settings.{target.attr}'"
+                    )
             value = node.value
             if (
                 isinstance(value, ast.Constant)
