@@ -1,4 +1,8 @@
 from fastapi.testclient import TestClient
+from pytest import MonkeyPatch
+
+from app.config import settings
+from app.services.audit_store import get_audit_store
 
 
 def test_observability_runtime_status_route(client: TestClient) -> None:
@@ -201,7 +205,7 @@ def test_safety_observability_summary_route(client: TestClient) -> None:
     assert len(body["incident_evidence_items"][0]["artifact_refs"]) == 1
 
 
-def test_observability_breakdown_summary_route(client: TestClient) -> None:
+def _seed_two_tenant_executions(client: TestClient) -> None:
     client.post(
         "/ai/tasks/execute",
         json={
@@ -243,15 +247,100 @@ def test_observability_breakdown_summary_route(client: TestClient) -> None:
         },
     )
 
-    response = client.get("/platform/observability/breakdowns", params={"limit": 50})
+
+def test_breakdowns_require_privileged_identity_for_all_tenant_inspection(
+    client: TestClient, monkeypatch: MonkeyPatch
+) -> None:
+    _seed_two_tenant_executions(client)
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+
+    response = client.get(
+        "/platform/observability/breakdowns",
+        params={"limit": 50},
+        headers={"X-Caller-App": "lotus-platform"},
+    )
 
     assert response.status_code == 200
     body = response.json()
+    assert body["tenant_scope"] == "ALL_TENANTS"
     assert body["sampled_audit_record_limit"] == 50
     assert body["sampled_audit_record_count"] >= 2
     assert any(sample["caller_app"] == "lotus-manage" for sample in body["caller_apps"])
     assert any(sample["tenant_id"] == "tenant-sg-001" for sample in body["tenants"])
+    assert any(sample["tenant_id"] == "tenant-us-002" for sample in body["tenants"])
     assert any(
         sample["capability_kind"] == "TASK" and sample["capability_id"] == "knowledge_answer.v1"
         for sample in body["capabilities"]
     )
+
+    # The all-tenant inspection leaves a durable access event, like /ai/audit.
+    events = get_audit_store().list_access_events()
+    assert any(
+        event.operation.value == "AGGREGATE_BREAKDOWNS"
+        and event.caller_app == "lotus-platform"
+        and event.outcome.value == "SUCCEEDED"
+        for event in events
+    )
+
+
+def test_breakdowns_are_tenant_scoped_for_restricted_callers(client: TestClient) -> None:
+    """The #168 reproduction, inverted into a guarantee: a caller restricted to
+    tenant-sg-001 must never see tenant-us-002 in the tenants array."""
+
+    _seed_two_tenant_executions(client)
+
+    response = client.get(
+        "/platform/observability/breakdowns",
+        params={"limit": 50},
+        headers={"X-Caller-App": "lotus-idea"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_scope"] == "RESTRICTED_TENANTS"
+    tenant_ids = {sample["tenant_id"] for sample in body["tenants"]}
+    assert "tenant-us-002" not in tenant_ids
+    assert tenant_ids <= {"tenant-sg-001", ""}
+    # Scoped utility is preserved: the caller still sees its own tenant's records.
+    assert body["sampled_audit_record_count"] >= 1
+
+
+def test_breakdowns_fail_when_the_access_evidence_cannot_be_written(
+    client: TestClient, monkeypatch: MonkeyPatch
+) -> None:
+    """Evidence is not optional: if the all-tenant access event cannot be
+    recorded, the privileged read fails rather than serving unevidenced data."""
+
+    import pytest
+
+    _seed_two_tenant_executions(client)
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+
+    def _refuse_event(event: object) -> None:
+        raise RuntimeError("access-event store unavailable")
+
+    monkeypatch.setattr(get_audit_store(), "save_access_event", _refuse_event)
+
+    with pytest.raises(RuntimeError, match="access-event store unavailable"):
+        client.get(
+            "/platform/observability/breakdowns",
+            headers={"X-Caller-App": "lotus-platform"},
+        )
+
+
+def test_breakdowns_fail_closed_for_unknown_and_unprivileged_callers(
+    client: TestClient,
+) -> None:
+    unknown = client.get(
+        "/platform/observability/breakdowns",
+        headers={"X-Caller-App": "lotus-unknown-app"},
+    )
+    assert unknown.status_code == 403
+
+    # lotus-platform holds the all-tenant capability, but a header-only
+    # identity is not privileged under the default posture: fail closed.
+    header_only_privileged = client.get(
+        "/platform/observability/breakdowns",
+        headers={"X-Caller-App": "lotus-platform"},
+    )
+    assert header_only_privileged.status_code == 403

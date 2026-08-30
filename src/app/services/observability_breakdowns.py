@@ -12,18 +12,20 @@ from app.contracts.observability import (
     ObservabilityCapabilityKind,
     ObservabilityTenantBreakdownSample,
 )
+from app.contracts.audit_access import AuditReadScope
 from app.services.async_job_service import build_async_job_catalog
 from app.services.audit_store import get_audit_store
-from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
 
 _RETRIEVAL_TASK_IDS = {"knowledge_search.v1", "knowledge_answer.v1"}
 _NON_LIVE_PROVIDER_MODES = {"disabled", "stub", "catalog_only"}
 
 
 def build_observability_breakdown_summary(
-    *, limit: int = 100
+    *, limit: int = 100, scope: AuditReadScope
 ) -> ObservabilityBreakdownSummaryResponse:
-    records = get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=limit)
+    # The scope is the caller's, resolved from caller policy at the router -
+    # never an implicit all-tenant read (issues #168/#159).
+    records = get_audit_store().list(scope=scope, limit=limit)
     jobs = build_async_job_catalog().jobs
     return ObservabilityBreakdownSummaryResponse(
         service=settings.service_name,
@@ -31,8 +33,10 @@ def build_observability_breakdown_summary(
         sampled_audit_record_limit=limit,
         sampled_audit_record_count=len(records),
         sampled_async_job_count=len(jobs),
+        tenant_scope=scope.mode.value,
         tenant_breakdown_policy=(
-            "Tenant breakdown includes only authorized task executions carrying tenant identity."
+            "Tenant breakdown is derived from the caller's authorized audit-read scope and "
+            "includes only executions carrying tenant identity."
         ),
         caller_apps=_build_caller_samples(records=records, jobs=jobs),
         tenants=_build_tenant_samples(records=records),
