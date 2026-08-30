@@ -69,6 +69,8 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "embedding_provider_mode": settings.embedding_provider_mode,
         "safety_mode": settings.safety_mode,
         "redaction_mode": settings.redaction_mode,
+        "tracing_enabled": settings.tracing_enabled,
+        "tracing_otlp_endpoint": settings.tracing_otlp_endpoint,
         "audit_store_mode": settings.audit_store_mode,
         "prompt_store_mode": settings.prompt_store_mode,
         "retrieval_store_mode": settings.retrieval_store_mode,

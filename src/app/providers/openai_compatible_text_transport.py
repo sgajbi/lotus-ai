@@ -20,6 +20,11 @@ from app.services.provider_execution_overrides import (
     get_text_transport_post_override,
 )
 from app.services.provider_metrics import record_provider_attempt
+from app.services.tracing_runtime import (
+    inject_trace_context,
+    provider_attempt_span,
+    record_provider_span_outcome,
+)
 from app.services.structured_logging import correlation_id_var, log_event
 from app.providers.advisor_brief_quality_guardrails import (
     build_advisor_brief_user_message,
@@ -166,6 +171,7 @@ def post_openai_compatible_response(
     correlation_id = correlation_id_var.get()
     if correlation_id is not None:
         headers["X-Correlation-Id"] = correlation_id
+    inject_trace_context(headers)
     model_identity = payload.get("model")
     bounded_retry_limit = max(retry_limit, 0)
     for attempt_index in range(bounded_retry_limit + 1):
@@ -177,7 +183,15 @@ def post_openai_compatible_response(
         )
         attempt_started = time.perf_counter()
         try:
-            with urllib_request.urlopen(provider_request, timeout=timeout_seconds) as response:
+            with (
+                provider_attempt_span(
+                    provider_id=provider_display_name,
+                    model_id=model_identity if isinstance(model_identity, str) else None,
+                    attempt=attempt_index,
+                ) as attempt_span,
+                urllib_request.urlopen(provider_request, timeout=timeout_seconds) as response,
+            ):
+                record_provider_span_outcome(attempt_span, outcome="success")
                 response_payload = cast(dict[str, Any], json.loads(response.read().decode("utf-8")))
                 response_payload["_lotus_retry_count"] = attempt_index
                 usage = response_payload.get("usage")

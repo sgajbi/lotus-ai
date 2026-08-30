@@ -92,6 +92,8 @@ startup — smoke-test a route that uses the store after changing one.
 | `LOTUS_AI_LIVE_TEXT_TEMPERATURE` | `0.0` — always sent explicitly; never left to provider defaults |
 | `LOTUS_AI_LIVE_TEXT_TOP_P` | *(none)* — omitted from provider calls when unset |
 | `LOTUS_AI_LIVE_TEXT_SEED` | *(none)* — omitted from provider calls when unset |
+| `LOTUS_AI_TRACING_ENABLED` | `false` — OpenTelemetry spans at the HTTP boundary and provider transport; enabling requires the OTLP endpoint (startup refuses otherwise) |
+| `LOTUS_AI_TRACING_OTLP_ENDPOINT` | *(none)* — OTLP/HTTP trace endpoint |
 | `LOTUS_AI_REDACTION_MODE` | `enforce` — the deterministic redaction engine redacts generated content before persistence and egress; `observe` counts findings without modifying content |
 
 Sampling parameters are part of the recorded reproducibility identity: every audit

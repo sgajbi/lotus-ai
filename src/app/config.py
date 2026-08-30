@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     live_text_top_p: float | None = None
     live_text_seed: int | None = None
     redaction_mode: str = "enforce"
+    tracing_enabled: bool = False
+    tracing_otlp_endpoint: str | None = None
     retrieval_mode: str = "disabled"
     embedding_provider_mode: str = "disabled"
     safety_mode: str = "documented_only"
