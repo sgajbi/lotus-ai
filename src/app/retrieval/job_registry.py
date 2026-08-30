@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.repositories.async_runtime_repository import AsyncRuntimeJobRecord
 from app.contracts.retrieval import (
     RetrievalIndexJobCatalogResponse,
@@ -78,7 +79,7 @@ def get_retrieval_job_detail(job_id: str) -> RetrievalIndexJobDetailResponse:
             return RetrievalIndexJobDetailResponse(
                 service=settings.service_name,
                 vector_store=VECTOR_STORE_STRATEGY,
-                embedding_provider_mode=settings.embedding_provider_mode,
+                embedding_provider_mode=resolve_runtime_mode_config().embedding_provider_mode,
                 job=descriptor,
                 steps=[
                     RetrievalIndexJobStepDescriptor(
@@ -167,9 +168,9 @@ def build_retrieval_indexing_policy() -> RetrievalIndexingPolicyResponse:
     return RetrievalIndexingPolicyResponse(
         service=settings.service_name,
         vector_store=VECTOR_STORE_STRATEGY,
-        retrieval_mode=settings.retrieval_mode,
+        retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
         retrieval_store_mode=settings.retrieval_store_mode,
-        embedding_provider_mode=settings.embedding_provider_mode,
+        embedding_provider_mode=resolve_runtime_mode_config().embedding_provider_mode,
         embedding_execution_enabled=embedding_runtime.embedding_execution_enabled,
         embedding_provider_id=embedding_runtime.embedding_provider_id,
         embedding_model_id=embedding_runtime.embedding_model_id,
@@ -205,7 +206,7 @@ def build_retrieval_runtime_status() -> RetrievalRuntimeStatusResponse:
     return RetrievalRuntimeStatusResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,
-        retrieval_mode=settings.retrieval_mode,
+        retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
         retrieval_store_mode=settings.retrieval_store_mode,
         retrieval_store_status=store_status.status,
         retrieval_store_detail=store_status.detail,

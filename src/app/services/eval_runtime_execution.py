@@ -51,6 +51,10 @@ from app.services.local_openai_compatible_endpoint_probe import (
 from app.services.prompt_store import get_prompt_repository
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import build_provider_budget_policy
+from app.services.runtime_mode_config import (
+    override_runtime_mode_config,
+    resolve_runtime_mode_config,
+)
 from app.services.provider_execution_config import (
     override_provider_execution_config,
     resolve_provider_execution_config,
@@ -69,6 +73,8 @@ from app.services.provider_degradation_state import (
 from app.services.provider_operations_status import build_provider_operations_status
 from app.services.provider_policy import build_provider_policy
 from app.services.provider_operations_store import (
+    override_provider_operations_store_mode,
+    resolved_provider_operations_store_mode,
     get_provider_operations_store,
     reset_provider_operations_store_cache,
 )
@@ -970,14 +976,6 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
     original_values = {
         "live_text_input_cost_per_1k_tokens": settings.live_text_input_cost_per_1k_tokens,
         "live_text_output_cost_per_1k_tokens": settings.live_text_output_cost_per_1k_tokens,
-        "live_text_degradation_enforced": settings.live_text_degradation_enforced,
-        "provider_operations_store_mode": settings.provider_operations_store_mode,
-        "retrieval_mode": settings.retrieval_mode,
-        "safety_mode": settings.safety_mode,
-        "embedding_provider_mode": settings.embedding_provider_mode,
-        "live_embedding_provider_id": settings.live_embedding_provider_id,
-        "live_embedding_model_id": settings.live_embedding_model_id,
-        "live_embedding_provider_api_key": settings.live_embedding_provider_api_key,
     }
     try:
         with ExitStack() as stack:
@@ -989,30 +987,48 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
             reset_provider_operations_store_cache()
             reset_provider_quota_counters()
             reset_provider_degradation_state()
+            runtime_modes = resolve_runtime_mode_config()
             if "retrieval_mode" in input_payload:
-                settings.retrieval_mode = str(input_payload["retrieval_mode"])
+                runtime_modes = replace(
+                    runtime_modes, retrieval_mode=str(input_payload["retrieval_mode"])
+                )
             if "safety_mode" in input_payload:
-                settings.safety_mode = str(input_payload["safety_mode"])
+                runtime_modes = replace(
+                    runtime_modes, safety_mode=str(input_payload["safety_mode"])
+                )
             if "embedding_provider_mode" in input_payload:
-                settings.embedding_provider_mode = str(input_payload["embedding_provider_mode"])
+                runtime_modes = replace(
+                    runtime_modes,
+                    embedding_provider_mode=str(input_payload["embedding_provider_mode"]),
+                )
             if "live_embedding_provider_id" in input_payload:
-                settings.live_embedding_provider_id = (
-                    str(input_payload["live_embedding_provider_id"])
-                    if input_payload["live_embedding_provider_id"] is not None
-                    else None
+                runtime_modes = replace(
+                    runtime_modes,
+                    embedding_provider_id=(
+                        str(input_payload["live_embedding_provider_id"])
+                        if input_payload["live_embedding_provider_id"] is not None
+                        else None
+                    ),
                 )
             if "live_embedding_model_id" in input_payload:
-                settings.live_embedding_model_id = (
-                    str(input_payload["live_embedding_model_id"])
-                    if input_payload["live_embedding_model_id"] is not None
-                    else None
+                runtime_modes = replace(
+                    runtime_modes,
+                    embedding_model_id=(
+                        str(input_payload["live_embedding_model_id"])
+                        if input_payload["live_embedding_model_id"] is not None
+                        else None
+                    ),
                 )
             if "live_embedding_provider_api_key" in input_payload:
-                settings.live_embedding_provider_api_key = (
-                    str(input_payload["live_embedding_provider_api_key"])
-                    if input_payload["live_embedding_provider_api_key"] is not None
-                    else None
+                runtime_modes = replace(
+                    runtime_modes,
+                    embedding_api_key=(
+                        str(input_payload["live_embedding_provider_api_key"])
+                        if input_payload["live_embedding_provider_api_key"] is not None
+                        else None
+                    ),
                 )
+            stack.enter_context(override_runtime_mode_config(runtime_modes))
             indexed_sources = input_payload.get("index_sources", [])
             if isinstance(indexed_sources, list):
                 repository = get_retrieval_repository()
@@ -1033,7 +1049,7 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                 input_payload.get("provider_operations_store_mode") == "sqlalchemy"
                 and settings.database_url
             ):
-                settings.provider_operations_store_mode = "sqlalchemy"
+                stack.enter_context(override_provider_operations_store_mode("sqlalchemy"))
                 reset_provider_operations_store_cache()
             live_execution_signals = any(
                 key in input_payload
@@ -1209,7 +1225,7 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                         amount_usd=tracked_spend,
                         updated_at=_utcnow_iso(),
                     )
-                    if settings.provider_operations_store_mode == "sqlalchemy":
+                    if resolved_provider_operations_store_mode() == "sqlalchemy":
                         reset_provider_operations_store_cache()
             if "degraded_failure_count_threshold" in input_payload:
                 failure_count = int(
@@ -1217,11 +1233,11 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                 )
                 for _ in range(failure_count):
                     record_provider_failure(ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR)
-                if settings.provider_operations_store_mode == "sqlalchemy":
+                if resolved_provider_operations_store_mode() == "sqlalchemy":
                     reset_provider_operations_store_cache()
             elif "circuit_open_seconds" in input_payload:
                 record_provider_failure(ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR)
-                if settings.provider_operations_store_mode == "sqlalchemy":
+                if resolved_provider_operations_store_mode() == "sqlalchemy":
                     reset_provider_operations_store_cache()
             yield
     finally:

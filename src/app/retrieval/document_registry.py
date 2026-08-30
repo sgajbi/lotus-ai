@@ -7,6 +7,7 @@ from app.contracts.retrieval import (
     RetrievalSourceStatusDescriptor,
 )
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.retrieval.inventory_summary import summarize_retrieval_source_inventory
 from app.retrieval.policy import VECTOR_STORE_STRATEGY
 from app.services.retrieval_store import get_retrieval_repository
@@ -49,7 +50,7 @@ def build_retrieval_index_status() -> RetrievalIndexStatusResponse:
 
     return RetrievalIndexStatusResponse(
         service=settings.service_name,
-        retrieval_mode=settings.retrieval_mode,
+        retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
         vector_store=VECTOR_STORE_STRATEGY,
         sources=source_statuses,
     )

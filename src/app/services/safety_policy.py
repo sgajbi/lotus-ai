@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.safety import (
     RedactionPosture,
     SafetyControlDescriptor,
@@ -17,7 +18,7 @@ def build_safety_policy() -> SafetyPolicyResponse:
     return SafetyPolicyResponse(
         service=settings.service_name,
         version=settings.service_version,
-        safety_mode=settings.safety_mode,
+        safety_mode=resolve_runtime_mode_config().safety_mode,
         controls=[
             SafetyControlDescriptor(
                 control_id="context_minimization",
@@ -46,12 +47,12 @@ def build_safety_policy() -> SafetyPolicyResponse:
                 control_id="runtime_redaction_engine",
                 status=(
                     SafetyControlStatus.ENFORCED
-                    if settings.safety_mode == "runtime_enforced"
+                    if resolve_runtime_mode_config().safety_mode == "runtime_enforced"
                     else SafetyControlStatus.DOCUMENTED
                 ),
                 description=(
                     "Deterministic runtime safety enforcement is active for bounded task outputs."
-                    if settings.safety_mode == "runtime_enforced"
+                    if resolve_runtime_mode_config().safety_mode == "runtime_enforced"
                     else (
                         "Runtime safety outcomes are now typed and reviewable, but deterministic "
                         "redaction remains documented-only and is not yet active in the current "

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.retrieval import (
     RetrievalExecutionStage,
     RetrievalExecutionStatusResponse,
@@ -20,11 +21,11 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
         effective_stage=posture.effective_stage,
         degraded_findings=posture.retrieval_degraded_findings,
     )
-    if settings.retrieval_mode != "enabled":
+    if resolve_runtime_mode_config().retrieval_mode != "enabled":
         return RetrievalExecutionStatusResponse(
             service=settings.service_name,
             delivery_phase=settings.delivery_phase,
-            retrieval_mode=settings.retrieval_mode,
+            retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
             execution_stage=RetrievalExecutionStage.SEARCH_DISABLED,
             vector_store=VECTOR_STORE_STRATEGY,
             live_search_enabled=False,
@@ -50,7 +51,7 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
         return RetrievalExecutionStatusResponse(
             service=settings.service_name,
             delivery_phase=settings.delivery_phase,
-            retrieval_mode=settings.retrieval_mode,
+            retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
             execution_stage=RetrievalExecutionStage.INDEXING_DISABLED,
             vector_store=VECTOR_STORE_STRATEGY,
             live_search_enabled=False,
@@ -115,7 +116,7 @@ def build_retrieval_execution_status() -> RetrievalExecutionStatusResponse:
     return RetrievalExecutionStatusResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,
-        retrieval_mode=settings.retrieval_mode,
+        retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
         execution_stage=RetrievalExecutionStage.LIVE_SEARCH,
         vector_store=VECTOR_STORE_STRATEGY,
         live_search_enabled=True,

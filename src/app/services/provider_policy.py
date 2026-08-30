@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.providers import (
     ProviderAdapterKind,
     ProviderCapability,
@@ -34,7 +35,7 @@ def build_provider_policy() -> ProviderPolicyResponse:
         rejection_category = ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
     else:
         rejection_category = ProviderFailureCategory.UNSUPPORTED_MODE
-    if settings.embedding_provider_mode == ProviderExecutionMode.ENABLED.value:
+    if resolve_runtime_mode_config().embedding_provider_mode == ProviderExecutionMode.ENABLED.value:
         embedding_rejection_category = ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
     else:
         embedding_rejection_category = ProviderFailureCategory.UNSUPPORTED_MODE
@@ -65,7 +66,7 @@ def build_provider_policy() -> ProviderPolicyResponse:
             ),
             ProviderPolicyDescriptor(
                 capability=ProviderCapability.EMBEDDINGS,
-                configured_mode=settings.embedding_provider_mode,
+                configured_mode=resolve_runtime_mode_config().embedding_provider_mode,
                 allowed_modes=[
                     ProviderExecutionMode.DISABLED,
                     ProviderExecutionMode.STUB,
@@ -110,7 +111,7 @@ def require_supported_embedding_mode() -> ProviderExecutionMode:
         ProviderExecutionMode.STUB.value: ProviderExecutionMode.STUB,
         ProviderExecutionMode.ENABLED.value: ProviderExecutionMode.ENABLED,
     }
-    configured_mode = settings.embedding_provider_mode
+    configured_mode = resolve_runtime_mode_config().embedding_provider_mode
     if configured_mode not in supported_modes:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -136,7 +137,7 @@ def _resolve_selected_text_provider() -> tuple[str, ProviderAdapterKind]:
 
 
 def _resolve_selected_embedding_provider() -> tuple[str, ProviderAdapterKind]:
-    configured_mode = settings.embedding_provider_mode
+    configured_mode = resolve_runtime_mode_config().embedding_provider_mode
     supported_modes = {
         ProviderExecutionMode.DISABLED.value,
         ProviderExecutionMode.STUB.value,

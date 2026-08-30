@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.platform import PlatformRuntimeStatusResponse
 from app.services.app_capability_rollout_catalog import (
     build_app_capability_rollout_catalog,
@@ -183,9 +184,9 @@ def build_platform_runtime_status(app_state: object | None = None) -> PlatformRu
         readiness_probe_policy=settings.readiness_probe_policy,
         local_header_caller_identity_enabled=settings.local_header_caller_identity_enabled,
         provider_mode=settings.provider_mode,
-        retrieval_mode=settings.retrieval_mode,
-        embedding_provider_mode=settings.embedding_provider_mode,
-        safety_mode=settings.safety_mode,
+        retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
+        embedding_provider_mode=resolve_runtime_mode_config().embedding_provider_mode,
+        safety_mode=resolve_runtime_mode_config().safety_mode,
         prompt_store_mode=settings.prompt_store_mode,
         access_control_store_mode=settings.access_control_store_mode,
         workflow_pack_registry_store_mode=settings.workflow_pack_registry_store_mode,

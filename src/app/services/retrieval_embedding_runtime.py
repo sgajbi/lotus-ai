@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.services.embedding_live_execution_state import build_embedding_live_execution_state
 from app.services.provider_policy import _resolve_selected_embedding_provider
 
@@ -25,7 +25,7 @@ def build_retrieval_embedding_runtime() -> RetrievalEmbeddingRuntimeDescriptor:
         findings = [
             "Retrieval indexing can use the bounded live embedding provider path for governed corpus growth."
         ]
-    elif settings.embedding_provider_mode == "stub":
+    elif resolve_runtime_mode_config().embedding_provider_mode == "stub":
         embedding_strategy = "provider-stub"
         findings = [
             "Retrieval indexing remains on the stub embedding path until live embedding rollout is enabled."
@@ -38,7 +38,7 @@ def build_retrieval_embedding_runtime() -> RetrievalEmbeddingRuntimeDescriptor:
         if live_execution_state.blocking_reason is not None:
             findings.append(live_execution_state.blocking_reason)
     return RetrievalEmbeddingRuntimeDescriptor(
-        embedding_provider_mode=settings.embedding_provider_mode,
+        embedding_provider_mode=resolve_runtime_mode_config().embedding_provider_mode,
         embedding_execution_enabled=live_execution_state.live_execution_enabled,
         embedding_provider_id=embedding_provider_id,
         embedding_model_id=live_execution_state.configured_model_id,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.providers import (
     ProviderCapability,
     ProviderConfigurationStatusDescriptor,
@@ -114,10 +114,10 @@ def build_text_generation_configuration_status() -> ProviderConfigurationStatusD
 
 
 def build_embedding_configuration_status() -> ProviderConfigurationStatusDescriptor:
-    configured_mode = settings.embedding_provider_mode
-    configured_live_provider_id = settings.live_embedding_provider_id
-    configured_live_model_id = settings.live_embedding_model_id
-    api_key = settings.live_embedding_provider_api_key
+    configured_mode = resolve_runtime_mode_config().embedding_provider_mode
+    configured_live_provider_id = resolve_runtime_mode_config().embedding_provider_id
+    configured_live_model_id = resolve_runtime_mode_config().embedding_model_id
+    api_key = resolve_runtime_mode_config().embedding_api_key
     findings: list[str] = []
     configuration_valid = True
     allowlisted_task_ids: list[str] = []

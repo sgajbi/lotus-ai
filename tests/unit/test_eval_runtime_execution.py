@@ -24,7 +24,10 @@ from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 from app.services.prompt_rollout_control import apply_prompt_control_action
 from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
 from app.services.prompt_store import get_prompt_repository
-from app.services.provider_operations_store import reset_provider_operations_store_cache
+from app.services.provider_operations_store import (
+    reset_provider_operations_store_cache,
+    resolved_provider_operations_store_mode,
+)
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
 
@@ -601,7 +604,8 @@ def test_apply_case_configuration_supports_sqlalchemy_budget_and_degradation_pat
             "degraded_failure_count_threshold": 1,
         }
     ):
-        assert settings.provider_operations_store_mode == "sqlalchemy"
+        assert resolved_provider_operations_store_mode() == "sqlalchemy"
+        assert settings.provider_operations_store_mode == "memory"
         # Enforcement posture rides on the case's config override (issue
         # #148 S3); the process settings are never mutated for it.
         enforcement = resolve_provider_execution_config().enforcement
@@ -627,7 +631,8 @@ def test_apply_case_configuration_supports_sqlalchemy_circuit_open_path(tmp_path
             "circuit_open_seconds": 30,
         }
     ):
-        assert settings.provider_operations_store_mode == "sqlalchemy"
+        assert resolved_provider_operations_store_mode() == "sqlalchemy"
+        assert settings.provider_operations_store_mode == "memory"
         enforcement = resolve_provider_execution_config().enforcement
         assert enforcement.circuit_open_seconds == 30
         assert enforcement.degradation_enforced is True

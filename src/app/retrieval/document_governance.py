@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.retrieval import (
     RetrievalDocumentVersionDescriptor,
     RetrievalIngestionJobDescriptor,
@@ -69,7 +70,7 @@ def build_retrieval_document_governance(
     documents.sort(key=lambda item: (item.source_id, item.document_id))
     return RetrievalDocumentGovernanceResponse(
         service=settings.service_name,
-        retrieval_mode=settings.retrieval_mode,
+        retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
         vector_store=VECTOR_STORE_STRATEGY,
         searchable_document_count=sum(1 for document in documents if document.search_enabled),
         index_pending_document_count=sum(

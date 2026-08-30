@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.retrieval import (
     RetrievalDocumentVersionLifecycleStatus,
     RetrievalIngestionDeliveryStage,
@@ -21,7 +22,7 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
         return RetrievalIngestionStatusResponse(
             service=settings.service_name,
             delivery_phase=settings.delivery_phase,
-            retrieval_mode=settings.retrieval_mode,
+            retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
             retrieval_store_mode=settings.retrieval_store_mode,
             ingestion_delivery_stage=RetrievalIngestionDeliveryStage.CATALOG_ONLY,
             live_ingestion_enabled=False,
@@ -125,7 +126,7 @@ def build_retrieval_ingestion_status() -> RetrievalIngestionStatusResponse:
     return RetrievalIngestionStatusResponse(
         service=settings.service_name,
         delivery_phase=settings.delivery_phase,
-        retrieval_mode=settings.retrieval_mode,
+        retrieval_mode=resolve_runtime_mode_config().retrieval_mode,
         retrieval_store_mode=settings.retrieval_store_mode,
         ingestion_delivery_stage=(
             RetrievalIngestionDeliveryStage.OPERATIONALLY_HARDENED

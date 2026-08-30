@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.config import settings
+from app.services.runtime_mode_config import resolve_runtime_mode_config
 from app.contracts.providers import ProviderExecutionMode
 
 
@@ -60,9 +61,9 @@ def build_live_provider_inventory() -> LiveProviderInventory:
             LiveProviderCapability(
                 capability_id="embeddings",
                 label="embeddings",
-                configured_mode=settings.embedding_provider_mode,
-                secret_configured=bool(settings.live_embedding_provider_api_key),
-                execution_requested=settings.embedding_provider_mode
+                configured_mode=resolve_runtime_mode_config().embedding_provider_mode,
+                secret_configured=bool(resolve_runtime_mode_config().embedding_api_key),
+                execution_requested=resolve_runtime_mode_config().embedding_provider_mode
                 == ProviderExecutionMode.ENABLED.value,
             ),
         )

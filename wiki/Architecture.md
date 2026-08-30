@@ -127,8 +127,10 @@ does not require editing the execution path.
 Stage 4 resolves one frozen `ProviderExecutionConfig` (mode, rollout, model identity, endpoint,
 credential, task allowlist, and the recorded sampling controls) at the gateway entry and threads it
 through policy checks, catalogue binding, kill-switch scope matching, and the provider adapters —
-mid-request `settings` reads on this path are gone. The evaluation runtime installs a per-case
-config through an execution-scoped override instead of mutating process settings, so a concurrent
+mid-request `settings` reads on this path are gone. Quota/budget/degradation thresholds ride the
+same config as a frozen enforcement group, and the retrieval/safety/embedding operating modes
+resolve through a parallel `RuntimeModeConfig` snapshot. The evaluation runtime installs per-case
+configs through execution-scoped overrides instead of mutating process settings, so a concurrent
 production request always executes under the deployed configuration (issue #148).
 
 ## Caller identity and tenant scope
