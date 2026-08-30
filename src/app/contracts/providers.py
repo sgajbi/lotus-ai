@@ -44,6 +44,8 @@ class ProviderFailureCategory(str, Enum):
     TASK_NOT_ALLOWLISTED = "TASK_NOT_ALLOWLISTED"
     QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
     BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
+    MODEL_NOT_CATALOGUED = "MODEL_NOT_CATALOGUED"
+    MODEL_LIFECYCLE_INELIGIBLE = "MODEL_LIFECYCLE_INELIGIBLE"
     CIRCUIT_OPEN = "CIRCUIT_OPEN"
     PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
     PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"
@@ -668,6 +670,19 @@ class ProviderExecutionResponse(BaseModel):
     model_version: str | None = Field(
         default=None,
         description="Governed model release or deployment version used for provider execution.",
+    )
+    model_catalogue_entry_id: str | None = Field(
+        default=None,
+        description=(
+            "Governed model-catalogue entry this execution was bound to, on live provider paths."
+        ),
+    )
+    model_revision_pinned: bool | None = Field(
+        default=None,
+        description=(
+            "Whether the bound catalogue entry pins an exact model revision "
+            "(False means the family/tag fallback identity executed)."
+        ),
     )
     provider_request_id: str | None = Field(
         default=None,
