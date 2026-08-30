@@ -139,6 +139,17 @@ class ObservabilityCallerBreakdownSample(BaseModel):
     )
 
 
+class ObservabilityModelBreakdownSample(BaseModel):
+    model_id: str = Field(description="Provider-reported model identity, or 'unknown'.")
+    execution_count: int = Field(description="Sampled executions attributed to this model.")
+    priced_execution_count: int = Field(
+        description="Sampled executions with a rate-card-priced cost (issue #178 S4)."
+    )
+    estimated_cost_usd_total: float = Field(
+        description="Sum of rate-card-estimated costs over the sampled executions."
+    )
+
+
 class ObservabilityTenantBreakdownSample(BaseModel):
     tenant_id: str = Field(description="Tenant identifier represented in the bounded sample.")
     execution_count: int = Field(
@@ -146,6 +157,14 @@ class ObservabilityTenantBreakdownSample(BaseModel):
     )
     caller_app_count: int = Field(
         description="Number of distinct caller applications represented for the tenant."
+    )
+    priced_execution_count: int = Field(
+        default=0,
+        description="Sampled executions with a rate-card-priced cost (issue #178 S4).",
+    )
+    estimated_cost_usd_total: float = Field(
+        default=0.0,
+        description="Sum of rate-card-estimated costs over the sampled executions.",
     )
     capability_count: int = Field(
         description="Number of distinct task capabilities represented for the tenant."
@@ -161,6 +180,14 @@ class ObservabilityCapabilityBreakdownSample(BaseModel):
     )
     observed_count: int = Field(
         description="Number of sampled observations associated with the capability."
+    )
+    priced_execution_count: int = Field(
+        default=0,
+        description="Sampled executions with a rate-card-priced cost (issue #178 S4).",
+    )
+    estimated_cost_usd_total: float = Field(
+        default=0.0,
+        description="Sum of rate-card-estimated costs over the sampled executions.",
     )
 
 
@@ -187,6 +214,11 @@ class ObservabilityBreakdownSummaryResponse(BaseModel):
     )
     tenants: list[ObservabilityTenantBreakdownSample] = Field(
         description="Bounded tenant breakdown derived only from authorized task executions carrying tenant identity."
+    )
+    models: list[ObservabilityModelBreakdownSample] = Field(
+        default_factory=list,
+        description="Per-model execution and rate-card cost breakdown over the sample "
+        "(issue #178 S4).",
     )
     capabilities: list[ObservabilityCapabilityBreakdownSample] = Field(
         description="Bounded capability breakdown across tasks, retrieval sources, and async job types."

@@ -103,6 +103,8 @@ def test_sqlalchemy_audit_repository_save_and_get(tmp_path: Path) -> None:
         prompt_content_sha256="b" * 64,
         sampling_parameters={"temperature": 0.0, "top_p": None, "seed": None},
         provider_config_sha256="c" * 64,
+        estimated_cost_usd=0.0125,
+        rate_card_ref="default-live-text",
         generated_at="2026-03-22T00:00:00Z",
         stubbed=True,
         context_summary="Explain rebalance outcome",

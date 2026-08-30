@@ -908,6 +908,7 @@ def test_execute_task_failure_audit_carries_the_rejected_routing_decision(
                     "output_tokens": 1,
                     "total_tokens": 2,
                     "estimated_cost_usd": None,
+                    "rate_card_ref": None,
                     "stubbed": False,
                     "message": "live response",
                     "structured_output": {},

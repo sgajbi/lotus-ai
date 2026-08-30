@@ -53,6 +53,7 @@ def test_kill_switch_lifecycle_enforces_and_restores_live_execution(
                     "output_tokens": 1,
                     "total_tokens": 2,
                     "estimated_cost_usd": None,
+                    "rate_card_ref": None,
                     "stubbed": False,
                     "message": "live response",
                     "structured_output": {},

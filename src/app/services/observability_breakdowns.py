@@ -10,6 +10,7 @@ from app.contracts.observability import (
     ObservabilityCallerBreakdownSample,
     ObservabilityCapabilityBreakdownSample,
     ObservabilityCapabilityKind,
+    ObservabilityModelBreakdownSample,
     ObservabilityTenantBreakdownSample,
 )
 from app.contracts.audit_access import AuditReadScope
@@ -40,6 +41,7 @@ def build_observability_breakdown_summary(
         ),
         caller_apps=_build_caller_samples(records=records, jobs=jobs),
         tenants=_build_tenant_samples(records=records),
+        models=_build_model_samples(records=records),
         capabilities=_build_capability_samples(records=records, jobs=jobs),
         status_summary=[
             "Breakdown summary uses bounded recent audit records plus current async job catalog.",
@@ -95,12 +97,43 @@ def _build_tenant_samples(
         ObservabilityTenantBreakdownSample(
             tenant_id=tenant_id,
             execution_count=len(items),
+            priced_execution_count=sum(1 for item in items if item.estimated_cost_usd is not None),
+            estimated_cost_usd_total=round(
+                sum(item.estimated_cost_usd or 0.0 for item in items), 8
+            ),
             caller_app_count=len({item.caller_app for item in items}),
             capability_count=len({item.task_id for item in items}),
         )
         for tenant_id, items in grouped.items()
     ]
     samples.sort(key=lambda sample: (-sample.execution_count, sample.tenant_id))
+    return samples
+
+
+def _build_model_samples(
+    *, records: list[AuditRecordResponse]
+) -> list[ObservabilityModelBreakdownSample]:
+    grouped: dict[str, list[AuditRecordResponse]] = defaultdict(list)
+    for record in records:
+        grouped[record.model_id or "unknown"].append(record)
+    samples = [
+        ObservabilityModelBreakdownSample(
+            model_id=model_id,
+            execution_count=len(items),
+            priced_execution_count=sum(1 for item in items if item.estimated_cost_usd is not None),
+            estimated_cost_usd_total=round(
+                sum(item.estimated_cost_usd or 0.0 for item in items), 8
+            ),
+        )
+        for model_id, items in grouped.items()
+    ]
+    samples.sort(
+        key=lambda sample: (
+            -sample.estimated_cost_usd_total,
+            -sample.execution_count,
+            sample.model_id,
+        )
+    )
     return samples
 
 
@@ -112,11 +145,16 @@ def _build_capability_samples(
         source_id for record in records for source_id in _extract_source_ids(record)
     )
     async_job_type_counts = Counter(job.job_type for job in jobs)
+    task_costs: dict[str, list[float | None]] = defaultdict(list)
+    for record in records:
+        task_costs[record.task_id].append(record.estimated_cost_usd)
     samples = [
         ObservabilityCapabilityBreakdownSample(
             capability_kind=ObservabilityCapabilityKind.TASK,
             capability_id=task_id,
             observed_count=count,
+            priced_execution_count=sum(1 for cost in task_costs[task_id] if cost is not None),
+            estimated_cost_usd_total=round(sum(cost or 0.0 for cost in task_costs[task_id]), 8),
         )
         for task_id, count in sorted(task_counts.items())
     ]
