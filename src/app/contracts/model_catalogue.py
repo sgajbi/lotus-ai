@@ -284,3 +284,35 @@ class ModelCatalogueEntryDetailResponse(BaseModel):
     lifecycle_events: list[ModelLifecycleTransitionRecord] = Field(
         description="Every recorded lifecycle transition for this entry, newest first.",
     )
+    revision_drift_observations: list[ModelRevisionDriftObservation] = Field(
+        description=(
+            "Deduplicated observations of the provider serving a model identity other than "
+            "this entry's expectation, most recently observed first."
+        ),
+    )
+
+
+class ModelRevisionDriftObservation(BaseModel):
+    """One deduplicated observation that a provider served a model identity
+    other than the catalogue expectation (issue #175, slice 4).
+
+    Observations are keyed by (entry, observed identifier): repeated identical
+    drift updates last_observed_at and the count instead of flooding the store.
+    """
+
+    observation_id: str = Field(min_length=1, description="Deterministic observation identity.")
+    entry_id: str = Field(min_length=1, description="Catalogue entry the execution was bound to.")
+    expected_identity: str = Field(
+        min_length=1,
+        description="What the catalogue expected: the pinned revision, or the family identity.",
+    )
+    observed_model_id: str = Field(
+        min_length=1,
+        description="Model identifier the provider actually echoed for the execution.",
+    )
+    revision_pinned_at_observation: bool = Field(
+        description="Whether the entry pinned an exact revision when this drift was observed.",
+    )
+    first_observed_at: str = Field(description="First instant this drift was observed (UTC).")
+    last_observed_at: str = Field(description="Most recent instant this drift was observed (UTC).")
+    observation_count: int = Field(ge=1, description="How many executions observed this drift.")
