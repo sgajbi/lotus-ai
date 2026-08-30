@@ -13,7 +13,7 @@ spelling against this page when a setting appears to have no effect.
 Two things are true of the default configuration and are easy to miss because they are spread across
 many settings:
 
-1. **Nothing is persisted.** All fifteen `*_STORE_MODE` settings default to `memory`. A restart
+1. **Nothing is persisted.** All sixteen `*_STORE_MODE` settings default to `memory`. A restart
    discards audit records, prompt rollout state, workflow-pack runs, artifacts and everything else.
 2. **Nothing is called.** `PROVIDER_MODE`, `RETRIEVAL_MODE` and `EMBEDDING_PROVIDER_MODE` default to
    `disabled`; `SAFETY_MODE` defaults to `documented_only`; `ASYNC_QUEUE_BACKEND_MODE` to `none`.
@@ -44,6 +44,7 @@ startup — smoke-test a route that uses the store after changing one.
 | `LOTUS_AI_WORKFLOW_PACK_TASK_FLOW_STORE_MODE` | `memory` |
 | `LOTUS_AI_WORKFLOW_PACK_QUEUE_EVENT_STORE_MODE` | `memory` |
 | `LOTUS_AI_MODEL_CATALOGUE_STORE_MODE` | `memory` |
+| `LOTUS_AI_KILL_SWITCH_STORE_MODE` | `memory` |
 | `LOTUS_AI_EVALUATION_RUNTIME_STORE_MODE` | `memory` |
 | `LOTUS_AI_ARTIFACT_STORE_MODE` | `memory` |
 | `LOTUS_AI_ARTIFACT_OBJECT_STORE_MODE` | `memory` |

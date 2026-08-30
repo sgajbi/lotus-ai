@@ -23,6 +23,7 @@ from app.routers.audit import router as audit_router
 from app.routers.capabilities import router as capabilities_router
 from app.routers.capability_packs import router as capability_packs_router
 from app.routers.evals import router as evals_router
+from app.routers.kill_switches import router as kill_switches_router
 from app.routers.model_catalogue import router as model_catalogue_router
 from app.routers.observability import router as observability_router
 from app.routers.platform import router as platform_router
@@ -56,6 +57,7 @@ PROTECTED_ROUTER_BINDINGS = (
     ("capabilities", capabilities_router),
     ("capability_packs", capability_packs_router),
     ("evals", evals_router),
+    ("kill_switches", kill_switches_router),
     ("model_catalogue", model_catalogue_router),
     ("providers", providers_router),
     ("prompts", prompts_router),

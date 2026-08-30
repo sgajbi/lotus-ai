@@ -652,6 +652,22 @@ class WorkflowPackControlEventModel(Base):
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
+class KillSwitchActivationModel(Base):
+    __tablename__ = "kill_switch_activations"
+
+    switch_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    scope: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    target: Mapped[str | None] = mapped_column(String(256), nullable=True, index=True)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    requested_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    activated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    expires_at_utc: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cleared_at: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    cleared_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    clear_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class ModelCatalogueEntryModel(Base):
     __tablename__ = "model_catalogue_entries"
 
