@@ -106,7 +106,10 @@ def test_execute_task_enforces_runtime_redaction_for_provider_backed_output() ->
 
     assert response.audit.safety.safety_mode == "runtime_enforced"
     assert response.audit.safety.disposition == "ENFORCED_REDACTED"
-    assert response.audit.safety.runtime_redaction_active is True
+    # Truthful posture (issue #150): key minimization runs, but no
+    # runtime redaction engine exists.
+    assert response.audit.safety.runtime_redaction_active is False
+    assert "structured_output_key_minimization" in response.audit.safety.enforced_controls
     assert (
         response.result.message == "Stub execution completed for foundation-phase task explain.v1."
     )
@@ -535,7 +538,10 @@ def test_execute_task_enforces_runtime_redaction_for_retrieval_backed_output(
     )
 
     assert response.audit.safety.safety_mode == "runtime_enforced"
-    assert response.audit.safety.runtime_redaction_active is True
+    # Truthful posture (issue #150): key minimization runs, but no
+    # runtime redaction engine exists.
+    assert response.audit.safety.runtime_redaction_active is False
+    assert "structured_output_key_minimization" in response.audit.safety.enforced_controls
     assert "caller_app" not in response.result.structured_output
     assert response.result.structured_output["citation_count"] >= 1
     assert response.result.structured_output["hits"][0]["source_id"] == "lotus-platform-rfcs"

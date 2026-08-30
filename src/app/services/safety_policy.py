@@ -44,20 +44,24 @@ def build_safety_policy() -> SafetyPolicyResponse:
                 ),
             ),
             SafetyControlDescriptor(
-                control_id="runtime_redaction_engine",
+                control_id="structured_output_key_minimization",
                 status=(
                     SafetyControlStatus.ENFORCED
                     if resolve_runtime_mode_config().safety_mode == "runtime_enforced"
                     else SafetyControlStatus.DOCUMENTED
                 ),
                 description=(
-                    "Deterministic runtime safety enforcement is active for bounded task outputs."
-                    if resolve_runtime_mode_config().safety_mode == "runtime_enforced"
-                    else (
-                        "Runtime safety outcomes are now typed and reviewable, but deterministic "
-                        "redaction remains documented-only and is not yet active in the current "
-                        "slice."
-                    )
+                    "Deterministic structured-output key minimization and identity-echo "
+                    "truncation run on bounded task outputs under runtime-enforced safety mode."
+                ),
+            ),
+            SafetyControlDescriptor(
+                control_id="runtime_redaction_engine",
+                status=SafetyControlStatus.DOCUMENTED,
+                description=(
+                    "A runtime redaction engine (content screening for PII, account and card "
+                    "identifiers before persistence and egress) is not implemented; redaction "
+                    "remains documented-only (issue #150)."
                 ),
             ),
         ],

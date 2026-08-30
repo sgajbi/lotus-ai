@@ -80,17 +80,25 @@ def resolve_safety_execution_outcome(
                 summary="Correlation metadata and audit capture are enforced on every execution.",
             ),
             SafetyControlExecutionResult(
+                control_id="structured_output_key_minimization",
+                execution_state=SafetyControlExecutionState.DOCUMENTED_ONLY,
+                summary=(
+                    "Deterministic structured-output key minimization runs only under "
+                    "runtime-enforced safety mode."
+                ),
+            ),
+            SafetyControlExecutionResult(
                 control_id="runtime_redaction_engine",
                 execution_state=SafetyControlExecutionState.DOCUMENTED_ONLY,
                 summary=(
-                    "Runtime redaction is typed and inspectable but not yet active in the current "
-                    "slice."
+                    "A runtime redaction engine (content screening for PII, account and card "
+                    "identifiers) is not implemented; redaction remains documented-only."
                 ),
             ),
         ],
         decision_summary=(
-            "Safety posture is typed and reviewable, but runtime redaction remains "
-            "documented-only in the current slice."
+            "Safety posture is typed and reviewable, but content redaction remains "
+            "documented-only: no runtime redaction engine exists."
         ),
     )
 
@@ -217,10 +225,13 @@ def _build_enforced_safety_outcome(
         output_label=policy.output_label.value,
         redaction_posture=policy.redaction_posture,
         disposition=disposition,
-        runtime_redaction_active=True,
+        # No runtime redaction engine exists (issue #150): what runs under
+        # runtime-enforced mode is deterministic key minimization and
+        # identity-echo truncation, reported under its own honest control id.
+        runtime_redaction_active=False,
         enforced_controls=[
             *_ENFORCED_CONTROL_IDS,
-            "runtime_redaction_engine",
+            "structured_output_key_minimization",
         ],
         control_results=[
             SafetyControlExecutionResult(
@@ -239,9 +250,20 @@ def _build_enforced_safety_outcome(
                 summary="Correlation metadata and audit capture are enforced on every execution.",
             ),
             SafetyControlExecutionResult(
-                control_id="runtime_redaction_engine",
+                control_id="structured_output_key_minimization",
                 execution_state=SafetyControlExecutionState.ENFORCED,
-                summary="Deterministic runtime safety enforcement is active for this execution.",
+                summary=(
+                    "Deterministic structured-output key minimization and identity-echo "
+                    "truncation ran for this execution."
+                ),
+            ),
+            SafetyControlExecutionResult(
+                control_id="runtime_redaction_engine",
+                execution_state=SafetyControlExecutionState.DOCUMENTED_ONLY,
+                summary=(
+                    "A runtime redaction engine (content screening for PII, account and card "
+                    "identifiers) is not implemented; redaction remains documented-only."
+                ),
             ),
         ],
         decision_summary=decision_summary

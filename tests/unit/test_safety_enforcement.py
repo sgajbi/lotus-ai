@@ -50,7 +50,11 @@ def test_safety_enforcement_redacts_bounded_output_when_runtime_enforced() -> No
     )
 
     assert outcome.disposition == "ENFORCED_REDACTED"
-    assert outcome.runtime_redaction_active is True
+    # No runtime redaction engine exists (issue #150): the enforced
+    # mechanism is key minimization, reported under its own control id.
+    assert outcome.runtime_redaction_active is False
+    assert "structured_output_key_minimization" in outcome.enforced_controls
+    assert "runtime_redaction_engine" not in outcome.enforced_controls
     assert (
         safe_execution.message == "Stub execution completed for foundation-phase task explain.v1."
     )
@@ -79,7 +83,11 @@ def test_safety_enforcement_blocks_unsupported_raw_context_echo() -> None:
     )
 
     assert outcome.disposition == "BLOCKED"
-    assert outcome.runtime_redaction_active is True
+    # No runtime redaction engine exists (issue #150): the enforced
+    # mechanism is key minimization, reported under its own control id.
+    assert outcome.runtime_redaction_active is False
+    assert "structured_output_key_minimization" in outcome.enforced_controls
+    assert "runtime_redaction_engine" not in outcome.enforced_controls
     assert "unsupported raw context echo fields" in outcome.decision_summary
     assert (
         safe_execution.message == "Task output blocked by deterministic runtime safety enforcement."

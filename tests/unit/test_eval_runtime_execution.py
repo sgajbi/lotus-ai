@@ -654,7 +654,7 @@ def test_execute_fixture_case_reports_pass_for_runtime_safety_redaction_case() -
         expected_payload={
             "task_status": "COMPLETED",
             "disposition": "ENFORCED_REDACTED",
-            "runtime_redaction_active": True,
+            "runtime_redaction_active": False,
             "caller_app_redacted": True,
         },
     )
@@ -686,7 +686,7 @@ def test_execute_fixture_case_reports_pass_for_blocked_runtime_safety_case() -> 
         },
         expected_payload={
             "disposition": "BLOCKED",
-            "runtime_redaction_active": True,
+            "runtime_redaction_active": False,
         },
     )
 

@@ -4,7 +4,7 @@
   "cases": [
     {
       "case_id": "runtime_safety_pass_through_for_draft_output",
-      "summary": "Runtime safety remains active but does not redact draft outputs that do not require minimization.",
+      "summary": "Runtime safety remains active but does not minimize draft outputs that do not require it; no redaction engine exists (issue #150).",
       "input": {
         "task_id": "summarize.v1",
         "safety_mode": "runtime_enforced"
@@ -12,12 +12,12 @@
       "expected": {
         "task_status": "COMPLETED",
         "disposition": "ENFORCED_PASSTHROUGH",
-        "runtime_redaction_active": true
+        "runtime_redaction_active": false
       }
     },
     {
       "case_id": "runtime_safety_redacts_explanation_output",
-      "summary": "Runtime safety deterministically redacts explanation output before task response and audit persistence.",
+      "summary": "Runtime safety deterministically minimizes explanation output keys before task response and audit persistence; content redaction remains documented-only.",
       "input": {
         "task_id": "explain.v1",
         "safety_mode": "runtime_enforced"
@@ -25,7 +25,7 @@
       "expected": {
         "task_status": "COMPLETED",
         "disposition": "ENFORCED_REDACTED",
-        "runtime_redaction_active": true,
+        "runtime_redaction_active": false,
         "caller_app_redacted": true
       }
     },
@@ -44,7 +44,7 @@
       },
       "expected": {
         "disposition": "BLOCKED",
-        "runtime_redaction_active": true
+        "runtime_redaction_active": false
       }
     },
     {
@@ -60,7 +60,7 @@
       },
       "expected": {
         "disposition": "DEGRADED",
-        "runtime_redaction_active": true
+        "runtime_redaction_active": false
       }
     }
   ]
