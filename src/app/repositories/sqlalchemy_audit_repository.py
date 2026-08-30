@@ -26,6 +26,7 @@ from app.contracts.prompts import (
     PromptSelectionTraceDescriptor,
 )
 from app.contracts.providers import ProviderAdapterKind
+from app.contracts.routing_decision import RoutingDecisionDescriptor
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.db.models import AuditAccessEventModel, AuditRecordModel
@@ -59,6 +60,11 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
             model_version=record.model_version,
             model_catalogue_entry_id=record.model_catalogue_entry_id,
             model_revision_pinned=record.model_revision_pinned,
+            routing_decision_payload=(
+                record.routing_decision.model_dump(mode="json")
+                if record.routing_decision is not None
+                else None
+            ),
             safety_mode=record.safety_mode,
             redaction_posture=record.redaction_posture.value,
             enforced_safety_controls=record.enforced_safety_controls,
@@ -197,6 +203,11 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
             model_version=model.model_version,
             model_catalogue_entry_id=model.model_catalogue_entry_id,
             model_revision_pinned=model.model_revision_pinned,
+            routing_decision=(
+                RoutingDecisionDescriptor.model_validate(model.routing_decision_payload)
+                if model.routing_decision_payload is not None
+                else None
+            ),
             safety_mode=model.safety_mode,
             redaction_posture=redaction_posture,
             enforced_safety_controls=model.enforced_safety_controls,

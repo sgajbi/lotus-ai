@@ -21,6 +21,11 @@ from app.contracts.audit_access import (
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptRolloutRole, PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderAdapterKind
+from app.contracts.routing_decision import (
+    RoutingCandidateDescriptor,
+    RoutingDecisionDescriptor,
+    RoutingStrategy,
+)
 from app.contracts.safety import RedactionPosture, SafetyExecutionDisposition
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.repositories.sqlalchemy_audit_repository import SqlAlchemyAuditRepository
@@ -583,6 +588,23 @@ def test_sqlalchemy_audit_repository_persists_first_class_model_identity(
         model_version="gpt-5.4-2026-05-01",
         model_catalogue_entry_id="text.openai:gpt-5.4-2026-05-01",
         model_revision_pinned=True,
+        routing_decision=RoutingDecisionDescriptor(
+            policy_id="fixed_configured_mode",
+            policy_version="v1",
+            strategy=RoutingStrategy.FIXED,
+            candidates=[
+                RoutingCandidateDescriptor(
+                    provider_id="text.openai",
+                    provider_mode="openai",
+                    model_catalogue_entry_id="text.openai:gpt-5.4-2026-05-01",
+                    model_revision="gpt-5.4-2026-05-01",
+                )
+            ],
+            selected_provider_id="text.openai",
+            selected_model_catalogue_entry_id="text.openai:gpt-5.4-2026-05-01",
+            decided_at="2026-08-30T00:00:00Z",
+            selection_reason="Fixed policy: configured provider mode resolves to one adapter.",
+        ),
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
         enforced_safety_controls=["response_labeling", "correlation_and_audit"],
@@ -633,3 +655,13 @@ def test_sqlalchemy_audit_repository_persists_first_class_model_identity(
         "text.openai:gpt-5.4-2026-05-01",
         1,
     )
+
+    with repository._engine.begin() as connection:
+        payload_row = connection.execute(
+            text(
+                "SELECT routing_decision_payload FROM audit_records "
+                "WHERE request_id = 'air_sql_identity'"
+            )
+        ).one()
+    assert payload_row[0] is not None
+    assert "fixed_configured_mode" in payload_row[0]

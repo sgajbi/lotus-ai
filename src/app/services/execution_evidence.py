@@ -4,6 +4,7 @@ from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.prompts import PromptDescriptor, PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderExecutionResponse
+from app.contracts.routing_decision import RoutingDecisionDescriptor
 from app.contracts.retrieval import RetrievalExecutionStatusResponse
 from app.contracts.safety import SafetyExecutionOutcome
 from app.contracts.tasks import CapabilityDescriptor, TaskExecutionRequest
@@ -22,11 +23,16 @@ def build_execution_evidence(
     safety_outcome: SafetyExecutionOutcome,
 ) -> ExecutionEvidenceBundle:
     retrieval_status = build_retrieval_execution_status()
-    return ExecutionEvidenceBundle(
-        descriptors=[
-            _task_descriptor(capability=capability, request=request),
-            _prompt_descriptor(prompt=prompt, prompt_selection=prompt_selection),
-            _provider_descriptor(provider_execution=provider_execution),
+    descriptors = [
+        _task_descriptor(capability=capability, request=request),
+        _prompt_descriptor(prompt=prompt, prompt_selection=prompt_selection),
+        _provider_descriptor(provider_execution=provider_execution),
+    ]
+    routing_decision = getattr(provider_execution, "routing_decision", None)
+    if routing_decision is not None:
+        descriptors.append(_routing_decision_descriptor(routing_decision=routing_decision))
+    descriptors.extend(
+        [
             _safety_descriptor(safety_outcome=safety_outcome),
             _retrieval_descriptor(
                 retrieval_status=retrieval_status,
@@ -34,6 +40,18 @@ def build_execution_evidence(
             ),
             _access_control_descriptor(authorization=authorization),
         ]
+    )
+    return ExecutionEvidenceBundle(descriptors=descriptors)
+
+
+def _routing_decision_descriptor(
+    *,
+    routing_decision: RoutingDecisionDescriptor,
+) -> ExecutionEvidenceDescriptor:
+    return ExecutionEvidenceDescriptor(
+        evidence_type="routing_decision",
+        summary="Execution recorded the routing-policy decision that selected its provider path.",
+        attributes=routing_decision.model_dump(mode="json"),
     )
 
 

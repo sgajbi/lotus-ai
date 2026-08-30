@@ -47,9 +47,14 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["audit"]["safety"]["disposition"] == "DOCUMENTED_ONLY"
     assert body["audit"]["safety"]["runtime_redaction_active"] is False
     assert body["audit"]["authorization"]["outcome"] == "ALLOWED"
-    assert len(body["evidence"]["descriptors"]) == 6
+    assert len(body["evidence"]["descriptors"]) == 7
     assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
-    assert body["evidence"]["descriptors"][5]["evidence_type"] == "access_control"
+    assert body["evidence"]["descriptors"][3]["evidence_type"] == "routing_decision"
+    routing_attributes = body["evidence"]["descriptors"][3]["attributes"]
+    assert routing_attributes["policy_id"] == "fixed_configured_mode"
+    assert routing_attributes["selected_provider_id"] == "text.stub"
+    assert body["audit"]["routing_decision"]["selected_provider_id"] == "text.stub"
+    assert body["evidence"]["descriptors"][6]["evidence_type"] == "access_control"
     assert body["result"]["structured_output"]["caller_app"] == "lotus-manage"
 
 
@@ -139,7 +144,7 @@ def test_task_execute_contract_returns_grounded_advisor_brief_for_gateway_fact_b
         "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
         "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-details:YTD",
     ]
-    assert len(body["evidence"]["descriptors"]) == 6
+    assert len(body["evidence"]["descriptors"]) == 7
 
 
 def test_task_execute_contract_enforces_runtime_redaction_when_enabled(client: TestClient) -> None:
@@ -372,6 +377,9 @@ def test_task_execute_contract_returns_rejected_result_when_runtime_safety_block
     audit_body = audit_response.json()
     assert audit_body["execution_status"] == "REJECTED"
     assert audit_body["safety_outcome"]["disposition"] == "BLOCKED"
+    # This test stubs execute_text_generation itself, so the real gateway never
+    # ran and no routing decision exists - the record must say so honestly.
+    assert audit_body["routing_decision"] is None
     assert audit_body["evidence"]["descriptors"][3]["attributes"]["disposition"] == "BLOCKED"
 
     settings.safety_mode = "documented_only"
