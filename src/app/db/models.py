@@ -677,6 +677,9 @@ class KillSwitchActivationModel(Base):
 
     switch_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     scope: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    semantics: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="HARD_KILL", server_default="HARD_KILL"
+    )
     target: Mapped[str | None] = mapped_column(String(256), nullable=True, index=True)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     requested_by: Mapped[str] = mapped_column(String(128), nullable=False)

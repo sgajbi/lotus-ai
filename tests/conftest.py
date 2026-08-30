@@ -105,6 +105,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "http_hsts_enabled": settings.http_hsts_enabled,
         "http_hsts_max_age_seconds": settings.http_hsts_max_age_seconds,
         "http_max_request_body_bytes": settings.http_max_request_body_bytes,
+        "kill_switch_store_mode": settings.kill_switch_store_mode,
         "database_url": settings.database_url,
     }
     try:

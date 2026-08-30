@@ -9,6 +9,10 @@ from uuid import uuid4
 
 from fastapi import HTTPException, status
 
+from app.services.kill_switch_control import (
+    drain_completion_permit,
+    enforce_kill_switch_intake,
+)
 from app.config import settings
 from app.contracts.artifacts import ArtifactDescriptor
 from app.contracts.async_runtime import AsyncJobStatus
@@ -268,6 +272,11 @@ def _preflight_workflow_pack_execution_request(
             detail=f"Unknown workflow-pack registration: {request.pack_id}@{request.version}",
         )
     workflow_surface = request.workflow_surface or resolved_binding.binding.default_workflow_surface
+    enforce_kill_switch_intake(
+        task_id=request.task_request.task_id,
+        tenant_id=request.task_request.caller.tenant_id,
+        caller_app=request.task_request.caller.caller_app,
+    )
     eligibility = evaluate_workflow_pack_eligibility(
         WorkflowPackEligibilityEvaluationRequest(
             pack_id=request.pack_id,
@@ -490,6 +499,15 @@ def _canonical_json(payload: object) -> bytes:
 
 
 def _execute_claimed_workflow_pack_job(
+    *,
+    claim: AsyncWorkerClaimResult,
+    worker_id: str,
+) -> WorkflowPackAsyncExecutionResult | None:
+    with drain_completion_permit():
+        return _execute_claimed_workflow_pack_job_inner(claim=claim, worker_id=worker_id)
+
+
+def _execute_claimed_workflow_pack_job_inner(
     *,
     claim: AsyncWorkerClaimResult,
     worker_id: str,

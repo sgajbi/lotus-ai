@@ -41,10 +41,12 @@ async def get_kill_switch_status_route() -> KillSwitchStatusResponse:
     operation_id="activateKillSwitch",
     summary="Activate a kill switch",
     description=(
-        "Activates a scoped hard-kill switch: new live text executions matching the scope are "
-        "refused immediately with the bounded KILL_SWITCH_ACTIVE category and a recorded "
-        "routing rejection. Requires provider-control authorization, requester and approver "
-        "identity, an operator reason, and the durable kill-switch store."
+        "Activates a scoped kill switch. HARD_KILL (default) refuses all matching live "
+        "execution immediately; DRAIN refuses new synchronous executions and new async "
+        "intake while already-claimed async workflow-pack jobs complete safely. Refusals "
+        "carry the bounded KILL_SWITCH_ACTIVE category and a recorded routing rejection. "
+        "Requires provider-control authorization, requester and approver identity, an "
+        "operator reason, and the durable kill-switch store."
     ),
     responses={
         200: {"description": "Kill switch activated."},

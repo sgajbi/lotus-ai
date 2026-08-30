@@ -4,7 +4,11 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from app.contracts.kill_switches import KillSwitchActivationRecord, KillSwitchScope
+from app.contracts.kill_switches import (
+    KillSwitchActivationRecord,
+    KillSwitchScope,
+    KillSwitchSemantics,
+)
 from app.db.models import KillSwitchActivationModel
 from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
 
@@ -38,6 +42,7 @@ class SqlAlchemyKillSwitchRepository(SqlAlchemyRepositoryBase):
                 model = KillSwitchActivationModel(switch_id=activation.switch_id)
                 session.add(model)
             model.scope = activation.scope.value
+            model.semantics = activation.semantics.value
             model.target = activation.target
             model.reason = activation.reason
             model.requested_by = activation.requested_by
@@ -53,6 +58,7 @@ class SqlAlchemyKillSwitchRepository(SqlAlchemyRepositoryBase):
         return KillSwitchActivationRecord(
             switch_id=model.switch_id,
             scope=KillSwitchScope(model.scope),
+            semantics=KillSwitchSemantics(model.semantics),
             target=model.target,
             reason=model.reason,
             requested_by=model.requested_by,

@@ -7,9 +7,12 @@ are durable, attributable, optionally time-bounded, and enforced at the
 provider gateway preflight, where a hit becomes a recorded routing rejection
 (issue #176) with the bounded KILL_SWITCH_ACTIVE category.
 
-Slice 1 ships hard-kill semantics only: new live executions in scope are
-refused immediately. Drain semantics arrive with their async-runtime producer
-in a later slice.
+Two semantics exist (issue #177 S3). HARD_KILL refuses everything in scope
+immediately - new synchronous executions, new async intake, and the execution
+of already-queued work. DRAIN stops intake (new synchronous executions and new
+async submissions are refused) while already-claimed async workflow-pack jobs
+are allowed to complete safely; synchronous requests are never drained - they
+refuse immediately under either semantics.
 """
 
 from __future__ import annotations
@@ -17,6 +20,11 @@ from __future__ import annotations
 from enum import Enum
 
 from pydantic import BaseModel, Field
+
+
+class KillSwitchSemantics(str, Enum):
+    HARD_KILL = "HARD_KILL"
+    DRAIN = "DRAIN"
 
 
 class KillSwitchScope(str, Enum):
@@ -36,6 +44,11 @@ class KillSwitchActivationRecord(BaseModel):
 
     switch_id: str = Field(min_length=1, description="Server-assigned activation identity.")
     scope: KillSwitchScope = Field(description="What kind of target this switch disables.")
+    semantics: KillSwitchSemantics = Field(
+        default=KillSwitchSemantics.HARD_KILL,
+        description="HARD_KILL refuses all in-scope execution immediately; DRAIN refuses "
+        "new intake while already-claimed async work completes safely.",
+    )
     target: str | None = Field(
         default=None,
         description="Scope target (provider id, model revision, task id, tenant id, or "
@@ -66,6 +79,11 @@ class KillSwitchActivationRecord(BaseModel):
 class KillSwitchActivationRequest(BaseModel):
     caller_app: str = Field(min_length=1, description="Calling application identity.")
     scope: KillSwitchScope = Field(description="What kind of target to disable.")
+    semantics: KillSwitchSemantics = Field(
+        default=KillSwitchSemantics.HARD_KILL,
+        description="HARD_KILL (default) refuses all in-scope execution immediately; "
+        "DRAIN refuses new intake while already-claimed async work completes.",
+    )
     target: str | None = Field(
         default=None,
         description="Scope target; required for every scope except targetless ones.",
