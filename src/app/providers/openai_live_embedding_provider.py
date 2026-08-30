@@ -16,6 +16,7 @@ from app.contracts.providers import (
 )
 from app.providers.base import ProviderAdapterDescriptor, ProviderExecutionError
 from app.services.provider_execution_overrides import ensure_network_execution_permitted
+from app.services.provider_usage_accounting import estimate_embedding_cost
 from app.providers.openai_compatible_text_transport import (
     failure_category_for_http_status,
     safe_provider_error_message,
@@ -48,6 +49,11 @@ class OpenAILiveEmbeddingProvider:
             },
         )
         embedding = _extract_embedding(response_payload)
+        usage = response_payload.get("usage")
+        raw_input_tokens = usage.get("prompt_tokens") if isinstance(usage, dict) else None
+        cost = estimate_embedding_cost(
+            input_tokens=raw_input_tokens if isinstance(raw_input_tokens, int) else None
+        )
         model_id = (
             _as_str(response_payload.get("model"))
             or resolve_runtime_mode_config().embedding_model_id
@@ -59,6 +65,8 @@ class OpenAILiveEmbeddingProvider:
             failure_category=None,
             model_id=model_id,
             stubbed=False,
+            estimated_cost_usd=cost.estimated_cost_usd,
+            rate_card_ref=cost.rate_card_ref,
             vector_dimension=len(embedding),
             embedding=embedding,
             message=(

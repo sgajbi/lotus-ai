@@ -13,7 +13,7 @@ from app.contracts.rate_cards import RateCardScopeKind
 from app.services.provider_usage_accounting import (
     DEFAULT_LIVE_TEXT_CARD_ID,
     ensure_rate_cards_seeded,
-    estimate_live_text_cost_usd,
+    estimate_live_text_cost,
     resolve_effective_live_text_card,
 )
 from app.services.rate_card_store import (
@@ -41,8 +41,8 @@ def test_seed_migrates_the_scalars_and_estimation_is_cutover_identical(
     _legacy_scalars: None,
 ) -> None:
     # The exact arithmetic the scalars produced, now sourced from the card.
-    assert estimate_live_text_cost_usd(input_tokens=1000, output_tokens=1000) == 0.04
-    assert estimate_live_text_cost_usd(input_tokens=500, output_tokens=100) == round(
+    assert estimate_live_text_cost(input_tokens=1000, output_tokens=1000).estimated_cost_usd == 0.04
+    assert estimate_live_text_cost(input_tokens=500, output_tokens=100).estimated_cost_usd == round(
         0.5 * 0.01 + 0.1 * 0.03, 8
     )
 
@@ -57,9 +57,9 @@ def test_no_scalars_means_no_card_and_no_cost(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(settings, "live_text_input_cost_per_1k_tokens", None)
     monkeypatch.setattr(settings, "live_text_output_cost_per_1k_tokens", None)
 
-    assert estimate_live_text_cost_usd(input_tokens=10, output_tokens=10) is None
+    assert estimate_live_text_cost(input_tokens=10, output_tokens=10).estimated_cost_usd is None
     assert get_rate_card_repository().list_cards() == []
-    assert estimate_live_text_cost_usd(input_tokens=None, output_tokens=10) is None
+    assert estimate_live_text_cost(input_tokens=None, output_tokens=10).estimated_cost_usd is None
 
 
 def test_seed_is_idempotent_and_follows_scalar_changes(
@@ -125,7 +125,7 @@ def test_sqlalchemy_round_trip_and_restart(
     monkeypatch.setattr(settings, "rate_card_store_mode", "sqlalchemy")
     monkeypatch.setattr(settings, "database_url", database_url)
 
-    assert estimate_live_text_cost_usd(input_tokens=1000, output_tokens=0) == 0.01
+    assert estimate_live_text_cost(input_tokens=1000, output_tokens=0).estimated_cost_usd == 0.01
 
     # Restart: truth must come back from SQL with provenance intact.
     seeded = get_rate_card_repository().get_card(DEFAULT_LIVE_TEXT_CARD_ID)

@@ -30,7 +30,7 @@ from app.providers.advisor_brief_quality_guardrails import (
     build_advisor_brief_user_message,
     normalize_advisor_brief_output,
 )
-from app.services.provider_usage_accounting import estimate_live_text_cost_usd
+from app.services.provider_usage_accounting import estimate_live_text_cost
 
 
 def execute_openai_compatible_text_request(
@@ -88,6 +88,11 @@ def execute_openai_compatible_text_request(
         configured_model_id=model_id,
     )
     input_tokens, output_tokens, total_tokens = extract_usage(response_payload)
+    cost = estimate_live_text_cost(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        model_revision=model_version or model_id,
+    )
     return ProviderExecutionResponse(
         provider_id=descriptor.provider_id,
         provider_mode=descriptor.runtime_mode.value,
@@ -102,10 +107,8 @@ def execute_openai_compatible_text_request(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         total_tokens=total_tokens,
-        estimated_cost_usd=estimate_live_text_cost_usd(
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-        ),
+        estimated_cost_usd=cost.estimated_cost_usd,
+        rate_card_ref=cost.rate_card_ref,
         stubbed=False,
         message=message,
         structured_output=structured_output,
@@ -438,15 +441,19 @@ def build_structured_output(
         "retry_count": extract_retry_count(response_payload),
     }
     input_tokens, output_tokens, total_tokens = extract_usage(response_payload)
+    structured_cost = estimate_live_text_cost(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        model_revision=configured_model_id,
+    )
     structured_output.update(
         {
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "total_tokens": total_tokens,
-            "estimated_cost_usd": estimate_live_text_cost_usd(
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-            ),
+            "estimated_cost_usd": structured_cost.estimated_cost_usd,
+            "rate_card_ref": structured_cost.rate_card_ref,
+            "cost_posture": structured_cost.cost_posture,
         }
     )
     if not is_advisor_brief_payload(request.context_payload):
