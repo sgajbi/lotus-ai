@@ -28,6 +28,7 @@ class SafetyExecutionDisposition(str, Enum):
 class SafetyControlExecutionState(str, Enum):
     DOCUMENTED_ONLY = "DOCUMENTED_ONLY"
     ENFORCED = "ENFORCED"
+    OBSERVED = "OBSERVED"
 
 
 class SafetyControlDescriptor(BaseModel):
@@ -170,6 +171,13 @@ class SafetyGovernanceStatusResponse(BaseModel):
     )
 
 
+class RedactionFindingDescriptor(BaseModel):
+    finding_type: str = Field(
+        description="Detector class that matched (e.g. card_pan, iban, email); never the value."
+    )
+    count: int = Field(ge=1, description="Number of occurrences redacted or observed.")
+
+
 class SafetyExecutionOutcome(BaseModel):
     safety_mode: str = Field(
         description="Configured lotus-ai safety mode applied to the execution."
@@ -183,6 +191,11 @@ class SafetyExecutionOutcome(BaseModel):
     )
     runtime_redaction_active: bool = Field(
         description="Whether runtime redaction enforcement was active for the execution."
+    )
+    redactions: list[RedactionFindingDescriptor] = Field(
+        default_factory=list,
+        description="Deterministic redaction findings for this execution as type + count "
+        "pairs (issue #150); values are never recorded.",
     )
     enforced_controls: list[str] = Field(
         description="Stable identifiers for safety controls enforced for the execution."

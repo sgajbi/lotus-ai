@@ -23,6 +23,7 @@ from app.config import settings
 class RuntimeModeConfig:
     retrieval_mode: str
     safety_mode: str
+    redaction_mode: str
     embedding_provider_mode: str
     embedding_provider_id: str | None
     embedding_model_id: str | None
@@ -54,6 +55,7 @@ def resolve_runtime_mode_config() -> RuntimeModeConfig:
     return RuntimeModeConfig(
         retrieval_mode=settings.retrieval_mode,
         safety_mode=settings.safety_mode,
+        redaction_mode=settings.redaction_mode,
         embedding_provider_mode=settings.embedding_provider_mode,
         embedding_provider_id=settings.live_embedding_provider_id,
         embedding_model_id=settings.live_embedding_model_id,

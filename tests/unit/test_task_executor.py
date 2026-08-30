@@ -72,10 +72,13 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
     assert response.audit.safety.safety_mode == "documented_only"
     assert response.audit.safety.redaction_posture == "MINIMIZATION_REQUIRED"
     assert response.audit.safety.disposition == "DOCUMENTED_ONLY"
-    assert response.audit.safety.runtime_redaction_active is False
+    # The deterministic redaction engine enforces in every safety mode
+    # (issue #150 slice 2).
+    assert response.audit.safety.runtime_redaction_active is True
     assert response.audit.safety.enforced_controls == [
         "response_labeling",
         "correlation_and_audit",
+        "runtime_redaction_engine",
     ]
     assert response.audit.safety.control_results[-1].control_id == "runtime_redaction_engine"
     assert len(response.evidence.descriptors) == 7
@@ -106,10 +109,11 @@ def test_execute_task_enforces_runtime_redaction_for_provider_backed_output() ->
 
     assert response.audit.safety.safety_mode == "runtime_enforced"
     assert response.audit.safety.disposition == "ENFORCED_REDACTED"
-    # Truthful posture (issue #150): key minimization runs, but no
-    # runtime redaction engine exists.
-    assert response.audit.safety.runtime_redaction_active is False
+    # Issue #150 slice 2: the deterministic redaction engine enforces
+    # alongside key minimization.
+    assert response.audit.safety.runtime_redaction_active is True
     assert "structured_output_key_minimization" in response.audit.safety.enforced_controls
+    assert "runtime_redaction_engine" in response.audit.safety.enforced_controls
     assert (
         response.result.message == "Stub execution completed for foundation-phase task explain.v1."
     )
@@ -538,10 +542,11 @@ def test_execute_task_enforces_runtime_redaction_for_retrieval_backed_output(
     )
 
     assert response.audit.safety.safety_mode == "runtime_enforced"
-    # Truthful posture (issue #150): key minimization runs, but no
-    # runtime redaction engine exists.
-    assert response.audit.safety.runtime_redaction_active is False
+    # Issue #150 slice 2: the deterministic redaction engine enforces
+    # alongside key minimization.
+    assert response.audit.safety.runtime_redaction_active is True
     assert "structured_output_key_minimization" in response.audit.safety.enforced_controls
+    assert "runtime_redaction_engine" in response.audit.safety.enforced_controls
     assert "caller_app" not in response.result.structured_output
     assert response.result.structured_output["citation_count"] >= 1
     assert response.result.structured_output["hits"][0]["source_id"] == "lotus-platform-rfcs"

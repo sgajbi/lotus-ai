@@ -19,8 +19,11 @@ from app.services.execution_evidence import build_routing_decision_descriptor
 from app.services.knowledge_answer_execution import execute_knowledge_answer
 from app.services.knowledge_search_execution import execute_knowledge_search
 from app.services.provider_request_builder import build_provider_execution_request
+from app.services.caller_policy_store import get_caller_policy_repository
 from app.services.safety_enforcement import (
     apply_safety_enforcement,
+    merge_redaction_findings,
+    redact_content_for_audit,
     resolve_safety_policy_for_output,
 )
 from app.services.task_execution_context_builder import build_task_execution_context
@@ -46,16 +49,39 @@ def resolve_task_execution(
     else:
         provider_request = build_provider_execution_request(context=context)
         provider_execution = execute_text_generation(provider_request)
+    client_identifiers = _caller_redaction_identifiers(context.request.caller.caller_app)
     safe_provider_execution, safety_outcome = apply_safety_enforcement(
         policy=resolve_safety_policy_for_output(context.capability.output_label),
         provider_execution=provider_execution,
+        client_identifiers=client_identifiers,
+        redaction_allowlisted_types=context.capability.redaction_allowlisted_types,
     )
+    _, summary_redactions = redact_content_for_audit(
+        context.request.context.summary,
+        client_identifiers=client_identifiers,
+        allowlisted_types=context.capability.redaction_allowlisted_types,
+    )
+    if summary_redactions:
+        safety_outcome = safety_outcome.model_copy(
+            update={
+                "redactions": merge_redaction_findings(
+                    safety_outcome.redactions, summary_redactions
+                )
+            }
+        )
     return ResolvedTaskExecution(
         context=context,
         provider_request=provider_request,
         provider_execution=safe_provider_execution,
         safety_outcome=safety_outcome,
     )
+
+
+def _caller_redaction_identifiers(caller_app: str) -> list[str]:
+    policy = get_caller_policy_repository().get_policy(caller_app)
+    if policy is None:
+        return []
+    return list(policy.redaction_client_identifiers)
 
 
 def build_task_execution_response(

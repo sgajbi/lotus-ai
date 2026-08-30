@@ -177,7 +177,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     )
     assert (
         status.observability_runtime.ai_surface_supportability.no_sensitive_content_telemetry
-        is False
+        is True
     )
     assert {
         item.surface_id for item in status.observability_runtime.ai_surface_supportability.surfaces
@@ -296,9 +296,9 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.evaluation_runtime.owning_plane.value == "runtime"
     assert status.evaluation_runtime.submission_route_mode.value == "UNIFIED_INTERNAL"
     assert status.evaluation_runtime.async_execution_route_mode.value == "UNIFIED_INTERNAL"
-    assert status.safety_runtime.runtime_redaction_active is False
+    assert status.safety_runtime.runtime_redaction_active is True
     assert status.safety_governance.governance_ready is False
-    assert status.safety_governance.blocking_area_count == 3
+    assert status.safety_governance.blocking_area_count == 2
     assert status.safety_governance.runbook_readiness.runbook_ready is False
     assert status.resilience_runtime.posture.value == "LOCAL_OR_DEMO_CONTINUITY"
     assert status.resilience_runtime.delivery_stage.value == "DRILL_VERIFIED"

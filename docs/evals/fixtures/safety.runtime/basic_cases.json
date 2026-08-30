@@ -4,7 +4,7 @@
   "cases": [
     {
       "case_id": "runtime_safety_pass_through_for_draft_output",
-      "summary": "Runtime safety remains active but does not minimize draft outputs that do not require it; no redaction engine exists (issue #150).",
+      "summary": "Runtime safety remains active and the deterministic redaction engine screens draft outputs that do not require minimization.",
       "input": {
         "task_id": "summarize.v1",
         "safety_mode": "runtime_enforced"
@@ -12,7 +12,7 @@
       "expected": {
         "task_status": "COMPLETED",
         "disposition": "ENFORCED_PASSTHROUGH",
-        "runtime_redaction_active": false
+        "runtime_redaction_active": true
       }
     },
     {
@@ -25,7 +25,7 @@
       "expected": {
         "task_status": "COMPLETED",
         "disposition": "ENFORCED_REDACTED",
-        "runtime_redaction_active": false,
+        "runtime_redaction_active": true,
         "caller_app_redacted": true
       }
     },
@@ -44,7 +44,7 @@
       },
       "expected": {
         "disposition": "BLOCKED",
-        "runtime_redaction_active": false
+        "runtime_redaction_active": true
       }
     },
     {
@@ -60,7 +60,7 @@
       },
       "expected": {
         "disposition": "DEGRADED",
-        "runtime_redaction_active": false
+        "runtime_redaction_active": true
       }
     }
   ]

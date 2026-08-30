@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.config import settings
 from app.services.runtime_mode_config import resolve_runtime_mode_config
+from app.services.redaction_engine import REDACTION_MODE_ENFORCE
 from app.contracts.safety import (
     RedactionPosture,
     SafetyControlDescriptor,
@@ -57,11 +58,16 @@ def build_safety_policy() -> SafetyPolicyResponse:
             ),
             SafetyControlDescriptor(
                 control_id="runtime_redaction_engine",
-                status=SafetyControlStatus.DOCUMENTED,
+                status=(
+                    SafetyControlStatus.ENFORCED
+                    if resolve_runtime_mode_config().redaction_mode == REDACTION_MODE_ENFORCE
+                    else SafetyControlStatus.DOCUMENTED
+                ),
                 description=(
-                    "A runtime redaction engine (content screening for PII, account and card "
-                    "identifiers before persistence and egress) is not implemented; redaction "
-                    "remains documented-only (issue #150)."
+                    "Deterministic redaction engine screens generated content (IBAN, "
+                    "Luhn-valid card PANs, e-mail, +-prefixed phone numbers, caller-declared "
+                    "client identifiers) before persistence and egress; in observe mode "
+                    "findings are counted but content is not modified."
                 ),
             ),
         ],

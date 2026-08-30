@@ -8,7 +8,9 @@ def test_build_observability_runtime_status_returns_bounded_domain_summary() -> 
     assert status.domain_count == 6
     assert status.ai_surface_supportability.supported_surface_count == 17
     assert status.ai_surface_supportability.executable_workflow_pack_count == 17
-    assert status.ai_surface_supportability.no_sensitive_content_telemetry is False
+    # Issue #150 slice 2: the redaction engine provides the telemetry
+    # guarantee this summary previously reported as missing.
+    assert status.ai_surface_supportability.no_sensitive_content_telemetry is True
     assert status.ai_surface_supportability.metric_name == "lotus_ai_surface_supportability_state"
     assert status.ai_surface_supportability.metric_labels == ["surface", "posture", "source"]
     assert {surface.workflow_pack_ref for surface in status.ai_surface_supportability.surfaces} == {
@@ -86,9 +88,9 @@ def test_build_observability_runtime_status_returns_bounded_domain_summary() -> 
     )
     assert {
         surface.supportability_reason.value for surface in status.ai_surface_supportability.surfaces
-    } == {"NO_SENSITIVE_TELEMETRY_DEGRADED"}
+    } == {"WORKFLOW_PACK_SUPPORTED_NO_ACTIVITY"}
     assert all(
-        surface.no_sensitive_content_telemetry is False
+        surface.no_sensitive_content_telemetry is True
         for surface in status.ai_surface_supportability.surfaces
     )
     assert status.healthy_domain_count >= 1

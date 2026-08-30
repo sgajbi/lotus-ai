@@ -63,6 +63,11 @@ class CallerPolicyDescriptor(BaseModel):
         default_factory=list,
         description="Retrieval sources this caller is explicitly allowed to access when enforcement is active.",
     )
+    redaction_client_identifiers: list[str] = Field(
+        default_factory=list,
+        description="Caller-declared client identifiers the redaction engine removes from "
+        "generated content as literal matches (issue #150); values never appear in findings.",
+    )
     allow_live_provider: bool = Field(
         description="Whether this caller may use live provider execution when enforcement is active."
     )
