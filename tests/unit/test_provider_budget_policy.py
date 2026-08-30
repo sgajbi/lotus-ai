@@ -13,6 +13,7 @@ from app.services.provider_budget_policy import (
 )
 from app.providers.base import ProviderExecutionError
 from app.services.provider_operations_store import reset_provider_operations_store_cache
+from app.services.rate_card_store import reset_rate_card_store_cache
 from tests.support.migration_runner import upgrade_database_to_head
 
 
@@ -158,6 +159,7 @@ def test_provider_budget_policy_persists_spend_in_sql_store_across_store_reset(
 
     record_provider_spend(_response(0.75))
     reset_provider_operations_store_cache()
+    reset_rate_card_store_cache()
 
     response = build_provider_budget_policy()
 
@@ -179,6 +181,7 @@ def test_provider_budget_policy_durable_enforcement_blocks_on_persisted_hard_lim
 
     record_provider_spend(_response(1.0))
     reset_provider_operations_store_cache()
+    reset_rate_card_store_cache()
 
     try:
         enforce_provider_budget()

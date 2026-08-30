@@ -18,6 +18,9 @@ from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import reset_provider_budget_state
 from app.services.provider_degradation_state import reset_provider_degradation_state
 from app.services.provider_operations_store import reset_provider_operations_store_cache
+from app.services.kill_switch_store import reset_kill_switch_store_cache
+from app.services.model_catalogue_store import reset_model_catalogue_store_cache
+from app.services.rate_card_store import reset_rate_card_store_cache
 from app.provider_retention_confirmations.store import (
     reset_provider_retention_confirmation_store_cache,
 )
@@ -116,6 +119,9 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_provider_degradation_state()
         reset_provider_quota_counters()
         reset_provider_operations_store_cache()
+        reset_kill_switch_store_cache()
+        reset_model_catalogue_store_cache()
+        reset_rate_card_store_cache()
         reset_provider_retention_confirmation_store_cache()
         reset_local_openai_compatible_endpoint_probe_cache()
         reset_async_delivery_queue_cache()
