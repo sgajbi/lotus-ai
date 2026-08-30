@@ -25,8 +25,7 @@ from app.contracts.prompts import (
     PromptRolloutRole,
     PromptSelectionTraceDescriptor,
 )
-from app.contracts.providers import ProviderAdapterKind
-from app.contracts.routing_decision import RoutingDecisionDescriptor
+from app.contracts.providers import ProviderAdapterKind, RoutingDecisionDescriptor
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
 from app.db.models import AuditAccessEventModel, AuditRecordModel

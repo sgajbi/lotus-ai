@@ -15,6 +15,7 @@ from app.contracts.tasks import (
     TaskExecutionStatus,
 )
 from app.services.audit_store import get_audit_store
+from app.services.execution_evidence import build_routing_decision_descriptor
 from app.services.knowledge_answer_execution import execute_knowledge_answer
 from app.services.knowledge_search_execution import execute_knowledge_search
 from app.services.provider_request_builder import build_provider_execution_request
@@ -69,6 +70,40 @@ def build_failed_task_execution_response(
     exc: HTTPException,
 ) -> TaskExecutionResponse:
     detail = _http_exception_detail(exc)
+    routing_decision = getattr(exc, "routing_decision", None)
+    failure_descriptors = [
+        ExecutionEvidenceDescriptor(
+            evidence_type="task_contract",
+            summary="Workflow-pack execution retained the bounded task contract despite runtime failure.",
+            attributes={
+                "task_id": context.capability.task_id,
+                "output_label": context.capability.output_label.value,
+            },
+        ),
+        ExecutionEvidenceDescriptor(
+            evidence_type="workflow_pack_execution_failure",
+            summary="The explicit workflow-pack execution seam recorded the runtime failure into the durable run ledger.",
+            attributes={
+                "status_code": exc.status_code,
+                "detail": detail,
+                "failure_category": _infer_failure_category(detail),
+            },
+        ),
+    ]
+    if routing_decision is not None:
+        failure_descriptors.append(
+            build_routing_decision_descriptor(routing_decision=routing_decision)
+        )
+    failure_descriptors.append(
+        ExecutionEvidenceDescriptor(
+            evidence_type="access_control",
+            summary="The caller authorization posture was resolved before the runtime failure occurred.",
+            attributes={
+                "outcome": context.authorization.outcome.value,
+                "caller_app": context.request.caller.caller_app,
+            },
+        )
+    )
     return TaskExecutionResponse(
         status=TaskExecutionStatus.FAILED,
         task_id=context.capability.task_id,
@@ -99,36 +134,9 @@ def build_failed_task_execution_response(
             authorization=context.authorization,
             generated_at=_utcnow(),
             stubbed=False,
+            routing_decision=routing_decision,
         ),
-        evidence=ExecutionEvidenceBundle(
-            descriptors=[
-                ExecutionEvidenceDescriptor(
-                    evidence_type="task_contract",
-                    summary="Workflow-pack execution retained the bounded task contract despite runtime failure.",
-                    attributes={
-                        "task_id": context.capability.task_id,
-                        "output_label": context.capability.output_label.value,
-                    },
-                ),
-                ExecutionEvidenceDescriptor(
-                    evidence_type="workflow_pack_execution_failure",
-                    summary="The explicit workflow-pack execution seam recorded the runtime failure into the durable run ledger.",
-                    attributes={
-                        "status_code": exc.status_code,
-                        "detail": detail,
-                        "failure_category": _infer_failure_category(detail),
-                    },
-                ),
-                ExecutionEvidenceDescriptor(
-                    evidence_type="access_control",
-                    summary="The caller authorization posture was resolved before the runtime failure occurred.",
-                    attributes={
-                        "outcome": context.authorization.outcome.value,
-                        "caller_app": context.request.caller.caller_app,
-                    },
-                ),
-            ]
-        ),
+        evidence=ExecutionEvidenceBundle(descriptors=failure_descriptors),
     )
 
 

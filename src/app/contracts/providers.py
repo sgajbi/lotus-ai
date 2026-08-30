@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
-from app.contracts.routing_decision import RoutingDecisionDescriptor
 
 
 class ProviderCapability(str, Enum):
@@ -59,6 +58,70 @@ class ProviderRolloutState(str, Enum):
     ALLOWLISTED_DISABLED = "ALLOWLISTED_DISABLED"
     CANARY_ENABLED = "CANARY_ENABLED"
     ROLLED_OUT = "ROLLED_OUT"
+
+
+ROUTING_POLICY_FIXED_CONFIGURED_MODE = "fixed_configured_mode"
+ROUTING_POLICY_VERSION_V1 = "v1"
+
+
+class RoutingStrategy(str, Enum):
+    FIXED = "FIXED"
+
+
+class RoutingCandidateDescriptor(BaseModel):
+    """One execution target the routing policy considered.
+
+    A candidate with a null rejection_reason was eligible; the selected
+    candidate is named on the decision. Rejection reasons reuse the bounded
+    ProviderFailureCategory vocabulary - one failure vocabulary, no parallel
+    enum to drift.
+    """
+
+    provider_id: str = Field(description="Provider identity of the candidate.")
+    provider_mode: str = Field(description="Execution mode the candidate serves.")
+    model_catalogue_entry_id: str | None = Field(
+        default=None,
+        description="Governed catalogue entry for the candidate, on live paths.",
+    )
+    model_revision: str | None = Field(
+        default=None,
+        description="Exact (or fallback) model revision of the candidate when known.",
+    )
+    rejection_reason: ProviderFailureCategory | None = Field(
+        default=None,
+        description="Bounded failure category when this candidate was rejected; null otherwise.",
+    )
+
+
+class RoutingDecisionDescriptor(BaseModel):
+    """The recorded rationale for one execution's provider/model selection.
+
+    Every execution attempt records exactly one decision: which policy decided,
+    which candidates were considered, what was rejected and why, what was
+    selected (or that everything was rejected), and when.
+    """
+
+    policy_id: str = Field(description="Routing policy that made this decision.")
+    policy_version: str = Field(description="Version of the routing policy.")
+    strategy: RoutingStrategy = Field(description="Routing strategy the policy applied.")
+    candidates: list[RoutingCandidateDescriptor] = Field(
+        description="Every candidate the policy considered for this execution.",
+    )
+    selected_provider_id: str | None = Field(
+        default=None,
+        description=(
+            "Provider identity the execution was routed to; null when every candidate "
+            "was rejected and the execution was refused."
+        ),
+    )
+    selected_model_catalogue_entry_id: str | None = Field(
+        default=None,
+        description="Governed catalogue entry the execution was routed to, on live paths.",
+    )
+    decided_at: str = Field(description="Instant the routing decision was made (UTC).")
+    selection_reason: str = Field(
+        description="Human-readable statement of the selection or refusal.",
+    )
 
 
 class ProviderCredentialStatus(str, Enum):

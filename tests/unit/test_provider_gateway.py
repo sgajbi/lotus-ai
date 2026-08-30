@@ -8,7 +8,10 @@ from app.contracts.providers import (
     ProviderFailureCategory,
 )
 from app.providers.base import ProviderExecutionError
-from app.services.provider_gateway import execute_text_generation
+from app.services.provider_gateway import (
+    ProviderGatewayUnavailableError,
+    execute_text_generation,
+)
 
 
 def _request(**overrides: object) -> ProviderExecutionRequest:
@@ -217,6 +220,16 @@ def test_execute_text_generation_rejects_live_provider_when_quota_is_exceeded() 
 
     assert exc_info.value.status_code == 503
     assert "QUOTA_EXCEEDED" in str(exc_info.value.detail)
+
+    # The refusal carries the routing decision: one candidate, rejected with
+    # the bounded category, and no selection.
+    assert isinstance(exc_info.value, ProviderGatewayUnavailableError)
+    decision = exc_info.value.routing_decision
+    assert decision.selected_provider_id is None
+    assert len(decision.candidates) == 1
+    assert decision.candidates[0].provider_id == "text.openai"
+    assert decision.candidates[0].rejection_reason is ProviderFailureCategory.QUOTA_EXCEEDED
+    assert "rejected" in decision.selection_reason
     monkeypatch.undo()
 
 
@@ -566,4 +579,13 @@ def test_execute_text_generation_refuses_a_retired_catalogue_model(
     assert exc_info.value.status_code == 503
     assert "MODEL_LIFECYCLE_INELIGIBLE" in str(exc_info.value.detail)
     assert adapter_calls == [], "a lifecycle-ineligible model must be refused before the adapter"
+
+    assert isinstance(exc_info.value, ProviderGatewayUnavailableError)
+    decision = exc_info.value.routing_decision
+    assert decision.selected_provider_id is None
+    assert decision.candidates[0].model_catalogue_entry_id == "text.openai:gpt-5.4"
+    assert (
+        decision.candidates[0].rejection_reason
+        is ProviderFailureCategory.MODEL_LIFECYCLE_INELIGIBLE
+    )
     reset_model_catalogue_store_cache()
