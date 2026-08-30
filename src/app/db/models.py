@@ -21,6 +21,14 @@ class AuditRecordModel(Base):
     prompt_version: Mapped[str] = mapped_column(String(128), nullable=False)
     prompt_selection_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     provider_mode: Mapped[str] = mapped_column(String(64), nullable=False)
+    # First-class model identity (issue #175 S2b). Nullable: rows written before
+    # these columns existed read through the legacy JSON reconstruction instead.
+    provider_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    adapter_kind: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    model_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    model_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    model_catalogue_entry_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    model_revision_pinned: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     safety_mode: Mapped[str] = mapped_column(String(64), nullable=False)
     redaction_posture: Mapped[str] = mapped_column(String(64), nullable=False)
     enforced_safety_controls: Mapped[list[str]] = mapped_column(JSON, nullable=False)

@@ -53,6 +53,12 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
             prompt_version=record.prompt_version,
             prompt_selection_payload=record.prompt_selection.model_dump(mode="json"),
             provider_mode=record.provider_mode,
+            provider_id=record.provider_id,
+            adapter_kind=record.adapter_kind.value if record.adapter_kind is not None else None,
+            model_id=record.model_id,
+            model_version=record.model_version,
+            model_catalogue_entry_id=record.model_catalogue_entry_id,
+            model_revision_pinned=record.model_revision_pinned,
             safety_mode=record.safety_mode,
             redaction_posture=record.redaction_posture.value,
             enforced_safety_controls=record.enforced_safety_controls,
@@ -149,7 +155,15 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
     def _to_contract(self, model: AuditRecordModel) -> AuditRecordResponse:
         output_label = OutputLabel(model.output_label)
         redaction_posture = RedactionPosture(model.redaction_posture)
-        provider_id, adapter_kind, model_id = _build_provider_identity(model)
+        if model.provider_id:
+            # Rows written since #175 S2b carry first-class identity columns.
+            provider_id = model.provider_id
+            adapter_kind = ProviderAdapterKind(model.adapter_kind) if model.adapter_kind else None
+            model_id = model.model_id
+        else:
+            # Legacy rows predate the columns: recover identity from the stored
+            # JSON payloads (best effort, mode-inferred defaults as a last resort).
+            provider_id, adapter_kind, model_id = _build_provider_identity(model)
         safety_outcome = (
             SafetyExecutionOutcome.model_validate(model.safety_outcome_payload)
             if model.safety_outcome_payload is not None
@@ -180,6 +194,9 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
             provider_id=provider_id,
             adapter_kind=adapter_kind,
             model_id=model_id,
+            model_version=model.model_version,
+            model_catalogue_entry_id=model.model_catalogue_entry_id,
+            model_revision_pinned=model.model_revision_pinned,
             safety_mode=model.safety_mode,
             redaction_posture=redaction_posture,
             enforced_safety_controls=model.enforced_safety_controls,

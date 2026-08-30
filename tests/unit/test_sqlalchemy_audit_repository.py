@@ -553,3 +553,83 @@ def test_sqlalchemy_audit_repository_provider_defaults_cover_all_supported_modes
         ProviderAdapterKind.OPENAI_COMPATIBLE_LOCAL
     )
     assert _default_adapter_kind("catalog_only") is None
+
+
+def test_sqlalchemy_audit_repository_persists_first_class_model_identity(
+    tmp_path: Path,
+) -> None:
+    """Identity written since #175 S2b lives in real columns, not recovered JSON."""
+
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-audit-identity.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyAuditRepository(database_url)
+
+    record = AuditRecordResponse(
+        request_id="air_sql_identity",
+        execution_status=TaskExecutionStatus.COMPLETED,
+        task_id="explain.v1",
+        category=TaskCategory.EXPLAIN,
+        output_label=OutputLabel.EXPLANATION_ONLY,
+        caller_app="lotus-manage",
+        correlation_id="corr-sql-identity",
+        requested_by="ops.user@lotus",
+        tenant_id="tenant-sg-001",
+        prompt_version="foundation.explain.v1",
+        prompt_selection=_prompt_selection("foundation.explain.v1"),
+        provider_mode="openai",
+        provider_id="text.openai",
+        adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
+        model_id="gpt-5.4",
+        model_version="gpt-5.4-2026-05-01",
+        model_catalogue_entry_id="text.openai:gpt-5.4-2026-05-01",
+        model_revision_pinned=True,
+        safety_mode="documented_only",
+        redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
+        enforced_safety_controls=["response_labeling", "correlation_and_audit"],
+        safety_outcome=build_safety_execution_outcome_from_record(
+            safety_mode="documented_only",
+            output_label=OutputLabel.EXPLANATION_ONLY,
+            redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
+            enforced_controls=["response_labeling", "correlation_and_audit"],
+        ),
+        authorization=_authorization(),
+        generated_at="2026-08-30T00:00:00Z",
+        stubbed=False,
+        context_summary="Explain rebalance outcome",
+        context_keys=["status"],
+        source_refs=["lotus-manage:run:reb_sql_identity"],
+        result_preview="Live execution completed.",
+        structured_output={"phase": "foundation"},
+        evidence=ExecutionEvidenceBundle(
+            descriptors=[
+                ExecutionEvidenceDescriptor(
+                    evidence_type="task_contract",
+                    summary="Task contract selected.",
+                    attributes={"task_id": "explain.v1"},
+                )
+            ]
+        ),
+    )
+
+    repository.save(record)
+
+    scope = AuditReadScope.restricted(frozenset({"tenant-sg-001"}))
+    loaded = repository.get("air_sql_identity", scope=scope)
+    assert loaded == record
+
+    with repository._engine.begin() as connection:
+        row = connection.execute(
+            text(
+                "SELECT provider_id, adapter_kind, model_id, model_version, "
+                "model_catalogue_entry_id, model_revision_pinned "
+                "FROM audit_records WHERE request_id = 'air_sql_identity'"
+            )
+        ).one()
+    assert tuple(row) == (
+        "text.openai",
+        "OPENAI_LIVE",
+        "gpt-5.4",
+        "gpt-5.4-2026-05-01",
+        "text.openai:gpt-5.4-2026-05-01",
+        1,
+    )

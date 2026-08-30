@@ -51,6 +51,21 @@ class AuditRecordResponse(BaseModel):
         default=None,
         description="Resolved provider model identifier used for the execution when one is available.",
     )
+    model_version: str | None = Field(
+        default=None,
+        description="Governed model release or deployment version used for the execution.",
+    )
+    model_catalogue_entry_id: str | None = Field(
+        default=None,
+        description="Governed model-catalogue entry the execution was bound to, on live paths.",
+    )
+    model_revision_pinned: bool | None = Field(
+        default=None,
+        description=(
+            "Whether the bound catalogue entry pins an exact model revision "
+            "(False means the family/tag fallback identity executed)."
+        ),
+    )
     safety_mode: str = Field(description="Safety mode applied to the execution.")
     redaction_posture: RedactionPosture = Field(
         description="Redaction posture associated with the executed task."
