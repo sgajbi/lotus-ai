@@ -88,6 +88,10 @@ platform programs.
 
 1. overall runtime posture
    - `/platform/runtime-status`
+   - `/platform/models/catalogue` — the governed model catalogue: every configured model
+     identity as a first-class entry (provider, family, exact revision, deployment, SKU,
+     lifecycle state, approval evidence, pinning posture), reconciled on read from the
+     live-text settings and the approved model-risk inventory (issue #175 slice 1)
 2. app-capability rollout governance
    - `/platform/app-capability-rollouts`
    - `/platform/app-capability-rollouts/governance-status`
