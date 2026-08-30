@@ -84,6 +84,16 @@ class AuditRecordResponse(BaseModel):
         description="Digest of the resolved execution configuration (model identity + "
         "sampling); reproducibility key for this execution.",
     )
+    estimated_cost_usd: float | None = Field(
+        default=None,
+        description="Estimated execution cost in USD from the effective rate card "
+        "(issue #178 S4); null is the explicit cost-unknown posture.",
+    )
+    rate_card_ref: str | None = Field(
+        default=None,
+        description="Identity of the rate card that priced this execution; null when no "
+        "card was effective.",
+    )
     safety_mode: str = Field(description="Safety mode applied to the execution.")
     redaction_posture: RedactionPosture = Field(
         description="Redaction posture associated with the executed task."

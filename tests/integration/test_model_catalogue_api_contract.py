@@ -142,6 +142,7 @@ def test_operator_deprecation_refuses_live_execution_end_to_end(
                     "output_tokens": 1,
                     "total_tokens": 2,
                     "estimated_cost_usd": None,
+                    "rate_card_ref": None,
                     "stubbed": False,
                     "message": "live response",
                     "structured_output": {},

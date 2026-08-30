@@ -33,6 +33,8 @@ class AuditRecordModel(Base):
     prompt_content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sampling_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     provider_config_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    estimated_cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    rate_card_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
     safety_mode: Mapped[str] = mapped_column(String(64), nullable=False)
     redaction_posture: Mapped[str] = mapped_column(String(64), nullable=False)
     enforced_safety_controls: Mapped[list[str]] = mapped_column(JSON, nullable=False)

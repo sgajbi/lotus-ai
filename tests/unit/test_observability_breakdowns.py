@@ -51,6 +51,8 @@ def _record(
     tenant_id: str | None,
     provider_mode: str,
     allowed: bool,
+    estimated_cost_usd: float | None = None,
+    rate_card_ref: str | None = None,
     source_ids: list[str] | None = None,
 ) -> AuditRecordResponse:
     return AuditRecordResponse(
@@ -96,6 +98,8 @@ def _record(
             else None
         ),
         model_id="gpt-5.4" if provider_mode == "openai" else None,
+        estimated_cost_usd=estimated_cost_usd,
+        rate_card_ref=rate_card_ref,
         safety_mode="documented_only",
         redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
         enforced_safety_controls=["response_labeling", "correlation_and_audit"],
@@ -233,3 +237,57 @@ def test_build_capability_samples_include_task_source_and_async_job_type() -> No
         and sample.capability_id == "retrieval_indexing"
         for sample in samples
     )
+
+
+def test_breakdowns_aggregate_rate_card_costs_by_tenant_capability_and_model() -> None:
+    from app.services.observability_breakdowns import _build_model_samples
+
+    records = [
+        _record(
+            request_id="air_cost_1",
+            caller_app="lotus-manage",
+            task_id="explain.v1",
+            tenant_id="tenant-sg-001",
+            provider_mode="openai",
+            allowed=True,
+            estimated_cost_usd=0.04,
+            rate_card_ref="default-live-text",
+        ),
+        _record(
+            request_id="air_cost_2",
+            caller_app="lotus-manage",
+            task_id="explain.v1",
+            tenant_id="tenant-sg-001",
+            provider_mode="openai",
+            allowed=True,
+            estimated_cost_usd=0.06,
+            rate_card_ref="premium-model",
+        ),
+        _record(
+            request_id="air_cost_3",
+            caller_app="lotus-manage",
+            task_id="summarize.v1",
+            tenant_id="tenant-sg-001",
+            provider_mode="disabled",
+            allowed=True,
+        ),
+    ]
+
+    tenants = _build_tenant_samples(records=records)
+    assert tenants[0].tenant_id == "tenant-sg-001"
+    assert tenants[0].priced_execution_count == 2
+    assert tenants[0].estimated_cost_usd_total == 0.10
+
+    capabilities = _build_capability_samples(records=records, jobs=[])
+    explain = next(item for item in capabilities if item.capability_id == "explain.v1")
+    assert explain.priced_execution_count == 2
+    assert explain.estimated_cost_usd_total == 0.10
+    summarize = next(item for item in capabilities if item.capability_id == "summarize.v1")
+    assert summarize.priced_execution_count == 0
+    assert summarize.estimated_cost_usd_total == 0.0
+
+    models = _build_model_samples(records=records)
+    assert [item.model_id for item in models] == ["gpt-5.4", "unknown"]
+    assert models[0].priced_execution_count == 2
+    assert models[0].estimated_cost_usd_total == 0.10
+    assert models[1].estimated_cost_usd_total == 0.0
