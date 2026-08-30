@@ -124,7 +124,7 @@ def test_operator_deprecation_refuses_live_execution_end_to_end(
     upgrade_database_to_head(database_url)
 
     class _LiveAdapter:
-        def execute(self, request: object) -> object:
+        def execute(self, request: object, *, config: object | None = None) -> object:
             return type(
                 "Response",
                 (),

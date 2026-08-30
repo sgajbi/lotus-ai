@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.config import settings
 from app.contracts.providers import ProviderExecutionMode, ProviderRolloutState
 from app.contracts.tasks import CapabilityDescriptor
+from app.services.provider_execution_config import resolve_provider_execution_config
 from app.services.provider_live_execution_state import build_provider_live_execution_state
 from app.services.provider_rollout_posture import build_provider_rollout_posture
 from app.services.retrieval_execution_status import build_retrieval_execution_status
@@ -60,6 +60,7 @@ def _build_retrieval_task_execution_path(*, task_id: str) -> TaskExecutionPathDe
 def _build_provider_backed_task_execution_path(
     *, task: CapabilityDescriptor
 ) -> TaskExecutionPathDescriptor:
+    provider_mode = resolve_provider_execution_config().provider_mode
     rollout_posture = build_provider_rollout_posture()
     live_execution_state = build_provider_live_execution_state(task_id=task.task_id)
     execution_path = "provider.stub_text"
@@ -73,7 +74,7 @@ def _build_provider_backed_task_execution_path(
         )
         stubbed = False
     elif (
-        settings.provider_mode
+        provider_mode
         in {
             ProviderExecutionMode.OPENAI.value,
             ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
@@ -84,7 +85,7 @@ def _build_provider_backed_task_execution_path(
     ):
         execution_path = "provider.task_not_allowlisted"
         notes = live_execution_state.blocking_reason or rollout_posture.notes
-    elif settings.provider_mode in {
+    elif provider_mode in {
         ProviderExecutionMode.OPENAI.value,
         ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value,
     }:
@@ -94,7 +95,7 @@ def _build_provider_backed_task_execution_path(
             f"rollout or configuration posture. {rollout_posture.notes} "
             f"{live_execution_state.blocking_reason or ''}"
         )
-    elif settings.provider_mode not in {
+    elif provider_mode not in {
         ProviderExecutionMode.DISABLED.value,
         ProviderExecutionMode.STUB.value,
         ProviderExecutionMode.OPENAI.value,
@@ -108,7 +109,7 @@ def _build_provider_backed_task_execution_path(
         )
     return TaskExecutionPathDescriptor(
         execution_path=execution_path,
-        provider_mode=settings.provider_mode,
+        provider_mode=provider_mode,
         stubbed=stubbed,
         notes=notes,
     )

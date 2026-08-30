@@ -6,6 +6,7 @@ from app.providers.base import ProviderExecutionError
 from app.providers.local_openai_compatible_text_provider import (
     LocalOpenAICompatibleTextProvider,
 )
+from app.services.provider_execution_config import resolve_provider_execution_config
 from tests.unit.test_provider_gateway import _request
 
 
@@ -27,7 +28,9 @@ def test_local_openai_compatible_text_provider_returns_usage_without_api_key(
         },
     )
 
-    response = LocalOpenAICompatibleTextProvider().execute(_request())
+    response = LocalOpenAICompatibleTextProvider().execute(
+        _request(), config=resolve_provider_execution_config()
+    )
 
     assert response.provider_id == "text.local"
     assert response.provider_mode == "local_openai_compatible"
@@ -56,7 +59,9 @@ def test_local_openai_compatible_text_provider_maps_missing_output_to_upstream_e
     )
 
     try:
-        LocalOpenAICompatibleTextProvider().execute(_request())
+        LocalOpenAICompatibleTextProvider().execute(
+            _request(), config=resolve_provider_execution_config()
+        )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
         assert "did not include output text" in exc.message
@@ -82,7 +87,9 @@ def test_local_openai_compatible_text_provider_maps_timeout_failures(
     )
 
     try:
-        LocalOpenAICompatibleTextProvider().execute(_request())
+        LocalOpenAICompatibleTextProvider().execute(
+            _request(), config=resolve_provider_execution_config()
+        )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
         assert "configured timeout" in exc.message
@@ -111,7 +118,8 @@ def test_local_openai_compatible_text_provider_falls_back_when_model_echoes_cont
     )
 
     response = LocalOpenAICompatibleTextProvider().execute(
-        _request(
+        config=resolve_provider_execution_config(),
+        request=_request(
             caller_app="lotus-gateway",
             context_payload={
                 "portfolio": {
@@ -127,7 +135,7 @@ def test_local_openai_compatible_text_provider_falls_back_when_model_echoes_cont
                 "supportability": [{"label": "Advisor Brief", "value": "Ready"}],
             },
             source_refs=["lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD"],
-        )
+        ),
     )
 
     assert response.provider_mode == "local_openai_compatible"

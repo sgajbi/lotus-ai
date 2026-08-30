@@ -13,6 +13,7 @@ from app.contracts.providers import (
     ProviderExecutionMode,
     ProviderFailureCategory,
 )
+from app.services.provider_execution_config import ProviderExecutionConfig
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,9 @@ class ProviderExecutionError(RuntimeError):
 class TextGenerationProviderAdapter(Protocol):
     descriptor: ProviderAdapterDescriptor
 
-    def execute(self, request: ProviderExecutionRequest) -> ProviderExecutionResponse: ...
+    def execute(
+        self, request: ProviderExecutionRequest, *, config: ProviderExecutionConfig
+    ) -> ProviderExecutionResponse: ...
 
 
 class EmbeddingProviderAdapter(Protocol):

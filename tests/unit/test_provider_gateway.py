@@ -174,7 +174,9 @@ def test_execute_text_generation_rejects_blocked_local_live_provider_mode(
 
 def test_execute_text_generation_rejects_live_provider_when_quota_is_exceeded() -> None:
     class _LiveAdapter:
-        def execute(self, request: ProviderExecutionRequest) -> object:
+        def execute(
+            self, request: ProviderExecutionRequest, *, config: object | None = None
+        ) -> object:
             return type(
                 "Response",
                 (),
@@ -259,7 +261,9 @@ def test_execute_text_generation_routes_local_provider_through_live_controls(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _LocalLiveAdapter:
-        def execute(self, request: ProviderExecutionRequest) -> object:
+        def execute(
+            self, request: ProviderExecutionRequest, *, config: object | None = None
+        ) -> object:
             return type(
                 "Response",
                 (),
@@ -315,7 +319,9 @@ def test_execute_text_generation_routes_local_provider_through_live_controls(
 
 def test_execute_text_generation_rejects_live_provider_when_budget_is_exceeded() -> None:
     class _LiveAdapter:
-        def execute(self, request: ProviderExecutionRequest) -> object:
+        def execute(
+            self, request: ProviderExecutionRequest, *, config: object | None = None
+        ) -> object:
             return type(
                 "Response",
                 (),
@@ -370,7 +376,9 @@ def test_execute_text_generation_opens_circuit_after_repeated_provider_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _BrokenLiveAdapter:
-        def execute(self, request: ProviderExecutionRequest) -> object:
+        def execute(
+            self, request: ProviderExecutionRequest, *, config: object | None = None
+        ) -> object:
             raise ProviderExecutionError(
                 category=ProviderFailureCategory.PROVIDER_TIMEOUT,
                 message="simulated timeout",
@@ -439,7 +447,9 @@ def test_execute_text_generation_rejects_adapter_execution_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _BrokenAdapter:
-        def execute(self, request: ProviderExecutionRequest) -> object:
+        def execute(
+            self, request: ProviderExecutionRequest, *, config: object | None = None
+        ) -> object:
             raise ProviderExecutionError(
                 category=ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
                 message="simulated upstream failure",
@@ -468,7 +478,9 @@ def test_execute_text_generation_stamps_catalogue_identity_on_live_responses(
     reset_model_catalogue_store_cache()
 
     class _LiveAdapter:
-        def execute(self, request: ProviderExecutionRequest) -> object:
+        def execute(
+            self, request: ProviderExecutionRequest, *, config: object | None = None
+        ) -> object:
             return type(
                 "Response",
                 (),
@@ -606,7 +618,9 @@ def test_live_execution_records_revision_drift_from_the_provider_echo(
     reset_model_catalogue_store_cache()
 
     class _EchoingAdapter:
-        def execute(self, request: ProviderExecutionRequest) -> object:
+        def execute(
+            self, request: ProviderExecutionRequest, *, config: object | None = None
+        ) -> object:
             return type(
                 "Response",
                 (),

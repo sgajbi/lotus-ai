@@ -7,6 +7,7 @@ from typing import Any, cast
 from urllib import error, request as urllib_request
 
 from app.config import settings
+from app.services.provider_execution_config import resolve_provider_execution_config
 from app.services.provider_execution_overrides import (
     ensure_network_execution_permitted,
     get_local_probe_status_override,
@@ -43,9 +44,10 @@ def build_local_openai_compatible_endpoint_status() -> LocalOpenAICompatibleEndp
     ensure_network_execution_permitted(
         seam="local_openai_compatible_endpoint_probe.build_local_openai_compatible_endpoint_status"
     )
-    api_base = settings.live_text_api_base.strip().rstrip("/")
-    configured_model_id = settings.live_text_model_id
-    api_key = settings.live_text_provider_api_key
+    config = resolve_provider_execution_config()
+    api_base = config.api_base.strip().rstrip("/")
+    configured_model_id = config.model_id
+    api_key = config.api_key
     cache_key = (api_base, configured_model_id, api_key)
     now = time.monotonic()
 

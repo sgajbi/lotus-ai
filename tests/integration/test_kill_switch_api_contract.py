@@ -35,7 +35,7 @@ def test_kill_switch_lifecycle_enforces_and_restores_live_execution(
     upgrade_database_to_head(database_url)
 
     class _LiveAdapter:
-        def execute(self, request: object) -> object:
+        def execute(self, request: object, *, config: object | None = None) -> object:
             return type(
                 "Response",
                 (),

@@ -43,6 +43,7 @@ from app.providers.configured_workflow_run_model_risk_inventory import (
 )
 from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.model_catalogue_store import get_model_catalogue_repository
+from app.services.provider_execution_config import resolve_provider_execution_config
 
 _LIVE_TEXT_MODES = frozenset(
     {
@@ -101,23 +102,20 @@ def build_seed_model_catalogue_entries() -> list[ModelCatalogueEntry]:
     now = _utc_now_iso()
     entries: dict[str, ModelCatalogueEntry] = {}
 
-    if (
-        settings.provider_mode in _LIVE_TEXT_MODES
-        and settings.live_text_provider_id
-        and settings.live_text_model_id
-    ):
-        revision_pinned = bool(settings.live_text_model_version)
-        model_revision = settings.live_text_model_version or settings.live_text_model_id
+    config = resolve_provider_execution_config()
+    if config.provider_mode in _LIVE_TEXT_MODES and config.provider_id and config.model_id:
+        revision_pinned = bool(config.model_version)
+        model_revision = config.model_version or config.model_id
         entry_id = derive_model_catalogue_entry_id(
-            provider_id=settings.live_text_provider_id,
+            provider_id=config.provider_id,
             model_revision=model_revision,
             deployment=None,
         )
         entries[entry_id] = ModelCatalogueEntry(
             entry_id=entry_id,
-            provider_id=settings.live_text_provider_id,
-            provider_mode=settings.provider_mode,
-            model_family=settings.live_text_model_id,
+            provider_id=config.provider_id,
+            provider_mode=config.provider_mode,
+            model_family=config.model_id,
             model_revision=model_revision,
             deployment=None,
             sku=None,
@@ -206,14 +204,15 @@ def bind_live_text_model_catalogue_entry() -> ModelCatalogueEntry:
     """
 
     ensure_model_catalogue_seeded()
-    provider_id = settings.live_text_provider_id
-    model_id = settings.live_text_model_id
+    config = resolve_provider_execution_config()
+    provider_id = config.provider_id
+    model_id = config.model_id
     if not provider_id or not model_id:
         raise ProviderExecutionError(
             category=ProviderFailureCategory.MODEL_NOT_CATALOGUED,
             message="Live text execution requires a configured provider and model identity.",
         )
-    model_revision = settings.live_text_model_version or model_id
+    model_revision = config.model_version or model_id
     entry_id = derive_model_catalogue_entry_id(
         provider_id=provider_id,
         model_revision=model_revision,

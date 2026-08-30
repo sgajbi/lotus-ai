@@ -18,17 +18,19 @@ from app.services.provider_configuration_status import (
     build_embedding_configuration_status,
     build_text_generation_configuration_status,
 )
+from app.services.provider_execution_config import resolve_provider_execution_config
 from app.services.provider_live_execution_state import build_provider_live_execution_state
 
 
 def build_provider_policy() -> ProviderPolicyResponse:
+    text_mode = resolve_provider_execution_config().provider_mode
     selected_text_provider = _resolve_selected_text_provider()
     selected_embedding_provider = _resolve_selected_embedding_provider()
     live_execution_state = build_provider_live_execution_state()
     embedding_live_execution_state = build_embedding_live_execution_state()
-    if settings.provider_mode == ProviderExecutionMode.OPENAI.value:
+    if text_mode == ProviderExecutionMode.OPENAI.value:
         rejection_category = ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
-    elif settings.provider_mode == ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value:
+    elif text_mode == ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value:
         rejection_category = ProviderFailureCategory.LIVE_EXECUTION_NOT_ENABLED
     else:
         rejection_category = ProviderFailureCategory.UNSUPPORTED_MODE
@@ -45,7 +47,7 @@ def build_provider_policy() -> ProviderPolicyResponse:
         policies=[
             ProviderPolicyDescriptor(
                 capability=ProviderCapability.TEXT_GENERATION,
-                configured_mode=settings.provider_mode,
+                configured_mode=text_mode,
                 allowed_modes=[
                     ProviderExecutionMode.DISABLED,
                     ProviderExecutionMode.STUB,
@@ -90,7 +92,7 @@ def require_supported_text_generation_mode() -> ProviderExecutionMode:
         ProviderExecutionMode.OPENAI.value: ProviderExecutionMode.OPENAI,
         ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE.value: ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE,
     }
-    configured_mode = settings.provider_mode
+    configured_mode = resolve_provider_execution_config().provider_mode
     if configured_mode not in supported_modes:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -121,7 +123,7 @@ def require_supported_embedding_mode() -> ProviderExecutionMode:
 
 
 def _resolve_selected_text_provider() -> tuple[str, ProviderAdapterKind]:
-    configured_mode = settings.provider_mode
+    configured_mode = resolve_provider_execution_config().provider_mode
     if configured_mode not in {
         ProviderExecutionMode.DISABLED.value,
         ProviderExecutionMode.STUB.value,

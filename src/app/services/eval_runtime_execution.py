@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import ExitStack, contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 import json
 from typing import Any, Iterator, cast
@@ -51,6 +51,10 @@ from app.services.local_openai_compatible_endpoint_probe import (
 from app.services.prompt_store import get_prompt_repository
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import build_provider_budget_policy
+from app.services.provider_execution_config import (
+    override_provider_execution_config,
+    resolve_provider_execution_config,
+)
 from app.services.provider_execution_overrides import (
     hermetic_provider_execution,
     override_local_probe_status,
@@ -964,13 +968,6 @@ EVAL_HERMETIC_CREDENTIAL_REF = "credential-ref:eval-hermetic"
 @contextmanager
 def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None]:
     original_values = {
-        "provider_mode": settings.provider_mode,
-        "provider_rollout_state": settings.provider_rollout_state,
-        "live_text_provider_id": settings.live_text_provider_id,
-        "live_text_model_id": settings.live_text_model_id,
-        "live_text_provider_api_key": settings.live_text_provider_api_key,
-        "live_text_api_base": settings.live_text_api_base,
-        "live_text_allowed_task_ids": settings.live_text_allowed_task_ids,
         "live_text_quota_enforced": settings.live_text_quota_enforced,
         "live_text_default_quota_limit": settings.live_text_default_quota_limit,
         "live_text_task_quota_limits": settings.live_text_task_quota_limits,
@@ -1034,12 +1031,13 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                             source_id=source_id,
                             index_status="INDEXED",
                         )
-            if "configured_mode" in input_payload:
-                settings.provider_mode = str(input_payload["configured_mode"])
-            if "provider_mode" in input_payload:
-                settings.provider_mode = str(input_payload["provider_mode"])
-            if "rollout_state" in input_payload:
-                settings.provider_rollout_state = str(input_payload["rollout_state"])
+            case_mode = str(
+                input_payload.get(
+                    "provider_mode",
+                    input_payload.get("configured_mode", settings.provider_mode),
+                )
+            )
+            case_rollout = str(input_payload.get("rollout_state", settings.provider_rollout_state))
             if (
                 input_payload.get("provider_operations_store_mode") == "sqlalchemy"
                 and settings.database_url
@@ -1057,32 +1055,43 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                     "circuit_open_seconds",
                 )
             )
-            if settings.provider_mode == "openai" and (
+            case_config = replace(
+                resolve_provider_execution_config(),
+                provider_mode=case_mode,
+                rollout_state=case_rollout,
+            )
+            if case_mode == "openai" and (
                 input_payload.get("rollout_state") in {"CANARY_ENABLED", "ROLLED_OUT"}
                 or live_execution_signals
             ):
-                if "rollout_state" not in input_payload:
-                    settings.provider_rollout_state = "CANARY_ENABLED"
-                settings.live_text_provider_id = "text.openai"
-                settings.live_text_model_id = "gpt-5.4"
-                settings.live_text_provider_api_key = EVAL_HERMETIC_CREDENTIAL_REF
-                settings.live_text_allowed_task_ids = str(input_payload.get("task_id", ""))
-            if settings.provider_mode == "local_openai_compatible":
-                if "rollout_state" not in input_payload:
-                    settings.provider_rollout_state = "CANARY_ENABLED"
-                settings.live_text_provider_id = "text.local"
-                settings.live_text_model_id = str(
-                    input_payload.get("live_text_model_id", "qwen3:8b")
+                case_config = replace(
+                    case_config,
+                    rollout_state=(
+                        case_rollout if "rollout_state" in input_payload else "CANARY_ENABLED"
+                    ),
+                    provider_id="text.openai",
+                    model_id="gpt-5.4",
+                    api_key=EVAL_HERMETIC_CREDENTIAL_REF,
+                    allowed_task_ids=str(input_payload.get("task_id", "")),
                 )
-                settings.live_text_api_base = str(
-                    input_payload.get("live_text_api_base", "http://ollama:11434/v1")
+            if case_mode == "local_openai_compatible":
+                case_config = replace(
+                    case_config,
+                    rollout_state=(
+                        case_rollout if "rollout_state" in input_payload else "CANARY_ENABLED"
+                    ),
+                    provider_id="text.local",
+                    model_id=str(input_payload.get("live_text_model_id", "qwen3:8b")),
+                    api_base=str(input_payload.get("live_text_api_base", "http://ollama:11434/v1")),
+                    api_key=(
+                        str(input_payload["live_text_provider_api_key"])
+                        if input_payload.get("live_text_provider_api_key") is not None
+                        else None
+                    ),
+                    allowed_task_ids=str(input_payload.get("task_id", "")),
                 )
-                settings.live_text_provider_api_key = (
-                    str(input_payload["live_text_provider_api_key"])
-                    if input_payload.get("live_text_provider_api_key") is not None
-                    else None
-                )
-                settings.live_text_allowed_task_ids = str(input_payload.get("task_id", ""))
+            stack.enter_context(override_provider_execution_config(case_config))
+            if case_mode == "local_openai_compatible":
                 local_probe_status = input_payload.get("local_probe_status")
                 if isinstance(local_probe_status, dict):
                     stack.enter_context(
@@ -1094,7 +1103,7 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                                 model_available=bool(
                                     local_probe_status.get("model_available", False)
                                 ),
-                                configured_model_id=settings.live_text_model_id,
+                                configured_model_id=case_config.model_id,
                                 blocking_reason=cast(
                                     str | None, local_probe_status.get("blocking_reason")
                                 ),
