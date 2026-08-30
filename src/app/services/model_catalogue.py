@@ -15,14 +15,24 @@ seeded field actually changed.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from uuid import uuid4
+
+from fastapi import HTTPException, status
 
 from app.config import settings
+from app.contracts.access_control import AuthorizationCapabilityType
 from app.contracts.model_catalogue import (
+    ALLOWED_MODEL_LIFECYCLE_TRANSITIONS,
+    OPERATOR_TERMINAL_LIFECYCLE_STATES,
     ModelCatalogueEntry,
+    ModelCatalogueEntryDetailResponse,
     ModelCatalogueResponse,
     ModelCatalogueSeedReport,
     ModelCatalogueSeedSource,
     ModelLifecycleState,
+    ModelLifecycleTransitionRecord,
+    ModelLifecycleTransitionRequest,
+    ModelLifecycleTransitionResponse,
     derive_model_catalogue_entry_id,
 )
 from app.contracts.providers import ProviderExecutionMode, ProviderFailureCategory
@@ -30,6 +40,7 @@ from app.providers.base import ProviderExecutionError
 from app.providers.configured_workflow_run_model_risk_inventory import (
     ConfiguredWorkflowRunModelRiskInventory,
 )
+from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.model_catalogue_store import get_model_catalogue_repository
 
 _LIVE_TEXT_MODES = frozenset(
@@ -159,11 +170,16 @@ def ensure_model_catalogue_seeded() -> ModelCatalogueSeedReport:
             created += 1
             continue
         candidate = entry.model_copy(update={"created_at": existing.created_at})
-        if candidate.seed_source == existing.seed_source:
+        if (
+            candidate.seed_source == existing.seed_source
+            or existing.lifecycle_state in OPERATOR_TERMINAL_LIFECYCLE_STATES
+        ):
             # Lifecycle state is governed, not configured: once a row exists,
             # the seed must never revert an operator transition (e.g. RETIRED
-            # back to CATALOGUED). Only a change of seeding authority - the
-            # inventory superseding a settings row - may re-assert lifecycle.
+            # back to CATALOGUED). A change of seeding authority - the
+            # inventory superseding a settings row - may re-assert lifecycle,
+            # but never out of an operator-terminal state: a retired model
+            # stays retired until an operator explicitly transitions it.
             candidate = candidate.model_copy(update={"lifecycle_state": existing.lifecycle_state})
         if candidate.model_dump(exclude=_SEED_MANAGED_EXCLUDES) == existing.model_dump(
             exclude=_SEED_MANAGED_EXCLUDES
@@ -217,6 +233,102 @@ def bind_live_text_model_catalogue_entry() -> ModelCatalogueEntry:
             ),
         )
     return entry
+
+
+def apply_model_lifecycle_transition(
+    entry_id: str,
+    request: ModelLifecycleTransitionRequest,
+) -> ModelLifecycleTransitionResponse:
+    """Apply one governed lifecycle transition to a catalogue entry.
+
+    The allowed-edge table is the policy; promotion to APPROVED additionally
+    requires approval evidence. The transition and its rationale are recorded
+    durably beside the entry.
+    """
+
+    require_authorized(
+        authorize_request(
+            caller_app=request.caller_app,
+            capability_type=AuthorizationCapabilityType.PROVIDER_CONTROL,
+        )
+    )
+    if settings.model_catalogue_store_mode != "sqlalchemy":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Model lifecycle transitions require LOTUS_AI_MODEL_CATALOGUE_STORE_MODE="
+                "sqlalchemy so governed state changes survive restarts."
+            ),
+        )
+    repository = get_model_catalogue_repository()
+    entry = repository.get_entry(entry_id)
+    if entry is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No model-catalogue entry exists for `{entry_id}`.",
+        )
+    allowed = ALLOWED_MODEL_LIFECYCLE_TRANSITIONS[entry.lifecycle_state]
+    if request.to_state not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                f"Transition {entry.lifecycle_state.value} -> {request.to_state.value} is not "
+                f"allowed; permitted targets: "
+                f"{sorted(state.value for state in allowed) or 'none (terminal state)'}."
+            ),
+        )
+    if request.to_state is ModelLifecycleState.APPROVED and not request.approval_evidence_ref:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Promotion to APPROVED requires an approval_evidence_ref.",
+        )
+
+    now = _utc_now_iso()
+    updates: dict[str, object] = {"lifecycle_state": request.to_state, "last_updated_at": now}
+    if request.approval_evidence_ref:
+        updates["approval_evidence_refs"] = [
+            *entry.approval_evidence_refs,
+            request.approval_evidence_ref,
+        ]
+    updated = entry.model_copy(update=updates)
+    transition = ModelLifecycleTransitionRecord(
+        event_id=f"mlc_{uuid4().hex[:16]}",
+        entry_id=entry_id,
+        from_state=entry.lifecycle_state,
+        to_state=request.to_state,
+        reason=request.reason,
+        requested_by=request.requested_by,
+        approved_by=request.approved_by,
+        approval_evidence_ref=request.approval_evidence_ref,
+        recorded_at=now,
+    )
+    upsert_model_catalogue_entry(updated)
+    repository.append_lifecycle_event(transition)
+    return ModelLifecycleTransitionResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        store_mode=settings.model_catalogue_store_mode,
+        entry=updated,
+        transition=transition,
+    )
+
+
+def build_model_catalogue_entry_detail(entry_id: str) -> ModelCatalogueEntryDetailResponse:
+    ensure_model_catalogue_seeded()
+    repository = get_model_catalogue_repository()
+    entry = repository.get_entry(entry_id)
+    if entry is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No model-catalogue entry exists for `{entry_id}`.",
+        )
+    return ModelCatalogueEntryDetailResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        store_mode=settings.model_catalogue_store_mode,
+        entry=entry,
+        lifecycle_events=repository.list_lifecycle_events(entry_id),
+    )
 
 
 def build_model_catalogue_response() -> ModelCatalogueResponse:

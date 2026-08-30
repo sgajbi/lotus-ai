@@ -8,8 +8,9 @@ from app.contracts.model_catalogue import (
     ModelCatalogueEntry,
     ModelCatalogueSeedSource,
     ModelLifecycleState,
+    ModelLifecycleTransitionRecord,
 )
-from app.db.models import ModelCatalogueEntryModel
+from app.db.models import ModelCatalogueEntryModel, ModelCatalogueLifecycleEventModel
 from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
 
 
@@ -61,6 +62,45 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
             model.created_at = entry.created_at
             model.last_updated_at = entry.last_updated_at
             session.commit()
+
+    def append_lifecycle_event(self, event: ModelLifecycleTransitionRecord) -> None:
+        with self._session_factory() as session:
+            session.add(
+                ModelCatalogueLifecycleEventModel(
+                    event_id=event.event_id,
+                    entry_id=event.entry_id,
+                    from_state=event.from_state.value,
+                    to_state=event.to_state.value,
+                    reason=event.reason,
+                    requested_by=event.requested_by,
+                    approved_by=event.approved_by,
+                    approval_evidence_ref=event.approval_evidence_ref,
+                    recorded_at=event.recorded_at,
+                )
+            )
+            session.commit()
+
+    def list_lifecycle_events(self, entry_id: str) -> list[ModelLifecycleTransitionRecord]:
+        with self._session_factory() as session:
+            models = session.scalars(
+                select(ModelCatalogueLifecycleEventModel)
+                .where(ModelCatalogueLifecycleEventModel.entry_id == entry_id)
+                .order_by(ModelCatalogueLifecycleEventModel.recorded_at.desc())
+            ).all()
+            return [
+                ModelLifecycleTransitionRecord(
+                    event_id=model.event_id,
+                    entry_id=model.entry_id,
+                    from_state=ModelLifecycleState(model.from_state),
+                    to_state=ModelLifecycleState(model.to_state),
+                    reason=model.reason,
+                    requested_by=model.requested_by,
+                    approved_by=model.approved_by,
+                    approval_evidence_ref=model.approval_evidence_ref,
+                    recorded_at=model.recorded_at,
+                )
+                for model in models
+            ]
 
     def _to_entry(self, model: ModelCatalogueEntryModel) -> ModelCatalogueEntry:
         return ModelCatalogueEntry(

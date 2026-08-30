@@ -668,6 +668,20 @@ class KillSwitchActivationModel(Base):
     clear_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class ModelCatalogueLifecycleEventModel(Base):
+    __tablename__ = "model_catalogue_lifecycle_events"
+
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    entry_id: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
+    from_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    to_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    requested_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    approval_evidence_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
 class ModelCatalogueEntryModel(Base):
     __tablename__ = "model_catalogue_entries"
 

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from pytest import MonkeyPatch
 
 from app.main import app
 from app.services.model_catalogue_store import reset_model_catalogue_store_cache
@@ -110,3 +111,114 @@ def test_model_catalogue_survives_a_store_restart_in_sqlalchemy_mode(
         assert second_body["entries"][0]["created_at"] == first_body["entries"][0]["created_at"], (
             "a restart must re-read the catalogued row, not re-create it"
         )
+
+
+def test_operator_deprecation_refuses_live_execution_end_to_end(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    """The lifecycle producer chain: an operator transition to DEPRECATED must
+    refuse the next live execution at the gateway with the bounded category and
+    a recorded rejection."""
+
+    database_url = f"sqlite:///{tmp_path / 'catalogue-deprecation.db'}"
+    upgrade_database_to_head(database_url)
+
+    class _LiveAdapter:
+        def execute(self, request: object) -> object:
+            return type(
+                "Response",
+                (),
+                {
+                    "provider_id": "text.openai",
+                    "provider_mode": "openai",
+                    "adapter_kind": None,
+                    "failure_category": None,
+                    "timeout_ms": 4000,
+                    "retry_count": 0,
+                    "max_output_tokens": 512,
+                    "model_id": "gpt-5.4",
+                    "provider_request_id": "req_lc_1",
+                    "input_tokens": 1,
+                    "output_tokens": 1,
+                    "total_tokens": 2,
+                    "estimated_cost_usd": None,
+                    "stubbed": False,
+                    "message": "live response",
+                    "structured_output": {},
+                },
+            )()
+
+    monkeypatch.setattr(
+        "app.services.provider_gateway.resolve_text_generation_adapter",
+        lambda mode: _LiveAdapter(),
+    )
+
+    with override_runtime_settings(
+        model_catalogue_store_mode="sqlalchemy",
+        database_url=database_url,
+        provider_mode="openai",
+        provider_rollout_state="CANARY_ENABLED",
+        live_text_provider_id="text.openai",
+        live_text_model_id="gpt-5.4",
+        live_text_model_version=None,
+        live_text_provider_api_key="secret",
+        live_text_allowed_task_ids="explain.v1",
+        live_text_quota_enforced=False,
+        live_text_budget_enforced=False,
+        live_text_degradation_enforced=False,
+        workflow_run_model_risk_inventory_json="[]",
+    ):
+        with TestClient(app) as client:
+            execute_payload = {
+                "task_id": "explain.v1",
+                "input_mode": "STRUCTURED_CONTEXT",
+                "caller": {
+                    "caller_app": "lotus-manage",
+                    "correlation_id": "corr-lc-001",
+                    "requested_by": "ops.user@lotus",
+                    "tenant_id": "tenant-sg-001",
+                },
+                "context": {
+                    "summary": "Explain rebalance outcome",
+                    "payload": {"status": "BLOCKED"},
+                    "source_refs": ["lotus-manage:run:reb_lc_1"],
+                },
+                "expected_output_label": "EXPLANATION_ONLY",
+            }
+
+            before = client.post("/ai/tasks/execute", json=execute_payload)
+            assert before.status_code == 200
+
+            transitioned = client.post(
+                "/platform/models/catalogue/text.openai:gpt-5.4/lifecycle-transitions",
+                json={
+                    "caller_app": "lotus-platform",
+                    "to_state": "DEPRECATED",
+                    "reason": "Vendor end-of-life announced; retire from live service.",
+                    "requested_by": "ops.primary@lotus",
+                    "approved_by": "ops.secondary@lotus",
+                },
+                headers={"X-Caller-App": "lotus-platform"},
+            )
+            assert transitioned.status_code == 200
+            assert transitioned.json()["entry"]["lifecycle_state"] == "DEPRECATED"
+
+            refused = client.post("/ai/tasks/execute", json=execute_payload)
+            assert refused.status_code == 503
+            assert "MODEL_LIFECYCLE_INELIGIBLE" in refused.text
+
+            detail = client.get(
+                "/platform/models/catalogue/text.openai:gpt-5.4",
+                headers={"X-Caller-App": "lotus-platform"},
+            )
+            assert detail.status_code == 200
+            events = detail.json()["lifecycle_events"]
+            assert len(events) == 1
+            assert events[0]["from_state"] == "CATALOGUED"
+            assert events[0]["to_state"] == "DEPRECATED"
+
+            unknown = client.get(
+                "/platform/models/catalogue/text.unknown:nope",
+                headers={"X-Caller-App": "lotus-platform"},
+            )
+            assert unknown.status_code == 404

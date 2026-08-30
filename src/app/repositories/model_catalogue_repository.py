@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from app.contracts.model_catalogue import ModelCatalogueEntry
+from app.contracts.model_catalogue import (
+    ModelCatalogueEntry,
+    ModelLifecycleTransitionRecord,
+)
 
 
 class ModelCatalogueRepository(Protocol):
@@ -11,3 +14,7 @@ class ModelCatalogueRepository(Protocol):
     def get_entry(self, entry_id: str) -> ModelCatalogueEntry | None: ...
 
     def upsert_entry(self, entry: ModelCatalogueEntry) -> None: ...
+
+    def append_lifecycle_event(self, event: ModelLifecycleTransitionRecord) -> None: ...
+
+    def list_lifecycle_events(self, entry_id: str) -> list[ModelLifecycleTransitionRecord]: ...
