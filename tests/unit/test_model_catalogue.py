@@ -456,3 +456,41 @@ def test_seed_authority_change_never_resurrects_an_operator_terminal_state(
     assert resurrected is not None
     assert resurrected.lifecycle_state is ModelLifecycleState.RETIRED
     assert resurrected.seed_source is ModelCatalogueSeedSource.APPROVED_WORKFLOW_RUN_MODEL_INVENTORY
+
+
+def test_drift_recording_distinguishes_agreement_reveal_and_repetition(
+    _local_unpinned_settings: None,
+) -> None:
+    from app.services.model_catalogue import record_model_revision_drift
+
+    ensure_model_catalogue_seeded()
+    repository = get_model_catalogue_repository()
+    entry = repository.get_entry("text.local:qwen3:8b")
+    assert entry is not None
+
+    # Agreement with the family/revision identity is not drift.
+    record_model_revision_drift(entry=entry, observed_model_id="qwen3:8b")
+    record_model_revision_drift(entry=entry, observed_model_id=None)
+    assert repository.list_drift_observations(entry.entry_id) == []
+
+    # An unpinned entry whose provider reveals a concrete revision IS an
+    # observation - the exact exposure revision_pinned=False warns about.
+    record_model_revision_drift(entry=entry, observed_model_id="qwen3:8b-q4-2026-03")
+    observations = repository.list_drift_observations(entry.entry_id)
+    assert len(observations) == 1
+    first = observations[0]
+    assert first.observed_model_id == "qwen3:8b-q4-2026-03"
+    assert first.expected_identity == "qwen3:8b"
+    assert first.revision_pinned_at_observation is False
+    assert first.observation_count == 1
+
+    # Repetition deduplicates: same observation, count and last_observed move.
+    record_model_revision_drift(entry=entry, observed_model_id="qwen3:8b-q4-2026-03")
+    repeated = repository.list_drift_observations(entry.entry_id)[0]
+    assert repeated.observation_count == 2
+    assert repeated.first_observed_at == first.first_observed_at
+    assert repeated.last_observed_at >= first.last_observed_at
+
+    # A different observed identity is its own observation.
+    record_model_revision_drift(entry=entry, observed_model_id="qwen3:8b-q5-2026-06")
+    assert len(repository.list_drift_observations(entry.entry_id)) == 2

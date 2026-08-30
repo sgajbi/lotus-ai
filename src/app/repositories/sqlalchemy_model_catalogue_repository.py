@@ -9,8 +9,13 @@ from app.contracts.model_catalogue import (
     ModelCatalogueSeedSource,
     ModelLifecycleState,
     ModelLifecycleTransitionRecord,
+    ModelRevisionDriftObservation,
 )
-from app.db.models import ModelCatalogueEntryModel, ModelCatalogueLifecycleEventModel
+from app.db.models import (
+    ModelCatalogueEntryModel,
+    ModelCatalogueLifecycleEventModel,
+    ModelRevisionDriftObservationModel,
+)
 from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
 
 
@@ -101,6 +106,53 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
                 )
                 for model in models
             ]
+
+    def get_drift_observation(self, observation_id: str) -> ModelRevisionDriftObservation | None:
+        with self._session_factory() as session:
+            model = session.get(ModelRevisionDriftObservationModel, observation_id)
+            if model is None:
+                return None
+            return self._to_drift_observation(model)
+
+    def upsert_drift_observation(self, observation: ModelRevisionDriftObservation) -> None:
+        with self._session_factory() as session:
+            model = session.get(ModelRevisionDriftObservationModel, observation.observation_id)
+            if model is None:
+                model = ModelRevisionDriftObservationModel(
+                    observation_id=observation.observation_id
+                )
+                session.add(model)
+            model.entry_id = observation.entry_id
+            model.expected_identity = observation.expected_identity
+            model.observed_model_id = observation.observed_model_id
+            model.revision_pinned_at_observation = observation.revision_pinned_at_observation
+            model.first_observed_at = observation.first_observed_at
+            model.last_observed_at = observation.last_observed_at
+            model.observation_count = observation.observation_count
+            session.commit()
+
+    def list_drift_observations(self, entry_id: str) -> list[ModelRevisionDriftObservation]:
+        with self._session_factory() as session:
+            models = session.scalars(
+                select(ModelRevisionDriftObservationModel)
+                .where(ModelRevisionDriftObservationModel.entry_id == entry_id)
+                .order_by(ModelRevisionDriftObservationModel.last_observed_at.desc())
+            ).all()
+            return [self._to_drift_observation(model) for model in models]
+
+    def _to_drift_observation(
+        self, model: ModelRevisionDriftObservationModel
+    ) -> ModelRevisionDriftObservation:
+        return ModelRevisionDriftObservation(
+            observation_id=model.observation_id,
+            entry_id=model.entry_id,
+            expected_identity=model.expected_identity,
+            observed_model_id=model.observed_model_id,
+            revision_pinned_at_observation=model.revision_pinned_at_observation,
+            first_observed_at=model.first_observed_at,
+            last_observed_at=model.last_observed_at,
+            observation_count=model.observation_count,
+        )
 
     def _to_entry(self, model: ModelCatalogueEntryModel) -> ModelCatalogueEntry:
         return ModelCatalogueEntry(

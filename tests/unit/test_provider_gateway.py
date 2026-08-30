@@ -589,3 +589,67 @@ def test_execute_text_generation_refuses_a_retired_catalogue_model(
         is ProviderFailureCategory.MODEL_LIFECYCLE_INELIGIBLE
     )
     reset_model_catalogue_store_cache()
+
+
+def test_live_execution_records_revision_drift_from_the_provider_echo(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The transport asks for the configured model id; the provider echoes a
+    concrete revision. The gateway must record that observation on the bound
+    catalogue entry."""
+
+    from app.services.model_catalogue_store import (
+        get_model_catalogue_repository,
+        reset_model_catalogue_store_cache,
+    )
+
+    reset_model_catalogue_store_cache()
+
+    class _EchoingAdapter:
+        def execute(self, request: ProviderExecutionRequest) -> object:
+            return type(
+                "Response",
+                (),
+                {
+                    "provider_id": "text.openai",
+                    "provider_mode": "openai",
+                    "adapter_kind": ProviderAdapterKind.OPENAI_LIVE,
+                    "failure_category": None,
+                    "timeout_ms": request.timeout_ms,
+                    "retry_count": 0,
+                    "max_output_tokens": request.max_output_tokens,
+                    "model_id": "gpt-5.4-2026-07-15",
+                    "provider_request_id": "req_drift_1",
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                    "estimated_cost_usd": None,
+                    "stubbed": False,
+                    "message": "live response",
+                    "structured_output": {},
+                },
+            )()
+
+    monkeypatch.setattr(settings, "provider_mode", "openai")
+    monkeypatch.setattr(settings, "provider_rollout_state", "CANARY_ENABLED")
+    monkeypatch.setattr(settings, "live_text_provider_id", "text.openai")
+    monkeypatch.setattr(settings, "live_text_model_id", "gpt-5.4")
+    monkeypatch.setattr(settings, "live_text_model_version", None)
+    monkeypatch.setattr(settings, "live_text_provider_api_key", "secret")
+    monkeypatch.setattr(settings, "live_text_allowed_task_ids", "explain.v1")
+    monkeypatch.setattr(settings, "live_text_quota_enforced", False)
+    monkeypatch.setattr(settings, "live_text_budget_enforced", False)
+    monkeypatch.setattr(settings, "live_text_degradation_enforced", False)
+    monkeypatch.setattr(settings, "workflow_run_model_risk_inventory_json", "[]")
+    monkeypatch.setattr(
+        "app.services.provider_gateway.resolve_text_generation_adapter",
+        lambda mode: _EchoingAdapter(),
+    )
+
+    execute_text_generation(_request())
+
+    observations = get_model_catalogue_repository().list_drift_observations("text.openai:gpt-5.4")
+    assert len(observations) == 1
+    assert observations[0].observed_model_id == "gpt-5.4-2026-07-15"
+    assert observations[0].revision_pinned_at_observation is False
+    reset_model_catalogue_store_cache()

@@ -33,6 +33,7 @@ from app.contracts.model_catalogue import (
     ModelLifecycleTransitionRecord,
     ModelLifecycleTransitionRequest,
     ModelLifecycleTransitionResponse,
+    ModelRevisionDriftObservation,
     derive_model_catalogue_entry_id,
 )
 from app.contracts.providers import ProviderExecutionMode, ProviderFailureCategory
@@ -328,6 +329,52 @@ def build_model_catalogue_entry_detail(entry_id: str) -> ModelCatalogueEntryDeta
         store_mode=settings.model_catalogue_store_mode,
         entry=entry,
         lifecycle_events=repository.list_lifecycle_events(entry_id),
+        revision_drift_observations=repository.list_drift_observations(entry_id),
+    )
+
+
+def record_model_revision_drift(
+    *,
+    entry: ModelCatalogueEntry,
+    observed_model_id: str | None,
+) -> None:
+    """Record that a provider served an identity other than the expectation.
+
+    Called by the gateway after every live execution with the bound entry and
+    the provider's echoed model id. An echo equal to the pinned revision or to
+    the family identity is agreement, not drift. Observations are deduplicated
+    per (entry, observed id): repetition updates last_observed_at and count.
+    """
+
+    if not observed_model_id:
+        return
+    if observed_model_id in {entry.model_revision, entry.model_family}:
+        return
+    observation_id = f"{entry.entry_id}::{observed_model_id}"
+    repository = get_model_catalogue_repository()
+    existing = repository.get_drift_observation(observation_id)
+    now = _utc_now_iso()
+    if existing is None:
+        repository.upsert_drift_observation(
+            ModelRevisionDriftObservation(
+                observation_id=observation_id,
+                entry_id=entry.entry_id,
+                expected_identity=entry.model_revision,
+                observed_model_id=observed_model_id,
+                revision_pinned_at_observation=entry.revision_pinned,
+                first_observed_at=now,
+                last_observed_at=now,
+                observation_count=1,
+            )
+        )
+        return
+    repository.upsert_drift_observation(
+        existing.model_copy(
+            update={
+                "last_observed_at": now,
+                "observation_count": existing.observation_count + 1,
+            }
+        )
     )
 
 

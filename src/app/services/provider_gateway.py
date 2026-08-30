@@ -23,7 +23,10 @@ from app.services.access_control_authorization import authorize_request, require
 from app.config import settings
 from app.contracts.model_catalogue import derive_model_catalogue_entry_id
 from app.services.kill_switch_control import enforce_kill_switches
-from app.services.model_catalogue import bind_live_text_model_catalogue_entry
+from app.services.model_catalogue import (
+    bind_live_text_model_catalogue_entry,
+    record_model_revision_drift,
+)
 from app.services.provider_policy import require_supported_text_generation_mode
 from app.services.provider_budget_policy import enforce_provider_budget, record_provider_spend
 from app.services.provider_degradation_state import (
@@ -99,6 +102,10 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
             response.model_revision_pinned = catalogue_entry.revision_pinned
             if getattr(response, "model_version", None) is None:
                 response.model_version = catalogue_entry.model_revision
+            record_model_revision_drift(
+                entry=catalogue_entry,
+                observed_model_id=getattr(response, "model_id", None),
+            )
         response.routing_decision = _build_fixed_routing_decision(
             mode_value=mode.value,
             selected_provider_id=response.provider_id,

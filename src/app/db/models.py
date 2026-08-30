@@ -682,6 +682,19 @@ class ModelCatalogueLifecycleEventModel(Base):
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
+class ModelRevisionDriftObservationModel(Base):
+    __tablename__ = "model_revision_drift_observations"
+
+    observation_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    entry_id: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
+    expected_identity: Mapped[str] = mapped_column(String(256), nullable=False)
+    observed_model_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    revision_pinned_at_observation: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    first_observed_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_observed_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    observation_count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
 class ModelCatalogueEntryModel(Base):
     __tablename__ = "model_catalogue_entries"
 
