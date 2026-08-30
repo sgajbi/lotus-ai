@@ -34,6 +34,7 @@ class SqlAlchemyRateCardRepository(SqlAlchemyRepositoryBase):
                 model = RateCardModel(card_id=card.card_id)
                 session.add(model)
             model.scope_kind = card.scope_kind.value
+            model.scope_target = card.scope_target
             model.currency = card.currency
             model.input_cost_per_1k_tokens = card.input_cost_per_1k_tokens
             model.output_cost_per_1k_tokens = card.output_cost_per_1k_tokens
@@ -47,6 +48,7 @@ class SqlAlchemyRateCardRepository(SqlAlchemyRepositoryBase):
         return RateCard(
             card_id=model.card_id,
             scope_kind=RateCardScopeKind(model.scope_kind),
+            scope_target=model.scope_target,
             currency=model.currency,
             input_cost_per_1k_tokens=model.input_cost_per_1k_tokens,
             output_cost_per_1k_tokens=model.output_cost_per_1k_tokens,

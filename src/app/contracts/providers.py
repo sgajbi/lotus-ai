@@ -839,6 +839,11 @@ class ProviderExecutionResponse(BaseModel):
         default=None,
         description="Estimated USD cost for the provider execution when rate-card data is configured.",
     )
+    rate_card_ref: str | None = Field(
+        default=None,
+        description="Identity of the rate card that priced this execution (issue #178 S2); "
+        "null is the explicit cost-unknown posture.",
+    )
     stubbed: bool = Field(description="Whether execution was handled by a stub provider path.")
     message: str = Field(description="Human-readable execution message returned by the provider.")
     structured_output: dict[str, object] = Field(
@@ -864,6 +869,16 @@ class EmbeddingExecutionResponse(BaseModel):
     )
     stubbed: bool = Field(
         description="Whether embedding execution was handled by a stub provider path."
+    )
+    estimated_cost_usd: float | None = Field(
+        default=None,
+        description="Estimated embedding cost in USD when an EMBEDDING_DEFAULT rate card "
+        "is effective (issue #178 S2).",
+    )
+    rate_card_ref: str | None = Field(
+        default=None,
+        description="Identity of the rate card that priced this embedding execution; null "
+        "is the explicit cost-unknown posture.",
     )
     vector_dimension: int | None = Field(
         default=None,

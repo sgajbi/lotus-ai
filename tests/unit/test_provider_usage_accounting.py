@@ -12,7 +12,7 @@ from collections.abc import Iterator
 import pytest
 
 from app.config import settings
-from app.services.provider_usage_accounting import estimate_live_text_cost_usd
+from app.services.provider_usage_accounting import estimate_live_text_cost
 from app.services.rate_card_store import reset_rate_card_store_cache
 
 
@@ -26,7 +26,7 @@ def _fresh_rate_cards(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 
 def test_estimate_live_text_cost_usd_returns_none_without_rate_card() -> None:
-    assert estimate_live_text_cost_usd(input_tokens=100, output_tokens=50) is None
+    assert estimate_live_text_cost(input_tokens=100, output_tokens=50).estimated_cost_usd is None
 
 
 def test_estimate_live_text_cost_usd_uses_the_seeded_rate_card(
@@ -35,7 +35,10 @@ def test_estimate_live_text_cost_usd_uses_the_seeded_rate_card(
     monkeypatch.setattr(settings, "live_text_input_cost_per_1k_tokens", 0.01)
     monkeypatch.setattr(settings, "live_text_output_cost_per_1k_tokens", 0.03)
 
-    assert estimate_live_text_cost_usd(input_tokens=500, output_tokens=250) == 0.0125
+    estimate = estimate_live_text_cost(input_tokens=500, output_tokens=250)
+    assert estimate.estimated_cost_usd == 0.0125
+    assert estimate.rate_card_ref == "default-live-text"
+    assert estimate.cost_posture == "ESTIMATED"
 
 
 def test_estimate_live_text_cost_usd_returns_none_for_missing_token_counts(
@@ -44,8 +47,8 @@ def test_estimate_live_text_cost_usd_returns_none_for_missing_token_counts(
     monkeypatch.setattr(settings, "live_text_input_cost_per_1k_tokens", 0.01)
     monkeypatch.setattr(settings, "live_text_output_cost_per_1k_tokens", 0.03)
 
-    assert estimate_live_text_cost_usd(input_tokens=None, output_tokens=250) is None
-    assert estimate_live_text_cost_usd(input_tokens=500, output_tokens=None) is None
+    assert estimate_live_text_cost(input_tokens=None, output_tokens=250).estimated_cost_usd is None
+    assert estimate_live_text_cost(input_tokens=500, output_tokens=None).estimated_cost_usd is None
 
 
 def test_estimate_live_text_cost_usd_returns_none_for_partial_rate_configuration(
@@ -55,4 +58,4 @@ def test_estimate_live_text_cost_usd_returns_none_for_partial_rate_configuration
     monkeypatch.setattr(settings, "live_text_output_cost_per_1k_tokens", None)
 
     # A partial configuration seeds no card, so nothing is priced.
-    assert estimate_live_text_cost_usd(input_tokens=500, output_tokens=250) is None
+    assert estimate_live_text_cost(input_tokens=500, output_tokens=250).estimated_cost_usd is None

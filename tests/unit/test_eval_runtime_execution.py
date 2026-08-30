@@ -600,6 +600,10 @@ def test_apply_case_configuration_supports_sqlalchemy_budget_and_degradation_pat
         {
             "provider_operations_store_mode": "sqlalchemy",
             "hard_budget_usd": 5.0,
+            "rate_card": {
+                "input_cost_per_1k_tokens": 0.01,
+                "output_cost_per_1k_tokens": 0.03,
+            },
             "tracked_spend_usd": 1.25,
             "degraded_failure_count_threshold": 1,
         }

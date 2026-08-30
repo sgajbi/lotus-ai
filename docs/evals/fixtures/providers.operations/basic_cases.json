@@ -24,6 +24,7 @@
         "task_id": "explain.v1",
         "configured_mode": "openai",
         "hard_budget_usd": 1.0,
+        "rate_card": { "input_cost_per_1k_tokens": 0.01, "output_cost_per_1k_tokens": 0.03 },
         "tracked_spend_usd": 1.0
       },
       "expected": {
@@ -40,7 +41,8 @@
         "configured_mode": "openai",
         "provider_operations_store_mode": "sqlalchemy",
         "recorded_spend_usd": 0.75,
-        "hard_budget_usd": 1.0
+        "hard_budget_usd": 1.0,
+        "rate_card": { "input_cost_per_1k_tokens": 0.01, "output_cost_per_1k_tokens": 0.03 }
       },
       "expected": {
         "budget_state": "SOFT_LIMIT_REACHED",

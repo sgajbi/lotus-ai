@@ -663,6 +663,7 @@ class RateCardModel(Base):
 
     card_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     scope_kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    scope_target: Mapped[str | None] = mapped_column(String(256), nullable=True, index=True)
     currency: Mapped[str] = mapped_column(String(8), nullable=False)
     input_cost_per_1k_tokens: Mapped[float] = mapped_column(Float, nullable=False)
     output_cost_per_1k_tokens: Mapped[float] = mapped_column(Float, nullable=False)

@@ -52,8 +52,8 @@ from app.services.prompt_store import get_prompt_repository
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_budget_policy import build_provider_budget_policy
 from app.contracts.rate_cards import RateCard, RateCardScopeKind
+from app.services.provider_usage_accounting import save_rate_card
 from app.services.rate_card_store import (
-    get_rate_card_repository,
     reset_rate_card_store_cache,
 )
 from app.services.runtime_mode_config import (
@@ -1225,14 +1225,21 @@ def _apply_case_configuration(input_payload: dict[str, object]) -> Iterator[None
                     updated_at=_utcnow_iso(),
                 )
             if "hard_budget_usd" in input_payload:
+                # The card is fixture data (issue #178 S3): budget cases
+                # declare their rates in the fixture payload.
+                fixture_rates = cast(dict[str, object], input_payload["rate_card"])
                 seeded_at = _utcnow_iso()
-                get_rate_card_repository().upsert_card(
+                save_rate_card(
                     RateCard(
                         card_id="eval-hermetic-live-text",
                         scope_kind=RateCardScopeKind.DEFAULT_LIVE_TEXT,
                         currency="USD",
-                        input_cost_per_1k_tokens=0.01,
-                        output_cost_per_1k_tokens=0.03,
+                        input_cost_per_1k_tokens=float(
+                            cast(int | float | str, fixture_rates["input_cost_per_1k_tokens"])
+                        ),
+                        output_cost_per_1k_tokens=float(
+                            cast(int | float | str, fixture_rates["output_cost_per_1k_tokens"])
+                        ),
                         effective_from_utc=None,
                         effective_to_utc=None,
                         created_at=seeded_at,
