@@ -28,6 +28,7 @@
         ],
         "documented_only_control_ids": [
           "context_minimization",
+          "structured_output_key_minimization",
           "runtime_redaction_engine"
         ],
         "runtime_redaction_active": false

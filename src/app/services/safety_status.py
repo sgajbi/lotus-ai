@@ -26,12 +26,11 @@ def build_safety_runtime_status() -> SafetyRuntimeStatusResponse:
         service=settings.service_name,
         version=settings.service_version,
         safety_mode=resolve_runtime_mode_config().safety_mode,
-        runtime_redaction_active=resolve_runtime_mode_config().safety_mode == "runtime_enforced",
-        runtime_redaction_disposition=(
-            SafetyExecutionDisposition.ENFORCED_PASSTHROUGH
-            if resolve_runtime_mode_config().safety_mode == "runtime_enforced"
-            else SafetyExecutionDisposition.DOCUMENTED_ONLY
-        ),
+        # No runtime redaction engine exists (issue #150): the redaction
+        # posture is documented-only in every safety mode; key minimization
+        # is reported under its own control id in the policy catalogue.
+        runtime_redaction_active=False,
+        runtime_redaction_disposition=SafetyExecutionDisposition.DOCUMENTED_ONLY,
         enforced_control_ids=enforced_control_ids,
         documented_only_control_ids=documented_only_control_ids,
         supported_execution_dispositions=(

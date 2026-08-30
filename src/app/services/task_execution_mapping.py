@@ -87,8 +87,12 @@ def build_task_result_payload(
         **resolved.provider_execution.structured_output,
         "input_mode": context.request.input_mode,
     }
+    # Caller identity is echoed only when deterministic key minimization did
+    # NOT run for this output. Keyed to the control that actually executed,
+    # not to runtime_redaction_active - that flag now truthfully reports the
+    # (absent) content-redaction engine (issue #150), not minimization.
     if not (
-        resolved.safety_outcome.runtime_redaction_active
+        "structured_output_key_minimization" in resolved.safety_outcome.enforced_controls
         and resolved.safety_outcome.redaction_posture == RedactionPosture.MINIMIZATION_REQUIRED
     ):
         payload["caller_app"] = context.request.caller.caller_app

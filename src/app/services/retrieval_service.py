@@ -149,7 +149,7 @@ def _record_direct_search_audit(
                 output_label=OutputLabel.RETRIEVAL_ANSWER.value,
                 redaction_posture=RedactionPosture.MINIMIZATION_REQUIRED,
                 disposition=SafetyExecutionDisposition.ENFORCED_PASSTHROUGH,
-                runtime_redaction_active=True,
+                runtime_redaction_active=False,
                 enforced_controls=[
                     "correlation_and_audit",
                     "retrieval_citation_lineage",

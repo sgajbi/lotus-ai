@@ -149,6 +149,15 @@ Current runtime nuance from the deeper security docs:
 3. redaction posture is declared per task,
 4. callers still remain responsible for context minimization.
 
+Read the redaction posture precisely (issue #150): under runtime-enforced safety
+mode the service applies **deterministic structured-output key minimization and
+identity-echo truncation** — reported under the `structured_output_key_minimization`
+control. A **runtime redaction engine** (content screening of generated text for
+PII, account and card identifiers before persistence and egress) is **not
+implemented**; `runtime_redaction_engine` reports `DOCUMENTED_ONLY` and
+`runtime_redaction_active` is `false` in every safety mode until a real engine
+lands.
+
 ## Runtime Governance Surfaces
 
 The key governance surfaces are grouped by domain:

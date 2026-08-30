@@ -1,4 +1,6 @@
 from app.config import settings
+from app.contracts.safety import SafetyExecutionDisposition
+
 from app.services.safety_status import build_safety_runtime_status
 
 
@@ -21,9 +23,12 @@ def test_safety_runtime_status_reports_active_redaction_when_runtime_enforced() 
     status = build_safety_runtime_status()
 
     assert status.safety_mode == "runtime_enforced"
-    assert status.runtime_redaction_active is True
-    assert status.runtime_redaction_disposition == "ENFORCED_PASSTHROUGH"
-    assert "runtime_redaction_engine" in status.enforced_control_ids
+    # Truthful posture (issue #150): no redaction engine exists, so the
+    # redaction fields stay documented-only even under runtime_enforced.
+    assert status.runtime_redaction_active is False
+    assert status.runtime_redaction_disposition == SafetyExecutionDisposition.DOCUMENTED_ONLY
+    assert "structured_output_key_minimization" in status.enforced_control_ids
+    assert "runtime_redaction_engine" in status.documented_only_control_ids
     assert "ENFORCED_REDACTED" in status.supported_execution_dispositions
 
     settings.safety_mode = "documented_only"
