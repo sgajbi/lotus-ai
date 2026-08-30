@@ -16,7 +16,10 @@ dependencies = [
   "uvicorn>=0.41.0",
   "pydantic>=2.12.0",
   "pydantic-settings>=2.13.0",
-  "prometheus-fastapi-instrumentator>=7.1.0",
+  # <8: main.py patches the private _get_route_name hook (no public
+  # equivalent exists in 7.x); a major bump must revisit that patch.
+  "prometheus-fastapi-instrumentator>=7.1.0,<8.0.0",
+  "prometheus-client>=0.20.0",
   "redis>=6.4.0",
   "sqlalchemy>=2.0.44"
 ]

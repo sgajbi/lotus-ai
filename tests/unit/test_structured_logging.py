@@ -216,3 +216,15 @@ def test_provider_attempts_share_the_correlation_id_across_retry_and_success(
     assert all(line["model_id"] == "gpt-5.4" for line in attempts)
     serialized = json.dumps(attempts)
     assert "secret" not in serialized
+
+    # The same seam records metrics: one retry and one success attempt.
+    from prometheus_client import REGISTRY
+
+    for outcome in ("retry", "success"):
+        assert (
+            REGISTRY.get_sample_value(
+                "lotus_ai_provider_requests_total",
+                {"provider_id": "text.openai", "model_id": "gpt-5.4", "outcome": outcome},
+            )
+            or 0.0
+        ) >= 1.0
