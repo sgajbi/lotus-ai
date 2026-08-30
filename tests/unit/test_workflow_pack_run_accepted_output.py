@@ -222,6 +222,70 @@ def test_missing_required_narrative_field_is_malformed(_wired: WireCallable) -> 
     assert _reason(excinfo) == "output_artifact_malformed"
 
 
+def test_accepted_but_incomplete_run_is_refused(_wired: WireCallable) -> None:
+    _wired(_record(runtime_state="FAILED"), _artifact_payload())
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "run_not_completed"
+
+
+def test_accepted_state_without_recorded_review_event_is_malformed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Deliberately NOT using `_wired`: it stubs `_accepting_review_identity`, and
+    # this pin is about that function refusing an ACCEPTED record whose event
+    # ledger carries no review transition.
+    monkeypatch.setattr(module, "ensure_workflow_pack_run_store_ready", lambda: None)
+    monkeypatch.setattr(module, "get_workflow_pack_run_store", lambda: _StoreStub(_record()))
+    monkeypatch.setattr(
+        module,
+        "get_artifact_object_store",
+        lambda: _ObjectStoreStub(json.dumps(_artifact_payload()).encode("utf-8")),
+    )
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_artifact_malformed"
+
+
+def test_unlinked_output_artifact_is_missing(_wired: WireCallable) -> None:
+    _wired(_record(artifact_refs=[]), _artifact_payload())
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_artifact_missing"
+
+
+def test_non_object_artifact_document_is_malformed(_wired: WireCallable) -> None:
+    _wired(_record(), json.dumps(["not", "an", "object"]).encode("utf-8"))
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_artifact_malformed"
+
+
+def test_non_object_structured_output_is_malformed(_wired: WireCallable) -> None:
+    _wired(_record(), _artifact_payload(structured_output="a bare narrative string"))
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_artifact_malformed"
+
+
+def test_non_list_narrative_collection_is_malformed(_wired: WireCallable) -> None:
+    payload = _artifact_payload()
+    payload["structured_output"]["talking_points"] = "not-a-list"
+    _wired(_record(), payload)
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_artifact_malformed"
+
+
+def test_non_object_narrative_entry_is_malformed(_wired: WireCallable) -> None:
+    payload = _artifact_payload()
+    payload["structured_output"]["risks_and_exceptions"] = ["not-a-dict"]
+    _wired(_record(), payload)
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_artifact_malformed"
+
+
 def test_content_hash_is_deterministic_and_sensitive(_wired: WireCallable) -> None:
     _wired(_record(), _artifact_payload())
     first = build_workflow_pack_run_accepted_output(
