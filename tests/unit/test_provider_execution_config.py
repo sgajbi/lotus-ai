@@ -32,6 +32,39 @@ def test_resolve_reflects_settings_and_override_wins() -> None:
     assert get_provider_execution_config_override() is None
 
 
+def test_enforcement_thresholds_resolve_from_override_not_settings() -> None:
+    from app.services.provider_budget_policy import build_provider_budget_policy
+    from app.services.provider_quota_policy import parse_provider_quota_policy
+
+    base = resolve_provider_execution_config()
+    assert base.enforcement.quota_enforced is settings.live_text_quota_enforced
+    assert base.enforcement.hard_budget_usd == settings.live_text_hard_budget_usd
+
+    case_config = replace(
+        base,
+        enforcement=replace(
+            base.enforcement,
+            quota_enforced=True,
+            task_quota_limits="explain.v1=5",
+            budget_enforced=True,
+            hard_budget_usd=2.0,
+            soft_budget_usd=0.5,
+        ),
+    )
+    with override_provider_execution_config(case_config):
+        parsed = parse_provider_quota_policy()
+        assert parsed.quota_enforced is True
+        assert any(quota.scope_key == "explain.v1" for quota in parsed.quotas)
+        budget = build_provider_budget_policy()
+        assert budget.budget_enforced is True
+        assert budget.hard_budget_usd == 2.0
+
+    # The override never touched process settings.
+    assert settings.live_text_quota_enforced is False
+    assert settings.live_text_budget_enforced is False
+    assert parse_provider_quota_policy().quota_enforced is False
+
+
 def test_concurrent_executions_use_independent_configs() -> None:
     """The issue #148 evaluation condition, at the task-executor boundary:
 

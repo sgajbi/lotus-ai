@@ -12,6 +12,7 @@ from app.contracts.providers import (
 )
 from app.providers.base import ProviderExecutionError
 from app.services.provider_operations_store import get_provider_operations_store
+from app.services.provider_execution_config import resolve_provider_execution_config
 
 _BUDGET_KEY = "live_text_generation"
 
@@ -34,7 +35,7 @@ def build_provider_budget_policy() -> ProviderBudgetPolicyResponse:
     return ProviderBudgetPolicyResponse(
         service=settings.service_name,
         version=settings.service_version,
-        provider_mode=settings.provider_mode,
+        provider_mode=resolve_provider_execution_config().provider_mode,
         budget_enforced=parsed.budget_enforced,
         configuration_valid=parsed.configuration_valid,
         budget_state=parsed.budget_state,
@@ -51,8 +52,9 @@ def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
     findings: list[str] = []
     configuration_valid = True
     current_spend_usd = _load_current_spend_usd()
-    soft_budget_usd = settings.live_text_soft_budget_usd
-    hard_budget_usd = settings.live_text_hard_budget_usd
+    enforcement = resolve_provider_execution_config().enforcement
+    soft_budget_usd = enforcement.soft_budget_usd
+    hard_budget_usd = enforcement.hard_budget_usd
 
     if soft_budget_usd is not None and soft_budget_usd <= 0:
         configuration_valid = False
@@ -67,12 +69,12 @@ def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
     ):
         configuration_valid = False
         findings.append("Soft provider budget must not exceed the hard provider budget.")
-    if settings.live_text_budget_enforced and hard_budget_usd is None:
+    if enforcement.budget_enforced and hard_budget_usd is None:
         configuration_valid = False
         findings.append(
             "Live-provider budget enforcement requires a configured hard budget threshold."
         )
-    if settings.live_text_budget_enforced and resolve_effective_live_text_card() is None:
+    if enforcement.budget_enforced and resolve_effective_live_text_card() is None:
         configuration_valid = False
         findings.append(
             "Live-provider budget enforcement requires an effective live-text rate card "
@@ -84,7 +86,7 @@ def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
         remaining_budget_usd = round(max(hard_budget_usd - current_spend_usd, 0.0), 8)
 
     budget_state = _resolve_budget_state(
-        budget_enforced=settings.live_text_budget_enforced,
+        budget_enforced=enforcement.budget_enforced,
         configuration_valid=configuration_valid,
         current_spend_usd=current_spend_usd,
         soft_budget_usd=soft_budget_usd,
@@ -95,7 +97,7 @@ def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
         findings.append("Provider budget posture is internally consistent for the current phase.")
 
     return ParsedProviderBudgetPolicy(
-        budget_enforced=settings.live_text_budget_enforced,
+        budget_enforced=enforcement.budget_enforced,
         configuration_valid=configuration_valid,
         budget_state=budget_state,
         current_spend_usd=current_spend_usd,

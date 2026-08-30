@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
+from app.services.provider_execution_config import resolve_provider_execution_config
 from app.config import settings
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
@@ -601,8 +602,17 @@ def test_apply_case_configuration_supports_sqlalchemy_budget_and_degradation_pat
         }
     ):
         assert settings.provider_operations_store_mode == "sqlalchemy"
-        assert settings.live_text_budget_enforced is True
-        assert settings.live_text_degradation_enforced is True
+        # Enforcement posture rides on the case's config override (issue
+        # #148 S3); the process settings are never mutated for it.
+        enforcement = resolve_provider_execution_config().enforcement
+        assert enforcement.budget_enforced is True
+        assert enforcement.hard_budget_usd == 5.0
+        assert enforcement.soft_budget_usd == 1.25
+        assert enforcement.degradation_enforced is True
+        assert enforcement.degraded_failure_count_threshold == 1
+        assert enforcement.circuit_open_seconds == 60
+        assert settings.live_text_budget_enforced is False
+        assert settings.live_text_degradation_enforced is False
 
     reset_provider_operations_store_cache()
 
@@ -618,7 +628,12 @@ def test_apply_case_configuration_supports_sqlalchemy_circuit_open_path(tmp_path
         }
     ):
         assert settings.provider_operations_store_mode == "sqlalchemy"
-        assert settings.live_text_circuit_open_seconds == 30
+        enforcement = resolve_provider_execution_config().enforcement
+        assert enforcement.circuit_open_seconds == 30
+        assert enforcement.degradation_enforced is True
+        assert enforcement.degraded_failure_count_threshold == 1
+        assert enforcement.circuit_open_failure_count_threshold == 1
+        assert settings.live_text_circuit_open_seconds is None
 
     reset_provider_operations_store_cache()
 

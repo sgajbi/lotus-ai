@@ -14,6 +14,7 @@ from app.contracts.providers import (
 )
 from app.providers.base import ProviderExecutionError
 from app.services.capability_catalog import get_capability_by_task_id
+from app.services.provider_execution_config import resolve_provider_execution_config
 from app.services.provider_operations_store import get_provider_operations_store
 
 _MATCHING_ORDER = [
@@ -37,7 +38,7 @@ def build_provider_quota_policy() -> ProviderQuotaPolicyResponse:
     return ProviderQuotaPolicyResponse(
         service=settings.service_name,
         version=settings.service_version,
-        provider_mode=settings.provider_mode,
+        provider_mode=resolve_provider_execution_config().provider_mode,
         quota_enforced=parsed.quota_enforced,
         configuration_valid=parsed.configuration_valid,
         findings=parsed.findings,
@@ -52,23 +53,24 @@ def parse_provider_quota_policy() -> ParsedProviderQuotaPolicy:
     quotas: list[ProviderQuotaDescriptor] = []
     current_counts = _load_quota_counts()
 
+    enforcement = resolve_provider_execution_config().enforcement
     task_entries, task_findings = _parse_quota_mapping(
-        settings.live_text_task_quota_limits,
+        enforcement.task_quota_limits,
         scope=ProviderQuotaScope.TASK,
         current_counts=current_counts,
     )
     caller_entries, caller_findings = _parse_quota_mapping(
-        settings.live_text_caller_quota_limits,
+        enforcement.caller_quota_limits,
         scope=ProviderQuotaScope.CALLER_APP,
         current_counts=current_counts,
     )
     tenant_entries, tenant_findings = _parse_quota_mapping(
-        settings.live_text_tenant_quota_limits,
+        enforcement.tenant_quota_limits,
         scope=ProviderQuotaScope.TENANT,
         current_counts=current_counts,
     )
     default_quota, default_findings = _parse_default_quota(
-        settings.live_text_default_quota_limit,
+        enforcement.default_quota_limit,
         current_counts=current_counts,
     )
 
@@ -98,7 +100,7 @@ def parse_provider_quota_policy() -> ParsedProviderQuotaPolicy:
     if findings:
         configuration_valid = False
 
-    if settings.live_text_quota_enforced and not quotas:
+    if enforcement.quota_enforced and not quotas:
         configuration_valid = False
         findings.append(
             "Live-provider quota enforcement is enabled but no valid quota scopes are configured."
@@ -108,7 +110,7 @@ def parse_provider_quota_policy() -> ParsedProviderQuotaPolicy:
         findings.append("Provider quota posture is internally consistent for the current phase.")
 
     return ParsedProviderQuotaPolicy(
-        quota_enforced=settings.live_text_quota_enforced,
+        quota_enforced=enforcement.quota_enforced,
         configuration_valid=configuration_valid,
         findings=findings,
         quotas=quotas,

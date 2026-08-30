@@ -32,6 +32,29 @@ from app.config import settings
 
 
 @dataclass(frozen=True)
+class ProviderEnforcementThresholds:
+    """Quota/budget/degradation enforcement posture for one execution (S3).
+
+    Grouped rather than flattened onto the config: these are the operator's
+    protection thresholds, not the model identity, and the config digest
+    deliberately excludes them.
+    """
+
+    quota_enforced: bool
+    default_quota_limit: int | None
+    task_quota_limits: str
+    caller_quota_limits: str
+    tenant_quota_limits: str
+    budget_enforced: bool
+    soft_budget_usd: float | None
+    hard_budget_usd: float | None
+    degradation_enforced: bool
+    degraded_failure_count_threshold: int | None
+    circuit_open_failure_count_threshold: int | None
+    circuit_open_seconds: int | None
+
+
+@dataclass(frozen=True)
 class ProviderExecutionConfig:
     provider_mode: str
     rollout_state: str
@@ -47,6 +70,7 @@ class ProviderExecutionConfig:
     temperature: float
     top_p: float | None
     seed: int | None
+    enforcement: ProviderEnforcementThresholds
 
 
 _provider_execution_config_override: ContextVar[ProviderExecutionConfig | None] = ContextVar(
@@ -86,6 +110,22 @@ def resolve_provider_execution_config() -> ProviderExecutionConfig:
         temperature=settings.live_text_temperature,
         top_p=settings.live_text_top_p,
         seed=settings.live_text_seed,
+        enforcement=ProviderEnforcementThresholds(
+            quota_enforced=settings.live_text_quota_enforced,
+            default_quota_limit=settings.live_text_default_quota_limit,
+            task_quota_limits=settings.live_text_task_quota_limits,
+            caller_quota_limits=settings.live_text_caller_quota_limits,
+            tenant_quota_limits=settings.live_text_tenant_quota_limits,
+            budget_enforced=settings.live_text_budget_enforced,
+            soft_budget_usd=settings.live_text_soft_budget_usd,
+            hard_budget_usd=settings.live_text_hard_budget_usd,
+            degradation_enforced=settings.live_text_degradation_enforced,
+            degraded_failure_count_threshold=settings.live_text_degraded_failure_count_threshold,
+            circuit_open_failure_count_threshold=(
+                settings.live_text_circuit_open_failure_count_threshold
+            ),
+            circuit_open_seconds=settings.live_text_circuit_open_seconds,
+        ),
     )
 
 
