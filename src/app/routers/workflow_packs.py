@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from typing import Annotated
+
+from fastapi import APIRouter, Header, HTTPException, Query
 
 from app.config import settings
 from app.contracts.workflow_packs import (
@@ -52,6 +54,15 @@ from app.contracts.workflow_pack_task_flows import (
 from app.http.authenticated_caller import (
     AuthenticatedCallerDependency,
     require_authenticated_caller_matches,
+)
+from app.contracts.workflow_pack_run_accepted_output import (
+    WorkflowPackRunAcceptedOutputResponse,
+)
+from app.services.access_control_authorization import require_active_registered_caller
+from app.services.workflow_pack_run_accepted_output import (
+    AcceptedOutputNotAvailableError,
+    AcceptedOutputNotFoundError,
+    build_workflow_pack_run_accepted_output,
 )
 from app.services.workflow_pack_run_consumer_view import build_workflow_pack_run_consumer_view
 from app.services.workflow_pack_run_operator_profile import build_workflow_pack_run_operator_profile
@@ -983,6 +994,72 @@ async def get_workflow_pack_run_consumer_view_route(
 ) -> WorkflowPackRunConsumerViewResponse:
     try:
         return build_workflow_pack_run_consumer_view(run_id=run_id)
+    except WorkflowPackRunStoreUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/runs/{run_id}/accepted-output",
+    response_model=WorkflowPackRunAcceptedOutputResponse,
+    operation_id="getWorkflowPackRunAcceptedOutput",
+    summary="Get the exact accepted output of one workflow-pack run",
+    description=(
+        "Returns the exact reviewed narrative of one accepted `advisor_brief.pack@v1` run for "
+        "an authorized caller in the run's own tenant. This projection is review-gated and "
+        "non-client-authoritative: only completed, accepted, non-superseded runs backed by "
+        "their intact governed output artifact return content, and every other posture fails "
+        "closed with a bounded reason code. It never exposes prompts, arbitrary task payloads, "
+        "object-store paths, storage references, provider secrets, or generic artifact bodies. "
+        "Client-report suitability and distribution remain the calling workflow's authority."
+    ),
+    responses={
+        200: {"description": "Exact accepted run output returned successfully."},
+        403: {"description": "Caller is not an active registered caller."},
+        404: {
+            "description": (
+                "Unknown run, or a run outside the caller's tenant - deliberately one shape."
+            )
+        },
+        409: {
+            "description": (
+                "The run exists but its output must not be published: "
+                "pack_projection_unsupported, run_not_completed, run_not_accepted, "
+                "run_superseded, output_artifact_missing, or output_artifact_malformed."
+            )
+        },
+        422: {"description": "Required caller headers are missing or invalid."},
+        503: {"description": "Run or artifact stores are not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_run_accepted_output_route(
+    run_id: str,
+    caller_app: Annotated[str, Header(alias="X-Caller-App", min_length=1)],
+    tenant_id: Annotated[str, Header(alias="X-Tenant-Id", min_length=1)],
+) -> WorkflowPackRunAcceptedOutputResponse:
+    require_active_registered_caller(
+        caller_app.strip(),
+        blocked_summary="Caller is not authorized to retrieve accepted workflow-pack output.",
+    )
+    try:
+        return build_workflow_pack_run_accepted_output(
+            run_id=run_id,
+            caller_tenant_id=tenant_id.strip(),
+        )
+    except AcceptedOutputNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown workflow-pack run: {exc}",
+        ) from exc
+    except AcceptedOutputNotAvailableError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "detail": exc.message,
+                "error_code": f"LOTUS_AI_ACCEPTED_OUTPUT_{exc.reason_code.upper()}",
+                "metadata": {"reason_code": exc.reason_code},
+            },
+        ) from exc
     except WorkflowPackRunStoreUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
