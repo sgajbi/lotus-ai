@@ -652,6 +652,20 @@ class WorkflowPackControlEventModel(Base):
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
+class RateCardModel(Base):
+    __tablename__ = "rate_cards"
+
+    card_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    scope_kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    currency: Mapped[str] = mapped_column(String(8), nullable=False)
+    input_cost_per_1k_tokens: Mapped[float] = mapped_column(Float, nullable=False)
+    output_cost_per_1k_tokens: Mapped[float] = mapped_column(Float, nullable=False)
+    effective_from_utc: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    effective_to_utc: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class KillSwitchActivationModel(Base):
     __tablename__ = "kill_switch_activations"
 

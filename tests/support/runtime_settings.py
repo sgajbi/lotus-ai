@@ -10,6 +10,7 @@ from app.services.caller_policy_store import reset_caller_policy_store_cache
 from app.services.kill_switch_store import reset_kill_switch_store_cache
 from app.services.model_catalogue_store import reset_model_catalogue_store_cache
 from app.services.prompt_store import reset_prompt_store_cache
+from app.services.rate_card_store import reset_rate_card_store_cache
 from app.services.retrieval_store import reset_retrieval_repository
 from app.services.workflow_pack_registry import reset_workflow_pack_registry_state
 from app.services.workflow_pack_queue_event_store import reset_workflow_pack_queue_event_store_cache
@@ -29,6 +30,7 @@ def override_runtime_settings(**overrides: object) -> Iterator[None]:
         reset_kill_switch_store_cache()
         reset_model_catalogue_store_cache()
         reset_prompt_store_cache()
+        reset_rate_card_store_cache()
         reset_retrieval_repository()
         reset_workflow_pack_registry_state()
         reset_workflow_pack_queue_event_store_cache()
@@ -44,6 +46,7 @@ def override_runtime_settings(**overrides: object) -> Iterator[None]:
         reset_kill_switch_store_cache()
         reset_model_catalogue_store_cache()
         reset_prompt_store_cache()
+        reset_rate_card_store_cache()
         reset_retrieval_repository()
         reset_workflow_pack_registry_state()
         reset_workflow_pack_queue_event_store_cache()

@@ -472,3 +472,33 @@ def test_routing_posture_route_reports_the_fixed_policy(client: TestClient) -> N
     assert body["candidate"]["provider_mode"] == "disabled"
     assert body["enforcing_kill_switch_count"] == 0
     assert body["degradation"]["status"]
+
+
+def test_rate_card_catalogue_route_reports_the_seeded_default(client: TestClient) -> None:
+    from app.config import settings as app_settings
+    from app.services.rate_card_store import reset_rate_card_store_cache
+
+    original_input = app_settings.live_text_input_cost_per_1k_tokens
+    original_output = app_settings.live_text_output_cost_per_1k_tokens
+    try:
+        reset_rate_card_store_cache()
+        app_settings.live_text_input_cost_per_1k_tokens = None
+        app_settings.live_text_output_cost_per_1k_tokens = None
+        empty = client.get("/platform/providers/rate-cards")
+        assert empty.status_code == 200
+        assert empty.json()["cards"] == []
+
+        app_settings.live_text_input_cost_per_1k_tokens = 0.02
+        app_settings.live_text_output_cost_per_1k_tokens = 0.04
+        body = client.get("/platform/providers/rate-cards").json()
+    finally:
+        app_settings.live_text_input_cost_per_1k_tokens = original_input
+        app_settings.live_text_output_cost_per_1k_tokens = original_output
+        reset_rate_card_store_cache()
+
+    assert len(body["cards"]) == 1
+    card = body["cards"][0]
+    assert card["card_id"] == "default-live-text"
+    assert card["scope_kind"] == "DEFAULT_LIVE_TEXT"
+    assert card["input_cost_per_1k_tokens"] == 0.02
+    assert card["currency"] == "USD"

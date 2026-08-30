@@ -18,6 +18,7 @@ from app.contracts.providers import (
     ProviderQuotaPolicyResponse,
     ProviderRunbookReadinessResponse,
 )
+from app.contracts.rate_cards import RateCardCatalogueResponse
 from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.provider_activation_readiness import build_provider_activation_readiness
 from app.services.provider_budget_policy import build_provider_budget_policy
@@ -33,6 +34,7 @@ from app.services.provider_operator_profile import build_provider_operator_profi
 from app.services.provider_policy import build_provider_policy
 from app.services.provider_quota_policy import build_provider_quota_policy
 from app.services.provider_runbook_readiness import build_provider_runbook_readiness
+from app.services.rate_card_catalogue import build_rate_card_catalogue
 from app.services.routing_posture import build_routing_posture
 
 router = APIRouter(prefix="/platform/providers", tags=["platform"])
@@ -57,6 +59,25 @@ router = APIRouter(prefix="/platform/providers", tags=["platform"])
 )
 async def get_routing_posture_route() -> RoutingPostureResponse:
     return build_routing_posture()
+
+
+@router.get(
+    "/rate-cards",
+    response_model=RateCardCatalogueResponse,
+    operation_id="getRateCardCatalogue",
+    summary="Get the provider rate-card catalogue",
+    description=(
+        "Returns every stored rate card. Slice 1 carries the default live-text card the seed "
+        "migrates from the legacy cost scalars; cost estimation resolves the effective card, "
+        "so this catalogue is the source of cost truth."
+    ),
+    responses={
+        200: {"description": "Rate-card catalogue returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_rate_card_catalogue_route() -> RateCardCatalogueResponse:
+    return build_rate_card_catalogue()
 
 
 @router.get(
