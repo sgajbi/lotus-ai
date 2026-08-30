@@ -51,6 +51,12 @@ startup — smoke-test a route that uses the store after changing one.
 | `LOTUS_AI_DATABASE_URL` | *(none)* — required by any `sqlalchemy` mode |
 | `LOTUS_AI_ARTIFACT_OBJECT_STORE_ROOT` | *(none)* |
 
+## Logging
+
+| variable | default |
+|---|---|
+| `LOTUS_AI_LOG_LEVEL` | `INFO` — level for the structured JSON app logger (issue #152 S1) |
+
 ## Service identity
 
 | variable | default |
