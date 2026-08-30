@@ -37,6 +37,10 @@ TASK_FLOW_ALLOWED_TRANSITIONS: dict[WorkflowPackTaskFlowStatus, set[WorkflowPack
         WorkflowPackTaskFlowStatus.RUNNING,
         WorkflowPackTaskFlowStatus.BLOCKED,
         WorkflowPackTaskFlowStatus.COMPLETED,
+        # A REJECT review action terminates the flow as FAILED; without this edge
+        # every reject of an awaiting-review run raised a transition error and the
+        # review 500ed (found by the accepted-output projection tests, issue #162).
+        WorkflowPackTaskFlowStatus.FAILED,
         WorkflowPackTaskFlowStatus.CANCELLED,
         WorkflowPackTaskFlowStatus.EXPIRED,
         WorkflowPackTaskFlowStatus.SUPERSEDED,

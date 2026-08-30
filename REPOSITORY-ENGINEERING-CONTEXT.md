@@ -50,7 +50,13 @@ Current repository posture:
    kept separate from review state,
    bounded actor-attributed review transitions available through the ledger API, bounded
    ledger-compatible `allowed_review_actions` emitted for consumers, governed workflow-pack
-   artifact refs now attached for bounded output-summary review, deterministic proposal memo
+   artifact refs now attached for bounded output-summary review, one review-gated
+   accepted-output projection (`/platform/workflow-packs/runs/{run_id}/accepted-output`) that
+   publishes the exact accepted `advisor_brief.pack@v1` narrative with reviewer identity and a
+   canonical content hash to authorized same-tenant callers - completed+accepted+non-superseded
+   with an intact governed artifact only, bounded fail-closed reason codes otherwise, per-pack
+   projectors registered explicitly, and no client-release, Report-integration, or certification
+   claim, deterministic proposal memo
    commentary support for bounded `lotus-advise` memo evidence that cannot mutate memo status,
    suitability, approval, or client-ready posture, deterministic RFC-0027 advisory copilot
    guardrails that validate Advise-owned source-backed evidence packets, bounded requested outputs,
