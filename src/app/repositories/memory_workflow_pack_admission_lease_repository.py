@@ -50,9 +50,9 @@ class InMemoryWorkflowPackAdmissionLeaseRepository:
         with self._lock:
             return self._leases.get(queue_item_id)
 
-    def delete_lease(self, queue_item_id: str) -> None:
+    def delete_lease(self, queue_item_id: str) -> bool:
         with self._lock:
-            self._leases.pop(queue_item_id, None)
+            return self._leases.pop(queue_item_id, None) is not None
 
     def list_leases(self) -> list[WorkflowPackQueueAdmissionLease]:
         with self._lock:

@@ -262,22 +262,6 @@ def acquire_workflow_pack_queue_admission(
             workflow_surface=workflow_surface,
             artifact_refs=tuple(request_artifact_refs),
         )
-        _record_queue_event(
-            queue_item_id=lease.queue_item_id,
-            event_type=WorkflowPackQueueEventType.ADMISSION_GRANTED,
-            policy=policy,
-            lane=lane,
-            state=running_state,
-            caller_app=caller_app,
-            correlation_id=correlation_id,
-            tenant_id=tenant_id,
-            workflow_surface=workflow_surface,
-            artifact_refs=request_artifact_refs,
-            message=(
-                "Workflow-pack queue admission granted for "
-                f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}` in lane `{lane.value}`."
-            ),
-        )
         attempt = get_workflow_pack_admission_lease_repository().try_admit(
             lease,
             pack_limit=policy.max_concurrent_runs_per_pack,
@@ -304,6 +288,27 @@ def acquire_workflow_pack_queue_admission(
                 workflow_surface=workflow_surface,
                 artifact_refs=request_artifact_refs,
             )
+
+        # The grant is recorded only after the authoritative, replica-atomic
+        # admit succeeds: recording it first made a lost race read
+        # granted-then-rejected for one queue item in the durable history,
+        # in exactly the race the leases exist for (issue #228).
+        _record_queue_event(
+            queue_item_id=lease.queue_item_id,
+            event_type=WorkflowPackQueueEventType.ADMISSION_GRANTED,
+            policy=policy,
+            lane=lane,
+            state=running_state,
+            caller_app=caller_app,
+            correlation_id=correlation_id,
+            tenant_id=tenant_id,
+            workflow_surface=workflow_surface,
+            artifact_refs=request_artifact_refs,
+            message=(
+                "Workflow-pack queue admission granted for "
+                f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}` in lane `{lane.value}`."
+            ),
+        )
         return lease
 
 
@@ -326,6 +331,11 @@ def release_workflow_pack_queue_admission(
         current_state=lease.state,
         next_state=terminal_state,
     )
+    if not get_workflow_pack_admission_lease_repository().delete_lease(queue_item_id):
+        # Another replica already claimed this terminal transition; recording a
+        # second event would duplicate the queue item's terminal history.
+        return
+
     _record_queue_event(
         queue_item_id=lease.queue_item_id,
         event_type=event_type,
@@ -346,7 +356,6 @@ def release_workflow_pack_queue_admission(
         ),
         message=_release_event_message(lease=lease, event_type=event_type, policy=policy),
     )
-    get_workflow_pack_admission_lease_repository().delete_lease(queue_item_id)
 
 
 def cancel_workflow_pack_queue_admission(
@@ -377,6 +386,10 @@ def cancel_workflow_pack_queue_admission(
         current_state=lease.state,
         next_state=WorkflowPackQueueState.CANCELLED,
     )
+    if not get_workflow_pack_admission_lease_repository().delete_lease(queue_item_id):
+        # Another replica already claimed this terminal transition (issue #228).
+        return False
+
     _record_queue_event(
         queue_item_id=lease.queue_item_id,
         event_type=WorkflowPackQueueEventType.ADMISSION_CANCELLED,
@@ -396,7 +409,6 @@ def cancel_workflow_pack_queue_admission(
             f"`{actor.value}` with evidence `{evidence_ref}`: {reason}"
         ),
     )
-    get_workflow_pack_admission_lease_repository().delete_lease(queue_item_id)
     return True
 
 

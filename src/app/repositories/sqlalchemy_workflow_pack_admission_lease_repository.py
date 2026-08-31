@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.config import settings
 from app.contracts.artifacts import ArtifactDescriptor
 from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueLane,
@@ -46,6 +49,7 @@ class SqlAlchemyWorkflowPackAdmissionLeaseRepository:
     ) -> WorkflowPackAdmissionAttempt:
         with self._session_factory() as session:
             self._lock_policy_guard(session, policy_id=lease.policy_id)
+            self._reclaim_expired_leases(session, policy_id=lease.policy_id)
             pack_count = session.execute(
                 select(func.count())
                 .select_from(WorkflowPackAdmissionLeaseModel)
@@ -81,12 +85,43 @@ class SqlAlchemyWorkflowPackAdmissionLeaseRepository:
                 return None
             return self._to_lease(model)
 
-    def delete_lease(self, queue_item_id: str) -> None:
+    def delete_lease(self, queue_item_id: str) -> bool:
+        """Remove one lease, reporting whether THIS call removed it.
+
+        Concurrent release and cancel both observe the lease; the delete is
+        the atomic claim, so only the caller that actually removed the row
+        records the terminal event (issue #228).
+        """
+
         with self._session_factory() as session:
-            model = session.get(WorkflowPackAdmissionLeaseModel, queue_item_id)
-            if model is not None:
-                session.delete(model)
-                session.commit()
+            result = session.execute(
+                delete(WorkflowPackAdmissionLeaseModel).where(
+                    WorkflowPackAdmissionLeaseModel.queue_item_id == queue_item_id
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0) > 0
+
+    def _reclaim_expired_leases(self, session: Session, *, policy_id: str) -> None:
+        """Drop leases whose holder can no longer be executing them.
+
+        A replica that dies mid-execution leaves its lease behind; without
+        reclamation a pack with a limit of one becomes permanently
+        unadmittable, a property the process-local dict used to provide for
+        free by dying with the process (issue #228).
+        """
+
+        ttl_seconds = settings.workflow_pack_admission_lease_ttl_seconds
+        if ttl_seconds <= 0:
+            return
+        cutoff = (datetime.now(UTC) - timedelta(seconds=ttl_seconds)).isoformat()
+        session.execute(
+            delete(WorkflowPackAdmissionLeaseModel).where(
+                WorkflowPackAdmissionLeaseModel.policy_id == policy_id,
+                WorkflowPackAdmissionLeaseModel.admitted_at < cutoff,
+            )
+        )
+        session.flush()
 
     def list_leases(self) -> list[WorkflowPackQueueAdmissionLease]:
         with self._session_factory() as session:
@@ -114,8 +149,14 @@ class SqlAlchemyWorkflowPackAdmissionLeaseRepository:
             .with_for_update()
         ).scalar_one_or_none()
         if guard is None:
-            session.add(WorkflowPackAdmissionGuardModel(policy_id=policy_id))
-            session.flush()
+            try:
+                with session.begin_nested():
+                    session.add(WorkflowPackAdmissionGuardModel(policy_id=policy_id))
+            except IntegrityError:
+                # Another replica created this policy's guard row first: that is
+                # the race resolving correctly, not a failure - fall through and
+                # lock the row it created (issue #228).
+                pass
             session.execute(
                 select(WorkflowPackAdmissionGuardModel)
                 .where(WorkflowPackAdmissionGuardModel.policy_id == policy_id)

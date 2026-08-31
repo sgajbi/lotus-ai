@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from _pytest.monkeypatch import MonkeyPatch
 from fastapi import HTTPException
+from pytest import raises
 
 from app.contracts.workflow_pack_queue_policies import (
     WorkflowPackQueueCancellationActor,
@@ -247,3 +248,54 @@ def _queue_events_for_reason(reason_code: str) -> list[WorkflowPackQueueEventDes
         ).events
         if event.reason_code == reason_code
     ]
+
+
+def test_a_lost_capacity_race_never_records_a_grant(monkeypatch: MonkeyPatch) -> None:
+    """Losing the replica-atomic admit must read as a plain capacity
+    rejection: the durable history previously showed granted-then-rejected
+    for one queue item, in exactly the race the leases exist for (#228)."""
+
+    from app.repositories.workflow_pack_admission_lease_repository import (
+        WorkflowPackAdmissionAttempt,
+    )
+    from app.services import workflow_pack_queue_admission as admission
+
+    from app.services.workflow_pack_admission_lease_store import (
+        get_workflow_pack_admission_lease_repository,
+    )
+
+    real_repository = get_workflow_pack_admission_lease_repository()
+
+    class _LosesTheRace:
+        def __getattr__(self, name: str) -> object:
+            return getattr(real_repository, name)
+
+        def try_admit(self, lease: object, **_kwargs: object) -> WorkflowPackAdmissionAttempt:
+            # Another replica took the last slot between the advisory check
+            # and the authoritative admit.
+            return WorkflowPackAdmissionAttempt(
+                admitted=False, active_pack_count=99, active_lane_count=99
+            )
+
+    monkeypatch.setattr(
+        admission, "get_workflow_pack_admission_lease_repository", lambda: _LosesTheRace()
+    )
+
+    with raises(HTTPException) as exc_info:
+        acquire_workflow_pack_queue_admission(
+            registration=_advisor_brief_registration(),
+            caller_app="lotus-gateway",
+            correlation_id="corr-lost-race",
+            tenant_id="tenant-sg-001",
+            workflow_surface="advisor-brief-panel",
+        )
+
+    assert exc_info.value.status_code == 429
+    catalog = build_workflow_pack_queue_event_catalog(limit=20)
+    lost_race_events = [
+        event.event_type.value
+        for event in catalog.events
+        if event.correlation_id == "corr-lost-race"
+    ]
+    assert "ADMISSION_GRANTED" not in lost_race_events
+    assert "ADMISSION_REJECTED" in lost_race_events
