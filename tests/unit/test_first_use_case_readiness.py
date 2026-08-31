@@ -97,8 +97,11 @@ def test_first_use_case_readiness_uses_sql_seeded_lotus_performance_policy(
 
     assert readiness.items[0].status == "READY"
     assert readiness.items[4].status == "READY"
-    assert readiness.items[5].status == "READY"
-    assert readiness.items[6].status == "READY"
+    # Access-control and observability governance now tell the honest runbook
+    # truth (issue #154): their runbook items are DOCUMENTED_ONLY, so the
+    # derived governance areas report NOT_READY even with SQL-backed stores.
+    assert readiness.items[5].status == "NOT_READY"
+    assert readiness.items[6].status == "NOT_READY"
     assert readiness.items[7].status == "NOT_READY"
     assert readiness.items[8].status == "READY"
     assert readiness.readiness_ready is False

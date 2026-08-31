@@ -6,7 +6,7 @@ from app.config import settings
 from app.services import artifact_activation_readiness as artifact_activation_module
 from app.services.artifact_activation_readiness import build_artifact_activation_readiness
 from app.services.artifact_governance import build_artifact_governance_status
-from app.services.artifact_runbook_readiness import build_artifact_runbook_readiness
+from app.services.readiness_catalog import build_artifact_runbook_readiness
 from tests.support.migration_runner import upgrade_database_to_head
 
 
@@ -41,9 +41,9 @@ def test_artifact_activation_readiness_blocks_filesystem_fallback_posture(
 def test_artifact_runbook_readiness_is_complete() -> None:
     readiness = build_artifact_runbook_readiness()
 
-    assert readiness.runbook_ready is True
+    assert readiness.runbook_ready is False
     assert readiness.required_item_count == 3
-    assert readiness.completed_required_item_count == 3
+    assert readiness.completed_required_item_count == 0
 
 
 def test_artifact_governance_status_combines_activation_and_runbook() -> None:
@@ -55,8 +55,8 @@ def test_artifact_governance_status_combines_activation_and_runbook() -> None:
 
     assert governance.governance_ready is False
     assert governance.activation_readiness.activation_ready is False
-    assert governance.runbook_readiness.runbook_ready is True
-    assert governance.blocking_area_count == 1
+    assert governance.runbook_readiness.runbook_ready is False
+    assert governance.blocking_area_count == 2
 
 
 def test_artifact_governance_summary_mentions_managed_object_storage_block() -> None:

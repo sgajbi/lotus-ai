@@ -7,7 +7,7 @@ from app.retrieval.document_governance import build_retrieval_document_governanc
 from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
 from app.services.retrieval_embedding_runtime import build_retrieval_embedding_runtime
 from app.services.retrieval_ingestion_status import build_retrieval_ingestion_status
-from app.services.retrieval_runbook_readiness import build_retrieval_runbook_readiness
+from app.services.readiness_catalog import build_retrieval_runbook_readiness
 from app.services.runtime_readiness import get_retrieval_store_runtime_status
 
 

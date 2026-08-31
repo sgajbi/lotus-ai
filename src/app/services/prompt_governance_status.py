@@ -5,7 +5,7 @@ from app.contracts.prompts import PromptGovernanceStatusSummaryResponse
 from app.services.governance_readiness import summarize_governance_flags
 from app.services.prompt_activation_readiness import build_prompt_activation_readiness
 from app.services.prompt_evidence_readiness import build_prompt_evidence_readiness
-from app.services.prompt_runbook_readiness import build_prompt_runbook_readiness
+from app.services.readiness_catalog import build_prompt_runbook_readiness
 
 
 def build_prompt_governance_status_summary() -> PromptGovernanceStatusSummaryResponse:

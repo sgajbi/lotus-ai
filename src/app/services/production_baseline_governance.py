@@ -14,7 +14,7 @@ from app.services.production_baseline_activation_readiness import (
     build_production_baseline_activation_readiness,
 )
 from app.services.provider_governance_status import build_provider_governance_status
-from app.services.production_baseline_runbook_readiness import (
+from app.services.readiness_catalog import (
     build_production_baseline_runbook_readiness,
 )
 from app.services.production_baseline_runtime import build_production_baseline_runtime_status

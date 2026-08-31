@@ -7,7 +7,7 @@ from app.contracts.capability_packs import (
     CapabilityPackRunbookReadinessResponse,
 )
 from app.services.capability_pack_catalog import get_capability_pack_by_id
-from app.services.first_use_case_runbook_readiness import build_first_use_case_runbook_readiness
+from app.services.readiness_catalog import build_first_use_case_runbook_readiness
 from app.services.use_case_onboarding_template import build_use_case_onboarding_template
 
 

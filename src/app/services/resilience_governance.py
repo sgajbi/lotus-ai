@@ -6,7 +6,7 @@ from app.services.governance_readiness import summarize_governance_flags
 from app.services.resilience_activation_readiness import build_resilience_activation_readiness
 from app.services.resilience_drill_evidence import build_resilience_drill_evidence
 from app.services.resilience_restore_plan import build_resilience_restore_plan
-from app.services.resilience_runbook_readiness import build_resilience_runbook_readiness
+from app.services.readiness_catalog import build_resilience_runbook_readiness
 from app.services.resilience_runtime import build_resilience_runtime_status
 
 

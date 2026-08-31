@@ -5,7 +5,7 @@ from app.contracts.retrieval import RetrievalGovernanceStatusResponse
 from app.services.governance_readiness import summarize_governance_flags
 from app.services.retrieval_activation_readiness import build_retrieval_activation_readiness
 from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
-from app.services.retrieval_runbook_readiness import build_retrieval_runbook_readiness
+from app.services.readiness_catalog import build_retrieval_runbook_readiness
 
 
 def build_retrieval_governance_status() -> RetrievalGovernanceStatusResponse:

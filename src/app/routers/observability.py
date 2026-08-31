@@ -29,7 +29,7 @@ from app.services.observability_domain_summaries import (
 )
 from app.services.observability_governance import build_observability_governance_status
 from app.services.observability_incident_summary import build_observability_incident_summary
-from app.services.observability_runbook_readiness import build_observability_runbook_readiness
+from app.services.readiness_catalog import build_observability_runbook_readiness
 from app.services.observability_runtime import build_observability_runtime_status
 
 router = APIRouter(prefix="/platform/observability", tags=["platform"])

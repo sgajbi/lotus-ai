@@ -13,7 +13,7 @@ from app.services.access_control_activation_readiness import (
     build_access_control_activation_readiness,
 )
 from app.services.access_control_governance import build_access_control_governance_status
-from app.services.access_control_runbook_readiness import (
+from app.services.readiness_catalog import (
     build_access_control_runbook_readiness,
 )
 from app.services.access_control_runtime import (

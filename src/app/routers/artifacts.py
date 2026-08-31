@@ -12,7 +12,7 @@ from app.contracts.artifacts import (
 from app.services.artifact_activation_readiness import build_artifact_activation_readiness
 from app.services.artifact_catalog import build_artifact_catalog
 from app.services.artifact_governance import build_artifact_governance_status
-from app.services.artifact_runbook_readiness import build_artifact_runbook_readiness
+from app.services.readiness_catalog import build_artifact_runbook_readiness
 from app.services.artifact_runtime import build_artifact_runtime_status
 
 router = APIRouter(prefix="/platform/artifacts", tags=["platform"])

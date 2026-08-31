@@ -27,7 +27,7 @@ def test_access_control_routes_report_memory_posture(client: TestClient) -> None
     runbook_response = client.get("/platform/access-control/runbook-readiness")
     assert runbook_response.status_code == 200
     runbook_body = runbook_response.json()
-    assert runbook_body["runbook_ready"] is True
+    assert runbook_body["runbook_ready"] is False
     assert runbook_body["required_item_count"] == 5
 
     governance_response = client.get("/platform/access-control/governance-status")
@@ -35,8 +35,8 @@ def test_access_control_routes_report_memory_posture(client: TestClient) -> None
     governance_body = governance_response.json()
     assert governance_body["governance_ready"] is False
     assert governance_body["activation_readiness"]["activation_ready"] is False
-    assert governance_body["runbook_readiness"]["runbook_ready"] is True
-    assert governance_body["blocking_area_count"] == 1
+    assert governance_body["runbook_readiness"]["runbook_ready"] is False
+    assert governance_body["blocking_area_count"] == 2
 
     catalog_response = client.get("/platform/access-control/caller-policies")
     assert catalog_response.status_code == 200
@@ -69,7 +69,7 @@ def test_access_control_routes_report_sql_backed_registry(tmp_path: Path) -> Non
             governance_response = durable_client.get("/platform/access-control/governance-status")
             assert governance_response.status_code == 200
             governance_body = governance_response.json()
-            assert governance_body["governance_ready"] is True
+            assert governance_body["governance_ready"] is False
             assert governance_body["activation_readiness"]["activation_ready"] is True
-            assert governance_body["runbook_readiness"]["runbook_ready"] is True
-            assert governance_body["blocking_area_count"] == 0
+            assert governance_body["runbook_readiness"]["runbook_ready"] is False
+            assert governance_body["blocking_area_count"] == 1

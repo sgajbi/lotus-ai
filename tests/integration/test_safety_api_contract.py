@@ -48,7 +48,7 @@ def test_safety_runbook_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
     assert body["required_item_count"] == 4
-    assert body["completed_required_item_count"] == 3
+    assert body["completed_required_item_count"] == 0
     assert body["items"][0]["runbook_id"] == "safety_operational_runbook"
 
 

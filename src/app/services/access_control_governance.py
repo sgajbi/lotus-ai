@@ -7,7 +7,7 @@ from app.contracts.access_control import (
 from app.services.access_control_activation_readiness import (
     build_access_control_activation_readiness,
 )
-from app.services.access_control_runbook_readiness import (
+from app.services.readiness_catalog import (
     build_access_control_runbook_readiness,
 )
 from app.services.access_control_runtime import build_access_control_runtime_status

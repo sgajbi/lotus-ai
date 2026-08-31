@@ -44,7 +44,7 @@ def test_first_production_use_case_runbook_readiness_route(client: TestClient) -
     assert body["service"] == "lotus-ai"
     assert body["use_case_id"] == "lotus_performance.analytics_commentary.v1"
     assert body["downstream_app"] == "lotus-performance"
-    assert body["runbook_ready"] is True
+    assert body["runbook_ready"] is False
     assert any(item["runbook_id"] == "lotus_performance_shared_ownership" for item in body["items"])
 
 
@@ -61,7 +61,7 @@ def test_first_production_use_case_governance_status_route(client: TestClient) -
     assert body["active_production_ready"] is False
     assert body["governance_ready"] is False
     assert body["readiness"]["approval_gate"]["domain_id"] == "first_use_case_onboarding"
-    assert body["runbook_readiness"]["runbook_ready"] is True
+    assert body["runbook_readiness"]["runbook_ready"] is False
 
 
 def test_use_case_onboarding_template_route(client: TestClient) -> None:

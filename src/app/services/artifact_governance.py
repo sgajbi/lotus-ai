@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.config import settings
 from app.contracts.artifacts import ArtifactGovernanceStatusResponse
 from app.services.artifact_activation_readiness import build_artifact_activation_readiness
-from app.services.artifact_runbook_readiness import build_artifact_runbook_readiness
+from app.services.readiness_catalog import build_artifact_runbook_readiness
 from app.services.artifact_runtime import build_artifact_runtime_status
 
 

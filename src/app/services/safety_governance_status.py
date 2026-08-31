@@ -4,7 +4,7 @@ from app.config import settings
 from app.contracts.safety import SafetyGovernanceStatusResponse
 from app.services.governance_readiness import summarize_governance_flags
 from app.services.safety_evidence_readiness import build_safety_evidence_readiness
-from app.services.safety_runbook_readiness import build_safety_runbook_readiness
+from app.services.readiness_catalog import build_safety_runbook_readiness
 from app.services.safety_status import build_safety_runtime_status
 
 

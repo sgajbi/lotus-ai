@@ -31,9 +31,9 @@ def test_analytics_commentary_pack_governance_reports_blocked_before_runtime_qua
 
     assert activation.activation_ready is False
     assert activation.items[0].item_id == "runtime_quality_gate"
-    assert runbook.runbook_ready is True
+    assert runbook.runbook_ready is False
     assert governance.governance_ready is False
-    assert governance.blocking_area_count == 1
+    assert governance.blocking_area_count == 2
 
 
 def test_decision_explanation_pack_governance_reports_missing_anchor_and_runbook() -> None:
@@ -91,12 +91,17 @@ def test_analytics_commentary_pack_governance_can_become_ready_after_runtime_qua
     governance = build_capability_pack_governance_status(pack_id="analytics_commentary.pack.v1")
     catalog_governance = build_capability_pack_catalog_governance_status()
 
-    assert governance.governance_ready is True
     assert governance.activation_readiness.activation_ready is True
-    assert governance.runbook_readiness.runbook_ready is True
     assert governance.observability.observability_ready is True
-    assert catalog_governance.ready_pack_count == 1
-    assert catalog_governance.blocking_pack_count == 1
+    # The runtime quality gate passed, but governance now tells the honest
+    # runbook truth (issue #154): the operational runbook items are
+    # DOCUMENTED_ONLY, not enforced controls, so the pack does not become
+    # governance-ready until the catalog records them as ENFORCED with
+    # evidence.
+    assert governance.runbook_readiness.runbook_ready is False
+    assert governance.governance_ready is False
+    assert catalog_governance.ready_pack_count == 0
+    assert catalog_governance.blocking_pack_count == 2
 
 
 def test_decision_explanation_pack_activation_and_runbook_surfaces_remain_blocked() -> None:
