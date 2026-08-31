@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from threading import RLock
 
+from app.config import settings
 from app.repositories.workflow_pack_admission_lease_repository import (
     WorkflowPackAdmissionAttempt,
 )
@@ -25,6 +27,10 @@ class InMemoryWorkflowPackAdmissionLeaseRepository:
         lane_limit: int,
     ) -> WorkflowPackAdmissionAttempt:
         with self._lock:
+            # Reclamation parity with the durable adapter (issue #228): the
+            # two adapters must not disagree about when a lease stops holding
+            # capacity, even though this one also dies with its process.
+            reclaimed = self._reclaim_expired_leases(policy_id=lease.policy_id)
             pack_count = sum(
                 1 for item in self._leases.values() if item.policy_id == lease.policy_id
             )
@@ -38,13 +44,31 @@ class InMemoryWorkflowPackAdmissionLeaseRepository:
                     admitted=False,
                     active_pack_count=pack_count,
                     active_lane_count=lane_count,
+                    reclaimed_leases=reclaimed,
                 )
             self._leases[lease.queue_item_id] = lease
             return WorkflowPackAdmissionAttempt(
                 admitted=True,
                 active_pack_count=pack_count,
                 active_lane_count=lane_count,
+                reclaimed_leases=reclaimed,
             )
+
+    def _reclaim_expired_leases(
+        self, *, policy_id: str
+    ) -> tuple[WorkflowPackQueueAdmissionLease, ...]:
+        ttl_seconds = settings.workflow_pack_admission_lease_ttl_seconds
+        if ttl_seconds <= 0:
+            return ()
+        cutoff = (datetime.now(UTC) - timedelta(seconds=ttl_seconds)).isoformat()
+        expired = tuple(
+            item
+            for item in self._leases.values()
+            if item.policy_id == policy_id and item.admitted_at < cutoff
+        )
+        for item in expired:
+            self._leases.pop(item.queue_item_id, None)
+        return expired
 
     def get_lease(self, queue_item_id: str) -> WorkflowPackQueueAdmissionLease | None:
         with self._lock:

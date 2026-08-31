@@ -49,7 +49,7 @@ class SqlAlchemyWorkflowPackAdmissionLeaseRepository:
     ) -> WorkflowPackAdmissionAttempt:
         with self._session_factory() as session:
             self._lock_policy_guard(session, policy_id=lease.policy_id)
-            self._reclaim_expired_leases(session, policy_id=lease.policy_id)
+            reclaimed = self._reclaim_expired_leases(session, policy_id=lease.policy_id)
             pack_count = session.execute(
                 select(func.count())
                 .select_from(WorkflowPackAdmissionLeaseModel)
@@ -69,6 +69,7 @@ class SqlAlchemyWorkflowPackAdmissionLeaseRepository:
                     admitted=False,
                     active_pack_count=pack_count,
                     active_lane_count=lane_count,
+                    reclaimed_leases=reclaimed,
                 )
             session.add(self._to_model(lease))
             session.commit()
@@ -76,6 +77,7 @@ class SqlAlchemyWorkflowPackAdmissionLeaseRepository:
                 admitted=True,
                 active_pack_count=pack_count,
                 active_lane_count=lane_count,
+                reclaimed_leases=reclaimed,
             )
 
     def get_lease(self, queue_item_id: str) -> WorkflowPackQueueAdmissionLease | None:
@@ -102,19 +104,43 @@ class SqlAlchemyWorkflowPackAdmissionLeaseRepository:
             session.commit()
             return int(getattr(result, "rowcount", 0) or 0) > 0
 
-    def _reclaim_expired_leases(self, session: Session, *, policy_id: str) -> None:
+    def _reclaim_expired_leases(
+        self, session: Session, *, policy_id: str
+    ) -> tuple[WorkflowPackQueueAdmissionLease, ...]:
         """Drop leases whose holder can no longer be executing them.
 
         A replica that dies mid-execution leaves its lease behind; without
         reclamation a pack with a limit of one becomes permanently
         unadmittable, a property the process-local dict used to provide for
         free by dying with the process (issue #228).
+
+        The reclaimed leases are RETURNED, not silently dropped: the
+        admission service records a terminal event for each, so a crashed
+        item's durable history never ends at ADMISSION_GRANTED with no
+        way to tell "still running" from "died and was reclaimed". This is
+        the reclaimable crash window; the narrow window inside release and
+        cancel - after the lease delete has claimed the transition but
+        before its event is written - is genuinely lost instead, because
+        no lease remains for reclamation to notice.
         """
 
         ttl_seconds = settings.workflow_pack_admission_lease_ttl_seconds
         if ttl_seconds <= 0:
-            return
+            return ()
         cutoff = (datetime.now(UTC) - timedelta(seconds=ttl_seconds)).isoformat()
+        expired = (
+            session.execute(
+                select(WorkflowPackAdmissionLeaseModel).where(
+                    WorkflowPackAdmissionLeaseModel.policy_id == policy_id,
+                    WorkflowPackAdmissionLeaseModel.admitted_at < cutoff,
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if not expired:
+            return ()
+        reclaimed = tuple(self._to_lease(model) for model in expired)
         session.execute(
             delete(WorkflowPackAdmissionLeaseModel).where(
                 WorkflowPackAdmissionLeaseModel.policy_id == policy_id,
@@ -122,6 +148,7 @@ class SqlAlchemyWorkflowPackAdmissionLeaseRepository:
             )
         )
         session.flush()
+        return reclaimed
 
     def list_leases(self) -> list[WorkflowPackQueueAdmissionLease]:
         with self._session_factory() as session:

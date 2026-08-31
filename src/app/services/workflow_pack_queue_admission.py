@@ -267,6 +267,7 @@ def acquire_workflow_pack_queue_admission(
             pack_limit=policy.max_concurrent_runs_per_pack,
             lane_limit=policy.max_concurrent_runs_per_lane,
         )
+        _record_reclaimed_lease_events(attempt.reclaimed_leases)
         if not attempt.admitted:
             # The repository is the authoritative, replica-atomic capacity
             # decision; the earlier check is an advisory fast-fail. Losing
@@ -650,3 +651,37 @@ def _record_queue_event(
 
 def _utc_now_timestamp() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _record_reclaimed_lease_events(
+    reclaimed_leases: tuple[WorkflowPackQueueAdmissionLease, ...],
+) -> None:
+    """Give every reclaimed lease a terminal event (issue #228).
+
+    Reclamation frees capacity held by a replica that can no longer be
+    executing its item. Deleting the lease silently would leave that item's
+    durable history ending at ADMISSION_GRANTED forever, so support could
+    never tell "still running" from "died and was reclaimed".
+    """
+
+    for reclaimed in reclaimed_leases:
+        _record_queue_event(
+            queue_item_id=reclaimed.queue_item_id,
+            event_type=WorkflowPackQueueEventType.ADMISSION_RECLAIMED,
+            workflow_pack_id=reclaimed.workflow_pack_id,
+            workflow_pack_version=reclaimed.workflow_pack_version,
+            policy_id=reclaimed.policy_id,
+            lane=reclaimed.lane,
+            state=WorkflowPackQueueState.TIMED_OUT,
+            caller_app=reclaimed.caller_app,
+            correlation_id=reclaimed.correlation_id,
+            tenant_id=reclaimed.tenant_id,
+            workflow_surface=reclaimed.workflow_surface,
+            artifact_refs=reclaimed.artifact_refs,
+            reason_code="ADMISSION_LEASE_EXPIRED",
+            message=(
+                "Workflow-pack admission lease expired and was reclaimed: the holding "
+                "replica can no longer be executing this item, so its capacity was "
+                "returned to the lane."
+            ),
+        )
