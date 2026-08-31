@@ -17,7 +17,11 @@ import sys
 
 REPOSITORY = "sgajbi/lotus-ai"
 WORKFLOW_NAME = "Main Releasability Gate"
-VERDICT_CONCLUSIONS = frozenset({"success", "failure", "timed_out", "neutral"})
+# A verdict is a conclusion that actually evaluated the tree. "neutral" is
+# deliberately absent: it concludes without evaluating, so counting it would
+# mask exactly the gap this audit exists to find. "timed_out" stays - it is
+# conclusively failed, which is information.
+VERDICT_CONCLUSIONS = frozenset({"success", "failure", "timed_out"})
 
 
 class AuditError(RuntimeError):
@@ -54,6 +58,13 @@ def assert_rebase_only_merging() -> None:
 
 
 def main_commits(limit: int) -> list[str]:
+    """The most recent commits on main, newest first.
+
+    Listing by ``sha=main`` walks first parents, which enumerates exactly the
+    commits on main ONLY because history is linear - the rebase-only assertion
+    above is what guarantees that. Do not loosen one without the other.
+    """
+
     raw = _gh(
         "api",
         f"repos/{REPOSITORY}/commits?sha=main&per_page={limit}",
