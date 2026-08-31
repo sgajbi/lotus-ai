@@ -13,8 +13,11 @@ on:
         type: string
 
 concurrency:
+  # Evidence runs QUEUE, they never cancel each other (issue #236): a cancelled
+  # run reaches no verdict, so cancelling one would silently delete the only
+  # proof a commit was ever validated.
   group: ${{ github.workflow }}-${{ inputs.expected_sha || github.sha }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read

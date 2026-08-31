@@ -75,6 +75,13 @@ def _merged_pr_dispatch_contract_errors(text: str) -> list[str]:
         )
     dispatch_contract_text = dispatch_step_text or text
     required_fragments = (
+        # Per-commit fan-out (issue #236): every commit a rebase-merged pull
+        # request puts on main is gated, and the enumeration is asserted to be
+        # correct only under rebase-only merge settings.
+        "PR_COMMIT_COUNT",
+        "false,false,true",
+        "fromJSON(needs.enumerate-merged-commits.outputs.commit_shas)",
+        "MERGE_COMMIT_SHA: ${{ matrix.commit_sha }}",
         "pull_request_target:",
         "types: [closed]",
         "actions: write",
@@ -96,7 +103,6 @@ def _merged_pr_dispatch_contract_errors(text: str) -> list[str]:
     for fragment in required_fragments:
         search_text = text
         if fragment in {
-            "github.event.pull_request.merge_commit_sha",
             'dispatch_ref="main-releasability-${MERGE_COMMIT_SHA}"',
             'existing_ref_sha=""',
             "repos/$GITHUB_REPOSITORY/git/refs",

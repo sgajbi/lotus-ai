@@ -1,0 +1,34 @@
+name: Main Gate Coverage Audit
+
+on:
+  schedule:
+    # Daily: proves every commit on main carries a verdict-bearing gate run.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "How many recent main commits to audit"
+        required: false
+        default: "50"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  audit-main-gate-coverage:
+    name: Audit Main Gate Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Audit main gate coverage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/audit_main_gate_coverage.py \
+            --limit "${{ github.event.inputs.limit || '50' }}" \
+            --fail-on-gap
