@@ -108,6 +108,15 @@ class AuthorizationDecision(BaseModel):
         default=False,
         description="Whether the request-declared caller matched an authenticated HTTP caller identity.",
     )
+    caller_credential_key_id: str | None = Field(
+        default=None,
+        description=(
+            "Key id of the platform-issued credential that verified the caller identity; "
+            "null under header trust. A caller_identity_source of verified_service_jwt IS "
+            "the verification result - verification failures are refused upstream and "
+            "never reach authorization."
+        ),
+    )
     capability_type: AuthorizationCapabilityType = Field(
         description="Capability class evaluated by the access-control layer."
     )

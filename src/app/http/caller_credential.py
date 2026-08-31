@@ -18,6 +18,7 @@ from typing import Any
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from dataclasses import dataclass
 from fastapi import HTTPException, status
 
 from app.config import settings
@@ -65,8 +66,16 @@ def parse_caller_credential_public_keys(raw: str) -> dict[str, Ed25519PublicKey]
     return keys
 
 
-def verify_caller_credential(authorization: str | None) -> str:
-    """Verify the Authorization bearer credential and return the caller subject.
+@dataclass(frozen=True)
+class VerifiedCallerCredential:
+    """The verified identity facts the audit trail records (issue #149, S3)."""
+
+    subject: str
+    key_id: str
+
+
+def verify_caller_credential(authorization: str | None) -> VerifiedCallerCredential:
+    """Verify the Authorization bearer credential and return the verified identity.
 
     Every failure - missing credential, malformed token, unknown key id, bad
     signature, wrong issuer or audience, expiry - is a 401 with the bounded
@@ -119,7 +128,7 @@ def verify_caller_credential(authorization: str | None) -> str:
     subject = payload.get("sub")
     if not isinstance(subject, str) or not subject.strip():
         raise _credential_invalid("credential does not carry a caller subject")
-    return subject.strip()
+    return VerifiedCallerCredential(subject=subject.strip(), key_id=key_id)
 
 
 def _extract_bearer_token(authorization: str | None) -> str:
