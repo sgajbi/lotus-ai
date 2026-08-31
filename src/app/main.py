@@ -14,6 +14,7 @@ from app.api_errors import install_problem_detail_handlers
 from app.config import settings
 from app.contracts.api_errors import COMMON_PROBLEM_RESPONSES, ProblemDetails
 from app.http.authenticated_caller import require_authenticated_caller
+from app.http.platform_read import require_registered_caller
 from app.middleware.correlation import CorrelationIdMiddleware
 from app.services.tracing_runtime import configure_tracing
 from app.middleware.http_boundary import HttpBoundaryMiddleware
@@ -205,7 +206,9 @@ Instrumentator().instrument(app).expose(app)
 for _router_name, protected_router in PROTECTED_ROUTER_BINDINGS:
     app.include_router(
         protected_router,
-        dependencies=[Depends(require_authenticated_caller)],
+        # Order matters: the identity dependency binds the caller contextvar
+        # the registered-caller gate then reads.
+        dependencies=[Depends(require_authenticated_caller), Depends(require_registered_caller)],
     )
 _install_problem_details_openapi(app)
 
