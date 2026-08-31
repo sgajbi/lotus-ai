@@ -79,11 +79,6 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "provider_operations_store_mode": settings.provider_operations_store_mode,
         "runtime_profile": settings.runtime_profile,
         "provider_retry_limit": settings.provider_retry_limit,
-        "live_text_hard_budget_usd": settings.live_text_hard_budget_usd,
-        "live_text_default_quota_limit": settings.live_text_default_quota_limit,
-        "live_text_quota_enforced": settings.live_text_quota_enforced,
-        "live_text_budget_enforced": settings.live_text_budget_enforced,
-        "live_text_degradation_enforced": settings.live_text_degradation_enforced,
         "provider_retention_confirmation_store_mode": (
             settings.provider_retention_confirmation_store_mode
         ),
