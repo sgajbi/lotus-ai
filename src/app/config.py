@@ -1,9 +1,29 @@
 from __future__ import annotations
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Promoted-profile hardening (issue #153 S2): protection defaults applied only
+# to keys the operator did NOT set explicitly - explicit choices always win.
+# Economic limits (quota numbers, budget dollars) are never invented here;
+# promoted enables the enforcement flags and startup readiness blocks until
+# the operator supplies the limits.
+PROMOTED_PROFILE_DEFAULTS: dict[str, object] = {
+    "provider_retry_limit": 2,
+    "live_text_quota_enforced": True,
+    "live_text_budget_enforced": True,
+    "live_text_degradation_enforced": True,
+    "live_text_degraded_failure_count_threshold": 3,
+    "live_text_circuit_open_failure_count_threshold": 5,
+    "live_text_circuit_open_seconds": 60,
+    "provider_operations_store_mode": "sqlalchemy",
+    "readiness_probe_policy": "degrade",
+    "startup_readiness_policy": "enforce",
+}
 
 
 class Settings(BaseSettings):
+    runtime_profile: str = "local"
     service_name: str = "lotus-ai"
     service_version: str = "0.1.0"
     delivery_phase: str = "foundation"
@@ -101,6 +121,15 @@ class Settings(BaseSettings):
     database_url: str | None = None
 
     model_config = SettingsConfigDict(env_prefix="LOTUS_AI_", extra="ignore")
+
+    @model_validator(mode="after")
+    def _apply_runtime_profile_defaults(self) -> "Settings":
+        if self.runtime_profile != "promoted":
+            return self
+        for field_name, promoted_value in PROMOTED_PROFILE_DEFAULTS.items():
+            if field_name not in self.model_fields_set:
+                setattr(self, field_name, promoted_value)
+        return self
 
 
 settings = Settings()

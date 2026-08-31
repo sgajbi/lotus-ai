@@ -92,6 +92,31 @@ startup — smoke-test a route that uses the store after changing one.
 | `LOTUS_AI_LIVE_TEXT_TEMPERATURE` | `0.0` — always sent explicitly; never left to provider defaults |
 | `LOTUS_AI_LIVE_TEXT_TOP_P` | *(none)* — omitted from provider calls when unset |
 | `LOTUS_AI_LIVE_TEXT_SEED` | *(none)* — omitted from provider calls when unset |
+### Runtime profile (issue #153)
+
+`LOTUS_AI_RUNTIME_PROFILE` (`local` default, or `promoted`) derives protection
+defaults **only for keys the operator did not set explicitly** — explicit
+choices always win. Promoted never invents economic limits: it enables the
+enforcement flags, and startup readiness (enforce) blocks until the operator
+supplies quota/budget numbers.
+
+| setting | local default | promoted default |
+|---|---|---|
+| `LOTUS_AI_PROVIDER_RETRY_LIMIT` | `0` | `2` (with backoff + jitter + deadline) |
+| `LOTUS_AI_LIVE_TEXT_QUOTA_ENFORCED` | `false` | `true` (limits must be supplied) |
+| `LOTUS_AI_LIVE_TEXT_BUDGET_ENFORCED` | `false` | `true` (hard budget must be supplied) |
+| `LOTUS_AI_LIVE_TEXT_DEGRADATION_ENFORCED` | `false` | `true` |
+| `LOTUS_AI_LIVE_TEXT_DEGRADED_FAILURE_COUNT_THRESHOLD` | *(none)* | `3` |
+| `LOTUS_AI_LIVE_TEXT_CIRCUIT_OPEN_FAILURE_COUNT_THRESHOLD` | *(none)* | `5` |
+| `LOTUS_AI_LIVE_TEXT_CIRCUIT_OPEN_SECONDS` | *(none)* | `60` |
+| `LOTUS_AI_PROVIDER_OPERATIONS_STORE_MODE` | `memory` | `sqlalchemy` |
+| `LOTUS_AI_READINESS_PROBE_POLICY` | `observe` | `degrade` |
+| `LOTUS_AI_STARTUP_READINESS_POLICY` | `warn` | `enforce` |
+
+Under promoted with a live provider mode, disabled protections, missing
+limits, or a memory operations store are startup findings — and promoted's
+enforce policy makes findings blocking.
+
 | `LOTUS_AI_TRACING_ENABLED` | `false` — OpenTelemetry spans at the HTTP boundary and provider transport; enabling requires the OTLP endpoint (startup refuses otherwise) |
 | `LOTUS_AI_TRACING_OTLP_ENDPOINT` | *(none)* — OTLP/HTTP trace endpoint |
 | `LOTUS_AI_REDACTION_MODE` | `enforce` — the deterministic redaction engine redacts generated content before persistence and egress; `observe` counts findings without modifying content |
