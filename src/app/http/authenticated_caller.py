@@ -23,6 +23,13 @@ VERIFIED_AUTHENTICATED_CALLER_TRUST_SOURCES = frozenset({"verified_service_jwt",
 class AuthenticatedCaller(BaseModel):
     caller_app: str = Field(description="Authenticated caller application identity.")
     trust_source: str = Field(description="Trusted source used to resolve the caller identity.")
+    credential_key_id: str | None = Field(
+        default=None,
+        description=(
+            "Key id of the platform-issued credential that verified this caller; "
+            "null under header trust."
+        ),
+    )
 
 
 def is_privileged_caller_identity_accepted(caller: AuthenticatedCaller) -> bool:
@@ -66,15 +73,16 @@ def _resolve_authenticated_caller(
     if settings.caller_trust_mode != CALLER_TRUST_MODE_HEADER:
         # Any non-header mode verifies the credential; an unknown mode never
         # falls open to header trust (it is also a startup finding).
-        subject = verify_caller_credential(authorization)
-        if caller_app and caller_app != subject:
+        credential = verify_caller_credential(authorization)
+        if caller_app and caller_app != credential.subject:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=("X-Caller-App does not match the verified caller credential subject."),
             )
         return AuthenticatedCaller(
-            caller_app=subject,
+            caller_app=credential.subject,
             trust_source=CALLER_TRUST_MODE_VERIFIED_JWT,
+            credential_key_id=credential.key_id,
         )
     if not caller_app:
         raise HTTPException(

@@ -79,15 +79,31 @@ endpoint internals must not be returned in API errors.
 service-owned boundary is transport-only and must not contain task, workflow-pack, retrieval,
 prompt, provider, or domain business logic.
 
-Every route included from the 19 named product routers requires a trusted `X-Caller-App` header from
-ingress or an equivalent service-to-service boundary. Where a request declares `caller_app`, it
-remains audit and evidence metadata and must match the authenticated HTTP caller before task
-execution, retrieval execution, async submission or control, prompt control, provider control,
-workflow-pack execution, workflow-pack review, or queue recovery side effects run. Authorization
-decisions now preserve `authenticated_caller_app`,
-`caller_identity_source`, and `caller_identity_bound` so operators can distinguish trusted
-caller-binding evidence from legacy body-only metadata. The current header represents a Lotus
-service caller, not a human end-user entitlement model.
+Every route included from the named product routers requires an authenticated Lotus service
+caller, and the identified caller must additionally be a registered ACTIVE caller-policy entry
+(the `platform_read` capability - the policy row itself is the grant). How the identity is
+established is governed by `LOTUS_AI_CALLER_TRUST_MODE`:
+
+- `header` (local trust): the `X-Caller-App` header from ingress or an equivalent
+  service-to-service boundary names the caller (`caller_identity_source=trusted_http_header`).
+  In the promoted runtime profile this mode is a startup readiness finding - a self-asserted
+  header cannot be the promoted identity boundary.
+- `verified_service_jwt`: the caller is the `sub` claim of a platform-issued compact EdDSA
+  JWS presented as `Authorization: Bearer <credential>`, verified against the configured
+  issuer, audience, and Ed25519 public-key map (two active key ids during rotation).
+  Signature, issuer, audience, expiry, and not-before are enforced; every failure is a `401`
+  problem-details `CALLER_CREDENTIAL_INVALID` and never falls back to header trust. An
+  `X-Caller-App` header sent alongside must equal the credential subject.
+
+Where a request declares `caller_app`, it remains audit and evidence metadata and must match the
+authenticated caller before task execution, retrieval execution, async submission or control,
+prompt control, provider control, workflow-pack execution, workflow-pack review, or queue
+recovery side effects run. Authorization decisions preserve `authenticated_caller_app`,
+`caller_identity_source`, `caller_identity_bound`, and - under verified trust -
+`caller_credential_key_id`, so audit records carry the verified subject and the key that
+verified it; a `caller_identity_source` of `verified_service_jwt` is itself the verification
+result, because verification failures are refused upstream and never reach authorization. The
+caller identity represents a Lotus service caller, not a human end-user entitlement model.
 
 Environment-backed controls use the `LOTUS_AI_` prefix:
 

@@ -39,6 +39,32 @@ def authorize_request(
     task_id: str | None = None,
     source_ids: list[str] | None = None,
 ) -> AuthorizationDecision:
+    decision = _authorize_request_inner(
+        caller_app=caller_app,
+        capability_type=capability_type,
+        tenant_id=tenant_id,
+        task_id=task_id,
+        source_ids=source_ids,
+    )
+    # The credential key id comes from exactly one place - the verified
+    # caller binding - so it is stamped centrally rather than threaded
+    # through every decision branch (issue #149, S3).
+    authenticated_caller = get_authenticated_caller()
+    if authenticated_caller is not None and authenticated_caller.credential_key_id is not None:
+        return decision.model_copy(
+            update={"caller_credential_key_id": authenticated_caller.credential_key_id}
+        )
+    return decision
+
+
+def _authorize_request_inner(
+    *,
+    caller_app: str,
+    capability_type: AuthorizationCapabilityType,
+    tenant_id: str | None = None,
+    task_id: str | None = None,
+    source_ids: list[str] | None = None,
+) -> AuthorizationDecision:
     requested_source_ids = list(source_ids or [])
     authenticated_caller = get_authenticated_caller()
     identity_source = (

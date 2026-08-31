@@ -7,6 +7,8 @@ that never falls back to header trust; rotation accepts a second key id;
 header mode in the promoted profile is a blocking startup finding.
 """
 
+from pathlib import Path
+
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
@@ -60,13 +62,16 @@ def _assert_credential_invalid(exc_info: pytest.ExceptionInfo[HTTPException]) ->
 
 def test_valid_credential_yields_the_verified_subject() -> None:
     _verified_mode_settings()
-    assert verify_caller_credential(_bearer()) == "lotus-advise"
+    verified = verify_caller_credential(_bearer())
+    assert verified.subject == "lotus-advise"
+    assert verified.key_id == "platform_2026_08"
 
 
 def test_rotation_accepts_the_second_active_key_id() -> None:
     _verified_mode_settings()
-    credential = _bearer(signing_key=ROTATED_KEY, key_id="platform_2026_09")
-    assert verify_caller_credential(credential) == "lotus-advise"
+    verified = verify_caller_credential(_bearer(signing_key=ROTATED_KEY, key_id="platform_2026_09"))
+    assert verified.subject == "lotus-advise"
+    assert verified.key_id == "platform_2026_09"
 
 
 @pytest.mark.parametrize(
@@ -231,6 +236,63 @@ def test_bound_route_accepts_a_credential_and_refuses_a_bare_header() -> None:
         )
         assert accepted.status_code == 200
         assert accepted.json()["allowed"] is True
+
+
+def test_evaluation_condition_promoted_profile_end_to_end(tmp_path: Path) -> None:
+    """Issue #149 evaluation condition: with promoted-profile settings, a
+    request carrying only X-Caller-App is rejected 401; the same request with
+    a valid platform-issued credential succeeds and the audit record's caller
+    equals the credential subject, with the trust facts recorded."""
+
+    from app.services.audit_store import get_audit_store
+    from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
+    from tests.support.migration_runner import upgrade_database_to_head
+
+    settings.runtime_profile = "promoted"
+    settings.workflow_pack_admission_store_mode = "sqlalchemy"
+    database_url = f"sqlite:///{tmp_path / 'eval-condition-149.db'}"
+    settings.database_url = database_url
+    upgrade_database_to_head(database_url)
+    _verified_mode_settings()
+
+    payload = {
+        "task_id": "explain.v1",
+        "input_mode": "STRUCTURED_CONTEXT",
+        "caller": {
+            "caller_app": "lotus-manage",
+            "correlation_id": "corr-149-s3",
+            "requested_by": "ops.user@lotus",
+            "tenant_id": "tenant-sg-001",
+        },
+        "context": {
+            "summary": "Explain rebalance outcome",
+            "payload": {"status": "BLOCKED", "violations": 2},
+            "source_refs": ["lotus-manage:run:reb_149"],
+        },
+        "expected_output_label": "EXPLANATION_ONLY",
+    }
+    with TestClient(app) as client:
+        refused = client.post(
+            "/ai/tasks/execute", json=payload, headers={"X-Caller-App": "lotus-manage"}
+        )
+        assert refused.status_code == 401
+        assert refused.json()["error_code"] == "CALLER_CREDENTIAL_INVALID"
+
+        accepted = client.post(
+            "/ai/tasks/execute",
+            json=payload,
+            headers={"Authorization": _bearer(subject="lotus-manage")},
+        )
+        assert accepted.status_code == 200
+        assert accepted.json()["status"] == "COMPLETED"
+
+    records = get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=5)
+    record = next(r for r in records if r.correlation_id == "corr-149-s3")
+    assert record.caller_app == "lotus-manage"
+    assert record.authorization.authenticated_caller_app == "lotus-manage"
+    assert record.authorization.caller_identity_source == "verified_service_jwt"
+    assert record.authorization.caller_identity_bound is True
+    assert record.authorization.caller_credential_key_id == "platform_2026_08"
 
 
 def test_public_key_parsing_rejects_each_malformation() -> None:
