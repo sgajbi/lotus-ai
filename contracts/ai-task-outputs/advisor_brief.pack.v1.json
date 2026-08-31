@@ -1,0 +1,477 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lotus.ai/contracts/ai-task-outputs/advisor_brief.pack.v1.json",
+  "title": "advisor_brief.pack output contract",
+  "description": "Structured output contract for advisor_brief.pack executions: the deterministic governed stub shape, or the live-transport shape normalized by the advisor-brief quality guardrails. The review-gated, non-authoritative posture of the output is part of the contract.",
+  "anyOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "adapter_kind": {
+          "type": "string"
+        },
+        "advisor_brief_status": {
+          "type": "string"
+        },
+        "context_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "context_summary": {
+          "type": "string"
+        },
+        "coverage_state": {
+          "type": "string"
+        },
+        "grounded_facts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "metric_label": {
+                "type": "string"
+              },
+              "metric_value": {
+                "type": "string"
+              },
+              "source_ref": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "grounded_summary": {
+          "type": "string"
+        },
+        "max_output_tokens": {
+          "type": "integer"
+        },
+        "output_label": {
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "portfolio_id": {
+          "type": "string"
+        },
+        "provider_id": {
+          "type": "string"
+        },
+        "provider_mode": {
+          "type": "string"
+        },
+        "recommended_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "detail": {
+                "type": "string"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "metric_label": {
+                      "type": "string"
+                    },
+                    "metric_value": {
+                      "type": "string"
+                    },
+                    "source_ref": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "label": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "redaction_posture": {
+          "type": "string"
+        },
+        "retry_count": {
+          "type": "integer"
+        },
+        "risks_and_exceptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "detail": {
+                "type": "string"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "metric_label": {
+                      "type": "string"
+                    },
+                    "metric_value": {
+                      "type": "string"
+                    },
+                    "source_ref": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "headline": {
+                "type": "string"
+              },
+              "tone": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "safety_mode": {
+          "type": "string"
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stub_reason": {
+          "type": "string"
+        },
+        "talking_points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "detail": {
+                "type": "string"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "metric_label": {
+                      "type": "string"
+                    },
+                    "metric_value": {
+                      "type": "string"
+                    },
+                    "source_ref": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "headline": {
+                "type": "string"
+              },
+              "tone": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "timeout_ms": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "adapter_kind",
+        "advisor_brief_status",
+        "context_keys",
+        "context_summary",
+        "coverage_state",
+        "grounded_facts",
+        "grounded_summary",
+        "max_output_tokens",
+        "output_label",
+        "period",
+        "phase",
+        "portfolio_id",
+        "provider_id",
+        "provider_mode",
+        "recommended_actions",
+        "redaction_posture",
+        "retry_count",
+        "risks_and_exceptions",
+        "safety_mode",
+        "source_refs",
+        "stub_reason",
+        "talking_points",
+        "timeout_ms"
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_id",
+        "provider_mode",
+        "adapter_kind",
+        "output_label",
+        "safety_mode",
+        "redaction_posture",
+        "source_refs",
+        "retry_count",
+        "grounded_summary",
+        "talking_points",
+        "recommended_actions",
+        "risks_and_exceptions",
+        "advisor_brief_guardrail_triggered"
+      ],
+      "properties": {
+        "provider_id": {
+          "type": "string"
+        },
+        "provider_mode": {
+          "type": "string"
+        },
+        "adapter_kind": {
+          "type": "string"
+        },
+        "model_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider_request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "output_label": {
+          "type": "string"
+        },
+        "safety_mode": {
+          "type": "string"
+        },
+        "redaction_posture": {
+          "type": "string"
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "retry_count": {
+          "type": "integer"
+        },
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "total_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "estimated_cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "rate_card_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cost_posture": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "strict_json_salvaged": {
+          "type": "boolean"
+        },
+        "grounded_summary": {
+          "type": "string"
+        },
+        "talking_points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "headline": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "tone": {
+                "type": "string"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "metric_label": {
+                      "type": "string"
+                    },
+                    "metric_value": {
+                      "type": "string"
+                    },
+                    "source_ref": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "recommended_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "headline": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "tone": {
+                "type": "string"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "metric_label": {
+                      "type": "string"
+                    },
+                    "metric_value": {
+                      "type": "string"
+                    },
+                    "source_ref": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "risks_and_exceptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "headline": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "tone": {
+                "type": "string"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "metric_label": {
+                      "type": "string"
+                    },
+                    "metric_value": {
+                      "type": "string"
+                    },
+                    "source_ref": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "grounded_facts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "metric_label": {
+                "type": "string"
+              },
+              "metric_value": {
+                "type": "string"
+              },
+              "source_ref": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "advisor_brief_guardrail_triggered": {
+          "type": "boolean"
+        },
+        "advisor_brief_guardrail_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "raw_output_excerpt": {
+          "type": "string"
+        }
+      }
+    }
+  ]
+}

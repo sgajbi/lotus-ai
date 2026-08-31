@@ -11,6 +11,7 @@ from app.contracts.workflow_packs import (
     WorkflowPackRegistrationStatus,
     WorkflowPackValidationRuleDescriptor,
 )
+from app.services.output_contracts import output_contract_exists
 from app.services.workflow_pack_phase1_specs import (
     ADVISOR_BRIEF_V1_SPEC,
     ADVISORY_COPILOT_ACTION_PACK_SPECS,
@@ -543,6 +544,27 @@ def validate_workflow_pack_registrations(
     _validate_registered_entries_have_scope(registrations)
     _validate_retired_entries_are_not_active(registrations)
     _validate_definition_references(registrations)
+    _validate_output_contracts_exist(registrations)
+
+
+def _validate_output_contracts_exist(
+    registrations: list[WorkflowPackRegistrationDescriptor],
+) -> None:
+    # A pack family without a deterministic output contract cannot be
+    # registered (issue #156, S2): the validator would have nothing to
+    # enforce and the output would run unvalidated.
+    missing = sorted(
+        {
+            registration.pack_id
+            for registration in registrations
+            if not output_contract_exists(registration.pack_id)
+        }
+    )
+    if missing:
+        raise ValueError(
+            "Workflow-pack registration requires a deterministic output contract in "
+            f"contracts/ai-task-outputs for: {', '.join(missing)}"
+        )
 
 
 def _advisor_brief_v1_definition_refs() -> list[WorkflowPackDefinitionReferenceDescriptor]:

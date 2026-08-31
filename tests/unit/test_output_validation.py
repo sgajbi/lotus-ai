@@ -7,6 +7,8 @@ record; salvaged JSON is rejected in promoted and marked
 UNVALIDATED_LOCAL_ONLY in local; a validator fault fails closed.
 """
 
+from collections.abc import Generator
+
 import pytest
 
 from app.config import settings
@@ -26,12 +28,37 @@ from tests.unit.test_task_executor import _request
 GROUNDED_REFS = ["lotus-manage:run:reb_001", "lotus-manage:run:reb_002"]
 
 
+@pytest.fixture(autouse=True)
+def _permissive_rules_contract(
+    tmp_path: object, monkeypatch: pytest.MonkeyPatch
+) -> Generator[None, None, None]:
+    """The rule-unit tests exercise one rule at a time against synthetic
+    outputs, so they run under a permissive contract in an isolated
+    contracts directory; the real committed contracts are exercised by the
+    end-to-end and per-contract tests."""
+
+    import json
+    import shutil
+    from pathlib import Path
+
+    from app.services import output_contracts
+
+    directory = Path(str(tmp_path)) / "ai-task-outputs"
+    shutil.copytree(output_contracts._CONTRACTS_DIR, directory)
+    (directory / "rules.test.v1.json").write_text(json.dumps({"type": "object"}), encoding="utf-8")
+    monkeypatch.setattr(output_contracts, "_CONTRACTS_DIR", directory)
+    output_contracts.reset_output_contract_cache()
+    yield
+    output_contracts.reset_output_contract_cache()
+
+
 def _validate(structured_output: object, **overrides: object) -> OutputValidationOutcome:
     kwargs: dict[str, object] = {
         "structured_output": structured_output,
         "supplied_source_refs": GROUNDED_REFS,
         "salvaged_json": False,
         "runtime_profile": "local",
+        "contract_key": "rules.test",
     }
     kwargs.update(overrides)
     return validate_provider_output(**kwargs)  # type: ignore[arg-type]

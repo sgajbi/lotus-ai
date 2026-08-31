@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lotus.ai/contracts/ai-task-outputs/proposal_memo_commentary.pack.v1.json",
+  "title": "proposal_memo_commentary.pack output contract",
+  "description": "Structured output contract for proposal_memo_commentary.pack executions, derived from the deterministic governed stub runtime; the review-gated, non-authoritative posture of the output is part of the contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "adapter_kind": {
+      "type": "string"
+    },
+    "context_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "context_summary": {
+      "type": "string"
+    },
+    "max_output_tokens": {
+      "type": "integer"
+    },
+    "memo_hash": {
+      "type": "string"
+    },
+    "memo_id": {
+      "type": "string"
+    },
+    "memo_status": {
+      "type": "string"
+    },
+    "narrative_type": {
+      "type": "string"
+    },
+    "output_label": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "provider_id": {
+      "type": "string"
+    },
+    "provider_mode": {
+      "type": "string"
+    },
+    "redaction_posture": {
+      "type": "string"
+    },
+    "retry_count": {
+      "type": "integer"
+    },
+    "review_guidance": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "safety_mode": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "section_count": {
+      "type": "integer"
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "section_key": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "source_ref_count": {
+      "type": "integer"
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "state": {
+      "type": "string"
+    },
+    "stub_reason": {
+      "type": "string"
+    },
+    "timeout_ms": {
+      "type": "integer"
+    },
+    "unsupported_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "workflow_pack_family": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "adapter_kind",
+    "context_keys",
+    "context_summary",
+    "max_output_tokens",
+    "memo_hash",
+    "memo_id",
+    "memo_status",
+    "narrative_type",
+    "output_label",
+    "phase",
+    "provider_id",
+    "provider_mode",
+    "redaction_posture",
+    "retry_count",
+    "review_guidance",
+    "safety_mode",
+    "scope",
+    "section_count",
+    "sections",
+    "source_ref_count",
+    "source_refs",
+    "state",
+    "stub_reason",
+    "timeout_ms",
+    "unsupported_claims",
+    "workflow_pack_family"
+  ]
+}

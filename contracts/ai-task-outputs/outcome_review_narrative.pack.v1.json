@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lotus.ai/contracts/ai-task-outputs/outcome_review_narrative.pack.v1.json",
+  "title": "outcome_review_narrative.pack output contract",
+  "description": "Structured output contract for outcome_review_narrative.pack executions, derived from the deterministic governed stub runtime; the review-gated, non-authoritative posture of the output is part of the contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "adapter_kind": {
+      "type": "string"
+    },
+    "context_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "context_summary": {
+      "type": "string"
+    },
+    "dimension_count": {
+      "type": "integer"
+    },
+    "evidence_content_hash": {
+      "type": "string"
+    },
+    "forbidden_actions_enforced": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_fields_removed": {
+      "type": "array"
+    },
+    "max_output_tokens": {
+      "type": "integer"
+    },
+    "narrative_scope": {
+      "type": "string"
+    },
+    "outcome_review_content_hash": {
+      "type": "string"
+    },
+    "outcome_review_id": {
+      "type": "string"
+    },
+    "outcome_review_narrative_status": {
+      "type": "string"
+    },
+    "output_label": {
+      "type": "string"
+    },
+    "overall_outcome": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "portfolio_id": {
+      "type": "string"
+    },
+    "portfolio_memory_content_hash": {
+      "type": "string"
+    },
+    "portfolio_memory_context_content_hash": {
+      "type": "string"
+    },
+    "portfolio_memory_event_count": {
+      "type": "integer"
+    },
+    "portfolio_memory_event_ref_count": {
+      "type": "integer"
+    },
+    "portfolio_memory_event_refs_omitted": {
+      "type": "integer"
+    },
+    "portfolio_memory_event_refs_truncated": {
+      "type": "boolean"
+    },
+    "portfolio_memory_event_types": {
+      "type": "array"
+    },
+    "portfolio_memory_source_systems": {
+      "type": "array"
+    },
+    "portfolio_memory_status": {
+      "type": "string"
+    },
+    "portfolio_memory_supportability_state": {
+      "type": "string"
+    },
+    "provider_id": {
+      "type": "string"
+    },
+    "provider_mode": {
+      "type": "string"
+    },
+    "redaction_posture": {
+      "type": "string"
+    },
+    "requested_outputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "retry_count": {
+      "type": "integer"
+    },
+    "review_guidance": {
+      "type": "string"
+    },
+    "safety_mode": {
+      "type": "string"
+    },
+    "source_ref_count": {
+      "type": "integer"
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "stub_reason": {
+      "type": "string"
+    },
+    "timeout_ms": {
+      "type": "integer"
+    },
+    "unsupported_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "adapter_kind",
+    "context_keys",
+    "context_summary",
+    "dimension_count",
+    "evidence_content_hash",
+    "forbidden_actions_enforced",
+    "forbidden_fields_removed",
+    "max_output_tokens",
+    "narrative_scope",
+    "outcome_review_content_hash",
+    "outcome_review_id",
+    "outcome_review_narrative_status",
+    "output_label",
+    "overall_outcome",
+    "phase",
+    "portfolio_id",
+    "portfolio_memory_content_hash",
+    "portfolio_memory_context_content_hash",
+    "portfolio_memory_event_count",
+    "portfolio_memory_event_ref_count",
+    "portfolio_memory_event_refs_omitted",
+    "portfolio_memory_event_refs_truncated",
+    "portfolio_memory_event_types",
+    "portfolio_memory_source_systems",
+    "portfolio_memory_status",
+    "portfolio_memory_supportability_state",
+    "provider_id",
+    "provider_mode",
+    "redaction_posture",
+    "requested_outputs",
+    "retry_count",
+    "review_guidance",
+    "safety_mode",
+    "source_ref_count",
+    "source_refs",
+    "stub_reason",
+    "timeout_ms",
+    "unsupported_claims"
+  ]
+}

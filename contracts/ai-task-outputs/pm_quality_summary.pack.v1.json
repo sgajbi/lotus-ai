@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lotus.ai/contracts/ai-task-outputs/pm_quality_summary.pack.v1.json",
+  "title": "pm_quality_summary.pack output contract",
+  "description": "Structured output contract for pm_quality_summary.pack executions, derived from the deterministic governed stub runtime; the review-gated, non-authoritative posture of the output is part of the contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "adapter_kind": {
+      "type": "string"
+    },
+    "context_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "context_summary": {
+      "type": "string"
+    },
+    "forbidden_actions_enforced": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "indicator_result_count": {
+      "type": "integer"
+    },
+    "max_output_tokens": {
+      "type": "integer"
+    },
+    "narrative_type": {
+      "type": "string"
+    },
+    "output_label": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "policy_id": {
+      "type": "string"
+    },
+    "policy_version": {
+      "type": "string"
+    },
+    "portfolio_id": {
+      "type": "string"
+    },
+    "portfolio_manager_id": {
+      "type": "string"
+    },
+    "portfolio_memory_content_hash": {
+      "type": "string"
+    },
+    "portfolio_memory_context_content_hash": {
+      "type": "string"
+    },
+    "portfolio_memory_event_count": {
+      "type": "integer"
+    },
+    "portfolio_memory_event_ref_count": {
+      "type": "integer"
+    },
+    "portfolio_memory_event_refs_omitted": {
+      "type": "integer"
+    },
+    "portfolio_memory_event_refs_truncated": {
+      "type": "boolean"
+    },
+    "portfolio_memory_event_types": {
+      "type": "array"
+    },
+    "portfolio_memory_source_systems": {
+      "type": "array"
+    },
+    "portfolio_memory_status": {
+      "type": "string"
+    },
+    "portfolio_memory_supportability_state": {
+      "type": "string"
+    },
+    "provider_id": {
+      "type": "string"
+    },
+    "provider_mode": {
+      "type": "string"
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "redaction_posture": {
+      "type": "string"
+    },
+    "requested_outputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "retry_count": {
+      "type": "integer"
+    },
+    "review_guidance": {
+      "type": "string"
+    },
+    "safety_mode": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "score_run_content_hash": {
+      "type": "string"
+    },
+    "score_run_id": {
+      "type": "string"
+    },
+    "score_run_state": {
+      "type": "string"
+    },
+    "source_ref_count": {
+      "type": "integer"
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "state": {
+      "type": "string"
+    },
+    "stub_reason": {
+      "type": "string"
+    },
+    "timeout_ms": {
+      "type": "integer"
+    },
+    "unsupported_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "workflow_pack_family": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "adapter_kind",
+    "context_keys",
+    "context_summary",
+    "forbidden_actions_enforced",
+    "indicator_result_count",
+    "max_output_tokens",
+    "narrative_type",
+    "output_label",
+    "phase",
+    "policy_id",
+    "policy_version",
+    "portfolio_id",
+    "portfolio_manager_id",
+    "portfolio_memory_content_hash",
+    "portfolio_memory_context_content_hash",
+    "portfolio_memory_event_count",
+    "portfolio_memory_event_ref_count",
+    "portfolio_memory_event_refs_omitted",
+    "portfolio_memory_event_refs_truncated",
+    "portfolio_memory_event_types",
+    "portfolio_memory_source_systems",
+    "portfolio_memory_status",
+    "portfolio_memory_supportability_state",
+    "provider_id",
+    "provider_mode",
+    "reason_codes",
+    "redaction_posture",
+    "requested_outputs",
+    "retry_count",
+    "review_guidance",
+    "safety_mode",
+    "scope",
+    "score_run_content_hash",
+    "score_run_id",
+    "score_run_state",
+    "source_ref_count",
+    "source_refs",
+    "state",
+    "stub_reason",
+    "timeout_ms",
+    "unsupported_claims",
+    "workflow_pack_family"
+  ]
+}

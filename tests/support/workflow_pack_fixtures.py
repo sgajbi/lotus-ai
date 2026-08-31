@@ -1356,3 +1356,79 @@ def idea_explanation_workflow_pack_execution_request_json(
     if workflow_surface is not None:
         request["workflow_surface"] = workflow_surface
     return request
+
+
+def advisory_copilot_variant_workflow_pack_execution_request_json(
+    *,
+    pack_id: str,
+    workflow_surface: str,
+    action_family: str,
+    correlation_id: str,
+) -> dict[str, object]:
+    """A sibling advisory-copilot action pack request: the shared payload
+    with the pack identity and action family swapped (issue #156, S2 - the
+    four action packs previously had no execution coverage at all)."""
+
+    import copy
+
+    request = copy.deepcopy(
+        advisory_copilot_workflow_pack_execution_request_json(correlation_id=correlation_id)
+    )
+    request["pack_id"] = pack_id
+    request["workflow_surface"] = workflow_surface
+    task_request = request["task_request"]
+    assert isinstance(task_request, dict)
+    payload = task_request["context"]["payload"]
+    payload["copilot_request"]["action_family"] = action_family
+    payload["copilot_evidence_packet"]["action_family"] = action_family
+    return request
+
+
+def proposal_memo_commentary_workflow_pack_execution_request_json(
+    *,
+    correlation_id: str,
+) -> dict[str, object]:
+    return {
+        "pack_id": "proposal_memo_commentary.pack",
+        "version": "v1",
+        "environment": "DEVELOPMENT",
+        "caller_identity_class": "INTERNAL_SERVICE",
+        "workflow_surface": "advisor-proposal-memo-commentary",
+        "task_request": {
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-advise",
+                "correlation_id": correlation_id,
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Draft advisor proposal memo commentary.",
+                "payload": {
+                    "memo_evidence": {
+                        "memo_id": "memo-prop-001-v3",
+                        "memo_hash": "sha256:memo-001",
+                        "memo_status": "ADVISOR_REVIEW_REQUIRED",
+                        "source_refs": [
+                            "lotus-advise:memo:memo-prop-001-v3",
+                            "lotus-core:portfolio:PB_SG_GLOBAL_BAL_001",
+                        ],
+                    },
+                    "commentary_request": {
+                        "requested_sections": [
+                            "EXECUTIVE_SUMMARY",
+                            "RISK_AND_SUITABILITY_LIMITATIONS",
+                        ]
+                    },
+                    "supportability": {
+                        "unsupported_claims": [
+                            "client_ready_publication",
+                            "suitability_approval",
+                        ]
+                    },
+                },
+                "source_refs": ["lotus-advise:memo:memo-prop-001-v3"],
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    }

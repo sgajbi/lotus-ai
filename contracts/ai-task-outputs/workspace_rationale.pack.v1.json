@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lotus.ai/contracts/ai-task-outputs/workspace_rationale.pack.v1.json",
+  "title": "workspace_rationale.pack output contract",
+  "description": "Structured output contract for workspace_rationale.pack executions, derived from the deterministic governed stub runtime; the review-gated, non-authoritative posture of the output is part of the contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "adapter_kind": {
+      "type": "string"
+    },
+    "context_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "context_summary": {
+      "type": "string"
+    },
+    "max_output_tokens": {
+      "type": "integer"
+    },
+    "output_label": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "provider_id": {
+      "type": "string"
+    },
+    "provider_mode": {
+      "type": "string"
+    },
+    "redaction_posture": {
+      "type": "string"
+    },
+    "retry_count": {
+      "type": "integer"
+    },
+    "safety_mode": {
+      "type": "string"
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "stub_reason": {
+      "type": "string"
+    },
+    "timeout_ms": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "adapter_kind",
+    "context_keys",
+    "context_summary",
+    "max_output_tokens",
+    "output_label",
+    "phase",
+    "provider_id",
+    "provider_mode",
+    "redaction_posture",
+    "retry_count",
+    "safety_mode",
+    "source_refs",
+    "stub_reason",
+    "timeout_ms"
+  ]
+}

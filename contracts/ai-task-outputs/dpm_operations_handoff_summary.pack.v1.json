@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lotus.ai/contracts/ai-task-outputs/dpm_operations_handoff_summary.pack.v1.json",
+  "title": "dpm_operations_handoff_summary.pack output contract",
+  "description": "Structured output contract for dpm_operations_handoff_summary.pack executions, derived from the deterministic governed stub runtime; the review-gated, non-authoritative posture of the output is part of the contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "adapter_kind": {
+      "type": "string"
+    },
+    "blocked_item_count": {
+      "type": "integer"
+    },
+    "context_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "context_summary": {
+      "type": "string"
+    },
+    "external_execution_claimed": {
+      "type": "boolean"
+    },
+    "forbidden_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "handoff_ref_count": {
+      "type": "integer"
+    },
+    "item_count": {
+      "type": "integer"
+    },
+    "max_output_tokens": {
+      "type": "integer"
+    },
+    "narrative_type": {
+      "type": "string"
+    },
+    "output_label": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "portfolio_memory_content_hash": {
+      "type": "string"
+    },
+    "portfolio_memory_context_content_hash": {
+      "type": "string"
+    },
+    "portfolio_memory_event_count": {
+      "type": "integer"
+    },
+    "portfolio_memory_event_ref_count": {
+      "type": "integer"
+    },
+    "portfolio_memory_event_refs_omitted": {
+      "type": "integer"
+    },
+    "portfolio_memory_event_refs_truncated": {
+      "type": "boolean"
+    },
+    "portfolio_memory_event_types": {
+      "type": "array"
+    },
+    "portfolio_memory_source_systems": {
+      "type": "array"
+    },
+    "portfolio_memory_status": {
+      "type": "string"
+    },
+    "portfolio_memory_supportability_state": {
+      "type": "string"
+    },
+    "provider_id": {
+      "type": "string"
+    },
+    "provider_mode": {
+      "type": "string"
+    },
+    "redaction_posture": {
+      "type": "string"
+    },
+    "requested_outputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "retry_count": {
+      "type": "integer"
+    },
+    "review_guidance": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "safety_mode": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "source_ref_count": {
+      "type": "integer"
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "state": {
+      "type": "string"
+    },
+    "stub_reason": {
+      "type": "string"
+    },
+    "timeout_ms": {
+      "type": "integer"
+    },
+    "unsupported_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "wave_id": {
+      "type": "string"
+    },
+    "wave_report_content_hash": {
+      "type": "string"
+    },
+    "wave_state": {
+      "type": "string"
+    },
+    "workflow_pack_family": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "adapter_kind",
+    "blocked_item_count",
+    "context_keys",
+    "context_summary",
+    "external_execution_claimed",
+    "forbidden_actions",
+    "handoff_ref_count",
+    "item_count",
+    "max_output_tokens",
+    "narrative_type",
+    "output_label",
+    "phase",
+    "portfolio_memory_content_hash",
+    "portfolio_memory_context_content_hash",
+    "portfolio_memory_event_count",
+    "portfolio_memory_event_ref_count",
+    "portfolio_memory_event_refs_omitted",
+    "portfolio_memory_event_refs_truncated",
+    "portfolio_memory_event_types",
+    "portfolio_memory_source_systems",
+    "portfolio_memory_status",
+    "portfolio_memory_supportability_state",
+    "provider_id",
+    "provider_mode",
+    "redaction_posture",
+    "requested_outputs",
+    "retry_count",
+    "review_guidance",
+    "safety_mode",
+    "scope",
+    "source_ref_count",
+    "source_refs",
+    "state",
+    "stub_reason",
+    "timeout_ms",
+    "unsupported_claims",
+    "wave_id",
+    "wave_report_content_hash",
+    "wave_state",
+    "workflow_pack_family"
+  ]
+}

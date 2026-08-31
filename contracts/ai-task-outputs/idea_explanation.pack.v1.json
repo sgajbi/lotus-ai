@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lotus.ai/contracts/ai-task-outputs/idea_explanation.pack.v1.json",
+  "title": "idea_explanation.pack output contract",
+  "description": "Structured output contract for idea_explanation.pack executions, derived from the deterministic governed stub runtime; the review-gated, non-authoritative posture of the output is part of the contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "adapter_kind": {
+      "type": "string"
+    },
+    "candidate_id": {
+      "type": "string"
+    },
+    "client_ready_publication": {
+      "type": "string"
+    },
+    "context_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "context_summary": {
+      "type": "string"
+    },
+    "downstream_authority": {
+      "type": "string"
+    },
+    "evaluation_ref": {
+      "type": "string"
+    },
+    "evidence_content_hash": {
+      "type": "string"
+    },
+    "evidence_packet_id": {
+      "type": "string"
+    },
+    "family": {
+      "type": "string"
+    },
+    "forbidden_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "human_review_required": {
+      "type": "boolean"
+    },
+    "lifecycle_status": {
+      "type": "string"
+    },
+    "max_output_tokens": {
+      "type": "integer"
+    },
+    "output_label": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "provider_id": {
+      "type": "string"
+    },
+    "provider_mode": {
+      "type": "string"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "redaction_posture": {
+      "type": "string"
+    },
+    "requested_outputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "retry_count": {
+      "type": "integer"
+    },
+    "review_guidance": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "review_posture": {
+      "type": "string"
+    },
+    "safety_mode": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "score_policy_version": {
+      "type": "string"
+    },
+    "source_ref_count": {
+      "type": "integer"
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "source_signal_count": {
+      "type": "integer"
+    },
+    "state": {
+      "type": "string"
+    },
+    "stub_reason": {
+      "type": "string"
+    },
+    "timeout_ms": {
+      "type": "integer"
+    },
+    "unsupported_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "workflow_pack_family": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "adapter_kind",
+    "candidate_id",
+    "client_ready_publication",
+    "context_keys",
+    "context_summary",
+    "downstream_authority",
+    "evaluation_ref",
+    "evidence_content_hash",
+    "evidence_packet_id",
+    "family",
+    "forbidden_actions",
+    "human_review_required",
+    "lifecycle_status",
+    "max_output_tokens",
+    "output_label",
+    "phase",
+    "provider_id",
+    "provider_mode",
+    "purpose",
+    "reason_codes",
+    "redaction_posture",
+    "requested_outputs",
+    "retry_count",
+    "review_guidance",
+    "review_posture",
+    "safety_mode",
+    "scope",
+    "score_policy_version",
+    "source_ref_count",
+    "source_refs",
+    "source_signal_count",
+    "state",
+    "stub_reason",
+    "timeout_ms",
+    "unsupported_claims",
+    "workflow_pack_family"
+  ]
+}

@@ -555,6 +555,17 @@ Restart-survival expectations:
 2. when `LOTUS_AI_EVALUATION_RUNTIME_STORE_MODE=sqlalchemy`, prompt approval evidence must survive service restart and remain inspectable through the prompt approval gate
 3. restart must not be used as a workaround to clear prompt rollout history or revert a prompt change
 
+## AI Output Validation
+
+Every AI task and workflow-pack execution passes deterministic output validation before safety redaction, and every response and audit record carries `output_validation` (`validation_state`, `authority=non_authoritative_ai_output`, the ruleset version, and any failed rule ids):
+
+1. `evidence_grounding` - every `source_ref`/`evidence_ref` value in the structured output must be one of the supplied request `source_refs`; violations reject in every profile
+2. `strict_json` - a provider answer recovered by balanced-brace salvage rejects in the promoted profile and marks the output `UNVALIDATED_LOCAL_ONLY` in local
+3. `output_schema` - the structured output must conform to the JSON Schema contract for its task id or (for pack-bound executions, explicit or inferred) its workflow-pack family, under `contracts/ai-task-outputs/`; violations reject in promoted and warn in local
+4. `contract_missing` - workflow-pack registration refuses a family without a contract, so a missing contract at execution time is a wiring defect: promoted fails closed
+
+A `REJECTED` (or `VALIDATION_UNAVAILABLE`) verdict withholds the output whole: the caller receives `error_code=OUTPUT_VALIDATION_REJECTED` (or `VALIDATION_UNAVAILABLE`) with the failing rule ids, and the audit record persists carrying the verdict. `output_contract_notes` on task requests is prompt guidance only; the schema contract is the validation authority.
+
 ## Caller Trust Mode
 
 `LOTUS_AI_CALLER_TRUST_MODE` selects how the caller identity on protected routes is established:

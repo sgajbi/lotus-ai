@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lotus.ai/contracts/ai-task-outputs/knowledge_search.v1.json",
+  "title": "knowledge_search.v1 output contract",
+  "description": "Bounded retrieval search output over approved Lotus knowledge sources.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "phase",
+    "provider_id",
+    "provider_mode",
+    "catalog_only",
+    "query",
+    "source_ids",
+    "vector_store",
+    "execution_stage",
+    "retrieval_status",
+    "hit_count",
+    "citation_count",
+    "support_score",
+    "citations",
+    "hits"
+  ],
+  "properties": {
+    "phase": {
+      "type": "string"
+    },
+    "provider_id": {
+      "type": "string"
+    },
+    "provider_mode": {
+      "type": "string"
+    },
+    "catalog_only": {
+      "type": "boolean"
+    },
+    "query": {
+      "type": "string"
+    },
+    "source_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "vector_store": {
+      "type": "string"
+    },
+    "execution_stage": {
+      "type": "string"
+    },
+    "retrieval_status": {
+      "type": "string"
+    },
+    "hit_count": {
+      "type": "integer"
+    },
+    "citation_count": {
+      "type": "integer"
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "hits": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "support_score": {
+      "type": "number"
+    }
+  }
+}

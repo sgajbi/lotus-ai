@@ -115,7 +115,9 @@ def execute_workflow_pack(
         caller_identity_class=request.caller_identity_class,
     ):
         try:
-            resolved = resolve_task_execution(context=context)
+            resolved = resolve_task_execution(
+                context=context, output_contract_key=registration.pack_id
+            )
             response = build_task_execution_response(resolved=resolved)
         except HTTPException as exc:
             response = build_failed_task_execution_response(context=context, exc=exc)
