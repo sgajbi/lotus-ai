@@ -61,6 +61,7 @@ def resolve_task_execution(
         salvaged_json=bool(provider_execution.structured_output.get("strict_json_salvaged", False)),
         runtime_profile=settings.runtime_profile,
         contract_key=contract_key,
+        context_payload=context.request.context.payload,
     )
     client_identifiers = _caller_redaction_identifiers(context.request.caller.caller_app)
     safe_provider_execution, safety_outcome = apply_safety_enforcement(
