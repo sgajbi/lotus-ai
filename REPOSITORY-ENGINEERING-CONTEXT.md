@@ -184,7 +184,8 @@ Boundary rules:
 2. `lotus-ai` provides bounded governed AI capabilities with audit and evidence,
 3. framework choices must not obscure control flow, governance, or auditability,
 4. live-provider, retrieval, async, and workflow-pack control seams remain rollout-governed and evidence-backed,
-5. `LOTUS_AI_RUNTIME_PROFILE=promoted` applies the protection default set (retries with backoff, quota/budget/breaker enforcement, SQL-backed provider-operations and admission stores, degrade readiness, enforce startup) while explicit per-key settings always win; the setting-by-profile table lives in `docs/runbooks/service-operations.md` (Runtime Profile).
+5. every AI output carries a deterministic validation verdict and the `non_authoritative_ai_output` authority marking on the response and the audit record (evidence grounding, numeric grounding, per-task/per-pack JSON Schema contracts under `contracts/ai-task-outputs/`, strict-JSON posture); REJECTED outputs are withheld whole with the failing rule ids, a pack family without an output contract cannot be registered, and the eval runtime executes through the same pipeline so eval and production verdicts agree,
+6. `LOTUS_AI_RUNTIME_PROFILE=promoted` applies the protection default set (retries with backoff, quota/budget/breaker enforcement, SQL-backed provider-operations and admission stores, degrade readiness, enforce startup) while explicit per-key settings always win; the setting-by-profile table lives in `docs/runbooks/service-operations.md` (Runtime Profile).
 
 ## Repo-Native Commands
 

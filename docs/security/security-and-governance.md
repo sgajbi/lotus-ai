@@ -73,6 +73,19 @@ controls. Text and embedding live-provider failures use the same safe-error beha
 Raw provider prompts, generated output, credentials, account details, client identifiers, and local
 endpoint internals must not be returned in API errors.
 
+## AI Output Validation And Authority
+
+No model output leaves the service or is persisted without a deterministic validation verdict.
+Every task and workflow-pack execution passes the shared output validator after the provider call
+and before safety redaction; every response and audit record carries `output_validation` with
+`validation_state`, `authority=non_authoritative_ai_output`, the versioned ruleset id, and any
+failed rule ids. Evidence grounding is set-based and exact (an output may reference only supplied
+evidence), numeric percent/currency tokens in narrative must trace to supplied values, structured
+outputs must conform to their per-task or per-pack JSON Schema contracts, and a REJECTED output is
+withheld whole - never returned or previewed partially - while the audit record persists the
+verdict. AI output is never authoritative financial truth; callers decide how a VALIDATED,
+review-gated output is applied.
+
 ## HTTP Boundary And API Error Contract
 
 `lotus-ai` owns a thin FastAPI perimeter in addition to any ingress or gateway controls. The
