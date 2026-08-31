@@ -62,6 +62,7 @@ def resolve_task_execution(
         runtime_profile=settings.runtime_profile,
         contract_key=contract_key,
         context_payload=context.request.context.payload,
+        message=provider_execution.message,
     )
     client_identifiers = _caller_redaction_identifiers(context.request.caller.caller_app)
     safe_provider_execution, safety_outcome = apply_safety_enforcement(

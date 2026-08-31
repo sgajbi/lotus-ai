@@ -12,7 +12,10 @@ eval-path execution.
 import pytest
 
 from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
-from app.contracts.output_validation import OutputValidationState
+from app.contracts.output_validation import (
+    OUTPUT_VALIDATION_RULESET_VERSION,
+    OutputValidationState,
+)
 from app.contracts.tasks import TaskExecutionStatus
 from app.contracts.workflow_packs import WorkflowPackExecutionRequest
 from app.services.audit_store import get_audit_store
@@ -149,4 +152,4 @@ def test_eval_path_executions_carry_the_same_validation_verdict() -> None:
     )
     assert response.output_validation is not None
     assert response.output_validation.validation_state is OutputValidationState.VALIDATED
-    assert response.output_validation.ruleset_version == "output-validation.v3"
+    assert response.output_validation.ruleset_version == OUTPUT_VALIDATION_RULESET_VERSION
