@@ -4,10 +4,11 @@ import pytest
 from fastapi import HTTPException
 
 from app.services.workflow_pack_queue_admission import (
-    WorkflowPackQueueAdmissionLease,
     acquire_workflow_pack_queue_admission,
     cancel_workflow_pack_queue_admission,
-    release_workflow_pack_queue_admission,
+    release_workflow_pack_queue_admission,)
+from app.services.workflow_pack_queue_admission_models import (
+    WorkflowPackQueueAdmissionLease,
 )
 from app.contracts.workflow_pack_queue_policies import WorkflowPackQueueCancellationActor
 from app.services.workflow_pack_queue_attention import build_workflow_pack_queue_attention_summary
