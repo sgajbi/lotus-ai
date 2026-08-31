@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.runtime_readiness import get_audit_store_runtime_status
 from app.contracts.evals import EvaluationApprovalEvidenceState
 from app.contracts.safety import SafetyEvidenceReadinessItem, SafetyEvidenceReadinessResponse
 from app.services.eval_approval_gate_summary import build_safety_approval_gate_summary
@@ -14,7 +15,12 @@ def build_safety_evidence_readiness() -> SafetyEvidenceReadinessResponse:
     approval_gate = build_safety_approval_gate_summary()
     policy_fixture_ready = "safety_policy_examples" in staged_fixture_ids
     runtime_fixture_ready = "safety_runtime_examples" in staged_fixture_ids
-    audit_traceability_ready = True
+    # Measured, not asserted (issue #154): traceability depends on the audit
+    # store actually being able to persist and serve the records.
+    audit_traceability_ready = get_audit_store_runtime_status().status in {
+        "READY",
+        "DEGRADED",
+    }
     runtime_evidence_status = _approval_gate_status(approval_gate.evidence_state)
     runtime_evidence_notes = {
         EvaluationApprovalEvidenceState.STAGED_ONLY: (

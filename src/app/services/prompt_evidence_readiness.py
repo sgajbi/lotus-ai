@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.config import settings
+from app.services.runtime_readiness import get_audit_store_runtime_status
 from app.contracts.evals import EvaluationApprovalEvidenceState
 from app.contracts.prompts import (
     PromptEvidenceReadinessItem,
@@ -45,7 +46,13 @@ def build_prompt_evidence_readiness() -> PromptEvidenceReadinessResponse:
         ),
         PromptEvidenceReadinessItem(
             evidence_id="prompt_audit_traceability_pack",
-            status="READY",
+            # Measured, not asserted (issue #154): prompt lineage is only
+            # traceable if the audit store can persist and serve it.
+            status=(
+                "READY"
+                if get_audit_store_runtime_status().status in {"READY", "DEGRADED"}
+                else "NOT_READY"
+            ),
             required_for_activation=True,
             notes=(
                 "Task responses, audit records, and execution evidence now preserve prompt selection lineage plus latest control-event history."
