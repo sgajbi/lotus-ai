@@ -567,6 +567,15 @@ Every AI task and workflow-pack execution passes deterministic output validation
 
 A `REJECTED` (or `VALIDATION_UNAVAILABLE`) verdict withholds the output whole: the caller receives `error_code=OUTPUT_VALIDATION_REJECTED` (or `VALIDATION_UNAVAILABLE`) with the failing rule ids, and the audit record persists carrying the verdict. `output_contract_notes` on task requests is prompt guidance only; the schema contract is the validation authority.
 
+## Workflow-Pack Admission Leases
+
+Under `LOTUS_AI_WORKFLOW_PACK_ADMISSION_STORE_MODE=sqlalchemy`, queue admission capacity is bound across replicas by durable leases:
+
+1. the authoritative capacity decision is one atomic `try_admit` per policy (guard row locked `FOR UPDATE`); the pre-check is advisory fast-fail only, and `ADMISSION_GRANTED` is recorded **after** the authoritative admit so a lost race reads as a plain capacity rejection rather than granted-then-rejected
+2. `LOTUS_AI_WORKFLOW_PACK_ADMISSION_LEASE_TTL_SECONDS` (default 3600) reclaims leases whose holder can no longer be executing them: a replica killed mid-execution would otherwise hold capacity forever, and a pack with a limit of one would become permanently unadmittable. Expired leases are dropped at the next admission for that policy. Set the TTL above the longest legitimate pack execution, and to `0` only to disable reclamation deliberately
+3. release and cancel claim the lease by deleting it first; only the caller that actually removed it records the terminal event, so concurrent release/cancel cannot duplicate a queue item's terminal history
+4. a first admission for a policy may race on creating its guard row; the loser resolves into locking the winner's row rather than surfacing an error
+
 ## Caller Trust Mode
 
 `LOTUS_AI_CALLER_TRUST_MODE` selects how the caller identity on protected routes is established:

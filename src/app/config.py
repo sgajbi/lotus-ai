@@ -81,6 +81,7 @@ class Settings(BaseSettings):
     workflow_pack_registry_store_mode: str = "memory"
     provider_operations_store_mode: str = "memory"
     workflow_pack_admission_store_mode: str = "memory"
+    workflow_pack_admission_lease_ttl_seconds: int = 3600
     provider_retention_confirmation_store_mode: str = "memory"
     async_runtime_store_mode: str = "memory"
     workflow_pack_run_store_mode: str = "memory"

@@ -88,6 +88,9 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "workflow_pack_registry_store_mode": settings.workflow_pack_registry_store_mode,
         "provider_operations_store_mode": settings.provider_operations_store_mode,
         "workflow_pack_admission_store_mode": settings.workflow_pack_admission_store_mode,
+        "workflow_pack_admission_lease_ttl_seconds": (
+            settings.workflow_pack_admission_lease_ttl_seconds
+        ),
         "runtime_profile": settings.runtime_profile,
         "provider_retry_limit": settings.provider_retry_limit,
         "provider_retention_confirmation_store_mode": (
