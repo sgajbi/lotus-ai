@@ -5,12 +5,15 @@ from app.repositories.audit_repository import AuditRepository
 from app.repositories.memory_audit_repository import InMemoryAuditRepository
 from app.repositories.sqlalchemy_audit_repository import SqlAlchemyAuditRepository
 
-_memory_repository = InMemoryAuditRepository()
+_memory_repository: InMemoryAuditRepository | None = None
 _sqlalchemy_repository: SqlAlchemyAuditRepository | None = None
 
 
 def get_audit_store() -> AuditRepository:
     if settings.audit_store_mode == "memory":
+        global _memory_repository
+        if _memory_repository is None:
+            _memory_repository = InMemoryAuditRepository()
         return _memory_repository
     if settings.audit_store_mode == "sqlalchemy":
         if not settings.database_url:
@@ -25,5 +28,6 @@ def get_audit_store() -> AuditRepository:
 
 
 def reset_audit_store_cache() -> None:
-    global _sqlalchemy_repository
+    global _memory_repository, _sqlalchemy_repository
+    _memory_repository = None
     _sqlalchemy_repository = None

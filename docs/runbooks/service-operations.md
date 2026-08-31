@@ -184,6 +184,26 @@ Expected operator flow for SQL-backed stores:
 15. verify `GET /platform/retrieval/runtime-status` when retrieval persistence is relevant
 16. only then proceed with rollout if readiness is `READY`
 
+## Runtime Profile
+
+`LOTUS_AI_RUNTIME_PROFILE` selects the protection default set at settings construction. `local` (the default) keeps the light per-key defaults; `promoted` applies the protection set below. A key explicitly set through its own environment variable always keeps the explicit value — the profile only fills keys the operator did not set.
+
+| Setting | `local` default | `promoted` default |
+| --- | --- | --- |
+| `LOTUS_AI_PROVIDER_RETRY_LIMIT` | `0` | `2` |
+| `LOTUS_AI_LIVE_TEXT_QUOTA_ENFORCED` | `false` | `true` |
+| `LOTUS_AI_LIVE_TEXT_BUDGET_ENFORCED` | `false` | `true` |
+| `LOTUS_AI_LIVE_TEXT_DEGRADATION_ENFORCED` | `false` | `true` |
+| `LOTUS_AI_LIVE_TEXT_DEGRADED_FAILURE_COUNT_THRESHOLD` | unset | `3` |
+| `LOTUS_AI_LIVE_TEXT_CIRCUIT_OPEN_FAILURE_COUNT_THRESHOLD` | unset | `5` |
+| `LOTUS_AI_LIVE_TEXT_CIRCUIT_OPEN_SECONDS` | unset | `60` |
+| `LOTUS_AI_PROVIDER_OPERATIONS_STORE_MODE` | `memory` | `sqlalchemy` |
+| `LOTUS_AI_WORKFLOW_PACK_ADMISSION_STORE_MODE` | `memory` | `sqlalchemy` |
+| `LOTUS_AI_READINESS_PROBE_POLICY` | `observe` | `degrade` |
+| `LOTUS_AI_STARTUP_READINESS_POLICY` | `warn` | `enforce` |
+
+The promoted profile never invents economic limits: `LOTUS_AI_LIVE_TEXT_TASK_QUOTA_LIMITS`, `LOTUS_AI_LIVE_TEXT_HARD_BUDGET_USD`, and the live-text token cost rates stay operator-supplied. In the promoted profile, a memory-backed workflow-pack admission store is a startup finding in every provider mode; with a live provider mode (`openai` or `local_openai_compatible`), disabled quota, budget, or breaker enforcement, enabled quota or budget enforcement with no configured limits, and a memory-backed provider-operations store are further findings. The promoted startup policy is `enforce`, so these findings fail startup instead of letting the service run unprotected.
+
 ## Resilience Governance
 
 Before treating service continuity posture as anything stronger than bounded governed recovery truth:

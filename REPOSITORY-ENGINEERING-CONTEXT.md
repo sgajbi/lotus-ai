@@ -183,7 +183,8 @@ Boundary rules:
 1. other Lotus apps provide structured business context and remain responsible for business meaning,
 2. `lotus-ai` provides bounded governed AI capabilities with audit and evidence,
 3. framework choices must not obscure control flow, governance, or auditability,
-4. live-provider, retrieval, async, and workflow-pack control seams remain rollout-governed and evidence-backed.
+4. live-provider, retrieval, async, and workflow-pack control seams remain rollout-governed and evidence-backed,
+5. `LOTUS_AI_RUNTIME_PROFILE=promoted` applies the protection default set (retries with backoff, quota/budget/breaker enforcement, SQL-backed provider-operations and admission stores, degrade readiness, enforce startup) while explicit per-key settings always win; the setting-by-profile table lives in `docs/runbooks/service-operations.md` (Runtime Profile).
 
 ## Repo-Native Commands
 
