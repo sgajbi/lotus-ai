@@ -33,17 +33,17 @@ class RetryBackoffPlan:
     def delay_before_retry(self, retry_index: int, *, jitter: float) -> float:
         """Delay before the retry with 1-based ``retry_index``; jitter in [0, 1)."""
 
-        base = min(BASE_DELAY_SECONDS * (2 ** (retry_index - 1)), MAX_DELAY_SECONDS)
-        return base * (1.0 + JITTER_RATIO * jitter)
+        base = min(BASE_DELAY_SECONDS * float(2 ** (retry_index - 1)), MAX_DELAY_SECONDS)
+        return float(base * (1.0 + JITTER_RATIO * jitter))
 
     @property
     def total_deadline_seconds(self) -> float:
         attempts = self.retry_limit + 1
         max_backoff_sum = sum(
-            min(BASE_DELAY_SECONDS * (2**index), MAX_DELAY_SECONDS)
+            min(BASE_DELAY_SECONDS * float(2**index), MAX_DELAY_SECONDS)
             for index in range(self.retry_limit)
         ) * (1.0 + JITTER_RATIO)
-        return self.timeout_seconds * attempts + max_backoff_sum
+        return float(self.timeout_seconds * attempts + max_backoff_sum)
 
 
 @dataclass(frozen=True)
