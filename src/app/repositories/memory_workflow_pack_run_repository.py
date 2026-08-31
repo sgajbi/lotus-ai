@@ -29,6 +29,7 @@ class InMemoryWorkflowPackRunRepository(WorkflowPackRunRepository):
         *,
         registration_ref: str | None = None,
         pack_id: str | None = None,
+        pack_family: str | None = None,
         caller_app: str | None = None,
         tenant_id: str | None = None,
         workflow_surface: str | None = None,
@@ -42,6 +43,7 @@ class InMemoryWorkflowPackRunRepository(WorkflowPackRunRepository):
             for record in self._runs.values()
             if (registration_ref is None or record.registration_ref == registration_ref)
             and (pack_id is None or record.pack_id == pack_id)
+            and (pack_family is None or record.pack_family == pack_family)
             and (caller_app is None or record.caller_app == caller_app)
             and (tenant_id is None or record.tenant_id == tenant_id)
             and (workflow_surface is None or record.workflow_surface == workflow_surface)

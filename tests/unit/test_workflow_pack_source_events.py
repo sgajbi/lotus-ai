@@ -24,6 +24,7 @@ class _NoBroadListWorkflowPackRunRepository(InMemoryWorkflowPackRunRepository):
         *,
         registration_ref: str | None = None,
         pack_id: str | None = None,
+        pack_family: str | None = None,
         caller_app: str | None = None,
         tenant_id: str | None = None,
         workflow_surface: str | None = None,
@@ -36,6 +37,7 @@ class _NoBroadListWorkflowPackRunRepository(InMemoryWorkflowPackRunRepository):
         return super().query_runs(
             registration_ref=registration_ref,
             pack_id=pack_id,
+            pack_family=pack_family,
             caller_app=caller_app,
             tenant_id=tenant_id,
             workflow_surface=workflow_surface,

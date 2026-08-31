@@ -77,6 +77,7 @@ class WorkflowPackRunRepository(Protocol):
         *,
         registration_ref: str | None = None,
         pack_id: str | None = None,
+        pack_family: str | None = None,
         caller_app: str | None = None,
         tenant_id: str | None = None,
         workflow_surface: str | None = None,

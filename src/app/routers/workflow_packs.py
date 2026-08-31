@@ -64,6 +64,13 @@ from app.services.workflow_pack_run_accepted_output import (
     AcceptedOutputNotFoundError,
     build_workflow_pack_run_accepted_output,
 )
+from app.contracts.workflow_pack_run_accepted_latest import (
+    WorkflowPackRunAcceptedLatestResponse,
+)
+from app.services.workflow_pack_run_accepted_latest import (
+    AcceptedLatestNotFoundError,
+    build_workflow_pack_run_accepted_latest,
+)
 from app.services.workflow_pack_run_consumer_view import build_workflow_pack_run_consumer_view
 from app.services.workflow_pack_run_operator_profile import build_workflow_pack_run_operator_profile
 from app.services.workflow_pack_control import (
@@ -922,6 +929,93 @@ async def get_workflow_pack_task_flow_checkpoints_route(
     except WorkflowPackTaskFlowNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except WorkflowPackTaskFlowStoreNotReadyError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get(
+    "/platform/workflow-packs/runs/accepted-latest",
+    response_model=WorkflowPackRunAcceptedLatestResponse,
+    operation_id="getWorkflowPackRunAcceptedLatest",
+    summary="Resolve the latest accepted run of one pack family for one portfolio",
+    description=(
+        "Answers the pre-order availability question - does an accepted run of this pack "
+        "family exist for this portfolio and context? - with a bounded identity envelope "
+        "only. `latest` is the run whose accepting review event is most recent among "
+        "completed, accepted, non-superseded runs whose accepted output asserts the "
+        "requested portfolio; optional `as_of_date` and `reporting_currency` filters "
+        "compare only against values the source asserted (an unasserted value never "
+        "wildcard-matches). The envelope carries no narrative: consumers fetch the "
+        "run_id-keyed accepted-output projection, keeping exactly one narrative-bearing "
+        "surface. Unknown tenants and unknown portfolios share one not-found reason - "
+        "this route is not an existence oracle."
+    ),
+    responses={
+        200: {"description": "Latest accepted run identity returned successfully."},
+        403: {"description": "Caller is not an active registered caller."},
+        404: {
+            "description": (
+                "No accepted run answers the lookup: no_accepted_run (none asserts the "
+                "portfolio - unknown tenants and portfolios share this shape) or "
+                "no_context_match (accepted portfolio runs exist, none assert the "
+                "requested filters)."
+            )
+        },
+        409: {
+            "description": (
+                "The lookup cannot be answered truthfully: pack_projection_unsupported, "
+                "lookup_scan_saturated, or an unresolvable accepted candidate "
+                "(output_artifact_missing or output_artifact_malformed) whose position "
+                "in the latest-accepted order cannot be proven."
+            )
+        },
+        422: {"description": "Required caller headers or query parameters are missing or invalid."},
+        503: {"description": "Run or artifact stores are not ready."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_workflow_pack_run_accepted_latest_route(
+    caller_app: Annotated[str, Header(alias="X-Caller-App", min_length=1)],
+    tenant_id: Annotated[str, Header(alias="X-Tenant-Id", min_length=1)],
+    pack_family: Annotated[str, Query(min_length=1)],
+    portfolio_id: Annotated[str, Query(min_length=1)],
+    as_of_date: Annotated[str | None, Query()] = None,
+    reporting_currency: Annotated[str | None, Query()] = None,
+) -> WorkflowPackRunAcceptedLatestResponse:
+    require_active_registered_caller(
+        caller_app.strip(),
+        blocked_summary="Caller is not authorized to resolve accepted workflow-pack runs.",
+    )
+    try:
+        return build_workflow_pack_run_accepted_latest(
+            pack_family=pack_family.strip(),
+            portfolio_id=portfolio_id.strip(),
+            caller_tenant_id=tenant_id.strip(),
+            as_of_date=as_of_date.strip() if as_of_date and as_of_date.strip() else None,
+            reporting_currency=(
+                reporting_currency.strip()
+                if reporting_currency and reporting_currency.strip()
+                else None
+            ),
+        )
+    except AcceptedLatestNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "detail": exc.message,
+                "error_code": f"LOTUS_AI_ACCEPTED_LATEST_{exc.reason_code.upper()}",
+                "metadata": {"reason_code": exc.reason_code},
+            },
+        ) from exc
+    except AcceptedOutputNotAvailableError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "detail": exc.message,
+                "error_code": f"LOTUS_AI_ACCEPTED_LATEST_{exc.reason_code.upper()}",
+                "metadata": {"reason_code": exc.reason_code},
+            },
+        ) from exc
+    except WorkflowPackRunStoreUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
