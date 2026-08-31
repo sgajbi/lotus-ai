@@ -40,8 +40,8 @@ from app.services.workflow_pack_phase1_specs import (
 
 if TYPE_CHECKING:
     from app.services.workflow_pack_queue_admission_models import (
-    WorkflowPackQueueAdmissionLease,
-)
+        WorkflowPackQueueAdmissionLease,
+    )
 
 
 def list_workflow_pack_queue_policy_descriptors() -> list[WorkflowPackQueuePolicyDescriptor]:
