@@ -299,3 +299,66 @@ def test_a_lost_capacity_race_never_records_a_grant(monkeypatch: MonkeyPatch) ->
     ]
     assert "ADMISSION_GRANTED" not in lost_race_events
     assert "ADMISSION_REJECTED" in lost_race_events
+
+
+def test_a_reclaimed_lease_gets_a_terminal_event_in_its_own_history() -> None:
+    """Capacity recovery must not be silent (#228): an item whose replica
+    died ends its durable history with a reclamation event, so support can
+    tell "died and was reclaimed" from "still running"."""
+
+    from datetime import UTC
+    from datetime import datetime as real_datetime
+
+    from app.config import settings
+    from app.services.workflow_pack_admission_lease_store import (
+        get_workflow_pack_admission_lease_repository,
+    )
+    from app.services.workflow_pack_queue_admission_models import (
+        WorkflowPackQueueAdmissionLease,
+    )
+
+    settings.workflow_pack_admission_lease_ttl_seconds = 60
+    registration = _advisor_brief_registration()
+    repository = get_workflow_pack_admission_lease_repository()
+    abandoned_at = (real_datetime.now(UTC) - timedelta(seconds=3600)).isoformat()
+    crashed = WorkflowPackQueueAdmissionLease(
+        queue_item_id="wpq_crashed_replica",
+        policy_id="queue-policy.advisor-brief.v1",
+        workflow_pack_id="advisor_brief.pack",
+        workflow_pack_version="v1",
+        lane=WorkflowPackQueueLane.LATENCY_SENSITIVE,
+        state=WorkflowPackQueueState.RUNNING,
+        admitted_at=abandoned_at,
+        caller_app="lotus-gateway",
+        correlation_id="corr-crashed-replica",
+        tenant_id="tenant-sg-001",
+        workflow_surface="advisor-brief-panel",
+    )
+    assert repository.try_admit(crashed, pack_limit=5, lane_limit=5).admitted
+
+    lease = acquire_workflow_pack_queue_admission(
+        registration=registration,
+        caller_app="lotus-gateway",
+        correlation_id="corr-after-reclaim",
+        tenant_id="tenant-sg-001",
+        workflow_surface="advisor-brief-panel",
+    )
+
+    # Capacity recovered ...
+    assert lease.queue_item_id != "wpq_crashed_replica"
+    assert repository.get_lease("wpq_crashed_replica") is None
+    # ... and the crashed item's own history says why it ended.
+    crashed_history = build_workflow_pack_queue_event_detail(queue_item_id="wpq_crashed_replica")
+    assert [event.event_type.value for event in crashed_history.events] == ["ADMISSION_RECLAIMED"]
+    assert crashed_history.events[0].state.value == "TIMED_OUT"
+    assert crashed_history.events[0].correlation_id == "corr-crashed-replica"
+
+
+def test_the_lease_ttl_default_cannot_be_shorter_than_a_test_run() -> None:
+    """The reclamation tests set an explicit TTL; the shipped default must
+    stay far above any legitimate execution so nothing is reclaimed while
+    it is still running."""
+
+    from app.config import Settings
+
+    assert Settings().workflow_pack_admission_lease_ttl_seconds >= 600
