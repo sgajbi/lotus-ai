@@ -555,6 +555,15 @@ Restart-survival expectations:
 2. when `LOTUS_AI_EVALUATION_RUNTIME_STORE_MODE=sqlalchemy`, prompt approval evidence must survive service restart and remain inspectable through the prompt approval gate
 3. restart must not be used as a workaround to clear prompt rollout history or revert a prompt change
 
+## Caller Trust Mode
+
+`LOTUS_AI_CALLER_TRUST_MODE` selects how the caller identity on protected routes is established:
+
+- `header` (default): the trusted `X-Caller-App` header names the caller (`trust_source=trusted_http_header`). In the promoted profile this is a startup readiness finding — a self-asserted header cannot be the promoted identity boundary.
+- `verified_service_jwt`: the caller is the `sub` claim of a platform-issued compact EdDSA JWS presented as `Authorization: Bearer <credential>`, verified against `LOTUS_AI_CALLER_JWT_ISSUER`, `LOTUS_AI_CALLER_JWT_AUDIENCE`, and `LOTUS_AI_CALLER_JWT_PUBLIC_KEYS` (JSON object of key id to base64 raw Ed25519 public key; keep two key ids active during rotation). Signature, issuer, audience, expiry, and not-before are all enforced; any failure is a `401` problem-details `CALLER_CREDENTIAL_INVALID` and never falls back to header trust. An `X-Caller-App` header sent alongside must equal the credential subject or the request is rejected. Missing issuer, audience, or parseable keys in this mode are startup readiness findings in every profile.
+
+An unknown mode value is a startup finding and every protected request is refused.
+
 ## Access-Control Governance
 
 Before treating caller identity and tenant isolation as fully governed rollout posture:

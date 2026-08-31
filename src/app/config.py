@@ -113,6 +113,10 @@ class Settings(BaseSettings):
     startup_readiness_policy: str = "warn"
     readiness_probe_policy: str = "observe"
     local_header_caller_identity_enabled: bool = False
+    caller_trust_mode: str = "header"
+    caller_jwt_issuer: str | None = None
+    caller_jwt_audience: str | None = None
+    caller_jwt_public_keys: str = ""
     http_allowed_hosts: str = "*"
     http_cors_allowed_origins: str = (
         "http://localhost,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:3000"

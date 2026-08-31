@@ -9,6 +9,11 @@ from fastapi import Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.config import settings
+from app.http.caller_credential import (
+    CALLER_TRUST_MODE_HEADER,
+    CALLER_TRUST_MODE_VERIFIED_JWT,
+    verify_caller_credential,
+)
 
 AUTHENTICATED_CALLER_HEADER = "X-Caller-App"
 AUTHENTICATED_CALLER_TRUST_SOURCE = "trusted_http_header"
@@ -39,22 +44,47 @@ _authenticated_caller: ContextVar[AuthenticatedCaller | None] = ContextVar(
 
 async def require_authenticated_caller(
     x_caller_app: Annotated[str | None, Header(alias=AUTHENTICATED_CALLER_HEADER)] = None,
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
 ) -> AsyncGenerator[AuthenticatedCaller, None]:
-    caller_app = (x_caller_app or "").strip()
-    if not caller_app:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=("Authenticated caller identity is required for this protected lotus-ai route."),
-        )
-    authenticated_caller = AuthenticatedCaller(
-        caller_app=caller_app,
-        trust_source=AUTHENTICATED_CALLER_TRUST_SOURCE,
+    authenticated_caller = _resolve_authenticated_caller(
+        x_caller_app=x_caller_app,
+        authorization=authorization,
     )
     token = _authenticated_caller.set(authenticated_caller)
     try:
         yield authenticated_caller
     finally:
         _authenticated_caller.reset(token)
+
+
+def _resolve_authenticated_caller(
+    *,
+    x_caller_app: str | None,
+    authorization: str | None,
+) -> AuthenticatedCaller:
+    caller_app = (x_caller_app or "").strip()
+    if settings.caller_trust_mode != CALLER_TRUST_MODE_HEADER:
+        # Any non-header mode verifies the credential; an unknown mode never
+        # falls open to header trust (it is also a startup finding).
+        subject = verify_caller_credential(authorization)
+        if caller_app and caller_app != subject:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=("X-Caller-App does not match the verified caller credential subject."),
+            )
+        return AuthenticatedCaller(
+            caller_app=subject,
+            trust_source=CALLER_TRUST_MODE_VERIFIED_JWT,
+        )
+    if not caller_app:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=("Authenticated caller identity is required for this protected lotus-ai route."),
+        )
+    return AuthenticatedCaller(
+        caller_app=caller_app,
+        trust_source=AUTHENTICATED_CALLER_TRUST_SOURCE,
+    )
 
 
 def get_authenticated_caller() -> AuthenticatedCaller | None:
