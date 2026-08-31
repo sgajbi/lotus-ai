@@ -328,6 +328,29 @@ class AsyncJobModel(Base):
     leases: Mapped[list["AsyncWorkerLeaseModel"]] = relationship(back_populates="job")
 
 
+class WorkflowPackAdmissionLeaseModel(Base):
+    __tablename__ = "workflow_pack_admission_leases"
+
+    queue_item_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    policy_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    workflow_pack_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    workflow_pack_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    lane: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    state: Mapped[str] = mapped_column(String(64), nullable=False)
+    admitted_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    caller_app: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    correlation_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    workflow_surface: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    artifact_refs_payload: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
+
+
+class WorkflowPackAdmissionGuardModel(Base):
+    __tablename__ = "workflow_pack_admission_guards"
+
+    policy_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+
+
 class AsyncJobAttemptModel(Base):
     __tablename__ = "async_job_attempts"
 

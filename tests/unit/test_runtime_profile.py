@@ -66,4 +66,12 @@ def test_local_profile_and_stub_mode_produce_no_protection_findings() -> None:
 
     settings.runtime_profile = "promoted"
     settings.provider_mode = "disabled"
+    settings.workflow_pack_admission_store_mode = "sqlalchemy"
+    # Non-live provider mode clears the provider findings; the admission
+    # store finding is profile-gated regardless of provider mode.
     assert _provider_protection_findings() == []
+    settings.workflow_pack_admission_store_mode = "memory"
+    assert _provider_protection_findings() == [
+        "workflow-pack admission store: per-process memory leases cannot bound "
+        "queue admission across replicas in the promoted profile"
+    ]

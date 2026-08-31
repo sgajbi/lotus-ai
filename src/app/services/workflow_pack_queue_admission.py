@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from threading import RLock
 from typing import Iterator, NoReturn
@@ -37,24 +36,14 @@ from app.services.workflow_pack_queue_request_snapshots import (
 )
 
 
-@dataclass(frozen=True)
-class WorkflowPackQueueAdmissionLease:
-    queue_item_id: str
-    policy_id: str
-    workflow_pack_id: str
-    workflow_pack_version: str
-    lane: WorkflowPackQueueLane
-    state: WorkflowPackQueueState
-    admitted_at: str
-    caller_app: str | None = None
-    correlation_id: str | None = None
-    tenant_id: str | None = None
-    workflow_surface: str | None = None
-    artifact_refs: tuple[ArtifactDescriptor, ...] = ()
-
+from app.services.workflow_pack_admission_lease_store import (
+    get_workflow_pack_admission_lease_repository,
+)
+from app.services.workflow_pack_queue_admission_models import (
+    WorkflowPackQueueAdmissionLease,
+)
 
 _queue_lock = RLock()
-_active_leases: dict[str, WorkflowPackQueueAdmissionLease] = {}
 
 
 @contextmanager
@@ -289,7 +278,32 @@ def acquire_workflow_pack_queue_admission(
                 f"`{policy.workflow_pack_id}@{policy.workflow_pack_version}` in lane `{lane.value}`."
             ),
         )
-        _active_leases[lease.queue_item_id] = lease
+        attempt = get_workflow_pack_admission_lease_repository().try_admit(
+            lease,
+            pack_limit=policy.max_concurrent_runs_per_pack,
+            lane_limit=policy.max_concurrent_runs_per_lane,
+        )
+        if not attempt.admitted:
+            # The repository is the authoritative, replica-atomic capacity
+            # decision; the earlier check is an advisory fast-fail. Losing
+            # the race here is a plain capacity rejection.
+            limit_name = (
+                "max_concurrent_runs_per_pack"
+                if attempt.active_pack_count >= policy.max_concurrent_runs_per_pack
+                else "max_concurrent_runs_per_lane"
+            )
+            _raise_capacity_rejection(
+                queue_item_id=queue_item_id,
+                policy=policy,
+                lane=lane,
+                limit_name=limit_name,
+                limit=getattr(policy, limit_name),
+                caller_app=caller_app,
+                correlation_id=correlation_id,
+                tenant_id=tenant_id,
+                workflow_surface=workflow_surface,
+                artifact_refs=request_artifact_refs,
+            )
         return lease
 
 
@@ -298,8 +312,7 @@ def release_workflow_pack_queue_admission(
     *,
     now_utc: datetime | None = None,
 ) -> None:
-    with _queue_lock:
-        lease = _active_leases.get(queue_item_id)
+    lease = get_workflow_pack_admission_lease_repository().get_lease(queue_item_id)
     if lease is None:
         return
     policy = _get_policy_for_lease(lease)
@@ -333,8 +346,7 @@ def release_workflow_pack_queue_admission(
         ),
         message=_release_event_message(lease=lease, event_type=event_type, policy=policy),
     )
-    with _queue_lock:
-        _active_leases.pop(queue_item_id, None)
+    get_workflow_pack_admission_lease_repository().delete_lease(queue_item_id)
 
 
 def cancel_workflow_pack_queue_admission(
@@ -349,8 +361,7 @@ def cancel_workflow_pack_queue_admission(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Workflow-pack queue cancellation requires non-empty reason and evidence_ref.",
         )
-    with _queue_lock:
-        lease = _active_leases.get(queue_item_id)
+    lease = get_workflow_pack_admission_lease_repository().get_lease(queue_item_id)
     if lease is None:
         return False
     policy = _get_policy_for_lease(lease)
@@ -385,26 +396,22 @@ def cancel_workflow_pack_queue_admission(
             f"`{actor.value}` with evidence `{evidence_ref}`: {reason}"
         ),
     )
-    with _queue_lock:
-        _active_leases.pop(queue_item_id, None)
+    get_workflow_pack_admission_lease_repository().delete_lease(queue_item_id)
     return True
 
 
 def list_active_workflow_pack_queue_admissions() -> list[WorkflowPackQueueAdmissionLease]:
-    with _queue_lock:
-        return list(_active_leases.values())
+    return get_workflow_pack_admission_lease_repository().list_leases()
 
 
 def get_active_workflow_pack_queue_admission(
     queue_item_id: str,
 ) -> WorkflowPackQueueAdmissionLease | None:
-    with _queue_lock:
-        return _active_leases.get(queue_item_id)
+    return get_workflow_pack_admission_lease_repository().get_lease(queue_item_id)
 
 
 def reset_workflow_pack_queue_admission_state() -> None:
-    with _queue_lock:
-        _active_leases.clear()
+    get_workflow_pack_admission_lease_repository().clear()
 
 
 def _count_active_leases(
@@ -414,10 +421,8 @@ def _count_active_leases(
 ) -> int:
     return sum(
         1
-        for lease in _active_leases.values()
-        if lease.workflow_pack_id == policy.workflow_pack_id
-        and lease.workflow_pack_version == policy.workflow_pack_version
-        and (lane is None or lease.lane == lane)
+        for lease in get_workflow_pack_admission_lease_repository().list_leases()
+        if lease.policy_id == policy.policy_id and (lane is None or lease.lane is lane)
     )
 
 
