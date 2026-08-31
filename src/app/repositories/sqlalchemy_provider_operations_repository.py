@@ -278,6 +278,12 @@ class SqlAlchemyProviderOperationsRepository(
             session.commit()
             return int(getattr(result, "rowcount", 0) or 0)
 
+    def reset_degradation_states(self) -> int:
+        with self._session_factory() as session:
+            result = session.execute(delete(ProviderDegradationStateModel))
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
+
     def save_operations_event(self, record: ProviderOperationsEventRecord) -> None:
         model = ProviderOperationsEventModel(
             event_id=record.event_id,

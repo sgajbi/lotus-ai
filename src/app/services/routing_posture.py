@@ -1,26 +1,29 @@
-"""Operator routing-posture inspection (issue #176, slice 4).
+"""Operator routing-posture inspection (issue #176, slices 3-4).
 
 Answers the charter's operator question - "which model is currently serving,
 under which policy, and what would stop it" - by composing the surfaces that
-already exist: the fixed routing policy identity, the single configured
-candidate with its governed catalogue binding, the circuit-breaker status,
+already exist: the configured routing policy identity, the candidate(s) with
+their governed catalogue bindings, the per-candidate circuit-breaker status,
 the enforcement flags, and the currently enforcing kill switches. Nothing here
 re-derives eligibility logic; a posture read must never disagree with what the
 gateway would actually do.
-
-Policy-artifact versioning deliberately does not exist yet: there is one
-policy (fixed_configured_mode v1) and its registry arrives with the second
-policy (ordered_fallback, slice 3 of #176).
 """
 
 from __future__ import annotations
 
 from app.config import settings
-from app.services.provider_execution_config import resolve_provider_execution_config
+from app.services.provider_execution_config import (
+    ProviderExecutionConfig,
+    derive_fallback_execution_config,
+    override_provider_execution_config,
+    resolve_provider_execution_config,
+)
 from app.contracts.model_catalogue import ModelCatalogueEntry, derive_model_catalogue_entry_id
 from app.contracts.providers import (
     ROUTING_POLICY_FIXED_CONFIGURED_MODE,
+    ROUTING_POLICY_ORDERED_FALLBACK,
     ROUTING_POLICY_VERSION_V1,
+    ProviderDegradationStatusDescriptor,
     RoutingPostureCandidateDescriptor,
     RoutingPostureResponse,
     RoutingStrategy,
@@ -33,29 +36,51 @@ from app.services.provider_degradation_state import build_provider_degradation_s
 
 def build_routing_posture() -> RoutingPostureResponse:
     config = resolve_provider_execution_config()
-    candidate = _resolve_candidate()
+    ordered = config.routing_strategy == "ordered_fallback"
+    alternate = derive_fallback_execution_config(config) if ordered else None
+    fallback_candidate: RoutingPostureCandidateDescriptor | None = None
+    fallback_degradation: ProviderDegradationStatusDescriptor | None = None
+    if alternate is not None:
+        with override_provider_execution_config(alternate):
+            fallback_candidate = _resolve_candidate(alternate)
+            fallback_degradation = build_provider_degradation_status()
+    notes = [
+        "Per-request gates (caller authorization, task/tenant/caller kill-switch scopes, "
+        "quota counters) are evaluated per execution and recorded on its routing decision.",
+    ]
+    if ordered:
+        notes.insert(
+            0,
+            "The ordered-fallback policy attempts the primary candidate first; a transient "
+            "provider failure or candidate-scoped rejection routes to the alternate, and "
+            "each candidate's breaker is keyed to its own provider identity.",
+        )
+    else:
+        notes.insert(
+            0,
+            "The fixed policy maps the configured provider mode to exactly one adapter; "
+            "this posture is the candidate the next live execution would bind.",
+        )
     return RoutingPostureResponse(
         service=settings.service_name,
         version=settings.service_version,
-        policy_id=ROUTING_POLICY_FIXED_CONFIGURED_MODE,
+        policy_id=(
+            ROUTING_POLICY_ORDERED_FALLBACK if ordered else ROUTING_POLICY_FIXED_CONFIGURED_MODE
+        ),
         policy_version=ROUTING_POLICY_VERSION_V1,
-        strategy=RoutingStrategy.FIXED,
-        candidate=candidate,
+        strategy=RoutingStrategy.ORDERED_FALLBACK if ordered else RoutingStrategy.FIXED,
+        candidate=_resolve_candidate(config),
         degradation=build_provider_degradation_status(),
+        fallback_candidate=fallback_candidate,
+        fallback_degradation=fallback_degradation,
         quota_enforced=config.enforcement.quota_enforced,
         budget_enforced=config.enforcement.budget_enforced,
         enforcing_kill_switch_count=build_kill_switch_status().active_count,
-        notes=[
-            "The fixed policy maps the configured provider mode to exactly one adapter; "
-            "this posture is the candidate the next live execution would bind.",
-            "Per-request gates (caller authorization, task/tenant/caller kill-switch scopes, "
-            "quota counters) are evaluated per execution and recorded on its routing decision.",
-        ],
+        notes=notes,
     )
 
 
-def _resolve_candidate() -> RoutingPostureCandidateDescriptor:
-    config = resolve_provider_execution_config()
+def _resolve_candidate(config: ProviderExecutionConfig) -> RoutingPostureCandidateDescriptor:
     provider_id = config.provider_id
     model_id = config.model_id
     entry: ModelCatalogueEntry | None = None

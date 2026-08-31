@@ -159,6 +159,11 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
     def reset_degradation_state(self, *, degradation_key: str) -> int:
         return int(self._degradation_states.pop(degradation_key, None) is not None)
 
+    def reset_degradation_states(self) -> int:
+        affected = len(self._degradation_states)
+        self._degradation_states.clear()
+        return affected
+
     def save_operations_event(self, record: ProviderOperationsEventRecord) -> None:
         self._event_records.insert(0, deepcopy(record))
 

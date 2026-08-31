@@ -125,6 +125,9 @@ class ProviderOperationsRepository(Protocol):
     def reset_degradation_state(self, *, degradation_key: str) -> int:
         """Reset one degradation state record and return the number of affected rows."""
 
+    def reset_degradation_states(self) -> int:
+        """Reset every degradation state record and return the number of affected rows."""
+
     def save_operations_event(self, record: ProviderOperationsEventRecord) -> None:
         """Persist one provider-operations control event record."""
 

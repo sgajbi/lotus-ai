@@ -4,6 +4,10 @@ import logging
 from dataclasses import dataclass
 
 from app.config import settings
+from app.services.provider_execution_config import (
+    fallback_configuration_findings,
+    resolve_provider_execution_config,
+)
 from app.services.runtime_readiness import (
     get_audit_store_runtime_status,
     get_retrieval_store_runtime_status,
@@ -87,6 +91,7 @@ def _provider_protection_findings() -> list[str]:
         )
     if settings.provider_mode not in {"openai", "local_openai_compatible"}:
         return findings
+    findings.extend(fallback_configuration_findings(resolve_provider_execution_config()))
     if not settings.live_text_quota_enforced:
         findings.append("provider quota: enforcement is disabled in promoted live mode")
     elif not any(

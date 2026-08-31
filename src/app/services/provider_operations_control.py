@@ -18,7 +18,6 @@ from app.repositories.provider_operations_repository import ProviderOperationsEv
 from app.repositories.provider_operations_repository import ProviderOperationsRepository
 from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.provider_budget_policy import _BUDGET_KEY
-from app.services.provider_degradation_state import _DEGRADATION_KEY
 from app.services.provider_operations_store import get_provider_operations_store
 
 
@@ -109,12 +108,14 @@ def _apply_control_action(
     if request.action_type == ProviderOperationsControlActionType.RESET_BUDGET:
         return repository.reset_budget_state(budget_key=_BUDGET_KEY)
     if request.action_type == ProviderOperationsControlActionType.RESET_DEGRADATION:
-        return repository.reset_degradation_state(degradation_key=_DEGRADATION_KEY)
+        # Degradation state is keyed per provider identity (issue #176, S3);
+        # the operator reset clears every candidate's counters.
+        return repository.reset_degradation_states()
     if request.action_type == ProviderOperationsControlActionType.RESET_ALL_PROVIDER_OPERATIONS:
         return (
             repository.reset_quota_states()
             + repository.reset_budget_state(budget_key=_BUDGET_KEY)
-            + repository.reset_degradation_state(degradation_key=_DEGRADATION_KEY)
+            + repository.reset_degradation_states()
         )
     raise RuntimeError("Unsupported provider-operations control action.")
 

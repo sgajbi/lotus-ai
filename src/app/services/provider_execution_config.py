@@ -71,6 +71,12 @@ class ProviderExecutionConfig:
     top_p: float | None
     seed: int | None
     enforcement: ProviderEnforcementThresholds
+    routing_strategy: str = "fixed"
+    fallback_provider_id: str | None = None
+    fallback_model_id: str | None = None
+    fallback_model_version: str | None = None
+    fallback_api_base: str | None = None
+    fallback_api_key: str | None = None
 
 
 _provider_execution_config_override: ContextVar[ProviderExecutionConfig | None] = ContextVar(
@@ -126,6 +132,100 @@ def resolve_provider_execution_config() -> ProviderExecutionConfig:
             ),
             circuit_open_seconds=settings.live_text_circuit_open_seconds,
         ),
+        routing_strategy=settings.routing_strategy,
+        fallback_provider_id=settings.live_text_fallback_provider_id,
+        fallback_model_id=settings.live_text_fallback_model_id,
+        fallback_model_version=settings.live_text_fallback_model_version,
+        fallback_api_base=settings.live_text_fallback_api_base,
+        fallback_api_key=settings.live_text_fallback_api_key,
+    )
+
+
+def fallback_identity_configured(config: ProviderExecutionConfig) -> bool:
+    """True when the complete alternate identity is present.
+
+    Provider, model, and endpoint are the required triple; the revision and
+    the credential are optional exactly as they are for the primary identity.
+    """
+
+    return bool(
+        config.fallback_provider_id and config.fallback_model_id and config.fallback_api_base
+    )
+
+
+def fallback_configuration_findings(config: ProviderExecutionConfig) -> list[str]:
+    """Bounded misconfiguration statements for the ordered-fallback surface.
+
+    All-or-nothing: a partially supplied alternate identity is a finding even
+    under the fixed strategy, so the misconfiguration surfaces before an
+    operator flips the strategy and discovers the alternate never existed.
+    """
+
+    findings: list[str] = []
+    required = {
+        "LOTUS_AI_LIVE_TEXT_FALLBACK_PROVIDER_ID": config.fallback_provider_id,
+        "LOTUS_AI_LIVE_TEXT_FALLBACK_MODEL_ID": config.fallback_model_id,
+        "LOTUS_AI_LIVE_TEXT_FALLBACK_API_BASE": config.fallback_api_base,
+    }
+    supplied = [name for name, value in required.items() if value]
+    missing = [name for name, value in required.items() if not value]
+    if supplied and missing:
+        findings.append(
+            "provider routing: the fallback identity is partially configured "
+            f"(missing {', '.join(sorted(missing))}); supply the complete identity or none of it"
+        )
+    if config.routing_strategy == "ordered_fallback":
+        if not supplied:
+            findings.append(
+                "provider routing: routing_strategy=ordered_fallback requires a complete "
+                "fallback identity (provider, model, endpoint) and none is configured"
+            )
+        elif not missing and config.fallback_provider_id == config.provider_id:
+            findings.append(
+                "provider routing: the fallback provider identity equals the primary provider "
+                "identity, which collapses per-candidate breaker bookkeeping into one key; "
+                "configure a distinct alternate provider"
+            )
+    elif config.routing_strategy != "fixed":
+        findings.append(
+            f"provider routing: unknown routing_strategy '{config.routing_strategy}' "
+            "(supported: fixed, ordered_fallback)"
+        )
+    return findings
+
+
+def derive_fallback_execution_config(
+    config: ProviderExecutionConfig,
+) -> ProviderExecutionConfig | None:
+    """The alternate candidate's execution config, or None when not configured.
+
+    Identity and endpoint swap to the fallback quintet; sampling, timeouts,
+    retry budget, task allowlist, and enforcement thresholds are shared - the
+    alternate runs under the same protection posture as the primary. The
+    derived config is a fixed-strategy config with no fallback of its own, so
+    a fallback can never chain.
+    """
+
+    fallback_api_base = config.fallback_api_base
+    if not fallback_identity_configured(config) or fallback_api_base is None:
+        return None
+    return ProviderExecutionConfig(
+        provider_mode=config.provider_mode,
+        rollout_state=config.rollout_state,
+        provider_id=config.fallback_provider_id,
+        model_id=config.fallback_model_id,
+        model_version=config.fallback_model_version,
+        api_base=fallback_api_base,
+        api_key=config.fallback_api_key,
+        allowed_task_ids=config.allowed_task_ids,
+        timeout_ms=config.timeout_ms,
+        retry_limit=config.retry_limit,
+        max_output_tokens=config.max_output_tokens,
+        temperature=config.temperature,
+        top_p=config.top_p,
+        seed=config.seed,
+        enforcement=config.enforcement,
+        routing_strategy="fixed",
     )
 
 
