@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.contracts.access_control import AuthorizationDecision
+from app.contracts.output_validation import OutputValidationOutcome
 from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.prompts import PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderAdapterKind, RoutingDecisionDescriptor
@@ -100,6 +101,13 @@ class TaskExecutionRequest(BaseModel):
 
 class TaskAuditMetadata(BaseModel):
     request_id: str = Field(description="Generated task execution request identifier.")
+    output_validation: OutputValidationOutcome | None = Field(
+        default=None,
+        description=(
+            "Deterministic output-validation verdict for this execution; null only when "
+            "no provider output was produced (runtime failure before execution)."
+        ),
+    )
     workflow_pack_run_id: str | None = Field(
         default=None,
         description=(
@@ -184,6 +192,13 @@ class TaskExecutionResult(BaseModel):
 
 class TaskExecutionResponse(BaseModel):
     status: TaskExecutionStatus = Field(description="Execution outcome for the task request.")
+    output_validation: OutputValidationOutcome | None = Field(
+        default=None,
+        description=(
+            "Deterministic output-validation verdict and authority marking for the "
+            "returned result; null only when no provider output was produced."
+        ),
+    )
     task_id: str = Field(description="Executed task identifier.")
     category: TaskCategory = Field(description="Task category associated with the task id.")
     output_label: OutputLabel = Field(description="Output label emitted by the task.")

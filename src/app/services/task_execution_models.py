@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from app.contracts.access_control import AuthorizationDecision
 from app.contracts.prompts import PromptDescriptor, PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderExecutionRequest, ProviderExecutionResponse
+from app.contracts.output_validation import OutputValidationOutcome
 from app.contracts.safety import SafetyExecutionOutcome
 from app.contracts.tasks import CapabilityDescriptor, TaskExecutionRequest
 
@@ -26,4 +27,5 @@ class ResolvedTaskExecution:
     context: TaskExecutionContext
     provider_execution: ProviderExecutionResponse
     safety_outcome: SafetyExecutionOutcome
+    output_validation: OutputValidationOutcome
     provider_request: ProviderExecutionRequest | None = None

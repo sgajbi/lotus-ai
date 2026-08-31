@@ -13,6 +13,7 @@ from app.contracts.access_control import (
     TenantPolicyMode,
 )
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.output_validation import OutputValidationOutcome
 from app.contracts.audit_access import (
     AuditAccessEvent,
     AuditAccessOperation,
@@ -73,6 +74,16 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
             redaction_posture=record.redaction_posture.value,
             enforced_safety_controls=record.enforced_safety_controls,
             safety_outcome_payload=record.safety_outcome.model_dump(mode="json"),
+            output_validation_payload=(
+                record.output_validation.model_dump(mode="json")
+                if record.output_validation is not None
+                else None
+            ),
+            validation_state=(
+                record.output_validation.validation_state.value
+                if record.output_validation is not None
+                else None
+            ),
             authorization_payload=record.authorization.model_dump(mode="json"),
             generated_at=record.generated_at,
             stubbed=record.stubbed,
@@ -221,6 +232,11 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
             redaction_posture=redaction_posture,
             enforced_safety_controls=model.enforced_safety_controls,
             safety_outcome=safety_outcome,
+            output_validation=(
+                OutputValidationOutcome.model_validate(model.output_validation_payload)
+                if model.output_validation_payload is not None
+                else None
+            ),
             authorization=(
                 AuthorizationDecision.model_validate(model.authorization_payload)
                 if model.authorization_payload is not None

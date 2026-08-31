@@ -17,6 +17,7 @@ from app.contracts.tasks import (
 from app.services.audit_store import get_audit_store
 from app.services.execution_evidence import build_routing_decision_descriptor
 from app.services.knowledge_answer_execution import execute_knowledge_answer
+from app.services.output_validation import validate_provider_output
 from app.services.knowledge_search_execution import execute_knowledge_search
 from app.services.provider_request_builder import build_provider_execution_request
 from app.services.caller_policy_store import get_caller_policy_repository
@@ -49,6 +50,15 @@ def resolve_task_execution(
     else:
         provider_request = build_provider_execution_request(context=context)
         provider_execution = execute_text_generation(provider_request)
+    # Deterministic output validation runs on the provider's actual output,
+    # BEFORE safety redaction: redaction must never be able to erase a
+    # fabricated reference and flip a verdict (issue #156).
+    output_validation = validate_provider_output(
+        structured_output=provider_execution.structured_output,
+        supplied_source_refs=context.request.context.source_refs,
+        salvaged_json=bool(provider_execution.structured_output.get("strict_json_salvaged", False)),
+        runtime_profile=settings.runtime_profile,
+    )
     client_identifiers = _caller_redaction_identifiers(context.request.caller.caller_app)
     safe_provider_execution, safety_outcome = apply_safety_enforcement(
         policy=resolve_safety_policy_for_output(context.capability.output_label),
@@ -74,6 +84,7 @@ def resolve_task_execution(
         provider_request=provider_request,
         provider_execution=safe_provider_execution,
         safety_outcome=safety_outcome,
+        output_validation=output_validation,
     )
 
 
