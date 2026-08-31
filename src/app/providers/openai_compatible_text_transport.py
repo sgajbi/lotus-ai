@@ -482,7 +482,11 @@ def build_structured_output(
     if not is_advisor_brief_payload(request.context_payload):
         return output_message, structured_output
 
-    parsed = parse_json_object(output_message)
+    parsed, salvaged = parse_json_object_with_posture(output_message)
+    if salvaged:
+        # The validator decides what salvage means per profile (issue #156):
+        # promoted rejects, local marks the output UNVALIDATED_LOCAL_ONLY.
+        structured_output["strict_json_salvaged"] = True
     quality_result = normalize_advisor_brief_output(
         parsed_output=parsed,
         output_message=output_message,
@@ -494,18 +498,30 @@ def build_structured_output(
 
 
 def parse_json_object(value: str) -> dict[str, Any] | None:
+    parsed, _ = parse_json_object_with_posture(value)
+    return parsed
+
+
+def parse_json_object_with_posture(value: str) -> tuple[dict[str, Any] | None, bool]:
+    """Parse a model answer, reporting whether balanced-brace salvage ran.
+
+    Salvage is a recovery, not a validation: the output validator downgrades
+    or rejects salvaged output by runtime profile (issue #156).
+    """
+
     normalized = strip_json_code_fence(value)
     try:
         parsed = json.loads(normalized)
     except json.JSONDecodeError:
         candidate = extract_balanced_json_object(normalized)
         if candidate is None:
-            return None
+            return None, True
         try:
             parsed = json.loads(candidate)
         except json.JSONDecodeError:
-            return None
-    return parsed if isinstance(parsed, dict) else None
+            return None, True
+        return (parsed, True) if isinstance(parsed, dict) else (None, True)
+    return (parsed if isinstance(parsed, dict) else None), False
 
 
 def strip_json_code_fence(value: str) -> str:

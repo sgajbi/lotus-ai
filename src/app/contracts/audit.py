@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, Field, computed_field
 
 from app.contracts.access_control import AuthorizationDecision
+from app.contracts.output_validation import OutputValidationOutcome
 from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.prompts import PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderAdapterKind, RoutingDecisionDescriptor
@@ -100,6 +101,13 @@ class AuditRecordResponse(BaseModel):
     )
     enforced_safety_controls: list[str] = Field(
         description="Stable identifiers for safety controls enforced for the execution."
+    )
+    output_validation: OutputValidationOutcome | None = Field(
+        default=None,
+        description=(
+            "Deterministic output-validation verdict recorded for the execution; null for "
+            "records persisted before validation existed or when no output was produced."
+        ),
     )
     safety_outcome: SafetyExecutionOutcome = Field(
         description="Typed safety execution outcome associated with the audit record."

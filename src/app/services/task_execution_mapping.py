@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.output_validation import OutputValidationState
 from app.contracts.safety import RedactionPosture
 from app.contracts.tasks import (
     TaskAuditMetadata,
@@ -35,26 +36,55 @@ def map_task_execution_response(
         provider_execution=resolved.provider_execution,
         safety_outcome=resolved.safety_outcome,
     )
+    validation = resolved.output_validation
+    validation_withholds = validation.validation_state in {
+        OutputValidationState.REJECTED,
+        OutputValidationState.VALIDATION_UNAVAILABLE,
+    }
     execution_status = (
         TaskExecutionStatus.REJECTED
-        if resolved.safety_outcome.disposition.value == "BLOCKED"
+        if resolved.safety_outcome.disposition.value == "BLOCKED" or validation_withholds
         else TaskExecutionStatus.COMPLETED
     )
-    return TaskExecutionResponse(
-        status=execution_status,
-        task_id=context.capability.task_id,
-        category=context.capability.category,
-        output_label=context.capability.output_label,
-        result=TaskExecutionResult(
+    if validation_withholds:
+        # Fail closed: a rejected output is withheld whole - never partially
+        # returned - with the stable code and the failing rule ids.
+        error_code = (
+            "OUTPUT_VALIDATION_REJECTED"
+            if validation.validation_state is OutputValidationState.REJECTED
+            else "VALIDATION_UNAVAILABLE"
+        )
+        result = TaskExecutionResult(
+            message=(
+                "The AI output was withheld: deterministic output validation "
+                f"{validation.validation_state.value.lower().replace('_', ' ')}."
+            ),
+            structured_output={
+                "error_code": error_code,
+                "failed_rule_ids": list(validation.failed_rule_ids),
+                "validation_findings": list(validation.findings),
+                "input_mode": context.request.input_mode,
+            },
+        )
+    else:
+        result = TaskExecutionResult(
             message=resolved.provider_execution.message,
             structured_output=build_task_result_payload(
                 context=context,
                 resolved=resolved,
             ),
-        ),
+        )
+    return TaskExecutionResponse(
+        status=execution_status,
+        output_validation=validation,
+        task_id=context.capability.task_id,
+        category=context.capability.category,
+        output_label=context.capability.output_label,
+        result=result,
         evidence=evidence,
         audit=TaskAuditMetadata(
             request_id=context.request_id,
+            output_validation=validation,
             task_id=context.capability.task_id,
             output_label=context.capability.output_label,
             prompt_version=context.prompt.prompt_version,
@@ -194,6 +224,7 @@ def map_audit_record(
         redaction_posture=response.audit.safety.redaction_posture,
         enforced_safety_controls=response.audit.safety.enforced_controls,
         safety_outcome=response.audit.safety,
+        output_validation=response.audit.output_validation,
         authorization=response.audit.authorization,
         generated_at=response.audit.generated_at,
         stubbed=response.audit.stubbed,
