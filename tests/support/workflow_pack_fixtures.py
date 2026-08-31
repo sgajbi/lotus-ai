@@ -12,12 +12,13 @@ from app.services.portfolio_memory_context_guardrails import PORTFOLIO_MEMORY_EV
 
 def advisor_brief_payload(
     *,
+    portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
     portfolio_return_pct: float = 1.25,
     benchmark_return_pct: float = 7.93,
     active_return_pct: float = -6.68,
 ) -> dict[str, object]:
     return {
-        "portfolio": {"portfolio_id": "PB_SG_GLOBAL_BAL_001"},
+        "portfolio": {"portfolio_id": portfolio_id},
         "period": {"period": "YTD"},
         "performance": {
             "portfolio_return_pct": portfolio_return_pct,
@@ -69,6 +70,7 @@ def advisor_brief_task_execution_request_json(
     tenant_id: str | None = "tenant-sg-001",
     summary: str = "Draft advisor brief from source performance facts.",
     source_refs: list[str] | None = None,
+    portfolio_id: str = "PB_SG_GLOBAL_BAL_001",
     portfolio_return_pct: float = 1.25,
     benchmark_return_pct: float = 7.93,
     active_return_pct: float = -6.68,
@@ -84,6 +86,7 @@ def advisor_brief_task_execution_request_json(
         "context": {
             "summary": summary,
             "payload": advisor_brief_payload(
+                portfolio_id=portfolio_id,
                 portfolio_return_pct=portfolio_return_pct,
                 benchmark_return_pct=benchmark_return_pct,
                 active_return_pct=active_return_pct,

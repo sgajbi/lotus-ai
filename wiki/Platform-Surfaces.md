@@ -145,6 +145,7 @@ platform programs.
    - `/platform/workflow-packs/runs/{run_id}/source-events`
    - `/platform/workflow-packs/runs/{run_id}/operator-profile`
    - `/platform/workflow-packs/runs/{run_id}/consumer-view`
+   - `/platform/workflow-packs/runs/accepted-latest`
    - `/platform/workflow-packs/runs/{run_id}/accepted-output`
    - `/platform/workflow-packs/runs/{run_id}/review-actions`
    - `/platform/workflow-packs/task-flows`
@@ -182,10 +183,19 @@ The workflow-pack run-ledger routes now add bounded runtime lineage for Phase-1 
    content hash, and never exposes prompts, raw payloads, storage references, or generic artifact
    bodies. Per-pack projectors are registered explicitly, so future structured-output keys never
    become implicitly retrievable,
-7. `/platform/workflow-packs/runs/{run_id}/review-actions` records bounded actor-attributed review transitions without taking consequence-bearing workflow authority,
-8. `lotus-gateway` now uses that same bounded ledger seam to record advisor-brief review actions and returns refreshed workflow-pack posture through its advisor-brief contract without turning `lotus-ai` into the business-workflow owner,
-9. `lotus-workbench` now has a typed client seam for the downstream advisor-brief review-action route, while UI-triggered business authorization remains a separate future slice,
-10. the current executable workflow-pack set includes `advisor_brief.pack`,
+7. `/platform/workflow-packs/runs/accepted-latest` resolves the latest accepted run of one
+   pack family for one portfolio (issue #183) as a bounded identity envelope only - run and
+   pack identity, asserted context, accepting reviewer, and the accepted-output content hash -
+   so the report ordering surface can answer "does an accepted brief exist?" truthfully before
+   an order is placed. "Latest" is deterministic by accepting-review recency; optional context
+   filters compare only against source-asserted values (an unasserted value never
+   wildcard-matches); `no_accepted_run` and `no_context_match` are distinguished while unknown
+   tenants and portfolios share one shape; unresolvable candidates and scan saturation fail
+   closed. The narrative itself stays on the single run_id-keyed accepted-output surface,
+8. `/platform/workflow-packs/runs/{run_id}/review-actions` records bounded actor-attributed review transitions without taking consequence-bearing workflow authority,
+9. `lotus-gateway` now uses that same bounded ledger seam to record advisor-brief review actions and returns refreshed workflow-pack posture through its advisor-brief contract without turning `lotus-ai` into the business-workflow owner,
+10. `lotus-workbench` now has a typed client seam for the downstream advisor-brief review-action route, while UI-triggered business authorization remains a separate future slice,
+11. the current executable workflow-pack set includes `advisor_brief.pack`,
    `workspace_rationale.pack`, `twr_inspection_support_brief.pack`, the review-gated
    RFC-0027 `advisory_copilot_*.pack` contracts for `lotus-advise` source-backed copilot
    evidence packets, the review-gated

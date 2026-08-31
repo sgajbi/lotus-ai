@@ -38,6 +38,7 @@ class SqlAlchemyWorkflowPackRunRepository(SqlAlchemyRepositoryBase, WorkflowPack
         *,
         registration_ref: str | None = None,
         pack_id: str | None = None,
+        pack_family: str | None = None,
         caller_app: str | None = None,
         tenant_id: str | None = None,
         workflow_surface: str | None = None,
@@ -51,6 +52,8 @@ class SqlAlchemyWorkflowPackRunRepository(SqlAlchemyRepositoryBase, WorkflowPack
             statement = statement.where(WorkflowPackRunModel.registration_ref == registration_ref)
         if pack_id is not None:
             statement = statement.where(WorkflowPackRunModel.pack_id == pack_id)
+        if pack_family is not None:
+            statement = statement.where(WorkflowPackRunModel.pack_family == pack_family)
         if caller_app is not None:
             statement = statement.where(WorkflowPackRunModel.caller_app == caller_app)
         if tenant_id is not None:
