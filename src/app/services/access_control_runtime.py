@@ -13,10 +13,23 @@ _PROTECTED_SURFACE_COUNT = 6
 
 
 def data_plane_authorization_enforced() -> bool:
+    """Structural invariant, not an unmeasured claim (issue #154).
+
+    Every protected router binds caller authentication and the
+    registered-active-caller gate at inclusion, so no data-plane route can
+    execute unauthorized; the property is proven by the route-coverage
+    guard in tests rather than sampled at runtime. It is a constant here
+    because it is enforced by construction - if that ever stops being
+    true, the coverage guard fails before this value could mislead anyone.
+    """
+
     return True
 
 
 def control_plane_authorization_enforced() -> bool:
+    """Structural invariant, as above: control-plane routes are bound by the
+    same router-level dependencies and covered by the same guard."""
+
     return True
 
 

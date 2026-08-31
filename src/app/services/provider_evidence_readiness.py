@@ -141,10 +141,16 @@ def build_provider_evidence_readiness() -> ProviderEvidenceReadinessResponse:
         ),
     ]
     required_item_count, completed_required_item_count = summarize_activation_items(items)
+    # Derived, not asserted (issue #154): the counts were computed and then
+    # discarded behind a hard-coded False, so the surface could not have
+    # reported readiness even once the evidence genuinely arrived.
+    evidence_ready = (
+        required_item_count > 0 and completed_required_item_count == required_item_count
+    )
     return ProviderEvidenceReadinessResponse(
         service=settings.service_name,
         version=settings.service_version,
-        evidence_ready=False,
+        evidence_ready=evidence_ready,
         required_item_count=required_item_count,
         completed_required_item_count=completed_required_item_count,
         items=items,
