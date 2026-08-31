@@ -575,6 +575,7 @@ Before treating caller identity and tenant isolation as fully governed rollout p
 5. confirm the embedded `access_control_runtime` and `access_control_governance` blocks in `GET /platform/runtime-status` match the detailed access-control views
 6. confirm unknown callers still fail closed on protected data-plane and control-plane paths
 7. confirm every route from a named product router receives a trusted `X-Caller-App` value from ingress or service-to-service routing and rejects missing, empty, unknown, or disabled caller identities; routes declaring body-level caller metadata must also reject mismatches before side effects
+8. every protected route additionally requires the identified caller to be a registered ACTIVE caller-policy entry (the `platform_read` capability — the policy row itself is the grant): an unregistered or disabled caller is refused `403` even on diagnostic read surfaces, and route- or service-level capability rules still apply on top for mutations
 8. treat SQL-backed caller policy storage as the activation gate for restart-safe access-control governance
 
 Current operational expectations:

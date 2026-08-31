@@ -32,6 +32,7 @@ class AuthorizationCapabilityType(str, Enum):
     ASYNC_CONTROL = "async_control"
     PROMPT_CONTROL = "prompt_control"
     PROVIDER_CONTROL = "provider_control"
+    PLATFORM_READ = "platform_read"
 
 
 class AuthorizationOutcome(str, Enum):

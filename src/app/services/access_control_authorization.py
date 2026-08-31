@@ -105,6 +105,30 @@ def authorize_request(
             ),
         )
 
+    if capability_type == AuthorizationCapabilityType.PLATFORM_READ:
+        # The policy row itself is the read grant (issue #149, S2): any
+        # registered ACTIVE caller may read platform posture surfaces; the
+        # unknown-caller and disabled-caller refusals above are the rule.
+        return AuthorizationDecision(
+            caller_app=caller_app,
+            authenticated_caller_app=(
+                authenticated_caller.caller_app if authenticated_caller else None
+            ),
+            caller_identity_source=identity_source,
+            caller_identity_bound=identity_bound,
+            capability_type=capability_type,
+            outcome=AuthorizationOutcome.ALLOWED,
+            allowed=True,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            task_id=task_id,
+            requested_source_ids=requested_source_ids,
+            tenant_id=tenant_id,
+            summary=(
+                f"Caller '{caller_app}' is registered and active and may read "
+                "platform posture surfaces."
+            ),
+        )
+
     if capability_type == AuthorizationCapabilityType.ASYNC_CONTROL:
         return _evaluate_control_capability(
             caller_app=caller_app,

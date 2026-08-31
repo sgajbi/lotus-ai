@@ -120,6 +120,23 @@ _DEFAULT_POLICIES = [
         tenant_policy_mode=TenantPolicyMode.OPTIONAL,
         restricted_tenant_ids=[],
     ),
+    CallerPolicyDescriptor(
+        caller_app="lotus-ai-provider-operations",
+        lifecycle_status=CallerLifecycleStatus.ACTIVE,
+        description=(
+            "Internal provider-operations recorder identity for retention and deletion "
+            "confirmations; grants no task, retrieval, or control capability."
+        ),
+        allowed_task_ids=[],
+        allowed_retrieval_source_ids=[],
+        allow_live_provider=False,
+        allow_async_control=False,
+        allow_prompt_control=False,
+        allow_provider_control=False,
+        allow_audit_read_all_tenants=False,
+        tenant_policy_mode=TenantPolicyMode.OPTIONAL,
+        restricted_tenant_ids=[],
+    ),
 ]
 
 
