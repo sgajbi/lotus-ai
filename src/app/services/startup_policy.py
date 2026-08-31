@@ -48,6 +48,8 @@ def evaluate_startup_readiness() -> StartupReadinessEvaluation:
             f"workflow-pack queue-event store: {workflow_pack_queue_event_status.detail}"
         )
 
+    findings.extend(_provider_protection_findings())
+
     if settings.startup_readiness_policy == "enforce" and findings:
         blocking = True
 
@@ -64,3 +66,46 @@ def apply_startup_readiness_policy() -> StartupReadinessEvaluation:
             "lotus-ai startup readiness policy blocked startup: " + "; ".join(evaluation.findings)
         )
     return evaluation
+
+
+def _provider_protection_findings() -> list[str]:
+    """Promoted live mode must not run unprotected (issue #153 S2).
+
+    The profile enables the enforcement flags but never invents economic
+    limits - a promoted deployment with live provider mode and missing
+    limits, disabled protections, or per-process state is a finding, and
+    the promoted startup policy (enforce) makes findings blocking.
+    """
+
+    if settings.runtime_profile != "promoted":
+        return []
+    if settings.provider_mode not in {"openai", "local_openai_compatible"}:
+        return []
+    findings: list[str] = []
+    if not settings.live_text_quota_enforced:
+        findings.append("provider quota: enforcement is disabled in promoted live mode")
+    elif not any(
+        (
+            settings.live_text_default_quota_limit is not None,
+            settings.live_text_task_quota_limits.strip(),
+            settings.live_text_caller_quota_limits.strip(),
+            settings.live_text_tenant_quota_limits.strip(),
+        )
+    ):
+        findings.append("provider quota: enforcement is enabled but no quota limits are configured")
+    if not settings.live_text_budget_enforced:
+        findings.append("provider budget: enforcement is disabled in promoted live mode")
+    elif settings.live_text_hard_budget_usd is None:
+        findings.append(
+            "provider budget: enforcement is enabled but no hard budget limit is configured"
+        )
+    if not settings.live_text_degradation_enforced:
+        findings.append(
+            "provider degradation: breaker enforcement is disabled in promoted live mode"
+        )
+    if settings.provider_operations_store_mode != "sqlalchemy":
+        findings.append(
+            "provider operations store: per-process memory state cannot bound quota, "
+            "budget, or breaker behaviour across replicas in promoted live mode"
+        )
+    return findings
