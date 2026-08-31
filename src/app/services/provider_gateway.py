@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from app.contracts.access_control import AuthorizationCapabilityType
 from app.contracts.providers import (
     ROUTING_POLICY_FIXED_CONFIGURED_MODE,
+    ROUTING_POLICY_ORDERED_FALLBACK,
     ROUTING_POLICY_VERSION_V1,
     ProviderExecutionMode,
     ProviderExecutionRequest,
@@ -23,6 +24,9 @@ from app.services.access_control_authorization import authorize_request, require
 from app.contracts.model_catalogue import derive_model_catalogue_entry_id
 from app.services.provider_execution_config import (
     ProviderExecutionConfig,
+    derive_fallback_execution_config,
+    fallback_configuration_findings,
+    override_provider_execution_config,
     resolve_provider_execution_config,
 )
 from app.services.kill_switch_control import enforce_kill_switches
@@ -46,6 +50,17 @@ LIVE_TEXT_MODES = {
     ProviderExecutionMode.LOCAL_OPENAI_COMPATIBLE,
 }
 
+# A fallback attempt is warranted only for transient upstream trouble - the
+# same categories the degradation state machine tracks. Configuration and
+# governance refusals are deterministic: the alternate would not change them.
+_FALLBACK_TRIGGER_CATEGORIES = frozenset(
+    {
+        ProviderFailureCategory.PROVIDER_TIMEOUT,
+        ProviderFailureCategory.PROVIDER_RATE_LIMITED,
+        ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
+    }
+)
+
 
 class ProviderGatewayUnavailableError(HTTPException):
     """503 refusal that carries the routing decision behind the refusal."""
@@ -67,6 +82,8 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
                 f"{live_execution_state.blocking_reason}"
             ),
         )
+    if mode in LIVE_TEXT_MODES and config.routing_strategy == "ordered_fallback":
+        return _execute_ordered_fallback(request, mode=mode, config=config)
     catalogue_entry: ModelCatalogueEntry | None = None
     if mode in LIVE_TEXT_MODES:
         require_authorized(
@@ -97,7 +114,7 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
                 ),
             ) from exc
     adapter = resolve_text_generation_adapter(mode)
-    decided_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    decided_at = _utc_now_iso()
     try:
         response = adapter.execute(request, config=config)
         if catalogue_entry is not None:
@@ -142,6 +159,239 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
         ) from exc
 
 
+def _execute_ordered_fallback(
+    request: ProviderExecutionRequest,
+    *,
+    mode: ProviderExecutionMode,
+    config: ProviderExecutionConfig,
+) -> ProviderExecutionResponse:
+    """Ordered-fallback live execution (issue #176, S3).
+
+    The candidate order is fixed: [primary, configured alternate]. The
+    candidate-scoped controls - kill switches on provider/model scopes, the
+    per-provider circuit breaker, and the catalogue bind - are evaluated per
+    candidate under that candidate's execution-config override. The
+    request-scoped economics - quota counters and the budget envelope - are
+    enforced exactly once: a fallback never bypasses or double-charges them.
+    """
+
+    require_authorized(
+        authorize_request(
+            caller_app=request.caller_app,
+            capability_type=AuthorizationCapabilityType.LIVE_PROVIDER_EXECUTION,
+            tenant_id=request.tenant_id,
+            task_id=request.task_id,
+        )
+    )
+    findings = fallback_configuration_findings(config)
+    alternate = derive_fallback_execution_config(config)
+    if findings or alternate is None:
+        detail = "; ".join(findings) or (
+            "ordered_fallback requires a complete fallback identity and none is configured"
+        )
+        raise ProviderGatewayUnavailableError(
+            detail=f"{ProviderFailureCategory.INVALID_LIVE_CONFIGURATION.value}: {detail}",
+            routing_decision=_build_ordered_routing_decision(
+                mode_value=mode.value,
+                candidates=[(config, ProviderFailureCategory.INVALID_LIVE_CONFIGURATION)],
+                serving_config=None,
+                serving_entry=None,
+                fallback_path=[],
+                decided_at=_utc_now_iso(),
+            ),
+        )
+
+    rejections: dict[int, ProviderFailureCategory] = {}
+    candidates = [config, alternate]
+
+    # Operator kill switches outrank every automatic control, evaluated per
+    # candidate: a switch on the primary's provider scope routes to the
+    # alternate; a request-scoped switch (all-live-text, task, tenant,
+    # caller) matches and rejects both candidates.
+    eligible: list[int] = []
+    veto_errors: list[ProviderExecutionError] = []
+    for index, candidate in enumerate(candidates):
+        try:
+            with override_provider_execution_config(candidate):
+                enforce_kill_switches(request)
+        except ProviderExecutionError as exc:
+            rejections[index] = exc.category
+            veto_errors.append(exc)
+            continue
+        eligible.append(index)
+    if not eligible:
+        raise _ordered_refusal(
+            error=veto_errors[-1],
+            mode_value=mode.value,
+            candidates=candidates,
+            rejections=rejections,
+            fallback_path=[],
+        )
+
+    try:
+        enforce_provider_quota(request)
+        enforce_provider_budget()
+    except ProviderExecutionError as exc:
+        for index in eligible:
+            rejections[index] = exc.category
+        raise _ordered_refusal(
+            error=exc,
+            mode_value=mode.value,
+            candidates=candidates,
+            rejections=rejections,
+            fallback_path=[],
+        ) from exc
+
+    adapter = resolve_text_generation_adapter(mode)
+    fallback_path: list[str] = []
+    attempt_errors: list[ProviderExecutionError] = []
+    for index in eligible:
+        candidate = candidates[index]
+        with override_provider_execution_config(candidate):
+            try:
+                enforce_provider_degradation_preflight()
+                catalogue_entry = bind_live_text_model_catalogue_entry()
+            except ProviderExecutionError as exc:
+                rejections[index] = exc.category
+                attempt_errors.append(exc)
+                continue
+            try:
+                response = adapter.execute(request, config=candidate)
+            except ProviderExecutionError as exc:
+                record_provider_failure(exc.category)
+                rejections[index] = exc.category
+                attempt_errors.append(exc)
+                if candidate.provider_id:
+                    fallback_path.append(candidate.provider_id)
+                if exc.category not in _FALLBACK_TRIGGER_CATEGORIES:
+                    # Deterministic refusal: the alternate cannot change it.
+                    break
+                continue
+            response.model_catalogue_entry_id = catalogue_entry.entry_id
+            response.model_revision_pinned = catalogue_entry.revision_pinned
+            if getattr(response, "model_version", None) is None:
+                response.model_version = catalogue_entry.model_revision
+            record_model_revision_drift(
+                entry=catalogue_entry,
+                observed_model_id=getattr(response, "model_id", None),
+            )
+            response.routing_decision = _build_ordered_routing_decision(
+                mode_value=mode.value,
+                candidates=[
+                    (item, rejections.get(position)) for position, item in enumerate(candidates)
+                ],
+                serving_config=candidate,
+                serving_entry=catalogue_entry,
+                fallback_path=fallback_path,
+                decided_at=_utc_now_iso(),
+            )
+            record_provider_spend(response)
+            record_successful_provider_execution()
+            return response
+
+    # Every eligible candidate either returned above or appended its error.
+    raise _ordered_refusal(
+        error=attempt_errors[-1],
+        mode_value=mode.value,
+        candidates=candidates,
+        rejections=rejections,
+        fallback_path=fallback_path,
+    )
+
+
+def _ordered_refusal(
+    *,
+    error: ProviderExecutionError,
+    mode_value: str,
+    candidates: list[ProviderExecutionConfig],
+    rejections: dict[int, ProviderFailureCategory],
+    fallback_path: list[str],
+) -> ProviderGatewayUnavailableError:
+    return ProviderGatewayUnavailableError(
+        detail=f"{error.category.value}: {error.message}",
+        routing_decision=_build_ordered_routing_decision(
+            mode_value=mode_value,
+            candidates=[
+                (candidate, rejections.get(index)) for index, candidate in enumerate(candidates)
+            ],
+            serving_config=None,
+            serving_entry=None,
+            fallback_path=fallback_path,
+            decided_at=_utc_now_iso(),
+        ),
+    )
+
+
+def _candidate_entry_identity(
+    config: ProviderExecutionConfig,
+) -> tuple[str | None, str | None]:
+    if not (config.provider_id and config.model_id):
+        return None, None
+    model_revision = config.model_version or config.model_id
+    entry_id = derive_model_catalogue_entry_id(
+        provider_id=config.provider_id,
+        model_revision=model_revision,
+        deployment=None,
+    )
+    return entry_id, model_revision
+
+
+def _build_ordered_routing_decision(
+    *,
+    mode_value: str,
+    candidates: list[tuple[ProviderExecutionConfig, ProviderFailureCategory | None]],
+    serving_config: ProviderExecutionConfig | None,
+    serving_entry: ModelCatalogueEntry | None,
+    fallback_path: list[str],
+    decided_at: str,
+) -> RoutingDecisionDescriptor:
+    descriptors: list[RoutingCandidateDescriptor] = []
+    for candidate, rejection in candidates:
+        entry_id, model_revision = _candidate_entry_identity(candidate)
+        descriptors.append(
+            RoutingCandidateDescriptor(
+                provider_id=candidate.provider_id or "provider.unavailable",
+                provider_mode=mode_value,
+                model_catalogue_entry_id=entry_id,
+                model_revision=model_revision,
+                rejection_reason=rejection,
+            )
+        )
+    if serving_config is None:
+        selection_reason = (
+            "Ordered-fallback policy: every candidate was rejected or failed; execution refused."
+        )
+    elif fallback_path:
+        selection_reason = (
+            "Ordered-fallback policy: the primary candidate failed and the alternate "
+            "candidate served; the fallback path names the failed provider(s)."
+        )
+    elif serving_config is candidates[0][0]:
+        selection_reason = "Ordered-fallback policy: the primary candidate served."
+    else:
+        selection_reason = (
+            "Ordered-fallback policy: the primary candidate was rejected at preflight and "
+            "the alternate candidate served; a preflight rejection is not a fallback."
+        )
+    return RoutingDecisionDescriptor(
+        policy_id=ROUTING_POLICY_ORDERED_FALLBACK,
+        policy_version=ROUTING_POLICY_VERSION_V1,
+        strategy=RoutingStrategy.ORDERED_FALLBACK,
+        candidates=descriptors,
+        selected_provider_id=serving_config.provider_id if serving_config is not None else None,
+        selected_model_catalogue_entry_id=(
+            serving_entry.entry_id if serving_entry is not None else None
+        ),
+        decided_at=decided_at,
+        selection_reason=selection_reason,
+        fallback_path=fallback_path,
+    )
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
 def _build_rejected_routing_decision(
     *,
     mode_value: str,
@@ -149,15 +399,7 @@ def _build_rejected_routing_decision(
     config: ProviderExecutionConfig,
 ) -> RoutingDecisionDescriptor:
     provider_id = config.provider_id or "provider.unavailable"
-    entry_id: str | None = None
-    model_revision: str | None = None
-    if config.provider_id and config.model_id:
-        model_revision = config.model_version or config.model_id
-        entry_id = derive_model_catalogue_entry_id(
-            provider_id=config.provider_id,
-            model_revision=model_revision,
-            deployment=None,
-        )
+    entry_id, model_revision = _candidate_entry_identity(config)
     return RoutingDecisionDescriptor(
         policy_id=ROUTING_POLICY_FIXED_CONFIGURED_MODE,
         policy_version=ROUTING_POLICY_VERSION_V1,
@@ -173,7 +415,7 @@ def _build_rejected_routing_decision(
         ],
         selected_provider_id=None,
         selected_model_catalogue_entry_id=None,
-        decided_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        decided_at=_utc_now_iso(),
         selection_reason=(
             f"Fixed policy: the single configured candidate was rejected "
             f"({category.value}); execution refused."

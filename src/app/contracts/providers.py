@@ -62,11 +62,13 @@ class ProviderRolloutState(str, Enum):
 
 
 ROUTING_POLICY_FIXED_CONFIGURED_MODE = "fixed_configured_mode"
+ROUTING_POLICY_ORDERED_FALLBACK = "ordered_fallback_configured_alternate"
 ROUTING_POLICY_VERSION_V1 = "v1"
 
 
 class RoutingStrategy(str, Enum):
     FIXED = "FIXED"
+    ORDERED_FALLBACK = "ORDERED_FALLBACK"
 
 
 class RoutingCandidateDescriptor(BaseModel):
@@ -123,6 +125,15 @@ class RoutingDecisionDescriptor(BaseModel):
     selection_reason: str = Field(
         description="Human-readable statement of the selection or refusal.",
     )
+    fallback_path: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Provider identities that were attempted and failed before the decision "
+            "settled, in attempt order. Empty under the fixed strategy and when the "
+            "primary candidate served; a preflight-rejected candidate is recorded as a "
+            "rejection, not a fallback."
+        ),
+    )
 
 
 class RoutingPostureCandidateDescriptor(BaseModel):
@@ -154,10 +165,24 @@ class RoutingPostureResponse(BaseModel):
     policy_version: str = Field(description="Version of the routing policy.")
     strategy: RoutingStrategy = Field(description="Routing strategy the policy applies.")
     candidate: RoutingPostureCandidateDescriptor = Field(
-        description="The single candidate the fixed policy would consider right now.",
+        description="The primary candidate the policy would consider first right now.",
     )
     degradation: "ProviderDegradationStatusDescriptor" = Field(
-        description="Current circuit-breaker posture for the live provider path.",
+        description="Current circuit-breaker posture for the primary candidate.",
+    )
+    fallback_candidate: RoutingPostureCandidateDescriptor | None = Field(
+        default=None,
+        description=(
+            "The configured alternate candidate under the ordered-fallback strategy; "
+            "null under the fixed strategy or when no alternate identity is configured."
+        ),
+    )
+    fallback_degradation: "ProviderDegradationStatusDescriptor | None" = Field(
+        default=None,
+        description=(
+            "Circuit-breaker posture for the alternate candidate, keyed to its provider "
+            "identity; null whenever fallback_candidate is null."
+        ),
     )
     quota_enforced: bool = Field(description="Whether live-text quota enforcement is on.")
     budget_enforced: bool = Field(description="Whether live-text budget enforcement is on.")

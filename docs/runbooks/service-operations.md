@@ -60,6 +60,7 @@
 - Async control-plane history: /platform/async/control-plane-actions
 - Provider activation readiness: /platform/providers/activation-readiness
 - Provider operator profile: /platform/providers/operator-profile
+- Provider routing posture: /platform/providers/routing-posture
 - Provider quota policy: /platform/providers/quota-policy
 - Provider budget policy: /platform/providers/budget-policy
 - Provider operations status: /platform/providers/operations-status
@@ -474,6 +475,23 @@ Mandatory verification after every mode change:
 3. `GET /platform/providers/policy`
 4. `GET /platform/providers/operations-status`
 5. one bounded `POST /ai/tasks/execute` request with review of `audit.provider_mode`, `audit.stubbed`, and `result.structured_output.provider_id`
+
+## Provider Routing Strategy
+
+`LOTUS_AI_ROUTING_STRATEGY` selects the live-text routing policy: `fixed` (the default; the configured mode resolves to exactly one candidate) or `ordered_fallback`. Ordered fallback requires a complete alternate identity:
+
+- `LOTUS_AI_LIVE_TEXT_FALLBACK_PROVIDER_ID`, `LOTUS_AI_LIVE_TEXT_FALLBACK_MODEL_ID`, and `LOTUS_AI_LIVE_TEXT_FALLBACK_API_BASE` are required together; `LOTUS_AI_LIVE_TEXT_FALLBACK_MODEL_VERSION` and `LOTUS_AI_LIVE_TEXT_FALLBACK_API_KEY` are optional exactly as for the primary identity.
+- A partially supplied alternate identity, `ordered_fallback` with no alternate, or an alternate provider identity equal to the primary is a startup readiness finding (blocking in the promoted profile) and live executions are refused fail-closed with `INVALID_LIVE_CONFIGURATION`.
+
+Runtime semantics under `ordered_fallback`:
+
+1. the candidate order is fixed: configured primary first, configured alternate second; both identities seed governed catalogue rows and pass the same lifecycle and kill-switch fences at bind time
+2. a transient primary failure (`PROVIDER_TIMEOUT`, `PROVIDER_RATE_LIMITED`, `PROVIDER_UPSTREAM_ERROR`, after the primary's own retry budget) triggers one attempt on the alternate within the same execution; the routing decision records the primary's failure category as its rejection and names the failed provider in `fallback_path`
+3. a candidate-scoped preflight veto - a `PROVIDER`/`MODEL_REVISION` kill switch on the primary, or the primary's open circuit breaker - routes to the alternate as a recorded rejection plus selection, with an empty `fallback_path`: a preflight rejection is not a fallback
+4. deterministic failures (configuration, governance) refuse without attempting the alternate
+5. quota counters and the budget envelope are request-scoped and enforced exactly once per execution: a fallback never bypasses or double-charges them, and request-scoped kill-switch scopes (`ALL_LIVE_TEXT`, `TASK`, `TENANT`, `CALLER_APP`) reject both candidates
+6. circuit-breaker bookkeeping is keyed per provider identity (`live_text_generation:<provider_id>`), so the primary's failures never open the alternate's breaker; `RESET_DEGRADATION` and `RESET_ALL_PROVIDER_OPERATIONS` control actions clear every candidate's counters
+7. `GET /platform/providers/routing-posture` names both candidates with their catalogue bindings and per-candidate breaker posture; the serving identity is always stamped on the response and its audit record - there is no silent fallback
 
 ## Durable Provider Operations Recovery
 

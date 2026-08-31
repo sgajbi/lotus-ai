@@ -127,6 +127,36 @@ def build_seed_model_catalogue_entries() -> list[ModelCatalogueEntry]:
             last_updated_at=now,
         )
 
+    if (
+        config.provider_mode in _LIVE_TEXT_MODES
+        and config.fallback_provider_id
+        and config.fallback_model_id
+    ):
+        # The configured alternate is a governed identity like the primary:
+        # it seeds its own catalogue row and passes the same eligibility
+        # fences at bind time (issue #176, S3).
+        fallback_revision = config.fallback_model_version or config.fallback_model_id
+        entry_id = derive_model_catalogue_entry_id(
+            provider_id=config.fallback_provider_id,
+            model_revision=fallback_revision,
+            deployment=None,
+        )
+        entries[entry_id] = ModelCatalogueEntry(
+            entry_id=entry_id,
+            provider_id=config.fallback_provider_id,
+            provider_mode=config.provider_mode,
+            model_family=config.fallback_model_id,
+            model_revision=fallback_revision,
+            deployment=None,
+            sku=None,
+            lifecycle_state=ModelLifecycleState.CATALOGUED,
+            revision_pinned=bool(config.fallback_model_version),
+            modalities=["text"],
+            seed_source=ModelCatalogueSeedSource.SETTINGS_LIVE_TEXT,
+            created_at=now,
+            last_updated_at=now,
+        )
+
     inventory = ConfiguredWorkflowRunModelRiskInventory(settings=settings)
     for approved in inventory.approved_models():
         entry_id = derive_model_catalogue_entry_id(

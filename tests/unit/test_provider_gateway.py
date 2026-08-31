@@ -235,6 +235,25 @@ def test_execute_text_generation_rejects_live_provider_when_quota_is_exceeded() 
     monkeypatch.undo()
 
 
+def test_candidate_entry_identity_is_null_without_a_complete_identity() -> None:
+    """The decision builders record a candidate without a catalogue entry -
+    never a fabricated one - when the identity is incomplete. The live
+    execution gate refuses such configurations upstream, so this contract is
+    exercised at the helper seam."""
+
+    from app.services.provider_execution_config import resolve_provider_execution_config
+    from app.services.provider_gateway import _candidate_entry_identity
+
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = None
+    assert _candidate_entry_identity(resolve_provider_execution_config()) == (None, None)
+
+    settings.live_text_model_id = "gpt-5.4"
+    entry_id, model_revision = _candidate_entry_identity(resolve_provider_execution_config())
+    assert entry_id == "text.openai:gpt-5.4"
+    assert model_revision == "gpt-5.4"
+
+
 def test_execute_text_generation_blocks_unauthorized_live_provider_caller() -> None:
     settings.provider_mode = "openai"
     settings.provider_rollout_state = "CANARY_ENABLED"
