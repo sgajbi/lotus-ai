@@ -17,9 +17,9 @@ def test_first_use_case_governance_blocks_limited_rollout_in_default_memory_post
     assert status.rollout_stage.value == "PRE_PROD_VALIDATION"
     assert status.operational_posture.value == "LIMITED_ROLLOUT_BLOCKED"
     assert status.active_production_ready is False
-    assert status.blocking_area_count == 1
+    assert status.blocking_area_count == 2
     assert status.readiness.readiness_ready is False
-    assert status.runbook_readiness.runbook_ready is True
+    assert status.runbook_readiness.runbook_ready is False
 
 
 def test_first_use_case_governance_remains_blocked_until_resilience_is_ready(
@@ -50,9 +50,9 @@ def test_first_use_case_governance_remains_blocked_until_resilience_is_ready(
     assert status.rollout_stage.value == "PRE_PROD_VALIDATION"
     assert status.operational_posture.value == "LIMITED_ROLLOUT_BLOCKED"
     assert status.active_production_ready is False
-    assert status.blocking_area_count == 1
+    assert status.blocking_area_count == 2
     assert status.readiness.readiness_ready is False
-    assert status.runbook_readiness.runbook_ready is True
+    assert status.runbook_readiness.runbook_ready is False
     assert any(
         item.evidence_id == "lotus_performance_resilience_governance" and item.status == "NOT_READY"
         for item in status.readiness.items

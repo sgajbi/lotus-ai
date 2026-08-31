@@ -10,7 +10,7 @@ from app.contracts.observability import ObservabilityGovernanceStatusResponse
 from app.services.deployment_split_activation_readiness import (
     build_deployment_split_activation_readiness,
 )
-from app.services.deployment_split_runbook_readiness import (
+from app.services.readiness_catalog import (
     build_deployment_split_runbook_readiness,
 )
 from app.services.deployment_split_runtime import build_deployment_split_runtime_status

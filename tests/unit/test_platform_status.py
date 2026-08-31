@@ -158,8 +158,8 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.access_control_runtime.tenant_isolation_active is True
     assert status.access_control_governance.governance_ready is False
     assert status.access_control_governance.activation_readiness.activation_ready is False
-    assert status.access_control_governance.runbook_readiness.runbook_ready is True
-    assert status.access_control_governance.blocking_area_count == 1
+    assert status.access_control_governance.runbook_readiness.runbook_ready is False
+    assert status.access_control_governance.blocking_area_count == 2
     assert status.artifact_store_mode == "memory"
     assert status.artifact_object_store_mode == "memory"
     assert status.artifact_runtime.metadata_store_mode == "memory"
@@ -167,7 +167,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.artifact_runtime.artifact_count >= 0
     assert status.artifact_governance.governance_ready is False
     assert status.artifact_governance.activation_readiness.activation_ready is False
-    assert status.artifact_governance.runbook_readiness.runbook_ready is True
+    assert status.artifact_governance.runbook_readiness.runbook_ready is False
     assert status.observability_runtime.domain_count == 6
     assert status.observability_runtime.unavailable_domain_count == 0
     assert status.observability_runtime.incident_evidence_supported_domain_count >= 1
@@ -202,8 +202,8 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     }
     assert status.observability_governance.governance_ready is False
     assert status.observability_governance.activation_readiness.activation_ready is False
-    assert status.observability_governance.runbook_readiness.runbook_ready is True
-    assert status.observability_governance.blocking_area_count == 1
+    assert status.observability_governance.runbook_readiness.runbook_ready is False
+    assert status.observability_governance.blocking_area_count == 2
     assert status.async_runtime.cutover_state == "in_process_only"
     assert status.async_runtime.queue_mode == "DISABLED"
     assert status.async_runtime.queue_backend == "none"
@@ -215,7 +215,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.provider_governance.blocking_area_count == 3
     assert status.provider_operations.operations_state.value == "ROLLOUT_BLOCKED"
     assert status.retrieval_governance.blocking_area_count == 3
-    assert status.prompt_governance.blocking_area_count == 2
+    assert status.prompt_governance.blocking_area_count == 3
     assert status.prompt_runtime.rollout_mode.value == "GOVERNED_CONTROL_ACTIONS"
     assert status.prompt_runtime.candidate_prompt_count == 0
     assert any(state.task_id == "explain.v1" for state in status.prompt_runtime.rollout_states)
@@ -281,7 +281,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.first_use_case_governance.active_production_ready is False
     assert status.first_use_case_governance.governance_ready is False
     assert status.first_use_case_governance.readiness.readiness_ready is False
-    assert status.first_use_case_governance.runbook_readiness.runbook_ready is True
+    assert status.first_use_case_governance.runbook_readiness.runbook_ready is False
     assert status.deployment_split.configured_stage.value == "UNIFIED"
     assert status.deployment_split.effective_stage.value == "UNIFIED"
     assert status.deployment_split.front_door_plane.value == "runtime"
@@ -291,7 +291,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.deployment_split.routes[0].route_mode.value == "UNIFIED_INTERNAL"
     assert status.deployment_split_governance.governance_ready is False
     assert status.deployment_split_governance.activation_readiness.activation_ready is True
-    assert status.deployment_split_governance.runbook_readiness.runbook_ready is True
+    assert status.deployment_split_governance.runbook_readiness.runbook_ready is False
     assert status.deployment_split_governance.observability_governance_ready is False
     assert status.evaluation_runtime.owning_plane.value == "runtime"
     assert status.evaluation_runtime.submission_route_mode.value == "UNIFIED_INTERNAL"
@@ -306,7 +306,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.resilience_runtime.authoritative_dependency_count >= 8
     assert status.resilience_governance.governance_ready is False
     assert status.resilience_governance.activation_readiness.activation_ready is False
-    assert status.resilience_governance.runbook_readiness.runbook_ready is True
+    assert status.resilience_governance.runbook_readiness.runbook_ready is False
     assert status.resilience_governance.drill_evidence.drill_evidence_ready is False
     assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
     assert status.production_baseline.production_ready is False
@@ -332,7 +332,7 @@ def test_build_platform_runtime_status_includes_startup_readiness_state() -> Non
     assert status.production_go_live_governance.go_live_decision == "BLOCKED"
     assert status.production_baseline_governance.governance_ready is False
     assert status.production_baseline_governance.activation_readiness.activation_ready is False
-    assert status.production_baseline_governance.runbook_readiness.runbook_ready is True
+    assert status.production_baseline_governance.runbook_readiness.runbook_ready is False
     assert any(
         dependency["dependency_id"] == "database_backend"
         for dependency in [item.model_dump() for item in status.production_baseline.dependencies]
@@ -408,8 +408,8 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     assert status.async_runtime.queue_backlog_count == 0
     assert status.deployment_split.configured_stage.value == "UNIFIED"
     assert status.deployment_split.effective_stage.value == "UNIFIED"
-    assert status.deployment_split_governance.governance_ready is True
-    assert status.deployment_split_governance.observability_governance_ready is True
+    assert status.deployment_split_governance.governance_ready is False
+    assert status.deployment_split_governance.observability_governance_ready is False
     assert status.evaluation_runtime.async_execution_route_mode.value == "UNIFIED_INTERNAL"
     assert status.resilience_runtime.posture.value == "PARTIAL_RUNTIME_DURABILITY"
     assert status.resilience_runtime.delivery_stage.value == "DRILL_VERIFIED"
@@ -502,7 +502,7 @@ def test_build_platform_runtime_status_reflects_sql_backed_prompt_rollout_after_
     )
 
     assert status.prompt_governance.activation_readiness.activation_ready is True
-    assert status.prompt_governance.runbook_readiness.runbook_ready is True
+    assert status.prompt_governance.runbook_readiness.runbook_ready is False
     assert explain_selection.prompt_version == "foundation.explain.v2"
     assert explain_state.active_prompt_version == "foundation.explain.v2"
     assert explain_state.previous_active_prompt_version == "foundation.explain.v1"

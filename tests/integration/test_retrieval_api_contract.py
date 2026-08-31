@@ -258,10 +258,10 @@ def test_retrieval_runbook_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
     assert body["required_item_count"] == 6
-    assert body["completed_required_item_count"] == 4
+    assert body["completed_required_item_count"] == 0
     assert body["items"][0]["runbook_id"] == "retrieval_operational_runbook"
-    assert body["items"][0]["status"] == "READY"
-    assert body["items"][2]["status"] == "READY"
+    assert body["items"][0]["status"] == "DOCUMENTED_ONLY"
+    assert body["items"][2]["status"] == "DOCUMENTED_ONLY"
     assert body["items"][3]["runbook_id"] == "retrieval_embedding_dependency_review"
 
 

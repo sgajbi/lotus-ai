@@ -1,0 +1,322 @@
+{
+  "artifact": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "artifact_retention_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Retention, archival posture, and descriptor-first artifact inspection are documented in the operator runbook."
+      },
+      {
+        "item_id": "artifact_incident_bundle_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Observability incident-bundle review now points to governed artifact refs instead of raw payload dumping."
+      },
+      {
+        "item_id": "artifact_archive_recovery",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Archive posture and recovery expectations are documented as reviewable metadata transitions rather than hidden filesystem cleanup."
+      }
+    ]
+  },
+  "access_control": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "caller_onboarding_procedure",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Caller onboarding and policy review procedures are documented for the caller policy registry."
+      },
+      {
+        "item_id": "caller_revocation_procedure",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Caller disablement and access revocation procedures are documented and aligned with fail-closed enforcement."
+      },
+      {
+        "item_id": "tenant_restriction_change_procedure",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Tenant restriction changes are documented as explicit policy updates that require review before rollout."
+      },
+      {
+        "item_id": "blocked_authorization_incident_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Operator guidance covers blocked authorization review using audit records, execution evidence, and control-plane history."
+      },
+      {
+        "item_id": "emergency_override_posture",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "No emergency override API exists in RFC-0012; the fail-closed posture is documented explicitly so operators do not assume a hidden bypass exists."
+      }
+    ]
+  },
+  "production_baseline": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "deployment_baseline_boundary",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Operator guidance now distinguishes local or demo-capable posture, prod-shaped local posture, and the accepted production-ready baseline explicitly."
+      },
+      {
+        "item_id": "migration_and_startup_procedure",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Container startup and release behavior document that migrations must be applied before the runtime is treated as ready."
+      },
+      {
+        "item_id": "queue_and_worker_operations",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Dedicated worker, Redis queue, backlog, drain, and degraded async posture are documented as part of the accepted deployment baseline."
+      },
+      {
+        "item_id": "artifact_and_object_store_posture",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Operator guidance explains that filesystem or memory-backed artifact payload storage is local fallback only and not acceptable for the production baseline."
+      },
+      {
+        "item_id": "secret_injection_boundary",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Runbooks and deployment docs now state explicitly that local env-file secret handling is non-production and that deployment-managed secret injection is required for go-live posture."
+      }
+    ]
+  },
+  "deployment_split": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "split_stage_boundary",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Operator guidance now distinguishes unified, split-ready, retrieval-split active, and retrieval-and-evals-split active posture explicitly."
+      },
+      {
+        "item_id": "unified_front_door_invariant",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "The runtime plane remains the single external front door even when retrieval and eval planes activate internally."
+      },
+      {
+        "item_id": "cross_plane_incident_triage",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Runbooks now direct operators to review deployment-split, observability, retrieval, and eval surfaces together during split-plane incidents."
+      },
+      {
+        "item_id": "retrieval_plane_rollback",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Rollback guidance now explains when retrieval split degradation should trigger rollback to UNIFIED instead of hidden in-process fallback."
+      },
+      {
+        "item_id": "eval_plane_rollback",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Rollback guidance now explains when eval split degradation should trigger rollback to UNIFIED instead of treating approval evidence drift as normal."
+      },
+      {
+        "item_id": "cross_plane_observability_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Operator guidance now ties split-plane rollout review to observability runtime, incident-summary, and bounded artifact-backed evidence inspection."
+      }
+    ]
+  },
+  "prompt": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "prompt_operational_runbook",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Prompt promotion, rollback, incident review, and audit-inspection procedures are documented in the service operations runbook."
+      },
+      {
+        "item_id": "prompt_change_review_and_approval",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Governed prompt control actions require requested-by, approved-by, and operator reason metadata, and the review flow is now documented."
+      },
+      {
+        "item_id": "prompt_rollback_and_incident_response",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Rollback, regression triage, and incident-response procedures for prompt rollout are documented and aligned with the control-plane action model."
+      },
+      {
+        "item_id": "prompt_observability_and_evidence_pack",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Operators can inspect prompt rollout state, control history, approval evidence, platform runtime posture, and audit traces through documented platform endpoints."
+      }
+    ]
+  },
+  "observability": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "observability_operational_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "The service runbook now documents the observability API surface and the primary runtime and incident-summary review flow."
+      },
+      {
+        "item_id": "observability_incident_review_and_correlation",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Incident review now uses bounded domain summaries, incident evidence, audit records, and existing correlation identifiers rather than ad hoc endpoint stitching."
+      },
+      {
+        "item_id": "observability_breakdown_review_and_authorization",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Caller, tenant, and capability breakdown review is documented explicitly, including the authorization-aware tenant visibility rule."
+      },
+      {
+        "item_id": "observability_external_dashboard_posture",
+        "execution_state": "OUT_OF_SCOPE",
+        "required_for_activation": false,
+        "notes": "RFC-0013 delivers in-service observability contracts and incident-evidence APIs; external dashboard ownership remains deployment-specific and is not an activation gate in this RFC."
+      }
+    ]
+  },
+  "resilience": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "resilience_restore_ordering_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "The service runbook now documents the restore-order review flow and the boundary between restoring durable state and re-enabling broader rollout."
+      },
+      {
+        "item_id": "resilience_queue_and_worker_recovery_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Queue-backed async recovery and dedicated-worker review paths are documented explicitly, including degraded posture handling."
+      },
+      {
+        "item_id": "resilience_provider_and_retrieval_recovery_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Provider and retrieval recovery review is documented as a validation step after internal state restore rather than part of relational recovery itself."
+      },
+      {
+        "item_id": "resilience_drill_and_incident_review_boundary",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "The runbook now distinguishes current drill evidence, restored-with-findings posture, and incident review boundaries clearly enough for governance review."
+      }
+    ]
+  },
+  "first_use_case": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "lotus_performance_shared_ownership",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "The integration and use-case guides now define lotus-performance ownership of analytics truth and lotus-ai ownership of explanation generation, audit, and support review posture."
+      },
+      {
+        "item_id": "lotus_performance_rollout_and_rollback_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "The service runbook now documents limited-rollout review, rollback-to-blocked posture, and the requirement to stop downstream exposure when first-use-case governance is no longer ready."
+      },
+      {
+        "item_id": "lotus_performance_support_and_incident_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Operators now have an explicit first-use-case path for inspecting runtime readiness, audit traces, observability incident summaries, and bounded artifact descriptors when commentary or input-shape incidents occur."
+      },
+      {
+        "item_id": "lotus_performance_unsupported_input_triage",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Unsupported or incomplete analytics inputs are now treated as a distinct support and rollback review path rather than normal explanation variance."
+      }
+    ]
+  },
+  "safety": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "safety_operational_runbook",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "The service runbook now documents runtime safety activation review, blocked and degraded execution handling, and the operator-facing status surfaces required to review safety rollout posture."
+      },
+      {
+        "item_id": "safety_rollback_and_degraded_response",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "The runbook documents how operators review documented-only fallback, blocked execution, and degraded redaction failures without relying on ad hoc runtime state resets."
+      },
+      {
+        "item_id": "safety_incident_review_and_audit_evidence",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Safety incident review posture is grounded in persisted audit records, execution evidence, and runtime-backed evaluation runs rather than process-local state."
+      },
+      {
+        "item_id": "safety_oncall_and_observability_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Safety rollout review flow and bounded observability endpoints are documented, but named on-call ownership for blocked, degraded, and redacted task outcomes remains to be approved."
+      }
+    ]
+  },
+  "retrieval": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "retrieval_operational_runbook",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "The service runbook now documents live-search rollout review, runtime-backed approval-gate checks, and operator-facing retrieval status surfaces."
+      },
+      {
+        "item_id": "retrieval_oncall_and_escalation",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Retrieval governance and operator review flow are documented, but named on-call ownership and formal escalation rotation are still not approved."
+      },
+      {
+        "item_id": "retrieval_reindex_and_replay_procedures",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "The runbook now documents runtime-backed retrieval rollout plus reindex, replay, rollback, and corpus-recovery expectations for the live-search path."
+      },
+      {
+        "item_id": "retrieval_embedding_dependency_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Retrieval indexing now documents how bounded live embedding posture is reviewed separately from broader retrieval go-live approval."
+      },
+      {
+        "item_id": "retrieval_corpus_change_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Corpus refresh, withdrawal, search-eligibility review, and artifact-backed ingestion diagnostics are now documented through the retrieval and observability runbook flow."
+      },
+      {
+        "item_id": "retrieval_observability_incident_views",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Bounded retrieval observability and incident-evidence summaries are now exposed through `/platform/observability/retrieval-summary` and `/platform/observability/incident-summary`; external dashboards remain deployment-specific and are not an RFC-0013 activation gate."
+      }
+    ]
+  }
+}

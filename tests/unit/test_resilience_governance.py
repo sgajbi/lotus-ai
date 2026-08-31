@@ -51,7 +51,7 @@ def test_resilience_activation_and_governance_block_without_current_drill_eviden
     assert activation.activation_ready is False
     assert any("drill" in finding.lower() for finding in activation.blocking_findings)
     assert governance.governance_ready is False
-    assert governance.runbook_readiness.runbook_ready is True
+    assert governance.runbook_readiness.runbook_ready is False
     assert governance.drill_evidence.drill_evidence_ready is False
     assert governance.blocking_area_count >= 1
 

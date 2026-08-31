@@ -49,7 +49,7 @@ from app.services.retrieval_ingestion_async_execution import submit_retrieval_in
 from app.services.retrieval_evidence_readiness import build_retrieval_evidence_readiness
 from app.services.retrieval_execution_status import build_retrieval_execution_status
 from app.services.retrieval_governance_status import build_retrieval_governance_status
-from app.services.retrieval_runbook_readiness import build_retrieval_runbook_readiness
+from app.services.readiness_catalog import build_retrieval_runbook_readiness
 from app.services.retrieval_async_execution import submit_retrieval_index_job_async
 from app.services.retrieval_service import search_sources
 

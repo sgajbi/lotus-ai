@@ -64,7 +64,7 @@ def test_resilience_governance_routes(client: TestClient) -> None:
     assert "drill_evidence_ready" in drill_body
     assert activation_body["delivery_stage"] == "DRILL_VERIFIED"
     assert "activation_ready" in activation_body
-    assert runbook_body["runbook_ready"] is True
+    assert runbook_body["runbook_ready"] is False
     assert runbook_body["required_item_count"] >= 1
     assert governance_body["runtime_status"]["service"] == "lotus-ai"
     assert "restore_plan" in governance_body
@@ -103,7 +103,7 @@ def test_deployment_split_governance_routes(client: TestClient) -> None:
 
     assert activation_body["service"] == "lotus-ai"
     assert "activation_ready" in activation_body
-    assert runbook_body["runbook_ready"] is True
+    assert runbook_body["runbook_ready"] is False
     assert runbook_body["required_item_count"] >= 1
     assert governance_body["runtime_status"]["service"] == "lotus-ai"
     assert "activation_readiness" in governance_body
@@ -139,7 +139,7 @@ def test_production_baseline_governance_routes(client: TestClient) -> None:
 
     assert activation_body["service"] == "lotus-ai"
     assert "activation_ready" in activation_body
-    assert runbook_body["runbook_ready"] is True
+    assert runbook_body["runbook_ready"] is False
     assert runbook_body["required_item_count"] >= 1
     assert governance_body["runtime_status"]["service"] == "lotus-ai"
     assert "activation_readiness" in governance_body

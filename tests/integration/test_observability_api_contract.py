@@ -128,7 +128,7 @@ def test_observability_governance_routes(client: TestClient) -> None:
     runbook_response = client.get("/platform/observability/runbook-readiness")
     assert runbook_response.status_code == 200
     runbook_body = runbook_response.json()
-    assert runbook_body["runbook_ready"] is True
+    assert runbook_body["runbook_ready"] is False
     assert runbook_body["required_item_count"] == 3
 
     governance_response = client.get("/platform/observability/governance-status")
@@ -140,7 +140,7 @@ def test_observability_governance_routes(client: TestClient) -> None:
         "no-sensitive-content telemetry" in finding
         for finding in governance_body["activation_readiness"]["blocking_findings"]
     )
-    assert governance_body["runbook_readiness"]["runbook_ready"] is True
+    assert governance_body["runbook_readiness"]["runbook_ready"] is False
     assert governance_body["runtime_status"]["domain_count"] == 6
 
 

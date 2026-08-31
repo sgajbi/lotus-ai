@@ -17,7 +17,7 @@ from app.services.production_baseline_activation_readiness import (
 from app.services.production_baseline_governance import (
     build_production_baseline_governance_status,
 )
-from app.services.production_baseline_runbook_readiness import (
+from app.services.readiness_catalog import (
     build_production_baseline_runbook_readiness,
 )
 
@@ -79,8 +79,8 @@ def test_production_baseline_activation_readiness_reports_blocking_runtime_findi
 def test_production_baseline_runbook_readiness_is_ready() -> None:
     readiness = build_production_baseline_runbook_readiness()
 
-    assert readiness.runbook_ready is True
-    assert readiness.required_item_count == readiness.completed_required_item_count
+    assert readiness.runbook_ready is False
+    assert readiness.completed_required_item_count == 0
     assert any(item.runbook_id == "secret_injection_boundary" for item in readiness.items)
 
 

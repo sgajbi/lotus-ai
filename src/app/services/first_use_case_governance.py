@@ -12,7 +12,7 @@ from app.contracts.use_cases import (
     FirstUseCaseRolloutStage,
 )
 from app.services.first_use_case_readiness import build_first_use_case_readiness
-from app.services.first_use_case_runbook_readiness import build_first_use_case_runbook_readiness
+from app.services.readiness_catalog import build_first_use_case_runbook_readiness
 from app.services.governance_readiness import summarize_governance_flags
 
 

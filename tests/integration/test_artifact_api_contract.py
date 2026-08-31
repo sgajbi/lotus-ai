@@ -61,7 +61,7 @@ def test_artifact_catalog_and_governance_routes(client: TestClient) -> None:
 
     runbook_response = client.get("/platform/artifacts/runbook-readiness")
     assert runbook_response.status_code == 200
-    assert runbook_response.json()["runbook_ready"] is True
+    assert runbook_response.json()["runbook_ready"] is False
 
     governance_response = client.get("/platform/artifacts/governance-status")
     assert governance_response.status_code == 200

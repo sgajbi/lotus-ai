@@ -60,14 +60,14 @@ from app.services.app_capability_rollout_observability import (
 from app.services.production_baseline_governance import (
     build_production_baseline_governance_status,
 )
-from app.services.production_baseline_runbook_readiness import (
+from app.services.readiness_catalog import (
     build_production_baseline_runbook_readiness,
 )
 from app.services.deployment_split_activation_readiness import (
     build_deployment_split_activation_readiness,
 )
 from app.services.deployment_split_governance import build_deployment_split_governance_status
-from app.services.deployment_split_runbook_readiness import (
+from app.services.readiness_catalog import (
     build_deployment_split_runbook_readiness,
 )
 from app.services.platform_status import build_platform_runtime_status
@@ -88,7 +88,7 @@ from app.services.resilience_activation_readiness import build_resilience_activa
 from app.services.resilience_drill_evidence import build_resilience_drill_evidence
 from app.services.resilience_governance import build_resilience_governance_status
 from app.services.resilience_restore_plan import build_resilience_restore_plan
-from app.services.resilience_runbook_readiness import build_resilience_runbook_readiness
+from app.services.readiness_catalog import build_resilience_runbook_readiness
 from app.services.resilience_runtime import build_resilience_runtime_status
 
 router = APIRouter(prefix="/platform", tags=["platform"])

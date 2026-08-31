@@ -24,7 +24,7 @@ from app.services.prompt_rollout_control import (
     build_prompt_control_history,
 )
 from app.services.prompt_registry import get_prompt_or_raise, list_registered_prompts
-from app.services.prompt_runbook_readiness import build_prompt_runbook_readiness
+from app.services.readiness_catalog import build_prompt_runbook_readiness
 from app.services.prompt_status import build_prompt_runtime_status
 
 router = APIRouter(prefix="/platform/prompts", tags=["platform"])

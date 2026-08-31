@@ -15,7 +15,7 @@ from app.services.deployment_split_activation_readiness import (
 from app.services.deployment_split_governance import (
     build_deployment_split_governance_status,
 )
-from app.services.deployment_split_runbook_readiness import (
+from app.services.readiness_catalog import (
     build_deployment_split_runbook_readiness,
 )
 
@@ -73,8 +73,8 @@ def test_deployment_split_activation_readiness_reports_stage_mismatch_as_blockin
 def test_deployment_split_runbook_readiness_is_ready() -> None:
     readiness = build_deployment_split_runbook_readiness()
 
-    assert readiness.runbook_ready is True
-    assert readiness.required_item_count == readiness.completed_required_item_count
+    assert readiness.runbook_ready is False
+    assert readiness.completed_required_item_count == 0
     assert any(item.runbook_id == "cross_plane_incident_triage" for item in readiness.items)
 
 
