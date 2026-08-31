@@ -148,6 +148,46 @@ def test_both_rule_families_report_together() -> None:
     assert outcome.failed_rule_ids == ["evidence_grounding", "strict_json"]
 
 
+def test_numeric_grounding_traces_tokens_to_the_supplied_context() -> None:
+    payload = {"performance": {"portfolio_return_pct": 1.25, "net_cash_flow": 25000}}
+
+    grounded = _validate(
+        {"summary": "Returned 1.25% with $25,000 of net flows."}, context_payload=payload
+    )
+    assert grounded.validation_state is OutputValidationState.VALIDATED
+
+    fabricated = _validate(
+        {"summary": "Returned 6.8% with $999,999 of net flows."}, context_payload=payload
+    )
+    assert fabricated.validation_state is OutputValidationState.REJECTED
+    assert fabricated.failed_rule_ids == ["numeric_grounding"]
+    joined = "\n".join(fabricated.findings)
+    assert "6.8%" in joined and "$999,999" in joined
+
+
+def test_numeric_grounding_scans_nested_narrative_and_respects_tolerance() -> None:
+    payload = {"metrics": [{"value": "7.93"}], "count": 3}
+
+    within_tolerance = _validate(
+        {"sections": [{"detail": "Benchmark delivered 7.94% this period."}]},
+        context_payload=payload,
+    )
+    assert within_tolerance.validation_state is OutputValidationState.VALIDATED
+
+    nested_fabrication = _validate(
+        {"sections": [{"points": [{"detail": "Benchmark delivered 12.5% this period."}]}]},
+        context_payload=payload,
+    )
+    assert nested_fabrication.validation_state is OutputValidationState.REJECTED
+    assert nested_fabrication.failed_rule_ids == ["numeric_grounding"]
+
+    # Bare numbers are deliberately out of scope: only % and $ tokens police.
+    bare_numbers = _validate(
+        {"summary": "Reviewed 42 positions across 7 sleeves."}, context_payload=payload
+    )
+    assert bare_numbers.validation_state is OutputValidationState.VALIDATED
+
+
 def test_validator_fault_fails_closed_as_validation_unavailable() -> None:
     bomb: dict[str, object] = {}
     cursor = bomb

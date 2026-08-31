@@ -26,6 +26,7 @@ unmarked output.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from app.contracts.output_validation import (
@@ -39,11 +40,21 @@ logger = logging.getLogger(__name__)
 RULE_EVIDENCE_GROUNDING = "evidence_grounding"
 RULE_STRICT_JSON = "strict_json"
 RULE_OUTPUT_SCHEMA = "output_schema"
+RULE_NUMERIC_GROUNDING = "numeric_grounding"
 RULE_CONTRACT_MISSING = "contract_missing"
 
 _REFERENCE_KEYS = frozenset({"source_ref", "source_refs", "evidence_ref", "evidence_refs"})
 _MAX_RECORDED_FINDINGS = 10
 _MAX_TRAVERSAL_DEPTH = 24
+
+# The advisor-brief token vocabulary, generalised (issue #156, S3): only
+# tokens that carry a percent or currency marker are policed - bare numbers
+# in narrative text are deliberately out of scope (counts, ordinals, and
+# dates would drown the signal).
+_PERCENT_TOKEN_PATTERN = re.compile(r"(?<![\w-])[-+]?\d+(?:\.\d+)?%")
+_CURRENCY_TOKEN_PATTERN = re.compile(r"(?<![\w-])[-+]?\$\d[\d,]*(?:\.\d+)?")
+_PERCENT_TOLERANCE = 0.02
+_CURRENCY_TOLERANCE = 1.0
 
 
 def validate_provider_output(
@@ -53,6 +64,7 @@ def validate_provider_output(
     salvaged_json: bool,
     runtime_profile: str,
     contract_key: str,
+    context_payload: dict[str, Any] | None = None,
 ) -> OutputValidationOutcome:
     try:
         return _validate(
@@ -61,6 +73,7 @@ def validate_provider_output(
             salvaged_json=salvaged_json,
             runtime_profile=runtime_profile,
             contract_key=contract_key,
+            context_payload=context_payload or {},
         )
     except Exception:  # noqa: BLE001 - a validator fault must fail closed, never fall open
         logger.exception("output validation fault; failing closed as VALIDATION_UNAVAILABLE")
@@ -77,6 +90,7 @@ def _validate(
     salvaged_json: bool,
     runtime_profile: str,
     contract_key: str,
+    context_payload: dict[str, Any],
 ) -> OutputValidationOutcome:
     failed_rule_ids: list[str] = []
     findings: list[str] = []
@@ -96,6 +110,17 @@ def _validate(
             findings.append(
                 f"{RULE_EVIDENCE_GROUNDING}: {len(unsupported) - _MAX_RECORDED_FINDINGS} "
                 "further unsupported references withheld from this summary"
+            )
+
+    ungrounded_tokens = _ungrounded_numeric_tokens(
+        structured_output, basis=_numeric_basis(context_payload)
+    )
+    if ungrounded_tokens:
+        failed_rule_ids.append(RULE_NUMERIC_GROUNDING)
+        for token in ungrounded_tokens[:_MAX_RECORDED_FINDINGS]:
+            findings.append(
+                f"{RULE_NUMERIC_GROUNDING}: narrative token '{token}' does not trace to "
+                "any numeric value supplied in the execution context"
             )
 
     if salvaged_json:
@@ -204,3 +229,82 @@ def _ungrounded_references(value: Any, *, supplied: set[str]) -> list[str]:
 
     walk(value, 0)
     return unsupported
+
+
+def _numeric_basis(context_payload: dict[str, Any]) -> list[float]:
+    """Every numeric value supplied anywhere in the execution context."""
+
+    basis: list[float] = []
+
+    def walk(node: Any, depth: int) -> None:
+        if depth > _MAX_TRAVERSAL_DEPTH:
+            raise ValueError("context payload exceeds the validation traversal depth")
+        if isinstance(node, bool):
+            return
+        if isinstance(node, (int, float)):
+            basis.append(float(node))  # monetary-float-ok: leak-detection comparison basis
+            return
+        if isinstance(node, str):
+            try:
+                basis.append(  # monetary-float-ok: leak-detection comparison basis
+                    float(node.replace(",", ""))
+                )
+            except ValueError:
+                pass
+            return
+        if isinstance(node, dict):
+            for child in node.values():
+                walk(child, depth + 1)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, depth + 1)
+
+    walk(context_payload, 0)
+    return basis
+
+
+def _ungrounded_numeric_tokens(value: Any, *, basis: list[float]) -> list[str]:
+    """Percent/currency tokens in output narrative that trace to no supplied value."""
+
+    ungrounded: list[str] = []
+    seen: set[str] = set()
+
+    def check_text(text: str) -> None:
+        for token in _PERCENT_TOKEN_PATTERN.findall(text):
+            candidate = float(  # monetary-float-ok: leak-detection comparison of display token
+                token.replace("%", "").replace(",", "")
+            )
+            if (
+                not any(abs(candidate - expected) <= _PERCENT_TOLERANCE for expected in basis)
+                and token not in seen
+            ):
+                seen.add(token)
+                ungrounded.append(token)
+        for token in _CURRENCY_TOKEN_PATTERN.findall(text):
+            normalized = token.replace("$", "").replace(",", "")
+            if not normalized:
+                continue
+            candidate = float(  # monetary-float-ok: leak-detection comparison of display token
+                normalized
+            )
+            if (
+                not any(abs(candidate - expected) <= _CURRENCY_TOLERANCE for expected in basis)
+                and token not in seen
+            ):
+                seen.add(token)
+                ungrounded.append(token)
+
+    def walk(node: Any, depth: int) -> None:
+        if depth > _MAX_TRAVERSAL_DEPTH:
+            raise ValueError("structured output exceeds the validation traversal depth")
+        if isinstance(node, str):
+            check_text(node)
+        elif isinstance(node, dict):
+            for child in node.values():
+                walk(child, depth + 1)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, depth + 1)
+
+    walk(value, 0)
+    return ungrounded

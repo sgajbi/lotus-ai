@@ -73,7 +73,14 @@ def test_normalize_advisor_brief_output_falls_back_when_summary_leaks_contract_t
     assert result.structured_output["talking_points"]
 
 
-def test_normalize_advisor_brief_output_falls_back_on_numeric_consistency_mismatch() -> None:
+def test_numeric_fabrication_is_the_shared_validator_concern() -> None:
+    """The guardrail no longer silently recovers a summary that fabricates a
+    number (issue #156, S3): the shared numeric_grounding rule rejects the
+    output fail-closed instead - unsupported claims are rejected, not
+    annotated. The guardrail keeps only shaping and contract-echo recovery."""
+
+    from app.services.output_validation import validate_provider_output
+
     result = normalize_advisor_brief_output(
         parsed_output={
             "grounded_summary": (
@@ -88,10 +95,19 @@ def test_normalize_advisor_brief_output_falls_back_on_numeric_consistency_mismat
         context_payload=_advisor_context(),
         source_refs=["lotus-gateway:workbench:performance-summary:YTD"],
     )
+    assert result.guardrail_triggered is False
 
-    assert result.guardrail_triggered is True
-    assert result.guardrail_reason == "numeric_consistency_mismatch"
-    assert "PB SG GLOBAL BAL 001 delivered 1.25% over YTD" in result.message
+    outcome = validate_provider_output(
+        structured_output=result.structured_output,
+        supplied_source_refs=["lotus-gateway:workbench:performance-summary:YTD"],
+        salvaged_json=False,
+        runtime_profile="local",
+        contract_key="advisor_brief.pack",
+        context_payload=_advisor_context(),
+    )
+    assert outcome.validation_state.value == "REJECTED"
+    assert "numeric_grounding" in outcome.failed_rule_ids
+    assert any("6.80898%" in finding for finding in outcome.findings)
 
 
 def test_normalize_advisor_brief_output_falls_back_when_summary_is_missing() -> None:
@@ -128,7 +144,9 @@ def test_normalize_advisor_brief_output_rejects_code_fenced_summary() -> None:
     assert result.guardrail_reason == "invalid_grounded_summary_language"
 
 
-def test_normalize_advisor_brief_output_rejects_ungrounded_currency_claim() -> None:
+def test_ungrounded_currency_claim_is_the_shared_validator_concern() -> None:
+    from app.services.output_validation import validate_provider_output
+
     result = normalize_advisor_brief_output(
         parsed_output={
             "grounded_summary": "Portfolio cash flow was $999,999 over YTD.",
@@ -140,9 +158,19 @@ def test_normalize_advisor_brief_output_rejects_ungrounded_currency_claim() -> N
         context_payload=_advisor_context(),
         source_refs=["lotus-gateway:workbench:performance-summary:YTD"],
     )
+    assert result.guardrail_triggered is False
 
-    assert result.guardrail_triggered is True
-    assert result.guardrail_reason == "numeric_consistency_mismatch"
+    outcome = validate_provider_output(
+        structured_output=result.structured_output,
+        supplied_source_refs=["lotus-gateway:workbench:performance-summary:YTD"],
+        salvaged_json=False,
+        runtime_profile="local",
+        contract_key="advisor_brief.pack",
+        context_payload=_advisor_context(),
+    )
+    assert outcome.validation_state.value == "REJECTED"
+    assert "numeric_grounding" in outcome.failed_rule_ids
+    assert any("$999,999" in finding for finding in outcome.findings)
 
 
 def test_normalize_advisor_brief_output_preserves_clean_structured_brief() -> None:

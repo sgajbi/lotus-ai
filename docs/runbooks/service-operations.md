@@ -560,9 +560,10 @@ Restart-survival expectations:
 Every AI task and workflow-pack execution passes deterministic output validation before safety redaction, and every response and audit record carries `output_validation` (`validation_state`, `authority=non_authoritative_ai_output`, the ruleset version, and any failed rule ids):
 
 1. `evidence_grounding` - every `source_ref`/`evidence_ref` value in the structured output must be one of the supplied request `source_refs`; violations reject in every profile
-2. `strict_json` - a provider answer recovered by balanced-brace salvage rejects in the promoted profile and marks the output `UNVALIDATED_LOCAL_ONLY` in local
-3. `output_schema` - the structured output must conform to the JSON Schema contract for its task id or (for pack-bound executions, explicit or inferred) its workflow-pack family, under `contracts/ai-task-outputs/`; violations reject in promoted and warn in local
-4. `contract_missing` - workflow-pack registration refuses a family without a contract, so a missing contract at execution time is a wiring defect: promoted fails closed
+2. `numeric_grounding` - every percent or currency token in output narrative must trace (within display tolerance) to a numeric value supplied in the execution context; violations reject in every profile. Bare numbers are deliberately out of scope. This generalises the advisor-brief token rules; there is no second implementation
+3. `strict_json` - a provider answer recovered by balanced-brace salvage rejects in the promoted profile and marks the output `UNVALIDATED_LOCAL_ONLY` in local
+4. `output_schema` - the structured output must conform to the JSON Schema contract for its task id or (for pack-bound executions, explicit or inferred) its workflow-pack family, under `contracts/ai-task-outputs/`; violations reject in promoted and warn in local
+5. `contract_missing` - workflow-pack registration refuses a family without a contract, so a missing contract at execution time is a wiring defect: promoted fails closed
 
 A `REJECTED` (or `VALIDATION_UNAVAILABLE`) verdict withholds the output whole: the caller receives `error_code=OUTPUT_VALIDATION_REJECTED` (or `VALIDATION_UNAVAILABLE`) with the failing rule ids, and the audit record persists carrying the verdict. `output_contract_notes` on task requests is prompt guidance only; the schema contract is the validation authority.
 

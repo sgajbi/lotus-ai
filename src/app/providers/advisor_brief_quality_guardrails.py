@@ -18,8 +18,6 @@ _FORBIDDEN_SUMMARY_FRAGMENTS = (
     "advisor brief output contract",
     "task_id",
 )
-_PERCENT_TOKEN_PATTERN = re.compile(r"(?<![\w-])[-+]?\d+(?:\.\d+)?%")
-_CURRENCY_TOKEN_PATTERN = re.compile(r"(?<![\w-])[-+]?\$\d[\d,]*(?:\.\d+)?")
 
 
 @dataclass(frozen=True)
@@ -117,16 +115,6 @@ def normalize_advisor_brief_output(
             message=fallback_message,
             output=fallback_output,
             reason="invalid_grounded_summary_language",
-        )
-
-    if _has_numeric_consistency_mismatch(
-        grounded_summary=grounded_summary,
-        context_payload=context_payload,
-    ):
-        return _fallback_result(
-            message=fallback_message,
-            output=fallback_output,
-            reason="numeric_consistency_mismatch",
         )
 
     return AdvisorBriefQualityResult(
@@ -262,59 +250,6 @@ def _contains_forbidden_summary_language(value: str) -> bool:
     if normalized.startswith("{") or normalized.startswith("```") or "```" in normalized:
         return True
     return any(fragment in normalized for fragment in _FORBIDDEN_SUMMARY_FRAGMENTS)
-
-
-def _has_numeric_consistency_mismatch(
-    *,
-    grounded_summary: str,
-    context_payload: dict[str, Any],
-) -> bool:
-    performance = context_payload.get("performance")
-    if not isinstance(performance, dict):
-        return False
-    allowed_percents = [
-        float(
-            value
-        )  # monetary-float-ok: leak-detection comparison of caller-supplied display values
-        for value in (
-            performance.get("portfolio_return_pct"),
-            performance.get("benchmark_return_pct"),
-            performance.get("active_return_pct"),
-            performance.get("money_weighted_return_pct"),
-        )
-        if isinstance(value, int | float)
-    ]
-    allowed_currency_values = [
-        float(
-            value
-        )  # monetary-float-ok: leak-detection comparison of caller-supplied display values
-        for value in (
-            performance.get("net_cash_flow"),
-            performance.get("end_market_value"),
-        )
-        if isinstance(value, int | float)
-    ]
-
-    for token in _PERCENT_TOKEN_PATTERN.findall(grounded_summary):
-        try:
-            candidate = float(token.replace("%", "").replace(",", ""))
-        except ValueError:
-            continue
-        if not any(abs(candidate - expected) <= 0.02 for expected in allowed_percents):
-            return True
-
-    for token in _CURRENCY_TOKEN_PATTERN.findall(grounded_summary):
-        normalized = token.replace("$", "").replace(",", "")
-        if not normalized:
-            continue
-        try:
-            candidate = float(normalized)
-        except ValueError:
-            continue
-        if not any(abs(candidate - expected) <= 1.0 for expected in allowed_currency_values):
-            return True
-
-    return False
 
 
 def _clean_text(value: Any) -> str | None:
