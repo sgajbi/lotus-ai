@@ -442,3 +442,72 @@ def test_routing_posture_names_both_candidates_under_ordered_fallback() -> None:
     assert fixed_posture.strategy is RoutingStrategy.FIXED
     assert fixed_posture.fallback_candidate is None
     assert fixed_posture.fallback_degradation is None
+
+
+def test_real_transport_attributes_the_alternate_identity_end_to_end() -> None:
+    """Issue #226: the REAL transport must stamp the serving candidate's
+    configured identity - not the static adapter descriptor - on the
+    response, the structured output, and the audit record. Fakes live only
+    at the HTTP boundary (the transport post override seam)."""
+
+    from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
+    from app.contracts.tasks import (
+        CallerMetadata,
+        OutputLabel,
+        TaskContextEnvelope,
+        TaskExecutionRequest,
+        TaskInputMode,
+    )
+    from app.providers.base import ProviderExecutionError
+    from app.services.audit_store import get_audit_store
+    from app.services.provider_execution_overrides import override_text_transport_post
+    from app.services.task_executor import execute_task
+
+    _ordered_fallback_settings()
+    settings.live_text_provider_api_key = "primary-secret"
+
+    calls: list[str] = []
+
+    def transport_post(**kwargs: object) -> dict[str, object]:
+        api_base = str(kwargs["api_base"])
+        calls.append(api_base)
+        if api_base == settings.live_text_api_base:
+            raise ProviderExecutionError(
+                category=ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
+                message="simulated primary upstream failure",
+            )
+        return {
+            "id": "resp_alternate_serving",
+            "model": "claude-sonnet-5",
+            "output_text": "Grounded explanation without figures.",
+            "usage": {"input_tokens": 9, "output_tokens": 4, "total_tokens": 13},
+        }
+
+    with override_text_transport_post(transport_post):
+        response = execute_task(
+            TaskExecutionRequest(
+                task_id="explain.v1",
+                input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+                caller=CallerMetadata(
+                    caller_app="lotus-manage",
+                    correlation_id="corr-226-attribution",
+                    tenant_id="tenant-sg-001",
+                ),
+                context=TaskContextEnvelope(
+                    summary="Explain rebalance outcome",
+                    payload={"status": "BLOCKED", "rule_count": 3},
+                    source_refs=["lotus-manage:run:reb_001"],
+                ),
+                expected_output_label=OutputLabel.EXPLANATION_ONLY,
+            )
+        )
+
+    assert len(calls) == 2
+    assert response.audit.provider_id == ALTERNATE
+    assert response.result.structured_output["provider_id"] == ALTERNATE
+    assert response.audit.routing_decision is not None
+    assert response.audit.routing_decision.selected_provider_id == ALTERNATE
+
+    records = get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=5)
+    record = next(r for r in records if r.correlation_id == "corr-226-attribution")
+    assert record.provider_id == ALTERNATE

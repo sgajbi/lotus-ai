@@ -47,7 +47,13 @@ def execute_openai_compatible_text_request(
     require_api_key: bool,
     model_id: str | None,
     model_version: str | None,
+    provider_id: str | None = None,
 ) -> ProviderExecutionResponse:
+    # The serving identity is the execution config's provider id (issue
+    # #226): under ordered fallback both candidates run through the same
+    # adapter, so the static descriptor constant would attribute the
+    # alternate's executions to the primary in audit, cost, and metrics.
+    serving_provider_id = provider_id or descriptor.provider_id
     payload: dict[str, object] = {
         "model": model_id,
         "input": [
@@ -91,6 +97,7 @@ def execute_openai_compatible_text_request(
         response_payload=response_payload,
         output_message=output_message,
         configured_model_id=model_id,
+        provider_id=serving_provider_id,
     )
     input_tokens, output_tokens, total_tokens = extract_usage(response_payload)
     cost = estimate_live_text_cost(
@@ -99,7 +106,7 @@ def execute_openai_compatible_text_request(
         model_revision=model_version or model_id,
     )
     return ProviderExecutionResponse(
-        provider_id=descriptor.provider_id,
+        provider_id=serving_provider_id,
         provider_mode=descriptor.runtime_mode.value,
         adapter_kind=descriptor.adapter_kind,
         failure_category=None,
@@ -450,9 +457,10 @@ def build_structured_output(
     response_payload: dict[str, Any],
     output_message: str,
     configured_model_id: str | None = None,
+    provider_id: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     structured_output: dict[str, Any] = {
-        "provider_id": descriptor.provider_id,
+        "provider_id": provider_id or descriptor.provider_id,
         "provider_mode": descriptor.runtime_mode.value,
         "adapter_kind": descriptor.adapter_kind.value,
         "model_id": as_str(response_payload.get("model")) or configured_model_id,

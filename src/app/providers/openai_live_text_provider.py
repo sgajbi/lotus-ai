@@ -23,4 +23,5 @@ class OpenAILiveTextProvider(TextGenerationProviderAdapter):
             require_api_key=True,
             model_id=config.model_id,
             model_version=config.model_version,
+            provider_id=config.provider_id,
         )
