@@ -4,6 +4,11 @@ import logging
 from dataclasses import dataclass
 
 from app.config import settings
+from app.http.caller_credential import (
+    CALLER_TRUST_MODE_HEADER,
+    SUPPORTED_CALLER_TRUST_MODES,
+    parse_caller_credential_public_keys,
+)
 from app.services.provider_execution_config import (
     fallback_configuration_findings,
     resolve_provider_execution_config,
@@ -52,6 +57,7 @@ def evaluate_startup_readiness() -> StartupReadinessEvaluation:
             f"workflow-pack queue-event store: {workflow_pack_queue_event_status.detail}"
         )
 
+    findings.extend(_caller_identity_findings())
     findings.extend(_provider_protection_findings())
 
     if settings.startup_readiness_policy == "enforce" and findings:
@@ -70,6 +76,46 @@ def apply_startup_readiness_policy() -> StartupReadinessEvaluation:
             "lotus-ai startup readiness policy blocked startup: " + "; ".join(evaluation.findings)
         )
     return evaluation
+
+
+def _caller_identity_findings() -> list[str]:
+    """Caller trust posture findings (issue #149, S1).
+
+    Verified-mode misconfiguration is a finding in every profile - a
+    deployment that intends verification must not run unverifiable. Header
+    trust is a finding only in the promoted profile, where a self-asserted
+    header can never be the identity boundary.
+    """
+
+    findings: list[str] = []
+    mode = settings.caller_trust_mode
+    if mode not in SUPPORTED_CALLER_TRUST_MODES:
+        findings.append(
+            f"caller identity: unknown caller trust mode '{mode}' "
+            "(supported: header, verified_service_jwt); requests will be refused"
+        )
+        return findings
+    if mode == CALLER_TRUST_MODE_HEADER:
+        if settings.runtime_profile == "promoted":
+            findings.append(
+                "caller identity: header caller trust cannot be the identity boundary "
+                "in the promoted profile; configure verified_service_jwt with platform "
+                "issuer keys"
+            )
+        return findings
+    if not settings.caller_jwt_issuer:
+        findings.append(
+            "caller identity: verified_service_jwt requires a configured credential issuer"
+        )
+    if not settings.caller_jwt_audience:
+        findings.append(
+            "caller identity: verified_service_jwt requires a configured credential audience"
+        )
+    try:
+        parse_caller_credential_public_keys(settings.caller_jwt_public_keys)
+    except ValueError as exc:
+        findings.append(f"caller identity: {exc}")
+    return findings
 
 
 def _provider_protection_findings() -> list[str]:
