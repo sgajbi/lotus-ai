@@ -14,7 +14,7 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 AI_OUTPUT_AUTHORITY = "non_authoritative_ai_output"
-OUTPUT_VALIDATION_RULESET_VERSION = "output-validation.v1"
+OUTPUT_VALIDATION_RULESET_VERSION = "output-validation.v2"
 
 
 class OutputValidationState(str, Enum):

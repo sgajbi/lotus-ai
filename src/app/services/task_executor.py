@@ -50,7 +50,12 @@ def execute_task_with_optional_workflow_pack_recording(
         else nullcontext()
     )
     with admission:
-        resolved = resolve_task_execution(context=context)
+        resolved = resolve_task_execution(
+            context=context,
+            output_contract_key=(
+                resolved_binding.registration.pack_id if resolved_binding is not None else None
+            ),
+        )
         response = build_task_execution_response(resolved=resolved)
         persist_task_execution_audit(context=context, response=response)
         workflow_pack_run = record_workflow_pack_run_for_task_execution(

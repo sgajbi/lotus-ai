@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lotus.ai/contracts/ai-task-outputs/extract.v1.v1.json",
+  "title": "extract.v1 output contract",
+  "description": "Structured output for extract.v1: the deterministic stub envelope or the live transport envelope. No caller policy currently authorizes this task; the contract exists because every registered task must carry one.",
+  "anyOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_id",
+        "provider_mode",
+        "adapter_kind",
+        "output_label",
+        "safety_mode",
+        "redaction_posture",
+        "source_refs",
+        "retry_count",
+        "timeout_ms",
+        "max_output_tokens",
+        "phase",
+        "context_keys",
+        "context_summary"
+      ],
+      "properties": {
+        "provider_id": {
+          "type": "string"
+        },
+        "provider_mode": {
+          "type": "string"
+        },
+        "adapter_kind": {
+          "type": "string"
+        },
+        "output_label": {
+          "type": "string"
+        },
+        "safety_mode": {
+          "type": "string"
+        },
+        "redaction_posture": {
+          "type": "string"
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "retry_count": {
+          "type": "integer"
+        },
+        "timeout_ms": {
+          "type": "integer"
+        },
+        "max_output_tokens": {
+          "type": "integer"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "context_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "context_summary": {
+          "type": "string"
+        },
+        "stub_reason": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_id",
+        "provider_mode",
+        "adapter_kind",
+        "output_label",
+        "safety_mode",
+        "redaction_posture",
+        "source_refs",
+        "retry_count"
+      ],
+      "properties": {
+        "provider_id": {
+          "type": "string"
+        },
+        "provider_mode": {
+          "type": "string"
+        },
+        "adapter_kind": {
+          "type": "string"
+        },
+        "model_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider_request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "output_label": {
+          "type": "string"
+        },
+        "safety_mode": {
+          "type": "string"
+        },
+        "redaction_posture": {
+          "type": "string"
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "retry_count": {
+          "type": "integer"
+        },
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "total_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "estimated_cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "rate_card_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cost_posture": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "strict_json_salvaged": {
+          "type": "boolean"
+        }
+      }
+    }
+  ]
+}

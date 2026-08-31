@@ -41,7 +41,9 @@ def validate_task_request(request: TaskExecutionRequest) -> TaskExecutionContext
 def resolve_task_execution(
     *,
     context: TaskExecutionContext,
+    output_contract_key: str | None = None,
 ) -> ResolvedTaskExecution:
+    contract_key = output_contract_key or context.capability.task_id
     provider_request = None
     if context.capability.category == TaskCategory.KNOWLEDGE_SEARCH:
         provider_execution = execute_knowledge_search(context=context)
@@ -58,6 +60,7 @@ def resolve_task_execution(
         supplied_source_refs=context.request.context.source_refs,
         salvaged_json=bool(provider_execution.structured_output.get("strict_json_salvaged", False)),
         runtime_profile=settings.runtime_profile,
+        contract_key=contract_key,
     )
     client_identifiers = _caller_redaction_identifiers(context.request.caller.caller_app)
     safe_provider_execution, safety_outcome = apply_safety_enforcement(

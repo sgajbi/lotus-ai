@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lotus.ai/contracts/ai-task-outputs/advisory_copilot_client_follow_up_draft.pack.v1.json",
+  "title": "advisory_copilot_client_follow_up_draft.pack output contract",
+  "description": "Structured output contract for advisory_copilot_client_follow_up_draft.pack executions, derived from the deterministic governed stub runtime; the review-gated, non-authoritative posture of the output is part of the contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "action_family": {
+      "type": "string"
+    },
+    "audience": {
+      "type": "string"
+    },
+    "client_ready_publication": {
+      "type": "string"
+    },
+    "evidence_packet_hash": {
+      "type": "string"
+    },
+    "evidence_packet_id": {
+      "type": "string"
+    },
+    "human_review_required": {
+      "type": "boolean"
+    },
+    "model_risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "approved_instruction_set": {
+          "type": "string"
+        },
+        "approved_model_version": {
+          "type": "string"
+        },
+        "approved_provider_id": {
+          "type": "string"
+        },
+        "evaluation_pack_ref": {
+          "type": "string"
+        },
+        "output_schema_version": {
+          "type": "string"
+        },
+        "prompt_template_version": {
+          "type": "string"
+        }
+      }
+    },
+    "review_guidance": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "scope": {
+      "type": "string"
+    },
+    "section_count": {
+      "type": "integer"
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "claims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "claim_id": {
+                  "type": "string"
+                },
+                "claim_text": {
+                  "type": "string"
+                },
+                "source_refs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "section_key": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "state": {
+      "type": "string"
+    },
+    "unsupported_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "unsupported_evidence_count": {
+      "type": "integer"
+    },
+    "workflow_pack_family": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "action_family",
+    "audience",
+    "client_ready_publication",
+    "evidence_packet_hash",
+    "evidence_packet_id",
+    "human_review_required",
+    "model_risk",
+    "review_guidance",
+    "scope",
+    "section_count",
+    "sections",
+    "state",
+    "unsupported_claims",
+    "unsupported_evidence_count",
+    "workflow_pack_family"
+  ]
+}

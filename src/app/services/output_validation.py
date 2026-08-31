@@ -1,20 +1,26 @@
-"""Deterministic validation of every AI output (issue #156, S1).
+"""Deterministic validation of every AI output (issue #156, S1+S2).
 
 One validator on the execution path, after the provider call and before
 safety redaction (redaction must never be able to erase a fabricated
-reference and flip a verdict). S1 ships the rules that need no per-task
-contract:
+reference and flip a verdict). Rules:
 
 - ``evidence_grounding``: every ``source_ref``/``source_refs``/
   ``evidence_ref``/``evidence_refs`` value anywhere in the structured
   output must be one of the supplied request ``source_refs`` - a set
-  check, not a prompt instruction.
+  check, not a prompt instruction. Rejects in every profile.
 - ``strict_json`` (recorded by the transport): a promoted-profile output
   recovered by balanced-brace salvage is not a validated output.
+- ``output_schema``: the structured output must conform to the task's or
+  pack family's JSON Schema contract (``contracts/ai-task-outputs/``).
+  Promoted rejects violations; local accepts with a warning and marks the
+  output UNVALIDATED_LOCAL_ONLY.
+- ``contract_missing``: registration refuses contract-less tasks and
+  packs, so a missing contract at execution time is a wiring defect -
+  promoted fails closed, local marks the output honestly.
 
-Per-task schema contracts and numeric grounding activate in later slices
-under the same ruleset seam. A validator fault fails closed as
-``VALIDATION_UNAVAILABLE`` - never an unmarked output.
+Numeric grounding activates in S3 under the same ruleset seam. A
+validator fault fails closed as ``VALIDATION_UNAVAILABLE`` - never an
+unmarked output.
 """
 
 from __future__ import annotations
@@ -26,11 +32,14 @@ from app.contracts.output_validation import (
     OutputValidationOutcome,
     OutputValidationState,
 )
+from app.services.output_contracts import schema_violations
 
 logger = logging.getLogger(__name__)
 
 RULE_EVIDENCE_GROUNDING = "evidence_grounding"
 RULE_STRICT_JSON = "strict_json"
+RULE_OUTPUT_SCHEMA = "output_schema"
+RULE_CONTRACT_MISSING = "contract_missing"
 
 _REFERENCE_KEYS = frozenset({"source_ref", "source_refs", "evidence_ref", "evidence_refs"})
 _MAX_RECORDED_FINDINGS = 10
@@ -43,6 +52,7 @@ def validate_provider_output(
     supplied_source_refs: list[str],
     salvaged_json: bool,
     runtime_profile: str,
+    contract_key: str,
 ) -> OutputValidationOutcome:
     try:
         return _validate(
@@ -50,6 +60,7 @@ def validate_provider_output(
             supplied_source_refs=supplied_source_refs,
             salvaged_json=salvaged_json,
             runtime_profile=runtime_profile,
+            contract_key=contract_key,
         )
     except Exception:  # noqa: BLE001 - a validator fault must fail closed, never fall open
         logger.exception("output validation fault; failing closed as VALIDATION_UNAVAILABLE")
@@ -65,9 +76,11 @@ def _validate(
     supplied_source_refs: list[str],
     salvaged_json: bool,
     runtime_profile: str,
+    contract_key: str,
 ) -> OutputValidationOutcome:
     failed_rule_ids: list[str] = []
     findings: list[str] = []
+    local_only = False
 
     unsupported = _ungrounded_references(
         structured_output, supplied={ref for ref in supplied_source_refs if ref}
@@ -98,13 +111,40 @@ def _validate(
                 "accepted unvalidated in the local profile only"
             )
 
+    if salvaged_json and runtime_profile != "promoted":
+        local_only = True
+
+    violations = schema_violations(contract_key, structured_output)
+    if violations is None:
+        # Registration refuses a task or pack without a contract, so a
+        # missing contract at execution time is a wiring defect: promoted
+        # fails closed, local marks the output honestly.
+        message = f"{RULE_CONTRACT_MISSING}: no output contract exists for '{contract_key}'"
+        if runtime_profile == "promoted":
+            failed_rule_ids.append(RULE_CONTRACT_MISSING)
+            findings.append(message)
+        else:
+            local_only = True
+            findings.append(f"{message}; accepted unvalidated in the local profile only")
+    elif violations:
+        if runtime_profile == "promoted":
+            failed_rule_ids.append(RULE_OUTPUT_SCHEMA)
+            findings.extend(f"{RULE_OUTPUT_SCHEMA}: {violation}" for violation in violations)
+        else:
+            local_only = True
+            findings.extend(
+                f"{RULE_OUTPUT_SCHEMA}: {violation}; accepted with a warning in the "
+                "local profile only"
+                for violation in violations
+            )
+
     if failed_rule_ids:
         return OutputValidationOutcome(
             validation_state=OutputValidationState.REJECTED,
             failed_rule_ids=failed_rule_ids,
             findings=findings,
         )
-    if salvaged_json:
+    if local_only:
         return OutputValidationOutcome(
             validation_state=OutputValidationState.UNVALIDATED_LOCAL_ONLY,
             findings=findings,
