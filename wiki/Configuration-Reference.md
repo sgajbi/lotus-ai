@@ -110,6 +110,7 @@ supplies quota/budget numbers.
 | `LOTUS_AI_LIVE_TEXT_CIRCUIT_OPEN_FAILURE_COUNT_THRESHOLD` | *(none)* | `5` |
 | `LOTUS_AI_LIVE_TEXT_CIRCUIT_OPEN_SECONDS` | *(none)* | `60` |
 | `LOTUS_AI_PROVIDER_OPERATIONS_STORE_MODE` | `memory` | `sqlalchemy` |
+| `LOTUS_AI_WORKFLOW_PACK_ADMISSION_STORE_MODE` | `memory` | `sqlalchemy` (replica-shared admission leases) |
 | `LOTUS_AI_READINESS_PROBE_POLICY` | `observe` | `degrade` |
 | `LOTUS_AI_STARTUP_READINESS_POLICY` | `warn` | `enforce` |
 

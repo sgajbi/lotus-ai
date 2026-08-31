@@ -17,6 +17,7 @@ PROMOTED_PROFILE_DEFAULTS: dict[str, object] = {
     "live_text_circuit_open_failure_count_threshold": 5,
     "live_text_circuit_open_seconds": 60,
     "provider_operations_store_mode": "sqlalchemy",
+    "workflow_pack_admission_store_mode": "sqlalchemy",
     "readiness_probe_policy": "degrade",
     "startup_readiness_policy": "enforce",
 }
@@ -73,6 +74,7 @@ class Settings(BaseSettings):
     access_control_store_mode: str = "memory"
     workflow_pack_registry_store_mode: str = "memory"
     provider_operations_store_mode: str = "memory"
+    workflow_pack_admission_store_mode: str = "memory"
     provider_retention_confirmation_store_mode: str = "memory"
     async_runtime_store_mode: str = "memory"
     workflow_pack_run_store_mode: str = "memory"

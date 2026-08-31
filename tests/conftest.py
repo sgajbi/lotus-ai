@@ -29,6 +29,9 @@ from app.services.retrieval_store import reset_retrieval_repository
 from app.services.workflow_pack_registry import reset_workflow_pack_registry_state
 from app.services.workflow_pack_queue_admission import reset_workflow_pack_queue_admission_state
 from app.services.workflow_pack_queue_event_store import reset_workflow_pack_queue_event_store_cache
+from app.services.workflow_pack_admission_lease_store import (
+    reset_workflow_pack_admission_lease_store_cache,
+)
 from app.services.workflow_pack_run_store import reset_workflow_pack_run_store_cache
 from app.services.workflow_pack_task_flow_store import reset_workflow_pack_task_flow_store_cache
 from app.workflow_pack_execution_idempotency.store import (
@@ -77,6 +80,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "access_control_store_mode": settings.access_control_store_mode,
         "workflow_pack_registry_store_mode": settings.workflow_pack_registry_store_mode,
         "provider_operations_store_mode": settings.provider_operations_store_mode,
+        "workflow_pack_admission_store_mode": settings.workflow_pack_admission_store_mode,
         "runtime_profile": settings.runtime_profile,
         "provider_retry_limit": settings.provider_retry_limit,
         "provider_retention_confirmation_store_mode": (
@@ -125,6 +129,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         reset_provider_degradation_state()
         reset_provider_quota_counters()
         reset_provider_operations_store_cache()
+        reset_workflow_pack_admission_lease_store_cache()
         reset_kill_switch_store_cache()
         reset_model_catalogue_store_cache()
         reset_rate_card_store_cache()

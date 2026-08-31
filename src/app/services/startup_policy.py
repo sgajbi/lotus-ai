@@ -79,9 +79,14 @@ def _provider_protection_findings() -> list[str]:
 
     if settings.runtime_profile != "promoted":
         return []
-    if settings.provider_mode not in {"openai", "local_openai_compatible"}:
-        return []
     findings: list[str] = []
+    if settings.workflow_pack_admission_store_mode != "sqlalchemy":
+        findings.append(
+            "workflow-pack admission store: per-process memory leases cannot bound "
+            "queue admission across replicas in the promoted profile"
+        )
+    if settings.provider_mode not in {"openai", "local_openai_compatible"}:
+        return findings
     if not settings.live_text_quota_enforced:
         findings.append("provider quota: enforcement is disabled in promoted live mode")
     elif not any(
