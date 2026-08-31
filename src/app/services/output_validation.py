@@ -56,6 +56,15 @@ _CURRENCY_TOKEN_PATTERN = re.compile(r"(?<![\w-])[-+]?\$\d[\d,]*(?:\.\d+)?")
 _PERCENT_TOLERANCE = 0.02
 _CURRENCY_TOLERANCE = 1.0
 
+# The bounded platform reference grammar (issue #227): a narrative token
+# shaped like a Lotus evidence reference must trace to supplied evidence.
+# Only `lotus-*` prefixed tokens are policed - prose punctuation and
+# ordinary words can never be mistaken for a citation.
+# Each segment may contain dots (hashes, file-ish ids) but must END on an
+# identifier character, so sentence punctuation is never swallowed into the
+# token - a trailing period would otherwise fabricate a mismatch.
+_PLATFORM_REF_PATTERN = re.compile(r"\blotus-[a-z0-9-]+(?::[A-Za-z0-9._@-]*[A-Za-z0-9_-])+")
+
 
 def validate_provider_output(
     *,
@@ -65,6 +74,7 @@ def validate_provider_output(
     runtime_profile: str,
     contract_key: str,
     context_payload: dict[str, Any] | None = None,
+    message: str = "",
 ) -> OutputValidationOutcome:
     try:
         return _validate(
@@ -74,6 +84,7 @@ def validate_provider_output(
             runtime_profile=runtime_profile,
             contract_key=contract_key,
             context_payload=context_payload or {},
+            message=message,
         )
     except Exception:  # noqa: BLE001 - a validator fault must fail closed, never fall open
         logger.exception("output validation fault; failing closed as VALIDATION_UNAVAILABLE")
@@ -91,13 +102,22 @@ def _validate(
     runtime_profile: str,
     contract_key: str,
     context_payload: dict[str, Any],
+    message: str,
 ) -> OutputValidationOutcome:
     failed_rule_ids: list[str] = []
     findings: list[str] = []
     local_only = False
 
-    unsupported = _ungrounded_references(
-        structured_output, supplied={ref for ref in supplied_source_refs if ref}
+    supplied = {ref for ref in supplied_source_refs if ref}
+    unsupported = _ungrounded_references(structured_output, supplied=supplied)
+    # The narrative channel carries the model's own words: for every family
+    # except advisor-brief the live transport returns them only as the
+    # message, so a citation fabricated there would never be seen if the
+    # structured output alone were validated (issue #227).
+    unsupported.extend(
+        _ungrounded_narrative_citations(
+            message, supplied=supplied, structured_output=structured_output
+        )
     )
     if unsupported:
         failed_rule_ids.append(RULE_EVIDENCE_GROUNDING)
@@ -112,9 +132,11 @@ def _validate(
                 "further unsupported references withheld from this summary"
             )
 
-    ungrounded_tokens = _ungrounded_numeric_tokens(
-        structured_output, basis=_numeric_basis(context_payload)
-    )
+    numeric_basis = _numeric_basis(context_payload)
+    ungrounded_tokens = _ungrounded_numeric_tokens(structured_output, basis=numeric_basis)
+    for token in _ungrounded_numeric_tokens(message, basis=numeric_basis):
+        if token not in ungrounded_tokens:
+            ungrounded_tokens.append(token)
     if ungrounded_tokens:
         failed_rule_ids.append(RULE_NUMERIC_GROUNDING)
         for token in ungrounded_tokens[:_MAX_RECORDED_FINDINGS]:
@@ -308,3 +330,52 @@ def _ungrounded_numeric_tokens(value: Any, *, basis: list[float]) -> list[str]:
 
     walk(value, 0)
     return ungrounded
+
+
+def _ungrounded_narrative_citations(
+    message: str, *, supplied: set[str], structured_output: Any
+) -> list[str]:
+    """Platform-reference tokens in narrative that trace to no evidence.
+
+    The basis is the supplied references plus references the validated
+    structured channel already carries - including the composite form a
+    retrieval citation entry declares as ``source_id`` + ``document_id``,
+    which the narrative renders joined. A token that appears ONLY in the
+    narrative is exactly the fabrication this rule exists to catch.
+    """
+
+    if not message:
+        return []
+    basis = supplied | _structured_reference_basis(structured_output)
+    ungrounded: list[str] = []
+    seen: set[str] = set()
+    for token in _PLATFORM_REF_PATTERN.findall(message):
+        if token in basis or token in seen:
+            continue
+        seen.add(token)
+        ungrounded.append(token)
+    return ungrounded
+
+
+def _structured_reference_basis(structured_output: Any) -> set[str]:
+    basis: set[str] = set()
+
+    def walk(node: Any, depth: int) -> None:
+        if depth > _MAX_TRAVERSAL_DEPTH:
+            raise ValueError("structured output exceeds the validation traversal depth")
+        if isinstance(node, str):
+            basis.add(node)
+        elif isinstance(node, dict):
+            source_id = node.get("source_id")
+            document_id = node.get("document_id")
+            if isinstance(source_id, str) and isinstance(document_id, str):
+                # The declared citation shape, rendered joined in narrative.
+                basis.add(f"{source_id}:{document_id}")
+            for child in node.values():
+                walk(child, depth + 1)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, depth + 1)
+
+    walk(structured_output, 0)
+    return basis
