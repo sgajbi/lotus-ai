@@ -20,6 +20,11 @@ from app.services.provider_execution_overrides import (
     get_text_transport_post_override,
 )
 from app.services.provider_metrics import record_provider_attempt
+from app.services.provider_retry_backoff import (
+    RetryBackoffPlan,
+    plan_retry,
+    wait_for_retry,
+)
 from app.services.tracing_runtime import (
     inject_trace_context,
     provider_attempt_span,
@@ -177,6 +182,10 @@ def post_openai_compatible_response(
     inject_trace_context(headers)
     model_identity = payload.get("model")
     bounded_retry_limit = max(retry_limit, 0)
+    backoff_plan = RetryBackoffPlan(
+        timeout_seconds=timeout_seconds, retry_limit=bounded_retry_limit
+    )
+    deadline_at = time.perf_counter() + backoff_plan.total_deadline_seconds
     for attempt_index in range(bounded_retry_limit + 1):
         provider_request = urllib_request.Request(
             endpoint,
@@ -223,7 +232,12 @@ def post_openai_compatible_response(
             load_error_payload(exc)
             category = failure_category_for_http_status(exc.code)
             retryable = is_retryable_provider_failure(category=category, http_status_code=exc.code)
-            will_retry = retryable and attempt_index < bounded_retry_limit
+            retry_decision = plan_retry(
+                backoff_plan, retry_index=attempt_index + 1, deadline_at=deadline_at
+            )
+            will_retry = (
+                retryable and attempt_index < bounded_retry_limit and retry_decision.permitted
+            )
             attempt_latency_ms = _attempt_latency_ms(attempt_started)
             record_provider_attempt(
                 provider_id=provider_display_name,
@@ -244,6 +258,7 @@ def post_openai_compatible_response(
                 latency_ms=attempt_latency_ms,
             )
             if will_retry:
+                wait_for_retry(retry_decision)
                 continue
             raise ProviderExecutionError(
                 category=category,
@@ -253,7 +268,10 @@ def post_openai_compatible_response(
                 ),
             ) from exc
         except TimeoutError as exc:
-            will_retry = attempt_index < bounded_retry_limit
+            retry_decision = plan_retry(
+                backoff_plan, retry_index=attempt_index + 1, deadline_at=deadline_at
+            )
+            will_retry = attempt_index < bounded_retry_limit and retry_decision.permitted
             attempt_latency_ms = _attempt_latency_ms(attempt_started)
             record_provider_attempt(
                 provider_id=provider_display_name,
@@ -273,6 +291,7 @@ def post_openai_compatible_response(
                 latency_ms=attempt_latency_ms,
             )
             if will_retry:
+                wait_for_retry(retry_decision)
                 continue
             raise ProviderExecutionError(
                 category=ProviderFailureCategory.PROVIDER_TIMEOUT,
@@ -282,7 +301,10 @@ def post_openai_compatible_response(
                 ),
             ) from exc
         except error.URLError as exc:
-            will_retry = attempt_index < bounded_retry_limit
+            retry_decision = plan_retry(
+                backoff_plan, retry_index=attempt_index + 1, deadline_at=deadline_at
+            )
+            will_retry = attempt_index < bounded_retry_limit and retry_decision.permitted
             attempt_latency_ms = _attempt_latency_ms(attempt_started)
             record_provider_attempt(
                 provider_id=provider_display_name,
@@ -302,6 +324,7 @@ def post_openai_compatible_response(
                 latency_ms=attempt_latency_ms,
             )
             if will_retry:
+                wait_for_retry(retry_decision)
                 continue
             raise ProviderExecutionError(
                 category=ProviderFailureCategory.PROVIDER_TIMEOUT,
