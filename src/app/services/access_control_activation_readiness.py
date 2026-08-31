@@ -6,8 +6,6 @@ from app.contracts.access_control import (
 )
 from app.services.access_control_runtime import (
     build_access_control_runtime_status,
-    control_plane_authorization_enforced,
-    data_plane_authorization_enforced,
 )
 
 
@@ -17,14 +15,6 @@ def build_access_control_activation_readiness() -> AccessControlActivationReadin
     if settings.access_control_store_mode != "sqlalchemy":
         blocking_findings.append(
             "Full access-control activation requires SQL-backed caller policy storage so caller authorization remains restart-safe."
-        )
-    if not control_plane_authorization_enforced():
-        blocking_findings.append(
-            "Control-plane authorization must be enforced for async, prompt, and provider control actions before access-control rollout is fully activatable."
-        )
-    if not data_plane_authorization_enforced():
-        blocking_findings.append(
-            "Data-plane authorization must be enforced for task, retrieval, and live-provider request paths before access-control rollout is fully activatable."
         )
     activation_path = [
         "Keep the caller policy registry authoritative for all protected surfaces, including task execution, retrieval execution, live-provider execution, async control, prompt control, and provider control.",

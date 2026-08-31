@@ -25,6 +25,10 @@ def build_artifact_activation_readiness() -> ArtifactActivationReadinessResponse
             "Artifact object-store durability is still in-memory and not restart-safe."
         )
     if len(ACTIVE_CUTOVER_DOMAINS) < 3:
+        # A tripwire on the declared cutover set, not dead code: it cannot fire
+        # while the constant lists three domains, and it fires the moment a
+        # future edit narrows it. Its test monkeypatches the constant to prove
+        # the wire is live (issue #154 review).
         blocking_findings.append(
             "Artifact consumer cutover is still too narrow for stronger governed rollout posture."
         )

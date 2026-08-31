@@ -26,3 +26,21 @@ def test_provider_evidence_readiness_reports_foundation_evidence_gaps() -> None:
     assert readiness.items[8].status == "NOT_READY"
     assert readiness.approval_gate.domain_id == "provider_execution"
     assert readiness.approval_gate.evidence_state.value == "STAGED_ONLY"
+
+
+def test_provider_evidence_readiness_is_derived_from_its_own_counts() -> None:
+    """The flag was hard-coded False while the counts were computed and then
+    discarded, so the surface could not have reported readiness even once
+    the evidence genuinely arrived (issue #154)."""
+
+    readiness = build_provider_evidence_readiness()
+
+    expected = (
+        readiness.required_item_count > 0
+        and readiness.completed_required_item_count == readiness.required_item_count
+    )
+    assert readiness.evidence_ready is expected
+    # Today one required item is a documented gap, so the honest answer is
+    # still False - but it is now an answer, not an assertion.
+    assert readiness.evidence_ready is False
+    assert readiness.completed_required_item_count < readiness.required_item_count
