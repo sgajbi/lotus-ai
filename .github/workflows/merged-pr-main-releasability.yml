@@ -9,18 +9,65 @@ permissions:
   contents: write
 
 jobs:
-  dispatch-main-releasability:
-    name: Dispatch Main Releasability
+  enumerate-merged-commits:
+    name: Enumerate Merged Commits
     if: >
       github.event.pull_request.merged == true &&
       github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      commit_shas: ${{ steps.enumerate.outputs.commit_shas }}
+    steps:
+      - name: Enumerate every commit this pull request merged
+        id: enumerate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_COMMIT_COUNT: ${{ github.event.pull_request.commits }}
+        run: |
+          set -euo pipefail
+          if [ -z "$MERGE_COMMIT_SHA" ]; then
+            echo "::error::pull_request.merge_commit_sha is required for exact-main releasability dispatch"
+            exit 1
+          fi
+          if [ -z "${PR_COMMIT_COUNT:-}" ] || [ "$PR_COMMIT_COUNT" -lt 1 ]; then
+            echo "::error::pull_request.commits is required to gate every merged commit"
+            exit 1
+          fi
+
+          # This repository merges by rebase, so the pull request contributes
+          # PR_COMMIT_COUNT commits to main and every one of them must be gated,
+          # not only the tip (issue #236). The enumeration below is correct ONLY
+          # under rebase-only merging, so assert that loudly before relying on it.
+          merge_settings="$(gh api "repos/$GITHUB_REPOSITORY"             --jq '[.allow_squash_merge, .allow_merge_commit, .allow_rebase_merge] | join(",")')"
+          if [ "$merge_settings" != "false,false,true" ]; then
+            echo "::error::Per-commit gate dispatch assumes rebase-only merging; repository merge settings are $merge_settings"
+            exit 1
+          fi
+
+          commit_shas="$(gh api             "repos/$GITHUB_REPOSITORY/commits?sha=$MERGE_COMMIT_SHA&per_page=$PR_COMMIT_COUNT"             --jq '[.[].sha]')"
+          resolved_count="$(printf '%s' "$commit_shas" | jq 'length')"
+          if [ "$resolved_count" -ne "$PR_COMMIT_COUNT" ]; then
+            echo "::error::Expected $PR_COMMIT_COUNT merged commits, resolved $resolved_count"
+            exit 1
+          fi
+          echo "commit_shas=$commit_shas" >> "$GITHUB_OUTPUT"
+
+  dispatch-main-releasability:
+    name: Dispatch Main Releasability
+    needs: enumerate-merged-commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        commit_sha: ${{ fromJSON(needs.enumerate-merged-commits.outputs.commit_shas) }}
     steps:
       - name: Dispatch main releasability gate
         env:
           GH_TOKEN: ${{ github.token }}
-          MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          MERGE_COMMIT_SHA: ${{ matrix.commit_sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
