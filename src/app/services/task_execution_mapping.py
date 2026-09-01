@@ -27,6 +27,7 @@ def map_task_execution_response(
     resolved: ResolvedTaskExecution,
 ) -> TaskExecutionResponse:
     context = resolved.context
+    validation = resolved.output_validation
     evidence = build_execution_evidence(
         request=context.request,
         capability=context.capability,
@@ -35,8 +36,8 @@ def map_task_execution_response(
         prompt_selection=context.prompt_selection,
         provider_execution=resolved.provider_execution,
         safety_outcome=resolved.safety_outcome,
+        output_validation=validation,
     )
-    validation = resolved.output_validation
     validation_withholds = validation.validation_state in {
         OutputValidationState.REJECTED,
         OutputValidationState.VALIDATION_UNAVAILABLE,

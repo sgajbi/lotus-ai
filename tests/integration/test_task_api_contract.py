@@ -47,7 +47,11 @@ def test_task_execute_contract(client: TestClient) -> None:
     assert body["audit"]["safety"]["disposition"] == "DOCUMENTED_ONLY"
     assert body["audit"]["safety"]["runtime_redaction_active"] is True
     assert body["audit"]["authorization"]["outcome"] == "ALLOWED"
-    assert len(body["evidence"]["descriptors"]) == 7
+    assert len(body["evidence"]["descriptors"]) == 8
+    validation_evidence = body["evidence"]["descriptors"][-1]
+    assert validation_evidence["evidence_type"] == "output_validation"
+    assert validation_evidence["attributes"]["validation_state"] == "VALIDATED"
+    assert validation_evidence["attributes"]["authority"] == "non_authoritative_ai_output"
     assert body["evidence"]["descriptors"][0]["evidence_type"] == "task_contract"
     assert body["evidence"]["descriptors"][3]["evidence_type"] == "routing_decision"
     routing_attributes = body["evidence"]["descriptors"][3]["attributes"]
@@ -144,7 +148,11 @@ def test_task_execute_contract_returns_grounded_advisor_brief_for_gateway_fact_b
         "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-summary:YTD",
         "lotus-gateway:workbench:PB_SG_GLOBAL_BAL_001:performance-details:YTD",
     ]
-    assert len(body["evidence"]["descriptors"]) == 7
+    assert len(body["evidence"]["descriptors"]) == 8
+    validation_evidence = body["evidence"]["descriptors"][-1]
+    assert validation_evidence["evidence_type"] == "output_validation"
+    assert validation_evidence["attributes"]["validation_state"] == "VALIDATED"
+    assert validation_evidence["attributes"]["authority"] == "non_authoritative_ai_output"
 
 
 def test_task_execute_contract_enforces_runtime_redaction_when_enabled(client: TestClient) -> None:

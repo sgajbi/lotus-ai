@@ -81,7 +81,7 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
         "runtime_redaction_engine",
     ]
     assert response.audit.safety.control_results[-1].control_id == "runtime_redaction_engine"
-    assert len(response.evidence.descriptors) == 7
+    assert len(response.evidence.descriptors) == 8
     assert response.evidence.descriptors[0].evidence_type == "task_contract"
     assert response.evidence.descriptors[1].evidence_type == "prompt_selection"
     assert response.evidence.descriptors[3].evidence_type == "routing_decision"
@@ -96,6 +96,12 @@ def test_execute_task_returns_stubbed_completed_response() -> None:
     assert response.audit.routing_decision.selected_provider_id == "text.stub"
     assert response.audit.authorization.outcome == AuthorizationOutcome.ALLOWED
     assert response.evidence.descriptors[6].evidence_type == "access_control"
+    # The verdict rides a real end-to-end execution's evidence bundle, which is
+    # what carries it to the run record and every projection built from it
+    # (issue #231).
+    assert response.evidence.descriptors[7].evidence_type == "output_validation"
+    assert response.evidence.descriptors[7].attributes["validation_state"] == "VALIDATED"
+    assert response.evidence.descriptors[7].attributes["authority"] == "non_authoritative_ai_output"
 
 
 def test_execute_task_enforces_runtime_redaction_for_provider_backed_output() -> None:
