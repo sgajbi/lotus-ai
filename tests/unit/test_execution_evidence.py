@@ -1,5 +1,9 @@
 from typing import Any, cast
 
+from app.contracts.output_validation import (
+    OutputValidationOutcome,
+    OutputValidationState,
+)
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
     AuthorizationDecision,
@@ -28,6 +32,10 @@ from app.contracts.tasks import (
 )
 from app.services.execution_evidence import build_execution_evidence
 from app.services.safety_runtime import build_safety_execution_outcome
+
+
+def _validated_outcome() -> OutputValidationOutcome:
+    return OutputValidationOutcome(validation_state=OutputValidationState.VALIDATED)
 
 
 def _authorization_decision() -> AuthorizationDecision:
@@ -104,9 +112,10 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
         prompt_selection=prompt_selection,
         provider_execution=provider_execution,
         safety_outcome=safety_outcome,
+        output_validation=_validated_outcome(),
     )
 
-    assert len(evidence.descriptors) == 6
+    assert len(evidence.descriptors) == 7
     assert evidence.descriptors[0].evidence_type == "task_contract"
     assert evidence.descriptors[1].evidence_type == "prompt_selection"
     assert evidence.descriptors[1].attributes["rollout_role"] == "ACTIVE"
@@ -128,6 +137,15 @@ def test_build_execution_evidence_returns_expected_descriptors() -> None:
         list[dict[str, Any]], evidence.descriptors[3].attributes["control_results"]
     )
     assert control_results[-1]["control_id"] == ("runtime_redaction_engine")
+    validation_descriptor = evidence.descriptors[-1]
+    assert validation_descriptor.evidence_type == "output_validation"
+    assert validation_descriptor.attributes["validation_state"] == "VALIDATED"
+    assert validation_descriptor.attributes["authority"] == "non_authoritative_ai_output"
+    assert validation_descriptor.attributes["failed_rule_ids"] == []
+    # Findings quote the tokens and references a rule rejected, so they carry
+    # output content and must not ride a bundle persisted and read under a
+    # different redaction posture (issue #231).
+    assert "findings" not in validation_descriptor.attributes
     assert evidence.descriptors[4].evidence_type == "retrieval_posture"
     assert evidence.descriptors[5].evidence_type == "access_control"
     assert evidence.descriptors[5].attributes["outcome"] == "ALLOWED"
@@ -201,6 +219,7 @@ def test_build_execution_evidence_captures_live_retrieval_request_posture() -> N
         prompt_selection=prompt_selection,
         provider_execution=provider_execution,
         safety_outcome=safety_outcome,
+        output_validation=_validated_outcome(),
     )
 
     retrieval_descriptor = evidence.descriptors[4]

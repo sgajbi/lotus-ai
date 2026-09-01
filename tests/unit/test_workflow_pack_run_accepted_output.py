@@ -29,6 +29,8 @@ from app.services.workflow_pack_run_accepted_output import (
     AcceptedOutputNotFoundError,
     build_workflow_pack_run_accepted_output,
 )
+from tests.support.workflow_pack_run_builders import validated_output_evidence
+from app.contracts.evidence import ExecutionEvidenceDescriptor
 
 TENANT = "tenant-sg-001"
 
@@ -54,7 +56,7 @@ def _record(**overrides: Any) -> WorkflowPackRunRecord:
         "stubbed": True,
         "output_preview": "preview",
         "structured_output_keys": ["grounded_summary"],
-        "evidence_descriptors": [],
+        "evidence_descriptors": [validated_output_evidence()],
         "artifact_refs": [
             ArtifactDescriptor(
                 artifact_id="art-001",
@@ -370,3 +372,133 @@ def test_absent_evidence_refs_key_projects_as_empty(_wired: WireCallable) -> Non
         run_id="wfr-accepted-001", caller_tenant_id=TENANT
     )
     assert response.talking_points[0].evidence_refs == []
+
+
+def _validation_evidence(state: str) -> ExecutionEvidenceDescriptor:
+    return ExecutionEvidenceDescriptor(
+        evidence_type="output_validation",
+        summary=f"Deterministic output validation returned {state}.",
+        attributes={
+            "validation_state": state,
+            "authority": "non_authoritative_ai_output",
+            "ruleset_version": "output-validation.v4",
+            "failed_rule_ids": [] if state == "VALIDATED" else ["numeric_grounding"],
+        },
+    )
+
+
+@pytest.mark.parametrize("state", ["UNVALIDATED_LOCAL_ONLY", "REJECTED", "VALIDATION_UNAVAILABLE"])
+def test_output_without_a_validated_verdict_is_refused(state: str, _wired: WireCallable) -> None:
+    """A review ACCEPT is human oversight, not a validation verdict.
+
+    Without this, an UNVALIDATED_LOCAL_ONLY output could be reviewed,
+    accepted, and composed into a client document with nothing marking it
+    (issue #231).
+    """
+
+    _wired(_record(evidence_descriptors=[_validation_evidence(state)]), _artifact_payload())
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_not_validated"
+    assert state in excinfo.value.message
+
+
+def test_a_run_predating_validation_evidence_is_refused_not_grandfathered(
+    _wired: WireCallable,
+) -> None:
+    """The explicit decision, not an oversight.
+
+    Runs accepted before output-validation evidence existed cannot have their
+    authority established after the fact, and accepted-output feeds new client
+    and advisor document generation. Authority is proven at generation time or
+    it is absent; age is not evidence.
+    """
+
+    _wired(_record(evidence_descriptors=[]), _artifact_payload())
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_not_validated"
+    assert "absent" in excinfo.value.message
+
+
+def test_the_refusal_precedes_reading_the_output_artifact(_wired: WireCallable) -> None:
+    """Authority is settled before the content is loaded, so an unvalidated
+    run cannot be published even if its artifact is intact and vice versa."""
+
+    _wired(_record(evidence_descriptors=[_validation_evidence("REJECTED")]), None)
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_not_validated"
+
+
+def test_every_refusal_reason_is_declared_in_the_vocabulary() -> None:
+    """The reason set is the published error vocabulary - each code becomes a
+    LOTUS_AI_ACCEPTED_* error code - so a raised reason that is not declared
+    would ship an undocumented failure mode."""
+
+    raised = {
+        module.REASON_PACK_PROJECTION_UNSUPPORTED,
+        module.REASON_RUN_NOT_COMPLETED,
+        module.REASON_RUN_NOT_ACCEPTED,
+        module.REASON_RUN_SUPERSEDED,
+        module.REASON_OUTPUT_ARTIFACT_MISSING,
+        module.REASON_OUTPUT_ARTIFACT_MALFORMED,
+        module.REASON_OUTPUT_NOT_VALIDATED,
+    }
+    assert raised == set(module.ACCEPTED_OUTPUT_REASON_CODES)
+
+
+def test_the_published_response_carries_the_verdict_that_made_it_publishable(
+    _wired: WireCallable,
+) -> None:
+    """lotus-report composes this projection into a governed client document
+    and cannot check a field it is not sent. Refusing to publish unvalidated
+    output is the guarantee; carrying the verdict is what makes the guarantee
+    checkable by the consumer rather than assumed."""
+
+    _wired(_record(), _artifact_payload())
+    response = build_workflow_pack_run_accepted_output(
+        run_id="wfr-accepted-001", caller_tenant_id=TENANT
+    )
+    assert response.output_validation.validation_state == "VALIDATED"
+    assert response.output_validation.authority == "non_authoritative_ai_output"
+    assert response.output_validation.ruleset_version == "output-validation.v4"
+
+
+def test_the_verdict_is_not_part_of_content_identity(_wired: WireCallable) -> None:
+    """`content_hash` means "this exact narrative and context".
+
+    Consumers hold stored hashes from immutable snapshots, so the hash basis
+    must not shift when a field is added beside it. Two runs identical except
+    for the ruleset version that validated them publish the same content.
+    """
+
+    _wired(_record(), _artifact_payload())
+    first = build_workflow_pack_run_accepted_output(
+        run_id="wfr-accepted-001", caller_tenant_id=TENANT
+    )
+
+    later_ruleset = _validation_evidence("VALIDATED")
+    later_ruleset.attributes["ruleset_version"] = "output-validation.v9"
+    _wired(_record(evidence_descriptors=[later_ruleset]), _artifact_payload())
+    second = build_workflow_pack_run_accepted_output(
+        run_id="wfr-accepted-001", caller_tenant_id=TENANT
+    )
+
+    assert second.output_validation.ruleset_version == "output-validation.v9"
+    assert second.content_hash == first.content_hash
+
+
+@pytest.mark.parametrize("missing", ["authority", "ruleset_version"])
+def test_incomplete_validation_evidence_fails_closed(missing: str, _wired: WireCallable) -> None:
+    """A verdict without its authority marking or ruleset version is not
+    something a consumer can act on, so it is refused rather than published
+    with a blank marking."""
+
+    evidence = _validation_evidence("VALIDATED")
+    del evidence.attributes[missing]
+    _wired(_record(evidence_descriptors=[evidence]), _artifact_payload())
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
+    assert _reason(excinfo) == "output_not_validated"
+    assert missing in excinfo.value.message

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
+from app.contracts.output_validation import OutputValidationOutcome
 from app.contracts.prompts import PromptDescriptor, PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderExecutionResponse, RoutingDecisionDescriptor
 from app.contracts.retrieval import RetrievalExecutionStatusResponse
@@ -20,6 +21,7 @@ def build_execution_evidence(
     prompt_selection: PromptSelectionTraceDescriptor,
     provider_execution: ProviderExecutionResponse,
     safety_outcome: SafetyExecutionOutcome,
+    output_validation: OutputValidationOutcome,
 ) -> ExecutionEvidenceBundle:
     retrieval_status = build_retrieval_execution_status()
     descriptors = [
@@ -38,9 +40,43 @@ def build_execution_evidence(
                 provider_execution=provider_execution,
             ),
             _access_control_descriptor(authorization=authorization),
+            _output_validation_descriptor(output_validation=output_validation),
         ]
     )
     return ExecutionEvidenceBundle(descriptors=descriptors)
+
+
+def _output_validation_descriptor(
+    *, output_validation: OutputValidationOutcome
+) -> ExecutionEvidenceDescriptor:
+    """The output's verdict, carried as evidence rather than as a new field.
+
+    Downstream surfaces already persist and render this bundle, so the verdict
+    reaches the run record, the consumer view, the operator profile and the
+    accepted-output projector without a migration or a per-projection field
+    (issue #231).
+
+    ``findings`` is deliberately excluded: those statements quote the tokens
+    and references that failed a rule, so they carry output content, and this
+    bundle is persisted and read under a different redaction posture than the
+    response that produced it. Rule identifiers say which rule failed without
+    reproducing what it saw.
+    """
+
+    return ExecutionEvidenceDescriptor(
+        evidence_type="output_validation",
+        summary=(
+            f"Deterministic output validation returned {output_validation.validation_state.value} "
+            f"under ruleset {output_validation.ruleset_version}; this output is "
+            f"{output_validation.authority}."
+        ),
+        attributes={
+            "validation_state": output_validation.validation_state.value,
+            "authority": output_validation.authority,
+            "ruleset_version": output_validation.ruleset_version,
+            "failed_rule_ids": list(output_validation.failed_rule_ids),
+        },
+    )
 
 
 def build_routing_decision_descriptor(

@@ -81,6 +81,32 @@ class AdvisorBriefAcceptedReviewIdentity(BaseModel):
     reviewed_at: str = Field(description="Instant of the accepting review transition (UTC).")
 
 
+class AcceptedOutputValidationIdentity(BaseModel):
+    """The deterministic verdict that made this output publishable.
+
+    A consumer composing this projection into a client document must be able
+    to check the output's authority itself rather than trusting that the
+    publisher refused correctly. lotus-ai already refuses to publish anything
+    whose verdict is not VALIDATED, so this block is constant by construction
+    for a successful response - which is the point: it makes the guarantee
+    checkable rather than assumed (issue #231).
+
+    Deliberately not part of ``content_hash``: that hash means "this exact
+    narrative and context", and adding a field to its basis would change every
+    previously published hash and break consumers holding stored snapshots.
+    """
+
+    validation_state: str = Field(
+        description="Deterministic output-validation verdict; always VALIDATED when published.",
+    )
+    authority: str = Field(
+        description="Authority marking: AI output is never authoritative financial truth.",
+    )
+    ruleset_version: str = Field(
+        description="Version of the validation rule set that produced the verdict.",
+    )
+
+
 class WorkflowPackRunAcceptedOutputResponse(BaseModel):
     """The exact accepted `advisor_brief.pack@v1` output for one run.
 
@@ -105,6 +131,12 @@ class WorkflowPackRunAcceptedOutputResponse(BaseModel):
     tenant_id: str = Field(description="Tenant the run belongs to and was retrieved for.")
     workflow_authority_owner: str = Field(
         description="Service that owns consequence-bearing workflow authority for this pack.",
+    )
+    output_validation: AcceptedOutputValidationIdentity = Field(
+        description=(
+            "Deterministic validation verdict recorded for this exact output; a run whose "
+            "verdict is missing or not VALIDATED is never published."
+        ),
     )
     review: AdvisorBriefAcceptedReviewIdentity = Field(
         description="Accepting reviewer identity and time from the review event ledger.",

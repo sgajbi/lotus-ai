@@ -31,6 +31,7 @@ from app.services.workflow_pack_run_accepted_latest import (
     build_workflow_pack_run_accepted_latest,
 )
 from app.services.workflow_pack_run_accepted_output import AcceptedOutputNotAvailableError
+from tests.support.workflow_pack_run_builders import validated_output_evidence
 
 TENANT = "tenant-sg-001"
 PORTFOLIO = "PB_SG_GLOBAL_BAL_001"
@@ -122,7 +123,7 @@ def _seed_run(
         stubbed=True,
         output_preview="preview",
         structured_output_keys=["grounded_summary"],
-        evidence_descriptors=[],
+        evidence_descriptors=[validated_output_evidence()],
         artifact_refs=[
             ArtifactDescriptor(
                 artifact_id=f"art-{run_id}",

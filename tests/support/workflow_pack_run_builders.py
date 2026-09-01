@@ -19,6 +19,27 @@ from app.services.workflow_pack_run_supportability import (
 )
 
 
+def validated_output_evidence() -> ExecutionEvidenceDescriptor:
+    """The verdict a real validated execution records (issue #231).
+
+    Hand-built run fixtures used to carry no evidence at all, which no real
+    run does; accepted-output now refuses a run whose output has no proven
+    VALIDATED verdict, so a fixture standing in for a publishable run has to
+    carry the evidence a publishable run actually has.
+    """
+
+    return ExecutionEvidenceDescriptor(
+        evidence_type="output_validation",
+        summary="Deterministic output validation returned VALIDATED.",
+        attributes={
+            "validation_state": "VALIDATED",
+            "authority": "non_authoritative_ai_output",
+            "ruleset_version": "output-validation.v4",
+            "failed_rule_ids": [],
+        },
+    )
+
+
 def build_workflow_pack_run_descriptor(
     *,
     run_id: str,

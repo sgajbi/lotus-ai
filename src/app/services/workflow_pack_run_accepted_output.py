@@ -30,12 +30,14 @@ from app.config import settings
 from app.contracts.workflow_pack_run_accepted_output import (
     ACCEPTED_OUTPUT_CONTENT_HASH_ALGORITHM,
     ACCEPTED_OUTPUT_SCHEMA_ADVISOR_BRIEF_V1,
+    AcceptedOutputValidationIdentity,
     AdvisorBriefAcceptedContextIdentity,
     AdvisorBriefAcceptedEvidenceRef,
     AdvisorBriefAcceptedNarrativeItem,
     AdvisorBriefAcceptedReviewIdentity,
     WorkflowPackRunAcceptedOutputResponse,
 )
+from app.contracts.output_validation import OutputValidationState
 from app.contracts.workflow_pack_runs import (
     WorkflowPackRunReviewState,
     WorkflowPackRunRuntimeState,
@@ -68,6 +70,7 @@ REASON_RUN_NOT_ACCEPTED = "run_not_accepted"
 REASON_RUN_SUPERSEDED = "run_superseded"
 REASON_OUTPUT_ARTIFACT_MISSING = "output_artifact_missing"
 REASON_OUTPUT_ARTIFACT_MALFORMED = "output_artifact_malformed"
+REASON_OUTPUT_NOT_VALIDATED = "output_not_validated"
 
 ACCEPTED_OUTPUT_REASON_CODES = frozenset(
     {
@@ -77,6 +80,7 @@ ACCEPTED_OUTPUT_REASON_CODES = frozenset(
         REASON_RUN_SUPERSEDED,
         REASON_OUTPUT_ARTIFACT_MISSING,
         REASON_OUTPUT_ARTIFACT_MALFORMED,
+        REASON_OUTPUT_NOT_VALIDATED,
     }
 )
 
@@ -128,10 +132,65 @@ def build_workflow_pack_run_accepted_output(
             REASON_RUN_SUPERSEDED,
             "This run has been superseded; retrieve the superseding accepted run instead.",
         )
+    validation = _require_validated_output(record)
 
     payload = _load_intact_output_payload(record)
     review = _accepting_review_identity(store=store, run_id=run_id)
-    return projector(record=record, payload=payload, review=review)
+    return projector(record=record, payload=payload, review=review, validation=validation)
+
+
+def _require_validated_output(record: WorkflowPackRunRecord) -> AcceptedOutputValidationIdentity:
+    """Publish only output whose own validation verdict is VALIDATED.
+
+    A review ACCEPT is human oversight, not a validation verdict: an
+    UNVALIDATED_LOCAL_ONLY output could be reviewed, accepted, and composed
+    into a client document with nothing marking it (issue #231).
+
+    A run whose evidence carries no verdict at all is refused too, and that is
+    a decision rather than an oversight. Runs that predate output-validation
+    evidence cannot have their authority established after the fact, and
+    accepted-output feeds new client and advisor document generation - so
+    authority is proven at generation time or it is absent. Age is not
+    evidence.
+    """
+
+    attributes = next(
+        (
+            descriptor.attributes
+            for descriptor in record.evidence_descriptors
+            if descriptor.evidence_type == "output_validation"
+        ),
+        None,
+    )
+    recorded_state = attributes.get("validation_state") if attributes is not None else None
+    if attributes is not None and recorded_state == OutputValidationState.VALIDATED.value:
+        return AcceptedOutputValidationIdentity(
+            validation_state=OutputValidationState.VALIDATED.value,
+            authority=_required_evidence_string(attributes, "authority"),
+            ruleset_version=_required_evidence_string(attributes, "ruleset_version"),
+        )
+    observed = recorded_state if isinstance(recorded_state, str) else "absent"
+    raise AcceptedOutputNotAvailableError(
+        REASON_OUTPUT_NOT_VALIDATED,
+        (
+            "Accepted output is only published for runs whose output validation verdict is "
+            f"VALIDATED; this run's recorded verdict is {observed}."
+        ),
+    )
+
+
+def _required_evidence_string(attributes: dict[str, Any], key: str) -> str:
+    """A verdict missing its authority marking or ruleset version is not a
+    verdict a consumer can act on, so it fails closed like any other
+    incomplete evidence rather than publishing a blank marking."""
+
+    value = attributes.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise AcceptedOutputNotAvailableError(
+            REASON_OUTPUT_NOT_VALIDATED,
+            f"The recorded output-validation evidence is missing its {key}.",
+        )
+    return value
 
 
 def _accepting_review_identity(*, store: Any, run_id: str) -> AdvisorBriefAcceptedReviewIdentity:
@@ -203,6 +262,7 @@ def _project_advisor_brief_v1(
     record: WorkflowPackRunRecord,
     payload: dict[str, Any],
     review: AdvisorBriefAcceptedReviewIdentity,
+    validation: AcceptedOutputValidationIdentity,
 ) -> WorkflowPackRunAcceptedOutputResponse:
     structured_output = payload.get("structured_output")
     if not isinstance(structured_output, dict):
@@ -259,6 +319,7 @@ def _project_advisor_brief_v1(
         request_id=record.request_id,
         tenant_id=str(record.tenant_id),
         workflow_authority_owner=record.workflow_authority_owner,
+        output_validation=validation,
         review=review,
         advisor_brief_status=advisor_brief_status,
         coverage_state=coverage_state,
