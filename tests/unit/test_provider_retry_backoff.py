@@ -84,7 +84,7 @@ def test_transport_backs_off_between_retries_and_succeeds(monkeypatch: MonkeyPat
         api_key=None,
         payload={"model": "m"},
         timeout_seconds=4.0,
-        provider_display_name="Local OpenAI-Compatible Text Provider",
+        serving_provider_id="text.local",
         require_api_key=False,
         retry_limit=2,
     )
@@ -121,7 +121,7 @@ def test_deadline_exhaustion_converts_a_retryable_failure_into_a_final_one(
             api_key=None,
             payload={"model": "m"},
             timeout_seconds=1.0,
-            provider_display_name="Local OpenAI-Compatible Text Provider",
+            serving_provider_id="text.local",
             require_api_key=False,
             retry_limit=5,
         )

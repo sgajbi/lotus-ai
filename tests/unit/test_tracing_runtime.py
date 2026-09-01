@@ -123,7 +123,7 @@ def test_traceparent_is_injected_on_provider_egress(monkeypatch: MonkeyPatch) ->
             api_key=None,
             payload={"model": "m"},
             timeout_seconds=1.0,
-            provider_display_name="Local OpenAI-Compatible Text Provider",
+            serving_provider_id="text.local",
             require_api_key=False,
             retry_limit=0,
         )

@@ -46,7 +46,7 @@ def test_transport_override_applies_only_inside_the_installing_execution() -> No
             api_key=None,
             payload={"model": "gpt-5.4"},
             timeout_seconds=1.0,
-            provider_display_name="OpenAI Managed Text Provider",
+            serving_provider_id="text.openai",
             require_api_key=True,
             retry_limit=0,
         )
@@ -65,7 +65,7 @@ def test_hermetic_execution_blocks_text_transport_without_override() -> None:
                 api_key="credential-ref:test",
                 payload={"model": "gpt-5.4"},
                 timeout_seconds=1.0,
-                provider_display_name="OpenAI Managed Text Provider",
+                serving_provider_id="text.openai",
                 require_api_key=True,
                 retry_limit=0,
             )

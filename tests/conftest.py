@@ -38,6 +38,11 @@ from app.workflow_pack_execution_idempotency.store import (
     reset_workflow_pack_execution_idempotency_store_cache,
 )
 
+# Imported for registration: pytest discovers fixtures defined in conftest's
+# namespace, which is how tests/support/log_collection.py's collector reaches
+# every test module without being copied into each one.
+from tests.support.log_collection import app_log_collector  # noqa: F401
+
 
 @pytest.fixture(autouse=True)
 def reset_runtime_settings() -> Generator[None, None, None]:

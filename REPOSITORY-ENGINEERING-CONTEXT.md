@@ -58,7 +58,10 @@ candidates pass the same fences under their own execution config: kill switches,
 per-provider circuit breaker, and governed catalogue binding. Quota counters and
 the budget envelope are request-scoped and charged once. Every execution records
 a routing decision — each candidate, its rejection reason where rejected, the
-selection, and the `fallback_path`.
+selection, and the `fallback_path`. Whichever candidate serves, it is the one
+named on every surface: audit record, routing decision, response, cost, metrics
+labels, structured logs, tracing spans, bounded failure messages, breaker
+evidence, and the attested run ledger all carry the serving identity.
 
 **Model catalogue.** Provider, family, revision, deployment, and SKU are
 first-class governed identity. Lifecycle state gates execution (a retired or
@@ -104,11 +107,10 @@ refuses new copy-paste readiness modules and ratchets module size.
 **Current limitations.** Consumers still name a task and rely on configured
 provider identity rather than requesting a capability with requirements;
 eligibility is configuration-driven rather than evidence-driven; model capability
-dimensions and eval-backed fungibility do not exist yet (#244, #245). Two
-evidence surfaces still resolve the primary identity for alternate-served
-executions (#237), and an OPEN breaker does not yet survive key migration (#234).
-High-impact governance actions still accept caller-supplied approver strings
-(#157). Forward priorities live on the North Star execution board (#246).
+dimensions and eval-backed fungibility do not exist yet (#244, #245). An OPEN
+breaker does not yet survive deployment or key migration (#234), and the
+breaker's posture resolver still writes while reading (#248). High-impact
+governance actions still accept caller-supplied approver strings (#157). Forward priorities live on the North Star execution board (#246).
 
 ## Architecture And Module Map
 

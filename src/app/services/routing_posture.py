@@ -15,7 +15,6 @@ from app.config import settings
 from app.services.provider_execution_config import (
     ProviderExecutionConfig,
     derive_fallback_execution_config,
-    override_provider_execution_config,
     resolve_provider_execution_config,
 )
 from app.contracts.model_catalogue import ModelCatalogueEntry, derive_model_catalogue_entry_id
@@ -41,9 +40,12 @@ def build_routing_posture() -> RoutingPostureResponse:
     fallback_candidate: RoutingPostureCandidateDescriptor | None = None
     fallback_degradation: ProviderDegradationStatusDescriptor | None = None
     if alternate is not None:
-        with override_provider_execution_config(alternate):
-            fallback_candidate = _resolve_candidate(alternate)
-            fallback_degradation = build_provider_degradation_status()
+        # Both reads name the alternate explicitly rather than relying on an
+        # ambient override to mean it. Scope-implicit identity is how the
+        # alternate's evidence used to come back describing the primary
+        # (issue #237).
+        fallback_candidate = _resolve_candidate(alternate)
+        fallback_degradation = build_provider_degradation_status(alternate.provider_id)
     notes = [
         "Per-request gates (caller authorization, task/tenant/caller kill-switch scopes, "
         "quota counters) are evaluated per execution and recorded on its routing decision.",
