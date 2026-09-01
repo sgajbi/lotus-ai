@@ -76,13 +76,20 @@ message — passes one deterministic validator before safety redaction: evidence
 grounding against supplied references, numeric grounding of percent and currency
 tokens, per-task and per-pack JSON Schema contracts, and strict-JSON posture. The
 verdict and an explicit `non_authoritative_ai_output` marking ride the response
-and the audit record; a rejected output is withheld whole. A workflow-pack family
+and the audit record; a rejected output is withheld whole. The verdict is also
+carried as execution evidence, so it reaches the run record and every projection
+built from that bundle, and accepted-output publishes only what has a proven
+`VALIDATED` verdict — a run whose evidence carries no verdict is refused rather
+than grandfathered, because authority is proven at generation time or it is
+absent. A workflow-pack family
 cannot be registered without an output contract.
 
 **Operator controls, deliberately distinct.** Routing selects an eligible
 candidate; the circuit breaker is automatic health protection keyed per provider
-identity; kill switches are explicit operator prohibition across six scopes with
-HARD_KILL and DRAIN semantics; evaluation gates decide whether a model may be
+identity, and an open circuit survives the deployment that rekeys its
+bookkeeping or becomes a startup finding rather than a silent drop; kill
+switches are explicit operator prohibition across six scopes with HARD_KILL and
+DRAIN semantics; evaluation gates decide whether a model may be
 eligible at all; lifecycle governs promotion and retirement. These are separate
 mechanisms with separate evidence, composed into operator views rather than
 merged into one state machine.
@@ -104,13 +111,14 @@ builder; execution states are `ENFORCED` / `PARTIAL` / `DOCUMENTED_ONLY` /
 `OUT_OF_SCOPE` and readiness is derived, never asserted. A lint-lane guard
 refuses new copy-paste readiness modules and ratchets module size.
 
-**Current limitations.** Consumers still name a task and rely on configured
-provider identity rather than requesting a capability with requirements;
-eligibility is configuration-driven rather than evidence-driven; model capability
-dimensions and eval-backed fungibility do not exist yet (#244, #245). An OPEN
-breaker does not yet survive deployment or key migration (#234), and the
-breaker's posture resolver still writes while reading (#248). High-impact
-governance actions still accept caller-supplied approver strings (#157). Forward priorities live on the North Star execution board (#246).
+**Current limitations.** Consumers name a task and cannot state requirements —
+latency, cost, residency, or a quality floor — and the task-to-model binding is
+configuration-driven rather than derived from capability facts or eval evidence;
+model capability dimensions and eval-backed fungibility do not exist yet (#244,
+#245). Refused privileged audit reads leave no record, and the access-events
+ledger has no read path (#167). High-impact governance actions still accept
+caller-supplied approver strings (#157). Forward priorities live on the North
+Star execution board (#246).
 
 ## Architecture And Module Map
 
