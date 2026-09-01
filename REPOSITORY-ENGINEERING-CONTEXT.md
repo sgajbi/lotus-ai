@@ -26,124 +26,102 @@ This repository owns:
 
 It does not own portfolio, performance, risk, advisory, or management domain truth.
 
-## Current-State Summary
+## Current Architecture
 
-Current repository posture:
+What `lotus-ai` is today, as one control plane rather than a set of subsystems.
 
-1. `lotus-ai` now has an implemented bounded workflow-pack runtime foundation for the current
-   Phase-1 pack families, with broader pack-family expansion remaining follow-on work,
-2. live provider rollout remains controlled and deliberately constrained, with production go-live
-   governance covering both text-generation and embedding execution posture,
-3. retrieval, prompts, safety, provider policy, evaluation, async runtime, and governance are real first-class seams; enabled retrieval, live SQL-backed prompt activation, and runtime-enforced safety each remain production go-live blockers until their governance and runtime-backed evidence are approval-ready; dedicated-worker async runtime now surfaces queued-job/empty-queue divergence and supports governed `REDRIVE_QUEUED_JOB` and `QUARANTINE_QUEUED_JOB` actions instead of relying on ad hoc queue or database edits,
-4. every route included from the named product routers requires an authenticated caller who is also a registered ACTIVE caller-policy entry (`platform_read` - the policy row is the grant) before handler execution; the identity itself is governed by `LOTUS_AI_CALLER_TRUST_MODE`: `header` accepts the trusted `X-Caller-App` header for local runtimes (a startup readiness finding in the promoted profile), while `verified_service_jwt` takes the caller from the `sub` claim of a platform-issued EdDSA credential verified against the configured issuer, audience, and rotating Ed25519 key map, with every verification failure a fail-closed `401 CALLER_CREDENTIAL_INVALID` and no header fallback; state-changing routes preserve body-level caller metadata for audit and evidence and reject a mismatch, audit-record reads derive restricted tenant scope from durable caller policy and only the explicit platform capability may read all tenants and legacy unattributed records, synchronously persisting identifier-minimized access evidence before returning; header-only identity may exercise that privileged capability only when the default-closed `local_header_caller_identity_enabled` security setting is explicitly enabled for a local runtime, readiness settings do not change authorization, and authorization decisions on audit records carry the verified subject, trust source, and credential key id,
-5. workflow-pack registry truth now exists as a separate control-plane seam above capability-pack maturity, with owner-artifact references that must resolve back to the real downstream repository and with one governed store-mode seam that can keep activation state and control history in memory or in a migration-backed SQL store,
-6. workflow-pack run-ledger foundations now exist as a separate runtime seam for the current
-   executable workflow-pack families (`advisor_brief.pack`, `workspace_rationale.pack`,
-   `proposal_memo_commentary.pack`, `advisory_copilot_proposal_explanation.pack`,
-   `advisory_copilot_evidence_qa.pack`, `advisory_copilot_meeting_preparation.pack`,
-   `advisory_copilot_compliance_review_summary.pack`,
-   `advisory_copilot_operations_report_handoff.pack`,
-   `advisory_copilot_client_follow_up_draft.pack`, `twr_inspection_support_brief.pack`,
-   `dpm_pm_memo.pack`, `dpm_wave_pm_memo.pack`, `dpm_exception_summary.pack`,
-   `dpm_operations_handoff_summary.pack`, `outcome_review_narrative.pack`, and
-   `pm_quality_summary.pack`, and `idea_explanation.pack`), with runtime state
-   kept separate from review state,
-   bounded actor-attributed review transitions available through the ledger API, bounded
-   ledger-compatible `allowed_review_actions` emitted for consumers, governed workflow-pack
-   artifact refs now attached for bounded output-summary review, one review-gated
-   accepted-output projection (`/platform/workflow-packs/runs/{run_id}/accepted-output`) that
-   publishes the exact accepted `advisor_brief.pack@v1` narrative with reviewer identity and a
-   canonical content hash to authorized same-tenant callers - completed+accepted+non-superseded
-   with an intact governed artifact only, bounded fail-closed reason codes otherwise, per-pack
-   projectors registered explicitly, and no client-release, Report-integration, or certification
-   claim, deterministic proposal memo
-   commentary support for bounded `lotus-advise` memo evidence that cannot mutate memo status,
-   suitability, approval, or client-ready posture, deterministic RFC-0027 advisory copilot
-   guardrails that validate Advise-owned source-backed evidence packets, bounded requested outputs,
-   required model-risk controls, review-required posture, blocked client-ready posture, unsupported
-   claims, and forbidden technical fields before run/audit/task-flow side effects, deterministic proof-pack PM memo
-   guardrails that validate manage-owned `DpmProofPackAiEvidenceInput`, required forbidden
-   actions, forbidden fields, forbidden requested outputs, and optional source-lineage-only
-   `portfolio_memory_context` before run/audit/task-flow side effects, deterministic wave PM memo
-   guardrails that validate manage-owned `DpmWaveReportInput`, required forbidden actions,
-   forbidden fields, forbidden requested outputs, source refs, proof-pack posture, no-external-execution
-   posture, `NO_RAW_PAYLOADS`, and optional source-lineage-only `portfolio_memory_context` before
-   run/audit/task-flow side effects, deterministic operations handoff summary guardrails that
-   validate manage-owned `DpmWaveReportInput`, non-empty bounded handoff refs, required forbidden
-   actions, forbidden fields, forbidden requested outputs, no-external-execution posture,
-   `NO_RAW_PAYLOADS`, and optional source-lineage-only `portfolio_memory_context` before
-   run/audit/task-flow side effects, deterministic exception summary guardrails that validate
-   manage-owned monitoring exception evidence, bounded source refs, required forbidden actions,
-   forbidden fields, forbidden requested outputs, `NO_RAW_PAYLOADS`, and support-only posture
-   before run/audit/task-flow side effects, and deterministic
-   outcome-review narrative guardrails that validate manage-owned `DpmOutcomeAiEvidenceInput`,
-   required forbidden actions, forbidden fields, forbidden requested outputs, and optional
-   source-lineage-only `portfolio_memory_context`, and deterministic PM quality summary guardrails
-   that validate Manage-owned `PmOperatingQualityScoreRun` evidence, required non-use guardrails,
-   source refs, bounded requested outputs, and optional source-lineage-only
-   `portfolio_memory_context` before run/audit/task-flow side effects. The
-   deterministic idea explanation execution validates `lotus-idea` caller authorization,
-   required redacted evidence packet, bounded explanation request, supportability posture,
-   review-required posture, unsupported claims, forbidden actions, and forbidden
-   suitability/proposal/rebalance/client-publication authority before run/audit/task-flow side
-   effects.
-   The
-   portfolio-memory context is consumed only as bounded lineage with matching portfolio identity,
-   `NO_RAW_PAYLOADS` redaction, capped event refs, source content hash, and explicit
-   no-reconstruction source-authority policy; generated outputs expose compact lineage summaries
-   rather than reconstructed timeline facts. Operator-facing supportability profiles, grouped
-   consumer views, run detail, filtered run catalog, shared review/supportability/provenance
-   summaries, AI-owned source-event projections through `/platform/workflow-packs/source-events`
-   and `/platform/workflow-packs/runs/{run_id}/source-events` for no-raw-payload portfolio-memory
-   lineage consumption, explicit workflow-pack execution, caller/tenant-scoped synchronous
-   execution replay through the existing idempotency-key contract, reusable binding registry, queue policies,
-   runtime-status activity, cross-pack attention, and RFC-0108 AI surface supportability now cover
-   the expanded executable pack set. Gateway and Workbench product realization for proof-pack PM
-   memo, wave PM memo, and outcome-review narrative remains downstream follow-on after the lotus-ai
-   contracts are merged and proven; existing governed live downstream proof already exists through
-   `lotus-workbench` -> `lotus-gateway` -> `lotus-ai`, `lotus-advise` -> `lotus-ai`, and
-   `lotus-performance` -> `lotus-ai`, and a migration-backed SQL store is available for durable
-   posture,
-6. RFC-0097 task-flow foundations now exist for future long-running workflow-pack paths: typed flow, step, checkpoint, blocking-condition, replacement-lineage, handoff, runtime-state, review-state, and evidence descriptors are available, bounded lifecycle transitions are centralized, task-flow plus checkpoint state can run in memory or through a migration-backed SQL store with platform readiness reporting, read-only task-flow catalog/detail/checkpoint routes now expose inspection, Phase-1 workflow-pack execution records task-flow/checkpoint state for explicit and implicit pack-backed execution paths, workflow-pack review actions synchronize task-flow review posture plus replacement lineage, accepted task flows record explicit `READY_FOR_HANDOFF` posture for the workflow authority owner, and `/platform/runtime-status` now carries heartbeat-style task-flow attention for waiting, blocked, stale, and action-required flows; domain handoff execution remains a future slice,
-7. RFC-0098 queue policy foundations now expose declarative per-pack queue policies, in-process queue admission capacity checks, bounded queue policy/status APIs, durable queue-event history for queue admission requests, queued posture, admitted posture, execution handoff, rejections, releases, timeout posture, cancellation posture, degraded queued-worker execution, governed queue request-snapshot artifact refs, governed retry/replay decision evidence, bounded retry/replay execution from retained request snapshots, and durable workflow-pack async execution submission through `/platform/workflow-packs/execute-async`; workflow-pack async submission now has explicit idempotency-key/fingerprint semantics backed by the durable async job plus retained queue snapshot, and retry/replay execution can retain and replay the first recovery execution response for the same idempotent operator command while rejecting same-key/different-input conflicts; workflow-pack async jobs use the existing async runtime job, attempt, lease, delivery-queue, and dedicated-worker path while preserving queue events and run/task-flow records as separate source-truth seams behind memory or migration-backed SQL store modes, with platform readiness reporting for those stores and runtime-status `queue_attention` for source-backed saturation, stale active-admission posture, durable terminal timeout/cancellation/degraded queue events, blocked retry/replay recovery posture, repeated timeout/cancellation/blocked-recovery clusters, and degraded queue-source posture when configured queue dependencies are not ready,
-8. RFC-0108 AI surface supportability now carries bounded `supportability_reason` values and
-   explicit `metric_labels` truth for `lotus_ai_surface_supportability_state`, so operators can
-   distinguish no-sensitive-telemetry degradation from workflow-pack run posture without relying on
-   raw prompts, generated content, portfolio identifiers, correlation ids, or trace ids. The
-   observability activation-readiness and governance surfaces consume this same supportability
-   summary and remain blocked while AI-backed surfaces report degraded or unavailable posture,
-   missing no-sensitive-content telemetry, action-required supportability, or unavailable surface
-   posture,
-9. the FastAPI perimeter now has explicit service-owned HTTP boundary controls for allowed hosts,
-   bounded CORS, secure response headers, opt-in HSTS, maximum request body size, and
-   problem-details API errors with stable `error_code` and body/header correlation context,
-10. the service is designed to support Lotus apps without stealing domain ownership from them.
-11. workflow-run attestation is an internal bounded module inside the existing deployable service:
-    durable run facts, exact time-bounded model-risk inventory decisions, canonical serialization,
-    Ed25519 signing, public-key discovery, and fail-closed issuance use separate interfaces without
-    adding a runtime service boundary. Consumers own receipt persistence and replay protection.
-12. `src/app/provider_retention_confirmations/` is a separate internal capability package for
-    AI-provider-operations-owned retention/deletion outcomes. It reuses workflow-attestation key
-    discovery but has its own strict claims, repository port, memory/SQL adapters, migration,
-    issuance, verification, and API contract. `lotus-idea` cannot record its own provider outcome.
-13. `scripts/generate_rfc0002_idea_explanation_proof.py` is the repo-native RFC-0002 local-dev
-    proof gate for `idea_explanation.pack@v1`. It exercises the governed HTTP execution boundary,
-    reviewer transition, source-safe consumer/source-event projections, and local stub-mode
-    fail-closed attestation/retention boundaries. It does not certify live-provider execution,
-    approved model-risk inventory, signed non-stub attestation, provider-native retention/deletion,
-    or downstream Idea consumption. Its handoff artifact is governed by
-    `contracts/rfc-0002/lotus-ai-idea-explanation-workflow-proof.v1.json`.
+**The execution spine.** A caller asks for a governed AI task or workflow pack. The
+request is authenticated and authorized, bound to a prompt and an execution
+configuration, routed to a provider candidate, executed, validated, and recorded
+with evidence:
+
+`caller identity → caller-policy authorization → task/pack binding → execution config
+→ routing decision → provider execution → output validation → audit + evidence`
+
+**Caller identity.** `LOTUS_AI_CALLER_TRUST_MODE` selects the boundary: `header`
+(local runtimes; a startup finding in the promoted profile) or
+`verified_service_jwt`, where the caller is the `sub` claim of a platform-issued
+EdDSA credential verified against a configured issuer, audience, and rotating key
+map. Failures are fail-closed `401 CALLER_CREDENTIAL_INVALID` with no header
+fallback. Every protected router additionally requires the caller to be a
+registered ACTIVE caller-policy entry; capability rules, tenant restriction, and
+privileged audit scope all key off that policy.
+
+**Execution configuration.** One frozen `ProviderExecutionConfig` per execution
+carries model identity, endpoint, credential, sampling, and enforcement
+thresholds. Evaluation and per-candidate routing install it through a contextvar
+override, so no code path reads mutable process settings mid-request.
+
+**Routing.** `LOTUS_AI_ROUTING_STRATEGY` is `fixed` (one configured identity) or
+`ordered_fallback` (configured primary, then one governed alternate). Both
+candidates pass the same fences under their own execution config: kill switches,
+per-provider circuit breaker, and governed catalogue binding. Quota counters and
+the budget envelope are request-scoped and charged once. Every execution records
+a routing decision — each candidate, its rejection reason where rejected, the
+selection, and the `fallback_path`.
+
+**Model catalogue.** Provider, family, revision, deployment, and SKU are
+first-class governed identity. Lifecycle state gates execution (a retired or
+unapproved revision is refused with `MODEL_LIFECYCLE_INELIGIBLE`), catalogue rows
+are seeded from configuration and from the approved model-risk inventory, and
+revision drift is recorded from the provider echo. Identity-bound,
+effective-dated rate cards price executions and carry cost posture onto audit
+records.
+
+**Output validation.** Every provider output — structured channel and narrative
+message — passes one deterministic validator before safety redaction: evidence
+grounding against supplied references, numeric grounding of percent and currency
+tokens, per-task and per-pack JSON Schema contracts, and strict-JSON posture. The
+verdict and an explicit `non_authoritative_ai_output` marking ride the response
+and the audit record; a rejected output is withheld whole. A workflow-pack family
+cannot be registered without an output contract.
+
+**Operator controls, deliberately distinct.** Routing selects an eligible
+candidate; the circuit breaker is automatic health protection keyed per provider
+identity; kill switches are explicit operator prohibition across six scopes with
+HARD_KILL and DRAIN semantics; evaluation gates decide whether a model may be
+eligible at all; lifecycle governs promotion and retirement. These are separate
+mechanisms with separate evidence, composed into operator views rather than
+merged into one state machine.
+
+**Runtime profiles.** `LOTUS_AI_RUNTIME_PROFILE=promoted` derives the protection
+set (retries with backoff, quota/budget/breaker enforcement, SQL-backed
+provider-operations and admission stores, degrade readiness, enforce startup)
+for keys the operator did not set explicitly. It never invents economic limits:
+missing quota tables or budget ceilings are blocking startup findings.
+
+**Durability and replicas.** Store-mode seams keep audit, prompts, retrieval,
+caller policy, workflow-pack registry/run/task-flow/queue-event, provider
+operations, model catalogue, rate cards, kill switches, and admission leases in
+memory or in migration-backed SQL. Admission capacity binds across replicas
+through atomic leases with TTL reclamation.
+
+**Readiness as data.** The runbook-readiness family is one catalog plus one
+builder; execution states are `ENFORCED` / `PARTIAL` / `DOCUMENTED_ONLY` /
+`OUT_OF_SCOPE` and readiness is derived, never asserted. A lint-lane guard
+refuses new copy-paste readiness modules and ratchets module size.
+
+**Current limitations.** Consumers still name a task and rely on configured
+provider identity rather than requesting a capability with requirements;
+eligibility is configuration-driven rather than evidence-driven; model capability
+dimensions and eval-backed fungibility do not exist yet (#244, #245). Two
+evidence surfaces still resolve the primary identity for alternate-served
+executions (#237), and an OPEN breaker does not yet survive key migration (#234).
+High-impact governance actions still accept caller-supplied approver strings
+(#157). Forward priorities live on the North Star execution board (#246).
 
 ## Architecture And Module Map
 
 Primary areas:
 
 1. `src/app/providers/`
-   provider adapters and execution transports (provider policy, quota, budget, and
-   degradation state live in `src/app/services/`; the configured provider mode maps
-   to exactly one adapter — no multi-candidate selection exists yet, and every
-   execution records that fixed-policy routing decision on its audit record and
-   evidence bundle).
+   provider adapters and one shared execution transport (provider policy, quota,
+   budget, and degradation state live in `src/app/services/`). Routing selects
+   among candidates under `LOTUS_AI_ROUTING_STRATEGY`: `fixed` resolves the one
+   configured identity, `ordered_fallback` attempts a configured primary then one
+   governed alternate. Every execution records a routing decision — every
+   candidate, its rejection reason where rejected, the selection, and the
+   `fallback_path` — on its response, audit record, and evidence bundle.
 2. `src/app/prompts/`
    prompt registry and rollout state.
 3. `src/app/retrieval/`
