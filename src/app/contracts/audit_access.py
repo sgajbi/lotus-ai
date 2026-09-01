@@ -8,6 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class AuditReadScopeMode(str, Enum):
     RESTRICTED_TENANTS = "RESTRICTED_TENANTS"
     ALL_TENANTS = "ALL_TENANTS"
+    # A refusal happens before a scope is resolved, so a denial event has no
+    # scope to report. Saying so explicitly beats reporting a scope the caller
+    # never reached (issue #167).
+    UNRESOLVED = "UNRESOLVED"
 
 
 class AuditReadScope(BaseModel):
@@ -52,6 +56,26 @@ class AuditAccessOperation(str, Enum):
 class AuditAccessOutcome(str, Enum):
     SUCCEEDED = "SUCCEEDED"
     NOT_FOUND = "NOT_FOUND"
+    DENIED = "DENIED"
+
+
+class AuditAccessDenialReason(str, Enum):
+    """Why a privileged audit read was refused.
+
+    These are kept distinct rather than collapsed into one "denied" because
+    they carry different meanings for a reviewer. UNVERIFIED_TRUST_SOURCE is a
+    caller presenting an unverified identity for a privileged read - the fence
+    from #161, and the entry most worth investigating. CONFLICTING_POLICY is a
+    misconfigured grant. Recording both as the same thing would hide the first
+    inside the second.
+    """
+
+    NO_POLICY = "NO_POLICY"
+    INACTIVE_POLICY = "INACTIVE_POLICY"
+    CONFLICTING_POLICY = "CONFLICTING_POLICY"
+    NO_TENANT_SCOPE = "NO_TENANT_SCOPE"
+    MALFORMED_POLICY = "MALFORMED_POLICY"
+    UNVERIFIED_TRUST_SOURCE = "UNVERIFIED_TRUST_SOURCE"
 
 
 class AuditAccessEvent(BaseModel):
@@ -61,6 +85,10 @@ class AuditAccessEvent(BaseModel):
     scope_mode: AuditReadScopeMode
     operation: AuditAccessOperation
     outcome: AuditAccessOutcome
+    denial_reason: AuditAccessDenialReason | None = Field(
+        default=None,
+        description="Why access was refused; set only when the outcome is DENIED.",
+    )
     returned_record_count: int = Field(ge=0, le=100)
     recorded_at: str = Field(min_length=1, max_length=64)
 

@@ -70,7 +70,9 @@ async def list_audit_records(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Tenant scope is derived from authenticated caller policy.",
         )
-    scope = resolve_audit_read_scope(authenticated_caller)
+    scope = resolve_audit_read_scope(
+        authenticated_caller, operation=AuditAccessOperation.LIST_RECORDS
+    )
     records = get_audit_store().list(
         caller_app=caller_app,
         task_id=task_id,
@@ -130,7 +132,9 @@ async def get_audit_record(
     request_id: str,
     authenticated_caller: AuthenticatedCallerDependency,
 ) -> AuditRecordResponse:
-    scope = resolve_audit_read_scope(authenticated_caller)
+    scope = resolve_audit_read_scope(
+        authenticated_caller, operation=AuditAccessOperation.GET_RECORD
+    )
     record = get_audit_store().get(request_id, scope=scope)
     if record is None:
         record_all_tenant_audit_access(

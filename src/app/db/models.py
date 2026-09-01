@@ -61,6 +61,7 @@ class AuditAccessEventModel(Base):
     scope_mode: Mapped[str] = mapped_column(String(32), nullable=False)
     operation: Mapped[str] = mapped_column(String(32), nullable=False)
     outcome: Mapped[str] = mapped_column(String(32), nullable=False)
+    denial_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
     returned_record_count: Mapped[int] = mapped_column(Integer, nullable=False)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
