@@ -108,7 +108,16 @@ def get_prompt_store_runtime_status() -> StoreRuntimeStatusDescriptor:
 def get_provider_operations_store_runtime_status() -> StoreRuntimeStatusDescriptor:
     return _build_store_runtime_status(
         configured_mode=settings.provider_operations_store_mode,
-        expected_tables=["provider_operations_state", "provider_operations_events"],
+        # The tables the provider-operations repository actually reads and
+        # writes. "provider_operations_state" was never one of them, so this
+        # probe reported MIGRATION_REQUIRED on every correctly migrated
+        # database; every test of its consumers stubs it, so nothing caught it.
+        expected_tables=[
+            "provider_budget_state",
+            "provider_degradation_state",
+            "provider_operations_events",
+            "provider_quota_state",
+        ],
         memory_detail="In-memory provider-operations state is active for local or foundation-phase rollout work.",
         unsupported_detail="Configured provider-operations store mode is not supported by lotus-ai.",
     )
