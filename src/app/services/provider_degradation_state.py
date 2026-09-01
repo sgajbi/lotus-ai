@@ -98,6 +98,13 @@ def enforce_provider_degradation_preflight() -> None:
             ),
         )
     if state.status == "CIRCUIT_OPEN":
+        if state.circuit_open_remaining_seconds is None:
+            # The cooldown clock starts when the breaker actually begins
+            # refusing traffic. A breaker that opened because its threshold
+            # was lowered - rather than because a call failed - carries no
+            # deadline yet, and no further failure can arrive to stamp one
+            # while it is refusing, so it would stay open forever (#248).
+            _open_circuit()
         raise ProviderExecutionError(
             category=ProviderFailureCategory.CIRCUIT_OPEN,
             message=(
@@ -110,6 +117,7 @@ def record_provider_failure(category: ProviderFailureCategory) -> None:
     if category not in _tracked_failure_categories():
         return
 
+    _reclaim_elapsed_cooldown()
     repository = get_provider_operations_store()
     repository.record_degradation_failure(
         degradation_key=degradation_key_for(),
@@ -212,10 +220,7 @@ def _resolve_provider_degradation_state(
             findings=findings,
         )
 
-    circuit_remaining_seconds = _remaining_circuit_open_seconds(
-        state_record.circuit_open_until, provider_id=provider_id
-    )
-    state_record = _load_degradation_record(provider_id)
+    circuit_remaining_seconds = _remaining_circuit_open_seconds(state_record.circuit_open_until)
     if circuit_remaining_seconds is not None:
         return ProviderDegradationState(
             status="CIRCUIT_OPEN",
@@ -234,20 +239,45 @@ def _resolve_provider_degradation_state(
             ],
         )
 
-    if state_record.consecutive_failure_count >= (circuit_threshold or 0):
-        _open_circuit(provider_id)
-        return _resolve_provider_degradation_state(provider_id)
+    # A stamped cooldown that has elapsed has already answered for the
+    # failures that opened it, so they no longer count toward the posture.
+    # The persisted counters are cleared by the next write rather than by
+    # this read (#248).
+    cooldown_served = state_record.circuit_open_until is not None
+    effective_failure_count = 0 if cooldown_served else state_record.consecutive_failure_count
+    effective_last_category = None if cooldown_served else state_record.last_failure_category
 
-    if state_record.consecutive_failure_count >= (degraded_threshold or 0):
+    if effective_failure_count >= (circuit_threshold or 0):
+        # Open without a deadline: the threshold now sits at or below a count
+        # that is already recorded. Whoever acts on this - the failure
+        # recorder or the enforcing preflight - stamps the cooldown.
+        return ProviderDegradationState(
+            status="CIRCUIT_OPEN",
+            enforcement_enabled=True,
+            configuration_valid=True,
+            consecutive_failure_count=effective_failure_count,
+            degraded_failure_count_threshold=degraded_threshold,
+            circuit_open_failure_count_threshold=circuit_threshold,
+            circuit_open_remaining_seconds=None,
+            last_failure_category=effective_last_category,
+            timeout_failure_count=state_record.timeout_failure_count,
+            rate_limited_failure_count=state_record.rate_limited_failure_count,
+            upstream_error_failure_count=state_record.upstream_error_failure_count,
+            findings=[
+                "Provider circuit breaker is open because the recorded consecutive failures are at or above the configured circuit threshold."
+            ],
+        )
+
+    if effective_failure_count >= (degraded_threshold or 0):
         return ProviderDegradationState(
             status="DEGRADED_UPSTREAM",
             enforcement_enabled=True,
             configuration_valid=True,
-            consecutive_failure_count=state_record.consecutive_failure_count,
+            consecutive_failure_count=effective_failure_count,
             degraded_failure_count_threshold=degraded_threshold,
             circuit_open_failure_count_threshold=circuit_threshold,
             circuit_open_remaining_seconds=None,
-            last_failure_category=state_record.last_failure_category,
+            last_failure_category=effective_last_category,
             timeout_failure_count=state_record.timeout_failure_count,
             rate_limited_failure_count=state_record.rate_limited_failure_count,
             upstream_error_failure_count=state_record.upstream_error_failure_count,
@@ -260,11 +290,11 @@ def _resolve_provider_degradation_state(
         status="NORMAL",
         enforcement_enabled=True,
         configuration_valid=True,
-        consecutive_failure_count=state_record.consecutive_failure_count,
+        consecutive_failure_count=effective_failure_count,
         degraded_failure_count_threshold=degraded_threshold,
         circuit_open_failure_count_threshold=circuit_threshold,
         circuit_open_remaining_seconds=None,
-        last_failure_category=state_record.last_failure_category,
+        last_failure_category=effective_last_category,
         timeout_failure_count=state_record.timeout_failure_count,
         rate_limited_failure_count=state_record.rate_limited_failure_count,
         upstream_error_failure_count=state_record.upstream_error_failure_count,
@@ -274,23 +304,33 @@ def _resolve_provider_degradation_state(
     )
 
 
-def _remaining_circuit_open_seconds(
-    circuit_open_until: str | None, *, provider_id: str | None = None
-) -> int | None:
-    """Remaining cooldown for ``provider_id``, clearing an expired one.
+def _remaining_circuit_open_seconds(circuit_open_until: str | None) -> int | None:
+    """Seconds left on a stamped cooldown, or None when none remain.
 
-    The clear is a write on a read path, so it has to be keyed to the
-    identity being asked about: keyed ambiently, inspecting the alternate's
-    posture would reset the primary's breaker (issue #237).
+    A pure calculation. It used to clear an elapsed cooldown as a side
+    effect, which made every posture read a write and meant inspecting one
+    provider could reset another provider's breaker (issues #237, #248).
+    Clearing now belongs to ``_reclaim_elapsed_cooldown`` on the write path.
     """
 
     if circuit_open_until is None:
         return None
-    until = datetime.fromisoformat(circuit_open_until)
-    remaining = int((until - _utcnow()).total_seconds())
-    if remaining > 0:
-        return remaining
+    remaining = int((datetime.fromisoformat(circuit_open_until) - _utcnow()).total_seconds())
+    return remaining if remaining > 0 else None
+
+
+def _reclaim_elapsed_cooldown(provider_id: str | None = None) -> None:
+    """Clear a cooldown that has run its course, before a new failure counts.
+
+    The breaker served its cooldown, so the next failure starts a fresh
+    budget instead of resuming a count those failures already paid for.
+    """
+
     state_record = _load_degradation_record(provider_id)
+    if state_record.circuit_open_until is None:
+        return
+    if _remaining_circuit_open_seconds(state_record.circuit_open_until) is not None:
+        return
     _save_degradation_record(
         provider_id=provider_id,
         consecutive_failure_count=0,
@@ -300,7 +340,6 @@ def _remaining_circuit_open_seconds(
         rate_limited_failure_count=state_record.rate_limited_failure_count,
         upstream_error_failure_count=state_record.upstream_error_failure_count,
     )
-    return None
 
 
 def _open_circuit(provider_id: str | None = None) -> None:
