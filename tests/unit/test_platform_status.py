@@ -413,7 +413,19 @@ def test_build_platform_runtime_status_reports_dedicated_async_worker_cutover(
     assert status.evaluation_runtime.async_execution_route_mode.value == "UNIFIED_INTERNAL"
     assert status.resilience_runtime.posture.value == "PARTIAL_RUNTIME_DURABILITY"
     assert status.resilience_runtime.delivery_stage.value == "DRILL_VERIFIED"
-    assert status.resilience_runtime.recovery_state.value == "DEGRADED"
+    # This asserted DEGRADED until the provider-operations readiness probe was
+    # corrected. The probe expected a table no migration creates, so it returned
+    # MIGRATION_REQUIRED against this fully migrated database - and one degraded
+    # dependency forces the whole recovery state to DEGRADED, so the platform
+    # reported degraded recovery in every SQL-backed deployment. The store is
+    # genuinely ready here; the remaining findings come from other dependencies.
+    assert status.resilience_runtime.recovery_state.value == "RESTORED_WITH_FINDINGS"
+    provider_operations_dependency = next(
+        dependency
+        for dependency in status.resilience_runtime.dependencies
+        if dependency.dependency_id == "provider_operations_store"
+    )
+    assert provider_operations_dependency.recovery_state.value != "DEGRADED"
     assert status.production_baseline.posture.value == "LOCAL_OR_DEMO_CAPABLE"
     assert status.production_baseline.prod_shaped_local is False
     assert status.production_baseline.production_ready is False

@@ -12,10 +12,13 @@ from app.repositories.provider_operations_repository import ProviderDegradationS
 from app.services.provider_operations_store import get_provider_operations_store
 from app.services.provider_execution_config import resolve_provider_execution_config
 
-_DEGRADATION_KEY_PREFIX = "live_text_generation"
+# The bare prefix was the whole key before #176 S3 keyed bookkeeping per
+# provider identity, so it is also the shape a pre-migration row still
+# carries (issue #234).
+DEGRADATION_KEY_PREFIX = "live_text_generation"
 
 
-def _degradation_key(provider_id: str | None = None) -> str:
+def degradation_key_for(provider_id: str | None = None) -> str:
     """Failure bookkeeping is keyed per provider identity (issue #176, S3).
 
     Ordered fallback requires the primary's failures to never open the
@@ -34,8 +37,8 @@ def _degradation_key(provider_id: str | None = None) -> str:
 
     resolved = provider_id or resolve_provider_execution_config().provider_id
     if resolved:
-        return f"{_DEGRADATION_KEY_PREFIX}:{resolved}"
-    return _DEGRADATION_KEY_PREFIX
+        return f"{DEGRADATION_KEY_PREFIX}:{resolved}"
+    return DEGRADATION_KEY_PREFIX
 
 
 @dataclass(frozen=True)
@@ -109,7 +112,7 @@ def record_provider_failure(category: ProviderFailureCategory) -> None:
 
     repository = get_provider_operations_store()
     repository.record_degradation_failure(
-        degradation_key=_degradation_key(),
+        degradation_key=degradation_key_for(),
         category=category,
         updated_at=_utcnow().isoformat(),
     )
@@ -326,7 +329,7 @@ def _load_degradation_record(
     provider_id: str | None = None,
 ) -> ProviderDegradationStateRecord:
     repository = get_provider_operations_store()
-    degradation_key = _degradation_key(provider_id)
+    degradation_key = degradation_key_for(provider_id)
     record = repository.get_degradation_state(degradation_key=degradation_key)
     if record is not None:
         return record
@@ -355,7 +358,7 @@ def _save_degradation_record(
     repository = get_provider_operations_store()
     repository.save_degradation_state(
         ProviderDegradationStateRecord(
-            degradation_key=_degradation_key(provider_id),
+            degradation_key=degradation_key_for(provider_id),
             consecutive_failure_count=consecutive_failure_count,
             last_failure_category=last_failure_category,
             circuit_open_until=circuit_open_until,

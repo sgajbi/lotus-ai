@@ -9,6 +9,9 @@ from app.http.caller_credential import (
     SUPPORTED_CALLER_TRUST_MODES,
     parse_caller_credential_public_keys,
 )
+from app.services.provider_degradation_reconciliation import (
+    reconcile_legacy_degradation_state,
+)
 from app.services.provider_execution_config import (
     fallback_configuration_findings,
     resolve_provider_execution_config,
@@ -33,7 +36,6 @@ class StartupReadinessEvaluation:
 
 def evaluate_startup_readiness() -> StartupReadinessEvaluation:
     findings: list[str] = []
-    blocking = False
 
     audit_status = get_audit_store_runtime_status()
     retrieval_status = get_retrieval_store_runtime_status()
@@ -60,14 +62,27 @@ def evaluate_startup_readiness() -> StartupReadinessEvaluation:
     findings.extend(_caller_identity_findings())
     findings.extend(_provider_protection_findings())
 
-    if settings.startup_readiness_policy == "enforce" and findings:
-        blocking = True
+    return _evaluation_for(findings)
 
+
+def _evaluation_for(findings: list[str]) -> StartupReadinessEvaluation:
+    """One place decides whether findings block startup."""
+
+    blocking = settings.startup_readiness_policy == "enforce" and bool(findings)
     return StartupReadinessEvaluation(blocking=blocking, findings=findings)
 
 
 def apply_startup_readiness_policy() -> StartupReadinessEvaluation:
-    evaluation = evaluate_startup_readiness()
+    """Reconcile what startup owns, then evaluate what it can only report.
+
+    Reconciliation writes, so it lives here rather than inside
+    ``evaluate_startup_readiness``: that one stays a pure read, callable by
+    an operator surface without changing the state it is describing.
+    """
+
+    reconciliation_findings = reconcile_legacy_degradation_state()
+    evaluated = evaluate_startup_readiness()
+    evaluation = _evaluation_for(reconciliation_findings + evaluated.findings)
     if evaluation.findings:
         for finding in evaluation.findings:
             logger.warning("startup readiness finding: %s", finding)
