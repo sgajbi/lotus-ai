@@ -15,6 +15,7 @@ from app.contracts.access_control import (
 from app.contracts.audit import AuditRecordResponse
 from app.contracts.output_validation import OutputValidationOutcome
 from app.contracts.audit_access import (
+    AuditAccessDenialReason,
     AuditAccessEvent,
     AuditAccessOperation,
     AuditAccessOutcome,
@@ -144,6 +145,7 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
             scope_mode=event.scope_mode.value,
             operation=event.operation.value,
             outcome=event.outcome.value,
+            denial_reason=event.denial_reason.value if event.denial_reason else None,
             returned_record_count=event.returned_record_count,
             recorded_at=event.recorded_at,
         )
@@ -167,6 +169,11 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
                     scope_mode=AuditReadScopeMode(model.scope_mode),
                     operation=AuditAccessOperation(model.operation),
                     outcome=AuditAccessOutcome(model.outcome),
+                    denial_reason=(
+                        AuditAccessDenialReason(model.denial_reason)
+                        if model.denial_reason
+                        else None
+                    ),
                     returned_record_count=model.returned_record_count,
                     recorded_at=model.recorded_at,
                 )

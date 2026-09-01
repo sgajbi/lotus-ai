@@ -238,7 +238,9 @@ async def get_observability_breakdown_summary_route(
     authenticated_caller: AuthenticatedCallerDependency,
     limit: int = Query(default=100, ge=1, le=200),
 ) -> ObservabilityBreakdownSummaryResponse:
-    scope = resolve_audit_read_scope(authenticated_caller)
+    scope = resolve_audit_read_scope(
+        authenticated_caller, operation=AuditAccessOperation.AGGREGATE_BREAKDOWNS
+    )
     summary = build_observability_breakdown_summary(limit=limit, scope=scope)
     record_all_tenant_audit_access(
         caller=authenticated_caller,
