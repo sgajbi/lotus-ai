@@ -64,6 +64,23 @@ def resolve_audit_read_scope(
     return AuditReadScope.restricted(tenant_ids)
 
 
+def require_all_tenant_audit_access(
+    caller: AuthenticatedCaller, *, operation: AuditAccessOperation
+) -> AuditReadScope:
+    """Resolve a scope and require it to be all-tenant.
+
+    Used by surfaces that describe privileged access rather than a tenant's own
+    records. A caller with a perfectly valid restricted scope is refused here,
+    and that refusal is recorded like any other - `INSUFFICIENT_PRIVILEGE`,
+    which is a different event from having no usable scope at all.
+    """
+
+    scope = resolve_audit_read_scope(caller, operation=operation)
+    if scope.mode is not AuditReadScopeMode.ALL_TENANTS:
+        _refuse(caller, operation, AuditAccessDenialReason.INSUFFICIENT_PRIVILEGE)
+    return scope
+
+
 def _refuse(
     caller: AuthenticatedCaller,
     operation: AuditAccessOperation,

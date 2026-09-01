@@ -51,6 +51,9 @@ class AuditAccessOperation(str, Enum):
     LIST_RECORDS = "LIST_RECORDS"
     GET_RECORD = "GET_RECORD"
     AGGREGATE_BREAKDOWNS = "AGGREGATE_BREAKDOWNS"
+    # Reading the access-events ledger is itself a privileged audit read, so it
+    # is recorded like any other (issue #167, S2).
+    LIST_ACCESS_EVENTS = "LIST_ACCESS_EVENTS"
 
 
 class AuditAccessOutcome(str, Enum):
@@ -76,6 +79,10 @@ class AuditAccessDenialReason(str, Enum):
     NO_TENANT_SCOPE = "NO_TENANT_SCOPE"
     MALFORMED_POLICY = "MALFORMED_POLICY"
     UNVERIFIED_TRUST_SOURCE = "UNVERIFIED_TRUST_SOURCE"
+    # A caller with a valid restricted-tenant scope reaching for a surface that
+    # requires the all-tenant privilege. Distinct from NO_TENANT_SCOPE, which is
+    # a caller with no usable scope at all.
+    INSUFFICIENT_PRIVILEGE = "INSUFFICIENT_PRIVILEGE"
 
 
 class AuditAccessEvent(BaseModel):
@@ -91,6 +98,20 @@ class AuditAccessEvent(BaseModel):
     )
     returned_record_count: int = Field(ge=0, le=100)
     recorded_at: str = Field(min_length=1, max_length=64)
+
+
+class AuditAccessEventCatalogResponse(BaseModel):
+    """The privileged-access ledger, newest first.
+
+    Bounded like every other audit read. The events describe who read audit
+    records and who was refused; reading them requires the same all-tenant
+    privilege the events themselves describe.
+    """
+
+    service: str = Field(description="Publishing service identity.")
+    version: str = Field(description="Publishing service version.")
+    returned_event_count: int = Field(ge=0, description="Number of events returned.")
+    events: list[AuditAccessEvent] = Field(description="Access events, newest first.")
 
 
 INTERNAL_AGGREGATE_AUDIT_SCOPE = AuditReadScope.all_tenants()
