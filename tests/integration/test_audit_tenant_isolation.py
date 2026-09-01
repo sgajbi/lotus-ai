@@ -176,3 +176,114 @@ def test_audit_list_applies_the_category_filter_within_the_caller_scope(
     body = response.json()
     assert body["filters_applied"]["category"] == "explain"
     assert all(record["category"] == "explain" for record in body["records"])
+
+
+def test_the_access_event_ledger_is_readable_by_the_privilege_it_describes(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Issue #167 S2: evidence an operator cannot read is evidence in name only.
+
+    The ledger records who read audit records and who was refused, so reading
+    it requires the same all-tenant privilege those events describe — and the
+    read is itself recorded, like every other privileged audit read.
+    """
+
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+    _execute_task(
+        client,
+        caller_app="lotus-manage",
+        tenant_id="tenant-sg-001",
+        correlation_id="corr-access-events-seed",
+    )
+    # A privileged read, so the ledger has something to show.
+    assert (
+        client.get(
+            "/ai/audit", headers={"X-Caller-App": "lotus-platform"}, params={"limit": 10}
+        ).status_code
+        == 200
+    )
+
+    response = client.get(
+        "/ai/audit/access-events",
+        headers={"X-Caller-App": "lotus-platform"},
+        params={"limit": 50},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["returned_event_count"] == len(body["events"])
+    assert body["events"], "the ledger returned nothing despite a recorded privileged read"
+    operations = [event["operation"] for event in body["events"]]
+    assert "LIST_RECORDS" in operations
+    # Newest first.
+    recorded = [event["recorded_at"] for event in body["events"]]
+    assert recorded == sorted(recorded, reverse=True)
+
+    # Reading the ledger is itself privileged access, so it is on the ledger.
+    follow_up = client.get(
+        "/ai/audit/access-events",
+        headers={"X-Caller-App": "lotus-platform"},
+        params={"limit": 50},
+    )
+    assert follow_up.status_code == 200
+    assert "LIST_ACCESS_EVENTS" in [event["operation"] for event in follow_up.json()["events"]]
+
+
+def test_a_restricted_tenant_caller_is_refused_the_ledger_and_recorded(
+    client: TestClient,
+) -> None:
+    """A valid restricted scope is not the privilege this surface requires, and
+    the refusal is itself evidence — recorded as INSUFFICIENT_PRIVILEGE rather
+    than as a caller with no usable scope."""
+
+    response = client.get(
+        "/ai/audit/access-events",
+        headers={"X-Caller-App": "lotus-manage"},
+        params={"limit": 10},
+    )
+
+    assert response.status_code == 403
+    event = get_audit_store().list_access_events(limit=1)[0]
+    assert event.caller_app == "lotus-manage"
+    assert event.outcome.value == "DENIED"
+    assert event.denial_reason is not None
+    assert event.denial_reason.value == "INSUFFICIENT_PRIVILEGE"
+    assert event.operation.value == "LIST_ACCESS_EVENTS"
+    assert event.scope_mode.value == "UNRESOLVED"
+
+
+def test_the_ledger_carries_no_tenant_or_record_identifiers(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The ledger describes access, not content. Publishing record or tenant
+    identifiers here would turn an access log into a second, less governed
+    route to the records it describes."""
+
+    monkeypatch.setattr(settings, "local_header_caller_identity_enabled", True)
+    _execute_task(
+        client,
+        caller_app="lotus-manage",
+        tenant_id="tenant-sg-001",
+        correlation_id="corr-access-events-shape",
+    )
+    assert client.get("/ai/audit", headers={"X-Caller-App": "lotus-platform"}).status_code == 200
+
+    body = client.get("/ai/audit/access-events", headers={"X-Caller-App": "lotus-platform"}).json()
+
+    for event in body["events"]:
+        assert "tenant_id" not in event
+        assert "request_id" not in event
+        assert set(event).issubset(
+            {
+                "event_id",
+                "caller_app",
+                "caller_trust_source",
+                "scope_mode",
+                "operation",
+                "outcome",
+                "denial_reason",
+                "returned_record_count",
+                "recorded_at",
+            }
+        )

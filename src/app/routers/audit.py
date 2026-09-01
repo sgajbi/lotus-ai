@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.config import settings
 from app.contracts.audit_access import (
+    AuditAccessEventCatalogResponse,
     AuditAccessOperation,
     AuditAccessOutcome,
 )
@@ -12,11 +13,56 @@ from app.contracts.api_errors import problem_response
 from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.audit_read_authorization import (
     record_all_tenant_audit_access,
+    require_all_tenant_audit_access,
     resolve_audit_read_scope,
 )
 from app.services.audit_store import get_audit_store
 
 router = APIRouter(prefix="/ai/audit", tags=["audit"])
+
+
+# Registered before the "/{request_id}" detail route below: FastAPI matches in
+# registration order, so a literal path that could also parse as a record id has
+# to come first or it is captured as a lookup for a record named
+# "access-events".
+@router.get(
+    "/access-events",
+    response_model=AuditAccessEventCatalogResponse,
+    operation_id="listAuditAccessEvents",
+    summary="List privileged audit-access events",
+    description=(
+        "Returns the bounded privileged-access ledger, newest first: who read lotus-ai audit "
+        "records, who was refused, and why. Requires the same all-tenant audit privilege the "
+        "events describe, and the read is itself recorded."
+    ),
+    responses={
+        200: {"description": "Access-event ledger returned successfully."},
+        403: problem_response("Caller is not authorized to inspect audit access events."),
+        422: problem_response("Invalid access-event query parameters supplied."),
+        500: problem_response("Unexpected lotus-ai server error."),
+    },
+)
+async def list_audit_access_events(
+    authenticated_caller: AuthenticatedCallerDependency,
+    limit: int = Query(default=100, ge=1, le=100),
+) -> AuditAccessEventCatalogResponse:
+    scope = require_all_tenant_audit_access(
+        authenticated_caller, operation=AuditAccessOperation.LIST_ACCESS_EVENTS
+    )
+    events = list(get_audit_store().list_access_events(limit=limit))
+    record_all_tenant_audit_access(
+        caller=authenticated_caller,
+        scope=scope,
+        operation=AuditAccessOperation.LIST_ACCESS_EVENTS,
+        outcome=AuditAccessOutcome.SUCCEEDED,
+        returned_record_count=len(events),
+    )
+    return AuditAccessEventCatalogResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        returned_event_count=len(events),
+        events=events,
+    )
 
 
 @router.get(
