@@ -81,7 +81,7 @@ def test_openai_live_embedding_provider_maps_rate_limit_errors(
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
-        assert exc.message == "OpenAI embedding provider rate limit exceeded."
+        assert exc.message == "embeddings.openai rate limit exceeded."
         assert "Embedding rate limit hit" not in exc.message
     else:
         raise AssertionError("Expected rate-limited embedding request to fail")
@@ -110,7 +110,7 @@ def test_openai_live_embedding_provider_maps_upstream_http_errors(
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
         assert exc.message == (
-            "OpenAI embedding provider request failed at the upstream provider boundary."
+            "embeddings.openai request failed at the upstream provider boundary."
         )
     else:
         raise AssertionError("Expected upstream embedding request to fail")
@@ -131,7 +131,7 @@ def test_openai_live_embedding_provider_maps_timeout_errors(monkeypatch: MonkeyP
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
         assert exc.message == (
-            "OpenAI embedding provider request did not complete within the configured timeout."
+            "embeddings.openai request did not complete within the configured timeout."
         )
     else:
         raise AssertionError("Expected timeout embedding request to fail")
@@ -152,7 +152,7 @@ def test_openai_live_embedding_provider_maps_url_errors(monkeypatch: MonkeyPatch
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
         assert exc.message == (
-            "OpenAI embedding provider request did not complete within the configured timeout."
+            "embeddings.openai request did not complete within the configured timeout."
         )
         assert "connection refused" not in exc.message
     else:

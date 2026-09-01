@@ -49,10 +49,11 @@ def execute_openai_compatible_text_request(
     model_version: str | None,
     provider_id: str | None = None,
 ) -> ProviderExecutionResponse:
-    # The serving identity is the execution config's provider id (issue
-    # #226): under ordered fallback both candidates run through the same
-    # adapter, so the static descriptor constant would attribute the
-    # alternate's executions to the primary in audit, cost, and metrics.
+    # The serving identity is the execution config's provider id (issues
+    # #226, #237): under ordered fallback both candidates run through the
+    # same adapter, so the static descriptor constants would attribute the
+    # alternate's executions to the primary on every surface naming a
+    # provider.
     serving_provider_id = provider_id or descriptor.provider_id
     payload: dict[str, object] = {
         "model": model_id,
@@ -86,7 +87,7 @@ def execute_openai_compatible_text_request(
         api_key=api_key,
         payload=payload,
         timeout_seconds=max(request.timeout_ms / 1000.0, 1.0),
-        provider_display_name=descriptor.display_name,
+        serving_provider_id=serving_provider_id,
         require_api_key=require_api_key,
         retry_limit=request.retry_limit,
     )
@@ -155,10 +156,22 @@ def post_openai_compatible_response(
     api_key: str | None,
     payload: dict[str, object],
     timeout_seconds: float,
-    provider_display_name: str,
+    serving_provider_id: str,
     require_api_key: bool,
     retry_limit: int = 0,
 ) -> dict[str, Any]:
+    """POST one OpenAI-compatible request, labelling every surface it emits
+    with ``serving_provider_id``.
+
+    This used to take the descriptor's display name. Under ordered fallback
+    both candidates run through the same adapter, so the display name is
+    structurally unable to say which one served: it names the adapter, not
+    the candidate. Metrics, logs, spans, and bounded failure messages all
+    take the execution config's provider id instead, which is the identity
+    the audit record, routing decision, breaker key, and kill switch
+    already use (issue #237).
+    """
+
     override = get_text_transport_post_override()
     if override is not None:
         return override(
@@ -166,14 +179,14 @@ def post_openai_compatible_response(
             api_key=api_key,
             payload=payload,
             timeout_seconds=timeout_seconds,
-            provider_display_name=provider_display_name,
+            serving_provider_id=serving_provider_id,
             require_api_key=require_api_key,
             retry_limit=retry_limit,
         )
     if require_api_key and api_key is None:
         raise ProviderExecutionError(
             category=ProviderFailureCategory.INVALID_LIVE_CONFIGURATION,
-            message=f"Live provider credentials are not configured for {provider_display_name}.",
+            message=f"Live provider credentials are not configured for {serving_provider_id}.",
         )
     ensure_network_execution_permitted(
         seam="openai_compatible_text_transport.post_openai_compatible_response"
@@ -204,7 +217,7 @@ def post_openai_compatible_response(
         try:
             with (
                 provider_attempt_span(
-                    provider_id=provider_display_name,
+                    provider_id=serving_provider_id,
                     model_id=model_identity if isinstance(model_identity, str) else None,
                     attempt=attempt_index,
                 ) as attempt_span,
@@ -217,7 +230,7 @@ def post_openai_compatible_response(
                 usage_fields = usage if isinstance(usage, dict) else {}
                 attempt_latency_ms = _attempt_latency_ms(attempt_started)
                 record_provider_attempt(
-                    provider_id=provider_display_name,
+                    provider_id=serving_provider_id,
                     model_id=model_identity if isinstance(model_identity, str) else None,
                     outcome="success",
                     latency_seconds=attempt_latency_ms / 1000.0,
@@ -225,7 +238,7 @@ def post_openai_compatible_response(
                 log_event(
                     _logger,
                     "provider_attempt",
-                    provider_id=provider_display_name,
+                    provider_id=serving_provider_id,
                     model_id=model_identity,
                     attempt=attempt_index,
                     attempt_limit=bounded_retry_limit,
@@ -247,7 +260,7 @@ def post_openai_compatible_response(
             )
             attempt_latency_ms = _attempt_latency_ms(attempt_started)
             record_provider_attempt(
-                provider_id=provider_display_name,
+                provider_id=serving_provider_id,
                 model_id=model_identity if isinstance(model_identity, str) else None,
                 outcome="retry" if will_retry else "failed",
                 latency_seconds=attempt_latency_ms / 1000.0,
@@ -255,7 +268,7 @@ def post_openai_compatible_response(
             log_event(
                 _logger,
                 "provider_attempt",
-                provider_id=provider_display_name,
+                provider_id=serving_provider_id,
                 model_id=model_identity,
                 attempt=attempt_index,
                 attempt_limit=bounded_retry_limit,
@@ -271,7 +284,7 @@ def post_openai_compatible_response(
                 category=category,
                 message=safe_provider_error_message(
                     category=category,
-                    provider_display_name=provider_display_name,
+                    serving_provider_id=serving_provider_id,
                 ),
             ) from exc
         except TimeoutError as exc:
@@ -281,7 +294,7 @@ def post_openai_compatible_response(
             will_retry = attempt_index < bounded_retry_limit and retry_decision.permitted
             attempt_latency_ms = _attempt_latency_ms(attempt_started)
             record_provider_attempt(
-                provider_id=provider_display_name,
+                provider_id=serving_provider_id,
                 model_id=model_identity if isinstance(model_identity, str) else None,
                 outcome="retry" if will_retry else "failed",
                 latency_seconds=attempt_latency_ms / 1000.0,
@@ -289,7 +302,7 @@ def post_openai_compatible_response(
             log_event(
                 _logger,
                 "provider_attempt",
-                provider_id=provider_display_name,
+                provider_id=serving_provider_id,
                 model_id=model_identity,
                 attempt=attempt_index,
                 attempt_limit=bounded_retry_limit,
@@ -304,7 +317,7 @@ def post_openai_compatible_response(
                 category=ProviderFailureCategory.PROVIDER_TIMEOUT,
                 message=safe_provider_error_message(
                     category=ProviderFailureCategory.PROVIDER_TIMEOUT,
-                    provider_display_name=provider_display_name,
+                    serving_provider_id=serving_provider_id,
                 ),
             ) from exc
         except error.URLError as exc:
@@ -314,7 +327,7 @@ def post_openai_compatible_response(
             will_retry = attempt_index < bounded_retry_limit and retry_decision.permitted
             attempt_latency_ms = _attempt_latency_ms(attempt_started)
             record_provider_attempt(
-                provider_id=provider_display_name,
+                provider_id=serving_provider_id,
                 model_id=model_identity if isinstance(model_identity, str) else None,
                 outcome="retry" if will_retry else "failed",
                 latency_seconds=attempt_latency_ms / 1000.0,
@@ -322,7 +335,7 @@ def post_openai_compatible_response(
             log_event(
                 _logger,
                 "provider_attempt",
-                provider_id=provider_display_name,
+                provider_id=serving_provider_id,
                 model_id=model_identity,
                 attempt=attempt_index,
                 attempt_limit=bounded_retry_limit,
@@ -337,14 +350,14 @@ def post_openai_compatible_response(
                 category=ProviderFailureCategory.PROVIDER_TIMEOUT,
                 message=safe_provider_error_message(
                     category=ProviderFailureCategory.PROVIDER_TIMEOUT,
-                    provider_display_name=provider_display_name,
+                    serving_provider_id=serving_provider_id,
                 ),
             ) from exc
     raise ProviderExecutionError(
         category=ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
         message=safe_provider_error_message(
             category=ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
-            provider_display_name=provider_display_name,
+            serving_provider_id=serving_provider_id,
         ),
     )
 
@@ -387,13 +400,13 @@ def is_retryable_provider_failure(
 
 
 def safe_provider_error_message(
-    *, category: ProviderFailureCategory, provider_display_name: str
+    *, category: ProviderFailureCategory, serving_provider_id: str
 ) -> str:
     if category == ProviderFailureCategory.PROVIDER_RATE_LIMITED:
-        return f"{provider_display_name} rate limit exceeded."
+        return f"{serving_provider_id} rate limit exceeded."
     if category == ProviderFailureCategory.PROVIDER_TIMEOUT:
-        return f"{provider_display_name} request did not complete within the configured timeout."
-    return f"{provider_display_name} request failed at the upstream provider boundary."
+        return f"{serving_provider_id} request did not complete within the configured timeout."
+    return f"{serving_provider_id} request failed at the upstream provider boundary."
 
 
 def extract_output_text(payload: dict[str, Any]) -> str:

@@ -37,7 +37,7 @@ def _post_openai_response(
         api_key=api_key,
         payload=payload,
         timeout_seconds=timeout_seconds,
-        provider_display_name="OpenAI Managed Text Provider",
+        serving_provider_id="text.openai",
         require_api_key=True,
         retry_limit=retry_limit,
     )
@@ -416,7 +416,7 @@ def test_openai_live_text_provider_maps_rate_limit_errors(monkeypatch: MonkeyPat
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
-        assert exc.message == "OpenAI Managed Text Provider rate limit exceeded."
+        assert exc.message == "text.openai rate limit exceeded."
         assert "Rate limit hit" not in exc.message
     else:
         raise AssertionError("Expected ProviderExecutionError for rate-limited provider response")
@@ -443,10 +443,7 @@ def test_openai_live_text_provider_maps_upstream_http_errors(monkeypatch: Monkey
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-        assert (
-            exc.message
-            == "OpenAI Managed Text Provider request failed at the upstream provider boundary."
-        )
+        assert exc.message == "text.openai request failed at the upstream provider boundary."
         assert "Transient upstream failure" not in exc.message
     else:
         raise AssertionError("Expected ProviderExecutionError for upstream provider response")
@@ -468,7 +465,7 @@ def test_openai_live_text_provider_maps_timeout_errors(monkeypatch: MonkeyPatch)
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
         assert exc.message == (
-            "OpenAI Managed Text Provider request did not complete within the configured timeout."
+            "text.openai request did not complete within the configured timeout."
         )
     else:
         raise AssertionError("Expected ProviderExecutionError for provider timeout")
@@ -490,7 +487,7 @@ def test_openai_live_text_provider_maps_url_errors(monkeypatch: MonkeyPatch) -> 
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT
         assert exc.message == (
-            "OpenAI Managed Text Provider request did not complete within the configured timeout."
+            "text.openai request did not complete within the configured timeout."
         )
         assert "connection refused" not in exc.message
     else:
@@ -602,7 +599,7 @@ def test_openai_compatible_transport_preserves_category_when_retries_exhaust(
     except ProviderExecutionError as exc:
         assert attempts["count"] == 3
         assert exc.category == ProviderFailureCategory.PROVIDER_RATE_LIMITED
-        assert exc.message == "OpenAI Managed Text Provider rate limit exceeded."
+        assert exc.message == "text.openai rate limit exceeded."
         assert "raw account detail" not in exc.message
     else:
         raise AssertionError("Expected ProviderExecutionError after exhausted retries")
@@ -681,10 +678,7 @@ def test_openai_live_text_provider_handles_non_json_error_bodies(monkeypatch: Mo
         )
     except ProviderExecutionError as exc:
         assert exc.category == ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR
-        assert (
-            exc.message
-            == "OpenAI Managed Text Provider request failed at the upstream provider boundary."
-        )
+        assert exc.message == "text.openai request failed at the upstream provider boundary."
     else:
         raise AssertionError("Expected ProviderExecutionError for invalid JSON error body")
 

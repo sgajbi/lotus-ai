@@ -23,9 +23,15 @@ from app.providers.openai_compatible_text_transport import (
 )
 
 
+# One identity for this provider: the descriptor binds it, and bounded
+# failure messages name it, so operators read the same token here as in
+# metrics, breaker keys, and kill switches (issue #237).
+EMBEDDING_PROVIDER_ID = "embeddings.openai"
+
+
 class OpenAILiveEmbeddingProvider:
     descriptor = ProviderAdapterDescriptor(
-        provider_id="embeddings.openai",
+        provider_id=EMBEDDING_PROVIDER_ID,
         display_name="OpenAI Live Embedding Provider",
         capability=ProviderCapability.EMBEDDINGS,
         adapter_kind=ProviderAdapterKind.OPENAI_EMBEDDINGS_LIVE,
@@ -111,7 +117,7 @@ def _post_openai_embedding(
             category=category,
             message=safe_provider_error_message(
                 category=category,
-                provider_display_name="OpenAI embedding provider",
+                serving_provider_id=EMBEDDING_PROVIDER_ID,
             ),
         ) from exc
     except TimeoutError as exc:
@@ -119,7 +125,7 @@ def _post_openai_embedding(
             category=ProviderFailureCategory.PROVIDER_TIMEOUT,
             message=safe_provider_error_message(
                 category=ProviderFailureCategory.PROVIDER_TIMEOUT,
-                provider_display_name="OpenAI embedding provider",
+                serving_provider_id=EMBEDDING_PROVIDER_ID,
             ),
         ) from exc
     except error.URLError as exc:
@@ -127,7 +133,7 @@ def _post_openai_embedding(
             category=ProviderFailureCategory.PROVIDER_TIMEOUT,
             message=safe_provider_error_message(
                 category=ProviderFailureCategory.PROVIDER_TIMEOUT,
-                provider_display_name="OpenAI embedding provider",
+                serving_provider_id=EMBEDDING_PROVIDER_ID,
             ),
         ) from exc
 

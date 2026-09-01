@@ -9,7 +9,11 @@ reject both candidates; and every outcome is recorded on the routing
 decision with the fallback path named.
 """
 
+import json
+from email.message import Message
+from io import BytesIO
 from pathlib import Path
+from urllib import error
 
 import pytest
 from fastapi import HTTPException
@@ -33,6 +37,7 @@ from app.services.provider_gateway import (
 from app.services.provider_operations_store import get_provider_operations_store
 from app.services.routing_posture import build_routing_posture
 from app.services.startup_policy import apply_startup_readiness_policy
+from tests.support.log_collection import CollectingLogHandler
 from tests.support.migration_runner import upgrade_database_to_head
 
 PRIMARY = "text.openai"
@@ -511,3 +516,164 @@ def test_real_transport_attributes_the_alternate_identity_end_to_end() -> None:
     records = get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=5)
     record = next(r for r in records if r.correlation_id == "corr-226-attribution")
     assert record.provider_id == ALTERNATE
+
+
+def test_every_evidence_surface_names_the_serving_candidate(
+    monkeypatch: pytest.MonkeyPatch, app_log_collector: CollectingLogHandler
+) -> None:
+    """Issue #237: one answer to "which provider served this execution".
+
+    The #226 test above fakes at the transport post override, which returns
+    before the transport emits any telemetry - so it can prove the audit
+    record but is structurally blind to metrics, logs and spans. This one
+    fakes at the true HTTP boundary instead, so the real telemetry path
+    runs, and it covers the surfaces the issue listed as unverified:
+    metrics labels, structured log lines, breaker/degradation evidence,
+    and the identity the run ledger attests.
+
+    The primary's breaker is left open by its own failure, so the two
+    candidates hold genuinely different postures: evidence that reported
+    the ambient provider would report the wrong one, visibly.
+    """
+
+    from prometheus_client import REGISTRY
+
+    from app.contracts.tasks import (
+        CallerMetadata,
+        OutputLabel,
+        TaskContextEnvelope,
+        TaskExecutionRequest,
+        TaskInputMode,
+    )
+    from app.services.provider_degradation_state import build_provider_degradation_status
+    from app.services.task_executor import execute_task
+    from app.services.task_execution_context_builder import build_task_execution_context
+    from app.services.workflow_pack_registry import get_workflow_pack_registration
+    from app.services.workflow_run_attestation_source import (
+        capture_workflow_run_attestation_source,
+    )
+
+    _ordered_fallback_settings()
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 1
+    settings.live_text_circuit_open_seconds = 60
+
+    def _attempts(provider_id: str, model_id: str, outcome: str) -> float:
+        return (
+            REGISTRY.get_sample_value(
+                "lotus_ai_provider_requests_total",
+                {"provider_id": provider_id, "model_id": model_id, "outcome": outcome},
+            )
+            or 0.0
+        )
+
+    before_alternate = _attempts(ALTERNATE, "claude-sonnet-5", "success")
+    before_primary = _attempts(PRIMARY, "gpt-5.4", "failed")
+
+    class _Served:
+        def __enter__(self) -> "_Served":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps(
+                {
+                    "id": "resp_alternate_serving",
+                    "model": "claude-sonnet-5",
+                    "output_text": "Grounded explanation without figures.",
+                    "usage": {"input_tokens": 9, "output_tokens": 4, "total_tokens": 13},
+                }
+            ).encode("utf-8")
+
+    def _urlopen(request: object, timeout: float) -> object:
+        url = str(getattr(request, "full_url", ""))
+        if url.startswith(settings.live_text_api_base):
+            raise error.HTTPError(
+                url=url, code=503, msg="Service Unavailable", hdrs=Message(), fp=BytesIO(b"{}")
+            )
+        return _Served()
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    request = TaskExecutionRequest(
+        task_id="explain.v1",
+        input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+        caller=CallerMetadata(
+            caller_app="lotus-manage",
+            correlation_id="corr-237-attribution",
+            tenant_id="tenant-sg-001",
+        ),
+        context=TaskContextEnvelope(
+            summary="Explain rebalance outcome",
+            payload={"status": "BLOCKED", "rule_count": 3},
+            source_refs=["lotus-manage:run:reb_001"],
+        ),
+        expected_output_label=OutputLabel.EXPLANATION_ONLY,
+    )
+    response = execute_task(request)
+
+    # Already-correct surfaces (issue #226), re-pinned so they stay correct.
+    assert response.audit.provider_id == ALTERNATE
+    assert response.result.structured_output["provider_id"] == ALTERNATE
+    assert response.audit.routing_decision is not None
+    assert response.audit.routing_decision.selected_provider_id == ALTERNATE
+
+    # Metrics: each attempt counted against the candidate that made it.
+    assert _attempts(ALTERNATE, "claude-sonnet-5", "success") == before_alternate + 1
+    assert _attempts(PRIMARY, "gpt-5.4", "failed") == before_primary + 1
+    for descriptor_display_name in (
+        "OpenAI Managed Text Provider",
+        "Local OpenAI-Compatible Text Provider",
+    ):
+        assert (
+            REGISTRY.get_sample_value(
+                "lotus_ai_provider_requests_total",
+                {
+                    "provider_id": descriptor_display_name,
+                    "model_id": "claude-sonnet-5",
+                    "outcome": "success",
+                },
+            )
+            is None
+        )
+
+    # Logs: the same two identities, in attempt order.
+    attempts = app_log_collector.events("provider_attempt")
+    assert [line["provider_id"] for line in attempts] == [PRIMARY, ALTERNATE]
+    assert [line["outcome"] for line in attempts] == ["failed", "success"]
+    assert [line["model_id"] for line in attempts] == ["gpt-5.4", "claude-sonnet-5"]
+
+    # Breaker evidence: the serving candidate's posture, not the ambient one.
+    # The primary's breaker opened on its failure, so these genuinely differ -
+    # reading the ambient config here would report the primary's open circuit
+    # as though it described the execution that actually succeeded.
+    alternate_posture = build_provider_degradation_status(ALTERNATE)
+    primary_posture = build_provider_degradation_status(PRIMARY)
+    assert primary_posture.status != alternate_posture.status
+    provider_evidence = next(
+        descriptor
+        for descriptor in response.evidence.descriptors
+        if descriptor.evidence_type == "provider_resolution"
+    )
+    assert provider_evidence.attributes["provider_id"] == ALTERNATE
+    assert provider_evidence.attributes["degradation_status"] == alternate_posture.status
+
+    # Execution ledger: the attested identity is derived from the audit
+    # record, so it inherits the serving candidate rather than re-deriving it.
+    registration = get_workflow_pack_registration(pack_id="idea_explanation.pack", version="v1")
+    assert registration is not None
+    attestation = capture_workflow_run_attestation_source(
+        run_id="wpr_237",
+        # The registration supplies evaluator identity only; what is under
+        # test here is which provider the attested record names.
+        context=build_task_execution_context(request),
+        response=response,
+        registration=registration,
+        model_risk_status="APPROVED",
+        model_risk_approval_ref="mr-237",
+    )
+    assert attestation.provider_id == ALTERNATE
+    assert attestation.model_id == "claude-sonnet-5"

@@ -102,7 +102,11 @@ def _provider_descriptor(
     *,
     provider_execution: ProviderExecutionResponse,
 ) -> ExecutionEvidenceDescriptor:
-    degradation_status = build_provider_degradation_status()
+    # Evidence is built after the gateway's per-candidate config override
+    # has exited, so an ambient read would report the primary's breaker for
+    # an alternate-served execution. Ask about the identity that served
+    # (issue #237).
+    degradation_status = build_provider_degradation_status(provider_execution.provider_id)
     return ExecutionEvidenceDescriptor(
         evidence_type="provider_resolution",
         summary="Execution flowed through the provider gateway and resolved to the current provider path.",
