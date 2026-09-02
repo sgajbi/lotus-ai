@@ -229,6 +229,45 @@ class RoutingDecisionDescriptor(BaseModel):
     )
 
 
+class CapabilityPostureCandidateDescriptor(BaseModel):
+    """One universe candidate's capability eligibility for queried requirements."""
+
+    entry_id: str = Field(min_length=1, description="Catalogue entry assessed.")
+    eligible: bool = Field(description="Whether the entry satisfies the queried requirements.")
+    rejection_reason: ProviderFailureCategory | None = Field(
+        default=None,
+        description=(
+            "Bounded category when ineligible (CAPABILITY_NOT_SUPPORTED, "
+            "CAPABILITY_UNKNOWN or CAPABILITY_DEGRADED); null when eligible."
+        ),
+    )
+    detail: str | None = Field(
+        default=None, description="Human-readable account of the ineligibility; null otherwise."
+    )
+
+
+class CapabilityPostureDescriptor(BaseModel):
+    """Who is eligible for queried capability requirements, and who would serve.
+
+    The answer to the operator question "for capability X: who is eligible,
+    who is excluded and why, who would be selected" (issue #244, S5) -
+    computed with the exact eligibility check the gateway enforces, over the
+    exact universe it would enumerate.
+    """
+
+    requirements: CapabilityRequirements = Field(description="The requirements queried.")
+    candidates: list[CapabilityPostureCandidateDescriptor] = Field(
+        description="Every universe candidate in policy order with its verdict.",
+    )
+    would_select_entry_id: str | None = Field(
+        default=None,
+        description=(
+            "First eligible candidate in policy order - what the next execution with "
+            "these requirements would bind, health permitting; null when none is eligible."
+        ),
+    )
+
+
 class RoutingPostureCandidateDescriptor(BaseModel):
     provider_id: str | None = Field(
         default=None,
@@ -290,6 +329,15 @@ class RoutingPostureResponse(BaseModel):
             "the same derivation the gateway consumes, so this posture can never disagree "
             "with what routing would actually do (issue #244, U3). Null under the fixed "
             "strategy, which does not enumerate a universe."
+        ),
+    )
+    capability_posture: CapabilityPostureDescriptor | None = Field(
+        default=None,
+        description=(
+            "Per-candidate capability eligibility for the queried requirements (issue "
+            "#244, S5): who is eligible, who is excluded and why, and who would be "
+            "selected first. Present only when requirements were queried under the "
+            "ordered strategy."
         ),
     )
     notes: list[str] = Field(description="Boundary statements this posture ships with.")

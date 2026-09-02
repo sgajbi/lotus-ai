@@ -21,6 +21,7 @@ from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_submission_service import submit_evaluation_run
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.runtime_settings import override_runtime_settings
 from tests.unit.test_task_executor import _request
 from tests.support.caller_credentials import (
     generate_caller_signing_key,
@@ -546,6 +547,46 @@ def test_routing_posture_route_reports_the_fixed_policy(client: TestClient) -> N
     assert body["candidate"]["provider_mode"] == "disabled"
     assert body["enforcing_kill_switch_count"] == 0
     assert body["degradation"]["status"]
+    assert body["candidate_universe"] is None
+    assert body["capability_posture"] is None
+
+
+def test_routing_posture_route_answers_capability_queries(client: TestClient) -> None:
+    """Issue #244, S5 over HTTP: requirement query parameters add per-candidate
+    eligibility verdicts computed over the derived universe."""
+
+    with override_runtime_settings(
+        provider_mode="openai",
+        provider_rollout_state="CANARY_ENABLED",
+        live_text_provider_id="text.openai",
+        live_text_model_id="gpt-5.4",
+        live_text_provider_api_key="secret",
+        live_text_allowed_task_ids="explain.v1",
+        routing_strategy="ordered_fallback",
+        live_text_fallback_provider_id="text.anthropic",
+        live_text_fallback_model_id="claude-sonnet-5",
+        live_text_fallback_api_base="https://alternate.example/v1",
+        live_text_fallback_api_key="secret-alternate",
+        workflow_run_model_risk_inventory_json="[]",
+    ):
+        response = client.get("/platform/providers/routing-posture?structured_output_required=true")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["strategy"] == "ORDERED_FALLBACK"
+        universe = body["candidate_universe"]
+        assert universe is not None
+        assert len(universe["candidate_entry_ids"]) == 2
+        posture = body["capability_posture"]
+        assert posture is not None
+        assert posture["requirements"]["structured_output_required"] is True
+        # Nothing is assessed in this fresh catalogue: unknown fails closed AS
+        # unknown, per candidate, and nothing would be selected.
+        assert [c["rejection_reason"] for c in posture["candidates"]] == [
+            "CAPABILITY_UNKNOWN",
+            "CAPABILITY_UNKNOWN",
+        ]
+        assert posture["would_select_entry_id"] is None
 
 
 def test_rate_card_catalogue_route_reports_the_seeded_default(client: TestClient) -> None:

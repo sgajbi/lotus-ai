@@ -24,6 +24,7 @@ from app.contracts.provider_operations import (
     ProviderOperationsResetApprovalResponse,
     ProviderOperationsResetIntentRequest,
 )
+from app.contracts.capability_requirements import CapabilityRequirements
 from app.contracts.rate_cards import RateCardCatalogueResponse
 from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.provider_activation_readiness import build_provider_activation_readiness
@@ -55,17 +56,30 @@ router = APIRouter(prefix="/platform/providers", tags=["platform"])
     description=(
         "Returns the routing policy currently in force, the single candidate the fixed policy "
         "would bind for the next live execution (with its governed catalogue identity, "
-        "lifecycle state and pinning), the circuit-breaker posture, enforcement flags, and the "
-        "count of currently enforcing kill switches. Per-request gates are evaluated per "
-        "execution and recorded on its routing decision."
+        "lifecycle state and pinning), the circuit-breaker posture, enforcement flags, the "
+        "count of currently enforcing kill switches, and - under the ordered strategy - the "
+        "derived candidate universe with every reasoned exclusion. Optional capability "
+        "requirement query parameters add per-candidate eligibility verdicts and the "
+        "candidate the next such execution would select (issue #244, S5), computed with the "
+        "exact check the gateway enforces. Per-request gates are evaluated per execution and "
+        "recorded on its routing decision."
     ),
     responses={
         200: {"description": "Routing posture returned successfully."},
         500: {"description": "Unexpected server error."},
     },
 )
-async def get_routing_posture_route() -> RoutingPostureResponse:
-    return build_routing_posture()
+async def get_routing_posture_route(
+    structured_output_required: bool | None = None,
+    tool_calling_required: bool | None = None,
+) -> RoutingPostureResponse:
+    requirements: CapabilityRequirements | None = None
+    if structured_output_required is not None or tool_calling_required is not None:
+        requirements = CapabilityRequirements(
+            structured_output_required=structured_output_required,
+            tool_calling_required=tool_calling_required,
+        )
+    return build_routing_posture(requirements)
 
 
 @router.get(
