@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
+
+from app.contracts.governed_actions import (
+    GovernedActionHistoryResponse,
+    GovernedActionStatus,
+)
+from app.services.governed_action_control import build_governed_action_history
 
 from app.contracts.app_capability_rollouts import (
     AppCapabilityRolloutCatalogGovernanceStatusResponse,
@@ -110,6 +116,34 @@ router = APIRouter(prefix="/platform", tags=["platform"])
 )
 async def get_platform_runtime_status_route(request: Request) -> PlatformRuntimeStatusResponse:
     return build_platform_runtime_status(request.app.state)
+
+
+@router.get(
+    "/governed-actions",
+    response_model=GovernedActionHistoryResponse,
+    operation_id="getGovernedActionHistory",
+    summary="Get governed-action evidence records",
+    description=(
+        "Returns governed-action evidence records across every domain that composes the "
+        "governed-action primitive (kill-switch clearance, prompt promotion, provider "
+        "resets, model promotions, capability restores, system-originated recovery), "
+        "newest requested first. This is the read the approval flow presupposes: an "
+        "approver reviews the exact pending action - payload and hash - before approving "
+        "it, and an auditor reconstructs the request-approval-execution chain, including "
+        "evidence pinned only here such as a capability degradation cleared by an "
+        "executed restore. Filterable by status and target."
+    ),
+    responses={
+        200: {"description": "Governed-action records returned successfully."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_governed_action_history_route(
+    status: GovernedActionStatus | None = None,
+    target: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+) -> GovernedActionHistoryResponse:
+    return build_governed_action_history(status_filter=status, target=target, limit=limit)
 
 
 @router.get(

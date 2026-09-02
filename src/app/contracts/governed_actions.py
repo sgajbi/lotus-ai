@@ -119,3 +119,20 @@ class GovernedActionResponse(BaseModel):
         description="The governed-action evidence record."
     )
     summary: list[str] = Field(description="Human-readable statements about the action.")
+
+
+class GovernedActionHistoryResponse(BaseModel):
+    """Governed-action evidence records, newest requested first.
+
+    The read the approval flow's own refusal guidance presupposes: an approver
+    reviews the exact pending action (payload and hash) before approving it,
+    and an auditor reads the request-approval-execution chain - including
+    evidence that lives nowhere else, such as a capability degradation cleared
+    by an executed restore.
+    """
+
+    service: str = Field(description="Publishing service identity.")
+    version: str = Field(description="Publishing service version.")
+    actions: list[GovernedActionRecord] = Field(
+        description="Matching governed-action records, newest requested first.",
+    )

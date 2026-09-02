@@ -155,7 +155,7 @@ def test_primary_serves_when_healthy(monkeypatch: pytest.MonkeyPatch) -> None:
     assert all(candidate.rejection_reason is None for candidate in decision.candidates)
     assert decision.selected_provider_id == PRIMARY
     assert decision.fallback_path == []
-    assert "primary candidate served" in decision.selection_reason
+    assert "first candidate in the enumerated universe served" in decision.selection_reason
 
 
 def test_transient_primary_failure_falls_back_to_the_alternate(
@@ -183,7 +183,7 @@ def test_transient_primary_failure_falls_back_to_the_alternate(
     )
     assert decision.candidates[1].rejection_reason is None
     assert decision.fallback_path == [PRIMARY]
-    assert "alternate" in decision.selection_reason
+    assert "a later candidate served" in decision.selection_reason
 
     # Failure bookkeeping is keyed per provider: the primary's failure never
     # touches the alternate's breaker state.

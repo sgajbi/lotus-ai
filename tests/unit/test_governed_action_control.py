@@ -234,3 +234,37 @@ def test_a_system_originated_action_records_workload_identity_without_approval()
     assert record.approver_key_id is None
     persisted = get_provider_operations_store().get_governed_action(record.action_id)
     assert persisted == record
+
+
+def test_governed_action_history_lists_newest_first_with_filters() -> None:
+    """The read the approval flow presupposes (issue #157): pending actions
+    are reviewable before approval, and the evidence chain is readable across
+    every composing domain - with status and target filters."""
+
+    from app.services.governed_action_control import build_governed_action_history
+
+    pending = _submit()
+    executed = record_system_originated_action(
+        service_identity="worker-alpha-01",
+        action_type=GovernedActionType.ASYNC_QUEUE_RECOVERY,
+        target="asyncjob_listed",
+        payload={"action": "QUARANTINE_QUEUED_JOB", "reason": "poisoned payload"},
+    )
+
+    everything = build_governed_action_history()
+    assert {record.action_id for record in everything.actions} == {
+        pending.action_id,
+        executed.action_id,
+    }
+
+    pending_only = build_governed_action_history(status_filter=GovernedActionStatus.PENDING)
+    assert [record.action_id for record in pending_only.actions] == [pending.action_id]
+    # The pending record carries what the approver must review: the exact
+    # payload and the hash approval binds to.
+    assert pending_only.actions[0].action_hash == pending.action_hash
+    assert pending_only.actions[0].action_payload == pending.action_payload
+
+    targeted = build_governed_action_history(target="asyncjob_listed")
+    assert [record.action_id for record in targeted.actions] == [executed.action_id]
+
+    assert build_governed_action_history(target="no-such-target").actions == []
