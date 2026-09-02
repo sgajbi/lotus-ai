@@ -6,9 +6,9 @@ from app.contracts.access_control import (
 )
 from app.contracts.providers import (
     ProviderFailureCategory,
-    ProviderOperationsControlActionType,
     ProviderQuotaScope,
 )
+from app.contracts.provider_operations import ProviderOperationsControlActionType
 from app.repositories.memory_provider_operations_repository import (
     InMemoryProviderOperationsRepository,
 )

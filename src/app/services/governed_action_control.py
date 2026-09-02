@@ -38,7 +38,11 @@ from app.services.provider_operations_store import get_provider_operations_store
 # single principal may carry it end to end. Safety-increasing actions never
 # appear here - an emergency stop takes one verified principal, immediately.
 HUMAN_GOVERNED_ACTION_TYPES = frozenset(
-    {GovernedActionType.KILL_SWITCH_CLEAR, GovernedActionType.PROMPT_PROMOTE}
+    {
+        GovernedActionType.KILL_SWITCH_CLEAR,
+        GovernedActionType.PROMPT_PROMOTE,
+        GovernedActionType.PROVIDER_OPERATIONS_RESET,
+    }
 )
 
 

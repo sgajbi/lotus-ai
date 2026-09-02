@@ -22,6 +22,11 @@ from app.services.eval_run_submission_service import submit_evaluation_run
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.unit.test_task_executor import _request
+from tests.support.caller_credentials import (
+    generate_caller_signing_key,
+    mint_caller_credential,
+    public_keys_setting,
+)
 
 
 def _budget_response(cost: float | None, *, stubbed: bool = False) -> ProviderExecutionResponse:
@@ -279,6 +284,39 @@ def test_provider_operations_status_route_reports_durable_sql_backed_circuit_sta
     assert body["degradation_status"]["upstream_error_failure_count"] == 1
 
 
+# Two real EdDSA credentials for the governed reset flow (issue #157).
+_REQUESTER_KEY = generate_caller_signing_key()
+_APPROVER_KEY = generate_caller_signing_key()
+_PUBLIC_KEYS = public_keys_setting(
+    **{"provider-ops-alpha": _REQUESTER_KEY, "provider-ops-beta": _APPROVER_KEY}
+)
+_REQUESTER_HEADERS = {
+    "Authorization": "Bearer "
+    + mint_caller_credential(
+        signing_key=_REQUESTER_KEY,
+        key_id="provider-ops-alpha",
+        subject="lotus-platform",
+        expires_in_seconds=3600,
+    )
+}
+_APPROVER_HEADERS = {
+    "Authorization": "Bearer "
+    + mint_caller_credential(
+        signing_key=_APPROVER_KEY,
+        key_id="provider-ops-beta",
+        subject="lotus-platform",
+        expires_in_seconds=3600,
+    )
+}
+
+
+def _verified_control_settings() -> None:
+    settings.caller_trust_mode = "verified_service_jwt"
+    settings.caller_jwt_issuer = "https://platform.lotus/issuer"
+    settings.caller_jwt_audience = "lotus-ai"
+    settings.caller_jwt_public_keys = _PUBLIC_KEYS
+
+
 def test_provider_operations_control_action_route_resets_durable_sql_backed_state(
     client: TestClient, tmp_path: Path
 ) -> None:
@@ -302,15 +340,47 @@ def test_provider_operations_control_action_route_resets_durable_sql_backed_stat
     record_provider_spend(_budget_response(0.75))
     record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
 
-    response = client.post(
-        "/platform/providers/control-plane-actions/reset",
+    _verified_control_settings()
+
+    # Governed reset over HTTP (issue #157): the request step parks the intent
+    # and no provider-operations state changes until a DISTINCT verified
+    # credential approves the exact hash.
+    pending = client.post(
+        "/platform/providers/control-plane-actions/reset-requests",
         json={
             "action_type": "RESET_ALL_PROVIDER_OPERATIONS",
-            "caller_app": "lotus-platform",
-            "requested_by": "ops.user@lotus",
-            "approved_by": "approver.user@lotus",
             "reason": "Clear durable provider controls after reviewed recovery.",
+            "requested_by": "ops.user@lotus",
         },
+        headers=_REQUESTER_HEADERS,
+    )
+    assert pending.status_code == 200
+    action = pending.json()["governed_action"]
+    assert action["status"] == "PENDING"
+    # The failure recorded above is still counted: nothing was reset yet.
+    quota_pending = client.get("/platform/providers/quota-policy", headers=_REQUESTER_HEADERS)
+    assert quota_pending.json()["quotas"][0]["current_request_count"] == 1
+
+    self_approval = client.post(
+        "/platform/providers/control-plane-actions/reset-approvals",
+        json={
+            "action_type": "RESET_ALL_PROVIDER_OPERATIONS",
+            "action_id": action["action_id"],
+            "action_hash": action["action_hash"],
+        },
+        headers=_REQUESTER_HEADERS,
+    )
+    assert self_approval.status_code == 403
+
+    response = client.post(
+        "/platform/providers/control-plane-actions/reset-approvals",
+        json={
+            "action_type": "RESET_ALL_PROVIDER_OPERATIONS",
+            "action_id": action["action_id"],
+            "action_hash": action["action_hash"],
+            "approved_by": "approver.user@lotus",
+        },
+        headers=_APPROVER_HEADERS,
     )
 
     assert response.status_code == 200
@@ -318,10 +388,16 @@ def test_provider_operations_control_action_route_resets_durable_sql_backed_stat
     assert body["event"]["action_type"] == "RESET_ALL_PROVIDER_OPERATIONS"
     assert body["event"]["affected_record_count"] == 3
     assert body["event"]["authorization"]["caller_app"] == "lotus-platform"
+    assert body["governed_action"]["requester_key_id"] == "provider-ops-alpha"
+    assert body["governed_action"]["approver_key_id"] == "provider-ops-beta"
+    assert "provider-ops-alpha" in body["event"]["requested_by"]
+    assert "provider-ops-beta" in body["event"]["approved_by"]
 
-    quota_response = client.get("/platform/providers/quota-policy")
-    budget_response = client.get("/platform/providers/budget-policy")
-    history_response = client.get("/platform/providers/control-plane-actions")
+    quota_response = client.get("/platform/providers/quota-policy", headers=_REQUESTER_HEADERS)
+    budget_response = client.get("/platform/providers/budget-policy", headers=_REQUESTER_HEADERS)
+    history_response = client.get(
+        "/platform/providers/control-plane-actions", headers=_REQUESTER_HEADERS
+    )
 
     assert quota_response.status_code == 200
     assert budget_response.status_code == 200
@@ -427,14 +503,12 @@ def test_provider_control_action_route_blocks_unauthorized_caller(
     upgrade_database_to_head(settings.database_url)
 
     response = client.post(
-        "/platform/providers/control-plane-actions/reset",
+        "/platform/providers/control-plane-actions/reset-requests",
         json={
             "action_type": "RESET_BUDGET",
-            "caller_app": "lotus-workbench",
-            "requested_by": "ops.user@lotus",
-            "approved_by": "approver.user@lotus",
             "reason": "Unauthorized budget reset attempt.",
         },
+        headers={"X-Caller-App": "lotus-workbench"},
     )
 
     assert response.status_code == 403

@@ -7,9 +7,9 @@ from app.contracts.access_control import AuthorizationDecision
 from app.contracts.governed_actions import GovernedActionRecord
 from app.contracts.providers import (
     ProviderFailureCategory,
-    ProviderOperationsControlActionType,
     ProviderQuotaScope,
 )
+from app.contracts.provider_operations import ProviderOperationsControlActionType
 
 
 @dataclass(frozen=True)
