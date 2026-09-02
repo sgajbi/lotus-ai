@@ -41,6 +41,9 @@ class GovernedActionType(str, Enum):
     KILL_SWITCH_CLEAR = "KILL_SWITCH_CLEAR"
     PROMPT_PROMOTE = "PROMPT_PROMOTE"
     PROVIDER_OPERATIONS_RESET = "PROVIDER_OPERATIONS_RESET"
+    # Serving-posture expansion of a catalogue model (issue #245): eval
+    # evidence enables the decision; a distinct verified credential makes it.
+    MODEL_LIFECYCLE_PROMOTE = "MODEL_LIFECYCLE_PROMOTE"
     # Runtime-originated: a worker quarantining or redriving a poisoned queue
     # job answers to a service identity, not a human approver, and is
     # explicitly SYSTEM_ORIGINATED rather than dressing a service string up

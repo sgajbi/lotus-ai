@@ -18,6 +18,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.governed_actions import GovernedActionRecord
+
 
 class ModelLifecycleState(str, Enum):
     DISCOVERED = "DISCOVERED"
@@ -227,6 +229,21 @@ ALLOWED_MODEL_LIFECYCLE_TRANSITIONS: dict[ModelLifecycleState, frozenset[ModelLi
     ModelLifecycleState.RETIRED: frozenset(),
 }
 
+# Transitions INTO these states expand serving posture and are risk-increasing:
+# they require the governed two-step flow (verified requester, distinct
+# verified approver, PASS-verdict eval evidence) rather than the single-call
+# transition route (issue #245). Every other target - taking a model out of
+# service or moving it through evaluation - is a safety or administrative
+# action one verified principal applies immediately.
+MODEL_SERVING_PROMOTION_TARGETS: frozenset[ModelLifecycleState] = frozenset(
+    {
+        ModelLifecycleState.APPROVED,
+        ModelLifecycleState.SHADOW,
+        ModelLifecycleState.CANARY,
+        ModelLifecycleState.PRODUCTION,
+    }
+)
+
 # States an operator has deliberately taken a model OUT of service through.
 # Nothing automatic - including a seeding-authority change - may resurrect
 # a model from these; only an explicit operator transition can.
@@ -243,24 +260,76 @@ class ModelLifecycleTransitionRecord(BaseModel):
     from_state: ModelLifecycleState = Field(description="State before the transition.")
     to_state: ModelLifecycleState = Field(description="State after the transition.")
     reason: str = Field(min_length=1, description="Operator reason recorded with the transition.")
-    requested_by: str = Field(min_length=1, description="Operator who requested the transition.")
-    approved_by: str = Field(min_length=1, description="Operator who approved the transition.")
+    requested_by: str = Field(
+        min_length=1,
+        description="Verified identity that requested the transition (issue #245).",
+    )
+    approved_by: str | None = Field(
+        default=None,
+        description=(
+            "Verified identity that approved a governed serving promotion; null for "
+            "single-principal safety and administrative transitions, where no "
+            "approval existed (issue #245)."
+        ),
+    )
     approval_evidence_ref: str | None = Field(
         default=None,
-        description="Approval evidence reference; required when transitioning to APPROVED.",
+        description=(
+            "Evidence reference recorded with a governed serving promotion "
+            "(`evaluation-run:<run_id>`); null otherwise."
+        ),
     )
     recorded_at: str = Field(description="Instant the transition was recorded (UTC).")
 
 
 class ModelLifecycleTransitionRequest(BaseModel):
-    caller_app: str = Field(min_length=1, description="Calling application identity.")
+    """Single-principal safety or administrative transition.
+
+    Caller identity comes from the authenticated credential, never from the
+    body (issue #245). Serving promotions are refused here and go through the
+    governed two-step promotion flow.
+    """
+
     to_state: ModelLifecycleState = Field(description="Target lifecycle state.")
     reason: str = Field(min_length=1, description="Why this transition is being made.")
-    requested_by: str = Field(min_length=1, description="Operator requesting the transition.")
-    approved_by: str = Field(min_length=1, description="Operator approving the transition.")
-    approval_evidence_ref: str | None = Field(
+
+
+class ModelPromotionIntentRequest(BaseModel):
+    """Step one of governed serving promotion: a verified requester states the intent.
+
+    Eval evidence enables the decision; it does not make the decision - the
+    named run must already exist with a PASS verdict, and a distinct verified
+    credential still has to approve (issue #245).
+    """
+
+    to_state: ModelLifecycleState = Field(
+        description="Serving target (APPROVED, SHADOW, CANARY or PRODUCTION)."
+    )
+    reason: str = Field(min_length=1, description="Why this promotion should happen.")
+    evaluation_run_id: str = Field(
+        min_length=1,
+        description="Existing evaluation run whose PASS verdict backs this promotion.",
+    )
+    requested_by: str | None = Field(
         default=None,
-        description="Approval evidence reference; required when to_state is APPROVED.",
+        max_length=256,
+        description="Claimed operator name; recorded as unverified attribution.",
+    )
+
+
+class ModelPromotionApprovalRequest(BaseModel):
+    """Step two: a distinct verified credential approves the exact pending action."""
+
+    action_id: str = Field(min_length=1, max_length=64, description="Pending governed action id.")
+    action_hash: str = Field(
+        min_length=64,
+        max_length=64,
+        description="Hash of the action being approved, exactly as returned by the request step.",
+    )
+    approved_by: str | None = Field(
+        default=None,
+        max_length=256,
+        description="Claimed operator name; recorded as unverified attribution.",
     )
 
 
@@ -272,6 +341,22 @@ class ModelLifecycleTransitionResponse(BaseModel):
     transition: ModelLifecycleTransitionRecord = Field(
         description="The durable transition record this action created.",
     )
+
+
+class ModelPromotionApprovalResponse(BaseModel):
+    """The executed serving promotion with its full governance evidence chain."""
+
+    service: str = Field(description="Service name emitting the response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    store_mode: str = Field(description="Where catalogue truth lives: memory or sqlalchemy.")
+    entry: ModelCatalogueEntry = Field(description="The entry after the promotion.")
+    transition: ModelLifecycleTransitionRecord = Field(
+        description="The durable transition record this promotion created.",
+    )
+    governed_action: GovernedActionRecord = Field(
+        description="The request-approval-execution evidence chain (issue #245).",
+    )
+    summary: list[str] = Field(description="Human-readable account of what executed.")
 
 
 class ModelCatalogueEntryDetailResponse(BaseModel):

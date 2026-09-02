@@ -42,6 +42,7 @@ HUMAN_GOVERNED_ACTION_TYPES = frozenset(
         GovernedActionType.KILL_SWITCH_CLEAR,
         GovernedActionType.PROMPT_PROMOTE,
         GovernedActionType.PROVIDER_OPERATIONS_RESET,
+        GovernedActionType.MODEL_LIFECYCLE_PROMOTE,
     }
 )
 

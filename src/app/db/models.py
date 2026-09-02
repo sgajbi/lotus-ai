@@ -756,7 +756,9 @@ class ModelCatalogueLifecycleEventModel(Base):
     to_state: Mapped[str] = mapped_column(String(32), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     requested_by: Mapped[str] = mapped_column(String(128), nullable=False)
-    approved_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    # Null when no approval existed: single-principal safety and
+    # administrative transitions (issue #245).
+    approved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     approval_evidence_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
