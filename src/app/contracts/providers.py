@@ -283,6 +283,15 @@ class RoutingPostureResponse(BaseModel):
         ge=0,
         description="Currently enforcing kill-switch activations (any scope).",
     )
+    candidate_universe: CandidateUniverse | None = Field(
+        default=None,
+        description=(
+            "The derived candidate universe the next ordered execution would enumerate - "
+            "the same derivation the gateway consumes, so this posture can never disagree "
+            "with what routing would actually do (issue #244, U3). Null under the fixed "
+            "strategy, which does not enumerate a universe."
+        ),
+    )
     notes: list[str] = Field(description="Boundary statements this posture ships with.")
 
 
