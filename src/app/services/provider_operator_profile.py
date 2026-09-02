@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from app.config import settings
-from app.contracts.providers import (
-    ProviderExecutionMode,
+from app.contracts.provider_catalog import (
     ProviderOperatorProfileDescriptor,
     ProviderOperatorProfileResponse,
 )
+from app.contracts.providers import ProviderExecutionMode
 from app.services.provider_live_execution_state import (
     ProviderLiveExecutionState,
     build_provider_live_execution_state,

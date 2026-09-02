@@ -3,15 +3,17 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.contracts.governed_actions import GovernedActionResponse
+from app.contracts.provider_catalog import (
+    ProviderCatalogResponse,
+    ProviderOperatorProfileResponse,
+    ProviderPolicyResponse,
+)
 from app.contracts.providers import (
     ProviderActivationReadinessResponse,
     ProviderBudgetPolicyResponse,
-    ProviderCatalogResponse,
     ProviderEvidenceReadinessResponse,
     ProviderGovernanceStatusResponse,
     ProviderOperationsStatusResponse,
-    ProviderOperatorProfileResponse,
-    ProviderPolicyResponse,
     ProviderQuotaPolicyResponse,
     ProviderRunbookReadinessResponse,
     RoutingPostureResponse,

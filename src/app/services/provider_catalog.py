@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from app.config import settings
 from app.services.runtime_mode_config import resolve_runtime_mode_config
-from app.contracts.providers import (
-    ProviderCapability,
+from app.contracts.provider_catalog import (
     ProviderCatalogResponse,
     ProviderDescriptor,
+)
+from app.contracts.providers import (
+    ProviderCapability,
     ProviderLifecycleStatus,
 )
 from app.providers.registry import list_registered_provider_descriptors
