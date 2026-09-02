@@ -43,6 +43,7 @@ from app.providers.configured_workflow_run_model_risk_inventory import (
 )
 from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.model_catalogue_store import get_model_catalogue_repository
+from app.services.output_contracts import output_contract_exists
 from app.services.provider_execution_config import resolve_provider_execution_config
 
 _LIVE_TEXT_MODES = frozenset(
@@ -175,6 +176,17 @@ def build_seed_model_catalogue_entries() -> list[ModelCatalogueEntry]:
             lifecycle_state=ModelLifecycleState.APPROVED,
             revision_pinned=True,
             modalities=["text"],
+            # Provable from the approval evidence itself (issue #244, S2): a
+            # pack-approved model has produced output that the deterministic
+            # validator held to the pack's strict-JSON schema contract. No
+            # other capability dimension has in-repo evidence, so no other
+            # dimension is seeded - unknown stays unknown, and configuration
+            # alone (the settings rows above) proves nothing.
+            supports_structured_output=(
+                True
+                if any(output_contract_exists(pack_id) for pack_id in approved.workflow_pack_ids)
+                else None
+            ),
             approved_workflow_pack_ids=list(approved.workflow_pack_ids),
             approval_evidence_refs=[approved.approval_ref],
             approved_from_utc=approved.approved_from_utc,
@@ -185,6 +197,35 @@ def build_seed_model_catalogue_entries() -> list[ModelCatalogueEntry]:
         )
 
     return [entries[entry_id] for entry_id in sorted(entries)]
+
+
+_CAPABILITY_DIMENSIONS = (
+    "supports_structured_output",
+    "supports_tool_calling",
+    "supports_streaming",
+    "context_window_tokens",
+    "max_output_tokens",
+)
+
+
+def _preserve_assessed_capabilities(
+    *, candidate: ModelCatalogueEntry, existing: ModelCatalogueEntry
+) -> ModelCatalogueEntry:
+    """Unknown never overwrites known (issue #244, S2).
+
+    Null on a capability dimension means *not assessed*. A seed row that has
+    no evidence for a dimension must not erase an assessment that already
+    exists - reconciling the catalogue with configuration would otherwise
+    quietly un-assess facts every startup. The seed may add facts it can
+    prove; it may never subtract ones it cannot.
+    """
+
+    preserved = {
+        dimension: getattr(existing, dimension)
+        for dimension in _CAPABILITY_DIMENSIONS
+        if getattr(candidate, dimension) is None and getattr(existing, dimension) is not None
+    }
+    return candidate.model_copy(update=preserved) if preserved else candidate
 
 
 def ensure_model_catalogue_seeded() -> ModelCatalogueSeedReport:
@@ -210,6 +251,7 @@ def ensure_model_catalogue_seeded() -> ModelCatalogueSeedReport:
             # but never out of an operator-terminal state: a retired model
             # stays retired until an operator explicitly transitions it.
             candidate = candidate.model_copy(update={"lifecycle_state": existing.lifecycle_state})
+        candidate = _preserve_assessed_capabilities(candidate=candidate, existing=existing)
         if candidate.model_dump(exclude=_SEED_MANAGED_EXCLUDES) == existing.model_dump(
             exclude=_SEED_MANAGED_EXCLUDES
         ):

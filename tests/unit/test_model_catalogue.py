@@ -547,3 +547,71 @@ def test_drift_observations_survive_a_store_restart_in_sqlalchemy_mode(
     assert set(by_observed) == {"qwen3:8b-q4-2026-03", "qwen3:8b-q5-2026-06"}
     assert by_observed["qwen3:8b-q4-2026-03"].observation_count == 2
     assert by_observed["qwen3:8b-q5-2026-06"].observation_count == 1
+
+
+def test_capability_facts_are_seeded_only_from_approval_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Issue #244 S2: a pack-approved model has provably produced output the
+    deterministic validator held to the pack's strict-JSON schema contract,
+    so structured-output support is a fact. Configuration alone proves
+    nothing, and no other dimension has in-repo evidence - unknown stays
+    unknown rather than becoming an optimistic default."""
+
+    monkeypatch.setattr(settings, "provider_mode", "openai")
+    monkeypatch.setattr(settings, "provider_rollout_state", "CANARY_ENABLED")
+    monkeypatch.setattr(settings, "live_text_provider_id", "text.openai")
+    monkeypatch.setattr(settings, "live_text_model_id", "gpt-5.4")
+    monkeypatch.setattr(settings, "live_text_provider_api_key", "secret")
+    monkeypatch.setattr(settings, "workflow_run_model_risk_inventory_json", APPROVED_INVENTORY_JSON)
+
+    entries = {entry.model_family: entry for entry in build_seed_model_catalogue_entries()}
+
+    approved = entries["gpt-5.2"]
+    assert approved.supports_structured_output is True
+    assert approved.supports_tool_calling is None
+    assert approved.supports_streaming is None
+    assert approved.context_window_tokens is None
+
+    configured = entries["gpt-5.4"]
+    assert configured.supports_structured_output is None
+    assert configured.supports_tool_calling is None
+
+
+def test_reseeding_never_unassesses_a_known_capability_fact(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Null means not assessed. The seed may add facts it can prove; it must
+    never subtract ones it cannot - otherwise every startup reconcile would
+    quietly erase operator assessments back to unknown."""
+
+    monkeypatch.setattr(settings, "provider_mode", "openai")
+    monkeypatch.setattr(settings, "provider_rollout_state", "CANARY_ENABLED")
+    monkeypatch.setattr(settings, "live_text_provider_id", "text.openai")
+    monkeypatch.setattr(settings, "live_text_model_id", "gpt-5.4")
+    monkeypatch.setattr(settings, "live_text_provider_api_key", "secret")
+    monkeypatch.setattr(settings, "workflow_run_model_risk_inventory_json", "[]")
+
+    first = ensure_model_catalogue_seeded()
+    assert first.created_count == 1
+    repository = get_model_catalogue_repository()
+    [entry] = repository.list_entries()
+    assert entry.supports_tool_calling is None
+
+    # An operator assessment lands on the row the seed knows nothing about.
+    upsert_model_catalogue_entry(
+        entry.model_copy(
+            update={
+                "supports_tool_calling": False,
+                "supports_structured_output": True,
+                "context_window_tokens": 128_000,
+            }
+        )
+    )
+
+    report = ensure_model_catalogue_seeded()
+    [reconciled] = repository.list_entries()
+    assert reconciled.supports_tool_calling is False
+    assert reconciled.supports_structured_output is True
+    assert reconciled.context_window_tokens == 128_000
+    assert report.updated_count == 0
