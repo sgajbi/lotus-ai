@@ -8,6 +8,7 @@ from app.contracts.providers import (
     ROUTING_POLICY_ORDERED_FALLBACK,
     ROUTING_POLICY_VERSION_V1,
     CandidateUniverse,
+    CandidateUniverseExclusionReason,
     CandidateUniverseSource,
     ProviderExecutionMode,
     ProviderExecutionRequest,
@@ -220,12 +221,25 @@ def _execute_ordered_fallback(
             ),
         )
 
-    rejections: dict[int, ProviderFailureCategory] = {}
-    candidates = [config, alternate]
-    # Decision evidence only in U1 (issue #244): the enumeration above is
-    # still configuration-shaped, and the universe says so honestly while
-    # recording what the catalogue holds that policy does not let serve.
+    # The derived universe IS the enumeration (issue #244, U2): the configured
+    # pair supplies policy order and connection material, and the catalogue
+    # decides which of those identities may serve at all. An identity the
+    # catalogue excludes never becomes a candidate - its reasoned exclusion
+    # rides the routing decision instead.
     universe = derive_candidate_universe(config)
+    config_by_entry_id = {
+        _candidate_entry_identity(candidate)[0]: candidate for candidate in (config, alternate)
+    }
+    candidates = [
+        config_by_entry_id[entry_id]
+        for entry_id in universe.candidate_entry_ids
+        if entry_id in config_by_entry_id
+    ]
+    if not candidates:
+        raise _empty_universe_refusal(
+            requirements=request.requirements, mode_value=mode.value, universe=universe
+        )
+    rejections: dict[int, ProviderFailureCategory] = {}
 
     # Operator kill switches outrank every automatic control, evaluated per
     # candidate: a switch on the primary's provider scope routes to the
@@ -365,6 +379,57 @@ def _ordered_refusal(
     )
 
 
+_FAILURE_BY_UNIVERSE_EXCLUSION = {
+    CandidateUniverseExclusionReason.MODEL_NOT_CATALOGUED: (
+        ProviderFailureCategory.MODEL_NOT_CATALOGUED
+    ),
+    CandidateUniverseExclusionReason.LIFECYCLE_INELIGIBLE: (
+        ProviderFailureCategory.MODEL_LIFECYCLE_INELIGIBLE
+    ),
+    CandidateUniverseExclusionReason.POLICY_EXCLUDED: (
+        ProviderFailureCategory.INVALID_LIVE_CONFIGURATION
+    ),
+}
+
+
+def _empty_universe_refusal(
+    *,
+    requirements: CapabilityRequirements | None,
+    mode_value: str,
+    universe: CandidateUniverse,
+) -> ProviderGatewayUnavailableError:
+    """No policy-ordered identity earned eligibility: refuse with every reason.
+
+    The category comes from the first policy-identity exclusion so the caller
+    sees the primary story; the decision carries all of them.
+    """
+
+    category = next(
+        (
+            _FAILURE_BY_UNIVERSE_EXCLUSION[exclusion.reason]
+            for exclusion in universe.exclusions
+            if exclusion.reason is not CandidateUniverseExclusionReason.POLICY_EXCLUDED
+        ),
+        ProviderFailureCategory.INVALID_LIVE_CONFIGURATION,
+    )
+    detail = "; ".join(exclusion.detail for exclusion in universe.exclusions) or (
+        "the derived candidate universe is empty"
+    )
+    return ProviderGatewayUnavailableError(
+        detail=f"{category.value}: {detail}",
+        routing_decision=_build_ordered_routing_decision(
+            requirements=requirements,
+            mode_value=mode_value,
+            candidates=[],
+            serving_config=None,
+            serving_entry=None,
+            fallback_path=[],
+            decided_at=_utc_now_iso(),
+            universe=universe,
+        ),
+    )
+
+
 def _candidate_entry_identity(
     config: ProviderExecutionConfig,
 ) -> tuple[str | None, str | None]:
@@ -402,7 +467,12 @@ def _build_ordered_routing_decision(
                 rejection_reason=rejection,
             )
         )
-    if serving_config is None:
+    if serving_config is None and not candidates:
+        selection_reason = (
+            "Ordered-fallback policy: the derived candidate universe is empty - every "
+            "policy-ordered identity was excluded (see universe_exclusions); execution refused."
+        )
+    elif serving_config is None:
         selection_reason = (
             "Ordered-fallback policy: every candidate was rejected or failed; execution refused."
         )

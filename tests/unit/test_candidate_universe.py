@@ -1,9 +1,9 @@
 """The candidate universe is derived from catalogue evidence bounded by policy.
 
-Issue #244, U1: the derivation is routing-decision evidence only - the
-enumeration still comes from configuration, and the universe says so honestly
-while recording what the catalogue holds that policy does not let serve. The
-equivalence proven here is what makes the U2 flip safe.
+Issue #244, U2: the derivation IS the ordered enumeration - an identity the
+catalogue excludes never becomes a candidate, its reasoned exclusion rides the
+routing decision, and an empty universe refuses with every reason. The
+configured pair supplies policy order and connection material only.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ def test_derived_universe_matches_the_configured_pair() -> None:
     _ordered_fallback_settings()
     universe = derive_candidate_universe(resolve_provider_execution_config())
 
-    assert universe.source is CandidateUniverseSource.CONFIGURED
+    assert universe.source is CandidateUniverseSource.CATALOGUE_DERIVED
     assert universe.candidate_entry_ids == [PRIMARY_ENTRY, ALTERNATE_ENTRY]
     assert universe.exclusions == []
 
@@ -175,8 +175,85 @@ def test_ordered_routing_decision_carries_universe_evidence(
 
     decision = response.routing_decision
     assert decision is not None
-    assert decision.universe_source is CandidateUniverseSource.CONFIGURED
+    assert decision.universe_source is CandidateUniverseSource.CATALOGUE_DERIVED
     assert [e.entry_id for e in decision.universe_exclusions] == [shadow_id]
     assert decision.universe_exclusions[0].reason is (
         CandidateUniverseExclusionReason.POLICY_EXCLUDED
+    )
+
+
+def test_excluded_identity_never_becomes_a_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The U2 flip: a lifecycle-ineligible primary is not enumerated and not
+    attempted - the alternate serves alone, and the exclusion carries the
+    reason where a candidate rejection used to."""
+
+    _ordered_fallback_settings()
+    ensure_model_catalogue_seeded()
+    repository = get_model_catalogue_repository()
+    entry = repository.get_entry(PRIMARY_ENTRY)
+    assert entry is not None
+    repository.upsert_entry(
+        entry.model_copy(update={"lifecycle_state": ModelLifecycleState.DEPRECATED})
+    )
+    adapter = _install_adapter(monkeypatch, failing={})
+
+    from app.services.provider_gateway import execute_text_generation
+
+    response = execute_text_generation(_request())
+
+    assert response.provider_id == ALTERNATE
+    assert adapter.executed_provider_ids == [ALTERNATE]
+    decision = response.routing_decision
+    assert decision is not None
+    assert [c.provider_id for c in decision.candidates] == [ALTERNATE]
+    assert [e.entry_id for e in decision.universe_exclusions] == [PRIMARY_ENTRY]
+    assert decision.universe_exclusions[0].reason is (
+        CandidateUniverseExclusionReason.LIFECYCLE_INELIGIBLE
+    )
+
+
+def test_empty_universe_refuses_with_every_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Both policy-ordered identities excluded: no attempt happens, the
+    refusal names the primary story, and the decision carries every reasoned
+    exclusion with zero candidates."""
+
+    from fastapi import HTTPException
+
+    _ordered_fallback_settings()
+    ensure_model_catalogue_seeded()
+    repository = get_model_catalogue_repository()
+    for entry_id in (PRIMARY_ENTRY, ALTERNATE_ENTRY):
+        entry = repository.get_entry(entry_id)
+        assert entry is not None
+        repository.upsert_entry(
+            entry.model_copy(update={"lifecycle_state": ModelLifecycleState.RETIRED})
+        )
+    adapter = _install_adapter(monkeypatch, failing={})
+
+    from app.services.provider_gateway import (
+        ProviderGatewayUnavailableError,
+        execute_text_generation,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        execute_text_generation(_request())
+
+    assert exc_info.value.status_code == 503
+    assert "MODEL_LIFECYCLE_INELIGIBLE" in str(exc_info.value.detail)
+    assert adapter.executed_provider_ids == []
+    assert isinstance(exc_info.value, ProviderGatewayUnavailableError)
+    decision = exc_info.value.routing_decision
+    assert decision.candidates == []
+    assert decision.selected_provider_id is None
+    assert "universe_exclusions" in decision.selection_reason
+    assert sorted(e.entry_id for e in decision.universe_exclusions) == sorted(
+        [PRIMARY_ENTRY, ALTERNATE_ENTRY]
+    )
+    assert all(
+        e.reason is CandidateUniverseExclusionReason.LIFECYCLE_INELIGIBLE
+        for e in decision.universe_exclusions
     )
