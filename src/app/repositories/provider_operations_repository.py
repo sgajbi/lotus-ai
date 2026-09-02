@@ -146,5 +146,14 @@ class ProviderOperationsRepository(Protocol):
     def upsert_governed_action(self, record: GovernedActionRecord) -> None:
         """Persist one governed-action record by action id."""
 
+    def list_governed_actions(
+        self,
+        *,
+        status: str | None,
+        target: str | None,
+        limit: int,
+    ) -> list[GovernedActionRecord]:
+        """List governed-action evidence records, newest requested first."""
+
     def list_operations_events(self, *, limit: int) -> list[ProviderOperationsEventRecord]:
         """List most recent provider-operations control event records."""

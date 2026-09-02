@@ -478,15 +478,19 @@ def _build_ordered_routing_decision(
         )
     elif fallback_path:
         selection_reason = (
-            "Ordered-fallback policy: the primary candidate failed and the alternate "
-            "candidate served; the fallback path names the failed provider(s)."
+            "Ordered-fallback policy: an earlier candidate failed and a later candidate "
+            "served; the fallback path names the failed provider(s)."
         )
     elif serving_config is candidates[0][0]:
-        selection_reason = "Ordered-fallback policy: the primary candidate served."
+        # "First enumerated", not "primary": the universe may have excluded
+        # the configured primary, and the evidence must not claim it served.
+        selection_reason = (
+            "Ordered-fallback policy: the first candidate in the enumerated universe served."
+        )
     else:
         selection_reason = (
-            "Ordered-fallback policy: the primary candidate was rejected at preflight and "
-            "the alternate candidate served; a preflight rejection is not a fallback."
+            "Ordered-fallback policy: an earlier candidate was rejected at preflight and "
+            "a later candidate served; a preflight rejection is not a fallback."
         )
     enforced_dimensions, unenforced_dimensions = _requirement_enforcement_split(requirements)
     return RoutingDecisionDescriptor(

@@ -213,6 +213,10 @@ def test_excluded_identity_never_becomes_a_candidate(
     assert decision.universe_exclusions[0].reason is (
         CandidateUniverseExclusionReason.LIFECYCLE_INELIGIBLE
     )
+    # Evidence honesty: the configured primary did NOT serve - the selection
+    # reason must describe the enumeration, never claim the primary served.
+    assert "primary" not in decision.selection_reason
+    assert "first candidate in the enumerated universe served" in decision.selection_reason
 
 
 def test_empty_universe_refuses_with_every_reason(

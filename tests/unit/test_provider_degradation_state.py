@@ -29,6 +29,32 @@ def test_provider_degradation_status_reports_documented_only_by_default() -> Non
     assert status.consecutive_failure_count == 0
 
 
+def test_breaker_never_counts_failures_the_provider_did_not_cause() -> None:
+    """The caller's exhausted latency budget - and every other non-provider
+    condition - must not accumulate breaker strikes against an innocent
+    provider (issue #244). Only provider-fault categories are tracked; this
+    pins that a widened tracked set cannot land silently."""
+
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 2
+    settings.live_text_circuit_open_seconds = 60
+
+    for category in (
+        ProviderFailureCategory.REQUEST_DEADLINE_EXHAUSTED,
+        ProviderFailureCategory.CAPABILITY_UNKNOWN,
+        ProviderFailureCategory.KILL_SWITCH_ACTIVE,
+        ProviderFailureCategory.BUDGET_EXCEEDED,
+    ):
+        record_provider_failure(category)
+
+    status = build_provider_degradation_status()
+
+    assert status.consecutive_failure_count == 0
+    assert status.status != "DEGRADED_UPSTREAM"
+    assert status.status != "CIRCUIT_OPEN"
+
+
 def test_provider_degradation_status_reports_degraded_after_threshold() -> None:
     settings.live_text_degradation_enforced = True
     settings.live_text_degraded_failure_count_threshold = 2

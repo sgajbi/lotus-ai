@@ -430,6 +430,23 @@ Before treating retrieval or provider evaluation evidence as approval-ready:
 5. if replay or retry is required, apply the governed async control action first and then verify a new evaluation attempt appears instead of mutating prior case evidence in place
 6. treat `foundation_eval_*` run artifacts as historical baselines only; they do not satisfy current runtime-backed approval posture by themselves
 
+## Governed Actions
+
+One reusable governance pattern covers every high-impact control-plane action; there are no domain-specific approval frameworks. The rule is the **direction of risk**:
+
+- **Safety-increasing actions** (activate a kill switch, roll back a prompt, deprecate/retire a model, degrade a model capability) execute **immediately under one verified principal**. The record carries the verified requester identity derived from the caller credential - never caller-typed free text - and `approved_by` is honestly null: no approval existed. An emergency stop is never blocked on credential availability.
+- **Risk-increasing actions** (clear a kill switch, promote a prompt, reset provider operations, promote a model's serving posture, restore a degraded capability) take the **governed two-step flow**: a verified requester records a pending intent; a DISTINCT verified credential approves the exact pending `action_id` and `action_hash`; the approval executes the action and records the full request-approval-execution evidence chain. Approval binds to the exact action - a changed target, payload, or baseline refuses the stale approval, and a re-request for the same target supersedes the prior pending intent.
+- **System-originated actions** (async queue recovery) are explicitly `SYSTEM_ORIGINATED` under a verified workload identity, restricted to their bounded action types, and structurally incapable of satisfying a human-approval requirement.
+
+Dual-control evidence proves **distinct authenticated credentials**, not verified-human four-eyes: nothing yet binds a platform credential to a verified human principal. That platform identity dependency is tracked explicitly; do not describe the flow as four-eyes in incident reports.
+
+Operator surfaces:
+
+1. `GET /platform/governed-actions` lists the evidence records across every domain, newest first, filterable by `status` and `target` with `limit` 1 through 200 - review a pending action's payload and hash here before approving it, and reconstruct executed chains here afterwards (a cleared capability degradation is pinned only inside its executed restore record)
+2. the two-step route pairs: kill-switch clearance `/platform/providers/kill-switches/{switch_id}/clear-requests|clear-approvals`; prompt promotion `/platform/prompts/promote-requests|promote-approvals`; provider resets `/platform/providers/control-plane-actions/reset-requests|reset-approvals`; model serving promotion `/platform/models/catalogue/{entry_id}/promotion-requests|promotion-approvals` (evidence must name an existing COMPLETED PASS-verdict evaluation run); capability restore `/platform/models/catalogue/{entry_id}/capability-restore-requests|capability-restore-approvals`
+3. single-principal safety routes: kill-switch activation, prompt rollback via `control-actions`, model lifecycle transitions to non-serving states via `/platform/models/catalogue/{entry_id}/lifecycle-transitions`, and capability degradation via `/platform/models/catalogue/{entry_id}/capability-degradations` (requirement routing then refuses that dimension as `CAPABILITY_DEGRADED` while the model keeps serving everything else; only the governed restore clears it, and reseeding never does)
+4. both steps of every two-step flow require verified caller credentials (`LOTUS_AI_CALLER_TRUST_MODE=verified_service_jwt`); header trust cannot distinguish a requester from an approver and is refused
+
 ## Safety Governance Review
 
 Before treating runtime safety enforcement as governed rollout posture:
@@ -485,13 +502,13 @@ Mandatory verification after every mode change:
 
 Runtime semantics under `ordered_fallback`:
 
-1. the candidate order is fixed: configured primary first, configured alternate second; both identities seed governed catalogue rows and pass the same lifecycle and kill-switch fences at bind time
+1. the candidate universe is derived from the governed catalogue, bounded by the configured policy order (primary first, alternate second): both identities seed governed catalogue rows, and an identity the catalogue excludes - not catalogued, or lifecycle-ineligible - never becomes a candidate at all; its reasoned exclusion is recorded in `universe_exclusions` on the routing decision, whose `universe_source` reads `CATALOGUE_DERIVED`. When every policy-ordered identity is excluded, execution refuses before any attempt with each per-identity reason on the decision. The bind-time lifecycle fence remains as a backstop between derivation and attempt
 2. a transient primary failure (`PROVIDER_TIMEOUT`, `PROVIDER_RATE_LIMITED`, `PROVIDER_UPSTREAM_ERROR`, after the primary's own retry budget) triggers one attempt on the alternate within the same execution; the routing decision records the primary's failure category as its rejection and names the failed provider in `fallback_path`
 3. a candidate-scoped preflight veto - a `PROVIDER`/`MODEL_REVISION` kill switch on the primary, or the primary's open circuit breaker - routes to the alternate as a recorded rejection plus selection, with an empty `fallback_path`: a preflight rejection is not a fallback
 4. deterministic failures (configuration, governance) refuse without attempting the alternate
 5. quota counters and the budget envelope are request-scoped and enforced exactly once per execution: a fallback never bypasses or double-charges them, and request-scoped kill-switch scopes (`ALL_LIVE_TEXT`, `TASK`, `TENANT`, `CALLER_APP`) reject both candidates
 6. circuit-breaker bookkeeping is keyed per provider identity (`live_text_generation:<provider_id>`), so the primary's failures never open the alternate's breaker; `RESET_DEGRADATION` and `RESET_ALL_PROVIDER_OPERATIONS` control actions clear every candidate's counters
-7. `GET /platform/providers/routing-posture` names both candidates with their catalogue bindings and per-candidate breaker posture; the serving identity is always stamped on the response and its audit record - there is no silent fallback
+7. `GET /platform/providers/routing-posture` names both candidates with their catalogue bindings and per-candidate breaker posture, and exposes `candidate_universe` - the same derivation the gateway enumerates from, so the posture cannot disagree with routing. Optional capability query parameters (`?structured_output_required=true`, `?tool_calling_required=true`) add per-candidate eligibility verdicts (`CAPABILITY_NOT_SUPPORTED`, `CAPABILITY_UNKNOWN`, `CAPABILITY_DEGRADED`) and `would_select_entry_id`. The serving identity is always stamped on the response and its audit record - there is no silent fallback
 
 ## Durable Provider Operations Recovery
 
@@ -502,7 +519,7 @@ Operator rules:
 1. do not treat a service restart as a quota, spend, or circuit reset
 2. review `/platform/providers/quota-policy`, `/platform/providers/budget-policy`, and `/platform/providers/operations-status` before assuming provider posture has cleared
 3. investigate persistent blocking posture as durable control-plane state, not as stale process memory
-4. use `POST /platform/providers/control-plane-actions/reset` for governed quota, budget, and degradation resets rather than ad hoc table edits
+4. use the governed two-step reset flow (`POST /platform/providers/control-plane-actions/reset-requests` then `/reset-approvals` under a distinct verified credential) for quota, budget, and degradation resets rather than ad hoc table edits
 
 Current recovery expectations:
 
@@ -511,13 +528,14 @@ Current recovery expectations:
 3. circuit-open posture remains durable until the persisted cooldown expires or a governed degradation reset action is applied and recorded
 4. restart alone must not be used as an operational workaround for provider controls
 
-Current governed reset procedure:
+Current governed reset procedure (a reset is risk-increasing - it re-enables spend or traffic another control stopped - so it takes the governed two-step flow; see Governed Actions):
 
 1. inspect `/platform/providers/control-plane-actions` to review recent provider control-plane actions
 2. confirm `/platform/providers/quota-policy`, `/platform/providers/budget-policy`, and `/platform/providers/operations-status` reflect the blocking posture that requires intervention
-3. apply `POST /platform/providers/control-plane-actions/reset` with explicit operator reason, requester, and approver metadata
-4. verify the resulting control-plane event is visible in `/platform/providers/control-plane-actions`
-5. re-check `/platform/providers/quota-policy`, `/platform/providers/budget-policy`, `/platform/providers/operations-status`, and the embedded `provider_operations` block in `/platform/runtime-status`
+3. submit `POST /platform/providers/control-plane-actions/reset-requests` with the exact reset shape and reason under a verified caller credential; the response returns the pending `action_id` and `action_hash`
+4. a DISTINCT verified credential reviews the pending action (`GET /platform/governed-actions?status=PENDING`) and applies `POST /platform/providers/control-plane-actions/reset-approvals` with that exact `action_id` and `action_hash`; identity comes from the Authorization credential, never from body metadata
+5. verify the resulting control-plane event is visible in `/platform/providers/control-plane-actions` and the executed evidence chain in `/platform/governed-actions`
+6. re-check `/platform/providers/quota-policy`, `/platform/providers/budget-policy`, `/platform/providers/operations-status`, and the embedded `provider_operations` block in `/platform/runtime-status`
 
 ## Prompt Activation Governance
 
@@ -538,9 +556,10 @@ Current governed control-action procedure:
 1. inspect `/platform/prompts/control-history?task_id=<task_id>` to review the latest promote or rollback actions for the target task; the route returns newest-first bounded history with `limit` constrained to 1 through 200
 2. inspect `/platform/prompts/runtime-status` to confirm the current active, candidate, and previous-active prompt versions for that task
 3. inspect `/platform/prompts/evidence-readiness` to confirm the prompt approval gate reports `RUNTIME_PASS` before promotion
-4. apply `POST /platform/prompts/control-actions` with explicit requested-by, approved-by, and reason metadata
-5. verify the resulting control-plane event is visible in both `/platform/prompts/control-history` and the task-specific rollout state in `/platform/prompts/runtime-status`
-6. verify post-change task execution and `/ai/audit` records show the expected selected prompt version and latest control event
+4. for a **promotion** (risk-increasing): submit `POST /platform/prompts/promote-requests` under a verified caller credential, then a DISTINCT verified credential approves the exact pending `action_id` and `action_hash` via `POST /platform/prompts/promote-approvals`; the single-call `control-actions` route refuses promotions with guidance to this flow
+5. for a **rollback** (safety direction): apply `POST /platform/prompts/control-actions` with the rollback action and reason; it executes immediately under the single verified caller identity, and the record honestly carries no approver
+6. verify the resulting control-plane event is visible in both `/platform/prompts/control-history` and the task-specific rollout state in `/platform/prompts/runtime-status`, and the governed evidence chain in `/platform/governed-actions`
+7. verify post-change task execution and `/ai/audit` records show the expected selected prompt version and latest control event
 
 Current rollback and incident-response expectations:
 

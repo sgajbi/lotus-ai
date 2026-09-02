@@ -191,5 +191,21 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
                 return record.model_copy(deep=True)
         return None
 
+    def list_governed_actions(
+        self,
+        *,
+        status: str | None,
+        target: str | None,
+        limit: int,
+    ) -> list[GovernedActionRecord]:
+        records = [
+            record
+            for record in self._governed_actions.values()
+            if (status is None or record.status.value == status)
+            and (target is None or record.target == target)
+        ]
+        records.sort(key=lambda record: record.requested_at, reverse=True)
+        return [record.model_copy(deep=True) for record in records[:limit]]
+
     def upsert_governed_action(self, record: GovernedActionRecord) -> None:
         self._governed_actions[record.action_id] = record.model_copy(deep=True)

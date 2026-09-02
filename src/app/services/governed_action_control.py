@@ -25,7 +25,9 @@ from uuid import uuid4
 
 from fastapi import HTTPException, status
 
+from app.config import settings
 from app.contracts.governed_actions import (
+    GovernedActionHistoryResponse,
     GovernedActionRecord,
     GovernedActionStatus,
     GovernedActionType,
@@ -251,6 +253,32 @@ def _require_verified_governing_credential(caller: AuthenticatedCaller) -> None:
                 "identity cannot distinguish a requester from an approver."
             ),
         )
+
+
+def build_governed_action_history(
+    *,
+    status_filter: GovernedActionStatus | None = None,
+    target: str | None = None,
+    limit: int = 50,
+) -> GovernedActionHistoryResponse:
+    """Read governed-action evidence, newest requested first (issue #157).
+
+    A pure read over the existing store: the approver reviews the exact
+    pending action before approving its hash, and the auditor reconstructs
+    the request-approval-execution chain - including evidence pinned only
+    here, such as a capability degradation cleared by an executed restore.
+    """
+
+    records = get_provider_operations_store().list_governed_actions(
+        status=status_filter.value if status_filter is not None else None,
+        target=target,
+        limit=limit,
+    )
+    return GovernedActionHistoryResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        actions=records,
+    )
 
 
 def _utc_now_iso() -> str:

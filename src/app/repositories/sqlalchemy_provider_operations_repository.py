@@ -389,6 +389,22 @@ class SqlAlchemyProviderOperationsRepository(
             ).scalar_one_or_none()
             return _to_governed_action_record(model) if model is not None else None
 
+    def list_governed_actions(
+        self,
+        *,
+        status: str | None,
+        target: str | None,
+        limit: int,
+    ) -> list[GovernedActionRecord]:
+        with self._session_factory() as session:
+            query = select(GovernedActionModel)
+            if status is not None:
+                query = query.where(GovernedActionModel.status == status)
+            if target is not None:
+                query = query.where(GovernedActionModel.target == target)
+            query = query.order_by(GovernedActionModel.requested_at.desc()).limit(limit)
+            return [_to_governed_action_record(model) for model in session.execute(query).scalars()]
+
     def upsert_governed_action(self, record: GovernedActionRecord) -> None:
         with self._session_factory() as session:
             model = session.get(GovernedActionModel, record.action_id)
