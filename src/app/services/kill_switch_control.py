@@ -1,9 +1,13 @@
 """Kill-switch operator actions and enforcement (issue #177, slice 1).
 
-Activation and clearance are governed control-plane actions: PROVIDER_CONTROL
-authorization, requester and approver identity, an operator reason, and (like
-provider-operations resets) a durable store requirement so the control history
-survives restarts and replicas. Enforcement runs at the provider gateway
+Activation and clearance are governed control-plane actions with opposite
+risk directions (issue #157). Activation stops execution: one authorized
+principal, immediately - never a human handoff inside an emergency stop.
+Clearance resumes execution somebody judged unsafe: a verified requester
+records the intent, a DISTINCT verified credential approves the exact action
+hash, and the evidence chain is durable. Both require PROVIDER_CONTROL
+authorization and (like provider-operations resets) a durable store so the
+control history survives restarts and replicas. Enforcement runs at the provider gateway
 preflight, before any other veto: an operator stop outranks quota, budget and
 breaker state, and a hit is recorded as a routing rejection with the bounded
 KILL_SWITCH_ACTIVE category (issue #176).
@@ -22,19 +26,31 @@ from fastapi import HTTPException, status
 
 from app.config import settings
 from app.contracts.access_control import AuthorizationCapabilityType
+from app.contracts.governed_actions import (
+    GovernedActionRecord,
+    GovernedActionResponse,
+    GovernedActionType,
+)
 from app.contracts.kill_switches import (
     KillSwitchSemantics,
     TARGETLESS_KILL_SWITCH_SCOPES,
     KillSwitchActionResponse,
     KillSwitchActivationRecord,
     KillSwitchActivationRequest,
-    KillSwitchClearRequest,
+    KillSwitchClearApprovalRequest,
+    KillSwitchClearApprovalResponse,
+    KillSwitchClearIntentRequest,
     KillSwitchScope,
     KillSwitchStatusResponse,
 )
 from app.contracts.providers import ProviderExecutionRequest, ProviderFailureCategory
 from app.providers.base import ProviderExecutionError
+from app.http.authenticated_caller import AuthenticatedCaller
 from app.services.access_control_authorization import authorize_request, require_authorized
+from app.services.governed_action_control import (
+    approve_and_execute_governed_action,
+    submit_governed_action,
+)
 from app.services.kill_switch_store import get_kill_switch_repository
 from app.services.provider_metrics import record_kill_switch_action
 from app.services.provider_execution_config import resolve_provider_execution_config
@@ -92,16 +108,100 @@ def activate_kill_switch(request: KillSwitchActivationRequest) -> KillSwitchActi
     )
 
 
-def clear_kill_switch(switch_id: str, request: KillSwitchClearRequest) -> KillSwitchActionResponse:
+def request_kill_switch_clearance(
+    switch_id: str,
+    request: KillSwitchClearIntentRequest,
+    caller: AuthenticatedCaller,
+) -> GovernedActionResponse:
+    """Step one of governed clearance: record the intent under the requester's credential."""
+
     require_authorized(
         authorize_request(
-            caller_app=request.caller_app,
+            caller_app=caller.caller_app,
+            capability_type=AuthorizationCapabilityType.PROVIDER_CONTROL,
+        )
+    )
+    _require_durable_store()
+    activation = _require_active_activation(switch_id)
+    record = submit_governed_action(
+        caller=caller,
+        action_type=GovernedActionType.KILL_SWITCH_CLEAR,
+        target=switch_id,
+        payload=_clearance_payload(activation, request.reason),
+        attribution=request.requested_by,
+    )
+    return GovernedActionResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        governed_action=record,
+        summary=[
+            f"Clearance of kill switch `{switch_id}` is pending approval.",
+            "A distinct verified credential must approve action "
+            f"`{record.action_id}` with hash `{record.action_hash}`.",
+            "The switch keeps enforcing until the approval executes.",
+        ],
+    )
+
+
+def approve_kill_switch_clearance(
+    switch_id: str,
+    request: KillSwitchClearApprovalRequest,
+    caller: AuthenticatedCaller,
+) -> KillSwitchClearApprovalResponse:
+    """Step two: a distinct verified credential approves the exact action, which executes it."""
+
+    require_authorized(
+        authorize_request(
+            caller_app=caller.caller_app,
             capability_type=AuthorizationCapabilityType.PROVIDER_CONTROL,
         )
     )
     _require_durable_store()
     repository = get_kill_switch_repository()
-    activation = repository.get_activation(switch_id)
+    activation = _require_active_activation(switch_id)
+    cleared_holder: dict[str, KillSwitchActivationRecord] = {}
+
+    def _execute_clearance(record: GovernedActionRecord) -> None:
+        cleared = activation.model_copy(
+            update={
+                "cleared_at": _utc_now_iso(),
+                "cleared_by": f"{caller.caller_app} (credential {caller.credential_key_id})",
+                "clear_reason": record.action_payload.get("clear_reason"),
+            }
+        )
+        repository.upsert_activation(cleared)
+        record_kill_switch_action(
+            action="cleared", scope=cleared.scope.value, semantics=cleared.semantics.value
+        )
+        cleared_holder["activation"] = cleared
+
+    executed = approve_and_execute_governed_action(
+        caller=caller,
+        action_id=request.action_id,
+        expected_target=switch_id,
+        expected_hash=request.action_hash,
+        current_payload_builder=lambda record: _clearance_payload(
+            activation, record.action_payload.get("clear_reason") or ""
+        ),
+        attribution=request.approved_by,
+        execute=_execute_clearance,
+    )
+    return KillSwitchClearApprovalResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        store_mode=settings.kill_switch_store_mode,
+        activation=cleared_holder["activation"],
+        governed_action=executed,
+        summary=[
+            f"Cleared kill switch `{switch_id}` under governed action `{executed.action_id}`.",
+            f"Requested under credential `{executed.requester_key_id}` and approved under "
+            f"distinct credential `{executed.approver_key_id}`.",
+        ],
+    )
+
+
+def _require_active_activation(switch_id: str) -> KillSwitchActivationRecord:
+    activation = get_kill_switch_repository().get_activation(switch_id)
     if activation is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -112,27 +212,27 @@ def clear_kill_switch(switch_id: str, request: KillSwitchClearRequest) -> KillSw
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Kill-switch activation `{switch_id}` is already cleared.",
         )
-    cleared = activation.model_copy(
-        update={
-            "cleared_at": _utc_now_iso(),
-            "cleared_by": request.approved_by,
-            "clear_reason": request.reason,
-        }
-    )
-    repository.upsert_activation(cleared)
-    record_kill_switch_action(
-        action="cleared", scope=cleared.scope.value, semantics=cleared.semantics.value
-    )
-    return KillSwitchActionResponse(
-        service=settings.service_name,
-        version=settings.service_version,
-        store_mode=settings.kill_switch_store_mode,
-        activation=cleared,
-        summary=[
-            f"Cleared kill switch `{switch_id}`.",
-            f"Requested by `{request.requested_by}` and approved by `{request.approved_by}`.",
-        ],
-    )
+    return activation
+
+
+def _clearance_payload(
+    activation: KillSwitchActivationRecord, reason: str
+) -> dict[str, str | None]:
+    """The exact action the approver signs off on.
+
+    Pins the activation identity (`activated_at`) as well as the switch id, so
+    an approval can never carry over to a re-activation of the same switch.
+    """
+
+    return {
+        "action_type": GovernedActionType.KILL_SWITCH_CLEAR.value,
+        "switch_id": activation.switch_id,
+        "scope": activation.scope.value,
+        "semantics": activation.semantics.value,
+        "target": activation.target,
+        "activated_at": activation.activated_at,
+        "clear_reason": reason,
+    }
 
 
 def build_kill_switch_status() -> KillSwitchStatusResponse:

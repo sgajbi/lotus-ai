@@ -16,7 +16,9 @@ from app.contracts.providers import (
     ProviderOperationsControlActionType,
     ProviderQuotaScope,
 )
+from app.contracts.governed_actions import GovernedActionRecord
 from app.db.models import (
+    GovernedActionModel,
     ProviderBudgetStateModel,
     ProviderDegradationStateModel,
     ProviderOperationsEventModel,
@@ -364,6 +366,40 @@ class SqlAlchemyProviderOperationsRepository(
             recorded_at=model.recorded_at,
         )
 
+    def get_governed_action(self, action_id: str) -> GovernedActionRecord | None:
+        with self._session_factory() as session:
+            model = session.get(GovernedActionModel, action_id)
+            return _to_governed_action_record(model) if model is not None else None
+
+    def get_pending_governed_action(
+        self,
+        *,
+        action_type: str,
+        target: str,
+    ) -> GovernedActionRecord | None:
+        with self._session_factory() as session:
+            model = session.execute(
+                select(GovernedActionModel)
+                .where(
+                    GovernedActionModel.action_type == action_type,
+                    GovernedActionModel.target == target,
+                    GovernedActionModel.status == "PENDING",
+                )
+                .limit(1)
+            ).scalar_one_or_none()
+            return _to_governed_action_record(model) if model is not None else None
+
+    def upsert_governed_action(self, record: GovernedActionRecord) -> None:
+        with self._session_factory() as session:
+            model = session.get(GovernedActionModel, record.action_id)
+            payload = record.model_dump(mode="json")
+            if model is None:
+                session.add(GovernedActionModel(**payload))
+            else:
+                for field, value in payload.items():
+                    setattr(model, field, value)
+            session.commit()
+
     def _ensure_sqlite_parent_directory(self) -> None:
         prefix = "sqlite:///"
         if not self._database_url.startswith(prefix):
@@ -392,4 +428,10 @@ def _build_legacy_control_authorization() -> AuthorizationDecision:
             "Legacy provider control event predates explicit caller-authorization capture and is "
             "treated as a durable pre-RFC-0012 operator action."
         ),
+    )
+
+
+def _to_governed_action_record(model: GovernedActionModel) -> GovernedActionRecord:
+    return GovernedActionRecord.model_validate(
+        {column: getattr(model, column) for column in GovernedActionRecord.model_fields}
     )

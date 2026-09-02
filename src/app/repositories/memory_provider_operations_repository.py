@@ -6,6 +6,7 @@ from app.contracts.providers import (
     ProviderFailureCategory,
     ProviderQuotaScope,
 )
+from app.contracts.governed_actions import GovernedActionRecord, GovernedActionStatus
 from app.repositories.provider_operations_repository import (
     ProviderBudgetStateRecord,
     ProviderDegradationStateRecord,
@@ -21,6 +22,7 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
         self._budget_states: dict[str, ProviderBudgetStateRecord] = {}
         self._degradation_states: dict[str, ProviderDegradationStateRecord] = {}
         self._event_records: list[ProviderOperationsEventRecord] = []
+        self._governed_actions: dict[str, GovernedActionRecord] = {}
 
     def list_quota_states(self) -> list[ProviderQuotaStateRecord]:
         return [
@@ -169,3 +171,25 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
 
     def list_operations_events(self, *, limit: int) -> list[ProviderOperationsEventRecord]:
         return [deepcopy(record) for record in self._event_records[:limit]]
+
+    def get_governed_action(self, action_id: str) -> GovernedActionRecord | None:
+        record = self._governed_actions.get(action_id)
+        return record.model_copy(deep=True) if record is not None else None
+
+    def get_pending_governed_action(
+        self,
+        *,
+        action_type: str,
+        target: str,
+    ) -> GovernedActionRecord | None:
+        for record in self._governed_actions.values():
+            if (
+                record.action_type.value == action_type
+                and record.target == target
+                and record.status is GovernedActionStatus.PENDING
+            ):
+                return record.model_copy(deep=True)
+        return None
+
+    def upsert_governed_action(self, record: GovernedActionRecord) -> None:
+        self._governed_actions[record.action_id] = record.model_copy(deep=True)

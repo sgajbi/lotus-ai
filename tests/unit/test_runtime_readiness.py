@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.config import settings
 from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.db.models import (
+    GovernedActionModel,
     ProviderBudgetStateModel,
     ProviderDegradationStateModel,
     ProviderOperationsEventModel,
@@ -253,6 +254,7 @@ def test_the_provider_operations_probe_names_the_tables_the_repository_uses() ->
     repository_tables = {
         model.__tablename__
         for model in (
+            GovernedActionModel,
             ProviderBudgetStateModel,
             ProviderDegradationStateModel,
             ProviderOperationsEventModel,

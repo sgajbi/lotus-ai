@@ -115,6 +115,7 @@ def get_provider_operations_store_runtime_status() -> StoreRuntimeStatusDescript
         expected_tables=[
             "provider_budget_state",
             "provider_degradation_state",
+            "provider_governed_actions",
             "provider_operations_events",
             "provider_quota_state",
         ],

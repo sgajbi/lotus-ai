@@ -256,6 +256,32 @@ class ProviderDegradationStateModel(Base):
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
+class GovernedActionModel(Base):
+    """Governed-action evidence: request, approval and execution (issue #157)."""
+
+    __tablename__ = "provider_governed_actions"
+
+    action_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    actor_class: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    target: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
+    action_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    action_payload: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    requester_caller_app: Mapped[str] = mapped_column(String(128), nullable=False)
+    requester_trust_source: Mapped[str] = mapped_column(String(64), nullable=False)
+    requester_key_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    requester_attribution: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    requested_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    approver_caller_app: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    approver_trust_source: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approver_key_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    approver_attribution: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    approved_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    executed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    superseded_by_action_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
 class ProviderOperationsEventModel(Base):
     __tablename__ = "provider_operations_events"
 
