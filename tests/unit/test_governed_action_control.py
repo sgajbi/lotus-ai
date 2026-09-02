@@ -211,3 +211,26 @@ def test_a_system_originated_record_would_have_no_approval_step() -> None:
         _approve(forged)
     assert exc_info.value.status_code == 409
     assert "no approval step" in exc_info.value.detail
+
+
+def test_a_system_originated_action_records_workload_identity_without_approval() -> None:
+    """The legal system-originated path (issue #157, final slice): a runtime
+    recovery action is recorded under the worker's workload identity with no
+    approver, EXECUTED immediately - and, per the guard above, structurally
+    incapable of ever satisfying a human-approval requirement."""
+
+    record = record_system_originated_action(
+        service_identity="worker-alpha-01",
+        action_type=GovernedActionType.ASYNC_QUEUE_RECOVERY,
+        target="asyncjob_recovered",
+        payload={"action": "QUARANTINE_QUEUED_JOB", "reason": "poisoned payload"},
+    )
+
+    assert record.actor_class is GovernedActorClass.SYSTEM_ORIGINATED
+    assert record.status is GovernedActionStatus.EXECUTED
+    assert record.requester_caller_app == "worker-alpha-01"
+    assert record.requester_key_id is None
+    assert record.approver_caller_app is None
+    assert record.approver_key_id is None
+    persisted = get_provider_operations_store().get_governed_action(record.action_id)
+    assert persisted == record

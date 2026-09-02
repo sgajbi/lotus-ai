@@ -41,6 +41,11 @@ class GovernedActionType(str, Enum):
     KILL_SWITCH_CLEAR = "KILL_SWITCH_CLEAR"
     PROMPT_PROMOTE = "PROMPT_PROMOTE"
     PROVIDER_OPERATIONS_RESET = "PROVIDER_OPERATIONS_RESET"
+    # Runtime-originated: a worker quarantining or redriving a poisoned queue
+    # job answers to a service identity, not a human approver, and is
+    # explicitly SYSTEM_ORIGINATED rather than dressing a service string up
+    # as an approval (issue #157).
+    ASYNC_QUEUE_RECOVERY = "ASYNC_QUEUE_RECOVERY"
 
 
 class GovernedActionStatus(str, Enum):

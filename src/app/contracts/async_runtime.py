@@ -186,7 +186,14 @@ class AsyncControlEventDescriptor(BaseModel):
         description="Type of governed async control action that was recorded."
     )
     requested_by: str = Field(description="Operator or system identity requesting the action.")
-    approved_by: str = Field(description="Approver identity recorded for the action.")
+    approved_by: str | None = Field(
+        default=None,
+        description=(
+            "Approver identity for operator-invoked actions; null for runtime-originated "
+            "recovery, which is SYSTEM_ORIGINATED governed evidence, not an approval "
+            "(issue #157)."
+        ),
+    )
     reason: str = Field(description="Human-readable reason for the async control action.")
     prior_status: str = Field(description="Async job status before the action was applied.")
     resulting_status: str = Field(description="Async job status after the action was applied.")

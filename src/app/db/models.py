@@ -419,7 +419,7 @@ class AsyncControlEventModel(Base):
     job_id: Mapped[str] = mapped_column(ForeignKey("async_jobs.job_id"), nullable=False, index=True)
     action_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     requested_by: Mapped[str] = mapped_column(String(256), nullable=False)
-    approved_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    approved_by: Mapped[str | None] = mapped_column(String(256), nullable=True)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     prior_status: Mapped[str] = mapped_column(String(64), nullable=False)
     resulting_status: Mapped[str] = mapped_column(String(64), nullable=False)

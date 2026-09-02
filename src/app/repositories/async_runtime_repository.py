@@ -55,7 +55,7 @@ class AsyncRuntimeControlEventRecord:
     job_id: str
     action_type: str
     requested_by: str
-    approved_by: str
+    approved_by: str | None
     reason: str
     prior_status: str
     resulting_status: str
