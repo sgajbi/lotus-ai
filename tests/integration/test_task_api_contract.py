@@ -1034,3 +1034,64 @@ def test_task_execute_contract_guards_against_local_contract_echo_output(
         "invalid_grounded_summary_language"
     )
     assert body["result"]["structured_output"]["talking_points"]
+
+
+def test_declared_capability_requirements_ride_the_response_visibly_unenforced(
+    client: TestClient,
+) -> None:
+    """Issue #244 S1 at the HTTP boundary: a consumer declares what the
+    workload needs — never a provider or a vendor feature — and the response
+    shows the declaration recorded with an explicit NOT_ENFORCED posture, so
+    nobody can mistake a recorded ceiling for a held one."""
+
+    response = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {
+                "caller_app": "lotus-manage",
+                "correlation_id": "corr-requirements-http",
+                "tenant_id": "tenant-sg-001",
+            },
+            "context": {
+                "summary": "Explain rebalance outcome",
+                "payload": {"status": "BLOCKED"},
+                "source_refs": ["lotus-manage:run:reb_http_1"],
+            },
+            "requirements": {
+                "structured_output_required": True,
+                "max_latency_ms": 2000,
+            },
+            "expected_output_label": "EXPLANATION_ONLY",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    descriptor = next(
+        d
+        for d in body["evidence"]["descriptors"]
+        if d["evidence_type"] == "capability_requirements"
+    )
+    assert descriptor["attributes"]["requirements_enforcement"] == "NOT_ENFORCED"
+    assert descriptor["attributes"]["declared"] == {
+        "structured_output_required": True,
+        "max_latency_ms": 2000,
+    }
+
+    empty = client.post(
+        "/ai/tasks/execute",
+        json={
+            "task_id": "explain.v1",
+            "input_mode": "STRUCTURED_CONTEXT",
+            "caller": {"caller_app": "lotus-manage", "correlation_id": "corr-req-empty"},
+            "context": {
+                "summary": "Explain rebalance outcome",
+                "payload": {"status": "BLOCKED"},
+                "source_refs": ["lotus-manage:run:reb_http_2"],
+            },
+            "requirements": {},
+        },
+    )
+    assert empty.status_code == 422

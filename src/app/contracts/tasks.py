@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.contracts.access_control import AuthorizationDecision
 from app.contracts.output_validation import OutputValidationOutcome
+from app.contracts.capability_requirements import CapabilityRequirements
 from app.contracts.evidence import ExecutionEvidenceBundle
 from app.contracts.prompts import PromptSelectionTraceDescriptor
 from app.contracts.providers import ProviderAdapterKind, RoutingDecisionDescriptor
@@ -93,6 +94,14 @@ class TaskExecutionRequest(BaseModel):
     input_mode: TaskInputMode = Field(description="How the task input context is provided.")
     caller: CallerMetadata = Field(description="Calling system metadata.")
     context: TaskContextEnvelope = Field(description="Structured context envelope for execution.")
+    requirements: CapabilityRequirements | None = Field(
+        default=None,
+        description=(
+            "Optional workload requirements (issue #244, S1). Validated and recorded as "
+            "execution evidence with an explicit NOT_ENFORCED posture until capability "
+            "eligibility ships; absent means today's routing behaviour, unchanged."
+        ),
+    )
     expected_output_label: OutputLabel | None = Field(
         default=None,
         description="Optional caller assertion about the expected output label for the task.",
