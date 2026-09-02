@@ -44,6 +44,10 @@ class GovernedActionType(str, Enum):
     # Serving-posture expansion of a catalogue model (issue #245): eval
     # evidence enables the decision; a distinct verified credential makes it.
     MODEL_LIFECYCLE_PROMOTE = "MODEL_LIFECYCLE_PROMOTE"
+    # Clearing an operator capability degradation re-exposes an
+    # evidence-derived capability fact to requirement routing - risk-increasing,
+    # so it takes the same two-step flow (issue #245, slice 2).
+    MODEL_CAPABILITY_RESTORE = "MODEL_CAPABILITY_RESTORE"
     # Runtime-originated: a worker quarantining or redriving a poisoned queue
     # job answers to a service identity, not a human approver, and is
     # explicitly SYSTEM_ORIGINATED rather than dressing a service string up

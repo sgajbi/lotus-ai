@@ -29,8 +29,15 @@ from app.contracts.governed_actions import (
 )
 from app.contracts.model_catalogue import (
     ALLOWED_MODEL_LIFECYCLE_TRANSITIONS,
+    DEGRADABLE_CAPABILITY_DIMENSIONS,
     MODEL_SERVING_PROMOTION_TARGETS,
     OPERATOR_TERMINAL_LIFECYCLE_STATES,
+    ModelCapabilityDegradation,
+    ModelCapabilityDegradationRequest,
+    ModelCapabilityDegradationResponse,
+    ModelCapabilityRestoreApprovalRequest,
+    ModelCapabilityRestoreApprovalResponse,
+    ModelCapabilityRestoreIntentRequest,
     ModelCatalogueEntry,
     ModelCatalogueEntryDetailResponse,
     ModelCatalogueResponse,
@@ -238,11 +245,15 @@ def _preserve_assessed_capabilities(
     prove; it may never subtract ones it cannot.
     """
 
-    preserved = {
+    preserved: dict[str, object] = {
         dimension: getattr(existing, dimension)
         for dimension in _CAPABILITY_DIMENSIONS
         if getattr(candidate, dimension) is None and getattr(existing, dimension) is not None
     }
+    # Operator degradations survive reseeding unconditionally: only the
+    # governed restore flow may clear one (issue #245, slice 2).
+    if existing.capability_degradations:
+        preserved["capability_degradations"] = existing.capability_degradations
     return candidate.model_copy(update=preserved) if preserved else candidate
 
 
@@ -317,6 +328,15 @@ def enforce_capability_requirements(
     for requirement_field, fact_field in _CAPABILITY_FACT_BY_REQUIREMENT.items():
         if getattr(requirements, requirement_field) is not True:
             continue
+        degradation = entry.capability_degradations.get(fact_field)
+        if degradation is not None:
+            raise ProviderExecutionError(
+                category=ProviderFailureCategory.CAPABILITY_DEGRADED,
+                message=(
+                    f"Candidate `{entry.entry_id}` has capability `{requirement_field}` "
+                    f"degraded by an operator: {degradation.reason}"
+                ),
+            )
         fact = getattr(entry, fact_field)
         if fact is True:
             continue
@@ -662,6 +682,208 @@ def approve_model_promotion(
             f"Requested under credential `{executed.requester_key_id}` and approved under "
             f"distinct credential `{executed.approver_key_id}`.",
             f"Evidence: `{transition_response.transition.approval_evidence_ref}`.",
+        ],
+    )
+
+
+def degrade_model_capability(
+    entry_id: str,
+    request: ModelCapabilityDegradationRequest,
+    caller: AuthenticatedCaller,
+) -> ModelCapabilityDegradationResponse:
+    """Degrade one capability dimension on a catalogue entry, immediately.
+
+    Safety direction (issue #245, slice 2): containing an observed regression
+    takes one verified principal and no approval step. The underlying
+    assessed fact is never rewritten - the degradation overrides it for
+    requirement routing only while present.
+    """
+
+    _require_provider_control_authorization(caller)
+    _require_durable_catalogue_store()
+    entry = _get_required_catalogue_entry(entry_id)
+    if request.dimension not in DEGRADABLE_CAPABILITY_DIMENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                f"`{request.dimension}` is not a degradable capability dimension; requirement "
+                f"routing enforces: {sorted(DEGRADABLE_CAPABILITY_DIMENSIONS)}."
+            ),
+        )
+    existing = entry.capability_degradations.get(request.dimension)
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Capability `{request.dimension}` on `{entry_id}` is already degraded "
+                f"(by {existing.degraded_by} at {existing.degraded_at}); the active "
+                "degradation's provenance is not overwritable."
+            ),
+        )
+    degradation = ModelCapabilityDegradation(
+        dimension=request.dimension,
+        reason=request.reason,
+        degraded_by=verified_caller_identity(caller),
+        degraded_at=_utc_now_iso(),
+    )
+    updated = entry.model_copy(
+        update={
+            "capability_degradations": {
+                **entry.capability_degradations,
+                request.dimension: degradation,
+            },
+            "last_updated_at": degradation.degraded_at,
+        }
+    )
+    upsert_model_catalogue_entry(updated)
+    return ModelCapabilityDegradationResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        store_mode=settings.model_catalogue_store_mode,
+        entry=updated,
+        degradation=degradation,
+    )
+
+
+def _capability_restore_payload(
+    *,
+    entry: ModelCatalogueEntry,
+    degradation: ModelCapabilityDegradation,
+    evaluation_run_id: str,
+    reason: str,
+) -> dict[str, str | None]:
+    """The exact action the approver signs off on.
+
+    Pins the full degradation being cleared: if the overlay changes between
+    request and approval (re-degraded with a new reason, or already cleared),
+    the stale approval refuses instead of executing (issue #245, slice 2).
+    """
+
+    return {
+        "action_type": GovernedActionType.MODEL_CAPABILITY_RESTORE.value,
+        "entry_id": entry.entry_id,
+        "dimension": degradation.dimension,
+        "degradation_reason": degradation.reason,
+        "degraded_by": degradation.degraded_by,
+        "degraded_at": degradation.degraded_at,
+        "evaluation_run_id": evaluation_run_id,
+        "reason": reason,
+    }
+
+
+def _get_required_capability_degradation(
+    entry: ModelCatalogueEntry, dimension: str
+) -> ModelCapabilityDegradation:
+    degradation = entry.capability_degradations.get(dimension)
+    if degradation is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Capability `{dimension}` on `{entry.entry_id}` is not degraded; "
+                "there is nothing to restore."
+            ),
+        )
+    return degradation
+
+
+def request_model_capability_restore(
+    entry_id: str,
+    request: ModelCapabilityRestoreIntentRequest,
+    caller: AuthenticatedCaller,
+) -> GovernedActionResponse:
+    """Step one of governed capability restore: record the intent under the requester's credential.
+
+    Clearing a degradation re-exposes the underlying evidence-derived fact to
+    requirement routing - risk-increasing, so the restore is validated first
+    (active degradation, PASS-verdict eval evidence) and executes only under
+    a distinct verified approval.
+    """
+
+    _require_provider_control_authorization(caller)
+    _require_durable_catalogue_store()
+    entry = _get_required_catalogue_entry(entry_id)
+    degradation = _get_required_capability_degradation(entry, request.dimension)
+    _require_pass_verdict_evaluation_run(request.evaluation_run_id)
+    record = submit_governed_action(
+        caller=caller,
+        action_type=GovernedActionType.MODEL_CAPABILITY_RESTORE,
+        target=entry_id,
+        payload=_capability_restore_payload(
+            entry=entry,
+            degradation=degradation,
+            evaluation_run_id=request.evaluation_run_id,
+            reason=request.reason,
+        ),
+        attribution=request.requested_by,
+    )
+    return GovernedActionResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        governed_action=record,
+        summary=[
+            f"Restore of capability `{request.dimension}` on `{entry_id}` is pending approval.",
+            "A distinct verified credential must approve action "
+            f"`{record.action_id}` with hash `{record.action_hash}`.",
+            f"The capability stays degraded ({degradation.reason}) until then.",
+        ],
+    )
+
+
+def approve_model_capability_restore(
+    entry_id: str,
+    request: ModelCapabilityRestoreApprovalRequest,
+    caller: AuthenticatedCaller,
+) -> ModelCapabilityRestoreApprovalResponse:
+    """Step two: a distinct verified credential approves the exact action, which executes it."""
+
+    _require_provider_control_authorization(caller)
+    _require_durable_catalogue_store()
+    entry = _get_required_catalogue_entry(entry_id)
+    outcome: dict[str, object] = {}
+
+    def _execute_restore(record: GovernedActionRecord) -> None:
+        dimension = str(record.action_payload.get("dimension"))
+        _require_pass_verdict_evaluation_run(str(record.action_payload.get("evaluation_run_id")))
+        remaining = {
+            key: value for key, value in entry.capability_degradations.items() if key != dimension
+        }
+        updated = entry.model_copy(
+            update={"capability_degradations": remaining, "last_updated_at": _utc_now_iso()}
+        )
+        upsert_model_catalogue_entry(updated)
+        outcome["entry"] = updated
+
+    def _current_payload(record: GovernedActionRecord) -> dict[str, str | None]:
+        dimension = str(record.action_payload.get("dimension"))
+        return _capability_restore_payload(
+            entry=entry,
+            degradation=_get_required_capability_degradation(entry, dimension),
+            evaluation_run_id=str(record.action_payload.get("evaluation_run_id")),
+            reason=str(record.action_payload.get("reason")),
+        )
+
+    executed = approve_and_execute_governed_action(
+        caller=caller,
+        action_id=request.action_id,
+        expected_target=entry_id,
+        expected_hash=request.action_hash,
+        current_payload_builder=_current_payload,
+        attribution=request.approved_by,
+        execute=_execute_restore,
+    )
+    updated_entry = cast(ModelCatalogueEntry, outcome["entry"])
+    return ModelCapabilityRestoreApprovalResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        store_mode=settings.model_catalogue_store_mode,
+        entry=updated_entry,
+        governed_action=executed,
+        summary=[
+            f"Restored capability `{executed.action_payload.get('dimension')}` on `{entry_id}` "
+            f"under governed action `{executed.action_id}`.",
+            f"Requested under credential `{executed.requester_key_id}` and approved under "
+            f"distinct credential `{executed.approver_key_id}`.",
+            "The cleared degradation is pinned inside this action's payload.",
         ],
     )
 

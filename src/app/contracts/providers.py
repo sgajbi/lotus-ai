@@ -56,6 +56,11 @@ class ProviderFailureCategory(str, Enum):
     # as unknown - not laundered into a confident NOT_SUPPORTED.
     CAPABILITY_NOT_SUPPORTED = "CAPABILITY_NOT_SUPPORTED"
     CAPABILITY_UNKNOWN = "CAPABILITY_UNKNOWN"
+    # An operator has degraded this capability on the entry after observing a
+    # regression (issue #245, slice 2) - distinct from NOT_SUPPORTED (proven
+    # absent) and UNKNOWN (never assessed): "we turned this off" is a
+    # different operator story from either.
+    CAPABILITY_DEGRADED = "CAPABILITY_DEGRADED"
     # The caller's end-to-end latency budget ran out (issue #244). Distinct
     # from PROVIDER_TIMEOUT: the provider did nothing wrong - the governed
     # request deadline was exhausted by earlier attempts, backoff, or

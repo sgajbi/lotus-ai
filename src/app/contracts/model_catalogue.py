@@ -57,6 +57,23 @@ def derive_model_catalogue_entry_id(
     return f"{base}:{deployment}" if deployment else base
 
 
+class ModelCapabilityDegradation(BaseModel):
+    """One active operator capability degradation on a catalogue entry.
+
+    An observed regression scoped to one capability dimension (issue #245,
+    slice 2): the model stays in service for everything else, and the
+    underlying assessed fact is never rewritten - the degradation overrides
+    it only while present.
+    """
+
+    dimension: str = Field(min_length=1, description="Capability fact field degraded.")
+    reason: str = Field(min_length=1, description="The observed regression.")
+    degraded_by: str = Field(
+        min_length=1, description="Verified identity that degraded the capability."
+    )
+    degraded_at: str = Field(description="Instant the degradation was recorded (UTC).")
+
+
 class ModelCatalogueEntry(BaseModel):
     """One governed catalogue row for an exact model identity."""
 
@@ -125,6 +142,15 @@ class ModelCatalogueEntry(BaseModel):
     supports_streaming: bool | None = Field(
         default=None,
         description="Streaming capability; null means not yet assessed.",
+    )
+    capability_degradations: dict[str, ModelCapabilityDegradation] = Field(
+        default_factory=dict,
+        description=(
+            "Active operator capability degradations keyed by capability fact field "
+            "(issue #245, slice 2). While present, a degradation overrides the "
+            "underlying fact for requirement routing; it never rewrites the fact. "
+            "A cleared degradation is pinned inside the governed restore record."
+        ),
     )
     approved_workflow_pack_ids: list[str] = Field(
         default_factory=list,
@@ -244,6 +270,13 @@ MODEL_SERVING_PROMOTION_TARGETS: frozenset[ModelLifecycleState] = frozenset(
     }
 )
 
+# The capability dimensions requirement routing actually enforces (issue #245,
+# slice 2): only these can be operator-degraded - degrading a dimension no
+# routing decision consults would be a control that controls nothing.
+DEGRADABLE_CAPABILITY_DIMENSIONS: frozenset[str] = frozenset(
+    {"supports_structured_output", "supports_tool_calling"}
+)
+
 # States an operator has deliberately taken a model OUT of service through.
 # Nothing automatic - including a seeding-authority change - may resurrect
 # a model from these; only an explicit operator transition can.
@@ -341,6 +374,84 @@ class ModelLifecycleTransitionResponse(BaseModel):
     transition: ModelLifecycleTransitionRecord = Field(
         description="The durable transition record this action created.",
     )
+
+
+class ModelCapabilityDegradationRequest(BaseModel):
+    """Degrade one capability dimension on a catalogue entry.
+
+    Safety direction: containing an observed regression is applied
+    immediately by one verified principal - no approval step, and the caller
+    identity comes from the authenticated credential (issue #245, slice 2).
+    """
+
+    dimension: str = Field(
+        min_length=1,
+        description="Capability fact field to degrade (e.g. supports_structured_output).",
+    )
+    reason: str = Field(min_length=1, description="The observed regression.")
+
+
+class ModelCapabilityDegradationResponse(BaseModel):
+    service: str = Field(description="Service name emitting the response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    store_mode: str = Field(description="Where catalogue truth lives: memory or sqlalchemy.")
+    entry: ModelCatalogueEntry = Field(description="The entry after the degradation.")
+    degradation: ModelCapabilityDegradation = Field(
+        description="The degradation now active on the entry.",
+    )
+
+
+class ModelCapabilityRestoreIntentRequest(BaseModel):
+    """Step one of governed capability restore: a verified requester states the intent.
+
+    Clearing a degradation re-exposes the underlying evidence-derived fact to
+    requirement routing - risk-increasing, so it takes a distinct verified
+    approver and PASS-verdict eval evidence (issue #245, slice 2).
+    """
+
+    dimension: str = Field(min_length=1, description="Degraded capability fact field.")
+    reason: str = Field(min_length=1, description="Why the regression is considered resolved.")
+    evaluation_run_id: str = Field(
+        min_length=1,
+        description="Existing evaluation run whose PASS verdict backs this restore.",
+    )
+    requested_by: str | None = Field(
+        default=None,
+        max_length=256,
+        description="Claimed operator name; recorded as unverified attribution.",
+    )
+
+
+class ModelCapabilityRestoreApprovalRequest(BaseModel):
+    """Step two: a distinct verified credential approves the exact pending action."""
+
+    action_id: str = Field(min_length=1, max_length=64, description="Pending governed action id.")
+    action_hash: str = Field(
+        min_length=64,
+        max_length=64,
+        description="Hash of the action being approved, exactly as returned by the request step.",
+    )
+    approved_by: str | None = Field(
+        default=None,
+        max_length=256,
+        description="Claimed operator name; recorded as unverified attribution.",
+    )
+
+
+class ModelCapabilityRestoreApprovalResponse(BaseModel):
+    """The executed capability restore with its full governance evidence chain."""
+
+    service: str = Field(description="Service name emitting the response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    store_mode: str = Field(description="Where catalogue truth lives: memory or sqlalchemy.")
+    entry: ModelCatalogueEntry = Field(description="The entry after the restore.")
+    governed_action: GovernedActionRecord = Field(
+        description=(
+            "The request-approval-execution evidence chain; its payload pins the "
+            "exact degradation that was cleared (issue #245, slice 2)."
+        ),
+    )
+    summary: list[str] = Field(description="Human-readable account of what executed.")
 
 
 class ModelPromotionApprovalResponse(BaseModel):

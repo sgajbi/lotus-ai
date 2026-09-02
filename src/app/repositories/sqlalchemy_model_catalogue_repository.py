@@ -5,6 +5,7 @@ from pathlib import Path
 from sqlalchemy import select
 
 from app.contracts.model_catalogue import (
+    ModelCapabilityDegradation,
     ModelCatalogueEntry,
     ModelCatalogueSeedSource,
     ModelLifecycleState,
@@ -59,6 +60,10 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
             model.supports_structured_output = entry.supports_structured_output
             model.supports_tool_calling = entry.supports_tool_calling
             model.supports_streaming = entry.supports_streaming
+            model.capability_degradations = {
+                dimension: degradation.model_dump()
+                for dimension, degradation in entry.capability_degradations.items()
+            }
             model.approved_workflow_pack_ids = list(entry.approved_workflow_pack_ids)
             model.approval_evidence_refs = list(entry.approval_evidence_refs)
             model.approved_from_utc = entry.approved_from_utc
@@ -171,6 +176,10 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
             supports_structured_output=model.supports_structured_output,
             supports_tool_calling=model.supports_tool_calling,
             supports_streaming=model.supports_streaming,
+            capability_degradations={
+                dimension: ModelCapabilityDegradation.model_validate(payload)
+                for dimension, payload in (model.capability_degradations or {}).items()
+            },
             approved_workflow_pack_ids=list(model.approved_workflow_pack_ids),
             approval_evidence_refs=list(model.approval_evidence_refs),
             approved_from_utc=model.approved_from_utc,
