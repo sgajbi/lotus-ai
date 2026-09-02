@@ -115,7 +115,13 @@ class PromptControlEventDescriptor(BaseModel):
         description="Governed control-plane action applied to the prompt rollout state."
     )
     requested_by: str = Field(description="Operator identity that requested the action.")
-    approved_by: str = Field(description="Operator identity that approved the action.")
+    approved_by: str | None = Field(
+        default=None,
+        description=(
+            "Approver identity for governed promotions; null for rollbacks - the safety "
+            "direction has no approval step (issue #157)."
+        ),
+    )
     reason: str = Field(description="Recorded operator reason for the action.")
     prior_active_prompt_version: str | None = Field(
         default=None,
@@ -144,15 +150,10 @@ class PromptControlActionRequest(BaseModel):
     action_type: PromptControlActionType = Field(
         description="Governed prompt control-plane action to apply."
     )
-    caller_app: str = Field(
-        description="Caller application identity authorized to issue the prompt control action."
-    )
     candidate_prompt_version: str | None = Field(
         default=None,
-        description="Candidate prompt version to promote. Required for promotion and omitted for rollback.",
+        description="Candidate prompt version. Promotion is governed and refused on this route.",
     )
-    requested_by: str = Field(description="Operator identity requesting the action.")
-    approved_by: str = Field(description="Operator identity approving the action.")
     reason: str = Field(description="Human-readable operator reason for the change.")
 
 

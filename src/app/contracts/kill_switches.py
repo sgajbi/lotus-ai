@@ -57,8 +57,21 @@ class KillSwitchActivationRecord(BaseModel):
         "caller app); null only for targetless scopes.",
     )
     reason: str = Field(min_length=1, description="Operator reason recorded at activation.")
-    requested_by: str = Field(min_length=1, description="Operator who requested activation.")
-    approved_by: str = Field(min_length=1, description="Operator who approved activation.")
+    requested_by: str = Field(
+        min_length=1,
+        description=(
+            "Verified principal identity that activated the switch, derived from the "
+            "authenticated caller - never caller-typed free text (issue #157)."
+        ),
+    )
+    approved_by: str | None = Field(
+        default=None,
+        description=(
+            "Always null for activations: an emergency stop is a single-principal safety "
+            "action with no approval step (issue #157). Clearance approval lives on the "
+            "governed-action record."
+        ),
+    )
     activated_at: str = Field(description="Instant the switch became active (UTC).")
     expires_at_utc: str | None = Field(
         default=None,
@@ -85,7 +98,13 @@ class KillSwitchActivationRecord(BaseModel):
 
 
 class KillSwitchActivationRequest(BaseModel):
-    caller_app: str = Field(min_length=1, description="Calling application identity.")
+    """Activate a kill switch: one authorized principal, immediately.
+
+    Caller identity comes from the authenticated credential, never from the
+    body, and there is no approver field - requiring a second principal to
+    stop unsafe execution would make the platform less safe (issue #157).
+    """
+
     scope: KillSwitchScope = Field(description="What kind of target to disable.")
     semantics: KillSwitchSemantics = Field(
         default=KillSwitchSemantics.HARD_KILL,
@@ -97,8 +116,6 @@ class KillSwitchActivationRequest(BaseModel):
         description="Scope target; required for every scope except targetless ones.",
     )
     reason: str = Field(min_length=1, description="Why this switch is being activated.")
-    requested_by: str = Field(min_length=1, description="Operator requesting activation.")
-    approved_by: str = Field(min_length=1, description="Operator approving activation.")
     expires_at_utc: str | None = Field(
         default=None,
         description="Optional expiry instant (UTC ISO-8601).",

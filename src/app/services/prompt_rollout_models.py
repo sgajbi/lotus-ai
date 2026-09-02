@@ -26,7 +26,7 @@ class PromptRolloutEventRecord:
     task_id: str
     action_type: PromptControlActionType
     requested_by: str
-    approved_by: str
+    approved_by: str | None
     reason: str
     prior_active_prompt_version: str | None
     resulting_active_prompt_version: str | None

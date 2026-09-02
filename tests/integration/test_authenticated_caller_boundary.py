@@ -118,9 +118,14 @@ def test_protected_prompt_control_route_requires_authenticated_caller(
     assert "Authenticated caller identity is required" in response.json()["detail"]
 
 
-def test_protected_prompt_control_route_blocks_spoofed_body_caller(
+def test_prompt_control_ignores_any_body_caller_and_follows_the_authenticated_identity(
     client: TestClient,
 ) -> None:
+    """The stronger form of the old spoofed-body-caller check: the contract no
+    longer carries a caller identity at all (issue #157), so a claimed
+    caller_app in the body is inert and authorization follows only the
+    authenticated caller - which here lacks prompt control and is refused."""
+
     response = client.post(
         "/platform/prompts/control-actions",
         headers={"X-Caller-App": "lotus-workbench"},
@@ -128,7 +133,7 @@ def test_protected_prompt_control_route_blocks_spoofed_body_caller(
     )
 
     assert response.status_code == 403
-    assert "does not match the authenticated HTTP caller identity" in response.json()["detail"]
+    assert "not authorized for prompt control-plane actions" in response.json()["detail"]
 
 
 def _task_request(caller_app: str, *, tenant_id: str | None = "tenant-sg-001") -> dict[str, object]:

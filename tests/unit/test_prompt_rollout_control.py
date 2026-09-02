@@ -111,11 +111,9 @@ def test_apply_prompt_control_action_rolls_back_to_previous_active_version(tmp_p
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
-                caller_app="lotus-platform",
-                requested_by="alice@lotus.test",
-                approved_by="bob@lotus.test",
                 reason="Restore known-good prompt",
-            )
+            ),
+            GOVERNED_REQUESTER,
         )
 
         resolved = resolve_runtime_prompt_or_raise("explain.v1")
@@ -142,11 +140,9 @@ def test_apply_prompt_control_action_rejects_invalid_rollback_without_previous_a
                 PromptControlActionRequest(
                     task_id="explain.v1",
                     action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
-                    caller_app="lotus-platform",
-                    requested_by="alice@lotus.test",
-                    approved_by="bob@lotus.test",
                     reason="Attempt invalid rollback",
-                )
+                ),
+                GOVERNED_REQUESTER,
             )
         except HTTPException as exc:
             assert exc.status_code == 409
@@ -286,12 +282,10 @@ def test_promotion_request_dry_runs_the_transition_and_refuses_invalid_shapes(
                 PromptControlActionRequest(
                     task_id="explain.v1",
                     action_type=PromptControlActionType.PROMOTE_CANDIDATE,
-                    caller_app="lotus-platform",
                     candidate_prompt_version="foundation.explain.v2",
-                    requested_by="alice@lotus.test",
-                    approved_by="bob@lotus.test",
                     reason="Single-call promotion attempt",
-                )
+                ),
+                GOVERNED_REQUESTER,
             )
         except HTTPException as exc:
             assert exc.status_code == 409
@@ -373,12 +367,10 @@ def test_apply_prompt_control_action_rejects_invalid_rollback_shape(tmp_path: Pa
                 PromptControlActionRequest(
                     task_id="explain.v1",
                     action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
-                    caller_app="lotus-platform",
                     candidate_prompt_version="foundation.explain.v2",
-                    requested_by="alice@lotus.test",
-                    approved_by="bob@lotus.test",
                     reason="Rollback must not accept candidate version",
-                )
+                ),
+                GOVERNED_REQUESTER,
             )
         except HTTPException as exc:
             assert exc.status_code == 422
@@ -391,15 +383,13 @@ def test_resolve_transition_rejects_unsupported_action_type() -> None:
     request = PromptControlActionRequest(
         task_id="explain.v1",
         action_type=PromptControlActionType.PROMOTE_CANDIDATE,
-        caller_app="lotus-platform",
         candidate_prompt_version="foundation.explain.v2",
-        requested_by="alice@lotus.test",
-        approved_by="bob@lotus.test",
         reason="Exercise unsupported action branch",
     ).model_copy(update={"action_type": "INVALID"})
 
     try:
         _resolve_transition(
+            requested_by="alice@lotus.test",
             rollout_state=PromptRolloutStateRecord(
                 task_id="explain.v1",
                 active_prompt_version="foundation.explain.v1",
@@ -544,11 +534,9 @@ def test_a_promotion_approved_against_a_changed_baseline_is_refused(tmp_path: Pa
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
-                caller_app="lotus-platform",
-                requested_by="alice@lotus.test",
-                approved_by="bob@lotus.test",
                 reason="Baseline restored",
-            )
+            ),
+            GOVERNED_REQUESTER,
         )
 
         try:

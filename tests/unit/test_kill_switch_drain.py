@@ -21,6 +21,13 @@ from app.services.kill_switch_control import (
 from app.services.kill_switch_store import get_kill_switch_repository
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.unit.test_provider_gateway import _request
+from app.http.authenticated_caller import AuthenticatedCaller
+
+ACTIVATION_CALLER = AuthenticatedCaller(
+    caller_app="lotus-platform",
+    trust_source="verified_service_jwt",
+    credential_key_id="ops-key-alpha",
+)
 
 
 def _activate(
@@ -31,14 +38,12 @@ def _activate(
 ) -> str:
     response = activate_kill_switch(
         KillSwitchActivationRequest(
-            caller_app="lotus-platform",
             scope=scope,
             semantics=semantics,
             target=target,
             reason="Drain-semantics test activation.",
-            requested_by="alice@lotus.test",
-            approved_by="bob@lotus.test",
-        )
+        ),
+        ACTIVATION_CALLER,
     )
     return response.activation.switch_id
 

@@ -38,6 +38,7 @@ from app.services.prompt_store import get_prompt_repository, reset_prompt_store_
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
 from tests.support.governed_control import promote_prompt_for_test
+from tests.support.governed_control import GOVERNED_REQUESTER
 
 
 def _authorization() -> AuthorizationDecision:
@@ -197,11 +198,9 @@ def test_prompt_runtime_rollback_lineage_survives_sql_store_reinitialization(
             PromptControlActionRequest(
                 task_id="explain.v1",
                 action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
-                caller_app="lotus-platform",
-                requested_by="alice@lotus.test",
-                approved_by="bob@lotus.test",
                 reason="Restore known-good prompt",
-            )
+            ),
+            GOVERNED_REQUESTER,
         )
 
         reset_prompt_store_cache()
