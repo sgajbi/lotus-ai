@@ -309,14 +309,67 @@ def test_binding_refuses_an_execution_ineligible_lifecycle_state(
 
 def _transition_request(**overrides: object) -> ModelLifecycleTransitionRequest:
     payload: dict[str, object] = {
-        "caller_app": "lotus-platform",
         "to_state": ModelLifecycleState.EVALUATING,
         "reason": "Begin evaluation for governed promotion.",
-        "requested_by": "ops.primary@lotus",
-        "approved_by": "ops.secondary@lotus",
     }
     payload.update(overrides)
     return ModelLifecycleTransitionRequest.model_validate(payload)
+
+
+def _seed_evaluation_run(
+    run_id: str,
+    *,
+    lifecycle_status: str = "COMPLETED",
+    verdict: str | None = "PASS",
+) -> None:
+    from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+    from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+
+    get_evaluation_runtime_store().save_run(
+        EvaluationRunRecord(
+            run_id=run_id,
+            fixture_id="model_promotion_examples",
+            manifest_version="foundation.v1",
+            lifecycle_status=lifecycle_status,
+            triggered_by="operator-a",
+            submitted_at="2026-09-03T09:00:00Z",
+            async_job_id=None,
+            latest_message="Promotion evidence fixture.",
+            verdict=verdict,
+            case_count=3,
+        )
+    )
+
+
+def _promote_entry_for_test(
+    entry_id: str, to_state: ModelLifecycleState, evaluation_run_id: str
+) -> object:
+    """Run the full governed two-step promotion as test setup."""
+
+    from app.contracts.model_catalogue import (
+        ModelPromotionApprovalRequest,
+        ModelPromotionIntentRequest,
+    )
+    from app.services.model_catalogue import approve_model_promotion, request_model_promotion
+    from tests.support.governed_control import GOVERNED_APPROVER, GOVERNED_REQUESTER
+
+    pending = request_model_promotion(
+        entry_id,
+        ModelPromotionIntentRequest(
+            to_state=to_state,
+            reason="Promotion backed by passing evaluation evidence.",
+            evaluation_run_id=evaluation_run_id,
+        ),
+        GOVERNED_REQUESTER,
+    )
+    return approve_model_promotion(
+        entry_id,
+        ModelPromotionApprovalRequest(
+            action_id=pending.governed_action.action_id,
+            action_hash=pending.governed_action.action_hash,
+        ),
+        GOVERNED_APPROVER,
+    )
 
 
 @pytest.fixture
@@ -338,16 +391,23 @@ def test_lifecycle_transition_requires_authorization_and_durable_store(
 ) -> None:
     from fastapi import HTTPException
 
+    from app.http.authenticated_caller import AuthenticatedCaller
     from app.services.model_catalogue import apply_model_lifecycle_transition
+    from tests.support.governed_control import GOVERNED_REQUESTER
 
+    unauthorized = AuthenticatedCaller(
+        caller_app="lotus-manage",
+        trust_source="verified_service_jwt",
+        credential_key_id="ops-key-alpha",
+    )
     with pytest.raises(HTTPException) as excinfo:
-        apply_model_lifecycle_transition(
-            "text.local:qwen3:8b", _transition_request(caller_app="lotus-manage")
-        )
+        apply_model_lifecycle_transition("text.local:qwen3:8b", _transition_request(), unauthorized)
     assert excinfo.value.status_code == 403
 
     with pytest.raises(HTTPException) as excinfo:
-        apply_model_lifecycle_transition("text.local:qwen3:8b", _transition_request())
+        apply_model_lifecycle_transition(
+            "text.local:qwen3:8b", _transition_request(), GOVERNED_REQUESTER
+        )
     assert excinfo.value.status_code == 409
     assert "LOTUS_AI_MODEL_CATALOGUE_STORE_MODE" in str(excinfo.value.detail)
 
@@ -355,53 +415,62 @@ def test_lifecycle_transition_requires_authorization_and_durable_store(
 def test_lifecycle_transition_walks_the_governed_edge_table(_durable_catalogue: str) -> None:
     from fastapi import HTTPException
 
+    from app.contracts.model_catalogue import ModelPromotionApprovalResponse
     from app.services.model_catalogue import (
         apply_model_lifecycle_transition,
         build_model_catalogue_entry_detail,
     )
+    from tests.support.governed_control import GOVERNED_REQUESTER
 
     entry_id = _durable_catalogue
 
+    # A serving target is refused on the single-principal route BEFORE edge
+    # validation: the risk direction, not the edge table, is the first gate.
     with pytest.raises(HTTPException) as excinfo:
         apply_model_lifecycle_transition(
-            entry_id, _transition_request(to_state=ModelLifecycleState.PRODUCTION)
+            entry_id,
+            _transition_request(to_state=ModelLifecycleState.PRODUCTION),
+            GOVERNED_REQUESTER,
         )
-    assert excinfo.value.status_code == 422
-    assert "not allowed" in str(excinfo.value.detail)
+    assert excinfo.value.status_code == 409
+    assert "promotion-requests" in str(excinfo.value.detail)
 
-    apply_model_lifecycle_transition(entry_id, _transition_request())
-
-    with pytest.raises(HTTPException) as excinfo:
-        apply_model_lifecycle_transition(
-            entry_id, _transition_request(to_state=ModelLifecycleState.APPROVED)
-        )
-    assert excinfo.value.status_code == 422
-    assert "approval_evidence_ref" in str(excinfo.value.detail)
-
-    approved = apply_model_lifecycle_transition(
-        entry_id,
-        _transition_request(
-            to_state=ModelLifecycleState.APPROVED,
-            approval_evidence_ref="mrm-approval-2026-021",
-        ),
+    evaluating = apply_model_lifecycle_transition(
+        entry_id, _transition_request(), GOVERNED_REQUESTER
     )
+    assert evaluating.transition.requested_by == "lotus-platform (credential ops-key-alpha)"
+    # No approval existed, and the record says so honestly.
+    assert evaluating.transition.approved_by is None
+    assert evaluating.transition.approval_evidence_ref is None
+
+    _seed_evaluation_run("run_promotion_001")
+    approved = _promote_entry_for_test(entry_id, ModelLifecycleState.APPROVED, "run_promotion_001")
+    assert isinstance(approved, ModelPromotionApprovalResponse)
     assert approved.entry.lifecycle_state is ModelLifecycleState.APPROVED
-    assert "mrm-approval-2026-021" in approved.entry.approval_evidence_refs
+    assert "evaluation-run:run_promotion_001" in approved.entry.approval_evidence_refs
+    assert approved.transition.requested_by == "lotus-platform (credential ops-key-alpha)"
+    assert approved.transition.approved_by == "lotus-platform (credential ops-key-beta)"
+    assert approved.governed_action.status.value == "EXECUTED"
+
+    production = _promote_entry_for_test(
+        entry_id, ModelLifecycleState.PRODUCTION, "run_promotion_001"
+    )
+    assert isinstance(production, ModelPromotionApprovalResponse)
+    assert production.entry.lifecycle_state is ModelLifecycleState.PRODUCTION
 
     apply_model_lifecycle_transition(
-        entry_id, _transition_request(to_state=ModelLifecycleState.PRODUCTION)
-    )
-    apply_model_lifecycle_transition(
-        entry_id, _transition_request(to_state=ModelLifecycleState.DEPRECATED)
+        entry_id, _transition_request(to_state=ModelLifecycleState.DEPRECATED), GOVERNED_REQUESTER
     )
     retired = apply_model_lifecycle_transition(
-        entry_id, _transition_request(to_state=ModelLifecycleState.RETIRED)
+        entry_id, _transition_request(to_state=ModelLifecycleState.RETIRED), GOVERNED_REQUESTER
     )
     assert retired.entry.lifecycle_state is ModelLifecycleState.RETIRED
 
     with pytest.raises(HTTPException) as excinfo:
         apply_model_lifecycle_transition(
-            entry_id, _transition_request(to_state=ModelLifecycleState.CATALOGUED)
+            entry_id,
+            _transition_request(to_state=ModelLifecycleState.CATALOGUED),
+            GOVERNED_REQUESTER,
         )
     assert excinfo.value.status_code == 422
     assert "terminal" in str(excinfo.value.detail)
@@ -415,6 +484,188 @@ def test_lifecycle_transition_walks_the_governed_edge_table(_durable_catalogue: 
         ModelLifecycleState.RETIRED,
     ]
     assert all(event.reason for event in detail.lifecycle_events)
+
+
+def test_promotion_request_validates_target_edge_and_evidence(_durable_catalogue: str) -> None:
+    """A pending approval is never parked on a promotion that cannot execute:
+    the serving-target shape, the lifecycle edge, and the PASS-verdict eval
+    evidence are all vetted before any intent is recorded (issue #245)."""
+
+    from fastapi import HTTPException
+
+    from app.contracts.model_catalogue import ModelPromotionIntentRequest
+    from app.services.model_catalogue import (
+        apply_model_lifecycle_transition,
+        request_model_promotion,
+    )
+    from tests.support.governed_control import GOVERNED_REQUESTER
+
+    entry_id = _durable_catalogue
+
+    def _intent(
+        to_state: ModelLifecycleState, run_id: str = "run_promotion_ok"
+    ) -> ModelPromotionIntentRequest:
+        return ModelPromotionIntentRequest(
+            to_state=to_state,
+            reason="Promotion backed by evaluation evidence.",
+            evaluation_run_id=run_id,
+        )
+
+    # A non-serving target has no business on the promotion flow.
+    with pytest.raises(HTTPException) as excinfo:
+        request_model_promotion(
+            entry_id, _intent(ModelLifecycleState.DEPRECATED), GOVERNED_REQUESTER
+        )
+    assert excinfo.value.status_code == 422
+    assert "not a serving-promotion target" in str(excinfo.value.detail)
+
+    # The lifecycle edge table still applies on the governed flow.
+    _seed_evaluation_run("run_promotion_ok")
+    with pytest.raises(HTTPException) as excinfo:
+        request_model_promotion(
+            entry_id, _intent(ModelLifecycleState.PRODUCTION), GOVERNED_REQUESTER
+        )
+    assert excinfo.value.status_code == 422
+    assert "not allowed" in str(excinfo.value.detail)
+
+    apply_model_lifecycle_transition(entry_id, _transition_request(), GOVERNED_REQUESTER)
+
+    # Evidence must exist ...
+    with pytest.raises(HTTPException) as excinfo:
+        request_model_promotion(
+            entry_id, _intent(ModelLifecycleState.APPROVED, "run_missing"), GOVERNED_REQUESTER
+        )
+    assert excinfo.value.status_code == 422
+    assert "does not exist" in str(excinfo.value.detail)
+
+    # ... and must actually have passed: a FAIL verdict or an unfinished run
+    # is not promotion evidence.
+    _seed_evaluation_run("run_promotion_fail", verdict="FAIL")
+    with pytest.raises(HTTPException) as excinfo:
+        request_model_promotion(
+            entry_id,
+            _intent(ModelLifecycleState.APPROVED, "run_promotion_fail"),
+            GOVERNED_REQUESTER,
+        )
+    assert excinfo.value.status_code == 422
+    assert "verdict PASS" in str(excinfo.value.detail)
+
+    _seed_evaluation_run("run_promotion_running", lifecycle_status="RUNNING", verdict=None)
+    with pytest.raises(HTTPException) as excinfo:
+        request_model_promotion(
+            entry_id,
+            _intent(ModelLifecycleState.APPROVED, "run_promotion_running"),
+            GOVERNED_REQUESTER,
+        )
+    assert excinfo.value.status_code == 422
+    assert "RUNNING" in str(excinfo.value.detail)
+
+    # A valid intent records PENDING and changes nothing until approval.
+    pending = request_model_promotion(
+        entry_id, _intent(ModelLifecycleState.APPROVED), GOVERNED_REQUESTER
+    )
+    assert pending.governed_action.status.value == "PENDING"
+    entry = get_model_catalogue_repository().get_entry(entry_id)
+    assert entry is not None
+    assert entry.lifecycle_state is ModelLifecycleState.EVALUATING
+
+
+def test_promotion_approval_refuses_a_stale_baseline(_durable_catalogue: str) -> None:
+    """An approval reviewed against one lifecycle baseline must not execute
+    against another: the payload pins the entry's state at request time, and
+    a transition in between refuses the stale approval (issue #245)."""
+
+    from fastapi import HTTPException
+
+    from app.contracts.model_catalogue import (
+        ModelPromotionApprovalRequest,
+        ModelPromotionIntentRequest,
+    )
+    from app.services.model_catalogue import (
+        apply_model_lifecycle_transition,
+        approve_model_promotion,
+        request_model_promotion,
+    )
+    from tests.support.governed_control import GOVERNED_APPROVER, GOVERNED_REQUESTER
+
+    entry_id = _durable_catalogue
+    apply_model_lifecycle_transition(entry_id, _transition_request(), GOVERNED_REQUESTER)
+    _seed_evaluation_run("run_promotion_stale")
+    pending = request_model_promotion(
+        entry_id,
+        ModelPromotionIntentRequest(
+            to_state=ModelLifecycleState.APPROVED,
+            reason="Promotion backed by evaluation evidence.",
+            evaluation_run_id="run_promotion_stale",
+        ),
+        GOVERNED_REQUESTER,
+    )
+
+    # The entry moves off the reviewed baseline before the approval lands.
+    apply_model_lifecycle_transition(
+        entry_id,
+        _transition_request(
+            to_state=ModelLifecycleState.CATALOGUED,
+            reason="Evaluation paused; return to catalogued.",
+        ),
+        GOVERNED_REQUESTER,
+    )
+
+    with pytest.raises(HTTPException) as excinfo:
+        approve_model_promotion(
+            entry_id,
+            ModelPromotionApprovalRequest(
+                action_id=pending.governed_action.action_id,
+                action_hash=pending.governed_action.action_hash,
+            ),
+            GOVERNED_APPROVER,
+        )
+    assert excinfo.value.status_code == 409
+    assert "submit a new request" in str(excinfo.value.detail)
+
+    entry = get_model_catalogue_repository().get_entry(entry_id)
+    assert entry is not None
+    assert entry.lifecycle_state is ModelLifecycleState.CATALOGUED
+
+
+def test_promotion_approval_requires_a_distinct_credential(_durable_catalogue: str) -> None:
+    from fastapi import HTTPException
+
+    from app.contracts.model_catalogue import (
+        ModelPromotionApprovalRequest,
+        ModelPromotionIntentRequest,
+    )
+    from app.services.model_catalogue import (
+        apply_model_lifecycle_transition,
+        approve_model_promotion,
+        request_model_promotion,
+    )
+    from tests.support.governed_control import GOVERNED_REQUESTER
+
+    entry_id = _durable_catalogue
+    apply_model_lifecycle_transition(entry_id, _transition_request(), GOVERNED_REQUESTER)
+    _seed_evaluation_run("run_promotion_distinct")
+    pending = request_model_promotion(
+        entry_id,
+        ModelPromotionIntentRequest(
+            to_state=ModelLifecycleState.APPROVED,
+            reason="Promotion backed by evaluation evidence.",
+            evaluation_run_id="run_promotion_distinct",
+        ),
+        GOVERNED_REQUESTER,
+    )
+
+    with pytest.raises(HTTPException) as excinfo:
+        approve_model_promotion(
+            entry_id,
+            ModelPromotionApprovalRequest(
+                action_id=pending.governed_action.action_id,
+                action_hash=pending.governed_action.action_hash,
+            ),
+            GOVERNED_REQUESTER,
+        )
+    assert excinfo.value.status_code == 403
+    assert "distinct" in str(excinfo.value.detail)
 
 
 def test_seed_authority_change_never_resurrects_an_operator_terminal_state(
@@ -523,8 +774,12 @@ def test_lifecycle_transition_on_an_unknown_entry_is_404(_durable_catalogue: str
 
     from app.services.model_catalogue import apply_model_lifecycle_transition
 
+    from tests.support.governed_control import GOVERNED_REQUESTER
+
     with pytest.raises(HTTPException) as excinfo:
-        apply_model_lifecycle_transition("text.unknown:nope", _transition_request())
+        apply_model_lifecycle_transition(
+            "text.unknown:nope", _transition_request(), GOVERNED_REQUESTER
+        )
     assert excinfo.value.status_code == 404
 
 

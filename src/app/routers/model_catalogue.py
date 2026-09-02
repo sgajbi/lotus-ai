@@ -2,16 +2,23 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.contracts.governed_actions import GovernedActionResponse
 from app.contracts.model_catalogue import (
     ModelCatalogueEntryDetailResponse,
     ModelCatalogueResponse,
     ModelLifecycleTransitionRequest,
     ModelLifecycleTransitionResponse,
+    ModelPromotionApprovalRequest,
+    ModelPromotionApprovalResponse,
+    ModelPromotionIntentRequest,
 )
+from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.model_catalogue import (
     apply_model_lifecycle_transition,
+    approve_model_promotion,
     build_model_catalogue_entry_detail,
     build_model_catalogue_response,
+    request_model_promotion,
 )
 
 router = APIRouter(prefix="/platform/models", tags=["platform"])
@@ -62,19 +69,23 @@ async def get_model_catalogue_entry_detail_route(
     "/catalogue/{entry_id}/lifecycle-transitions",
     response_model=ModelLifecycleTransitionResponse,
     operation_id="applyModelLifecycleTransition",
-    summary="Apply a governed lifecycle transition to a catalogue entry",
+    summary="Apply a single-principal lifecycle transition to a catalogue entry",
     description=(
         "Moves one model-catalogue entry along the governed lifecycle edge table with a "
-        "recorded reason, requester and approver. Promotion to APPROVED requires approval "
-        "evidence. DEGRADED, DEPRECATED and RETIRED entries refuse new live executions at the "
-        "provider gateway. Requires provider-control authorization and the durable catalogue "
-        "store."
+        "recorded reason, under the caller's verified identity (issue #245). Safety and "
+        "administrative targets only: serving promotions (APPROVED, SHADOW, CANARY, "
+        "PRODUCTION) are refused here and go through the governed two-step promotion flow. "
+        "DEGRADED, DEPRECATED and RETIRED entries refuse new live executions at the provider "
+        "gateway. Requires provider-control authorization and the durable catalogue store."
     ),
     responses={
         200: {"description": "Lifecycle transition applied."},
         403: {"description": "Caller is not authorized for provider control."},
         404: {"description": "No entry exists for the given id."},
-        409: {"description": "The durable catalogue store is not configured."},
+        409: {
+            "description": "The durable catalogue store is not configured, or the target "
+            "expands serving posture and requires the governed promotion flow."
+        },
         422: {"description": "The transition is not allowed from the current state."},
         500: {"description": "Unexpected server error."},
     },
@@ -82,5 +93,75 @@ async def get_model_catalogue_entry_detail_route(
 async def apply_model_lifecycle_transition_route(
     entry_id: str,
     request: ModelLifecycleTransitionRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
 ) -> ModelLifecycleTransitionResponse:
-    return apply_model_lifecycle_transition(entry_id, request)
+    return apply_model_lifecycle_transition(entry_id, request, authenticated_caller)
+
+
+@router.post(
+    "/catalogue/{entry_id}/promotion-requests",
+    response_model=GovernedActionResponse,
+    operation_id="requestModelPromotion",
+    summary="Request a serving promotion of a catalogue entry",
+    description=(
+        "Step one of governed serving promotion (issue #245): validates the target, the "
+        "lifecycle edge and the named PASS-verdict evaluation run, then records a pending "
+        "intent under the requester's verified credential and returns the action hash a "
+        "distinct verified credential must approve. Eval evidence enables the decision; it "
+        "does not make the decision. The entry is unchanged until the approval executes."
+    ),
+    responses={
+        200: {"description": "Promotion intent recorded and pending approval."},
+        403: {
+            "description": "Caller is not authorized for provider control, or carries no "
+            "verified credential."
+        },
+        404: {"description": "No entry exists for the given id."},
+        409: {"description": "The durable catalogue store is not configured."},
+        422: {
+            "description": "The target is not a serving promotion, the edge is not allowed, "
+            "or the evaluation run is missing or did not pass."
+        },
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def request_model_promotion_route(
+    entry_id: str,
+    request: ModelPromotionIntentRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> GovernedActionResponse:
+    return request_model_promotion(entry_id, request, authenticated_caller)
+
+
+@router.post(
+    "/catalogue/{entry_id}/promotion-approvals",
+    response_model=ModelPromotionApprovalResponse,
+    operation_id="approveModelPromotion",
+    summary="Approve and execute a pending serving promotion",
+    description=(
+        "Step two of governed serving promotion (issue #245): a verified credential DISTINCT "
+        "from the requester's approves the exact pending action hash, which re-validates the "
+        "lifecycle edge and eval evidence, executes the promotion, and records the full "
+        "request-approval-execution evidence chain. A lifecycle-state or revision change "
+        "since the request refuses the stale approval."
+    ),
+    responses={
+        200: {"description": "Promotion executed under governed approval."},
+        403: {
+            "description": "Caller is not authorized, carries no verified credential, or is "
+            "the same credential that requested the action."
+        },
+        404: {"description": "No entry or no pending action exists for the given id."},
+        409: {
+            "description": "The durable catalogue store is not configured, the action hash "
+            "does not match, or the entry changed since the request and the approval is stale."
+        },
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def approve_model_promotion_route(
+    entry_id: str,
+    request: ModelPromotionApprovalRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> ModelPromotionApprovalResponse:
+    return approve_model_promotion(entry_id, request, authenticated_caller)

@@ -193,16 +193,18 @@ def test_operator_deprecation_refuses_live_execution_end_to_end(
             transitioned = client.post(
                 "/platform/models/catalogue/text.openai:gpt-5.4/lifecycle-transitions",
                 json={
-                    "caller_app": "lotus-platform",
                     "to_state": "DEPRECATED",
                     "reason": "Vendor end-of-life announced; retire from live service.",
-                    "requested_by": "ops.primary@lotus",
-                    "approved_by": "ops.secondary@lotus",
                 },
                 headers={"X-Caller-App": "lotus-platform"},
             )
             assert transitioned.status_code == 200
             assert transitioned.json()["entry"]["lifecycle_state"] == "DEPRECATED"
+            # Identity comes from the authenticated caller, and the record is
+            # honest that no approval existed (issue #245).
+            transition_record = transitioned.json()["transition"]
+            assert transition_record["requested_by"] == "lotus-platform (trusted_http_header)"
+            assert transition_record["approved_by"] is None
 
             refused = client.post("/ai/tasks/execute", json=execute_payload)
             assert refused.status_code == 503
@@ -223,3 +225,142 @@ def test_operator_deprecation_refuses_live_execution_end_to_end(
                 headers={"X-Caller-App": "lotus-platform"},
             )
             assert unknown.status_code == 404
+
+
+def test_governed_promotion_flow_over_http(tmp_path: Path) -> None:
+    """The governed two-step serving promotion end-to-end (issue #245):
+    verified requester states the intent, a DISTINCT verified credential
+    approves the exact hash, and the transition records the full evidence
+    chain - while the single-call route refuses serving targets."""
+
+    from tests.support.caller_credentials import (
+        generate_caller_signing_key,
+        mint_caller_credential,
+        public_keys_setting,
+    )
+
+    requester_key = generate_caller_signing_key()
+    approver_key = generate_caller_signing_key()
+    requester_headers = {
+        "Authorization": "Bearer "
+        + mint_caller_credential(
+            signing_key=requester_key,
+            key_id="catalogue-ops-alpha",
+            subject="lotus-platform",
+            expires_in_seconds=3600,
+        )
+    }
+    approver_headers = {
+        "Authorization": "Bearer "
+        + mint_caller_credential(
+            signing_key=approver_key,
+            key_id="catalogue-ops-beta",
+            subject="lotus-platform",
+            expires_in_seconds=3600,
+        )
+    }
+
+    database_url = f"sqlite:///{tmp_path / 'catalogue-promotion.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        model_catalogue_store_mode="sqlalchemy",
+        database_url=database_url,
+        provider_mode="local_openai_compatible",
+        live_text_provider_id="text.local",
+        live_text_model_id="qwen3:8b",
+        live_text_model_version=None,
+        workflow_run_model_risk_inventory_json="[]",
+        caller_trust_mode="verified_service_jwt",
+        caller_jwt_issuer="https://platform.lotus/issuer",
+        caller_jwt_audience="lotus-ai",
+        caller_jwt_public_keys=public_keys_setting(
+            **{"catalogue-ops-alpha": requester_key, "catalogue-ops-beta": approver_key}
+        ),
+    ):
+        with TestClient(app) as client:
+            from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+            from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+
+            get_evaluation_runtime_store().save_run(
+                EvaluationRunRecord(
+                    run_id="runtime_promotion_http_001",
+                    fixture_id="model_promotion_examples",
+                    manifest_version="foundation.v1",
+                    lifecycle_status="COMPLETED",
+                    triggered_by="operator-a",
+                    submitted_at="2026-09-03T09:00:00Z",
+                    async_job_id=None,
+                    latest_message="Promotion evidence fixture.",
+                    verdict="PASS",
+                    case_count=3,
+                )
+            )
+            entry_id = "text.local:qwen3:8b"
+            base = f"/platform/models/catalogue/{entry_id}"
+
+            # A catalogue read idempotently seeds the configured identity.
+            seeded = client.get("/platform/models/catalogue", headers=requester_headers)
+            assert seeded.status_code == 200
+
+            evaluating = client.post(
+                f"{base}/lifecycle-transitions",
+                json={"to_state": "EVALUATING", "reason": "Begin evaluation."},
+                headers=requester_headers,
+            )
+            assert evaluating.status_code == 200
+
+            # The single-call route refuses a serving target outright.
+            blocked = client.post(
+                f"{base}/lifecycle-transitions",
+                json={"to_state": "APPROVED", "reason": "Attempt ungoverned promotion."},
+                headers=requester_headers,
+            )
+            assert blocked.status_code == 409
+            assert "promotion-requests" in blocked.json()["detail"]
+
+            pending = client.post(
+                f"{base}/promotion-requests",
+                json={
+                    "to_state": "APPROVED",
+                    "reason": "Passing evaluation evidence supports approval.",
+                    "evaluation_run_id": "runtime_promotion_http_001",
+                    "requested_by": "alice@lotus.test",
+                },
+                headers=requester_headers,
+            )
+            assert pending.status_code == 200
+            action = pending.json()["governed_action"]
+            assert action["status"] == "PENDING"
+
+            # The requester's own credential cannot approve.
+            same_credential = client.post(
+                f"{base}/promotion-approvals",
+                json={"action_id": action["action_id"], "action_hash": action["action_hash"]},
+                headers=requester_headers,
+            )
+            assert same_credential.status_code == 403
+
+            approved = client.post(
+                f"{base}/promotion-approvals",
+                json={
+                    "action_id": action["action_id"],
+                    "action_hash": action["action_hash"],
+                    "approved_by": "bob@lotus.test",
+                },
+                headers=approver_headers,
+            )
+            assert approved.status_code == 200
+            body = approved.json()
+            assert body["entry"]["lifecycle_state"] == "APPROVED"
+            assert (
+                "evaluation-run:runtime_promotion_http_001"
+                in (body["entry"]["approval_evidence_refs"])
+            )
+            assert body["transition"]["requested_by"] == (
+                "lotus-platform (credential catalogue-ops-alpha)"
+            )
+            assert body["transition"]["approved_by"] == (
+                "lotus-platform (credential catalogue-ops-beta)"
+            )
+            assert body["governed_action"]["status"] == "EXECUTED"
