@@ -5,6 +5,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from fastapi import HTTPException
 
 from app.config import settings
+from app.contracts.governed_actions import GovernedActionRecord
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
     AuthorizationDecision,
@@ -346,6 +347,33 @@ def test_process_next_async_delivery_marks_unknown_job_type_unhandled(
     assert detail.job.status.value == "ABANDONED"
     assert detail.control_events[0].action_type.value == "QUARANTINE_QUEUED_JOB"
     assert detail.attempts[0].failure_reason == "DELIVERY_QUARANTINED"
+    # Runtime recovery is SYSTEM_ORIGINATED (issue #157): the event carries no
+    # approver instead of a service string dressed up as one, and the governed
+    # record - tied to the worker's workload identity - is the evidence of
+    # what acted.
+    assert detail.control_events[0].approved_by is None
+    recovery_actions = _system_recovery_actions()
+    assert len(recovery_actions) == 1
+    assert recovery_actions[0].actor_class.value == "SYSTEM_ORIGINATED"
+    assert recovery_actions[0].requester_caller_app == detail.control_events[0].requested_by
+    assert recovery_actions[0].approver_key_id is None
+    assert recovery_actions[0].action_payload["action"] == "QUARANTINE_QUEUED_JOB"
+
+
+def _system_recovery_actions() -> list["GovernedActionRecord"]:
+    from app.contracts.governed_actions import GovernedActionType
+    from app.services.provider_operations_store import get_provider_operations_store
+
+    store = get_provider_operations_store()
+    actions = []
+    # The memory store has no list API for governed actions; walk the known
+    # target space via the pending lookup is not enough for EXECUTED records,
+    # so reach the memory adapter's mapping directly - test-only introspection.
+    mapping = getattr(store, "_governed_actions", {})
+    for record in mapping.values():
+        if record.action_type is GovernedActionType.ASYNC_QUEUE_RECOVERY:
+            actions.append(record)
+    return actions
 
 
 def test_process_next_async_delivery_redrives_claim_miss(
@@ -422,6 +450,11 @@ def test_process_next_async_delivery_redrives_claim_miss(
     detail = build_async_job_detail(job_id="asyncjob_claim_miss")
     assert detail.job.status.value == "QUEUED"
     assert detail.control_events[0].action_type.value == "REDRIVE_QUEUED_JOB"
+    assert detail.control_events[0].approved_by is None
+    assert any(
+        action.action_payload["action"] == "REDRIVE_QUEUED_JOB"
+        for action in _system_recovery_actions()
+    )
 
 
 def test_redrive_queued_async_job_rejects_job_without_attempt() -> None:

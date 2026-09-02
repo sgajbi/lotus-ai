@@ -6,6 +6,8 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 
 from app.contracts.access_control import AuthorizationDecision
+from app.contracts.governed_actions import GovernedActionType
+from app.services.governed_action_control import record_system_originated_action
 from app.contracts.async_runtime import AsyncControlActionType, AsyncJobStatus
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
@@ -20,7 +22,7 @@ def redrive_queued_async_job(
     *,
     job: AsyncRuntimeJobRecord,
     requested_by: str,
-    approved_by: str,
+    approved_by: str | None,
     reason: str,
     authorization: AuthorizationDecision,
 ) -> AsyncRuntimeControlEventRecord:
@@ -86,7 +88,7 @@ def quarantine_queued_async_job(
     *,
     job: AsyncRuntimeJobRecord,
     requested_by: str,
-    approved_by: str,
+    approved_by: str | None,
     reason: str,
     authorization: AuthorizationDecision,
 ) -> AsyncRuntimeControlEventRecord:
@@ -184,22 +186,67 @@ def recover_unhandled_delivery(
         "document_ingestion",
         "workflow_pack_execution",
     }:
+        _record_system_recovery_action(
+            worker_id=worker_id,
+            action="QUARANTINE_QUEUED_JOB",
+            job_id=job.job_id,
+            job_type=delivery_job_type,
+            reason=reason,
+        )
         event = quarantine_queued_async_job(
             job=job,
             requested_by=worker_id,
-            approved_by="lotus-ai.async-worker-runtime",
+            approved_by=None,
             reason=reason,
             authorization=authorization,
         )
     else:
+        _record_system_recovery_action(
+            worker_id=worker_id,
+            action="REDRIVE_QUEUED_JOB",
+            job_id=job.job_id,
+            job_type=delivery_job_type,
+            reason=reason,
+        )
         event = redrive_queued_async_job(
             job=job,
             requested_by=worker_id,
-            approved_by="lotus-ai.async-worker-runtime",
+            approved_by=None,
             reason=reason,
             authorization=authorization,
         )
     store.save_control_event(event)
+
+
+def _record_system_recovery_action(
+    *,
+    worker_id: str,
+    action: str,
+    job_id: str,
+    job_type: str,
+    reason: str,
+) -> None:
+    """Immutable governed evidence for a runtime-originated recovery action.
+
+    Explicitly SYSTEM_ORIGINATED: the worker's workload identity is the
+    requester, there is no approver, and the actor class - not a service
+    string in an approver field - is what says no human was involved
+    (issue #157). The primitive refuses this type for human-governed
+    approval flows, so the runtime path can never satisfy a four-eyes
+    requirement.
+    """
+
+    record_system_originated_action(
+        service_identity=worker_id,
+        action_type=GovernedActionType.ASYNC_QUEUE_RECOVERY,
+        target=job_id,
+        payload={
+            "action": action,
+            "job_id": job_id,
+            "job_type": job_type,
+            "reason": reason,
+        },
+    )
 
 
 def _quarantine_missing_delivery(
@@ -265,7 +312,7 @@ def _missing_delivery_control_event(
         job_id=delivery_job_id,
         action_type=AsyncControlActionType.QUARANTINE_QUEUED_JOB.value,
         requested_by=worker_id,
-        approved_by="lotus-ai.async-worker-runtime",
+        approved_by=None,
         reason=(
             f"Dequeued delivery referenced missing durable async job type "
             f"`{delivery_job_type}`: {reason}"
@@ -301,7 +348,7 @@ def _control_event(
     job: AsyncRuntimeJobRecord,
     action_type: AsyncControlActionType,
     requested_by: str,
-    approved_by: str,
+    approved_by: str | None,
     reason: str,
     resulting_status: str,
     affected_attempt_id: str | None,
