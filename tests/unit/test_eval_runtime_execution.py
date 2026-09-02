@@ -10,7 +10,7 @@ from app.contracts.access_control import (
     AuthorizationOutcome,
     TenantPolicyMode,
 )
-from app.contracts.prompts import PromptControlActionRequest, PromptControlActionType
+from app.contracts.prompts import PromptControlActionType
 from app.contracts.evals import EvaluationCaseOutcome
 from app.evals.fixture_manifest import EvaluationFixtureRuntimeCase
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
@@ -21,7 +21,6 @@ from app.services.eval_runtime_execution import (
     _execute_fixture_case,
 )
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
-from app.services.prompt_rollout_control import apply_prompt_control_action
 from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
 from app.services.prompt_store import get_prompt_repository
 from app.services.provider_operations_store import (
@@ -30,6 +29,7 @@ from app.services.provider_operations_store import (
 )
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
+from tests.support.governed_control import promote_prompt_for_test
 
 
 def _authorization() -> AuthorizationDecision:
@@ -973,16 +973,10 @@ def test_apply_prompt_rollback_for_evaluation_rejects_missing_state_and_versions
                 case_count=1,
             )
         )
-        apply_prompt_control_action(
-            PromptControlActionRequest(
-                task_id="explain.v1",
-                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
-                caller_app="lotus-platform",
-                candidate_prompt_version="foundation.explain.v2",
-                requested_by="alice@lotus.test",
-                approved_by="bob@lotus.test",
-                reason="Promote before rollback error coverage",
-            )
+        promote_prompt_for_test(
+            task_id="explain.v1",
+            candidate_prompt_version="foundation.explain.v2",
+            reason="Promote before rollback error coverage",
         )
 
         repository = get_prompt_repository()

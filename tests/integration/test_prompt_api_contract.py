@@ -6,6 +6,11 @@ from app.main import app
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
+from tests.support.caller_credentials import (
+    generate_caller_signing_key,
+    mint_caller_credential,
+    public_keys_setting,
+)
 
 
 def test_prompt_registry_routes(client: TestClient) -> None:
@@ -49,6 +54,34 @@ def test_prompt_runtime_status_route(client: TestClient) -> None:
     assert any(state["task_id"] == "explain.v1" for state in body["rollout_states"])
 
 
+# Two real EdDSA credentials for the governed promotion flow (issue #157): a
+# requester and an approver under DISTINCT signing keys, both authenticating
+# as the platform control caller.
+_REQUESTER_KEY = generate_caller_signing_key()
+_APPROVER_KEY = generate_caller_signing_key()
+_PUBLIC_KEYS = public_keys_setting(
+    **{"prompt-ops-alpha": _REQUESTER_KEY, "prompt-ops-beta": _APPROVER_KEY}
+)
+_REQUESTER_HEADERS = {
+    "Authorization": "Bearer "
+    + mint_caller_credential(
+        signing_key=_REQUESTER_KEY,
+        key_id="prompt-ops-alpha",
+        subject="lotus-platform",
+        expires_in_seconds=3600,
+    )
+}
+_APPROVER_HEADERS = {
+    "Authorization": "Bearer "
+    + mint_caller_credential(
+        signing_key=_APPROVER_KEY,
+        key_id="prompt-ops-beta",
+        subject="lotus-platform",
+        expires_in_seconds=3600,
+    )
+}
+
+
 def test_prompt_control_routes(client: TestClient) -> None:
     history_response = client.get("/platform/prompts/control-history")
     assert history_response.status_code == 200
@@ -57,6 +90,9 @@ def test_prompt_control_routes(client: TestClient) -> None:
         "ROLLBACK_TO_PREVIOUS_ACTIVE",
     ]
 
+    # Promotion through the single-call route is refused with guidance to the
+    # governed two-step flow (issue #157) - after authorization, like every
+    # other action-shape check.
     blocked_promote_response = client.post(
         "/platform/prompts/control-actions",
         json={
@@ -66,11 +102,24 @@ def test_prompt_control_routes(client: TestClient) -> None:
             "candidate_prompt_version": "foundation.explain.v2",
             "requested_by": "alice@lotus.test",
             "approved_by": "bob@lotus.test",
-            "reason": "Attempt promotion without prompt approval evidence",
+            "reason": "Attempt promotion via the ungoverned route",
         },
     )
     assert blocked_promote_response.status_code == 409
-    assert "SQL-backed prompt rollout state" in blocked_promote_response.json()["detail"]
+    assert "governed action" in blocked_promote_response.json()["detail"]
+    assert "promote-requests" in blocked_promote_response.json()["detail"]
+
+    # The governed request step still requires the durable control plane.
+    blocked_intent_response = client.post(
+        "/platform/prompts/promote-requests",
+        json={
+            "task_id": "explain.v1",
+            "candidate_prompt_version": "foundation.explain.v2",
+            "reason": "Attempt promotion without a durable prompt store",
+        },
+    )
+    assert blocked_intent_response.status_code == 409
+    assert "SQL-backed prompt rollout state" in blocked_intent_response.json()["detail"]
 
 
 def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path) -> None:
@@ -83,6 +132,10 @@ def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path
         prompt_store_mode="sqlalchemy",
         evaluation_runtime_store_mode="sqlalchemy",
         database_url=database_url,
+        caller_trust_mode="verified_service_jwt",
+        caller_jwt_issuer="https://platform.lotus/issuer",
+        caller_jwt_audience="lotus-ai",
+        caller_jwt_public_keys=_PUBLIC_KEYS,
     ):
         with TestClient(app) as durable_client:
             for fixture_id in ("prompt_promotion_examples", "prompt_rollback_examples"):
@@ -101,38 +154,66 @@ def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path
                     )
                 )
 
-            promote_response = durable_client.post(
-                "/platform/prompts/control-actions",
+            # Governed promotion over HTTP (issue #157): the request step
+            # parks the intent under the requester's verified credential and
+            # the active prompt is unchanged until a DISTINCT credential
+            # approves the exact hash.
+            pending_response = durable_client.post(
+                "/platform/prompts/promote-requests",
                 json={
                     "task_id": "explain.v1",
-                    "action_type": "PROMOTE_CANDIDATE",
-                    "caller_app": "lotus-platform",
                     "candidate_prompt_version": "foundation.explain.v2",
-                    "requested_by": "alice@lotus.test",
-                    "approved_by": "bob@lotus.test",
                     "reason": "Approve explanation candidate",
+                    "requested_by": "alice@lotus.test",
                 },
+                headers=_REQUESTER_HEADERS,
+            )
+            assert pending_response.status_code == 200
+            pending_action = pending_response.json()["governed_action"]
+            assert pending_action["status"] == "PENDING"
+            assert pending_action["requester_key_id"] == "prompt-ops-alpha"
+
+            self_approval = durable_client.post(
+                "/platform/prompts/promote-approvals",
+                json={
+                    "task_id": "explain.v1",
+                    "action_id": pending_action["action_id"],
+                    "action_hash": pending_action["action_hash"],
+                },
+                headers=_REQUESTER_HEADERS,
+            )
+            assert self_approval.status_code == 403
+
+            promote_response = durable_client.post(
+                "/platform/prompts/promote-approvals",
+                json={
+                    "task_id": "explain.v1",
+                    "action_id": pending_action["action_id"],
+                    "action_hash": pending_action["action_hash"],
+                    "approved_by": "bob@lotus.test",
+                },
+                headers=_APPROVER_HEADERS,
             )
             assert promote_response.status_code == 200
             assert (
                 promote_response.json()["rollout_state"]["active_prompt_version"]
                 == "foundation.explain.v2"
             )
-            assert (
-                promote_response.json()["rollout_state"]["latest_control_event"]["action_type"]
-                == "PROMOTE_CANDIDATE"
-            )
-            assert (
-                promote_response.json()["event"]["authorization"]["caller_app"] == "lotus-platform"
-            )
+            evidence = promote_response.json()["governed_action"]
+            assert evidence["status"] == "EXECUTED"
+            assert evidence["requester_key_id"] == "prompt-ops-alpha"
+            assert evidence["approver_key_id"] == "prompt-ops-beta"
 
-            runtime_response = durable_client.get("/platform/prompts/runtime-status")
-            assert runtime_response.status_code == 200
+            explain_status = durable_client.get(
+                "/platform/prompts/runtime-status", headers=_REQUESTER_HEADERS
+            )
+            assert explain_status.status_code == 200
             explain_state = next(
                 state
-                for state in runtime_response.json()["rollout_states"]
+                for state in explain_status.json()["rollout_states"]
                 if state["task_id"] == "explain.v1"
             )
+            assert explain_state["active_prompt_version"] == "foundation.explain.v2"
             assert explain_state["latest_control_event"]["action_type"] == "PROMOTE_CANDIDATE"
 
             rollback_response = durable_client.post(
@@ -145,6 +226,7 @@ def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path
                     "approved_by": "bob@lotus.test",
                     "reason": "Restore known-good prompt",
                 },
+                headers=_REQUESTER_HEADERS,
             )
             assert rollback_response.status_code == 200
             assert (
@@ -153,7 +235,9 @@ def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path
             )
 
             task_history_response = durable_client.get(
-                "/platform/prompts/control-history", params={"task_id": "explain.v1"}
+                "/platform/prompts/control-history",
+                params={"task_id": "explain.v1"},
+                headers=_REQUESTER_HEADERS,
             )
             assert task_history_response.status_code == 200
             assert len(task_history_response.json()["latest_events"]) == 2
@@ -164,6 +248,13 @@ def test_prompt_control_routes_support_sql_backed_durable_actions(tmp_path: Path
                 task_history_response.json()["latest_events"][0]["authorization"]["caller_app"]
                 == "lotus-platform"
             )
+            # The promotion event records verified credential identities, not
+            # the caller-typed names - those live on the governed action as
+            # unverified attribution.
+            promotion_event = task_history_response.json()["latest_events"][1]
+            assert promotion_event["action_type"] == "PROMOTE_CANDIDATE"
+            assert "prompt-ops-alpha" in promotion_event["requested_by"]
+            assert "prompt-ops-beta" in promotion_event["approved_by"]
 
 
 def test_prompt_control_history_route_rejects_oversized_limit(client: TestClient) -> None:

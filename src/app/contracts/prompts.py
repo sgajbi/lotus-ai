@@ -7,6 +7,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, computed_field
 
+from app.contracts.governed_actions import GovernedActionRecord
+
 from app.contracts.access_control import AuthorizationDecision
 from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
 
@@ -152,6 +154,55 @@ class PromptControlActionRequest(BaseModel):
     requested_by: str = Field(description="Operator identity requesting the action.")
     approved_by: str = Field(description="Operator identity approving the action.")
     reason: str = Field(description="Human-readable operator reason for the change.")
+
+
+class PromptPromotionIntentRequest(BaseModel):
+    """Step one of governed promotion: a verified requester states the intent.
+
+    Caller identity comes from the authenticated credential, never from the
+    body (issue #157). ``requested_by`` is claimed operator attribution.
+    """
+
+    task_id: str = Field(description="Task whose candidate prompt should be promoted.")
+    candidate_prompt_version: str = Field(description="Candidate prompt version to promote.")
+    reason: str = Field(min_length=1, description="Why this promotion should happen.")
+    requested_by: str | None = Field(
+        default=None,
+        max_length=256,
+        description="Claimed operator name; recorded as unverified attribution.",
+    )
+
+
+class PromptPromotionApprovalRequest(BaseModel):
+    """Step two: a distinct verified credential approves the exact pending action."""
+
+    task_id: str = Field(description="Task the pending promotion targets.")
+    action_id: str = Field(min_length=1, max_length=64, description="Pending governed action id.")
+    action_hash: str = Field(
+        min_length=64,
+        max_length=64,
+        description="Hash of the action being approved, exactly as returned by the request step.",
+    )
+    approved_by: str | None = Field(
+        default=None,
+        max_length=256,
+        description="Claimed operator name; recorded as unverified attribution.",
+    )
+
+
+class PromptPromotionApprovalResponse(BaseModel):
+    service: str = Field(description="Service name emitting the prompt control response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    event: PromptControlEventDescriptor = Field(
+        description="Durable prompt control-plane event that was recorded."
+    )
+    rollout_state: PromptRolloutDescriptor = Field(
+        description="Resulting rollout state after the promotion executed."
+    )
+    governed_action: GovernedActionRecord = Field(
+        description="The executed governed-action evidence linking request, approval and promotion.",
+    )
+    summary: list[str] = Field(description="Human-readable statements about the action.")
 
 
 class PromptControlActionResponse(BaseModel):

@@ -37,6 +37,7 @@ from app.services.prompt_runtime import (
 from app.services.prompt_store import get_prompt_repository, reset_prompt_store_cache
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
+from tests.support.governed_control import promote_prompt_for_test
 
 
 def _authorization() -> AuthorizationDecision:
@@ -128,16 +129,10 @@ def test_build_prompt_selection_trace_includes_latest_control_event_after_promot
         database_url=database_url,
     ):
         _seed_prompt_approval_gate_pass_sqlalchemy()
-        apply_prompt_control_action(
-            PromptControlActionRequest(
-                task_id="explain.v1",
-                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
-                caller_app="lotus-platform",
-                candidate_prompt_version="foundation.explain.v2",
-                requested_by="alice@lotus.test",
-                approved_by="bob@lotus.test",
-                reason="Promote explanation prompt",
-            )
+        promote_prompt_for_test(
+            task_id="explain.v1",
+            candidate_prompt_version="foundation.explain.v2",
+            reason="Promote explanation prompt",
         )
 
         trace = build_prompt_selection_trace("explain.v1")
@@ -158,16 +153,10 @@ def test_prompt_runtime_selection_survives_sql_store_reinitialization(tmp_path: 
         database_url=database_url,
     ):
         _seed_prompt_approval_gate_pass_sqlalchemy()
-        apply_prompt_control_action(
-            PromptControlActionRequest(
-                task_id="explain.v1",
-                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
-                caller_app="lotus-platform",
-                candidate_prompt_version="foundation.explain.v2",
-                requested_by="alice@lotus.test",
-                approved_by="bob@lotus.test",
-                reason="Promote explanation prompt",
-            )
+        promote_prompt_for_test(
+            task_id="explain.v1",
+            candidate_prompt_version="foundation.explain.v2",
+            reason="Promote explanation prompt",
         )
 
         reset_prompt_store_cache()
@@ -199,16 +188,10 @@ def test_prompt_runtime_rollback_lineage_survives_sql_store_reinitialization(
         database_url=database_url,
     ):
         _seed_prompt_approval_gate_pass_sqlalchemy()
-        apply_prompt_control_action(
-            PromptControlActionRequest(
-                task_id="explain.v1",
-                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
-                caller_app="lotus-platform",
-                candidate_prompt_version="foundation.explain.v2",
-                requested_by="alice@lotus.test",
-                approved_by="bob@lotus.test",
-                reason="Promote explanation prompt",
-            )
+        promote_prompt_for_test(
+            task_id="explain.v1",
+            candidate_prompt_version="foundation.explain.v2",
+            reason="Promote explanation prompt",
         )
         apply_prompt_control_action(
             PromptControlActionRequest(
