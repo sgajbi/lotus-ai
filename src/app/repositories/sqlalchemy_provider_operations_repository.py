@@ -13,9 +13,9 @@ from app.contracts.access_control import (
 )
 from app.contracts.providers import (
     ProviderFailureCategory,
-    ProviderOperationsControlActionType,
     ProviderQuotaScope,
 )
+from app.contracts.provider_operations import ProviderOperationsControlActionType
 from app.contracts.governed_actions import GovernedActionRecord
 from app.db.models import (
     GovernedActionModel,

@@ -2,21 +2,25 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.contracts.governed_actions import GovernedActionResponse
 from app.contracts.providers import (
     ProviderActivationReadinessResponse,
-    RoutingPostureResponse,
     ProviderBudgetPolicyResponse,
     ProviderCatalogResponse,
     ProviderEvidenceReadinessResponse,
     ProviderGovernanceStatusResponse,
-    ProviderOperationsControlActionRequest,
-    ProviderOperationsControlActionResponse,
-    ProviderOperationsControlHistoryResponse,
     ProviderOperationsStatusResponse,
     ProviderOperatorProfileResponse,
     ProviderPolicyResponse,
     ProviderQuotaPolicyResponse,
     ProviderRunbookReadinessResponse,
+    RoutingPostureResponse,
+)
+from app.contracts.provider_operations import (
+    ProviderOperationsControlHistoryResponse,
+    ProviderOperationsResetApprovalRequest,
+    ProviderOperationsResetApprovalResponse,
+    ProviderOperationsResetIntentRequest,
 )
 from app.contracts.rate_cards import RateCardCatalogueResponse
 from app.http.authenticated_caller import AuthenticatedCallerDependency
@@ -26,7 +30,8 @@ from app.services.provider_catalog import build_provider_catalog
 from app.services.provider_evidence_readiness import build_provider_evidence_readiness
 from app.services.provider_governance_status import build_provider_governance_status
 from app.services.provider_operations_control import (
-    apply_provider_operations_control_action,
+    approve_provider_operations_reset,
+    request_provider_operations_reset,
     build_provider_operations_control_history,
 )
 from app.services.provider_operations_status import build_provider_operations_status
@@ -209,28 +214,63 @@ async def get_provider_operations_control_history_route() -> (
 
 
 @router.post(
-    "/control-plane-actions/reset",
-    response_model=ProviderOperationsControlActionResponse,
-    operation_id="applyProviderOperationsControlAction",
-    summary="Apply a lotus-ai provider operations control-plane reset action",
+    "/control-plane-actions/reset-requests",
+    response_model=GovernedActionResponse,
+    operation_id="requestProviderOperationsReset",
+    summary="Request a provider operations reset",
     description=(
-        "Applies one governed provider-operations reset action and records durable operator "
-        "reason and approval metadata for later review."
+        "Step one of a governed reset (issue #157): records a pending reset intent under the "
+        "requester's verified credential and returns the action hash a distinct verified "
+        "credential must approve. Every reset is permissive - it re-opens a spending envelope "
+        "or resumes traffic past breaker protection - so no provider-operations state changes "
+        "until the approval executes."
     ),
     responses={
-        200: {"description": "Provider operations control-plane action applied successfully."},
-        409: {
-            "description": "Durable provider-operations control actions are not currently supported."
+        200: {"description": "Reset intent recorded and pending approval."},
+        403: {
+            "description": "Caller is not authorized for provider control, or carries no "
+            "verified credential."
         },
-        422: {"description": "Invalid provider-operations control action request."},
+        409: {"description": "Durable provider-operations control actions are not supported."},
+        422: {"description": "Invalid reset shape."},
         500: {"description": "Unexpected server error."},
     },
 )
-async def apply_provider_operations_control_action_route(
-    request: ProviderOperationsControlActionRequest,
-    _authenticated_caller: AuthenticatedCallerDependency,
-) -> ProviderOperationsControlActionResponse:
-    return apply_provider_operations_control_action(request)
+async def request_provider_operations_reset_route(
+    request: ProviderOperationsResetIntentRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> GovernedActionResponse:
+    return request_provider_operations_reset(request, authenticated_caller)
+
+
+@router.post(
+    "/control-plane-actions/reset-approvals",
+    response_model=ProviderOperationsResetApprovalResponse,
+    operation_id="approveProviderOperationsReset",
+    summary="Approve and execute a pending provider operations reset",
+    description=(
+        "Step two of a governed reset (issue #157): a verified credential DISTINCT from the "
+        "requester's approves the exact pending action hash, which executes the reset and "
+        "records the full request-approval-execution evidence chain."
+    ),
+    responses={
+        200: {"description": "Reset executed under governed approval."},
+        403: {
+            "description": "Caller is not authorized, carries no verified credential, or is "
+            "the same credential that requested the reset."
+        },
+        404: {"description": "No pending action exists."},
+        409: {
+            "description": "The action hash or shape does not match, or the action is not pending."
+        },
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def approve_provider_operations_reset_route(
+    request: ProviderOperationsResetApprovalRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> ProviderOperationsResetApprovalResponse:
+    return approve_provider_operations_reset(request, authenticated_caller)
 
 
 @router.get(

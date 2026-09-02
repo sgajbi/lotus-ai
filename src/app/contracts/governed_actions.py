@@ -40,6 +40,7 @@ class GovernedActorClass(str, Enum):
 class GovernedActionType(str, Enum):
     KILL_SWITCH_CLEAR = "KILL_SWITCH_CLEAR"
     PROMPT_PROMOTE = "PROMPT_PROMOTE"
+    PROVIDER_OPERATIONS_RESET = "PROVIDER_OPERATIONS_RESET"
 
 
 class GovernedActionStatus(str, Enum):

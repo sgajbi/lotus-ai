@@ -16,7 +16,7 @@ from app.repositories.provider_operations_repository import (
     ProviderOperationsEventRecord,
     ProviderQuotaStateRecord,
 )
-from app.contracts.providers import ProviderOperationsControlActionType
+from app.contracts.provider_operations import ProviderOperationsControlActionType
 from app.repositories.sqlalchemy_provider_operations_repository import (
     SqlAlchemyProviderOperationsRepository,
 )

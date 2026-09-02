@@ -31,7 +31,6 @@ OVERSIZED_ALLOWLIST: dict[str, int] = {
     "services/eval_runtime_execution.py": 1471,
     "services/workflow_pack_registry_seed.py": 1365,
     "routers/workflow_packs.py": 1250,
-    "contracts/providers.py": 1023,
 }
 
 # The readiness modules that survive because they genuinely compute from

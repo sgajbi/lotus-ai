@@ -7,16 +7,23 @@ from app.contracts.providers import (
     ProviderAdapterKind,
     ProviderExecutionResponse,
     ProviderFailureCategory,
-    ProviderOperationsControlActionRequest,
-    ProviderOperationsControlActionType,
     ProviderQuotaScope,
 )
+from app.contracts.provider_operations import (
+    ProviderOperationsResetApprovalResponse,
+    ProviderOperationsControlActionType,
+    ProviderOperationsResetApprovalRequest,
+    ProviderOperationsResetIntentRequest,
+)
+from app.http.authenticated_caller import AuthenticatedCaller
 from app.services.provider_budget_policy import record_provider_spend
 from app.services.provider_degradation_state import record_provider_failure
 from app.services.provider_operations_control import (
-    apply_provider_operations_control_action,
+    approve_provider_operations_reset,
     build_provider_operations_control_history,
+    request_provider_operations_reset,
 )
+from tests.support.governed_control import GOVERNED_APPROVER, GOVERNED_REQUESTER
 from app.services.provider_quota_policy import enforce_provider_quota
 from app.services.provider_request_builder import build_provider_execution_request
 from app.services.task_execution_pipeline import validate_task_request
@@ -42,6 +49,36 @@ def _budget_response(cost: float) -> ProviderExecutionResponse:
         stubbed=False,
         message="live response",
         structured_output={},
+    )
+
+
+def _governed_reset(
+    action_type: ProviderOperationsControlActionType,
+    *,
+    scope: ProviderQuotaScope | None = None,
+    scope_key: str | None = None,
+    reason: str = "Clear durable provider controls after reviewed recovery.",
+) -> ProviderOperationsResetApprovalResponse:
+    pending = request_provider_operations_reset(
+        ProviderOperationsResetIntentRequest(
+            action_type=action_type,
+            scope=scope,
+            scope_key=scope_key,
+            reason=reason,
+            requested_by="ops.user@lotus",
+        ),
+        GOVERNED_REQUESTER,
+    )
+    return approve_provider_operations_reset(
+        ProviderOperationsResetApprovalRequest(
+            action_type=action_type,
+            scope=scope,
+            scope_key=scope_key,
+            action_id=pending.governed_action.action_id,
+            action_hash=pending.governed_action.action_hash,
+            approved_by="approver.user@lotus",
+        ),
+        GOVERNED_APPROVER,
     )
 
 
@@ -77,18 +114,17 @@ def test_provider_operations_control_action_resets_durable_state_and_records_eve
     record_provider_spend(_budget_response(0.75))
     record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
 
-    response = apply_provider_operations_control_action(
-        ProviderOperationsControlActionRequest(
-            action_type=ProviderOperationsControlActionType.RESET_ALL_PROVIDER_OPERATIONS,
-            caller_app="lotus-platform",
-            requested_by="ops.user@lotus",
-            approved_by="approver.user@lotus",
-            reason="Clear durable provider controls after reviewed recovery.",
-        )
-    )
+    response = _governed_reset(ProviderOperationsControlActionType.RESET_ALL_PROVIDER_OPERATIONS)
     history = build_provider_operations_control_history()
 
     assert response.event.affected_record_count == 3
+    assert response.governed_action.status.value == "EXECUTED"
+    assert response.governed_action.requester_key_id == "ops-key-alpha"
+    assert response.governed_action.approver_key_id == "ops-key-beta"
+    # The durable event records verified credential identities, not the
+    # caller-typed names.
+    assert "ops-key-alpha" in response.event.requested_by
+    assert "ops-key-beta" in response.event.approved_by
     assert history.reset_actions_supported is True
     assert history.latest_events[0].event_id == response.event.event_id
     assert (
@@ -102,14 +138,12 @@ def test_provider_operations_control_action_rejects_missing_targeted_quota_scope
     settings.database_url = "sqlite:///:memory:"
 
     try:
-        apply_provider_operations_control_action(
-            ProviderOperationsControlActionRequest(
+        request_provider_operations_reset(
+            ProviderOperationsResetIntentRequest(
                 action_type=ProviderOperationsControlActionType.RESET_QUOTA_SCOPE,
-                caller_app="lotus-platform",
-                requested_by="ops.user@lotus",
-                approved_by="approver.user@lotus",
                 reason="Targeted quota reset.",
-            )
+            ),
+            GOVERNED_REQUESTER,
         )
     except HTTPException as exc:
         assert exc.status_code == 422
@@ -119,14 +153,12 @@ def test_provider_operations_control_action_rejects_missing_targeted_quota_scope
 
 def test_provider_operations_control_action_rejects_nondurable_store_mode() -> None:
     try:
-        apply_provider_operations_control_action(
-            ProviderOperationsControlActionRequest(
+        request_provider_operations_reset(
+            ProviderOperationsResetIntentRequest(
                 action_type=ProviderOperationsControlActionType.RESET_BUDGET,
-                caller_app="lotus-platform",
-                requested_by="ops.user@lotus",
-                approved_by="approver.user@lotus",
                 reason="Budget reset on in-memory store should fail.",
-            )
+            ),
+            GOVERNED_REQUESTER,
         )
     except HTTPException as exc:
         assert exc.status_code == 409
@@ -148,16 +180,11 @@ def test_provider_operations_control_action_resets_targeted_quota_scope(tmp_path
     )
     enforce_provider_quota(provider_request)
 
-    response = apply_provider_operations_control_action(
-        ProviderOperationsControlActionRequest(
-            action_type=ProviderOperationsControlActionType.RESET_QUOTA_SCOPE,
-            caller_app="lotus-platform",
-            scope=ProviderQuotaScope.TASK,
-            scope_key="explain.v1",
-            requested_by="ops.user@lotus",
-            approved_by="approver.user@lotus",
-            reason="Targeted task quota reset after review.",
-        )
+    response = _governed_reset(
+        ProviderOperationsControlActionType.RESET_QUOTA_SCOPE,
+        scope=ProviderQuotaScope.TASK,
+        scope_key="explain.v1",
+        reason="Targeted task quota reset after review.",
     )
 
     assert response.event.affected_record_count == 1
@@ -170,18 +197,96 @@ def test_provider_operations_control_action_blocks_unauthorized_caller(tmp_path:
     settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-ops-unauthorized.db'}"
     upgrade_database_to_head(settings.database_url)
 
+    unauthorized = AuthenticatedCaller(
+        caller_app="lotus-workbench",
+        trust_source="verified_service_jwt",
+        credential_key_id="ops-key-alpha",
+    )
     try:
-        apply_provider_operations_control_action(
-            ProviderOperationsControlActionRequest(
+        request_provider_operations_reset(
+            ProviderOperationsResetIntentRequest(
                 action_type=ProviderOperationsControlActionType.RESET_BUDGET,
-                caller_app="lotus-workbench",
-                requested_by="ops.user@lotus",
-                approved_by="approver.user@lotus",
                 reason="Unauthorized budget reset attempt.",
-            )
+            ),
+            unauthorized,
         )
     except HTTPException as exc:
         assert exc.status_code == 403
         assert "not authorized for provider control-plane actions" in str(exc.detail)
     else:
         raise AssertionError("Expected unauthorized provider control action to be rejected.")
+
+
+def test_a_reset_cannot_be_self_approved_and_state_survives(tmp_path: Path) -> None:
+    """The target invariant on the provider domain: the requester's own
+    credential cannot execute the reset, and the state the reset would clear
+    is still there afterwards."""
+
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-ops-self.db'}"
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 2
+    settings.live_text_circuit_open_seconds = 60
+    upgrade_database_to_head(settings.database_url)
+
+    record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
+    pending = request_provider_operations_reset(
+        ProviderOperationsResetIntentRequest(
+            action_type=ProviderOperationsControlActionType.RESET_DEGRADATION,
+            reason="Self-approval attempt.",
+        ),
+        GOVERNED_REQUESTER,
+    )
+
+    try:
+        approve_provider_operations_reset(
+            ProviderOperationsResetApprovalRequest(
+                action_type=ProviderOperationsControlActionType.RESET_DEGRADATION,
+                action_id=pending.governed_action.action_id,
+                action_hash=pending.governed_action.action_hash,
+            ),
+            GOVERNED_REQUESTER,
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 403
+        assert "distinct" in str(exc.detail)
+    else:
+        raise AssertionError("Expected self-approval to be refused.")
+    from app.services.provider_degradation_state import build_provider_degradation_status
+
+    assert build_provider_degradation_status().consecutive_failure_count == 1
+
+
+def test_an_approval_cannot_be_redirected_to_a_different_reset_shape(
+    tmp_path: Path,
+) -> None:
+    """The approver restates the reset shape; approving a degradation clear
+    with a pending budget-reset action refuses rather than executing either."""
+
+    settings.provider_operations_store_mode = "sqlalchemy"
+    settings.database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-ops-redirect.db'}"
+    upgrade_database_to_head(settings.database_url)
+
+    pending = request_provider_operations_reset(
+        ProviderOperationsResetIntentRequest(
+            action_type=ProviderOperationsControlActionType.RESET_BUDGET,
+            reason="Budget reset pending.",
+        ),
+        GOVERNED_REQUESTER,
+    )
+
+    try:
+        approve_provider_operations_reset(
+            ProviderOperationsResetApprovalRequest(
+                action_type=ProviderOperationsControlActionType.RESET_DEGRADATION,
+                action_id=pending.governed_action.action_id,
+                action_hash=pending.governed_action.action_hash,
+            ),
+            GOVERNED_APPROVER,
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 409
+        assert "cannot be redirected" in str(exc.detail)
+    else:
+        raise AssertionError("Expected shape-redirected approval to be refused.")
