@@ -18,6 +18,7 @@ from app.contracts.model_catalogue import (
 from app.contracts.providers import (
     CandidateUniverseExclusionReason,
     CandidateUniverseSource,
+    ProviderFailureCategory,
 )
 from app.services.model_catalogue import (
     derive_candidate_universe,
@@ -282,3 +283,78 @@ def test_routing_posture_shows_the_universe_an_execution_would_get() -> None:
     assert universe.candidate_entry_ids == [ALTERNATE_ENTRY]
     assert [e.entry_id for e in universe.exclusions] == [PRIMARY_ENTRY]
     assert universe.exclusions[0].reason is (CandidateUniverseExclusionReason.LIFECYCLE_INELIGIBLE)
+
+
+def test_capability_posture_answers_who_is_eligible_and_who_would_serve() -> None:
+    """Issue #244, S5: the posture runs the gateway's own eligibility check
+    over the derived universe - eligible, excluded-with-reason, and the
+    first-eligible selection, per queried capability."""
+
+    from app.contracts.capability_requirements import CapabilityRequirements
+    from app.services.routing_posture import build_routing_posture
+    from tests.unit.test_ordered_fallback_routing import _assess_structured_output
+
+    _ordered_fallback_settings()
+    _assess_structured_output(PRIMARY, "gpt-5.4", True)
+
+    posture = build_routing_posture(CapabilityRequirements(structured_output_required=True))
+
+    capability = posture.capability_posture
+    assert capability is not None
+    assert [c.entry_id for c in capability.candidates] == [PRIMARY_ENTRY, ALTERNATE_ENTRY]
+    assert capability.candidates[0].eligible is True
+    assert capability.candidates[0].rejection_reason is None
+    # The unassessed alternate fails closed AS unknown, never silently.
+    assert capability.candidates[1].eligible is False
+    assert capability.candidates[1].rejection_reason is (ProviderFailureCategory.CAPABILITY_UNKNOWN)
+    assert capability.would_select_entry_id == PRIMARY_ENTRY
+
+    # Without a capability query there is no capability posture.
+    assert build_routing_posture().capability_posture is None
+
+
+def test_capability_posture_reflects_an_operator_degradation() -> None:
+    """A degraded capability shows as CAPABILITY_DEGRADED on the posture with
+    the operator's reason - "we turned this off" is visible, and selection
+    moves (or empties) accordingly."""
+
+    from app.contracts.capability_requirements import CapabilityRequirements
+    from app.services.routing_posture import build_routing_posture
+    from tests.unit.test_ordered_fallback_routing import _assess_structured_output
+
+    _ordered_fallback_settings()
+    _assess_structured_output(PRIMARY, "gpt-5.4", True)
+    _assess_structured_output(ALTERNATE, "claude-sonnet-5", True)
+
+    # The degradation control requires the durable store; write the overlay
+    # directly for this read-model test.
+    repository = get_model_catalogue_repository()
+    entry = repository.get_entry(PRIMARY_ENTRY)
+    assert entry is not None
+    from app.contracts.model_catalogue import ModelCapabilityDegradation
+
+    repository.upsert_entry(
+        entry.model_copy(
+            update={
+                "capability_degradations": {
+                    "supports_structured_output": ModelCapabilityDegradation(
+                        dimension="supports_structured_output",
+                        reason="Structured output failing contract validation.",
+                        degraded_by="lotus-platform (credential ops-key-alpha)",
+                        degraded_at="2026-09-03T12:00:00Z",
+                    )
+                }
+            }
+        )
+    )
+
+    posture = build_routing_posture(CapabilityRequirements(structured_output_required=True))
+
+    capability = posture.capability_posture
+    assert capability is not None
+    assert capability.candidates[0].rejection_reason is (
+        ProviderFailureCategory.CAPABILITY_DEGRADED
+    )
+    assert "failing contract validation" in str(capability.candidates[0].detail)
+    assert capability.candidates[1].eligible is True
+    assert capability.would_select_entry_id == ALTERNATE_ENTRY

@@ -17,29 +17,39 @@ from app.services.provider_execution_config import (
     derive_fallback_execution_config,
     resolve_provider_execution_config,
 )
+from app.contracts.capability_requirements import CapabilityRequirements
 from app.contracts.model_catalogue import ModelCatalogueEntry, derive_model_catalogue_entry_id
 from app.contracts.providers import (
     ROUTING_POLICY_FIXED_CONFIGURED_MODE,
     ROUTING_POLICY_ORDERED_FALLBACK,
     ROUTING_POLICY_VERSION_V1,
+    CandidateUniverse,
+    CapabilityPostureCandidateDescriptor,
+    CapabilityPostureDescriptor,
     ProviderDegradationStatusDescriptor,
+    ProviderFailureCategory,
     RoutingPostureCandidateDescriptor,
     RoutingPostureResponse,
     RoutingStrategy,
 )
+from app.providers.base import ProviderExecutionError
 from app.services.kill_switch_control import build_kill_switch_status
 from app.services.model_catalogue import (
     derive_candidate_universe,
+    enforce_capability_requirements,
     ensure_model_catalogue_seeded,
 )
 from app.services.model_catalogue_store import get_model_catalogue_repository
 from app.services.provider_degradation_state import build_provider_degradation_status
 
 
-def build_routing_posture() -> RoutingPostureResponse:
+def build_routing_posture(
+    requirements: CapabilityRequirements | None = None,
+) -> RoutingPostureResponse:
     config = resolve_provider_execution_config()
     ordered = config.routing_strategy == "ordered_fallback"
     alternate = derive_fallback_execution_config(config) if ordered else None
+    universe = derive_candidate_universe(config) if ordered else None
     fallback_candidate: RoutingPostureCandidateDescriptor | None = None
     fallback_degradation: ProviderDegradationStatusDescriptor | None = None
     if alternate is not None:
@@ -83,8 +93,65 @@ def build_routing_posture() -> RoutingPostureResponse:
         enforcing_kill_switch_count=build_kill_switch_status().active_count,
         # The same derivation the gateway enumerates from (issue #244, U3):
         # one authority, so the posture cannot disagree with routing.
-        candidate_universe=derive_candidate_universe(config) if ordered else None,
+        candidate_universe=universe,
+        capability_posture=(
+            _build_capability_posture(universe=universe, requirements=requirements)
+            if universe is not None and requirements is not None
+            else None
+        ),
         notes=notes,
+    )
+
+
+def _build_capability_posture(
+    *,
+    universe: CandidateUniverse,
+    requirements: CapabilityRequirements,
+) -> CapabilityPostureDescriptor:
+    """Per-candidate capability eligibility, with the gateway's own check.
+
+    Runs `enforce_capability_requirements` - not a re-derivation of its logic -
+    over the exact universe the next execution would enumerate, so "who is
+    eligible for capability X" can never disagree with what routing enforces
+    (issue #244, S5).
+    """
+
+    repository = get_model_catalogue_repository()
+    candidates: list[CapabilityPostureCandidateDescriptor] = []
+    would_select: str | None = None
+    for entry_id in universe.candidate_entry_ids:
+        entry = repository.get_entry(entry_id)
+        if entry is None:
+            # The universe was derived moments ago; a vanished entry is a
+            # concurrent catalogue change - report it as not catalogued.
+            candidates.append(
+                CapabilityPostureCandidateDescriptor(
+                    entry_id=entry_id,
+                    eligible=False,
+                    rejection_reason=ProviderFailureCategory.MODEL_NOT_CATALOGUED,
+                    detail=f"`{entry_id}` is no longer catalogued.",
+                )
+            )
+            continue
+        try:
+            enforce_capability_requirements(requirements=requirements, entry=entry)
+        except ProviderExecutionError as exc:
+            candidates.append(
+                CapabilityPostureCandidateDescriptor(
+                    entry_id=entry_id,
+                    eligible=False,
+                    rejection_reason=exc.category,
+                    detail=exc.message,
+                )
+            )
+            continue
+        candidates.append(CapabilityPostureCandidateDescriptor(entry_id=entry_id, eligible=True))
+        if would_select is None:
+            would_select = entry_id
+    return CapabilityPostureDescriptor(
+        requirements=requirements,
+        candidates=candidates,
+        would_select_entry_id=would_select,
     )
 
 
