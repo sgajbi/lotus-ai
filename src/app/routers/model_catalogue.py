@@ -19,11 +19,13 @@ from app.contracts.model_catalogue import (
 )
 from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.model_catalogue import (
+    build_model_catalogue_entry_detail,
+    build_model_catalogue_response,
+)
+from app.services.model_lifecycle_control import (
     apply_model_lifecycle_transition,
     approve_model_capability_restore,
     approve_model_promotion,
-    build_model_catalogue_entry_detail,
-    build_model_catalogue_response,
     degrade_model_capability,
     request_model_capability_restore,
     request_model_promotion,

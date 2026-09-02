@@ -4,13 +4,15 @@ from fastapi import HTTPException, status
 
 from app.config import settings
 from app.services.runtime_mode_config import resolve_runtime_mode_config
+from app.contracts.provider_catalog import (
+    ProviderPolicyDescriptor,
+    ProviderPolicyResponse,
+)
 from app.contracts.providers import (
     ProviderAdapterKind,
     ProviderCapability,
     ProviderExecutionMode,
     ProviderFailureCategory,
-    ProviderPolicyDescriptor,
-    ProviderPolicyResponse,
 )
 from app.providers.registry import resolve_embedding_adapter, resolve_text_generation_adapter
 from app.services.embedding_live_execution_state import build_embedding_live_execution_state

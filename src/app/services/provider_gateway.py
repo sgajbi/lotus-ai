@@ -7,6 +7,8 @@ from app.contracts.providers import (
     ROUTING_POLICY_FIXED_CONFIGURED_MODE,
     ROUTING_POLICY_ORDERED_FALLBACK,
     ROUTING_POLICY_VERSION_V1,
+    CandidateUniverse,
+    CandidateUniverseSource,
     ProviderExecutionMode,
     ProviderExecutionRequest,
     ProviderExecutionResponse,
@@ -35,6 +37,7 @@ from app.contracts.capability_requirements import CapabilityRequirements
 from app.services.model_catalogue import (
     ENFORCED_REQUIREMENT_DIMENSIONS,
     bind_live_text_model_catalogue_entry,
+    derive_candidate_universe,
     enforce_capability_requirements,
     record_model_revision_drift,
 )
@@ -219,6 +222,10 @@ def _execute_ordered_fallback(
 
     rejections: dict[int, ProviderFailureCategory] = {}
     candidates = [config, alternate]
+    # Decision evidence only in U1 (issue #244): the enumeration above is
+    # still configuration-shaped, and the universe says so honestly while
+    # recording what the catalogue holds that policy does not let serve.
+    universe = derive_candidate_universe(config)
 
     # Operator kill switches outrank every automatic control, evaluated per
     # candidate: a switch on the primary's provider scope routes to the
@@ -243,6 +250,7 @@ def _execute_ordered_fallback(
             candidates=candidates,
             rejections=rejections,
             fallback_path=[],
+            universe=universe,
         )
 
     try:
@@ -258,6 +266,7 @@ def _execute_ordered_fallback(
             candidates=candidates,
             rejections=rejections,
             fallback_path=[],
+            universe=universe,
         ) from exc
 
     adapter = resolve_text_generation_adapter(mode)
@@ -311,6 +320,7 @@ def _execute_ordered_fallback(
                 serving_entry=catalogue_entry,
                 fallback_path=fallback_path,
                 decided_at=_utc_now_iso(),
+                universe=universe,
             )
             record_provider_spend(response)
             record_successful_provider_execution()
@@ -324,6 +334,7 @@ def _execute_ordered_fallback(
         candidates=candidates,
         rejections=rejections,
         fallback_path=fallback_path,
+        universe=universe,
     )
 
 
@@ -335,6 +346,7 @@ def _ordered_refusal(
     candidates: list[ProviderExecutionConfig],
     rejections: dict[int, ProviderFailureCategory],
     fallback_path: list[str],
+    universe: CandidateUniverse | None = None,
 ) -> ProviderGatewayUnavailableError:
     return ProviderGatewayUnavailableError(
         detail=f"{error.category.value}: {error.message}",
@@ -348,6 +360,7 @@ def _ordered_refusal(
             serving_entry=None,
             fallback_path=fallback_path,
             decided_at=_utc_now_iso(),
+            universe=universe,
         ),
     )
 
@@ -375,6 +388,7 @@ def _build_ordered_routing_decision(
     serving_entry: ModelCatalogueEntry | None,
     fallback_path: list[str],
     decided_at: str,
+    universe: CandidateUniverse | None = None,
 ) -> RoutingDecisionDescriptor:
     descriptors: list[RoutingCandidateDescriptor] = []
     for candidate, rejection in candidates:
@@ -419,6 +433,10 @@ def _build_ordered_routing_decision(
         decided_at=decided_at,
         selection_reason=selection_reason,
         fallback_path=fallback_path,
+        universe_source=(
+            universe.source if universe is not None else CandidateUniverseSource.CONFIGURED
+        ),
+        universe_exclusions=list(universe.exclusions) if universe is not None else [],
     )
 
 

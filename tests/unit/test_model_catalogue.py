@@ -351,7 +351,10 @@ def _promote_entry_for_test(
         ModelPromotionApprovalRequest,
         ModelPromotionIntentRequest,
     )
-    from app.services.model_catalogue import approve_model_promotion, request_model_promotion
+    from app.services.model_lifecycle_control import (
+        approve_model_promotion,
+        request_model_promotion,
+    )
     from tests.support.governed_control import GOVERNED_APPROVER, GOVERNED_REQUESTER
 
     pending = request_model_promotion(
@@ -393,7 +396,7 @@ def test_lifecycle_transition_requires_authorization_and_durable_store(
     from fastapi import HTTPException
 
     from app.http.authenticated_caller import AuthenticatedCaller
-    from app.services.model_catalogue import apply_model_lifecycle_transition
+    from app.services.model_lifecycle_control import apply_model_lifecycle_transition
     from tests.support.governed_control import GOVERNED_REQUESTER
 
     unauthorized = AuthenticatedCaller(
@@ -417,10 +420,8 @@ def test_lifecycle_transition_walks_the_governed_edge_table(_durable_catalogue: 
     from fastapi import HTTPException
 
     from app.contracts.model_catalogue import ModelPromotionApprovalResponse
-    from app.services.model_catalogue import (
-        apply_model_lifecycle_transition,
-        build_model_catalogue_entry_detail,
-    )
+    from app.services.model_catalogue import build_model_catalogue_entry_detail
+    from app.services.model_lifecycle_control import apply_model_lifecycle_transition
     from tests.support.governed_control import GOVERNED_REQUESTER
 
     entry_id = _durable_catalogue
@@ -495,7 +496,7 @@ def test_promotion_request_validates_target_edge_and_evidence(_durable_catalogue
     from fastapi import HTTPException
 
     from app.contracts.model_catalogue import ModelPromotionIntentRequest
-    from app.services.model_catalogue import (
+    from app.services.model_lifecycle_control import (
         apply_model_lifecycle_transition,
         request_model_promotion,
     )
@@ -582,7 +583,7 @@ def test_promotion_approval_refuses_a_stale_baseline(_durable_catalogue: str) ->
         ModelPromotionApprovalRequest,
         ModelPromotionIntentRequest,
     )
-    from app.services.model_catalogue import (
+    from app.services.model_lifecycle_control import (
         apply_model_lifecycle_transition,
         approve_model_promotion,
         request_model_promotion,
@@ -636,7 +637,7 @@ def test_promotion_approval_requires_a_distinct_credential(_durable_catalogue: s
         ModelPromotionApprovalRequest,
         ModelPromotionIntentRequest,
     )
-    from app.services.model_catalogue import (
+    from app.services.model_lifecycle_control import (
         apply_model_lifecycle_transition,
         approve_model_promotion,
         request_model_promotion,
@@ -773,7 +774,7 @@ def test_memory_lifecycle_events_append_and_list() -> None:
 def test_lifecycle_transition_on_an_unknown_entry_is_404(_durable_catalogue: str) -> None:
     from fastapi import HTTPException
 
-    from app.services.model_catalogue import apply_model_lifecycle_transition
+    from app.services.model_lifecycle_control import apply_model_lifecycle_transition
 
     from tests.support.governed_control import GOVERNED_REQUESTER
 
@@ -877,7 +878,7 @@ def _degrade_capability(
     entry_id: str, dimension: str = "supports_structured_output"
 ) -> "ModelCapabilityDegradationResponse":
     from app.contracts.model_catalogue import ModelCapabilityDegradationRequest
-    from app.services.model_catalogue import degrade_model_capability
+    from app.services.model_lifecycle_control import degrade_model_capability
     from tests.support.governed_control import GOVERNED_REQUESTER
 
     return degrade_model_capability(
@@ -931,7 +932,7 @@ def test_capability_degradation_validates_dimension_and_refuses_overwrite(
     from fastapi import HTTPException
 
     from app.contracts.model_catalogue import ModelCapabilityDegradationRequest
-    from app.services.model_catalogue import degrade_model_capability
+    from app.services.model_lifecycle_control import degrade_model_capability
     from tests.support.governed_control import GOVERNED_REQUESTER
 
     entry_id = _durable_catalogue
@@ -987,9 +988,9 @@ def test_capability_restore_is_governed_and_pins_the_degradation(
         ModelCapabilityRestoreApprovalRequest,
         ModelCapabilityRestoreIntentRequest,
     )
-    from app.services.model_catalogue import (
+    from app.services.model_catalogue import enforce_capability_requirements
+    from app.services.model_lifecycle_control import (
         approve_model_capability_restore,
-        enforce_capability_requirements,
         request_model_capability_restore,
     )
     from tests.support.governed_control import GOVERNED_APPROVER, GOVERNED_REQUESTER
@@ -1085,7 +1086,7 @@ def test_capability_restore_re_request_supersedes_the_prior_intent(
         ModelCapabilityRestoreApprovalRequest,
         ModelCapabilityRestoreIntentRequest,
     )
-    from app.services.model_catalogue import (
+    from app.services.model_lifecycle_control import (
         approve_model_capability_restore,
         request_model_capability_restore,
     )
