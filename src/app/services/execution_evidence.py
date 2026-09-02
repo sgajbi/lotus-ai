@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.contracts.access_control import AuthorizationDecision
+from app.contracts.capability_requirements import REQUIREMENTS_NOT_ENFORCED
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.output_validation import OutputValidationOutcome
 from app.contracts.prompts import PromptDescriptor, PromptSelectionTraceDescriptor
@@ -43,7 +44,36 @@ def build_execution_evidence(
             _output_validation_descriptor(output_validation=output_validation),
         ]
     )
+    if request.requirements is not None:
+        descriptors.append(_capability_requirements_descriptor(request=request))
     return ExecutionEvidenceBundle(descriptors=descriptors)
+
+
+def _capability_requirements_descriptor(
+    *, request: TaskExecutionRequest
+) -> ExecutionEvidenceDescriptor:
+    """Declared workload requirements, with their enforcement posture stated.
+
+    Recording a requirement without saying whether anything enforces it would
+    let a consumer believe a ceiling is being held when nothing holds it -
+    the declared-versus-measured defect this platform keeps finding. Slice 3
+    of issue #244 turns these into an eligibility filter and flips the
+    posture; until then the evidence says NOT_ENFORCED, visibly.
+    """
+
+    assert request.requirements is not None
+    return ExecutionEvidenceDescriptor(
+        evidence_type="capability_requirements",
+        summary=(
+            "The caller declared workload capability requirements; they are recorded and "
+            f"{REQUIREMENTS_NOT_ENFORCED}: capability eligibility has not shipped, so no "
+            "routing filter holds them yet."
+        ),
+        attributes={
+            "declared": request.requirements.declared_dimensions(),
+            "requirements_enforcement": REQUIREMENTS_NOT_ENFORCED,
+        },
+    )
 
 
 def _output_validation_descriptor(
