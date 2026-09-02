@@ -364,3 +364,118 @@ def test_governed_promotion_flow_over_http(tmp_path: Path) -> None:
                 "lotus-platform (credential catalogue-ops-beta)"
             )
             assert body["governed_action"]["status"] == "EXECUTED"
+
+
+def test_capability_degrade_and_governed_restore_over_http(tmp_path: Path) -> None:
+    """Capability-scoped degradation end-to-end (issue #245, slice 2): one
+    verified principal degrades immediately; a DISTINCT verified credential
+    approves the governed restore backed by PASS-verdict eval evidence."""
+
+    from tests.support.caller_credentials import (
+        generate_caller_signing_key,
+        mint_caller_credential,
+        public_keys_setting,
+    )
+
+    requester_key = generate_caller_signing_key()
+    approver_key = generate_caller_signing_key()
+    requester_headers = {
+        "Authorization": "Bearer "
+        + mint_caller_credential(
+            signing_key=requester_key,
+            key_id="capability-ops-alpha",
+            subject="lotus-platform",
+            expires_in_seconds=3600,
+        )
+    }
+    approver_headers = {
+        "Authorization": "Bearer "
+        + mint_caller_credential(
+            signing_key=approver_key,
+            key_id="capability-ops-beta",
+            subject="lotus-platform",
+            expires_in_seconds=3600,
+        )
+    }
+
+    database_url = f"sqlite:///{tmp_path / 'catalogue-capability.db'}"
+    upgrade_database_to_head(database_url)
+
+    with override_runtime_settings(
+        model_catalogue_store_mode="sqlalchemy",
+        database_url=database_url,
+        provider_mode="local_openai_compatible",
+        live_text_provider_id="text.local",
+        live_text_model_id="qwen3:8b",
+        live_text_model_version=None,
+        workflow_run_model_risk_inventory_json="[]",
+        caller_trust_mode="verified_service_jwt",
+        caller_jwt_issuer="https://platform.lotus/issuer",
+        caller_jwt_audience="lotus-ai",
+        caller_jwt_public_keys=public_keys_setting(
+            **{"capability-ops-alpha": requester_key, "capability-ops-beta": approver_key}
+        ),
+    ):
+        with TestClient(app) as client:
+            from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+            from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+
+            get_evaluation_runtime_store().save_run(
+                EvaluationRunRecord(
+                    run_id="runtime_capability_http_001",
+                    fixture_id="model_promotion_examples",
+                    manifest_version="foundation.v1",
+                    lifecycle_status="COMPLETED",
+                    triggered_by="operator-a",
+                    submitted_at="2026-09-03T10:00:00Z",
+                    async_job_id=None,
+                    latest_message="Capability restore evidence fixture.",
+                    verdict="PASS",
+                    case_count=3,
+                )
+            )
+            base = "/platform/models/catalogue/text.local:qwen3:8b"
+
+            seeded = client.get("/platform/models/catalogue", headers=requester_headers)
+            assert seeded.status_code == 200
+
+            degraded = client.post(
+                f"{base}/capability-degradations",
+                json={
+                    "dimension": "supports_structured_output",
+                    "reason": "Structured output failing contract validation.",
+                },
+                headers=requester_headers,
+            )
+            assert degraded.status_code == 200
+            body = degraded.json()
+            assert body["degradation"]["degraded_by"] == (
+                "lotus-platform (credential capability-ops-alpha)"
+            )
+            assert "supports_structured_output" in body["entry"]["capability_degradations"]
+
+            pending = client.post(
+                f"{base}/capability-restore-requests",
+                json={
+                    "dimension": "supports_structured_output",
+                    "reason": "Provider fixed the regression; run passes again.",
+                    "evaluation_run_id": "runtime_capability_http_001",
+                },
+                headers=requester_headers,
+            )
+            assert pending.status_code == 200
+            action = pending.json()["governed_action"]
+            assert action["status"] == "PENDING"
+
+            approved = client.post(
+                f"{base}/capability-restore-approvals",
+                json={"action_id": action["action_id"], "action_hash": action["action_hash"]},
+                headers=approver_headers,
+            )
+            assert approved.status_code == 200
+            restored = approved.json()
+            assert restored["entry"]["capability_degradations"] == {}
+            assert restored["governed_action"]["status"] == "EXECUTED"
+            assert restored["governed_action"]["action_payload"]["degraded_by"] == (
+                "lotus-platform (credential capability-ops-alpha)"
+            )

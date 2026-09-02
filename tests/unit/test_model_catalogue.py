@@ -16,6 +16,7 @@ import pytest
 
 from app.config import settings
 from app.contracts.model_catalogue import (
+    ModelCapabilityDegradationResponse,
     ModelCatalogueSeedReport,
     ModelCatalogueSeedSource,
     ModelLifecycleState,
@@ -870,3 +871,262 @@ def test_reseeding_never_unassesses_a_known_capability_fact(
     assert reconciled.supports_structured_output is True
     assert reconciled.context_window_tokens == 128_000
     assert report.updated_count == 0
+
+
+def _degrade_capability(
+    entry_id: str, dimension: str = "supports_structured_output"
+) -> "ModelCapabilityDegradationResponse":
+    from app.contracts.model_catalogue import ModelCapabilityDegradationRequest
+    from app.services.model_catalogue import degrade_model_capability
+    from tests.support.governed_control import GOVERNED_REQUESTER
+
+    return degrade_model_capability(
+        entry_id,
+        ModelCapabilityDegradationRequest(
+            dimension=dimension,
+            reason="Structured output failing contract validation in production.",
+        ),
+        GOVERNED_REQUESTER,
+    )
+
+
+def test_capability_degradation_refuses_requirement_routing_distinctly(
+    _durable_catalogue: str,
+) -> None:
+    """A degraded capability refuses as CAPABILITY_DEGRADED - distinct from
+    NOT_SUPPORTED (proven absent) and UNKNOWN (never assessed) - while the
+    underlying assessed fact is never rewritten (issue #245, slice 2)."""
+
+    from app.contracts.capability_requirements import CapabilityRequirements
+    from app.services.model_catalogue import enforce_capability_requirements
+
+    entry_id = _durable_catalogue
+    repository = get_model_catalogue_repository()
+    entry = repository.get_entry(entry_id)
+    assert entry is not None
+    repository.upsert_entry(entry.model_copy(update={"supports_structured_output": True}))
+
+    response = _degrade_capability(entry_id)
+    degraded_entry = repository.get_entry(entry_id)
+    assert degraded_entry is not None
+    # The fact is untouched; the degradation overrides it while present.
+    assert degraded_entry.supports_structured_output is True
+    assert degraded_entry.capability_degradations["supports_structured_output"].degraded_by == (
+        "lotus-platform (credential ops-key-alpha)"
+    )
+    assert response.degradation.reason.startswith("Structured output failing")
+
+    requirements = CapabilityRequirements(structured_output_required=True)
+    with pytest.raises(ProviderExecutionError) as excinfo:
+        enforce_capability_requirements(requirements=requirements, entry=degraded_entry)
+    assert excinfo.value.category is ProviderFailureCategory.CAPABILITY_DEGRADED
+
+    # A workload that states no requirements is unaffected.
+    enforce_capability_requirements(requirements=None, entry=degraded_entry)
+
+
+def test_capability_degradation_validates_dimension_and_refuses_overwrite(
+    _durable_catalogue: str,
+) -> None:
+    from fastapi import HTTPException
+
+    from app.contracts.model_catalogue import ModelCapabilityDegradationRequest
+    from app.services.model_catalogue import degrade_model_capability
+    from tests.support.governed_control import GOVERNED_REQUESTER
+
+    entry_id = _durable_catalogue
+
+    with pytest.raises(HTTPException) as excinfo:
+        degrade_model_capability(
+            entry_id,
+            ModelCapabilityDegradationRequest(
+                dimension="supports_streaming",
+                reason="Streaming is not requirement-enforced.",
+            ),
+            GOVERNED_REQUESTER,
+        )
+    assert excinfo.value.status_code == 422
+    assert "not a degradable capability dimension" in str(excinfo.value.detail)
+
+    _degrade_capability(entry_id)
+    # The active degradation is not overwritable by a second call.
+    with pytest.raises(HTTPException) as excinfo:
+        _degrade_capability(entry_id)
+    assert excinfo.value.status_code == 409
+    assert "already degraded" in str(excinfo.value.detail)
+
+
+def test_capability_degradation_survives_reseed_and_store_restart(
+    _durable_catalogue: str,
+) -> None:
+    """Only the governed restore flow clears a degradation: reseeding must
+    preserve it, and it must come back from SQL after a restart."""
+
+    from app.services.model_catalogue_store import reset_model_catalogue_store_cache
+
+    entry_id = _durable_catalogue
+    _degrade_capability(entry_id)
+
+    ensure_model_catalogue_seeded()
+    reset_model_catalogue_store_cache()
+
+    entry = get_model_catalogue_repository().get_entry(entry_id)
+    assert entry is not None
+    degradation = entry.capability_degradations["supports_structured_output"]
+    assert degradation.degraded_by == "lotus-platform (credential ops-key-alpha)"
+    assert degradation.degraded_at
+
+
+def test_capability_restore_is_governed_and_pins_the_degradation(
+    _durable_catalogue: str,
+) -> None:
+    from fastapi import HTTPException
+
+    from app.contracts.capability_requirements import CapabilityRequirements
+    from app.contracts.model_catalogue import (
+        ModelCapabilityRestoreApprovalRequest,
+        ModelCapabilityRestoreIntentRequest,
+    )
+    from app.services.model_catalogue import (
+        approve_model_capability_restore,
+        enforce_capability_requirements,
+        request_model_capability_restore,
+    )
+    from tests.support.governed_control import GOVERNED_APPROVER, GOVERNED_REQUESTER
+
+    entry_id = _durable_catalogue
+    repository = get_model_catalogue_repository()
+    entry = repository.get_entry(entry_id)
+    assert entry is not None
+    repository.upsert_entry(entry.model_copy(update={"supports_structured_output": True}))
+
+    # Nothing to restore before a degradation exists.
+    with pytest.raises(HTTPException) as excinfo:
+        request_model_capability_restore(
+            entry_id,
+            ModelCapabilityRestoreIntentRequest(
+                dimension="supports_structured_output",
+                reason="Nothing is degraded.",
+                evaluation_run_id="run_restore_001",
+            ),
+            GOVERNED_REQUESTER,
+        )
+    assert excinfo.value.status_code == 409
+    assert "not degraded" in str(excinfo.value.detail)
+
+    _degrade_capability(entry_id)
+    _seed_evaluation_run("run_restore_001")
+
+    # Restore evidence must actually have passed.
+    _seed_evaluation_run("run_restore_fail", verdict="FAIL")
+    with pytest.raises(HTTPException) as excinfo:
+        request_model_capability_restore(
+            entry_id,
+            ModelCapabilityRestoreIntentRequest(
+                dimension="supports_structured_output",
+                reason="Provider fixed the regression.",
+                evaluation_run_id="run_restore_fail",
+            ),
+            GOVERNED_REQUESTER,
+        )
+    assert excinfo.value.status_code == 422
+
+    pending = request_model_capability_restore(
+        entry_id,
+        ModelCapabilityRestoreIntentRequest(
+            dimension="supports_structured_output",
+            reason="Provider fixed the regression; run passes again.",
+            evaluation_run_id="run_restore_001",
+        ),
+        GOVERNED_REQUESTER,
+    )
+    assert pending.governed_action.status.value == "PENDING"
+    # The capability stays degraded until the approval executes.
+    mid = get_model_catalogue_repository().get_entry(entry_id)
+    assert mid is not None
+    assert "supports_structured_output" in mid.capability_degradations
+
+    executed = approve_model_capability_restore(
+        entry_id,
+        ModelCapabilityRestoreApprovalRequest(
+            action_id=pending.governed_action.action_id,
+            action_hash=pending.governed_action.action_hash,
+        ),
+        GOVERNED_APPROVER,
+    )
+    assert executed.entry.capability_degradations == {}
+    assert executed.governed_action.status.value == "EXECUTED"
+    # The cleared degradation is pinned inside the governed record.
+    pinned_reason = str(executed.governed_action.action_payload["degradation_reason"])
+    assert pinned_reason.startswith("Structured output failing")
+    assert executed.governed_action.action_payload["degraded_by"] == (
+        "lotus-platform (credential ops-key-alpha)"
+    )
+
+    # The evidence-derived fact is effective again.
+    restored = get_model_catalogue_repository().get_entry(entry_id)
+    assert restored is not None
+    enforce_capability_requirements(
+        requirements=CapabilityRequirements(structured_output_required=True), entry=restored
+    )
+
+
+def test_capability_restore_re_request_supersedes_the_prior_intent(
+    _durable_catalogue: str,
+) -> None:
+    """A second restore request for the same entry supersedes the first
+    pending one (the primitive's changed-action rule): the stale intent can
+    never execute, and only the current intent's approval does."""
+
+    from fastapi import HTTPException
+
+    from app.contracts.governed_actions import GovernedActionResponse
+    from app.contracts.model_catalogue import (
+        ModelCapabilityRestoreApprovalRequest,
+        ModelCapabilityRestoreIntentRequest,
+    )
+    from app.services.model_catalogue import (
+        approve_model_capability_restore,
+        request_model_capability_restore,
+    )
+    from tests.support.governed_control import GOVERNED_APPROVER, GOVERNED_REQUESTER
+
+    entry_id = _durable_catalogue
+    _degrade_capability(entry_id)
+    _seed_evaluation_run("run_restore_stale")
+
+    def _pending() -> GovernedActionResponse:
+        return request_model_capability_restore(
+            entry_id,
+            ModelCapabilityRestoreIntentRequest(
+                dimension="supports_structured_output",
+                reason="Provider fixed the regression.",
+                evaluation_run_id="run_restore_stale",
+            ),
+            GOVERNED_REQUESTER,
+        )
+
+    first = _pending()
+    second = _pending()
+
+    with pytest.raises(HTTPException) as excinfo:
+        approve_model_capability_restore(
+            entry_id,
+            ModelCapabilityRestoreApprovalRequest(
+                action_id=first.governed_action.action_id,
+                action_hash=first.governed_action.action_hash,
+            ),
+            GOVERNED_APPROVER,
+        )
+    assert excinfo.value.status_code == 409
+    assert "SUPERSEDED" in str(excinfo.value.detail)
+
+    executed = approve_model_capability_restore(
+        entry_id,
+        ModelCapabilityRestoreApprovalRequest(
+            action_id=second.governed_action.action_id,
+            action_hash=second.governed_action.action_hash,
+        ),
+        GOVERNED_APPROVER,
+    )
+    assert executed.entry.capability_degradations == {}

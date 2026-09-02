@@ -794,6 +794,11 @@ class ModelCatalogueEntryModel(Base):
     supports_structured_output: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     supports_tool_calling: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     supports_streaming: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # Active operator capability degradations keyed by fact field; cleared
+    # entries live on inside their governed restore records (issue #245).
+    capability_degradations: Mapped[dict[str, dict[str, str]]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
     approved_workflow_pack_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     approval_evidence_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     approved_from_utc: Mapped[str | None] = mapped_column(String(64), nullable=True)
