@@ -42,6 +42,7 @@ from app.providers.configured_workflow_run_model_risk_inventory import (
     ConfiguredWorkflowRunModelRiskInventory,
 )
 from app.services.access_control_authorization import authorize_request, require_authorized
+from app.contracts.capability_requirements import CapabilityRequirements
 from app.services.model_catalogue_store import get_model_catalogue_repository
 from app.services.output_contracts import output_contract_exists
 from app.services.provider_execution_config import resolve_provider_execution_config
@@ -264,6 +265,59 @@ def ensure_model_catalogue_seeded() -> ModelCatalogueSeedReport:
         updated_count=updated,
         unchanged_count=unchanged,
     )
+
+
+# Requirement dimensions the routing decision enforces (issue #244, S3): the
+# two catalogue-backed capability gates plus the latency ceiling, which is
+# enforced by tightening the execution timeout before any candidate runs. The
+# estimated-cost ceiling is declared-only until a pre-execution bound exists,
+# and the routing decision says so.
+ENFORCED_REQUIREMENT_DIMENSIONS = frozenset(
+    {"structured_output_required", "tool_calling_required", "max_latency_ms"}
+)
+
+_CAPABILITY_FACT_BY_REQUIREMENT = {
+    "structured_output_required": "supports_structured_output",
+    "tool_calling_required": "supports_tool_calling",
+}
+
+
+def enforce_capability_requirements(
+    *,
+    requirements: CapabilityRequirements | None,
+    entry: ModelCatalogueEntry,
+) -> None:
+    """Reject a candidate whose catalogue entry cannot satisfy the workload.
+
+    Unknown fails closed, and fails closed AS unknown: a fact the catalogue
+    has never assessed refuses with CAPABILITY_UNKNOWN, distinctly from a
+    fact it proves absent (CAPABILITY_NOT_SUPPORTED). Laundering unknown into
+    a confident answer in either direction is how capability claims rot.
+    """
+
+    if requirements is None:
+        return
+    for requirement_field, fact_field in _CAPABILITY_FACT_BY_REQUIREMENT.items():
+        if getattr(requirements, requirement_field) is not True:
+            continue
+        fact = getattr(entry, fact_field)
+        if fact is True:
+            continue
+        if fact is False:
+            raise ProviderExecutionError(
+                category=ProviderFailureCategory.CAPABILITY_NOT_SUPPORTED,
+                message=(
+                    f"Candidate `{entry.entry_id}` does not support the required "
+                    f"capability `{requirement_field}`."
+                ),
+            )
+        raise ProviderExecutionError(
+            category=ProviderFailureCategory.CAPABILITY_UNKNOWN,
+            message=(
+                f"Candidate `{entry.entry_id}` has no assessed catalogue fact for the "
+                f"required capability `{requirement_field}`; unknown is not eligibility."
+            ),
+        )
 
 
 def bind_live_text_model_catalogue_entry() -> ModelCatalogueEntry:

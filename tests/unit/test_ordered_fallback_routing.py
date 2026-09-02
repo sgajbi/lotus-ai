@@ -19,6 +19,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.config import settings
+from app.contracts.capability_requirements import CapabilityRequirements
 from app.contracts.kill_switches import KillSwitchActivationRequest, KillSwitchScope
 from app.contracts.providers import (
     ProviderAdapterKind,
@@ -677,3 +678,134 @@ def test_every_evidence_surface_names_the_serving_candidate(
     )
     assert attestation.provider_id == ALTERNATE
     assert attestation.model_id == "claude-sonnet-5"
+
+
+# --- Capability eligibility (issue #244, S3) -------------------------------
+
+
+def _assess_structured_output(provider_id: str, model_id: str, fact: bool) -> None:
+    from app.contracts.model_catalogue import derive_model_catalogue_entry_id
+    from app.services.model_catalogue import ensure_model_catalogue_seeded
+    from app.services.model_catalogue_store import get_model_catalogue_repository
+
+    ensure_model_catalogue_seeded()
+    repository = get_model_catalogue_repository()
+    entry_id = derive_model_catalogue_entry_id(
+        provider_id=provider_id, model_revision=model_id, deployment=None
+    )
+    entry = repository.get_entry(entry_id)
+    assert entry is not None
+    repository.upsert_entry(entry.model_copy(update={"supports_structured_output": fact}))
+
+
+def _requirements(**overrides: object) -> CapabilityRequirements:
+    payload: dict[str, object] = {"structured_output_required": True}
+    payload.update(overrides)
+    return CapabilityRequirements.model_validate(payload)
+
+
+def test_an_unassessed_capability_fails_closed_as_unknown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unknown is not eligibility, and it refuses AS unknown: the rejection
+    category is CAPABILITY_UNKNOWN, distinct from a fact the catalogue proves
+    absent — laundering unknown into a confident answer in either direction is
+    how capability claims rot."""
+
+    _ordered_fallback_settings()
+    adapter = _install_adapter(monkeypatch, failing={})
+
+    with pytest.raises(ProviderGatewayUnavailableError) as exc_info:
+        execute_text_generation(_request(requirements=_requirements()))
+
+    decision = exc_info.value.routing_decision
+    assert [c.rejection_reason for c in decision.candidates] == [
+        ProviderFailureCategory.CAPABILITY_UNKNOWN,
+        ProviderFailureCategory.CAPABILITY_UNKNOWN,
+    ]
+    assert adapter.executed_provider_ids == []
+    assert decision.requirements_enforced_dimensions == ["structured_output_required"]
+    assert decision.requirements_unenforced_dimensions == []
+
+
+def test_a_proven_absent_capability_refuses_distinctly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ordered_fallback_settings()
+    _install_adapter(monkeypatch, failing={})
+    _assess_structured_output(PRIMARY, "gpt-5.4", False)
+
+    with pytest.raises(ProviderGatewayUnavailableError) as exc_info:
+        execute_text_generation(_request(requirements=_requirements()))
+
+    decision = exc_info.value.routing_decision
+    assert decision.candidates[0].rejection_reason is (
+        ProviderFailureCategory.CAPABILITY_NOT_SUPPORTED
+    )
+    assert decision.candidates[1].rejection_reason is ProviderFailureCategory.CAPABILITY_UNKNOWN
+
+
+def test_an_assessed_candidate_serves_while_the_unassessed_one_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The eligibility pipeline composes with the existing selection: the
+    primary is rejected on capability grounds and the assessed alternate
+    serves, recorded as a preflight rejection rather than a fallback."""
+
+    _ordered_fallback_settings()
+    adapter = _install_adapter(monkeypatch, failing={})
+    _assess_structured_output(ALTERNATE, "claude-sonnet-5", True)
+
+    response = execute_text_generation(
+        _request(
+            requirements=_requirements(max_estimated_cost_usd=0.50),
+        )
+    )
+
+    assert response.provider_id == ALTERNATE
+    assert adapter.executed_provider_ids == [ALTERNATE]
+    decision = response.routing_decision
+    assert decision is not None
+    assert decision.candidates[0].rejection_reason is ProviderFailureCategory.CAPABILITY_UNKNOWN
+    assert decision.selected_provider_id == ALTERNATE
+    assert decision.fallback_path == []
+    # The decision names what it held and what it did not: the cost ceiling
+    # has no pre-execution bound yet, and saying so is the contract.
+    assert decision.requirements_enforced_dimensions == ["structured_output_required"]
+    assert decision.requirements_unenforced_dimensions == ["max_estimated_cost_usd"]
+
+
+def test_a_declared_latency_ceiling_tightens_the_execution_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """max_latency_ms is genuinely ENFORCED: the transport cannot wait longer
+    than the ceiling, because the request it executes carries the tightened
+    timeout before any candidate runs."""
+
+    _ordered_fallback_settings()
+    seen_timeouts: list[int] = []
+
+    class _TimeoutRecordingAdapter(_DispatchingAdapter):
+        def execute(self, request, *, config):  # type: ignore[no-untyped-def]
+            seen_timeouts.append(request.timeout_ms)
+            return super().execute(request, config=config)
+
+    adapter = _TimeoutRecordingAdapter(failing={})
+    monkeypatch.setattr(
+        "app.services.provider_gateway.resolve_text_generation_adapter",
+        lambda mode: adapter,
+    )
+    _assess_structured_output(PRIMARY, "gpt-5.4", True)
+
+    response = execute_text_generation(
+        _request(
+            timeout_ms=4000,
+            requirements=_requirements(max_latency_ms=1500),
+        )
+    )
+
+    assert response.provider_id == PRIMARY
+    assert seen_timeouts == [1500]
+    decision = response.routing_decision
+    assert decision is not None
+    assert "max_latency_ms" in decision.requirements_enforced_dimensions

@@ -30,8 +30,11 @@ from app.services.provider_execution_config import (
     resolve_provider_execution_config,
 )
 from app.services.kill_switch_control import enforce_kill_switches
+from app.contracts.capability_requirements import CapabilityRequirements
 from app.services.model_catalogue import (
+    ENFORCED_REQUIREMENT_DIMENSIONS,
     bind_live_text_model_catalogue_entry,
+    enforce_capability_requirements,
     record_model_revision_drift,
 )
 from app.services.provider_policy import require_supported_text_generation_mode
@@ -71,6 +74,7 @@ class ProviderGatewayUnavailableError(HTTPException):
 
 
 def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecutionResponse:
+    request = _apply_latency_ceiling(request)
     config = resolve_provider_execution_config()
     mode = require_supported_text_generation_mode()
     live_execution_state = build_provider_live_execution_state(task_id=request.task_id)
@@ -101,6 +105,9 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
             enforce_provider_budget()
             enforce_provider_degradation_preflight()
             catalogue_entry = bind_live_text_model_catalogue_entry()
+            enforce_capability_requirements(
+                requirements=request.requirements, entry=catalogue_entry
+            )
         except ProviderExecutionError as exc:
             # A preflight veto is a candidate rejection: the decision records
             # the one configured candidate as rejected with the bounded
@@ -108,6 +115,7 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
             raise ProviderGatewayUnavailableError(
                 detail=f"{exc.category.value}: {exc.message}",
                 routing_decision=_build_rejected_routing_decision(
+                    requirements=request.requirements,
                     mode_value=mode.value,
                     category=exc.category,
                     config=config,
@@ -129,6 +137,10 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
                 observed_model_id=getattr(response, "model_id", None),
             )
         response.routing_decision = _build_fixed_routing_decision(
+            # Enforcement is only claimable where the gates actually ran: the
+            # capability check needs a catalogue bind and the latency ceiling
+            # bounds a provider wait, neither of which exists on the stub path.
+            requirements=request.requirements if mode in LIVE_TEXT_MODES else None,
             mode_value=mode.value,
             selected_provider_id=response.provider_id,
             catalogue_entry=catalogue_entry,
@@ -147,6 +159,7 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
             raise ProviderGatewayUnavailableError(
                 detail=f"{exc.category.value}: {exc.message}",
                 routing_decision=_build_fixed_routing_decision(
+                    requirements=request.requirements,
                     mode_value=mode.value,
                     selected_provider_id=config.provider_id or "provider.unavailable",
                     catalogue_entry=catalogue_entry,
@@ -192,6 +205,7 @@ def _execute_ordered_fallback(
         raise ProviderGatewayUnavailableError(
             detail=f"{ProviderFailureCategory.INVALID_LIVE_CONFIGURATION.value}: {detail}",
             routing_decision=_build_ordered_routing_decision(
+                requirements=request.requirements,
                 mode_value=mode.value,
                 candidates=[(config, ProviderFailureCategory.INVALID_LIVE_CONFIGURATION)],
                 serving_config=None,
@@ -221,6 +235,7 @@ def _execute_ordered_fallback(
         eligible.append(index)
     if not eligible:
         raise _ordered_refusal(
+            requirements=request.requirements,
             error=veto_errors[-1],
             mode_value=mode.value,
             candidates=candidates,
@@ -235,6 +250,7 @@ def _execute_ordered_fallback(
         for index in eligible:
             rejections[index] = exc.category
         raise _ordered_refusal(
+            requirements=request.requirements,
             error=exc,
             mode_value=mode.value,
             candidates=candidates,
@@ -251,6 +267,9 @@ def _execute_ordered_fallback(
             try:
                 enforce_provider_degradation_preflight()
                 catalogue_entry = bind_live_text_model_catalogue_entry()
+                enforce_capability_requirements(
+                    requirements=request.requirements, entry=catalogue_entry
+                )
             except ProviderExecutionError as exc:
                 rejections[index] = exc.category
                 attempt_errors.append(exc)
@@ -276,6 +295,7 @@ def _execute_ordered_fallback(
                 observed_model_id=getattr(response, "model_id", None),
             )
             response.routing_decision = _build_ordered_routing_decision(
+                requirements=request.requirements,
                 mode_value=mode.value,
                 candidates=[
                     (item, rejections.get(position)) for position, item in enumerate(candidates)
@@ -291,6 +311,7 @@ def _execute_ordered_fallback(
 
     # Every eligible candidate either returned above or appended its error.
     raise _ordered_refusal(
+        requirements=request.requirements,
         error=attempt_errors[-1],
         mode_value=mode.value,
         candidates=candidates,
@@ -302,6 +323,7 @@ def _execute_ordered_fallback(
 def _ordered_refusal(
     *,
     error: ProviderExecutionError,
+    requirements: CapabilityRequirements | None,
     mode_value: str,
     candidates: list[ProviderExecutionConfig],
     rejections: dict[int, ProviderFailureCategory],
@@ -310,6 +332,7 @@ def _ordered_refusal(
     return ProviderGatewayUnavailableError(
         detail=f"{error.category.value}: {error.message}",
         routing_decision=_build_ordered_routing_decision(
+            requirements=requirements,
             mode_value=mode_value,
             candidates=[
                 (candidate, rejections.get(index)) for index, candidate in enumerate(candidates)
@@ -338,6 +361,7 @@ def _candidate_entry_identity(
 
 def _build_ordered_routing_decision(
     *,
+    requirements: CapabilityRequirements | None,
     mode_value: str,
     candidates: list[tuple[ProviderExecutionConfig, ProviderFailureCategory | None]],
     serving_config: ProviderExecutionConfig | None,
@@ -373,11 +397,14 @@ def _build_ordered_routing_decision(
             "Ordered-fallback policy: the primary candidate was rejected at preflight and "
             "the alternate candidate served; a preflight rejection is not a fallback."
         )
+    enforced_dimensions, unenforced_dimensions = _requirement_enforcement_split(requirements)
     return RoutingDecisionDescriptor(
         policy_id=ROUTING_POLICY_ORDERED_FALLBACK,
         policy_version=ROUTING_POLICY_VERSION_V1,
         strategy=RoutingStrategy.ORDERED_FALLBACK,
         candidates=descriptors,
+        requirements_enforced_dimensions=enforced_dimensions,
+        requirements_unenforced_dimensions=unenforced_dimensions,
         selected_provider_id=serving_config.provider_id if serving_config is not None else None,
         selected_model_catalogue_entry_id=(
             serving_entry.entry_id if serving_entry is not None else None
@@ -388,22 +415,56 @@ def _build_ordered_routing_decision(
     )
 
 
+def _apply_latency_ceiling(request: ProviderExecutionRequest) -> ProviderExecutionRequest:
+    """Enforce a declared latency ceiling by tightening the execution timeout.
+
+    Request-scoped, applied before any candidate runs: the transport cannot
+    wait longer than the ceiling, which is what makes `max_latency_ms`
+    genuinely ENFORCED rather than recorded (issue #244, S3).
+    """
+
+    requirements = request.requirements
+    if requirements is None or requirements.max_latency_ms is None:
+        return request
+    if requirements.max_latency_ms >= request.timeout_ms:
+        return request
+    return request.model_copy(update={"timeout_ms": requirements.max_latency_ms})
+
+
+def _requirement_enforcement_split(
+    requirements: CapabilityRequirements | None,
+) -> tuple[list[str], list[str]]:
+    """Declared dimensions split into what this decision enforces and what it
+    does not - so a declared ceiling can never silently pass for a held one."""
+
+    if requirements is None:
+        return ([], [])
+    declared = requirements.declared_dimensions()
+    enforced = sorted(set(declared) & ENFORCED_REQUIREMENT_DIMENSIONS)
+    unenforced = sorted(set(declared) - ENFORCED_REQUIREMENT_DIMENSIONS)
+    return (enforced, unenforced)
+
+
 def _utc_now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _build_rejected_routing_decision(
     *,
+    requirements: CapabilityRequirements | None,
     mode_value: str,
     category: ProviderFailureCategory,
     config: ProviderExecutionConfig,
 ) -> RoutingDecisionDescriptor:
     provider_id = config.provider_id or "provider.unavailable"
     entry_id, model_revision = _candidate_entry_identity(config)
+    enforced_dimensions, unenforced_dimensions = _requirement_enforcement_split(requirements)
     return RoutingDecisionDescriptor(
         policy_id=ROUTING_POLICY_FIXED_CONFIGURED_MODE,
         policy_version=ROUTING_POLICY_VERSION_V1,
         strategy=RoutingStrategy.FIXED,
+        requirements_enforced_dimensions=enforced_dimensions,
+        requirements_unenforced_dimensions=unenforced_dimensions,
         candidates=[
             RoutingCandidateDescriptor(
                 provider_id=provider_id,
@@ -425,16 +486,20 @@ def _build_rejected_routing_decision(
 
 def _build_fixed_routing_decision(
     *,
+    requirements: CapabilityRequirements | None,
     mode_value: str,
     selected_provider_id: str,
     catalogue_entry: ModelCatalogueEntry | None,
     decided_at: str,
 ) -> RoutingDecisionDescriptor:
     entry_id = catalogue_entry.entry_id if catalogue_entry is not None else None
+    enforced_dimensions, unenforced_dimensions = _requirement_enforcement_split(requirements)
     return RoutingDecisionDescriptor(
         policy_id=ROUTING_POLICY_FIXED_CONFIGURED_MODE,
         policy_version=ROUTING_POLICY_VERSION_V1,
         strategy=RoutingStrategy.FIXED,
+        requirements_enforced_dimensions=enforced_dimensions,
+        requirements_unenforced_dimensions=unenforced_dimensions,
         candidates=[
             RoutingCandidateDescriptor(
                 provider_id=selected_provider_id,
