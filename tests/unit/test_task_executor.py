@@ -18,15 +18,14 @@ from app.contracts.tasks import (
     TaskInputMode,
 )
 from app.repositories.memory_retrieval_repository import InMemoryRetrievalRepository
-from app.contracts.prompts import PromptControlActionRequest, PromptControlActionType
 from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_submission_service import submit_evaluation_run
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
-from app.services.prompt_rollout_control import apply_prompt_control_action
 from app.services.task_executor import execute_task
 from app.services.workflow_pack_run_ledger import WorkflowPackRunStoreUnavailableError
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
+from tests.support.governed_control import promote_prompt_for_test
 
 
 def _request(
@@ -816,16 +815,10 @@ def test_execute_task_reflects_promoted_prompt_selection_in_audit_and_evidence(
         database_url=database_url,
     ):
         _seed_prompt_approval_gate_pass_sqlalchemy()
-        apply_prompt_control_action(
-            PromptControlActionRequest(
-                task_id="explain.v1",
-                action_type=PromptControlActionType.PROMOTE_CANDIDATE,
-                caller_app="lotus-platform",
-                candidate_prompt_version="foundation.explain.v2",
-                requested_by="alice@lotus.test",
-                approved_by="bob@lotus.test",
-                reason="Promote updated explanation prompt",
-            )
+        promote_prompt_for_test(
+            task_id="explain.v1",
+            candidate_prompt_version="foundation.explain.v2",
+            reason="Promote updated explanation prompt",
         )
 
         response = execute_task(

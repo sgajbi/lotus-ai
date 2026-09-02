@@ -18,14 +18,14 @@ from app.services.evaluation_runtime_store import (
     get_evaluation_runtime_store,
     reset_evaluation_runtime_store_cache,
 )
-from app.services.prompt_rollout_control import apply_prompt_control_action
 from app.services.prompt_store import reset_prompt_store_cache
 from app.services.provider_degradation_state import record_provider_failure
-from app.contracts.prompts import PromptControlActionRequest, PromptControlActionType
+from app.contracts.prompts import PromptControlActionType
 from app.services.provider_operations_store import reset_provider_operations_store_cache
 from app.services.observability_runtime import build_observability_runtime_status
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.observability import build_healthy_ai_surface_supportability_summary
+from tests.support.governed_control import promote_prompt_for_test
 
 
 def test_resolve_startup_readiness_state_defaults_when_app_state_missing() -> None:
@@ -487,16 +487,10 @@ def test_build_platform_runtime_status_reflects_sql_backed_prompt_rollout_after_
             )
         )
 
-    apply_prompt_control_action(
-        PromptControlActionRequest(
-            task_id="explain.v1",
-            action_type=PromptControlActionType.PROMOTE_CANDIDATE,
-            caller_app="lotus-platform",
-            candidate_prompt_version="foundation.explain.v2",
-            requested_by="alice@lotus.test",
-            approved_by="bob@lotus.test",
-            reason="Promote prompt for restart-survival test",
-        )
+    promote_prompt_for_test(
+        task_id="explain.v1",
+        candidate_prompt_version="foundation.explain.v2",
+        reason="Promote prompt for restart-survival test",
     )
 
     reset_prompt_store_cache()

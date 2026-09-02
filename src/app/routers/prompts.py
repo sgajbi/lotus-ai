@@ -3,6 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Query
 
 from app.contracts.prompts import (
+    PromptPromotionApprovalRequest,
+    PromptPromotionApprovalResponse,
+    PromptPromotionIntentRequest,
     PromptActivationReadinessResponse,
     PromptControlActionRequest,
     PromptControlActionResponse,
@@ -19,7 +22,10 @@ from app.services.prompt_activation_readiness import build_prompt_activation_rea
 from app.services.prompt_evidence_readiness import build_prompt_evidence_readiness
 from app.services.prompt_governance import build_prompt_governance_status
 from app.services.prompt_governance_status import build_prompt_governance_status_summary
+from app.contracts.governed_actions import GovernedActionResponse
 from app.services.prompt_rollout_control import (
+    approve_prompt_promotion,
+    request_prompt_promotion,
     apply_prompt_control_action,
     build_prompt_control_history,
 )
@@ -90,6 +96,66 @@ async def get_prompt_control_history_route(
     ),
 ) -> PromptControlHistoryResponse:
     return build_prompt_control_history(task_id=task_id, limit=limit)
+
+
+@router.post(
+    "/promote-requests",
+    response_model=GovernedActionResponse,
+    operation_id="requestPromptPromotion",
+    summary="Request promotion of a candidate prompt",
+    description=(
+        "Step one of governed promotion (issue #157): validates the promotion is currently "
+        "executable, then records a pending intent under the requester's verified credential "
+        "and returns the action hash a distinct verified credential must approve. The active "
+        "prompt is unchanged until the approval executes."
+    ),
+    responses={
+        200: {"description": "Promotion intent recorded and pending approval."},
+        403: {
+            "description": "Caller is not authorized for prompt control, or carries no "
+            "verified credential."
+        },
+        404: {"description": "Rollout state or candidate prompt version not found."},
+        409: {"description": "The promotion is not currently executable."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def request_prompt_promotion_route(
+    request: PromptPromotionIntentRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> GovernedActionResponse:
+    return request_prompt_promotion(request, authenticated_caller)
+
+
+@router.post(
+    "/promote-approvals",
+    response_model=PromptPromotionApprovalResponse,
+    operation_id="approvePromptPromotion",
+    summary="Approve and execute a pending prompt promotion",
+    description=(
+        "Step two of governed promotion (issue #157): a verified credential DISTINCT from the "
+        "requester's approves the exact pending action hash, which promotes the candidate and "
+        "records the full request-approval-execution evidence chain."
+    ),
+    responses={
+        200: {"description": "Candidate promoted under governed approval."},
+        403: {
+            "description": "Caller is not authorized, carries no verified credential, or is "
+            "the same credential that requested the promotion."
+        },
+        404: {"description": "No rollout state or pending action exists."},
+        409: {
+            "description": "The action hash does not match, the rollout state changed since "
+            "the request, or the action is not pending."
+        },
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def approve_prompt_promotion_route(
+    request: PromptPromotionApprovalRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> PromptPromotionApprovalResponse:
+    return approve_prompt_promotion(request, authenticated_caller)
 
 
 @router.post(

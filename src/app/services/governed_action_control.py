@@ -37,7 +37,9 @@ from app.services.provider_operations_store import get_provider_operations_store
 # Action types where dual control applies: the action increases risk, so no
 # single principal may carry it end to end. Safety-increasing actions never
 # appear here - an emergency stop takes one verified principal, immediately.
-HUMAN_GOVERNED_ACTION_TYPES = frozenset({GovernedActionType.KILL_SWITCH_CLEAR})
+HUMAN_GOVERNED_ACTION_TYPES = frozenset(
+    {GovernedActionType.KILL_SWITCH_CLEAR, GovernedActionType.PROMPT_PROMOTE}
+)
 
 
 def compute_governed_action_hash(payload: dict[str, str | None]) -> str:

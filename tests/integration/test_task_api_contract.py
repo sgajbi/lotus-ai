@@ -8,6 +8,7 @@ from app.main import app
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
+from tests.support.governed_control import promote_prompt_for_test
 
 
 def test_task_execute_contract(client: TestClient) -> None:
@@ -223,19 +224,13 @@ def test_task_execute_contract_reflects_promoted_prompt_lineage(tmp_path: Path) 
                     )
                 )
 
-            promote_response = durable_client.post(
-                "/platform/prompts/control-actions",
-                json={
-                    "task_id": "explain.v1",
-                    "action_type": "PROMOTE_CANDIDATE",
-                    "caller_app": "lotus-platform",
-                    "candidate_prompt_version": "foundation.explain.v2",
-                    "requested_by": "alice@lotus.test",
-                    "approved_by": "bob@lotus.test",
-                    "reason": "Promote reviewed prompt candidate",
-                },
+            # Promotion is governed (issue #157): setup runs the two-step
+            # flow in process, since header trust cannot approve anything.
+            promote_prompt_for_test(
+                task_id="explain.v1",
+                candidate_prompt_version="foundation.explain.v2",
+                reason="Promote reviewed prompt candidate",
             )
-            assert promote_response.status_code == 200
 
             response = durable_client.post(
                 "/ai/tasks/execute",

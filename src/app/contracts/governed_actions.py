@@ -39,6 +39,7 @@ class GovernedActorClass(str, Enum):
 
 class GovernedActionType(str, Enum):
     KILL_SWITCH_CLEAR = "KILL_SWITCH_CLEAR"
+    PROMPT_PROMOTE = "PROMPT_PROMOTE"
 
 
 class GovernedActionStatus(str, Enum):
