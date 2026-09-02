@@ -12,9 +12,11 @@ from app.config import settings
 from app.contracts.kill_switches import (
     KillSwitchActivationRecord,
     KillSwitchActivationRequest,
-    KillSwitchClearRequest,
+    KillSwitchClearApprovalRequest,
+    KillSwitchClearIntentRequest,
     KillSwitchScope,
 )
+from app.http.authenticated_caller import AuthenticatedCaller
 from app.contracts.providers import (
     ProviderExecutionRequest,
     ProviderFailureCategory,
@@ -22,9 +24,10 @@ from app.contracts.providers import (
 from app.providers.base import ProviderExecutionError
 from app.services.kill_switch_control import (
     activate_kill_switch,
+    approve_kill_switch_clearance,
     build_kill_switch_status,
-    clear_kill_switch,
     enforce_kill_switches,
+    request_kill_switch_clearance,
 )
 from app.services.kill_switch_store import (
     get_kill_switch_repository,
@@ -121,51 +124,147 @@ def test_activation_validates_scope_target_pairing(_durable_store: None) -> None
     assert exc_info.value.status_code == 422
 
 
-def test_activate_status_clear_lifecycle(_durable_store: None) -> None:
+REQUESTER = AuthenticatedCaller(
+    caller_app=CONTROL_CALLER,
+    trust_source="verified_service_jwt",
+    credential_key_id="ops-key-alpha",
+)
+APPROVER = AuthenticatedCaller(
+    caller_app=CONTROL_CALLER,
+    trust_source="verified_service_jwt",
+    credential_key_id="ops-key-beta",
+)
+
+
+def _intent(
+    reason: str = "Incident resolved; provider outputs verified safe.",
+) -> KillSwitchClearIntentRequest:
+    return KillSwitchClearIntentRequest(reason=reason, requested_by="ops.primary@lotus")
+
+
+def test_activate_then_governed_clear_lifecycle(_durable_store: None) -> None:
+    """Issue #157: activation stops execution on one authorized principal,
+    immediately; clearance resumes it only through a verified requester and a
+    DISTINCT verified approver bound to the exact action hash."""
+
     activated = activate_kill_switch(_activation_request())
     assert activated.store_mode == "sqlalchemy"
     switch_id = activated.activation.switch_id
+    assert build_kill_switch_status().active_count == 1
 
-    status_response = build_kill_switch_status()
-    assert status_response.active_count == 1
-    assert status_response.activations[0].switch_id == switch_id
+    pending = request_kill_switch_clearance(switch_id, _intent(), REQUESTER)
+    action = pending.governed_action
+    assert action.status.value == "PENDING"
+    assert action.requester_key_id == "ops-key-alpha"
+    # The switch keeps enforcing until the approval executes.
+    assert build_kill_switch_status().active_count == 1
 
-    cleared = clear_kill_switch(
+    cleared = approve_kill_switch_clearance(
         switch_id,
-        KillSwitchClearRequest(
-            caller_app=CONTROL_CALLER,
-            reason="Incident resolved; provider outputs verified safe.",
-            requested_by="ops.primary@lotus",
+        KillSwitchClearApprovalRequest(
+            action_id=action.action_id,
+            action_hash=action.action_hash,
             approved_by="ops.secondary@lotus",
         ),
+        APPROVER,
     )
     assert cleared.activation.cleared_at is not None
-    assert cleared.activation.cleared_by == "ops.secondary@lotus"
+    assert "ops-key-beta" in str(cleared.activation.cleared_by)
+    assert cleared.governed_action.status.value == "EXECUTED"
+    assert cleared.governed_action.requester_key_id == "ops-key-alpha"
+    assert cleared.governed_action.approver_key_id == "ops-key-beta"
     assert build_kill_switch_status().active_count == 0
 
     with pytest.raises(HTTPException) as exc_info:
-        clear_kill_switch(
+        request_kill_switch_clearance(switch_id, _intent("Duplicate clear."), REQUESTER)
+    assert exc_info.value.status_code == 409
+
+    with pytest.raises(HTTPException) as exc_info:
+        request_kill_switch_clearance("ksw_does_not_exist", _intent(), REQUESTER)
+    assert exc_info.value.status_code == 404
+
+
+def test_no_single_credential_can_resume_stopped_execution(_durable_store: None) -> None:
+    """The target invariant, end to end: the requester approving its own
+    clearance is refused, and the switch keeps refusing execution."""
+
+    activated = activate_kill_switch(_activation_request())
+    switch_id = activated.activation.switch_id
+    pending = request_kill_switch_clearance(switch_id, _intent(), REQUESTER)
+
+    with pytest.raises(HTTPException) as exc_info:
+        approve_kill_switch_clearance(
             switch_id,
-            KillSwitchClearRequest(
-                caller_app=CONTROL_CALLER,
-                reason="Duplicate clear.",
-                requested_by="ops.primary@lotus",
-                approved_by="ops.secondary@lotus",
+            KillSwitchClearApprovalRequest(
+                action_id=pending.governed_action.action_id,
+                action_hash=pending.governed_action.action_hash,
             ),
+            REQUESTER,
+        )
+    assert exc_info.value.status_code == 403
+    assert build_kill_switch_status().active_count == 1
+    with pytest.raises(ProviderExecutionError) as enforcement:
+        enforce_kill_switches(_provider_request())
+    assert enforcement.value.category is ProviderFailureCategory.KILL_SWITCH_ACTIVE
+
+
+def test_header_trust_cannot_request_or_approve_clearance(_durable_store: None) -> None:
+    activated = activate_kill_switch(_activation_request())
+    switch_id = activated.activation.switch_id
+    header_caller = AuthenticatedCaller(
+        caller_app=CONTROL_CALLER,
+        trust_source="trusted_http_header",
+        credential_key_id=None,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        request_kill_switch_clearance(switch_id, _intent(), header_caller)
+    assert exc_info.value.status_code == 403
+
+    pending = request_kill_switch_clearance(switch_id, _intent(), REQUESTER)
+    with pytest.raises(HTTPException) as exc_info:
+        approve_kill_switch_clearance(
+            switch_id,
+            KillSwitchClearApprovalRequest(
+                action_id=pending.governed_action.action_id,
+                action_hash=pending.governed_action.action_hash,
+            ),
+            header_caller,
+        )
+    assert exc_info.value.status_code == 403
+    assert build_kill_switch_status().active_count == 1
+
+
+def test_an_approval_binds_to_the_hash_and_cannot_be_redirected(
+    _durable_store: None,
+) -> None:
+    first = activate_kill_switch(_activation_request())
+    second = activate_kill_switch(
+        _activation_request(target="summarize.v1", reason="Second incident.")
+    )
+    pending = request_kill_switch_clearance(first.activation.switch_id, _intent(), REQUESTER)
+
+    with pytest.raises(HTTPException) as exc_info:
+        approve_kill_switch_clearance(
+            first.activation.switch_id,
+            KillSwitchClearApprovalRequest(
+                action_id=pending.governed_action.action_id, action_hash="0" * 64
+            ),
+            APPROVER,
         )
     assert exc_info.value.status_code == 409
 
     with pytest.raises(HTTPException) as exc_info:
-        clear_kill_switch(
-            "ksw_does_not_exist",
-            KillSwitchClearRequest(
-                caller_app=CONTROL_CALLER,
-                reason="Nothing to clear.",
-                requested_by="ops.primary@lotus",
-                approved_by="ops.secondary@lotus",
+        approve_kill_switch_clearance(
+            second.activation.switch_id,
+            KillSwitchClearApprovalRequest(
+                action_id=pending.governed_action.action_id,
+                action_hash=pending.governed_action.action_hash,
             ),
+            APPROVER,
         )
-    assert exc_info.value.status_code == 404
+    assert exc_info.value.status_code == 409
+    assert build_kill_switch_status().active_count == 2
 
 
 def test_enforcement_matches_every_scope_and_only_its_target(

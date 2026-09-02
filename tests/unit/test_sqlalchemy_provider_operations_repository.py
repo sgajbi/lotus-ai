@@ -280,3 +280,68 @@ def test_sqlalchemy_provider_operations_repository_sqlite_parent_handling(
     repository._ensure_sqlite_parent_directory()
 
     assert relative_db_path.parent.is_dir()
+
+
+def test_governed_action_round_trip_and_pending_lookup(tmp_path: Path) -> None:
+    """Issue #157: the evidence chain is durable, and the pending lookup that
+    supersession depends on behaves identically to the memory adapter."""
+
+    from app.contracts.governed_actions import (
+        GovernedActionRecord,
+        GovernedActionStatus,
+        GovernedActionType,
+        GovernedActorClass,
+    )
+
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-governed-actions.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyProviderOperationsRepository(database_url)
+
+    record = GovernedActionRecord(
+        action_id="gact_sql_parity_001",
+        action_type=GovernedActionType.KILL_SWITCH_CLEAR,
+        actor_class=GovernedActorClass.HUMAN_APPROVED,
+        status=GovernedActionStatus.PENDING,
+        target="ksw_sql_parity",
+        action_hash="a" * 64,
+        action_payload={"switch_id": "ksw_sql_parity", "clear_reason": "resolved"},
+        requester_caller_app="lotus-platform",
+        requester_trust_source="verified_service_jwt",
+        requester_key_id="ops-key-alpha",
+        requester_attribution="ops.primary@lotus",
+        requested_at="2026-09-02T08:00:00+00:00",
+    )
+    repository.upsert_governed_action(record)
+
+    assert repository.get_governed_action("gact_sql_parity_001") == record
+    assert (
+        repository.get_pending_governed_action(
+            action_type="KILL_SWITCH_CLEAR", target="ksw_sql_parity"
+        )
+        == record
+    )
+    assert (
+        repository.get_pending_governed_action(action_type="KILL_SWITCH_CLEAR", target="ksw_other")
+        is None
+    )
+
+    executed = record.model_copy(
+        update={
+            "status": GovernedActionStatus.EXECUTED,
+            "approver_caller_app": "lotus-platform",
+            "approver_trust_source": "verified_service_jwt",
+            "approver_key_id": "ops-key-beta",
+            "approved_at": "2026-09-02T08:05:00+00:00",
+            "executed_at": "2026-09-02T08:05:00+00:00",
+        }
+    )
+    repository.upsert_governed_action(executed)
+
+    assert repository.get_governed_action("gact_sql_parity_001") == executed
+    # An executed action is no longer pending.
+    assert (
+        repository.get_pending_governed_action(
+            action_type="KILL_SWITCH_CLEAR", target="ksw_sql_parity"
+        )
+        is None
+    )

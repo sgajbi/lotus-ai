@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from app.contracts.access_control import AuthorizationDecision
+from app.contracts.governed_actions import GovernedActionRecord
 from app.contracts.providers import (
     ProviderFailureCategory,
     ProviderOperationsControlActionType,
@@ -130,6 +131,20 @@ class ProviderOperationsRepository(Protocol):
 
     def save_operations_event(self, record: ProviderOperationsEventRecord) -> None:
         """Persist one provider-operations control event record."""
+
+    def get_governed_action(self, action_id: str) -> GovernedActionRecord | None:
+        """Fetch one governed-action evidence record (issue #157)."""
+
+    def get_pending_governed_action(
+        self,
+        *,
+        action_type: str,
+        target: str,
+    ) -> GovernedActionRecord | None:
+        """Fetch the pending governed action for one action type and target, if any."""
+
+    def upsert_governed_action(self, record: GovernedActionRecord) -> None:
+        """Persist one governed-action record by action id."""
 
     def list_operations_events(self, *, limit: int) -> list[ProviderOperationsEventRecord]:
         """List most recent provider-operations control event records."""

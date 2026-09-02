@@ -9,10 +9,33 @@ from pytest import MonkeyPatch
 
 from app.main import app
 from app.services.kill_switch_store import reset_kill_switch_store_cache
+from tests.support.caller_credentials import (
+    generate_caller_signing_key,
+    mint_caller_credential,
+    public_keys_setting,
+)
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.support.runtime_settings import override_runtime_settings
 
 CONTROL_HEADERS = {"X-Caller-App": "lotus-platform"}
+
+# Three real EdDSA credentials (issue #157): a platform requester, a platform
+# approver under a DISTINCT signing key, and the executing consumer app. The
+# lifecycle runs in verified_service_jwt mode end to end, so what this test
+# proves is the production trust posture, not a header-trust approximation.
+_REQUESTER_KEY = generate_caller_signing_key()
+_APPROVER_KEY = generate_caller_signing_key()
+_MANAGE_KEY = generate_caller_signing_key()
+_PUBLIC_KEYS = public_keys_setting(
+    **{"ops-alpha": _REQUESTER_KEY, "ops-beta": _APPROVER_KEY, "svc-manage": _MANAGE_KEY}
+)
+
+
+def _bearer(signing_key: object, key_id: str, subject: str) -> dict[str, str]:
+    return {
+        "Authorization": "Bearer "
+        + mint_caller_credential(signing_key=signing_key, key_id=key_id, subject=subject)  # type: ignore[arg-type]
+    }
 
 
 def _activation_payload(**overrides: object) -> dict[str, object]:
@@ -68,6 +91,10 @@ def test_kill_switch_lifecycle_enforces_and_restores_live_execution(
     with override_runtime_settings(
         kill_switch_store_mode="sqlalchemy",
         database_url=database_url,
+        caller_trust_mode="verified_service_jwt",
+        caller_jwt_issuer="https://platform.lotus/issuer",
+        caller_jwt_audience="lotus-ai",
+        caller_jwt_public_keys=_PUBLIC_KEYS,
         provider_mode="openai",
         provider_rollout_state="CANARY_ENABLED",
         live_text_provider_id="text.openai",
@@ -98,41 +125,79 @@ def test_kill_switch_lifecycle_enforces_and_restores_live_execution(
                 "expected_output_label": "EXPLANATION_ONLY",
             }
 
-            before = client.post("/ai/tasks/execute", json=execute_payload)
+            manage_headers = _bearer(_MANAGE_KEY, "svc-manage", "lotus-manage")
+            requester_headers = _bearer(_REQUESTER_KEY, "ops-alpha", "lotus-platform")
+            approver_headers = _bearer(_APPROVER_KEY, "ops-beta", "lotus-platform")
+
+            before = client.post("/ai/tasks/execute", json=execute_payload, headers=manage_headers)
             assert before.status_code == 200
 
             activated = client.post(
                 "/platform/providers/kill-switches",
                 json=_activation_payload(),
-                headers=CONTROL_HEADERS,
+                headers=requester_headers,
             )
             assert activated.status_code == 200
             switch_id = activated.json()["activation"]["switch_id"]
             assert activated.json()["store_mode"] == "sqlalchemy"
 
-            refused = client.post("/ai/tasks/execute", json=execute_payload)
+            refused = client.post("/ai/tasks/execute", json=execute_payload, headers=manage_headers)
             assert refused.status_code == 503
             assert "KILL_SWITCH_ACTIVE" in refused.text
             assert switch_id in refused.text
 
             status_body = client.get(
-                "/platform/providers/kill-switches", headers=CONTROL_HEADERS
+                "/platform/providers/kill-switches", headers=requester_headers
             ).json()
             assert status_body["active_count"] == 1
 
-            cleared = client.post(
-                f"/platform/providers/kill-switches/{switch_id}/clear",
+            # Governed clearance, step one: the requester records the intent.
+            # The switch keeps enforcing until a distinct credential approves.
+            pending = client.post(
+                f"/platform/providers/kill-switches/{switch_id}/clear-requests",
+                json={"reason": "Incident resolved.", "requested_by": "ops.primary@lotus"},
+                headers=requester_headers,
+            )
+            assert pending.status_code == 200
+            action = pending.json()["governed_action"]
+            assert action["status"] == "PENDING"
+            assert action["requester_key_id"] == "ops-alpha"
+            still_refused = client.post(
+                "/ai/tasks/execute", json=execute_payload, headers=manage_headers
+            )
+            assert still_refused.status_code == 503
+
+            # The requester's own credential cannot approve its request.
+            self_approval = client.post(
+                f"/platform/providers/kill-switches/{switch_id}/clear-approvals",
                 json={
-                    "caller_app": "lotus-platform",
-                    "reason": "Incident resolved.",
-                    "requested_by": "ops.primary@lotus",
+                    "action_id": action["action_id"],
+                    "action_hash": action["action_hash"],
+                },
+                headers=requester_headers,
+            )
+            assert self_approval.status_code == 403
+
+            # A distinct verified credential approves the exact hash.
+            cleared = client.post(
+                f"/platform/providers/kill-switches/{switch_id}/clear-approvals",
+                json={
+                    "action_id": action["action_id"],
+                    "action_hash": action["action_hash"],
                     "approved_by": "ops.secondary@lotus",
                 },
-                headers=CONTROL_HEADERS,
+                headers=approver_headers,
             )
             assert cleared.status_code == 200
+            evidence = cleared.json()["governed_action"]
+            assert evidence["status"] == "EXECUTED"
+            assert evidence["requester_key_id"] == "ops-alpha"
+            assert evidence["approver_key_id"] == "ops-beta"
+            assert cleared.json()["activation"]["cleared_at"] is not None
 
-            restored = client.post("/ai/tasks/execute", json=execute_payload)
+            restored = client.post(
+                "/ai/tasks/execute", json=execute_payload, headers=manage_headers
+            )
             assert restored.status_code == 200
 
 

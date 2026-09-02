@@ -21,6 +21,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.governed_actions import GovernedActionRecord
+
 
 class KillSwitchSemantics(str, Enum):
     HARD_KILL = "HARD_KILL"
@@ -103,11 +105,47 @@ class KillSwitchActivationRequest(BaseModel):
     )
 
 
-class KillSwitchClearRequest(BaseModel):
-    caller_app: str = Field(min_length=1, description="Calling application identity.")
-    reason: str = Field(min_length=1, description="Why this switch is being cleared.")
-    requested_by: str = Field(min_length=1, description="Operator requesting clearance.")
-    approved_by: str = Field(min_length=1, description="Operator approving clearance.")
+class KillSwitchClearIntentRequest(BaseModel):
+    """Step one of governed clearance: a verified requester states the intent.
+
+    Caller identity comes from the authenticated credential, never from the
+    body (issue #157). ``requested_by`` is claimed operator attribution - a
+    recorded claim, not evidence.
+    """
+
+    reason: str = Field(min_length=1, description="Why this switch should be cleared.")
+    requested_by: str | None = Field(
+        default=None,
+        max_length=256,
+        description="Claimed operator name; recorded as unverified attribution.",
+    )
+
+
+class KillSwitchClearApprovalRequest(BaseModel):
+    """Step two: a distinct verified credential approves the exact pending action."""
+
+    action_id: str = Field(min_length=1, max_length=64, description="Pending governed action id.")
+    action_hash: str = Field(
+        min_length=64,
+        max_length=64,
+        description="Hash of the action being approved, exactly as returned by the request step.",
+    )
+    approved_by: str | None = Field(
+        default=None,
+        max_length=256,
+        description="Claimed operator name; recorded as unverified attribution.",
+    )
+
+
+class KillSwitchClearApprovalResponse(BaseModel):
+    service: str = Field(description="Service name emitting the response.")
+    version: str = Field(description="Current lotus-ai service version.")
+    store_mode: str = Field(description="Where kill-switch truth lives: memory or sqlalchemy.")
+    activation: KillSwitchActivationRecord = Field(description="The cleared activation.")
+    governed_action: GovernedActionRecord = Field(
+        description="The executed governed-action evidence linking request, approval and clearance.",
+    )
+    summary: list[str] = Field(description="Human-readable statements about the action.")
 
 
 class KillSwitchActionResponse(BaseModel):
