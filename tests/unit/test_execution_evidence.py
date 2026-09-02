@@ -21,6 +21,7 @@ from app.contracts.providers import (
     ProviderAdapterKind,
     ProviderExecutionResponse,
 )
+from app.contracts.evidence import ExecutionEvidenceDescriptor
 from app.contracts.tasks import (
     CallerMetadata,
     CapabilityDescriptor,
@@ -274,3 +275,93 @@ def test_provider_descriptor_omits_catalogue_binding_when_absent() -> None:
     assert "model_catalogue_entry_id" not in descriptor.attributes
     assert "model_revision_pinned" not in descriptor.attributes
     assert "model_version" not in descriptor.attributes
+
+
+def _request_with(**overrides: object) -> TaskExecutionRequest:
+    return TaskExecutionRequest(
+        task_id="explain.v1",
+        input_mode=TaskInputMode.STRUCTURED_CONTEXT,
+        caller=CallerMetadata(caller_app="lotus-manage", correlation_id="corr-req-posture"),
+        context=TaskContextEnvelope(
+            summary="Explain rebalance outcome",
+            payload={"status": "BLOCKED"},
+            source_refs=["lotus-manage:run:reb_001"],
+        ),
+        **overrides,  # type: ignore[arg-type]
+    )
+
+
+def _descriptor_for(request: TaskExecutionRequest, decision: object) -> ExecutionEvidenceDescriptor:
+    from app.services.execution_evidence import _capability_requirements_descriptor
+
+    provider_execution = ProviderExecutionResponse(
+        provider_id="text.openai",
+        provider_mode="openai",
+        adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
+        timeout_ms=4000,
+        retry_count=0,
+        max_output_tokens=512,
+        stubbed=False,
+        message="live response",
+        structured_output={},
+        routing_decision=decision,  # type: ignore[arg-type]
+    )
+    return _capability_requirements_descriptor(
+        request=request, provider_execution=provider_execution
+    )
+
+
+def test_requirements_posture_derives_from_the_routing_decision() -> None:
+    """The evidence says exactly what the decision held: every declared
+    dimension enforced reads ENFORCED, a remainder reads PARTIALLY_ENFORCED
+    with both halves listed, and an execution with no routing decision (stub)
+    reads NOT_ENFORCED with everything listed as unenforced — a recorded
+    ceiling can never pass for a held one (issue #244, S3)."""
+
+    from app.contracts.capability_requirements import CapabilityRequirements
+    from app.contracts.providers import (
+        ROUTING_POLICY_ORDERED_FALLBACK,
+        ROUTING_POLICY_VERSION_V1,
+        RoutingDecisionDescriptor,
+        RoutingStrategy,
+    )
+
+    request = _request_with(
+        requirements=CapabilityRequirements(
+            structured_output_required=True, max_estimated_cost_usd=0.5
+        )
+    )
+
+    def _decision(enforced: list[str], unenforced: list[str]) -> RoutingDecisionDescriptor:
+        return RoutingDecisionDescriptor(
+            policy_id=ROUTING_POLICY_ORDERED_FALLBACK,
+            policy_version=ROUTING_POLICY_VERSION_V1,
+            strategy=RoutingStrategy.ORDERED_FALLBACK,
+            candidates=[],
+            requirements_enforced_dimensions=enforced,
+            requirements_unenforced_dimensions=unenforced,
+            selected_provider_id="text.openai",
+            selected_model_catalogue_entry_id=None,
+            decided_at="2026-09-02T12:00:00Z",
+            selection_reason="test",
+            fallback_path=[],
+        )
+
+    partial = _descriptor_for(
+        request, _decision(["structured_output_required"], ["max_estimated_cost_usd"])
+    )
+    assert partial.attributes["requirements_enforcement"] == "PARTIALLY_ENFORCED"
+    assert partial.attributes["enforced_dimensions"] == ["structured_output_required"]
+    assert partial.attributes["unenforced_dimensions"] == ["max_estimated_cost_usd"]
+
+    full = _descriptor_for(
+        request, _decision(["max_estimated_cost_usd", "structured_output_required"], [])
+    )
+    assert full.attributes["requirements_enforcement"] == "ENFORCED"
+
+    stub = _descriptor_for(request, None)
+    assert stub.attributes["requirements_enforcement"] == "NOT_ENFORCED"
+    assert stub.attributes["unenforced_dimensions"] == [
+        "max_estimated_cost_usd",
+        "structured_output_required",
+    ]

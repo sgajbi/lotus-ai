@@ -12,6 +12,7 @@ def build_provider_execution_request(
     config = resolve_provider_execution_config()
     return ProviderExecutionRequest(
         task_id=context.capability.task_id,
+        requirements=context.request.requirements,
         caller_app=context.request.caller.caller_app,
         requested_by=context.request.caller.requested_by,
         tenant_id=context.request.caller.tenant_id,

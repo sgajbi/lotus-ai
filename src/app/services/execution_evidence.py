@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from app.contracts.access_control import AuthorizationDecision
-from app.contracts.capability_requirements import REQUIREMENTS_NOT_ENFORCED
+from app.contracts.capability_requirements import (
+    REQUIREMENTS_ENFORCED,
+    REQUIREMENTS_NOT_ENFORCED,
+    REQUIREMENTS_PARTIALLY_ENFORCED,
+)
 from app.contracts.evidence import ExecutionEvidenceBundle, ExecutionEvidenceDescriptor
 from app.contracts.output_validation import OutputValidationOutcome
 from app.contracts.prompts import PromptDescriptor, PromptSelectionTraceDescriptor
@@ -45,33 +49,55 @@ def build_execution_evidence(
         ]
     )
     if request.requirements is not None:
-        descriptors.append(_capability_requirements_descriptor(request=request))
+        descriptors.append(
+            _capability_requirements_descriptor(
+                request=request, provider_execution=provider_execution
+            )
+        )
     return ExecutionEvidenceBundle(descriptors=descriptors)
 
 
 def _capability_requirements_descriptor(
-    *, request: TaskExecutionRequest
+    *, request: TaskExecutionRequest, provider_execution: ProviderExecutionResponse
 ) -> ExecutionEvidenceDescriptor:
     """Declared workload requirements, with their enforcement posture stated.
 
     Recording a requirement without saying whether anything enforces it would
     let a consumer believe a ceiling is being held when nothing holds it -
-    the declared-versus-measured defect this platform keeps finding. Slice 3
-    of issue #244 turns these into an eligibility filter and flips the
-    posture; until then the evidence says NOT_ENFORCED, visibly.
+    the declared-versus-measured defect this platform keeps finding. The
+    posture derives from the routing decision that actually ran (issue #244,
+    S3): a decision that enforced every declared dimension reports ENFORCED, a
+    partial one names both halves, and an execution with no routing decision
+    (the stub path) honestly reports NOT_ENFORCED rather than borrowing a
+    guarantee no filter provided.
     """
 
     assert request.requirements is not None
+    declared = request.requirements.declared_dimensions()
+    decision = getattr(provider_execution, "routing_decision", None)
+    enforced = list(decision.requirements_enforced_dimensions) if decision is not None else []
+    unenforced = (
+        list(decision.requirements_unenforced_dimensions)
+        if decision is not None and enforced
+        else sorted(declared)
+    )
+    if not enforced:
+        posture = REQUIREMENTS_NOT_ENFORCED
+    elif unenforced:
+        posture = REQUIREMENTS_PARTIALLY_ENFORCED
+    else:
+        posture = REQUIREMENTS_ENFORCED
     return ExecutionEvidenceDescriptor(
         evidence_type="capability_requirements",
         summary=(
-            "The caller declared workload capability requirements; they are recorded and "
-            f"{REQUIREMENTS_NOT_ENFORCED}: capability eligibility has not shipped, so no "
-            "routing filter holds them yet."
+            f"The caller declared workload capability requirements; enforcement is {posture} "
+            "for this execution, with the enforced and unenforced dimensions listed."
         ),
         attributes={
-            "declared": request.requirements.declared_dimensions(),
-            "requirements_enforcement": REQUIREMENTS_NOT_ENFORCED,
+            "declared": declared,
+            "requirements_enforcement": posture,
+            "enforced_dimensions": enforced,
+            "unenforced_dimensions": unenforced,
         },
     )
 

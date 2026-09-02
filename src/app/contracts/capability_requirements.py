@@ -29,6 +29,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 # eligibility filter. Slice 3 introduces the enforced posture alongside the
 # filter itself; this constant is the only value that exists until then.
 REQUIREMENTS_NOT_ENFORCED = "NOT_ENFORCED"
+REQUIREMENTS_ENFORCED = "ENFORCED"
+REQUIREMENTS_PARTIALLY_ENFORCED = "PARTIALLY_ENFORCED"
 
 
 class CapabilityRequirements(BaseModel):

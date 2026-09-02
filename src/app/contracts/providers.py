@@ -4,6 +4,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.contracts.capability_requirements import CapabilityRequirements
+
 
 from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
 
@@ -48,6 +50,12 @@ class ProviderFailureCategory(str, Enum):
     MODEL_LIFECYCLE_INELIGIBLE = "MODEL_LIFECYCLE_INELIGIBLE"
     KILL_SWITCH_ACTIVE = "KILL_SWITCH_ACTIVE"
     CIRCUIT_OPEN = "CIRCUIT_OPEN"
+    # Capability eligibility (issue #244, S3). Distinct reasons on purpose: a
+    # capability the catalogue proves absent and one it has never assessed are
+    # different operator stories, and unknown failing closed must be visible
+    # as unknown - not laundered into a confident NOT_SUPPORTED.
+    CAPABILITY_NOT_SUPPORTED = "CAPABILITY_NOT_SUPPORTED"
+    CAPABILITY_UNKNOWN = "CAPABILITY_UNKNOWN"
     PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
     PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"
     PROVIDER_UPSTREAM_ERROR = "PROVIDER_UPSTREAM_ERROR"
@@ -109,6 +117,20 @@ class RoutingDecisionDescriptor(BaseModel):
     strategy: RoutingStrategy = Field(description="Routing strategy the policy applied.")
     candidates: list[RoutingCandidateDescriptor] = Field(
         description="Every candidate the policy considered for this execution.",
+    )
+    requirements_enforced_dimensions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Declared capability-requirement dimensions this decision enforced as "
+            "eligibility or execution constraints (issue #244, S3)."
+        ),
+    )
+    requirements_unenforced_dimensions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Declared dimensions no filter holds yet; recorded so a declared ceiling "
+            "can never silently pass for a held one."
+        ),
     )
     selected_provider_id: str | None = Field(
         default=None,
@@ -617,6 +639,10 @@ class ProviderOperatorProfileResponse(BaseModel):
 
 class ProviderExecutionRequest(BaseModel):
     task_id: str = Field(description="Bounded lotus-ai task identifier being executed.")
+    requirements: CapabilityRequirements | None = Field(
+        default=None,
+        description="Declared workload requirements; None routes exactly as before (issue #244).",
+    )
     caller_app: str = Field(description="Calling Lotus application or platform component.")
     requested_by: str | None = Field(
         default=None,
