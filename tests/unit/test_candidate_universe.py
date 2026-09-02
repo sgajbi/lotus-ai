@@ -257,3 +257,28 @@ def test_empty_universe_refuses_with_every_reason(
         e.reason is CandidateUniverseExclusionReason.LIFECYCLE_INELIGIBLE
         for e in decision.universe_exclusions
     )
+
+
+def test_routing_posture_shows_the_universe_an_execution_would_get() -> None:
+    """One derivation authority (issue #244, U3): the operator posture and the
+    gateway read the same universe, so an identity excluded from posture is
+    exactly the identity an execution would not enumerate."""
+
+    from app.services.routing_posture import build_routing_posture
+
+    _ordered_fallback_settings()
+    ensure_model_catalogue_seeded()
+    repository = get_model_catalogue_repository()
+    entry = repository.get_entry(PRIMARY_ENTRY)
+    assert entry is not None
+    repository.upsert_entry(
+        entry.model_copy(update={"lifecycle_state": ModelLifecycleState.DEPRECATED})
+    )
+
+    posture = build_routing_posture()
+
+    universe = posture.candidate_universe
+    assert universe is not None
+    assert universe.candidate_entry_ids == [ALTERNATE_ENTRY]
+    assert [e.entry_id for e in universe.exclusions] == [PRIMARY_ENTRY]
+    assert universe.exclusions[0].reason is (CandidateUniverseExclusionReason.LIFECYCLE_INELIGIBLE)

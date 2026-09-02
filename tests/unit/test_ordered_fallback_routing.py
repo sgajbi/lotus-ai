@@ -445,12 +445,22 @@ def test_routing_posture_names_both_candidates_under_ordered_fallback() -> None:
     assert posture.fallback_candidate.provider_id == ALTERNATE
     assert posture.fallback_candidate.model_catalogue_entry_id == f"{ALTERNATE}:claude-sonnet-5"
     assert posture.fallback_degradation is not None
+    # The posture exposes the same derived universe the gateway enumerates
+    # from - one authority, so the read cannot disagree with routing
+    # (issue #244, U3).
+    assert posture.candidate_universe is not None
+    assert posture.candidate_universe.candidate_entry_ids == [
+        f"{PRIMARY}:gpt-5.4",
+        f"{ALTERNATE}:claude-sonnet-5",
+    ]
+    assert posture.candidate_universe.exclusions == []
 
     settings.routing_strategy = "fixed"
     fixed_posture = build_routing_posture()
     assert fixed_posture.strategy is RoutingStrategy.FIXED
     assert fixed_posture.fallback_candidate is None
     assert fixed_posture.fallback_degradation is None
+    assert fixed_posture.candidate_universe is None
 
 
 def test_real_transport_attributes_the_alternate_identity_end_to_end() -> None:

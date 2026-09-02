@@ -28,7 +28,10 @@ from app.contracts.providers import (
     RoutingStrategy,
 )
 from app.services.kill_switch_control import build_kill_switch_status
-from app.services.model_catalogue import ensure_model_catalogue_seeded
+from app.services.model_catalogue import (
+    derive_candidate_universe,
+    ensure_model_catalogue_seeded,
+)
 from app.services.model_catalogue_store import get_model_catalogue_repository
 from app.services.provider_degradation_state import build_provider_degradation_status
 
@@ -78,6 +81,9 @@ def build_routing_posture() -> RoutingPostureResponse:
         quota_enforced=config.enforcement.quota_enforced,
         budget_enforced=config.enforcement.budget_enforced,
         enforcing_kill_switch_count=build_kill_switch_status().active_count,
+        # The same derivation the gateway enumerates from (issue #244, U3):
+        # one authority, so the posture cannot disagree with routing.
+        candidate_universe=derive_candidate_universe(config) if ordered else None,
         notes=notes,
     )
 
