@@ -15,6 +15,7 @@ from app.contracts.providers import (
     RoutingDecisionDescriptor,
     RoutingStrategy,
 )
+import time
 from datetime import UTC, datetime
 
 from app.contracts.model_catalogue import ModelCatalogueEntry
@@ -108,6 +109,7 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
             enforce_capability_requirements(
                 requirements=request.requirements, entry=catalogue_entry
             )
+            _require_budget_remaining(request)
         except ProviderExecutionError as exc:
             # A preflight veto is a candidate rejection: the decision records
             # the one configured candidate as rejected with the bounded
@@ -124,7 +126,7 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
     adapter = resolve_text_generation_adapter(mode)
     decided_at = _utc_now_iso()
     try:
-        response = adapter.execute(request, config=config)
+        response = adapter.execute(_request_for_attempt(request), config=config)
         if catalogue_entry is not None:
             # Stamp the governed identity the execution was bound to; the
             # transport only knows settings strings and the provider echo.
@@ -265,6 +267,11 @@ def _execute_ordered_fallback(
         candidate = candidates[index]
         with override_provider_execution_config(candidate):
             try:
+                # The governed deadline outranks fallback: an exhausted budget
+                # rejects this candidate without an attempt, and the next
+                # candidate's check rejects it too - the alternate never
+                # starts after exhaustion, and the budget is never reset.
+                _require_budget_remaining(request)
                 enforce_provider_degradation_preflight()
                 catalogue_entry = bind_live_text_model_catalogue_entry()
                 enforce_capability_requirements(
@@ -275,7 +282,7 @@ def _execute_ordered_fallback(
                 attempt_errors.append(exc)
                 continue
             try:
-                response = adapter.execute(request, config=candidate)
+                response = adapter.execute(_request_for_attempt(request), config=candidate)
             except ProviderExecutionError as exc:
                 record_provider_failure(exc.category)
                 rejections[index] = exc.category
@@ -416,19 +423,62 @@ def _build_ordered_routing_decision(
 
 
 def _apply_latency_ceiling(request: ProviderExecutionRequest) -> ProviderExecutionRequest:
-    """Enforce a declared latency ceiling by tightening the execution timeout.
+    """Start the governed end-to-end latency budget (issue #244).
 
-    Request-scoped, applied before any candidate runs: the transport cannot
-    wait longer than the ceiling, which is what makes `max_latency_ms`
-    genuinely ENFORCED rather than recorded (issue #244, S3).
+    `max_latency_ms` is one execution deadline, not an attempt timeout: a
+    single monotonic deadline is stamped here, every later stage receives only
+    the remaining budget, and nothing - retry, backoff sleep, or fallback -
+    resets it. The first attempt's timeout is tightened to the budget; each
+    subsequent attempt is tightened to what remains at its start.
     """
 
     requirements = request.requirements
     if requirements is None or requirements.max_latency_ms is None:
         return request
-    if requirements.max_latency_ms >= request.timeout_ms:
+    return request.model_copy(
+        update={
+            "timeout_ms": min(request.timeout_ms, requirements.max_latency_ms),
+            "execution_deadline_at": _monotonic() + requirements.max_latency_ms / 1000.0,
+        }
+    )
+
+
+def _remaining_budget_ms(request: ProviderExecutionRequest) -> int | None:
+    """Milliseconds left on the governed deadline; None when no budget is set.
+
+    Zero means exhausted: the value is clamped, and callers treat <= 0 as
+    "no further attempt may start".
+    """
+
+    if request.execution_deadline_at is None:
+        return None
+    return int((request.execution_deadline_at - _monotonic()) * 1000.0)
+
+
+def _request_for_attempt(request: ProviderExecutionRequest) -> ProviderExecutionRequest:
+    """The request an individual candidate attempt may execute.
+
+    The attempt timeout is the smaller of the configured timeout and the
+    remaining governed budget, so an attempt can never run past the deadline
+    earlier stages already spent from.
+    """
+
+    remaining = _remaining_budget_ms(request)
+    if remaining is None or remaining >= request.timeout_ms:
         return request
-    return request.model_copy(update={"timeout_ms": requirements.max_latency_ms})
+    return request.model_copy(update={"timeout_ms": max(remaining, 1)})
+
+
+def _require_budget_remaining(request: ProviderExecutionRequest) -> None:
+    remaining = _remaining_budget_ms(request)
+    if remaining is not None and remaining <= 0:
+        raise ProviderExecutionError(
+            category=ProviderFailureCategory.REQUEST_DEADLINE_EXHAUSTED,
+            message=(
+                "The caller's max_latency_ms budget is exhausted; no further provider "
+                "attempt may start."
+            ),
+        )
 
 
 def _requirement_enforcement_split(
@@ -443,6 +493,12 @@ def _requirement_enforcement_split(
     enforced = sorted(set(declared) & ENFORCED_REQUIREMENT_DIMENSIONS)
     unenforced = sorted(set(declared) - ENFORCED_REQUIREMENT_DIMENSIONS)
     return (enforced, unenforced)
+
+
+def _monotonic() -> float:
+    """Seam for the governed-deadline clock; tests replace it."""
+
+    return time.perf_counter()
 
 
 def _utc_now_iso() -> str:

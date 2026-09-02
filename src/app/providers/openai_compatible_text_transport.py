@@ -90,6 +90,7 @@ def execute_openai_compatible_text_request(
         serving_provider_id=serving_provider_id,
         require_api_key=require_api_key,
         retry_limit=request.retry_limit,
+        execution_deadline_at=request.execution_deadline_at,
     )
     output_message = extract_output_text(response_payload)
     message, structured_output = build_structured_output(
@@ -159,6 +160,7 @@ def post_openai_compatible_response(
     serving_provider_id: str,
     require_api_key: bool,
     retry_limit: int = 0,
+    execution_deadline_at: float | None = None,
 ) -> dict[str, Any]:
     """POST one OpenAI-compatible request, labelling every surface it emits
     with ``serving_provider_id``.
@@ -205,15 +207,32 @@ def post_openai_compatible_response(
     backoff_plan = RetryBackoffPlan(
         timeout_seconds=timeout_seconds, retry_limit=bounded_retry_limit
     )
-    deadline_at = time.perf_counter() + backoff_plan.total_deadline_seconds
+    # The retry sequence is bounded by its own plan AND, when the caller
+    # declared max_latency_ms, by the governed execution deadline - whichever
+    # comes first. The governed deadline is never extended here (issue #244).
+    deadline_at = _monotonic() + backoff_plan.total_deadline_seconds
+    if execution_deadline_at is not None:
+        deadline_at = min(deadline_at, execution_deadline_at)
     for attempt_index in range(bounded_retry_limit + 1):
+        if execution_deadline_at is not None:
+            remaining_seconds = execution_deadline_at - _monotonic()
+            if remaining_seconds <= 0:
+                raise ProviderExecutionError(
+                    category=ProviderFailureCategory.REQUEST_DEADLINE_EXHAUSTED,
+                    message=(
+                        "The caller's max_latency_ms budget is exhausted; no further "
+                        "provider attempt may start."
+                    ),
+                )
+            # An attempt may wait only for what remains of the budget.
+            timeout_seconds = min(timeout_seconds, remaining_seconds)
         provider_request = urllib_request.Request(
             endpoint,
             data=body,
             headers=headers,
             method="POST",
         )
-        attempt_started = time.perf_counter()
+        attempt_started = _monotonic()
         try:
             with (
                 provider_attempt_span(
@@ -280,6 +299,15 @@ def post_openai_compatible_response(
             if will_retry:
                 wait_for_retry(retry_decision)
                 continue
+            deadline_stop = _governed_deadline_stop(
+                execution_deadline_at=execution_deadline_at,
+                retryable=retryable,
+                attempt_index=attempt_index,
+                retry_limit=bounded_retry_limit,
+                delay_seconds=retry_decision.delay_seconds,
+            )
+            if deadline_stop is not None:
+                raise deadline_stop from exc
             raise ProviderExecutionError(
                 category=category,
                 message=safe_provider_error_message(
@@ -313,6 +341,15 @@ def post_openai_compatible_response(
             if will_retry:
                 wait_for_retry(retry_decision)
                 continue
+            deadline_stop = _governed_deadline_stop(
+                execution_deadline_at=execution_deadline_at,
+                retryable=True,
+                attempt_index=attempt_index,
+                retry_limit=bounded_retry_limit,
+                delay_seconds=retry_decision.delay_seconds,
+            )
+            if deadline_stop is not None:
+                raise deadline_stop from exc
             raise ProviderExecutionError(
                 category=ProviderFailureCategory.PROVIDER_TIMEOUT,
                 message=safe_provider_error_message(
@@ -346,6 +383,15 @@ def post_openai_compatible_response(
             if will_retry:
                 wait_for_retry(retry_decision)
                 continue
+            deadline_stop = _governed_deadline_stop(
+                execution_deadline_at=execution_deadline_at,
+                retryable=True,
+                attempt_index=attempt_index,
+                retry_limit=bounded_retry_limit,
+                delay_seconds=retry_decision.delay_seconds,
+            )
+            if deadline_stop is not None:
+                raise deadline_stop from exc
             raise ProviderExecutionError(
                 category=ProviderFailureCategory.PROVIDER_TIMEOUT,
                 message=safe_provider_error_message(
@@ -365,8 +411,45 @@ def post_openai_compatible_response(
 _logger = logging.getLogger("app.provider")
 
 
+def _governed_deadline_stop(
+    *,
+    execution_deadline_at: float | None,
+    retryable: bool,
+    attempt_index: int,
+    retry_limit: int,
+    delay_seconds: float,
+) -> ProviderExecutionError | None:
+    """The error to raise when the governed budget - not the retry plan - is
+    what stopped a retry that was otherwise permitted.
+
+    Distinguishability is the requirement (issue #244): a candidate that
+    stopped because the caller's max_latency_ms ran out must not report a
+    provider condition the provider never caused.
+    """
+
+    if execution_deadline_at is None:
+        return None
+    if not retryable or attempt_index >= retry_limit:
+        return None
+    if _monotonic() + delay_seconds <= execution_deadline_at:
+        return None
+    return ProviderExecutionError(
+        category=ProviderFailureCategory.REQUEST_DEADLINE_EXHAUSTED,
+        message=(
+            "The caller's max_latency_ms budget cannot support another retry; the "
+            "provider attempt sequence stopped at the governed deadline."
+        ),
+    )
+
+
+def _monotonic() -> float:
+    """Seam for the governed-deadline clock; tests replace it."""
+
+    return time.perf_counter()
+
+
 def _attempt_latency_ms(started: float) -> float:
-    return round((time.perf_counter() - started) * 1000.0, 3)
+    return round((_monotonic() - started) * 1000.0, 3)
 
 
 def load_error_payload(exc: error.HTTPError) -> dict[str, Any]:

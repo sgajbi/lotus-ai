@@ -56,6 +56,11 @@ class ProviderFailureCategory(str, Enum):
     # as unknown - not laundered into a confident NOT_SUPPORTED.
     CAPABILITY_NOT_SUPPORTED = "CAPABILITY_NOT_SUPPORTED"
     CAPABILITY_UNKNOWN = "CAPABILITY_UNKNOWN"
+    # The caller's end-to-end latency budget ran out (issue #244). Distinct
+    # from PROVIDER_TIMEOUT: the provider did nothing wrong - the governed
+    # request deadline was exhausted by earlier attempts, backoff, or
+    # fallback, and no further attempt may start.
+    REQUEST_DEADLINE_EXHAUSTED = "REQUEST_DEADLINE_EXHAUSTED"
     PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
     PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"
     PROVIDER_UPSTREAM_ERROR = "PROVIDER_UPSTREAM_ERROR"
@@ -642,6 +647,14 @@ class ProviderExecutionRequest(BaseModel):
     requirements: CapabilityRequirements | None = Field(
         default=None,
         description="Declared workload requirements; None routes exactly as before (issue #244).",
+    )
+    execution_deadline_at: float | None = Field(
+        default=None,
+        description=(
+            "Monotonic instant (time.perf_counter seconds) by which the whole execution "
+            "must finish; set once by the gateway from max_latency_ms and never reset "
+            "across retries or fallback. Runtime-only, in-process (issue #244)."
+        ),
     )
     caller_app: str = Field(description="Calling Lotus application or platform component.")
     requested_by: str | None = Field(

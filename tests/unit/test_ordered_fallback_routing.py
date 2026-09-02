@@ -808,7 +808,10 @@ def test_a_declared_latency_ceiling_tightens_the_execution_timeout(
     )
 
     assert response.provider_id == PRIMARY
-    assert seen_timeouts == [1500]
+    # The attempt timeout is the remaining governed budget at attempt start:
+    # never above the caller's ceiling, allowing real-clock granularity below.
+    assert len(seen_timeouts) == 1
+    assert 1 <= seen_timeouts[0] <= 1500
     decision = response.routing_decision
     assert decision is not None
     assert "max_latency_ms" in decision.requirements_enforced_dimensions
