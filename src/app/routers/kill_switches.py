@@ -63,8 +63,9 @@ async def get_kill_switch_status_route() -> KillSwitchStatusResponse:
 )
 async def activate_kill_switch_route(
     request: KillSwitchActivationRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
 ) -> KillSwitchActionResponse:
-    return activate_kill_switch(request)
+    return activate_kill_switch(request, authenticated_caller)
 
 
 @router.post(

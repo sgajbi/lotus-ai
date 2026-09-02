@@ -40,6 +40,14 @@ from app.services.routing_posture import build_routing_posture
 from app.services.startup_policy import apply_startup_readiness_policy
 from tests.support.log_collection import CollectingLogHandler
 from tests.support.migration_runner import upgrade_database_to_head
+from app.http.authenticated_caller import AuthenticatedCaller
+
+ACTIVATION_CALLER = AuthenticatedCaller(
+    caller_app="lotus-platform",
+    trust_source="verified_service_jwt",
+    credential_key_id="ops-key-alpha",
+)
+
 
 PRIMARY = "text.openai"
 ALTERNATE = "text.claude"
@@ -63,7 +71,6 @@ def _request(**overrides: object) -> ProviderExecutionRequest:
     payload: dict[str, object] = {
         "task_id": "explain.v1",
         "caller_app": "lotus-manage",
-        "requested_by": "ops.user@lotus",
         "tenant_id": "tenant-sg-001",
         "prompt_version": "foundation.explain.v1",
         "system_instructions": "Explain structured outputs conservatively.",
@@ -239,14 +246,12 @@ def test_kill_switch_on_the_primary_provider_routes_to_the_alternate(
     activate_kill_switch(
         KillSwitchActivationRequest.model_validate(
             {
-                "caller_app": "lotus-platform",
                 "scope": KillSwitchScope.PROVIDER,
                 "target": PRIMARY,
                 "reason": "Incident LOTUS-5102: disable the primary provider.",
-                "requested_by": "ops.primary@lotus",
-                "approved_by": "ops.secondary@lotus",
             }
-        )
+        ),
+        ACTIVATION_CALLER,
     )
 
     response = execute_text_generation(_request())
@@ -376,13 +381,11 @@ def test_all_live_text_kill_switch_rejects_both_candidates(
     activate_kill_switch(
         KillSwitchActivationRequest.model_validate(
             {
-                "caller_app": "lotus-platform",
                 "scope": KillSwitchScope.ALL_LIVE_TEXT,
                 "reason": "Incident LOTUS-5103: stop all live text execution.",
-                "requested_by": "ops.primary@lotus",
-                "approved_by": "ops.secondary@lotus",
             }
-        )
+        ),
+        ACTIVATION_CALLER,
     )
 
     with pytest.raises(HTTPException) as exc_info:

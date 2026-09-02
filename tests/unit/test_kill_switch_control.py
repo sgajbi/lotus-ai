@@ -41,6 +41,13 @@ from app.services.provider_gateway import (
 from app.services.provider_quota_policy import reset_provider_quota_counters
 from tests.support.migration_runner import upgrade_database_to_head
 
+ACTIVATION_CALLER = AuthenticatedCaller(
+    caller_app="lotus-platform",
+    trust_source="verified_service_jwt",
+    credential_key_id="ops-key-alpha",
+)
+
+
 CONTROL_CALLER = "lotus-platform"
 
 
@@ -61,12 +68,9 @@ def _durable_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _activation_request(**overrides: object) -> KillSwitchActivationRequest:
     payload: dict[str, object] = {
-        "caller_app": CONTROL_CALLER,
         "scope": KillSwitchScope.TASK,
         "target": "explain.v1",
         "reason": "Incident LOTUS-4711: unsafe outputs observed for this task.",
-        "requested_by": "ops.primary@lotus",
-        "approved_by": "ops.secondary@lotus",
     }
     payload.update(overrides)
     return KillSwitchActivationRequest.model_validate(payload)
@@ -76,7 +80,6 @@ def _provider_request(**overrides: object) -> ProviderExecutionRequest:
     payload: dict[str, object] = {
         "task_id": "explain.v1",
         "caller_app": "lotus-manage",
-        "requested_by": "ops.user@lotus",
         "tenant_id": "tenant-sg-001",
         "prompt_version": "foundation.explain.v1",
         "system_instructions": "Explain conservatively.",
@@ -97,30 +100,58 @@ def _provider_request(**overrides: object) -> ProviderExecutionRequest:
 
 def test_activation_requires_the_durable_store() -> None:
     with pytest.raises(HTTPException) as exc_info:
-        activate_kill_switch(_activation_request())
+        activate_kill_switch(_activation_request(), ACTIVATION_CALLER)
     assert exc_info.value.status_code == 409
     assert "LOTUS_AI_KILL_SWITCH_STORE_MODE=sqlalchemy" in str(exc_info.value.detail)
 
 
 def test_activation_requires_provider_control_authorization(_durable_store: None) -> None:
+    """Authorization follows the authenticated caller, not a body field."""
+
+    unauthorized = AuthenticatedCaller(
+        caller_app="lotus-manage",
+        trust_source="verified_service_jwt",
+        credential_key_id="ops-key-alpha",
+    )
     with pytest.raises(HTTPException) as exc_info:
-        activate_kill_switch(_activation_request(caller_app="lotus-manage"))
+        activate_kill_switch(_activation_request(), unauthorized)
     assert exc_info.value.status_code == 403
+
+
+def test_activation_never_blocks_on_credential_availability(_durable_store: None) -> None:
+    """An emergency stop under header trust still stops, and the record says
+    honestly how trustworthy the identity is - refusing a safety action for
+    want of a verified credential would fail dangerous (issue #157)."""
+
+    header_caller = AuthenticatedCaller(
+        caller_app="lotus-platform",
+        trust_source="trusted_http_header",
+        credential_key_id=None,
+    )
+    response = activate_kill_switch(_activation_request(), header_caller)
+    assert response.activation.requested_by == "lotus-platform (trusted_http_header)"
+    assert response.activation.approved_by is None
+    assert build_kill_switch_status().active_count == 1
 
 
 def test_activation_validates_scope_target_pairing(_durable_store: None) -> None:
     with pytest.raises(HTTPException) as exc_info:
         activate_kill_switch(
-            _activation_request(scope=KillSwitchScope.ALL_LIVE_TEXT, target="text.openai")
+            _activation_request(scope=KillSwitchScope.ALL_LIVE_TEXT, target="text.openai"),
+            ACTIVATION_CALLER,
         )
     assert exc_info.value.status_code == 422
 
     with pytest.raises(HTTPException) as exc_info:
-        activate_kill_switch(_activation_request(scope=KillSwitchScope.PROVIDER, target=None))
+        activate_kill_switch(
+            _activation_request(scope=KillSwitchScope.PROVIDER, target=None), ACTIVATION_CALLER
+        )
     assert exc_info.value.status_code == 422
 
     with pytest.raises(HTTPException) as exc_info:
-        activate_kill_switch(_activation_request(expires_at_utc="not-a-timestamp"))
+        activate_kill_switch(
+            _activation_request(expires_at_utc="not-a-timestamp"), ACTIVATION_CALLER
+        )
     assert exc_info.value.status_code == 422
 
 
@@ -147,7 +178,7 @@ def test_activate_then_governed_clear_lifecycle(_durable_store: None) -> None:
     immediately; clearance resumes it only through a verified requester and a
     DISTINCT verified approver bound to the exact action hash."""
 
-    activated = activate_kill_switch(_activation_request())
+    activated = activate_kill_switch(_activation_request(), ACTIVATION_CALLER)
     assert activated.store_mode == "sqlalchemy"
     switch_id = activated.activation.switch_id
     assert build_kill_switch_status().active_count == 1
@@ -164,7 +195,6 @@ def test_activate_then_governed_clear_lifecycle(_durable_store: None) -> None:
         KillSwitchClearApprovalRequest(
             action_id=action.action_id,
             action_hash=action.action_hash,
-            approved_by="ops.secondary@lotus",
         ),
         APPROVER,
     )
@@ -188,7 +218,7 @@ def test_no_single_credential_can_resume_stopped_execution(_durable_store: None)
     """The target invariant, end to end: the requester approving its own
     clearance is refused, and the switch keeps refusing execution."""
 
-    activated = activate_kill_switch(_activation_request())
+    activated = activate_kill_switch(_activation_request(), ACTIVATION_CALLER)
     switch_id = activated.activation.switch_id
     pending = request_kill_switch_clearance(switch_id, _intent(), REQUESTER)
 
@@ -209,7 +239,7 @@ def test_no_single_credential_can_resume_stopped_execution(_durable_store: None)
 
 
 def test_header_trust_cannot_request_or_approve_clearance(_durable_store: None) -> None:
-    activated = activate_kill_switch(_activation_request())
+    activated = activate_kill_switch(_activation_request(), ACTIVATION_CALLER)
     switch_id = activated.activation.switch_id
     header_caller = AuthenticatedCaller(
         caller_app=CONTROL_CALLER,
@@ -238,9 +268,9 @@ def test_header_trust_cannot_request_or_approve_clearance(_durable_store: None) 
 def test_an_approval_binds_to_the_hash_and_cannot_be_redirected(
     _durable_store: None,
 ) -> None:
-    first = activate_kill_switch(_activation_request())
+    first = activate_kill_switch(_activation_request(), ACTIVATION_CALLER)
     second = activate_kill_switch(
-        _activation_request(target="summarize.v1", reason="Second incident.")
+        _activation_request(target="summarize.v1", reason="Second incident."), ACTIVATION_CALLER
     )
     pending = request_kill_switch_clearance(first.activation.switch_id, _intent(), REQUESTER)
 
@@ -393,8 +423,7 @@ def _record(**overrides: object) -> KillSwitchActivationRecord:
         "scope": KillSwitchScope.TASK,
         "target": "explain.v1",
         "reason": "Test activation.",
-        "requested_by": "ops.primary@lotus",
-        "approved_by": "ops.secondary@lotus",
+        "requested_by": "lotus-platform (credential ops-key-alpha)",
         "activated_at": "2026-08-30T00:00:00Z",
     }
     payload.update(overrides)
@@ -443,8 +472,6 @@ def test_scope_matcher_rejects_an_unknown_scope_object() -> None:
         scope="NOT_A_SCOPE",
         target=None,
         reason="r",
-        requested_by="a",
-        approved_by="b",
         activated_at="2026-08-30T00:00:00Z",
         expires_at_utc=None,
         cleared_at=None,

@@ -15,6 +15,13 @@ from app.services.kill_switch_store import get_kill_switch_repository
 from app.services.provider_metrics import record_kill_switch_action
 from app.services.provider_operations_status import build_provider_operations_status
 from tests.support.migration_runner import upgrade_database_to_head
+from app.http.authenticated_caller import AuthenticatedCaller
+
+ACTIVATION_CALLER = AuthenticatedCaller(
+    caller_app="lotus-platform",
+    trust_source="verified_service_jwt",
+    credential_key_id="ops-key-alpha",
+)
 
 
 def _use_durable_store(tmp_path: Path, name: str) -> None:
@@ -26,15 +33,13 @@ def _use_durable_store(tmp_path: Path, name: str) -> None:
 def _activate(*, expires_at_utc: str | None = None) -> str:
     response = activate_kill_switch(
         KillSwitchActivationRequest(
-            caller_app="lotus-platform",
             scope=KillSwitchScope.TASK,
             semantics=KillSwitchSemantics.HARD_KILL,
             target="explain.v1",
             reason="Expiry-observability test activation.",
-            requested_by="alice@lotus.test",
-            approved_by="bob@lotus.test",
             expires_at_utc=expires_at_utc,
-        )
+        ),
+        ACTIVATION_CALLER,
     )
     return response.activation.switch_id
 

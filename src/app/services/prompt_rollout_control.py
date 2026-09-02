@@ -30,6 +30,7 @@ from app.contracts.prompts import (
 from app.http.authenticated_caller import AuthenticatedCaller
 from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.eval_approval_gate_summary import build_prompt_approval_gate_summary
+from app.services.kill_switch_control import verified_caller_identity
 from app.services.governed_action_control import (
     approve_and_execute_governed_action,
     submit_governed_action,
@@ -64,10 +65,19 @@ def build_prompt_control_history(
     )
 
 
-def apply_prompt_control_action(request: PromptControlActionRequest) -> PromptControlActionResponse:
+def apply_prompt_control_action(
+    request: PromptControlActionRequest, caller: AuthenticatedCaller
+) -> PromptControlActionResponse:
+    """Apply a prompt rollback: one authorized principal, immediately.
+
+    Rollback restores the previous known-good prompt - the safety direction -
+    so it takes no approver, and the requester identity derives from the
+    authenticated caller rather than caller-typed free text (issue #157).
+    """
+
     authorization = require_authorized(
         authorize_request(
-            caller_app=request.caller_app,
+            caller_app=caller.caller_app,
             capability_type=AuthorizationCapabilityType.PROMPT_CONTROL,
             task_id=request.task_id,
         )
@@ -99,6 +109,7 @@ def apply_prompt_control_action(request: PromptControlActionRequest) -> PromptCo
     updated_state, updated_prompts, event = _resolve_transition(
         rollout_state=rollout_state,
         request=request,
+        requested_by=verified_caller_identity(caller),
         authorization=authorization,
     )
     repository.save_prompt_rollout_transition(
@@ -115,7 +126,8 @@ def apply_prompt_control_action(request: PromptControlActionRequest) -> PromptCo
         summary=[
             f"Applied prompt action `{request.action_type.value}` for task `{request.task_id}`.",
             f"Active prompt is now `{updated_state.active_prompt_version}`.",
-            f"Action requested by `{request.requested_by}` and approved by `{request.approved_by}`.",
+            f"Rollback applied by `{event.requested_by}`; a safety action takes one "
+            "principal and no approver.",
         ],
     )
 
@@ -146,10 +158,9 @@ def request_prompt_promotion(
             task_id=request.task_id,
             candidate_prompt_version=request.candidate_prompt_version,
             reason=request.reason,
-            caller=caller,
-            requested_by=_credential_identity(caller),
-            approved_by="pending-governed-approval",
         ),
+        requested_by=verified_caller_identity(caller),
+        approved_by="pending-governed-approval",
         authorization=authorization,
     )
     record = submit_governed_action(
@@ -200,13 +211,12 @@ def approve_prompt_promotion(
             task_id=request.task_id,
             candidate_prompt_version=str(record.action_payload.get("candidate_prompt_version")),
             reason=str(record.action_payload.get("reason")),
-            caller=caller,
-            requested_by=(f"{record.requester_caller_app} (credential {record.requester_key_id})"),
-            approved_by=_credential_identity(caller),
         )
         updated_state, updated_prompts, event = _build_promote_transition(
             rollout_state=rollout_state,
             request=internal,
+            requested_by=(f"{record.requester_caller_app} (credential {record.requester_key_id})"),
+            approved_by=verified_caller_identity(caller),
             authorization=authorization,
         )
         get_prompt_repository().save_prompt_rollout_transition(
@@ -276,23 +286,13 @@ def _internal_promote_request(
     task_id: str,
     candidate_prompt_version: str,
     reason: str,
-    caller: AuthenticatedCaller,
-    requested_by: str,
-    approved_by: str,
 ) -> PromptControlActionRequest:
     return PromptControlActionRequest(
         task_id=task_id,
         action_type=PromptControlActionType.PROMOTE_CANDIDATE,
-        caller_app=caller.caller_app,
         candidate_prompt_version=candidate_prompt_version,
-        requested_by=requested_by,
-        approved_by=approved_by,
         reason=reason,
     )
-
-
-def _credential_identity(caller: AuthenticatedCaller) -> str:
-    return f"{caller.caller_app} (credential {caller.credential_key_id})"
 
 
 def _get_required_rollout_state(task_id: str) -> PromptRolloutStateRecord:
@@ -331,12 +331,14 @@ def _resolve_transition(
     *,
     rollout_state: PromptRolloutStateRecord,
     request: PromptControlActionRequest,
+    requested_by: str,
     authorization: AuthorizationDecision,
 ) -> tuple[PromptRolloutStateRecord, list[PromptDescriptor], PromptRolloutEventRecord]:
     if request.action_type == PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE:
         return _build_rollback_transition(
             rollout_state=rollout_state,
             request=request,
+            requested_by=requested_by,
             authorization=authorization,
         )
     raise RuntimeError("Unsupported prompt control action.")
@@ -346,6 +348,8 @@ def _build_promote_transition(
     *,
     rollout_state: PromptRolloutStateRecord,
     request: PromptControlActionRequest,
+    requested_by: str,
+    approved_by: str,
     authorization: AuthorizationDecision,
 ) -> tuple[PromptRolloutStateRecord, list[PromptDescriptor], PromptRolloutEventRecord]:
     approval_gate = build_prompt_approval_gate_summary()
@@ -412,8 +416,8 @@ def _build_promote_transition(
         event_id=f"prompt_evt_{uuid4().hex[:12]}",
         task_id=request.task_id,
         action_type=request.action_type,
-        requested_by=request.requested_by,
-        approved_by=request.approved_by,
+        requested_by=requested_by,
+        approved_by=approved_by,
         reason=request.reason,
         prior_active_prompt_version=active_prompt.prompt_version,
         resulting_active_prompt_version=candidate_prompt.prompt_version,
@@ -429,6 +433,7 @@ def _build_rollback_transition(
     *,
     rollout_state: PromptRolloutStateRecord,
     request: PromptControlActionRequest,
+    requested_by: str,
     authorization: AuthorizationDecision,
 ) -> tuple[PromptRolloutStateRecord, list[PromptDescriptor], PromptRolloutEventRecord]:
     if request.candidate_prompt_version is not None:
@@ -472,8 +477,9 @@ def _build_rollback_transition(
         event_id=f"prompt_evt_{uuid4().hex[:12]}",
         task_id=request.task_id,
         action_type=request.action_type,
-        requested_by=request.requested_by,
-        approved_by=request.approved_by,
+        requested_by=requested_by,
+        # A rollback has no approver: it is the safety direction (issue #157).
+        approved_by=None,
         reason=request.reason,
         prior_active_prompt_version=active_prompt.prompt_version,
         resulting_active_prompt_version=previous_active_prompt.prompt_version,

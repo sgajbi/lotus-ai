@@ -56,10 +56,20 @@ from app.services.provider_metrics import record_kill_switch_action
 from app.services.provider_execution_config import resolve_provider_execution_config
 
 
-def activate_kill_switch(request: KillSwitchActivationRequest) -> KillSwitchActionResponse:
+def activate_kill_switch(
+    request: KillSwitchActivationRequest, caller: AuthenticatedCaller
+) -> KillSwitchActionResponse:
+    """Activate a kill switch: one authorized principal, immediately.
+
+    The requester identity derives from the authenticated caller, and the
+    strongest identity the request carries is recorded rather than gating the
+    stop on credential availability - refusing an emergency stop for want of a
+    verified credential would fail dangerous (issue #157).
+    """
+
     require_authorized(
         authorize_request(
-            caller_app=request.caller_app,
+            caller_app=caller.caller_app,
             capability_type=AuthorizationCapabilityType.PROVIDER_CONTROL,
         )
     )
@@ -84,8 +94,8 @@ def activate_kill_switch(request: KillSwitchActivationRequest) -> KillSwitchActi
         semantics=request.semantics,
         target=request.target,
         reason=request.reason,
-        requested_by=request.requested_by,
-        approved_by=request.approved_by,
+        requested_by=verified_caller_identity(caller),
+        approved_by=None,
         activated_at=_utc_now_iso(),
         expires_at_utc=request.expires_at_utc,
     )
@@ -102,7 +112,8 @@ def activate_kill_switch(request: KillSwitchActivationRequest) -> KillSwitchActi
             f"Activated kill switch `{activation.switch_id}` for scope "
             f"`{activation.scope.value}`"
             + (f" target `{activation.target}`." if activation.target else "."),
-            f"Requested by `{request.requested_by}` and approved by `{request.approved_by}`.",
+            f"Activated by `{activation.requested_by}`; a safety stop takes one "
+            "principal and no approver.",
             "New live text executions in scope are refused immediately (hard kill).",
         ],
     )
@@ -198,6 +209,19 @@ def approve_kill_switch_clearance(
             f"distinct credential `{executed.approver_key_id}`.",
         ],
     )
+
+
+def verified_caller_identity(caller: AuthenticatedCaller) -> str:
+    """The strongest identity the request carries, stated as what it is.
+
+    A verified credential names the signing key; header trust says so rather
+    than dressing up as verification. Safety actions record this instead of
+    caller-typed free text, and never refuse for want of a credential.
+    """
+
+    if caller.credential_key_id:
+        return f"{caller.caller_app} (credential {caller.credential_key_id})"
+    return f"{caller.caller_app} ({caller.trust_source})"
 
 
 def _require_active_activation(switch_id: str) -> KillSwitchActivationRecord:

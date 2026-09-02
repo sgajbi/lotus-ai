@@ -177,9 +177,9 @@ async def approve_prompt_promotion_route(
 )
 async def apply_prompt_control_action_route(
     request: PromptControlActionRequest,
-    _authenticated_caller: AuthenticatedCallerDependency,
+    authenticated_caller: AuthenticatedCallerDependency,
 ) -> PromptControlActionResponse:
-    return apply_prompt_control_action(request)
+    return apply_prompt_control_action(request, authenticated_caller)
 
 
 @router.get(
