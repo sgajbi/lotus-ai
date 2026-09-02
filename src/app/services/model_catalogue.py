@@ -340,15 +340,15 @@ def derive_candidate_universe(config: ProviderExecutionConfig) -> CandidateUnive
     """Derive the ordered candidate universe from catalogue evidence bounded by policy.
 
     The policy bound is the configured primary/fallback identity order (issue
-    #244, U1); the catalogue supplies the evidence each identity must earn
+    #244); the catalogue supplies the evidence each identity must earn
     eligibility with. Every exclusion is reasoned: a policy identity with no
     catalogue entry, a policy identity whose lifecycle refuses service, and -
     the operator question configuration cannot answer - a serving-eligible
     catalogue entry for this mode that no policy row lets serve.
 
-    U1 consumes this as routing-decision evidence only; the enumeration still
-    comes from configuration, and `source` says so honestly. U2 flips the
-    enumeration to this derivation, and the flip is visible in the decision.
+    Since U2 this derivation IS the ordered enumeration: an identity excluded
+    here never becomes a candidate, and `source` records the flip on every
+    routing decision.
     """
 
     ensure_model_catalogue_seeded()
@@ -416,7 +416,7 @@ def derive_candidate_universe(config: ProviderExecutionConfig) -> CandidateUnive
         )
 
     return CandidateUniverse(
-        source=CandidateUniverseSource.CONFIGURED,
+        source=CandidateUniverseSource.CATALOGUE_DERIVED,
         candidate_entry_ids=candidate_entry_ids,
         exclusions=exclusions,
     )
