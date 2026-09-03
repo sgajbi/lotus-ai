@@ -57,6 +57,20 @@ class RetentionFamily(BaseModel):
             "applied; NOT_TIME_BOUNDED matches a null retention period."
         ),
     )
+    minimised_retention_days: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Shorter horizon for rows the family's engine handler classifies as "
+            "minimisable (issue #158, S4) - e.g. passing evaluation cases whose "
+            "content has no diagnostic purpose beyond review. Requires a "
+            "minimisation_basis and an ENFORCED handler that honours it."
+        ),
+    )
+    minimisation_basis: str | None = Field(
+        default=None,
+        description="Why the minimisable subset needs less retention - required with the days.",
+    )
 
 
 class RetentionPolicy(BaseModel):
@@ -98,6 +112,21 @@ def load_retention_policy() -> RetentionPolicy:
             raise ValueError(
                 f"retention policy family '{family.family_id}' is inconsistent: a null "
                 "retention period and the NOT_TIME_BOUNDED posture must imply each other"
+            )
+        if (family.minimised_retention_days is None) != (family.minimisation_basis is None):
+            raise ValueError(
+                f"retention policy family '{family.family_id}' is inconsistent: a "
+                "minimised retention period and its basis must be declared together"
+            )
+        if family.minimised_retention_days is not None and (
+            family.enforcement != "ENFORCED"
+            or family.retention_days is None
+            or family.minimised_retention_days >= family.retention_days
+        ):
+            raise ValueError(
+                f"retention policy family '{family.family_id}' is inconsistent: minimised "
+                "retention requires an ENFORCED family and must be shorter than the "
+                "family's own retention period"
             )
         for table in family.tables:
             if table in seen_tables:

@@ -174,6 +174,20 @@ def _provider_config_sha256(resolved: ResolvedTaskExecution) -> str | None:
     )
 
 
+# The audit row keeps a preview, not the output of record (issue #158, S4):
+# the caller received the full message in the task response, and the audit
+# trail's purpose is traceability - digests, verdicts, selection evidence -
+# not a second copy of every generated document.
+_RESULT_PREVIEW_MAX_CHARS = 512
+
+
+def _minimised_result_preview(message: str) -> str:
+    if len(message) <= _RESULT_PREVIEW_MAX_CHARS:
+        return message
+    omitted = len(message) - _RESULT_PREVIEW_MAX_CHARS
+    return f"{message[:_RESULT_PREVIEW_MAX_CHARS]} [truncated {omitted} of {len(message)} chars]"
+
+
 def _audited_context_summary(context: TaskExecutionContext) -> str:
     """Redact the caller-supplied summary at the persistence boundary.
 
@@ -232,7 +246,7 @@ def map_audit_record(
         context_summary=_audited_context_summary(context),
         context_keys=sorted(context.request.context.payload.keys()),
         source_refs=context.request.context.source_refs,
-        result_preview=response.result.message,
+        result_preview=_minimised_result_preview(response.result.message),
         structured_output=response.result.structured_output,
         evidence=response.evidence,
     )

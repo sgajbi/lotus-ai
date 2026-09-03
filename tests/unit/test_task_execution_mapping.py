@@ -43,9 +43,32 @@ def test_map_audit_record_preserves_sorted_context_keys() -> None:
     assert audit_record.requested_by is None
     assert audit_record.tenant_id == "tenant-sg-001"
     assert audit_record.context_keys == ["rule_count", "status"]
+    # A short message persists whole; the cap only bites past the preview bound.
     assert audit_record.result_preview == response.result.message
     assert audit_record.prompt_selection.prompt_version == "foundation.explain.v1"
     assert audit_record.evidence == response.evidence
+
+
+def test_map_audit_record_caps_result_preview_at_persistence() -> None:
+    """Minimisation (issue #158, S4): the caller received the full message in
+    the task response; the audit row keeps a bounded preview with an explicit
+    truncation marker, never a second full copy."""
+
+    context = validate_task_request(
+        _request("explain.v1", expected_output_label=OutputLabel.EXPLANATION_ONLY)
+    )
+    resolved = resolve_task_execution(context=context)
+    response = map_task_execution_response(resolved=resolved)
+    long_message = "x" * 2000
+    response = response.model_copy(
+        update={"result": response.result.model_copy(update={"message": long_message})}
+    )
+
+    audit_record = map_audit_record(context=context, response=response)
+
+    assert len(audit_record.result_preview) < len(long_message)
+    assert audit_record.result_preview.startswith("x" * 512)
+    assert audit_record.result_preview.endswith("[truncated 1488 of 2000 chars]")
 
 
 def test_map_audit_record_preserves_full_caller_identity() -> None:

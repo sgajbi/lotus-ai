@@ -105,11 +105,13 @@
         "evaluation_case_results"
       ],
       "retention_days": 365,
-      "retention_basis": "Case-level content is diagnostic, not the verdict of record; one year covers regression investigation. Minimisation (retain longer only for failures) is the S4 slice.",
+      "retention_basis": "Case-level content is diagnostic, not the verdict of record; one year covers regression investigation for failures.",
       "legal_hold_supported": true,
       "erasure_key": "none",
       "evidence_class": "evaluation_content",
-      "enforcement": "ENFORCED"
+      "enforcement": "ENFORCED",
+      "minimised_retention_days": 90,
+      "minimisation_basis": "A passing case's inputs and outputs have no diagnostic purpose beyond the review horizon: the run verdict survives with the approval-evidence family, so only failures need the full year for defect forensics."
     },
     {
       "family_id": "retrieval_shared_reference",

@@ -459,6 +459,7 @@ Operator rules:
 4. the approval erases every tenant-erasable family (legal-held families stay, listed with `held=true`), writes one ERASURE lifecycle event per touched family, and returns an **Ed25519-signed receipt** verifiable against `/.well-known/lotus-ai-workflow-attestation-keys` - the artefact #115 consumers present as deletion proof
 5. erasure overrides retention; legal hold overrides erasure; both are recorded - never assume an empty family means erasure ran: read `data_lifecycle_events`
 6. families whose stores carry no tenant attribution (`artifact_content`, `async_runtime_content`) are honestly `erasure_key: none` with the linkage gap stated in the policy basis; do not claim tenant erasure covers them
+7. **minimisation** (issue #158, S4): audit rows keep a capped `result_preview` with an explicit truncation marker, never a second full copy of the generated output, and a *passing* evaluation case's content expires at the policy's minimised horizon (90 days) while failures keep the full year - do not expect passing-case content beyond that horizon
 
 ## Safety Governance Review
 
