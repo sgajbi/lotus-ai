@@ -9,6 +9,7 @@ from app.http.caller_credential import (
     SUPPORTED_CALLER_TRUST_MODES,
     parse_caller_credential_public_keys,
 )
+from app.services.data_lifecycle_policy import data_lifecycle_policy_findings
 from app.services.provider_degradation_reconciliation import (
     reconcile_legacy_degradation_state,
 )
@@ -64,6 +65,9 @@ def evaluate_startup_readiness() -> StartupReadinessEvaluation:
     # Explicit operator weakenings of promoted protections, captured at
     # settings construction (issue #233): override wins, but never silently.
     findings.extend(settings.promoted_protection_overrides)
+    # Every store declares its lifecycle (issue #158, S1): a table outside the
+    # retention policy is a store outside lifecycle governance.
+    findings.extend(data_lifecycle_policy_findings())
 
     return _evaluation_for(findings)
 
