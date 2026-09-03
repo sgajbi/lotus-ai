@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
 from sqlalchemy import delete, select
@@ -260,6 +262,25 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
                 job=self._to_job_record(job_model),
                 attempt=self._to_attempt_record(attempt_model),
                 lease=self._to_lease_record(lease_model),
+            )
+
+    def delete_job_records(self, job_ids: Sequence[str]) -> tuple[int, int, int]:
+        if not job_ids:
+            return 0, 0, 0
+        ids = list(job_ids)
+        with self._session_factory() as session:
+            leases = session.execute(
+                delete(AsyncWorkerLeaseModel).where(AsyncWorkerLeaseModel.job_id.in_(ids))
+            )
+            attempts = session.execute(
+                delete(AsyncJobAttemptModel).where(AsyncJobAttemptModel.job_id.in_(ids))
+            )
+            jobs = session.execute(delete(AsyncJobModel).where(AsyncJobModel.job_id.in_(ids)))
+            session.commit()
+            return (
+                int(getattr(jobs, "rowcount", 0) or 0),
+                int(getattr(attempts, "rowcount", 0) or 0),
+                int(getattr(leases, "rowcount", 0) or 0),
             )
 
     def list_control_events(

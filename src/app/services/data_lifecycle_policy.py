@@ -49,6 +49,14 @@ class RetentionFamily(BaseModel):
     legal_hold_supported: bool
     erasure_key: Literal["tenant", "request", "subject", "shared_reference", "none"]
     evidence_class: str = Field(min_length=1)
+    enforcement: Literal["ENFORCED", "DECLARED_ONLY", "NOT_TIME_BOUNDED"] = Field(
+        description=(
+            "Whether the lifecycle engine actually applies this family's retention "
+            "(issue #158, S2a): ENFORCED means an engine handler deletes past-retention "
+            "rows; DECLARED_ONLY says honestly that the period is stated but not yet "
+            "applied; NOT_TIME_BOUNDED matches a null retention period."
+        ),
+    )
 
 
 class RetentionPolicy(BaseModel):
@@ -86,6 +94,11 @@ def load_retention_policy() -> RetentionPolicy:
         if family.family_id in seen_families:
             raise ValueError(f"retention policy declares family '{family.family_id}' twice")
         seen_families.add(family.family_id)
+        if (family.retention_days is None) != (family.enforcement == "NOT_TIME_BOUNDED"):
+            raise ValueError(
+                f"retention policy family '{family.family_id}' is inconsistent: a null "
+                "retention period and the NOT_TIME_BOUNDED posture must imply each other"
+            )
         for table in family.tables:
             if table in seen_tables:
                 raise ValueError(
