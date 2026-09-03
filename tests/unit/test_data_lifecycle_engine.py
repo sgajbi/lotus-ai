@@ -255,10 +255,11 @@ def test_expiry_honours_age_terminal_state_and_legal_hold() -> None:
     assert events["audit_evidence"].policy_version == report.policy_version
     assert events["audit_evidence"].actor == "test.operator"
 
-    # DECLARED_ONLY families are reported, never touched.
-    assert results["retrieval_shared_reference"].enforcement == "DECLARED_ONLY"
-    assert results["retrieval_shared_reference"].deleted_count == 0
-    assert results["retrieval_shared_reference"].event_id is None
+    # Non-engine families are reported, never touched: every time-bounded
+    # family is now ENFORCED, and the not-time-bounded ones say so.
+    assert results["governed_registry_configuration"].enforcement == "NOT_TIME_BOUNDED"
+    assert results["governed_registry_configuration"].deleted_count == 0
+    assert results["governed_registry_configuration"].event_id is None
 
 
 def test_second_run_is_idempotent() -> None:
@@ -338,6 +339,7 @@ def test_sqlalchemy_adapters_round_trip(tmp_path: object, monkeypatch: object) -
         "workflow_pack_queue_event_store_mode",
         "artifact_store_mode",
         "evaluation_runtime_store_mode",
+        "retrieval_store_mode",
     ):
         monkeypatch.setattr(settings, mode_field, "sqlalchemy")
 
@@ -393,6 +395,13 @@ def test_sqlalchemy_adapters_round_trip(tmp_path: object, monkeypatch: object) -
     assert get_workflow_pack_execution_idempotency_store().delete_records([]) == 0
     assert get_evaluation_runtime_store().delete_runs_with_dependents([]) == (0, 0, 0)
     assert get_evaluation_runtime_store().delete_case_results([]) == 0
+
+    from app.services.retrieval_store import get_retrieval_repository
+
+    assert get_retrieval_repository().delete_document_versions([]) == 0
+    assert get_retrieval_repository().delete_ingestion_jobs([]) == 0
+    assert get_retrieval_repository().delete_document_versions(["ver_never"]) == 0
+    assert get_retrieval_repository().delete_ingestion_jobs(["ing_never"]) == 0
 
     audit = get_audit_store()
     assert {r.request_id for r in audit.list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=50)} == {
@@ -1035,3 +1044,69 @@ def test_run_records_eval_and_artifact_expiry_honour_their_semantics() -> None:
 
     second = run_data_lifecycle(actor="test.operator")
     assert all(result.deleted_count == 0 for result in second.results)
+
+
+def test_retrieval_history_expiry_never_touches_current_versions() -> None:
+    """S2d: only SUPERSEDED versions age out - the current version of a
+    document is live reference state whatever its age - and ingestion-job
+    records age with the history."""
+
+    from app.contracts.retrieval import (
+        RetrievalDocumentVersionDescriptor,
+        RetrievalDocumentVersionLifecycleStatus,
+        RetrievalIngestionAction,
+        RetrievalIngestionJobDescriptor,
+        RetrievalIngestionJobStatus,
+    )
+    from app.services.retrieval_store import get_retrieval_repository
+
+    repository = get_retrieval_repository()
+
+    def _version(version_id: str, status: str, age: int) -> None:
+        repository.save_document_version(
+            RetrievalDocumentVersionDescriptor(
+                version_id=version_id,
+                document_id="doc-1",
+                source_id="lotus-platform-rfcs",
+                title="t",
+                location="loc",
+                lifecycle_status=RetrievalDocumentVersionLifecycleStatus(status),
+                refresh_action=RetrievalIngestionAction.REFRESH,
+                created_at=_iso(age),
+                created_by="ops",
+                notes="n",
+            )
+        )
+
+    _version("ver_old_superseded", "SUPERSEDED", 1200)
+    _version("ver_old_active", "ACTIVE", 1200)
+    _version("ver_young_superseded", "SUPERSEDED", 30)
+
+    for job_id, age in (("ing_old", 1200), ("ing_young", 30)):
+        repository.save_ingestion_job(
+            RetrievalIngestionJobDescriptor(
+                job_id=job_id,
+                source_id="lotus-platform-rfcs",
+                requested_action=RetrievalIngestionAction.REFRESH,
+                status=RetrievalIngestionJobStatus.COMPLETED,
+                requested_by="ops",
+                requested_at=_iso(age),
+                message="m",
+            )
+        )
+
+    report = run_data_lifecycle(actor="test.operator")
+    result = {r.family_id: r for r in report.results}["retrieval_shared_reference"]
+
+    assert result.deleted_count == 2
+    assert "never expired" in result.detail
+    remaining_versions = {v.version_id for v in repository.list_document_versions()}
+    # The memory adapter pre-seeds reference versions; assert on the delta.
+    assert "ver_old_superseded" not in remaining_versions
+    assert {"ver_old_active", "ver_young_superseded"} <= remaining_versions
+    remaining_jobs = {j.job_id for j in repository.list_ingestion_jobs()}
+    assert "ing_old" not in remaining_jobs
+    assert "ing_young" in remaining_jobs
+
+    second = run_data_lifecycle(actor="test.operator")
+    assert all(r.deleted_count == 0 for r in second.results)

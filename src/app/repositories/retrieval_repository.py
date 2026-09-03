@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from typing import Protocol
 
 from app.contracts.retrieval import (
@@ -31,6 +33,14 @@ class RetrievalRepository(Protocol):
     def save_document_version(self, descriptor: RetrievalDocumentVersionDescriptor) -> None: ...
 
     def list_ingestion_jobs(self) -> list[RetrievalIngestionJobDescriptor]: ...
+
+    def delete_document_versions(self, version_ids: Sequence[str]) -> int:
+        """Delete superseded version history by id (issue #158, S2d)."""
+        ...
+
+    def delete_ingestion_jobs(self, job_ids: Sequence[str]) -> int:
+        """Delete ingestion-job records by id (issue #158, S2d)."""
+        ...
 
     def get_ingestion_job(self, job_id: str) -> RetrievalIngestionJobDescriptor | None: ...
 
