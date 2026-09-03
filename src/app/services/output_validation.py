@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass
 from typing import Any
 
 from app.contracts.output_validation import (
@@ -142,7 +143,7 @@ def _validate(
         for token in ungrounded_tokens[:_MAX_RECORDED_FINDINGS]:
             findings.append(
                 f"{RULE_NUMERIC_GROUNDING}: narrative token '{token}' does not trace to "
-                "any numeric value supplied in the execution context"
+                "any same-unit numeric value supplied in the execution context"
             )
 
     if salvaged_json:
@@ -253,40 +254,88 @@ def _ungrounded_references(value: Any, *, supplied: set[str]) -> list[str]:
     return unsupported
 
 
-def _numeric_basis(context_payload: dict[str, Any]) -> list[float]:
-    """Every numeric value supplied anywhere in the execution context."""
+# Unit-class markers for the numeric basis (issue #230): a context value
+# grounds a percent or currency token only when its key or its own text says
+# it carries that unit - a bare count must not ground a fabricated "5%".
+# Matching is on exact underscore-separated key parts, so "workflow_count"
+# never reads as cash flow.
+_PERCENT_BASIS_KEY_PARTS = frozenset({"pct", "percent", "percentage", "ratio", "rate"})
+_CURRENCY_BASIS_KEY_PARTS = frozenset(
+    {
+        "usd",
+        "amount",
+        "cost",
+        "price",
+        "spend",
+        "budget",
+        "fee",
+        "cash",
+        "aum",
+        "balance",
+        "notional",
+    }
+)
 
-    basis: list[float] = []
 
-    def walk(node: Any, depth: int) -> None:
+@dataclass(frozen=True)
+class _NumericBasis:
+    percent: list[float]
+    currency: list[float]
+
+
+def _key_parts(key: str) -> set[str]:
+    return {part for part in key.lower().replace("-", "_").split("_") if part}
+
+
+def _numeric_basis(context_payload: dict[str, Any]) -> _NumericBasis:
+    """Context numerics, pooled by the unit class their source declares.
+
+    A value joins the percent pool when its key names a percent-class unit or
+    its own text carries a ``%``; the currency pool when its key names a
+    monetary unit or its text carries a ``$``. An untyped numeric (a count, an
+    id) grounds neither - that typelessness let a payload count ``5`` ground a
+    fabricated "5%" before this sharpening.
+    """
+
+    percent: list[float] = []
+    currency: list[float] = []
+
+    def classify(key: str | None, value: float, *, text: str | None) -> None:
+        parts = _key_parts(key) if key is not None else set()
+        if parts & _PERCENT_BASIS_KEY_PARTS or (text is not None and "%" in text):
+            percent.append(value)  # monetary-float-ok: leak-detection comparison basis
+        if parts & _CURRENCY_BASIS_KEY_PARTS or (text is not None and "$" in text):
+            currency.append(value)  # monetary-float-ok: leak-detection comparison basis
+
+    def walk(node: Any, key: str | None, depth: int) -> None:
         if depth > _MAX_TRAVERSAL_DEPTH:
             raise ValueError("context payload exceeds the validation traversal depth")
         if isinstance(node, bool):
             return
         if isinstance(node, (int, float)):
-            basis.append(float(node))  # monetary-float-ok: leak-detection comparison basis
+            classify(key, float(node), text=None)
             return
         if isinstance(node, str):
             try:
-                basis.append(  # monetary-float-ok: leak-detection comparison basis
-                    float(node.replace(",", ""))
-                )
+                parsed = float(node.replace(",", "").replace("%", "").replace("$", ""))
             except ValueError:
-                pass
+                return
+            classify(key, parsed, text=node)
             return
         if isinstance(node, dict):
-            for child in node.values():
-                walk(child, depth + 1)
+            for child_key, child in node.items():
+                walk(child, child_key if isinstance(child_key, str) else key, depth + 1)
         elif isinstance(node, list):
             for item in node:
-                walk(item, depth + 1)
+                walk(item, key, depth + 1)
 
-    walk(context_payload, 0)
-    return basis
+    walk(context_payload, None, 0)
+    return _NumericBasis(percent=percent, currency=currency)
 
 
-def _ungrounded_numeric_tokens(value: Any, *, basis: list[float]) -> list[str]:
-    """Percent/currency tokens in output narrative that trace to no supplied value."""
+def _ungrounded_numeric_tokens(value: Any, *, basis: _NumericBasis) -> list[str]:
+    """Percent/currency tokens in output narrative that trace to no supplied
+    value of the same unit class (issue #230)."""
 
     ungrounded: list[str] = []
     seen: set[str] = set()
@@ -297,7 +346,9 @@ def _ungrounded_numeric_tokens(value: Any, *, basis: list[float]) -> list[str]:
                 token.replace("%", "").replace(",", "")
             )
             if (
-                not any(abs(candidate - expected) <= _PERCENT_TOLERANCE for expected in basis)
+                not any(
+                    abs(candidate - expected) <= _PERCENT_TOLERANCE for expected in basis.percent
+                )
                 and token not in seen
             ):
                 seen.add(token)
@@ -310,7 +361,9 @@ def _ungrounded_numeric_tokens(value: Any, *, basis: list[float]) -> list[str]:
                 normalized
             )
             if (
-                not any(abs(candidate - expected) <= _CURRENCY_TOLERANCE for expected in basis)
+                not any(
+                    abs(candidate - expected) <= _CURRENCY_TOLERANCE for expected in basis.currency
+                )
                 and token not in seen
             ):
                 seen.add(token)
@@ -357,25 +410,45 @@ def _ungrounded_narrative_citations(
     return ungrounded
 
 
+# The keys whose subtrees carry reference semantics (issue #239), enumerated
+# from what shipped families actually emit: the validator's own reference
+# keys, retrieval's citation entries and source_ids, and the composite parts.
+_REFERENCE_BASIS_KEYS = _REFERENCE_KEYS | {"citations", "source_ids", "source_id", "document_id"}
+
+
 def _structured_reference_basis(structured_output: Any) -> set[str]:
+    """Strings from reference-semantic fields only (issue #239).
+
+    A string joins the citation basis only from under a reference-semantic
+    key: a model emitting a fabricated reference as the WHOLE value of a
+    free-text field (a headline that is exactly `lotus-manage:doc:999`) no
+    longer self-grounds its own narrative citation. The composite
+    ``source_id:document_id`` form stays - those keys are themselves
+    reference-semantic.
+    """
+
     basis: set[str] = set()
 
-    def walk(node: Any, depth: int) -> None:
+    def walk(node: Any, depth: int, *, referential: bool) -> None:
         if depth > _MAX_TRAVERSAL_DEPTH:
             raise ValueError("structured output exceeds the validation traversal depth")
         if isinstance(node, str):
-            basis.add(node)
+            if referential:
+                basis.add(node)
         elif isinstance(node, dict):
             source_id = node.get("source_id")
             document_id = node.get("document_id")
             if isinstance(source_id, str) and isinstance(document_id, str):
                 # The declared citation shape, rendered joined in narrative.
                 basis.add(f"{source_id}:{document_id}")
-            for child in node.values():
-                walk(child, depth + 1)
+            for key, child in node.items():
+                child_referential = referential or (
+                    isinstance(key, str) and key in _REFERENCE_BASIS_KEYS
+                )
+                walk(child, depth + 1, referential=child_referential)
         elif isinstance(node, list):
             for item in node:
-                walk(item, depth + 1)
+                walk(item, depth + 1, referential=referential)
 
-    walk(structured_output, 0)
+    walk(structured_output, 0, referential=False)
     return basis
