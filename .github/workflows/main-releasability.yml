@@ -92,6 +92,8 @@ jobs:
         run: make migration-smoke
       - name: Security Audit
         run: make security-audit
+      - name: Dependency Lock Replay
+        run: make dependency-lock-replay-check
 
   test-suites:
     name: Main Releasability / Tests (${{ matrix.suite }})

@@ -57,6 +57,10 @@ jobs:
         run: make migration-smoke
       - name: Security Audit
         run: make security-audit
+      - name: Dependency Lock Replay
+        run: make dependency-lock-replay-check
+      - name: RFC-0002 Idea Proof Gate
+        run: make rfc0002-idea-proof-gate
 
   test-suites:
     name: PR Merge Gate / Tests (${{ matrix.suite }})

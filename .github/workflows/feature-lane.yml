@@ -54,6 +54,10 @@ jobs:
         env:
           LOTUS_AI_DATABASE_URL: "sqlite:///:memory:"
         run: make migration-smoke
+      - name: Security Audit
+        run: make security-audit
+      - name: Dependency Lock Replay
+        run: make dependency-lock-replay-check
 
   unit-tests:
     name: Feature Lane / Tests (unit)
