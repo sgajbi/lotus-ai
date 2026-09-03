@@ -6,6 +6,7 @@ from app.contracts.governed_actions import (
     GovernedActionHistoryResponse,
     GovernedActionStatus,
 )
+from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.governed_action_control import build_governed_action_history
 
 from app.contracts.app_capability_rollouts import (
@@ -131,19 +132,29 @@ async def get_platform_runtime_status_route(request: Request) -> PlatformRuntime
         "approver reviews the exact pending action - payload and hash - before approving "
         "it, and an auditor reconstructs the request-approval-execution chain, including "
         "evidence pinned only here such as a capability degradation cleared by an "
-        "executed restore. Filterable by status and target."
+        "executed restore. Filterable by status and target. This is control-plane "
+        "operator evidence: the read requires provider-control or prompt-control "
+        "authorization, and denied and successful reads are both recorded on the "
+        "privileged-access ledger."
     ),
     responses={
         200: {"description": "Governed-action records returned successfully."},
+        403: {
+            "description": "Caller holds no control-plane operator capability; the denial "
+            "is recorded on the privileged-access ledger."
+        },
         500: {"description": "Unexpected server error."},
     },
 )
 async def get_governed_action_history_route(
+    authenticated_caller: AuthenticatedCallerDependency,
     status: GovernedActionStatus | None = None,
     target: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
 ) -> GovernedActionHistoryResponse:
-    return build_governed_action_history(status_filter=status, target=target, limit=limit)
+    return build_governed_action_history(
+        authenticated_caller, status_filter=status, target=target, limit=limit
+    )
 
 
 @router.get(

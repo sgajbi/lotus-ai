@@ -251,20 +251,76 @@ def test_governed_action_history_lists_newest_first_with_filters() -> None:
         payload={"action": "QUARANTINE_QUEUED_JOB", "reason": "poisoned payload"},
     )
 
-    everything = build_governed_action_history()
+    everything = build_governed_action_history(REQUESTER)
     assert {record.action_id for record in everything.actions} == {
         pending.action_id,
         executed.action_id,
     }
 
-    pending_only = build_governed_action_history(status_filter=GovernedActionStatus.PENDING)
+    pending_only = build_governed_action_history(
+        REQUESTER, status_filter=GovernedActionStatus.PENDING
+    )
     assert [record.action_id for record in pending_only.actions] == [pending.action_id]
     # The pending record carries what the approver must review: the exact
     # payload and the hash approval binds to.
     assert pending_only.actions[0].action_hash == pending.action_hash
     assert pending_only.actions[0].action_payload == pending.action_payload
 
-    targeted = build_governed_action_history(target="asyncjob_listed")
+    targeted = build_governed_action_history(REQUESTER, target="asyncjob_listed")
     assert [record.action_id for record in targeted.actions] == [executed.action_id]
 
-    assert build_governed_action_history(target="no-such-target").actions == []
+    assert build_governed_action_history(REQUESTER, target="no-such-target").actions == []
+
+
+def test_governed_action_history_is_a_privileged_operator_read() -> None:
+    """A registered Lotus caller is not automatically a control-plane operator
+    (issue #157 correction): the read requires provider-control or
+    prompt-control authorization, the denial is recorded on the
+    privileged-access ledger before it is raised, and a successful read is
+    recorded as all-tenant-class privileged access."""
+
+    from app.contracts.audit_access import (
+        AuditAccessDenialReason,
+        AuditAccessOperation,
+        AuditAccessOutcome,
+    )
+    from app.services.audit_store import get_audit_store
+    from app.services.governed_action_control import build_governed_action_history
+
+    _submit()
+
+    # lotus-advise is registered and active, with no control capability.
+    unauthorized = AuthenticatedCaller(
+        caller_app="lotus-advise",
+        trust_source="verified_service_jwt",
+        credential_key_id="advise-key-01",
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        build_governed_action_history(unauthorized)
+    assert exc_info.value.status_code == 403
+    assert "control-plane operator capability" in exc_info.value.detail
+
+    denied_events = [
+        event
+        for event in get_audit_store().list_access_events(limit=50)
+        if event.operation is AuditAccessOperation.LIST_GOVERNED_ACTIONS
+        and event.outcome is AuditAccessOutcome.DENIED
+    ]
+    assert len(denied_events) == 1
+    assert denied_events[0].caller_app == "lotus-advise"
+    assert denied_events[0].denial_reason is AuditAccessDenialReason.INSUFFICIENT_PRIVILEGE
+
+    # The approver's own privilege (provider control on lotus-platform) reads,
+    # and the successful privileged read is recorded with its record count.
+    listed = build_governed_action_history(REQUESTER)
+    assert len(listed.actions) == 1
+
+    allowed_events = [
+        event
+        for event in get_audit_store().list_access_events(limit=50)
+        if event.operation is AuditAccessOperation.LIST_GOVERNED_ACTIONS
+        and event.outcome is AuditAccessOutcome.SUCCEEDED
+    ]
+    assert len(allowed_events) == 1
+    assert allowed_events[0].caller_app == "lotus-platform"
+    assert allowed_events[0].returned_record_count == 1

@@ -41,3 +41,27 @@ def test_governed_action_history_route(client: TestClient) -> None:
 
     bounded = client.get("/platform/governed-actions", params={"limit": 500})
     assert bounded.status_code == 422
+
+
+def test_governed_action_history_requires_operator_privilege(client: TestClient) -> None:
+    """A registered Lotus caller is not automatically a control-plane operator
+    (issue #157 correction): a caller with no control capability is denied,
+    and the denial lands on the privileged-access ledger."""
+
+    from app.contracts.audit_access import AuditAccessOperation, AuditAccessOutcome
+    from app.services.audit_store import get_audit_store
+
+    denied = client.get(
+        "/platform/governed-actions",
+        headers={"X-Caller-App": "lotus-advise"},
+    )
+    assert denied.status_code == 403
+    assert "control-plane operator capability" in denied.json()["detail"]
+
+    events = [
+        event
+        for event in get_audit_store().list_access_events(limit=50)
+        if event.operation is AuditAccessOperation.LIST_GOVERNED_ACTIONS
+    ]
+    assert [event.outcome for event in events] == [AuditAccessOutcome.DENIED]
+    assert events[0].caller_app == "lotus-advise"
