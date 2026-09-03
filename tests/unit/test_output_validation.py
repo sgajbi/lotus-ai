@@ -166,7 +166,9 @@ def test_numeric_grounding_traces_tokens_to_the_supplied_context() -> None:
 
 
 def test_numeric_grounding_scans_nested_narrative_and_respects_tolerance() -> None:
-    payload = {"metrics": [{"value": "7.93"}], "count": 3}
+    # The metric declares its unit class through its key (issue #230): an
+    # untyped {"value": "7.93"} would no longer ground a percent token.
+    payload = {"metrics": [{"benchmark_rate": "7.93"}], "count": 3}
 
     within_tolerance = _validate(
         {"sections": [{"detail": "Benchmark delivered 7.94% this period."}]},
@@ -186,6 +188,79 @@ def test_numeric_grounding_scans_nested_narrative_and_respects_tolerance() -> No
         {"summary": "Reviewed 42 positions across 7 sleeves."}, context_payload=payload
     )
     assert bare_numbers.validation_state is OutputValidationState.VALIDATED
+
+
+def test_numeric_grounding_is_unit_typed_across_fields() -> None:
+    """Issue #230: the basis pools by unit class - an untyped payload count
+    must not ground a fabricated percent or dollar token of the same digits,
+    and a value grounds only tokens of its own unit."""
+
+    counts_only = {"rule_count": 5, "position_total": 25000}
+    cross_field_percent = _validate(
+        {"summary": "Compliance improved 5% this quarter."}, context_payload=counts_only
+    )
+    assert cross_field_percent.validation_state is OutputValidationState.REJECTED
+    assert cross_field_percent.failed_rule_ids == ["numeric_grounding"]
+
+    cross_field_currency = _validate(
+        {"summary": "Net flows reached $25,000."}, context_payload=counts_only
+    )
+    assert cross_field_currency.validation_state is OutputValidationState.REJECTED
+
+    # The same digits ground once the source declares the unit - by key part
+    # or by the value's own text.
+    typed_by_key = _validate(
+        {"summary": "Compliance improved 5% this quarter."},
+        context_payload={"improvement_pct": 5},
+    )
+    assert typed_by_key.validation_state is OutputValidationState.VALIDATED
+    typed_by_text = _validate(
+        {"summary": "Net flows reached $25,000."},
+        context_payload={"flows": "$25,000"},
+    )
+    assert typed_by_text.validation_state is OutputValidationState.VALIDATED
+
+    # A percent-typed value does not ground a currency token of the same
+    # digits, and vice versa.
+    wrong_unit = _validate(
+        {"summary": "Fees were $1.25."}, context_payload={"portfolio_return_pct": 1.25}
+    )
+    assert wrong_unit.validation_state is OutputValidationState.REJECTED
+
+
+def test_free_text_fields_cannot_self_ground_narrative_citations() -> None:
+    """Issue #239: a fabricated reference emitted as the whole value of a
+    free-text structured field must not ground the narrative citing it -
+    only reference-semantic fields carry citation basis."""
+
+    self_grounded = _validate(
+        {"headline": "lotus-manage:doc:999"},
+        message="Grounded in lotus-manage:doc:999 as agreed.",
+    )
+    assert self_grounded.validation_state is OutputValidationState.REJECTED
+    assert self_grounded.failed_rule_ids == ["evidence_grounding"]
+
+    # The same token grounds from a reference-semantic field - supplied
+    # refs, evidence entries, or citation composites.
+    referential = _validate(
+        {"evidence_refs": [{"source_ref": "lotus-manage:doc:999"}]},
+        message="Grounded in lotus-manage:doc:999 as agreed.",
+        supplied_source_refs=["lotus-manage:doc:999"],
+    )
+    assert referential.validation_state is OutputValidationState.VALIDATED
+
+
+def test_unknown_runtime_profile_is_refused_at_construction() -> None:
+    """Issue #230: a typo'd profile ("promted") must not silently get the
+    lenient local tier everywhere the profile gates."""
+
+    import pytest
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    with pytest.raises(ValidationError, match="runtime_profile"):
+        Settings.model_validate({"runtime_profile": "promted"})
 
 
 def test_validator_fault_fails_closed_as_validation_unavailable() -> None:

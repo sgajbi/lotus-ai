@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import PrivateAttr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -47,7 +49,11 @@ PROMOTED_PROTECTION_FIELDS: frozenset[str] = frozenset(
 
 
 class Settings(BaseSettings):
-    runtime_profile: str = "local"
+    # Bounded on purpose (issue #230): every profile gate in the runtime
+    # compares against these two values, so a typo ("promted") would silently
+    # get the lenient local tier everywhere. Unknown values refuse at
+    # construction instead.
+    runtime_profile: Literal["local", "promoted"] = "local"
     service_name: str = "lotus-ai"
     service_version: str = "0.1.0"
     delivery_phase: str = "foundation"
