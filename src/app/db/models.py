@@ -806,3 +806,36 @@ class ModelCatalogueEntryModel(Base):
     seed_source: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     last_updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class DataLifecycleEventModel(Base):
+    """Append-only deletion evidence (issue #158, S2a): what the lifecycle
+    engine removed, by family and count, referencing content only by digest."""
+
+    __tablename__ = "data_lifecycle_events"
+
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    family_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    key_scope: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    row_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    policy_version: Mapped[str] = mapped_column(String(16), nullable=False)
+    actor: Mapped[str] = mapped_column(String(256), nullable=False)
+    deleted_ids_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class DataLegalHoldModel(Base):
+    """An active legal hold: expiry (and, from S3, erasure) must not touch
+    matching rows while released_at is null (issue #158, S2a)."""
+
+    __tablename__ = "data_legal_holds"
+
+    hold_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    family_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    key_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    key_value: Mapped[str] = mapped_column(String(256), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    placed_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    placed_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    released_at: Mapped[str | None] = mapped_column(String(64), nullable=True)

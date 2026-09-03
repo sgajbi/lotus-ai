@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from copy import deepcopy
 
 from app.repositories.async_runtime_repository import (
@@ -227,6 +228,18 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
             attempt=claimed_attempt,
             lease=lease,
         )
+
+    def delete_job_records(self, job_ids: Sequence[str]) -> tuple[int, int, int]:
+        jobs = attempts = leases = 0
+        for job_id in job_ids:
+            if self._jobs.pop(job_id, None) is not None:
+                jobs += 1
+            attempts += len(self._attempts.pop(job_id, []))
+            lease = self._leases_by_job.pop(job_id, None)
+            if lease is not None:
+                self._lease_id_to_job.pop(lease.lease_id, None)
+                leases += 1
+        return jobs, attempts, leases
 
     def list_control_events(
         self, *, limit: int = 20, job_id: str | None = None

@@ -24,6 +24,11 @@ ALLOWED_REFERENCING_MODULES = {
     "contracts/audit_access.py",  # the definition itself
     "services/app_capability_rollout_observability.py",
     "services/capability_pack_observability.py",
+    # The lifecycle engine must see every tenant's rows to expire them
+    # (issue #158, S2a; classified on #159): not a request path - no caller,
+    # no response contract - and every deletion it performs is evidenced on
+    # the append-only data_lifecycle_events ledger.
+    "services/data_lifecycle_engine.py",
     "services/task_execution_evidence_summary.py",
     "services/task_execution_summary.py",
     "services/task_retrieval_execution_summary.py",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Sequence
 from typing import Protocol
 
 from app.contracts.access_control import AuthorizationDecision
@@ -127,6 +128,13 @@ class AsyncRuntimeRepository(Protocol):
         attempt_message: str,
     ) -> AsyncRuntimeClaimRecord | None:
         """Atomically claim one specific runnable async job if it is still claimable."""
+
+    def delete_job_records(self, job_ids: Sequence[str]) -> tuple[int, int, int]:
+        """Delete jobs with their attempts and leases (issue #158, S2a).
+
+        Returns (jobs, attempts, leases) deleted counts; lifecycle-engine
+        only, never exposed on a route.
+        """
 
     def list_control_events(
         self, *, limit: int = 20, job_id: str | None = None

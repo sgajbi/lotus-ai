@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.sql import Select
 
 from app.contracts.access_control import (
@@ -13,6 +13,7 @@ from app.contracts.access_control import (
     TenantPolicyMode,
 )
 from app.contracts.audit import AuditRecordResponse
+from app.contracts.data_lifecycle import DataLegalHoldRecord, DataLifecycleEventRecord
 from app.contracts.output_validation import OutputValidationOutcome
 from app.contracts.audit_access import (
     AuditAccessDenialReason,
@@ -30,7 +31,12 @@ from app.contracts.prompts import (
 from app.contracts.providers import ProviderAdapterKind, RoutingDecisionDescriptor
 from app.contracts.safety import RedactionPosture, SafetyExecutionOutcome
 from app.contracts.tasks import OutputLabel, TaskCategory, TaskExecutionStatus
-from app.db.models import AuditAccessEventModel, AuditRecordModel
+from app.db.models import (
+    AuditAccessEventModel,
+    AuditRecordModel,
+    DataLegalHoldModel,
+    DataLifecycleEventModel,
+)
 from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
 from app.services.safety_runtime import build_safety_execution_outcome_from_record
 
@@ -136,6 +142,60 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
         with self._session_factory() as session:
             models = session.execute(statement).scalars().all()
             return [self._to_contract(model) for model in models]
+
+    def delete_records(self, request_ids: Sequence[str]) -> int:
+        if not request_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(AuditRecordModel).where(AuditRecordModel.request_id.in_(list(request_ids)))
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
+
+    def save_lifecycle_event(self, event: DataLifecycleEventRecord) -> None:
+        with self._session_factory() as session:
+            session.add(DataLifecycleEventModel(**event.model_dump(mode="json")))
+            session.commit()
+
+    def list_lifecycle_events(self, *, limit: int = 100) -> Sequence[DataLifecycleEventRecord]:
+        statement = (
+            select(DataLifecycleEventModel)
+            .order_by(DataLifecycleEventModel.recorded_at.desc())
+            .limit(limit)
+        )
+        with self._session_factory() as session:
+            models = session.execute(statement).scalars().all()
+            return [
+                DataLifecycleEventRecord.model_validate(model, from_attributes=True)
+                for model in models
+            ]
+
+    def place_legal_hold(self, record: DataLegalHoldRecord) -> None:
+        with self._session_factory() as session:
+            session.add(DataLegalHoldModel(**record.model_dump(mode="json")))
+            session.commit()
+
+    def release_legal_hold(self, *, hold_id: str, released_at: str) -> bool:
+        with self._session_factory() as session:
+            model = session.get(DataLegalHoldModel, hold_id)
+            if model is None or model.released_at is not None:
+                return False
+            model.released_at = released_at
+            session.commit()
+            return True
+
+    def list_active_legal_holds(
+        self, *, family_id: str | None = None
+    ) -> Sequence[DataLegalHoldRecord]:
+        statement = select(DataLegalHoldModel).where(DataLegalHoldModel.released_at.is_(None))
+        if family_id is not None:
+            statement = statement.where(DataLegalHoldModel.family_id == family_id)
+        with self._session_factory() as session:
+            models = session.execute(statement).scalars().all()
+            return [
+                DataLegalHoldRecord.model_validate(model, from_attributes=True) for model in models
+            ]
 
     def save_access_event(self, event: AuditAccessEvent) -> None:
         model = AuditAccessEventModel(

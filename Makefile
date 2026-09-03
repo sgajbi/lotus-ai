@@ -1,4 +1,4 @@
-.PHONY: install lint module-budget-guard monetary-float-guard runtime-purity-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke migration-apply runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
+.PHONY: install lint module-budget-guard monetary-float-guard runtime-purity-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke migration-apply data-lifecycle-run runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
 
 install:
 	python -m pip install --upgrade pip
@@ -43,6 +43,9 @@ migration-smoke:
 
 migration-apply:
 	python -m alembic upgrade head
+
+data-lifecycle-run:
+	python scripts/run_data_lifecycle.py
 
 runtime-mode-smoke:
 	python -m pytest tests/integration/test_runtime_modes.py -q

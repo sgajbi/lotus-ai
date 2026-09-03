@@ -1,20 +1,23 @@
 {
   "policy_version": "v1",
-  "description": "Retention policy as data (issue #158, S1): every lotus-ai store family declares its retention period, legal-hold support, erasure key and evidence class, with the rationale stated. The model-enumeration invariant fails the build when a table exists outside this policy, so a new migration cannot add an undeclared store.",
+  "description": "Retention policy as data (issue #158): every lotus-ai store family declares its retention period, legal-hold support, erasure key, evidence class and enforcement posture, with the rationale stated. The model-enumeration invariant fails the build when a table exists outside this policy; a family's ENFORCED posture is exactly as broad as the lifecycle engine's handlers (DECLARED_ONLY says honestly that the period is stated but not yet applied).",
   "families": [
     {
       "family_id": "audit_evidence",
-      "purpose": "Execution audit records and privileged-access events: the authoritative trail of what served, what was refused, and who read control evidence.",
-      "tables": ["audit_records", "audit_access_events"],
+      "purpose": "Execution audit records: the authoritative trail of what served and what was refused, carrying client-derived context.",
+      "tables": [
+        "audit_records"
+      ],
       "retention_days": 2555,
       "retention_basis": "Bank-facing execution and access evidence retained seven years, aligned with the lotus-core retention programme vocabulary.",
       "legal_hold_supported": true,
       "erasure_key": "tenant",
-      "evidence_class": "audit_trail"
+      "evidence_class": "audit_trail",
+      "enforcement": "ENFORCED"
     },
     {
       "family_id": "control_plane_evidence",
-      "purpose": "Governed-action, operations, rollout, kill-switch, lifecycle and drift evidence: control decisions about the platform, not client content.",
+      "purpose": "Governed-action, operations, rollout, kill-switch, lifecycle, drift, privileged-access and deletion evidence: control decisions about the platform, not client content.",
       "tables": [
         "provider_governed_actions",
         "provider_operations_events",
@@ -24,13 +27,16 @@
         "model_catalogue_lifecycle_events",
         "model_revision_drift_observations",
         "workflow_pack_control_events",
-        "provider_retention_confirmations"
+        "provider_retention_confirmations",
+        "audit_access_events",
+        "data_lifecycle_events"
       ],
       "retention_days": 2555,
       "retention_basis": "Control-plane decision evidence retained seven years; it carries no client-derived content, so no tenant erasure key applies.",
       "legal_hold_supported": true,
       "erasure_key": "none",
-      "evidence_class": "control_plane_evidence"
+      "evidence_class": "control_plane_evidence",
+      "enforcement": "DECLARED_ONLY"
     },
     {
       "family_id": "workflow_run_records",
@@ -48,51 +54,63 @@
       "retention_basis": "Business run evidence retained seven years like the audit trail it corroborates; tenant-erasable on off-boarding subject to legal hold.",
       "legal_hold_supported": true,
       "erasure_key": "tenant",
-      "evidence_class": "business_run_evidence"
+      "evidence_class": "business_run_evidence",
+      "enforcement": "DECLARED_ONLY"
     },
     {
       "family_id": "async_runtime_content",
       "purpose": "Queued async jobs and their attempts, which snapshot request content while work is in flight.",
-      "tables": ["async_jobs", "async_job_attempts"],
+      "tables": [
+        "async_jobs",
+        "async_job_attempts"
+      ],
       "retention_days": 365,
       "retention_basis": "Runtime state, not the evidence of record: the audit and run families hold the durable trail, so terminal job snapshots expire after one year.",
       "legal_hold_supported": true,
       "erasure_key": "tenant",
-      "evidence_class": "runtime_state"
+      "evidence_class": "runtime_state",
+      "enforcement": "ENFORCED"
     },
     {
       "family_id": "transient_operational_leases",
-      "purpose": "Worker and admission leases plus admission guard rows: replica-coordination state with no client content.",
+      "purpose": "Worker and admission leases: replica-coordination state with no client content.",
       "tables": [
         "async_worker_leases",
-        "workflow_pack_admission_leases",
-        "workflow_pack_admission_guards"
+        "workflow_pack_admission_leases"
       ],
       "retention_days": 30,
       "retention_basis": "Transient coordination state; thirty days retains enough for incident reconstruction while preventing unbounded growth.",
       "legal_hold_supported": false,
       "erasure_key": "none",
-      "evidence_class": "operational_state"
+      "evidence_class": "operational_state",
+      "enforcement": "ENFORCED"
     },
     {
       "family_id": "evaluation_approval_evidence",
       "purpose": "Evaluation runs and attempts: the PASS/FAIL evidence governed promotions and restores reference by run id.",
-      "tables": ["evaluation_runs", "evaluation_run_attempts"],
+      "tables": [
+        "evaluation_runs",
+        "evaluation_run_attempts"
+      ],
       "retention_days": 2555,
       "retention_basis": "Promotion and capability-restore evidence must outlive the decisions it enabled; retained seven years with the governance evidence it backs.",
       "legal_hold_supported": true,
       "erasure_key": "none",
-      "evidence_class": "approval_evidence"
+      "evidence_class": "approval_evidence",
+      "enforcement": "DECLARED_ONLY"
     },
     {
       "family_id": "evaluation_case_content",
       "purpose": "Per-case evaluation inputs and outputs: bulky generated content behind the run verdicts.",
-      "tables": ["evaluation_case_results"],
+      "tables": [
+        "evaluation_case_results"
+      ],
       "retention_days": 365,
       "retention_basis": "Case-level content is diagnostic, not the verdict of record; one year covers regression investigation. Minimisation (retain longer only for failures) is the S4 slice.",
       "legal_hold_supported": true,
       "erasure_key": "none",
-      "evidence_class": "evaluation_content"
+      "evidence_class": "evaluation_content",
+      "enforcement": "DECLARED_ONLY"
     },
     {
       "family_id": "retrieval_shared_reference",
@@ -109,11 +127,12 @@
       "retention_basis": "Shared reference content is versioned: superseded versions expire after three years; current versions are re-ingested, not retained past supersession. No tenant erasure - the content is not tenant-derived.",
       "legal_hold_supported": true,
       "erasure_key": "shared_reference",
-      "evidence_class": "reference_content"
+      "evidence_class": "reference_content",
+      "enforcement": "DECLARED_ONLY"
     },
     {
       "family_id": "governed_registry_configuration",
-      "purpose": "Repo-governed prompts and their versions, rollout state, workflow-pack registrations, caller policies, catalogue entries and rate cards: governed configuration that is operative, not accumulating.",
+      "purpose": "Repo-governed prompts and their versions, rollout state, workflow-pack registrations, caller policies, catalogue entries, rate cards and active legal holds: governed configuration that is operative, not accumulating.",
       "tables": [
         "prompt_definitions",
         "prompt_definition_versions",
@@ -121,23 +140,31 @@
         "workflow_pack_registrations",
         "caller_policies",
         "model_catalogue_entries",
-        "rate_cards"
+        "rate_cards",
+        "data_legal_holds"
       ],
       "retention_days": null,
       "retention_basis": "Retained while operative: these rows ARE the current governed configuration, superseded through governed transitions whose evidence lives in the control_plane_evidence family, not through time-based expiry.",
       "legal_hold_supported": true,
       "erasure_key": "none",
-      "evidence_class": "governed_configuration"
+      "evidence_class": "governed_configuration",
+      "enforcement": "NOT_TIME_BOUNDED"
     },
     {
       "family_id": "provider_operational_state",
-      "purpose": "Quota counters, budget spend and breaker state: current operational posture, superseded in place.",
-      "tables": ["provider_quota_state", "provider_budget_state", "provider_degradation_state"],
+      "purpose": "Quota counters, budget spend, breaker state and admission guard rows: current operational posture, superseded in place.",
+      "tables": [
+        "provider_quota_state",
+        "provider_budget_state",
+        "provider_degradation_state",
+        "workflow_pack_admission_guards"
+      ],
       "retention_days": null,
       "retention_basis": "Current-state rows updated in place by the control paths that own them; governed resets clear them and are themselves evidenced in control_plane_evidence.",
       "legal_hold_supported": false,
       "erasure_key": "none",
-      "evidence_class": "operational_state"
+      "evidence_class": "operational_state",
+      "enforcement": "NOT_TIME_BOUNDED"
     }
   ]
 }

@@ -82,6 +82,7 @@ def test_policy_malformations_are_bounded_errors() -> None:
         "legal_hold_supported": False,
         "erasure_key": "none",
         "evidence_class": "operational_state",
+        "enforcement": "DECLARED_ONLY",
     }
     policy = RetentionPolicy(
         policy_version="v1",
@@ -140,3 +141,59 @@ def test_startup_readiness_carries_lifecycle_findings(monkeypatch: pytest.Monkey
     evaluation = startup_module.evaluate_startup_readiness()
 
     assert any("table 'ghost' has no retention policy family" in f for f in evaluation.findings)
+
+
+def test_loader_refuses_each_malformation_with_a_bounded_message(
+    tmp_path: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every loader failure mode - unreadable, bad JSON, schema-invalid,
+    duplicate family, duplicate table, inconsistent posture - raises the
+    bounded message the startup finding carries."""
+
+    import json
+    from pathlib import Path
+
+    import app.services.data_lifecycle_policy as module
+
+    assert isinstance(tmp_path, Path)
+
+    def _load_from(content: str | None) -> str:
+        target = tmp_path / "policy.json"
+        if content is None:
+            target = tmp_path / "missing.json"
+        else:
+            target.write_text(content, encoding="utf-8")
+        monkeypatch.setattr(module, "_POLICY_PATH", target)
+        module.load_retention_policy.cache_clear()
+        try:
+            with pytest.raises(ValueError) as exc_info:
+                module.load_retention_policy()
+            return str(exc_info.value)
+        finally:
+            module.load_retention_policy.cache_clear()
+
+    def _family(family_id: str = "f1", **overrides: object) -> dict[str, object]:
+        family: dict[str, object] = {
+            "family_id": family_id,
+            "purpose": "p",
+            "tables": ["t1"],
+            "retention_days": 30,
+            "retention_basis": "b",
+            "legal_hold_supported": False,
+            "erasure_key": "none",
+            "evidence_class": "operational_state",
+            "enforcement": "DECLARED_ONLY",
+        }
+        family.update(overrides)
+        return family
+
+    def _policy(*families: dict[str, object]) -> str:
+        return json.dumps({"policy_version": "v1", "description": "d", "families": list(families)})
+
+    assert "not readable" in _load_from(None)
+    assert "not valid JSON" in _load_from("{nope")
+    assert "invalid at" in _load_from(_policy({"family_id": "f1"}))
+    assert "declares family 'f1' twice" in _load_from(_policy(_family(), _family(tables=["t2"])))
+    assert "in more than one family" in _load_from(_policy(_family(), _family("f2")))
+    assert "must imply each other" in _load_from(_policy(_family(retention_days=None)))
+    assert "must imply each other" in _load_from(_policy(_family(enforcement="NOT_TIME_BOUNDED")))
