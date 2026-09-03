@@ -111,7 +111,9 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
             enforce_provider_degradation_preflight()
             catalogue_entry = bind_live_text_model_catalogue_entry()
             enforce_capability_requirements(
-                requirements=request.requirements, entry=catalogue_entry
+                requirements=request.requirements,
+                entry=catalogue_entry,
+                output_contract_key=request.output_contract_key,
             )
             _require_budget_remaining(request)
         except ProviderExecutionError as exc:
@@ -298,7 +300,9 @@ def _execute_ordered_fallback(
                 enforce_provider_degradation_preflight()
                 catalogue_entry = bind_live_text_model_catalogue_entry()
                 enforce_capability_requirements(
-                    requirements=request.requirements, entry=catalogue_entry
+                    requirements=request.requirements,
+                    entry=catalogue_entry,
+                    output_contract_key=request.output_contract_key,
                 )
             except ProviderExecutionError as exc:
                 rejections[index] = exc.category

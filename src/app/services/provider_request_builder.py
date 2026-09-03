@@ -8,11 +8,13 @@ from app.services.task_execution_models import TaskExecutionContext
 def build_provider_execution_request(
     *,
     context: TaskExecutionContext,
+    output_contract_key: str | None = None,
 ) -> ProviderExecutionRequest:
     config = resolve_provider_execution_config()
     return ProviderExecutionRequest(
         task_id=context.capability.task_id,
         requirements=context.request.requirements,
+        output_contract_key=output_contract_key,
         caller_app=context.request.caller.caller_app,
         requested_by=context.request.caller.requested_by,
         tenant_id=context.request.caller.tenant_id,

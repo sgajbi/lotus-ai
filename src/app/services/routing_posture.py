@@ -45,6 +45,7 @@ from app.services.provider_degradation_state import build_provider_degradation_s
 
 def build_routing_posture(
     requirements: CapabilityRequirements | None = None,
+    output_contract_key: str | None = None,
 ) -> RoutingPostureResponse:
     config = resolve_provider_execution_config()
     ordered = config.routing_strategy == "ordered_fallback"
@@ -95,7 +96,11 @@ def build_routing_posture(
         # one authority, so the posture cannot disagree with routing.
         candidate_universe=universe,
         capability_posture=(
-            _build_capability_posture(universe=universe, requirements=requirements)
+            _build_capability_posture(
+                universe=universe,
+                requirements=requirements,
+                output_contract_key=output_contract_key,
+            )
             if universe is not None and requirements is not None
             else None
         ),
@@ -107,13 +112,17 @@ def _build_capability_posture(
     *,
     universe: CandidateUniverse,
     requirements: CapabilityRequirements,
+    output_contract_key: str | None = None,
 ) -> CapabilityPostureDescriptor:
     """Per-candidate capability eligibility, with the gateway's own check.
 
     Runs `enforce_capability_requirements` - not a re-derivation of its logic -
     over the exact universe the next execution would enumerate, so "who is
     eligible for capability X" can never disagree with what routing enforces
-    (issue #244, S5).
+    (issue #244, S5). Without a governed scope the answer is the model-global
+    question (honest UNKNOWN unless assessed); with `output_contract_key` it
+    is the scoped question an execution of that contract would get, and the
+    eligible verdict names which evidence made it so.
     """
 
     repository = get_model_catalogue_repository()
@@ -134,7 +143,11 @@ def _build_capability_posture(
             )
             continue
         try:
-            enforce_capability_requirements(requirements=requirements, entry=entry)
+            enforce_capability_requirements(
+                requirements=requirements,
+                entry=entry,
+                output_contract_key=output_contract_key,
+            )
         except ProviderExecutionError as exc:
             candidates.append(
                 CapabilityPostureCandidateDescriptor(
@@ -145,7 +158,19 @@ def _build_capability_posture(
                 )
             )
             continue
-        candidates.append(CapabilityPostureCandidateDescriptor(entry_id=entry_id, eligible=True))
+        # Name the evidence that made the verdict, at its honest scope.
+        if requirements.structured_output_required is True and (
+            entry.supports_structured_output is not True
+        ):
+            basis = (
+                "effective Lotus structured-output evidence scoped to output contract "
+                f"`{output_contract_key}`"
+            )
+        else:
+            basis = "assessed model-global capability facts"
+        candidates.append(
+            CapabilityPostureCandidateDescriptor(entry_id=entry_id, eligible=True, detail=basis)
+        )
         if would_select is None:
             would_select = entry_id
     return CapabilityPostureDescriptor(

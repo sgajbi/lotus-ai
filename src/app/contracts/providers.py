@@ -634,6 +634,14 @@ class ProviderExecutionRequest(BaseModel):
         default=None,
         description="Optional tenant or environment ownership marker for the provider request.",
     )
+    output_contract_key: str | None = Field(
+        default=None,
+        description=(
+            "Output-contract key deterministic validation will hold this execution's "
+            "structured output to (binding pack id, else task id); the governed capability "
+            "scope for scoped structured-output eligibility evidence (issue #244)."
+        ),
+    )
     prompt_version: str = Field(description="Resolved prompt version for this execution.")
     system_instructions: str = Field(
         description="Resolved system instructions for the executing task prompt."
