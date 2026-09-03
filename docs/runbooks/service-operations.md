@@ -447,6 +447,19 @@ Operator surfaces:
 3. single-principal safety routes: kill-switch activation, prompt rollback via `control-actions`, model lifecycle transitions to non-serving states via `/platform/models/catalogue/{entry_id}/lifecycle-transitions`, and capability degradation via `/platform/models/catalogue/{entry_id}/capability-degradations` (requirement routing then refuses that dimension as `CAPABILITY_DEGRADED` while the model keeps serving everything else; only the governed restore clears it, and reseeding never does)
 4. both steps of every two-step flow require verified caller credentials (`LOTUS_AI_CALLER_TRUST_MODE=verified_service_jwt`); header trust cannot distinguish a requester from an approver and is refused
 
+## Data Lifecycle and Erasure
+
+Every store family declares retention, legal-hold support and erasure posture in `contracts/data-lifecycle/retention-policy.v1.json`; an undeclared table is a build failure and a startup finding. Every declared retention period is applied by the lifecycle engine (`make data-lifecycle-run`), which honours legal holds and writes append-only `data_lifecycle_events` deletion evidence (family, count, policy version, actor, digest of deleted ids - never content). Six protective predicates keep lifecycle from deleting live state: enforcing kill switches, pending governed actions, recurring drift observations, in-flight async jobs, review-retained artifacts, and current document versions are never expired.
+
+Operator rules:
+
+1. run `make data-lifecycle-run` (or the scheduled job) to apply expiry; the run report lists per-family counts and honest postures, and a second run over the same data is a proven no-op
+2. legal holds are first-class rows (`data_legal_holds`): place one before any deletion obligation is contested; hold overrides expiry AND erasure, and skipped rows are visible in run details and on erasure receipts
+3. **tenant erasure is a governed two-step action**: `POST /platform/data-lifecycle/erasure-requests` records the intent under a verified credential; a DISTINCT verified credential reviews the pending action (`GET /platform/governed-actions?status=PENDING`) and applies `POST /platform/data-lifecycle/erasure-approvals` with the exact `action_id` and `action_hash`
+4. the approval erases every tenant-erasable family (legal-held families stay, listed with `held=true`), writes one ERASURE lifecycle event per touched family, and returns an **Ed25519-signed receipt** verifiable against `/.well-known/lotus-ai-workflow-attestation-keys` - the artefact #115 consumers present as deletion proof
+5. erasure overrides retention; legal hold overrides erasure; both are recorded - never assume an empty family means erasure ran: read `data_lifecycle_events`
+6. families whose stores carry no tenant attribution (`artifact_content`, `async_runtime_content`) are honestly `erasure_key: none` with the linkage gap stated in the policy basis; do not claim tenant erasure covers them
+
 ## Safety Governance Review
 
 Before treating runtime safety enforcement as governed rollout posture:

@@ -28,7 +28,7 @@ class SqlAlchemyWorkflowPackQueueEventRepository(
         *,
         queue_item_id: str | None = None,
         workflow_pack_id: str | None = None,
-        limit: int = 100,
+        limit: int | None = 100,
     ) -> list[WorkflowPackQueueEventRecord]:
         statement = select(WorkflowPackQueueEventModel)
         if queue_item_id is not None:
@@ -40,7 +40,9 @@ class SqlAlchemyWorkflowPackQueueEventRepository(
         statement = statement.order_by(
             WorkflowPackQueueEventModel.recorded_at.desc(),
             WorkflowPackQueueEventModel.event_id.desc(),
-        ).limit(limit)
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
         with self._session_factory() as session:
             models = session.scalars(statement).all()
             return [self._to_record(model) for model in models]

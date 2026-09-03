@@ -19,7 +19,7 @@ class WorkflowPackQueueEventRepository(Protocol):
         *,
         queue_item_id: str | None = None,
         workflow_pack_id: str | None = None,
-        limit: int = 100,
+        limit: int | None = 100,
     ) -> list[WorkflowPackQueueEventRecord]: ...
 
     def save_event(self, record: WorkflowPackQueueEventRecord) -> None: ...

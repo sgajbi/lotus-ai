@@ -71,8 +71,8 @@ class WorkflowPackExecutionIdempotencyRepository(Protocol):
 
     def release(self, *, record_id: str, owner_token: str) -> None: ...
 
-    def list_records(self, *, limit: int) -> list[WorkflowPackExecutionIdempotencyRecord]:
-        """List records, newest first (lifecycle engine read)."""
+    def list_records(self, *, limit: int | None) -> list[WorkflowPackExecutionIdempotencyRecord]:
+        """List records, newest first; ``None`` lists all (erasure sweep)."""
         ...
 
     def delete_records(self, record_ids: Sequence[str]) -> int:

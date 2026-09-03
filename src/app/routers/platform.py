@@ -2,10 +2,17 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query, Request
 
+from app.contracts.data_lifecycle import (
+    DataErasureApprovalRequest,
+    DataErasureApprovalResponse,
+    DataErasureIntentRequest,
+)
 from app.contracts.governed_actions import (
     GovernedActionHistoryResponse,
+    GovernedActionResponse,
     GovernedActionStatus,
 )
+from app.services.data_lifecycle_erasure import approve_data_erasure, request_data_erasure
 from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.governed_action_control import build_governed_action_history
 
@@ -155,6 +162,64 @@ async def get_governed_action_history_route(
     return build_governed_action_history(
         authenticated_caller, status_filter=status, target=target, limit=limit
     )
+
+
+@router.post(
+    "/data-lifecycle/erasure-requests",
+    response_model=GovernedActionResponse,
+    operation_id="requestDataErasure",
+    summary="Request governed tenant erasure",
+    description=(
+        "Step one of governed tenant erasure (issue #158, S3): records a pending intent "
+        "under the requester's verified credential to erase every tenant-erasable family "
+        "for one tenant, and returns the action hash a distinct verified credential must "
+        "approve. Nothing is erased until the approval executes; legal hold overrides "
+        "erasure and is recorded on the receipt."
+    ),
+    responses={
+        200: {"description": "Erasure intent recorded and pending approval."},
+        403: {
+            "description": "Caller is not authorized for provider control, or carries no "
+            "verified credential."
+        },
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def request_data_erasure_route(
+    request: DataErasureIntentRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> GovernedActionResponse:
+    return request_data_erasure(request, authenticated_caller)
+
+
+@router.post(
+    "/data-lifecycle/erasure-approvals",
+    response_model=DataErasureApprovalResponse,
+    operation_id="approveDataErasure",
+    summary="Approve and execute a pending tenant erasure",
+    description=(
+        "Step two of governed tenant erasure (issue #158, S3): a verified credential "
+        "DISTINCT from the requester's approves the exact pending action hash, which "
+        "erases every tenant-erasable family (legal-held families stay, listed with "
+        "held=true), writes an ERASURE lifecycle event per touched family, and issues "
+        "an Ed25519-signed receipt verifiable against the published attestation keys."
+    ),
+    responses={
+        200: {"description": "Erasure executed; signed receipt returned."},
+        403: {
+            "description": "Caller is not authorized, carries no verified credential, or is "
+            "the same credential that requested the action."
+        },
+        404: {"description": "No pending action exists for the given id."},
+        409: {"description": "The action hash does not match, or the scope changed."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def approve_data_erasure_route(
+    request: DataErasureApprovalRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> DataErasureApprovalResponse:
+    return approve_data_erasure(request, authenticated_caller)
 
 
 @router.get(
