@@ -50,7 +50,9 @@ def resolve_task_execution(
     elif context.capability.category == TaskCategory.KNOWLEDGE_ANSWER:
         provider_execution = execute_knowledge_answer(context=context)
     else:
-        provider_request = build_provider_execution_request(context=context)
+        provider_request = build_provider_execution_request(
+            context=context, output_contract_key=contract_key
+        )
         provider_execution = execute_text_generation(provider_request)
     # Deterministic output validation runs on the provider's actual output,
     # BEFORE safety redaction: redaction must never be able to erase a

@@ -180,17 +180,13 @@ def build_seed_model_catalogue_entries() -> list[ModelCatalogueEntry]:
             lifecycle_state=ModelLifecycleState.APPROVED,
             revision_pinned=True,
             modalities=["text"],
-            # Provable from the approval evidence itself (issue #244, S2): a
-            # pack-approved model has produced output that the deterministic
-            # validator held to the pack's strict-JSON schema contract. No
-            # other capability dimension has in-repo evidence, so no other
-            # dimension is seeded - unknown stays unknown, and configuration
-            # alone (the settings rows above) proves nothing.
-            supports_structured_output=(
-                True
-                if any(output_contract_exists(pack_id) for pack_id in approved.workflow_pack_ids)
-                else None
-            ),
+            # No capability dimension is seeded: pack approval plus an output
+            # contract proves effective structured output only for THAT pack's
+            # governed scope, never the model-global claim a seeded fact would
+            # make. The scoped evidence is consulted at eligibility time from
+            # the fields that carry it (approved_workflow_pack_ids + the
+            # execution's output-contract key); the model-global fact stays
+            # unknown until an assessment actually proves it (issue #244).
             approved_workflow_pack_ids=list(approved.workflow_pack_ids),
             approval_evidence_refs=[approved.approval_ref],
             approved_from_utc=approved.approved_from_utc,
@@ -289,10 +285,30 @@ _CAPABILITY_FACT_BY_REQUIREMENT = {
 }
 
 
+def scoped_structured_output_evidence(
+    entry: ModelCatalogueEntry, output_contract_key: str | None
+) -> bool:
+    """Effective Lotus structured-output evidence, exactly as broad as it is.
+
+    The entry is approved for the governed scope being executed AND
+    deterministic validation holds that scope's output to a strict-JSON
+    contract. That proves the requirement for THIS scope only - it is never
+    widened into a model-global capability claim (issue #244 correction:
+    pack approval plus contract existence must not seed a global fact).
+    """
+
+    if not output_contract_key:
+        return False
+    return output_contract_key in entry.approved_workflow_pack_ids and output_contract_exists(
+        output_contract_key
+    )
+
+
 def enforce_capability_requirements(
     *,
     requirements: CapabilityRequirements | None,
     entry: ModelCatalogueEntry,
+    output_contract_key: str | None = None,
 ) -> None:
     """Reject a candidate whose catalogue entry cannot satisfy the workload.
 
@@ -300,6 +316,11 @@ def enforce_capability_requirements(
     has never assessed refuses with CAPABILITY_UNKNOWN, distinctly from a
     fact it proves absent (CAPABILITY_NOT_SUPPORTED). Laundering unknown into
     a confident answer in either direction is how capability claims rot.
+
+    Eligibility accepts evidence at either honest scope: an assessed
+    model-global fact, or scoped effective evidence for exactly the governed
+    scope this execution validates under. An operator degradation overrides
+    both while present.
     """
 
     if requirements is None:
@@ -327,11 +348,21 @@ def enforce_capability_requirements(
                     f"capability `{requirement_field}`."
                 ),
             )
+        if requirement_field == "structured_output_required" and scoped_structured_output_evidence(
+            entry, output_contract_key
+        ):
+            continue
         raise ProviderExecutionError(
             category=ProviderFailureCategory.CAPABILITY_UNKNOWN,
             message=(
-                f"Candidate `{entry.entry_id}` has no assessed catalogue fact for the "
-                f"required capability `{requirement_field}`; unknown is not eligibility."
+                f"Candidate `{entry.entry_id}` has no applicable evidence for the "
+                f"required capability `{requirement_field}`"
+                + (
+                    f" in governed scope `{output_contract_key}`"
+                    if requirement_field == "structured_output_required" and output_contract_key
+                    else ""
+                )
+                + "; unknown is not eligibility."
             ),
         )
 

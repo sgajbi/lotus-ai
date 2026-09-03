@@ -806,14 +806,20 @@ def test_drift_observations_survive_a_store_restart_in_sqlalchemy_mode(
     assert by_observed["qwen3:8b-q5-2026-06"].observation_count == 1
 
 
-def test_capability_facts_are_seeded_only_from_approval_evidence(
+def test_seeding_never_widens_scoped_evidence_into_a_global_capability_fact(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Issue #244 S2: a pack-approved model has provably produced output the
-    deterministic validator held to the pack's strict-JSON schema contract,
-    so structured-output support is a fact. Configuration alone proves
-    nothing, and no other dimension has in-repo evidence - unknown stays
-    unknown rather than becoming an optimistic default."""
+    """Issue #244 correction: pack approval plus an output contract proves
+    effective structured output only for that pack's governed scope - never
+    the model-global claim a seeded fact would make. No capability dimension
+    is seeded; the scoped evidence is consulted at eligibility time, and the
+    global fact stays unknown until an assessment proves it."""
+
+    from app.contracts.capability_requirements import CapabilityRequirements
+    from app.services.model_catalogue import (
+        enforce_capability_requirements,
+        scoped_structured_output_evidence,
+    )
 
     monkeypatch.setattr(settings, "provider_mode", "openai")
     monkeypatch.setattr(settings, "provider_rollout_state", "CANARY_ENABLED")
@@ -825,7 +831,7 @@ def test_capability_facts_are_seeded_only_from_approval_evidence(
     entries = {entry.model_family: entry for entry in build_seed_model_catalogue_entries()}
 
     approved = entries["gpt-5.2"]
-    assert approved.supports_structured_output is True
+    assert approved.supports_structured_output is None
     assert approved.supports_tool_calling is None
     assert approved.supports_streaming is None
     assert approved.context_window_tokens is None
@@ -833,6 +839,51 @@ def test_capability_facts_are_seeded_only_from_approval_evidence(
     configured = entries["gpt-5.4"]
     assert configured.supports_structured_output is None
     assert configured.supports_tool_calling is None
+
+    # The evidence still counts - at exactly its own scope. advisor_brief.pack
+    # is approved for this entry and validated against a strict-JSON contract,
+    # so an execution of THAT scope is eligible...
+    requirements = CapabilityRequirements(structured_output_required=True)
+    assert scoped_structured_output_evidence(approved, "advisor_brief.pack") is True
+    enforce_capability_requirements(
+        requirements=requirements, entry=approved, output_contract_key="advisor_brief.pack"
+    )
+
+    # ...while any other scope, no scope, or an unapproved entry fails closed
+    # as unknown - the evidence is never widened.
+    for entry, scope in (
+        (approved, "some_other.pack"),
+        (approved, None),
+        (configured, "advisor_brief.pack"),
+    ):
+        assert scoped_structured_output_evidence(entry, scope) is False
+        with pytest.raises(ProviderExecutionError) as excinfo:
+            enforce_capability_requirements(
+                requirements=requirements, entry=entry, output_contract_key=scope
+            )
+        assert excinfo.value.category is ProviderFailureCategory.CAPABILITY_UNKNOWN
+
+    # An operator degradation outranks scoped evidence exactly as it outranks
+    # the global fact.
+    from app.contracts.model_catalogue import ModelCapabilityDegradation
+
+    degraded = approved.model_copy(
+        update={
+            "capability_degradations": {
+                "supports_structured_output": ModelCapabilityDegradation(
+                    dimension="supports_structured_output",
+                    reason="Contract validation failing in production.",
+                    degraded_by="lotus-platform (credential ops-key-alpha)",
+                    degraded_at="2026-09-03T12:00:00Z",
+                )
+            }
+        }
+    )
+    with pytest.raises(ProviderExecutionError) as excinfo:
+        enforce_capability_requirements(
+            requirements=requirements, entry=degraded, output_contract_key="advisor_brief.pack"
+        )
+    assert excinfo.value.category is ProviderFailureCategory.CAPABILITY_DEGRADED
 
 
 def test_reseeding_never_unassesses_a_known_capability_fact(

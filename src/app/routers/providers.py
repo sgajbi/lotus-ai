@@ -72,6 +72,7 @@ router = APIRouter(prefix="/platform/providers", tags=["platform"])
 async def get_routing_posture_route(
     structured_output_required: bool | None = None,
     tool_calling_required: bool | None = None,
+    output_contract_key: str | None = None,
 ) -> RoutingPostureResponse:
     requirements: CapabilityRequirements | None = None
     if structured_output_required is not None or tool_calling_required is not None:
@@ -79,7 +80,7 @@ async def get_routing_posture_route(
             structured_output_required=structured_output_required,
             tool_calling_required=tool_calling_required,
         )
-    return build_routing_posture(requirements)
+    return build_routing_posture(requirements, output_contract_key=output_contract_key)
 
 
 @router.get(
