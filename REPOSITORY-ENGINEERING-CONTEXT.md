@@ -111,14 +111,31 @@ builder; execution states are `ENFORCED` / `PARTIAL` / `DOCUMENTED_ONLY` /
 `OUT_OF_SCOPE` and readiness is derived, never asserted. A lint-lane guard
 refuses new copy-paste readiness modules and ratchets module size.
 
-**Current limitations.** Consumers name a task and cannot state requirements —
-latency, cost, residency, or a quality floor — and the task-to-model binding is
-configuration-driven rather than derived from capability facts or eval evidence;
-model capability dimensions and eval-backed fungibility do not exist yet (#244,
-#245). Refused privileged audit reads leave no record, and the access-events
-ledger has no read path (#167). High-impact governance actions still accept
-caller-supplied approver strings (#157). Forward priorities live on the North
-Star execution board (#246).
+**Data lifecycle.** Retention is policy-as-data
+(`contracts/data-lifecycle/retention-policy.v1.json`) over every ORM table, with
+a bidirectional coverage invariant; one idempotent engine applies every declared
+period (legal holds override expiry; six protective predicates keep live state —
+enforcing switches, pending governed actions, in-flight jobs, review-retained
+artifacts, current document versions, recurring drift — out of reach), and every
+deletion writes an append-only `data_lifecycle_events` row referencing content
+only by digest. Tenant erasure is a governed two-step `DATA_ERASURE` action
+yielding an Ed25519-signed receipt verifiable against the published attestation
+keys; erasure overrides retention, legal hold overrides erasure, and both are
+recorded. Minimisation caps the audit `result_preview` at persistence and ages
+passing evaluation-case content at a declared shorter horizon.
+
+**Current limitations.** Capability requirements exist for latency (one governed
+end-to-end budget), structured output, and tool calling (catalogue-evidence
+eligibility inside the routing decision), with cost recorded as a preference;
+cost has not yet graduated to a hard requirement (its billing-truth prerequisite
+closed with #232), and residency, classification, and quality-floor dimensions
+await concrete enforcement stories. Dual control binds two distinct verified
+service credentials, not verified human principals — the platform identity
+dependency recorded on #157's closure. Twenty-one activation/evidence readiness
+modules still predate the readiness catalog (the runbook family converted in
+#154; consolidation is #284). Provider-side retention execution and external
+certification evidence remain externally blocked (#115, #122, #126). Forward
+priorities live on the North Star execution board (#246).
 
 ## Architecture And Module Map
 
