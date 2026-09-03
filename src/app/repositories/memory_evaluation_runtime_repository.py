@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from copy import deepcopy
 
 from app.repositories.evaluation_runtime_repository import (
@@ -55,6 +57,29 @@ class InMemoryEvaluationRuntimeRepository(EvaluationRuntimeRepository):
                 if record.attempt_id == attempt_id:
                     return deepcopy(record)
         return None
+
+    def delete_runs_with_dependents(self, run_ids: Sequence[str]) -> tuple[int, int, int]:
+        runs = attempts = cases = 0
+        for run_id in run_ids:
+            if self._runs.pop(run_id, None) is not None:
+                runs += 1
+            attempts += len(self._attempts.pop(run_id, []))
+            cases += len(self._case_results.pop(run_id, []))
+        return runs, attempts, cases
+
+    def list_all_case_results(self, *, limit: int) -> list[EvaluationCaseResultRecord]:
+        everything = [record for records in self._case_results.values() for record in records]
+        everything.sort(key=lambda record: record.recorded_at, reverse=True)
+        return [deepcopy(record) for record in everything[:limit]]
+
+    def delete_case_results(self, case_result_ids: Sequence[str]) -> int:
+        wanted = set(case_result_ids)
+        deleted = 0
+        for run_id, records in list(self._case_results.items()):
+            kept = [r for r in records if r.case_result_id not in wanted]
+            deleted += len(records) - len(kept)
+            self._case_results[run_id] = kept
+        return deleted
 
     def list_case_results(self, *, run_id: str) -> list[EvaluationCaseResultRecord]:
         return [

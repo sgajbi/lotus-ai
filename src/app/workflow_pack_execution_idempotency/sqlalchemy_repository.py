@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 from typing import Any, cast
 
@@ -91,6 +93,27 @@ class SqlAlchemyWorkflowPackExecutionIdempotencyRepository(SqlAlchemyRepositoryB
             failure_code=failure_code,
             updated_at=updated_at,
         )
+
+    def list_records(self, *, limit: int) -> list[WorkflowPackExecutionIdempotencyRecord]:
+        with self._session_factory() as session:
+            models = session.scalars(
+                select(WorkflowPackExecutionIdempotencyModel)
+                .order_by(WorkflowPackExecutionIdempotencyModel.created_at.desc())
+                .limit(limit)
+            ).all()
+            return [_to_record(model) for model in models]
+
+    def delete_records(self, record_ids: Sequence[str]) -> int:
+        if not record_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(WorkflowPackExecutionIdempotencyModel).where(
+                    WorkflowPackExecutionIdempotencyModel.record_id.in_(list(record_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def release(self, *, record_id: str, owner_token: str) -> None:
         with self._session_factory() as session:

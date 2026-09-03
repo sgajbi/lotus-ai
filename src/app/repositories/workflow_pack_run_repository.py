@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -93,6 +95,9 @@ class WorkflowPackRunRepository(Protocol):
 
     def save_run(self, record: WorkflowPackRunRecord) -> None:
         """Persist one workflow-pack run record."""
+
+    def delete_runs_with_events(self, run_ids: Sequence[str]) -> tuple[int, int]:
+        """Delete runs and their events (lifecycle engine, issue #158 S2c)."""
 
     def list_events(self, *, run_id: str) -> list[WorkflowPackRunEventRecord]:
         """List persisted events for one workflow-pack run."""

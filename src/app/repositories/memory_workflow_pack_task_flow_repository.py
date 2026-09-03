@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from copy import deepcopy
 
 from app.repositories.workflow_pack_task_flow_repository import (
@@ -79,6 +81,18 @@ class InMemoryWorkflowPackTaskFlowRepository(WorkflowPackTaskFlowRepository):
 
     def save_task_flow(self, record: WorkflowPackTaskFlowRecord) -> None:
         self._task_flows[record.descriptor.task_flow_id] = deepcopy(record)
+
+    def delete_task_flows_with_checkpoints(self, task_flow_ids: Sequence[str]) -> tuple[int, int]:
+        flows = checkpoints = 0
+        wanted = set(task_flow_ids)
+        for task_flow_id in task_flow_ids:
+            if self._task_flows.pop(task_flow_id, None) is not None:
+                flows += 1
+        for checkpoint_id, record in list(self._checkpoints.items()):
+            if record.descriptor.task_flow_id in wanted:
+                self._checkpoints.pop(checkpoint_id, None)
+                checkpoints += 1
+        return flows, checkpoints
 
     def list_checkpoints(self, *, task_flow_id: str) -> list[WorkflowPackTaskFlowCheckpointRecord]:
         records = [

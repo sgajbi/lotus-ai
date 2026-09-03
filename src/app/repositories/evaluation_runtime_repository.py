@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -65,6 +67,15 @@ class EvaluationRuntimeRepository(Protocol):
 
     def get_attempt(self, *, attempt_id: str) -> EvaluationRunAttemptRecord | None:
         """Fetch one persisted evaluation run attempt."""
+
+    def delete_runs_with_dependents(self, run_ids: Sequence[str]) -> tuple[int, int, int]:
+        """Delete runs with attempts and case results (issue #158 S2c)."""
+
+    def list_all_case_results(self, *, limit: int) -> list[EvaluationCaseResultRecord]:
+        """List case results across every run (lifecycle engine read)."""
+
+    def delete_case_results(self, case_result_ids: Sequence[str]) -> int:
+        """Delete case results by id (issue #158 S2c)."""
 
     def list_case_results(self, *, run_id: str) -> list[EvaluationCaseResultRecord]:
         """List persisted case outcomes for one evaluation run."""

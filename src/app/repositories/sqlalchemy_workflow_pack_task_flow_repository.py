@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.contracts.workflow_pack_task_flows import (
     WorkflowPackTaskFlowCheckpointDescriptor,
@@ -119,6 +121,27 @@ class SqlAlchemyWorkflowPackTaskFlowRepository(
         with self._session_factory() as session:
             session.merge(model)
             session.commit()
+
+    def delete_task_flows_with_checkpoints(self, task_flow_ids: Sequence[str]) -> tuple[int, int]:
+        if not task_flow_ids:
+            return 0, 0
+        ids = list(task_flow_ids)
+        with self._session_factory() as session:
+            checkpoints = session.execute(
+                delete(WorkflowPackTaskFlowCheckpointModel).where(
+                    WorkflowPackTaskFlowCheckpointModel.task_flow_id.in_(ids)
+                )
+            )
+            flows = session.execute(
+                delete(WorkflowPackTaskFlowModel).where(
+                    WorkflowPackTaskFlowModel.task_flow_id.in_(ids)
+                )
+            )
+            session.commit()
+            return (
+                int(getattr(flows, "rowcount", 0) or 0),
+                int(getattr(checkpoints, "rowcount", 0) or 0),
+            )
 
     def list_checkpoints(self, *, task_flow_id: str) -> list[WorkflowPackTaskFlowCheckpointRecord]:
         with self._session_factory() as session:

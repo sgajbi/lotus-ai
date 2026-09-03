@@ -40,22 +40,21 @@
     },
     {
       "family_id": "workflow_run_records",
-      "purpose": "Workflow-pack runs, their events, idempotency claims, task flows, checkpoints, queue events and produced artifact metadata: business run records carrying client-derived context.",
+      "purpose": "Workflow-pack runs, their events, idempotency claims, task flows, checkpoints and queue events: business run records carrying client-derived context.",
       "tables": [
         "workflow_pack_runs",
         "workflow_pack_run_events",
         "workflow_pack_execution_idempotency",
         "workflow_pack_task_flows",
         "workflow_pack_task_flow_checkpoints",
-        "workflow_pack_queue_events",
-        "artifact_metadata"
+        "workflow_pack_queue_events"
       ],
       "retention_days": 2555,
       "retention_basis": "Business run evidence retained seven years like the audit trail it corroborates; tenant-erasable on off-boarding subject to legal hold.",
       "legal_hold_supported": true,
       "erasure_key": "tenant",
       "evidence_class": "business_run_evidence",
-      "enforcement": "DECLARED_ONLY"
+      "enforcement": "ENFORCED"
     },
     {
       "family_id": "async_runtime_content",
@@ -97,7 +96,7 @@
       "legal_hold_supported": true,
       "erasure_key": "none",
       "evidence_class": "approval_evidence",
-      "enforcement": "DECLARED_ONLY"
+      "enforcement": "ENFORCED"
     },
     {
       "family_id": "evaluation_case_content",
@@ -110,7 +109,7 @@
       "legal_hold_supported": true,
       "erasure_key": "none",
       "evidence_class": "evaluation_content",
-      "enforcement": "DECLARED_ONLY"
+      "enforcement": "ENFORCED"
     },
     {
       "family_id": "retrieval_shared_reference",
@@ -165,6 +164,19 @@
       "erasure_key": "none",
       "evidence_class": "operational_state",
       "enforcement": "NOT_TIME_BOUNDED"
+    },
+    {
+      "family_id": "artifact_content",
+      "purpose": "Produced artifact metadata and payload references.",
+      "tables": [
+        "artifact_metadata"
+      ],
+      "retention_days": 2555,
+      "retention_basis": "Produced documents retained seven years with the runs that made them. No tenant erasure key: artifact rows carry no tenant attribution today, and claiming one would be broader than the store can honour - tenant linkage is a recorded gap. Rows marked retained_for_review are never expired (live review obligation).",
+      "legal_hold_supported": true,
+      "erasure_key": "none",
+      "evidence_class": "business_run_evidence",
+      "enforcement": "ENFORCED"
     }
   ]
 }

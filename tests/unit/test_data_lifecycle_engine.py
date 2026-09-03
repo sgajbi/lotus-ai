@@ -256,9 +256,9 @@ def test_expiry_honours_age_terminal_state_and_legal_hold() -> None:
     assert events["audit_evidence"].actor == "test.operator"
 
     # DECLARED_ONLY families are reported, never touched.
-    assert results["workflow_run_records"].enforcement == "DECLARED_ONLY"
-    assert results["workflow_run_records"].deleted_count == 0
-    assert results["workflow_run_records"].event_id is None
+    assert results["retrieval_shared_reference"].enforcement == "DECLARED_ONLY"
+    assert results["retrieval_shared_reference"].deleted_count == 0
+    assert results["retrieval_shared_reference"].event_id is None
 
 
 def test_second_run_is_idempotent() -> None:
@@ -333,11 +333,17 @@ def test_sqlalchemy_adapters_round_trip(tmp_path: object, monkeypatch: object) -
         "model_catalogue_store_mode",
         "provider_operations_store_mode",
         "provider_retention_confirmation_store_mode",
+        "workflow_pack_run_store_mode",
+        "workflow_pack_task_flow_store_mode",
+        "workflow_pack_queue_event_store_mode",
+        "artifact_store_mode",
+        "evaluation_runtime_store_mode",
     ):
         monkeypatch.setattr(settings, mode_field, "sqlalchemy")
 
     _seed_expiry_matrix()
     _seed_control_plane_matrix()
+    _seed_run_and_eval_matrix()
     report = run_data_lifecycle(actor="test.operator")
 
     results = {r.family_id: r.deleted_count for r in report.results}
@@ -345,6 +351,10 @@ def test_sqlalchemy_adapters_round_trip(tmp_path: object, monkeypatch: object) -
     assert results["async_runtime_content"] == 1
     assert results["transient_operational_leases"] == 2
     assert results["control_plane_evidence"] == 10
+    assert results["workflow_run_records"] == 4
+    assert results["artifact_content"] == 1
+    assert results["evaluation_approval_evidence"] == 1
+    assert results["evaluation_case_content"] == 1
 
     # The SQL adapters' empty deletions are safe no-ops.
     from app.provider_retention_confirmations.store import (
@@ -367,13 +377,30 @@ def test_sqlalchemy_adapters_round_trip(tmp_path: object, monkeypatch: object) -
     assert get_audit_store().delete_access_events([]) == 0
     assert get_audit_store().delete_lifecycle_events([]) == 0
 
+    from app.services.artifact_store import get_artifact_repository
+    from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+    from app.services.workflow_pack_queue_event_store import get_workflow_pack_queue_event_store
+    from app.services.workflow_pack_run_store import get_workflow_pack_run_store
+    from app.services.workflow_pack_task_flow_store import get_workflow_pack_task_flow_store
+    from app.workflow_pack_execution_idempotency.store import (
+        get_workflow_pack_execution_idempotency_store,
+    )
+
+    assert get_workflow_pack_run_store().delete_runs_with_events([]) == (0, 0)
+    assert get_workflow_pack_task_flow_store().delete_task_flows_with_checkpoints([]) == (0, 0)
+    assert get_workflow_pack_queue_event_store().delete_events([]) == 0
+    assert get_artifact_repository().delete_artifacts([]) == 0
+    assert get_workflow_pack_execution_idempotency_store().delete_records([]) == 0
+    assert get_evaluation_runtime_store().delete_runs_with_dependents([]) == (0, 0, 0)
+    assert get_evaluation_runtime_store().delete_case_results([]) == 0
+
     audit = get_audit_store()
     assert {r.request_id for r in audit.list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=50)} == {
         "air_old_b_held",
         "air_young_a",
     }
-    events = audit.list_lifecycle_events(limit=10)
-    assert len(events) == 4
+    events = audit.list_lifecycle_events(limit=20)
+    assert len(events) == 8
     assert all(len(event.deleted_ids_digest) == 64 for event in events)
     assert {j.job_id for j in get_async_runtime_store().list_jobs()} == {
         "job_old_queued",
@@ -382,7 +409,7 @@ def test_sqlalchemy_adapters_round_trip(tmp_path: object, monkeypatch: object) -
 
     second = run_data_lifecycle(actor="test.operator")
     assert all(result.deleted_count == 0 for result in second.results)
-    assert len(get_audit_store().list_lifecycle_events(limit=10)) == 4
+    assert len(get_audit_store().list_lifecycle_events(limit=20)) == 8
 
 
 def test_naive_timestamps_are_treated_as_utc() -> None:
@@ -776,6 +803,235 @@ def test_control_plane_evidence_expiry_honours_the_protective_predicates() -> No
         control_event.deleted_ids_digest
         == hashlib.sha256("\n".join(expected_ids).encode("utf-8")).hexdigest()
     )
+
+    second = run_data_lifecycle(actor="test.operator")
+    assert all(result.deleted_count == 0 for result in second.results)
+
+
+def _seed_run_and_eval_matrix() -> None:
+    from app.contracts.artifacts import ArtifactLifecycleStatus, ArtifactStorageBackend
+    from app.repositories.artifact_repository import ArtifactRecord
+    from app.repositories.evaluation_runtime_repository import (
+        EvaluationCaseResultRecord,
+        EvaluationRunAttemptRecord,
+        EvaluationRunRecord,
+    )
+    from app.services.artifact_store import get_artifact_repository
+    from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+    from app.services.workflow_pack_queue_event_store import get_workflow_pack_queue_event_store
+    from app.services.workflow_pack_run_store import get_workflow_pack_run_store
+    from app.services.workflow_pack_task_flow_store import get_workflow_pack_task_flow_store
+    from app.repositories.workflow_pack_task_flow_repository import (
+        WorkflowPackTaskFlowCheckpointRecord,
+        WorkflowPackTaskFlowRecord,
+    )
+    from app.repositories.workflow_pack_queue_event_repository import (
+        WorkflowPackQueueEventRecord,
+    )
+    from app.workflow_pack_execution_idempotency.repository import (
+        WorkflowPackExecutionIdempotencyRecord,
+        WorkflowPackExecutionIdempotencyState,
+    )
+    from app.workflow_pack_execution_idempotency.store import (
+        get_workflow_pack_execution_idempotency_store,
+    )
+    from tests.support.workflow_pack_task_flow_fixtures import (
+        workflow_pack_task_flow_checkpoint,
+        workflow_pack_task_flow_descriptor,
+    )
+    from tests.unit.test_workflow_pack_queue_event_store import _queue_event
+    from tests.unit.test_workflow_pack_run_store import _workflow_pack_run_record
+
+    audit = get_audit_store()
+    audit.place_legal_hold(
+        DataLegalHoldRecord(
+            hold_id="hold_run_b",
+            family_id="workflow_run_records",
+            key_type="tenant",
+            key_value="tenant-b",
+            reason="Litigation hold for tenant-b run records.",
+            placed_by="legal.ops@lotus",
+            placed_at=_iso(1),
+        )
+    )
+
+    runs = get_workflow_pack_run_store()
+    runs.save_run(
+        _workflow_pack_run_record(run_id="run_old_a", tenant_id="tenant-a", created_at=_iso(2600))
+    )
+    runs.save_run(
+        _workflow_pack_run_record(
+            run_id="run_old_b_held", tenant_id="tenant-b", created_at=_iso(2600)
+        )
+    )
+    runs.save_run(
+        _workflow_pack_run_record(run_id="run_young_a", tenant_id="tenant-a", created_at=_iso(5))
+    )
+
+    flows = get_workflow_pack_task_flow_store()
+    old_flow = workflow_pack_task_flow_descriptor(task_flow_id="flow_old")
+    old_flow = old_flow.model_copy(update={"created_at": _iso(2600), "tenant_id": "tenant-a"})
+    young_flow = workflow_pack_task_flow_descriptor(task_flow_id="flow_young")
+    young_flow = young_flow.model_copy(update={"created_at": _iso(3), "tenant_id": "tenant-a"})
+    flows.save_task_flow(WorkflowPackTaskFlowRecord(descriptor=old_flow))
+    flows.save_task_flow(WorkflowPackTaskFlowRecord(descriptor=young_flow))
+    checkpoint = workflow_pack_task_flow_checkpoint(task_flow_id="flow_old")
+    flows.save_checkpoint(WorkflowPackTaskFlowCheckpointRecord(descriptor=checkpoint))
+
+    queue_events = get_workflow_pack_queue_event_store()
+    old_event = _queue_event("qev_old", "queue-item-1")
+    old_event = WorkflowPackQueueEventRecord(
+        descriptor=old_event.descriptor.model_copy(update={"recorded_at": _iso(2600)})
+    )
+    queue_events.save_event(old_event)
+    queue_events.save_event(_queue_event("qev_young", "queue-item-2"))
+
+    idempotency = get_workflow_pack_execution_idempotency_store()
+    for record_id, age in (("idem_old", 2600), ("idem_young", 4)):
+        idempotency.reserve(
+            WorkflowPackExecutionIdempotencyRecord(
+                record_id=record_id,
+                caller_app="lotus-gateway",
+                tenant_scope="tenant-a",
+                idempotency_key=f"key-{record_id}",
+                request_fingerprint="f" * 64,
+                state=WorkflowPackExecutionIdempotencyState.COMPLETED,
+                owner_token="tok",
+                response_payload=None,
+                response_checksum_sha256=None,
+                failure_code=None,
+                created_at=_iso(age),
+                updated_at=_iso(age),
+            )
+        )
+
+    artifacts = get_artifact_repository()
+
+    def _artifact(artifact_id: str, age: int, posture: str) -> None:
+        artifacts.save_artifact(
+            ArtifactRecord(
+                artifact_id=artifact_id,
+                domain="workflow_pack_runs",
+                artifact_type="advisor_brief_document",
+                source_object_kind="workflow_pack_run",
+                source_object_id="run_old_a",
+                lifecycle_status=ArtifactLifecycleStatus.RUNTIME_GENERATED,
+                retention_posture=posture,
+                media_type="application/json",
+                byte_size=10,
+                checksum_sha256="c" * 64,
+                storage_backend=ArtifactStorageBackend.MEMORY,
+                storage_reference=f"mem://{artifact_id}",
+                lineage_parent_artifact_id=None,
+                superseded_by_artifact_id=None,
+                created_at=_iso(age),
+                created_by="lotus-ai",
+            )
+        )
+
+    _artifact("art_old", 2600, "active")
+    _artifact("art_old_review", 2600, "retained_for_review")
+    _artifact("art_young", 3, "active")
+
+    evaluation = get_evaluation_runtime_store()
+    for run_id, age in (("eval_old", 2600), ("eval_young", 6)):
+        evaluation.save_run(
+            EvaluationRunRecord(
+                run_id=run_id,
+                fixture_id="fixture",
+                manifest_version="foundation.v1",
+                lifecycle_status="COMPLETED",
+                triggered_by="operator-a",
+                submitted_at=_iso(age),
+                async_job_id=None,
+                latest_message="m",
+                verdict="PASS",
+                case_count=1,
+            )
+        )
+        evaluation.save_attempt(
+            EvaluationRunAttemptRecord(
+                attempt_id=f"att_{run_id}",
+                run_id=run_id,
+                attempt_number=1,
+                lifecycle_status="COMPLETED",
+                started_at=_iso(age),
+                completed_at=_iso(age),
+                worker_id=None,
+                latest_message="m",
+                verdict="PASS",
+                failure_reason=None,
+            )
+        )
+    for case_id, run_id, age in (
+        ("case_old", "eval_young", 400),
+        ("case_young", "eval_young", 6),
+    ):
+        evaluation.save_case_result(
+            EvaluationCaseResultRecord(
+                case_result_id=case_id,
+                run_id=run_id,
+                attempt_id=f"att_{run_id}",
+                case_id=f"c-{case_id}",
+                fixture_id="fixture",
+                outcome="PASS",
+                summary="s",
+                evidence_refs=[],
+                artifact_ids=[],
+                provider_config_sha256=None,
+                recorded_at=_iso(age),
+            )
+        )
+
+
+def test_run_records_eval_and_artifact_expiry_honour_their_semantics() -> None:
+    """S2c: business run records expire under tenant holds with cascading
+    children; artifacts retained for review never expire; eval runs cascade
+    dependents while young case content ages independently."""
+
+    from app.services.artifact_store import get_artifact_repository
+    from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+    from app.services.workflow_pack_run_store import get_workflow_pack_run_store
+    from app.services.workflow_pack_task_flow_store import get_workflow_pack_task_flow_store
+    from app.workflow_pack_execution_idempotency.store import (
+        get_workflow_pack_execution_idempotency_store,
+    )
+
+    _seed_run_and_eval_matrix()
+
+    report = run_data_lifecycle(actor="test.operator")
+    results = {r.family_id: r for r in report.results}
+
+    assert results["workflow_run_records"].deleted_count == 4  # run, flow, qev, idem
+    assert "held tenants" in results["workflow_run_records"].detail
+    assert {r.run_id for r in get_workflow_pack_run_store().list_runs()} == {
+        "run_old_b_held",
+        "run_young_a",
+    }
+    flows = get_workflow_pack_task_flow_store()
+    assert {f.descriptor.task_flow_id for f in flows.list_task_flows()} == {"flow_young"}
+    assert flows.list_checkpoints(task_flow_id="flow_old") == []
+    assert {
+        r.record_id for r in get_workflow_pack_execution_idempotency_store().list_records(limit=10)
+    } == {"idem_young"}
+
+    assert results["artifact_content"].deleted_count == 1
+    assert "retained_for_review" in results["artifact_content"].detail
+    assert {a.artifact_id for a in get_artifact_repository().list_artifacts()} == {
+        "art_old_review",
+        "art_young",
+    }
+
+    evaluation = get_evaluation_runtime_store()
+    assert results["evaluation_approval_evidence"].deleted_count == 1
+    assert {r.run_id for r in evaluation.list_runs()} == {"eval_young"}
+    assert evaluation.list_attempts(run_id="eval_old") == []
+    assert results["evaluation_case_content"].deleted_count == 1
+    assert {c.case_result_id for c in evaluation.list_all_case_results(limit=10)} == {"case_young"}
+
+    events = {e.family_id: e for e in get_audit_store().list_lifecycle_events(limit=20)}
+    assert events["workflow_run_records"].row_count == 4
+    assert events["evaluation_approval_evidence"].row_count == 1
 
     second = run_data_lifecycle(actor="test.operator")
     assert all(result.deleted_count == 0 for result in second.results)

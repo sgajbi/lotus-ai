@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.contracts.workflow_pack_queue_policies import WorkflowPackQueueEventDescriptor
 from app.db.models import WorkflowPackQueueEventModel
@@ -42,6 +44,18 @@ class SqlAlchemyWorkflowPackQueueEventRepository(
         with self._session_factory() as session:
             models = session.scalars(statement).all()
             return [self._to_record(model) for model in models]
+
+    def delete_events(self, event_ids: Sequence[str]) -> int:
+        if not event_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(WorkflowPackQueueEventModel).where(
+                    WorkflowPackQueueEventModel.event_id.in_(list(event_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def save_event(self, record: WorkflowPackQueueEventRecord) -> None:
         descriptor = record.descriptor
