@@ -48,6 +48,10 @@ class GovernedActionType(str, Enum):
     # evidence-derived capability fact to requirement routing - risk-increasing,
     # so it takes the same two-step flow (issue #245, slice 2).
     MODEL_CAPABILITY_RESTORE = "MODEL_CAPABILITY_RESTORE"
+    # Tenant erasure permanently destroys client-derived rows across every
+    # tenant-erasable family (issue #158, S3): governed two-step, receipt
+    # signed - legal hold overrides it, and both are recorded.
+    DATA_ERASURE = "DATA_ERASURE"
     # Runtime-originated: a worker quarantining or redriving a poisoned queue
     # job answers to a service identity, not a human approver, and is
     # explicitly SYSTEM_ORIGINATED rather than dressing a service string up

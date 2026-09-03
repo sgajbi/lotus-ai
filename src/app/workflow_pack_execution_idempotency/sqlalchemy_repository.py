@@ -94,13 +94,14 @@ class SqlAlchemyWorkflowPackExecutionIdempotencyRepository(SqlAlchemyRepositoryB
             updated_at=updated_at,
         )
 
-    def list_records(self, *, limit: int) -> list[WorkflowPackExecutionIdempotencyRecord]:
+    def list_records(self, *, limit: int | None) -> list[WorkflowPackExecutionIdempotencyRecord]:
+        statement = select(WorkflowPackExecutionIdempotencyModel).order_by(
+            WorkflowPackExecutionIdempotencyModel.created_at.desc()
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
         with self._session_factory() as session:
-            models = session.scalars(
-                select(WorkflowPackExecutionIdempotencyModel)
-                .order_by(WorkflowPackExecutionIdempotencyModel.created_at.desc())
-                .limit(limit)
-            ).all()
+            models = session.scalars(statement).all()
             return [_to_record(model) for model in models]
 
     def delete_records(self, record_ids: Sequence[str]) -> int:

@@ -64,9 +64,9 @@
         "async_job_attempts"
       ],
       "retention_days": 365,
-      "retention_basis": "Runtime state, not the evidence of record: the audit and run families hold the durable trail, so terminal job snapshots expire after one year.",
+      "retention_basis": "Runtime state, not the evidence of record: the audit and run families hold the durable trail, so terminal job snapshots expire after one year. No tenant erasure key: job rows carry no tenant attribution today - a recorded linkage gap, the same class as artifact_content.",
       "legal_hold_supported": true,
-      "erasure_key": "tenant",
+      "erasure_key": "none",
       "evidence_class": "runtime_state",
       "enforcement": "ENFORCED"
     },

@@ -19,7 +19,7 @@ class InMemoryWorkflowPackQueueEventRepository(WorkflowPackQueueEventRepository)
         *,
         queue_item_id: str | None = None,
         workflow_pack_id: str | None = None,
-        limit: int = 100,
+        limit: int | None = 100,
     ) -> list[WorkflowPackQueueEventRecord]:
         records = list(self._events.values())
         if queue_item_id is not None:

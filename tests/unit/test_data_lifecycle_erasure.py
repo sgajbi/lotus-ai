@@ -1,0 +1,188 @@
+"""Governed tenant erasure with a signed receipt (issue #158, S3).
+
+The issue's evaluation condition, executed: an erasure request for tenant B
+removes its rows across every tenant-erasable family and yields a verifiable
+receipt while tenant A is untouched; legal hold overrides erasure and the
+receipt says so; the whole flow is dual-controlled through the #157
+primitive.
+"""
+
+from __future__ import annotations
+
+import base64
+import json
+
+import pytest
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from fastapi import HTTPException
+
+from app.config import settings
+from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
+from app.contracts.data_lifecycle import (
+    DataErasureApprovalRequest,
+    DataErasureApprovalResponse,
+    DataErasureIntentRequest,
+    DataLegalHoldRecord,
+)
+from app.services.audit_store import get_audit_store
+from app.services.data_lifecycle_erasure import (
+    approve_data_erasure,
+    request_data_erasure,
+)
+from app.services.workflow_pack_run_store import get_workflow_pack_run_store
+from tests.support.governed_control import GOVERNED_APPROVER, GOVERNED_REQUESTER
+from tests.unit.test_data_lifecycle_engine import _audit_record, _iso
+from tests.unit.test_workflow_pack_run_store import _workflow_pack_run_record
+
+
+def _configure_attestation_keys(monkeypatch: pytest.MonkeyPatch) -> Ed25519PrivateKey:
+    private_key = Ed25519PrivateKey.generate()
+    encoded = base64.urlsafe_b64encode(private_key.private_bytes_raw()).rstrip(b"=").decode()
+    monkeypatch.setattr(settings, "workflow_run_attestation_key_id", "erasure-test-key")
+    monkeypatch.setattr(settings, "workflow_run_attestation_rotation_epoch", 1)
+    monkeypatch.setattr(settings, "workflow_run_attestation_private_key_base64url", encoded)
+    monkeypatch.setattr(settings, "workflow_run_attestation_key_not_before_utc", _iso(10))
+    monkeypatch.setattr(
+        settings, "workflow_run_attestation_key_not_after_utc", "2036-01-01T00:00:00+00:00"
+    )
+    return private_key
+
+
+def _seed_two_tenants() -> None:
+    audit = get_audit_store()
+    audit.save(_audit_record("air_keep_a", tenant_id="tenant-a", days_ago=10))
+    audit.save(_audit_record("air_erase_b", tenant_id="tenant-b", days_ago=10))
+    runs = get_workflow_pack_run_store()
+    runs.save_run(
+        _workflow_pack_run_record(run_id="run_keep_a", tenant_id="tenant-a", created_at=_iso(10))
+    )
+    runs.save_run(
+        _workflow_pack_run_record(run_id="run_erase_b", tenant_id="tenant-b", created_at=_iso(10))
+    )
+
+
+def _erase_tenant_b() -> DataErasureApprovalResponse:
+    pending = request_data_erasure(
+        DataErasureIntentRequest(tenant_id="tenant-b", reason="Client off-boarding obligation."),
+        GOVERNED_REQUESTER,
+    )
+    return approve_data_erasure(
+        DataErasureApprovalRequest(
+            action_id=pending.governed_action.action_id,
+            action_hash=pending.governed_action.action_hash,
+        ),
+        GOVERNED_APPROVER,
+    )
+
+
+def test_erasure_removes_one_tenant_and_yields_a_verifiable_receipt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    private_key = _configure_attestation_keys(monkeypatch)
+    _seed_two_tenants()
+
+    response = _erase_tenant_b()
+
+    audit = get_audit_store()
+    remaining = {r.request_id for r in audit.list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=20)}
+    assert remaining == {"air_keep_a"}
+    assert {r.run_id for r in get_workflow_pack_run_store().list_runs()} == {"run_keep_a"}
+
+    receipt = response.receipt
+    assert receipt.claims.tenant_id == "tenant-b"
+    assert receipt.claims.governed_action_id == response.governed_action.action_id
+    by_family = {f.family_id: f for f in receipt.claims.families}
+    assert by_family["audit_evidence"].erased_count == 1
+    assert by_family["workflow_run_records"].erased_count == 1
+    assert not any(f.held for f in receipt.claims.families)
+
+    # The receipt verifies against the signing key - the artefact #115
+    # consumers can check independently.
+    payload = json.dumps(
+        receipt.claims.model_dump(mode="json"),
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("ascii")
+    signature = base64.urlsafe_b64decode(
+        receipt.signature.signature_base64url
+        + "=" * (-len(receipt.signature.signature_base64url) % 4)
+    )
+    private_key.public_key().verify(signature, payload)  # raises on mismatch
+    assert receipt.signature.key_id == "erasure-test-key"
+
+    # ERASURE lifecycle events landed per touched family, tenant-scoped.
+    events = [e for e in audit.list_lifecycle_events(limit=20) if e.action.value == "ERASURE"]
+    assert {e.family_id for e in events} == {"audit_evidence", "workflow_run_records"}
+    assert all(e.key_scope == "tenant:tenant-b" for e in events)
+
+    # The governed evidence chain is complete and dual-controlled.
+    assert response.governed_action.status.value == "EXECUTED"
+    assert response.governed_action.requester_key_id != response.governed_action.approver_key_id
+
+
+def test_legal_hold_overrides_erasure_and_is_recorded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_attestation_keys(monkeypatch)
+    _seed_two_tenants()
+    get_audit_store().place_legal_hold(
+        DataLegalHoldRecord(
+            hold_id="hold_erase_b",
+            family_id="audit_evidence",
+            key_type="tenant",
+            key_value="tenant-b",
+            reason="Litigation hold.",
+            placed_by="legal.ops@lotus",
+            placed_at=_iso(1),
+        )
+    )
+
+    response = _erase_tenant_b()
+
+    by_family = {f.family_id: f for f in response.receipt.claims.families}
+    # The held family kept its rows and the receipt says so; the unheld
+    # family erased normally.
+    assert by_family["audit_evidence"].held is True
+    assert by_family["audit_evidence"].erased_count == 0
+    assert by_family["workflow_run_records"].held is False
+    assert by_family["workflow_run_records"].erased_count == 1
+    remaining = {
+        r.request_id for r in get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=20)
+    }
+    assert "air_erase_b" in remaining
+
+
+def test_erasure_executors_and_policy_tenant_erasable_families_agree() -> None:
+    """The policy is the authority on erasure scope: a family cannot declare
+    `erasure_key: tenant` without an executor behind it, and an executor cannot
+    outlive its family's declaration."""
+
+    from app.services.data_lifecycle_erasure import _ERASURE_EXECUTORS
+    from app.services.data_lifecycle_policy import load_retention_policy
+
+    declared = {
+        family.family_id
+        for family in load_retention_policy().families
+        if family.erasure_key == "tenant"
+    }
+    assert set(_ERASURE_EXECUTORS) == declared
+
+
+def test_erasure_requires_a_distinct_credential(monkeypatch: pytest.MonkeyPatch) -> None:
+    _configure_attestation_keys(monkeypatch)
+    pending = request_data_erasure(
+        DataErasureIntentRequest(tenant_id="tenant-x", reason="Off-boarding."),
+        GOVERNED_REQUESTER,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        approve_data_erasure(
+            DataErasureApprovalRequest(
+                action_id=pending.governed_action.action_id,
+                action_hash=pending.governed_action.action_hash,
+            ),
+            GOVERNED_REQUESTER,
+        )
+    assert exc_info.value.status_code == 403
+    assert "distinct" in exc_info.value.detail

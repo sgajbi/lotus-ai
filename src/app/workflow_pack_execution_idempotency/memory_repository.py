@@ -77,7 +77,7 @@ class InMemoryWorkflowPackExecutionIdempotencyRepository:
             self._records[record_id] = indeterminate
             return indeterminate
 
-    def list_records(self, *, limit: int) -> list[WorkflowPackExecutionIdempotencyRecord]:
+    def list_records(self, *, limit: int | None) -> list[WorkflowPackExecutionIdempotencyRecord]:
         with self._lock:
             records = sorted(
                 self._records.values(), key=lambda record: record.created_at, reverse=True
