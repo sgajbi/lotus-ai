@@ -33,7 +33,14 @@ from app.contracts.governed_actions import (
     GovernedActionType,
     GovernedActorClass,
 )
+from app.contracts.access_control import AuthorizationCapabilityType
+from app.contracts.audit_access import AuditAccessDenialReason, AuditAccessOperation
 from app.http.authenticated_caller import AuthenticatedCaller
+from app.services.access_control_authorization import authorize_request
+from app.services.audit_read_authorization import (
+    record_privileged_read,
+    refuse_privileged_read,
+)
 from app.services.provider_operations_store import get_provider_operations_store
 
 # Action types where dual control applies: the action increases risk, so no
@@ -255,7 +262,40 @@ def _require_verified_governing_credential(caller: AuthenticatedCaller) -> None:
         )
 
 
+_GOVERNED_ACTION_READ_CAPABILITIES = (
+    AuthorizationCapabilityType.PROVIDER_CONTROL,
+    AuthorizationCapabilityType.PROMPT_CONTROL,
+)
+
+
+def _require_governed_action_read_authorization(caller: AuthenticatedCaller) -> None:
+    """The governed-action ledger is control-plane operator evidence.
+
+    Pending payloads and hashes, requester and approver identities: a
+    registered Lotus caller is not automatically an AI control-plane
+    operator. The read requires one of the control capabilities whose
+    actions the ledger records - exactly the privilege an approver already
+    holds - and every refusal is recorded on the privileged-access ledger
+    before it is raised.
+    """
+
+    for capability in _GOVERNED_ACTION_READ_CAPABILITIES:
+        decision = authorize_request(caller_app=caller.caller_app, capability_type=capability)
+        if decision.allowed:
+            return
+    refuse_privileged_read(
+        caller,
+        operation=AuditAccessOperation.LIST_GOVERNED_ACTIONS,
+        reason=AuditAccessDenialReason.INSUFFICIENT_PRIVILEGE,
+        detail=(
+            "Reading governed-action evidence requires a control-plane operator "
+            "capability (provider control or prompt control)."
+        ),
+    )
+
+
 def build_governed_action_history(
+    caller: AuthenticatedCaller,
     *,
     status_filter: GovernedActionStatus | None = None,
     target: str | None = None,
@@ -263,16 +303,23 @@ def build_governed_action_history(
 ) -> GovernedActionHistoryResponse:
     """Read governed-action evidence, newest requested first (issue #157).
 
-    A pure read over the existing store: the approver reviews the exact
+    A privileged read over the existing store: the approver reviews the exact
     pending action before approving its hash, and the auditor reconstructs
     the request-approval-execution chain - including evidence pinned only
     here, such as a capability degradation cleared by an executed restore.
+    Denied and successful reads both land on the privileged-access ledger.
     """
 
+    _require_governed_action_read_authorization(caller)
     records = get_provider_operations_store().list_governed_actions(
         status=status_filter.value if status_filter is not None else None,
         target=target,
         limit=limit,
+    )
+    record_privileged_read(
+        caller,
+        operation=AuditAccessOperation.LIST_GOVERNED_ACTIONS,
+        returned_record_count=len(records),
     )
     return GovernedActionHistoryResponse(
         service=settings.service_name,

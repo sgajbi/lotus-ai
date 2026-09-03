@@ -88,6 +88,24 @@ def _refuse(
 ) -> NoReturn:
     """Record the refusal, then raise it."""
 
+    refuse_privileged_read(caller, operation=operation, reason=reason, detail=_ACCESS_DENIED_DETAIL)
+
+
+def refuse_privileged_read(
+    caller: AuthenticatedCaller,
+    *,
+    operation: AuditAccessOperation,
+    reason: AuditAccessDenialReason,
+    detail: str,
+) -> NoReturn:
+    """Record a refused privileged read on the access-events ledger, then raise.
+
+    The event is written before the refusal is raised, so a store failure
+    surfaces as a 5xx rather than turning a refusal into a clean, unrecorded
+    403. Shared by every privileged control-plane read - one evidence spine,
+    not per-surface ledgers.
+    """
+
     get_audit_store().save_access_event(
         AuditAccessEvent(
             event_id=str(uuid4()),
@@ -101,7 +119,33 @@ def _refuse(
             recorded_at=datetime.now(UTC).isoformat(),
         )
     )
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_ACCESS_DENIED_DETAIL)
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
+def record_privileged_read(
+    caller: AuthenticatedCaller,
+    *,
+    operation: AuditAccessOperation,
+    returned_record_count: int,
+) -> None:
+    """Record a successful privileged control-plane read.
+
+    Governed-action evidence spans every tenant, so a successful read is
+    all-tenant-class privileged access and recorded as such.
+    """
+
+    get_audit_store().save_access_event(
+        AuditAccessEvent(
+            event_id=f"audit_access_{uuid4().hex}",
+            caller_app=caller.caller_app,
+            caller_trust_source=caller.trust_source,
+            scope_mode=AuditReadScopeMode.ALL_TENANTS,
+            operation=operation,
+            outcome=AuditAccessOutcome.SUCCEEDED,
+            returned_record_count=returned_record_count,
+            recorded_at=datetime.now(UTC).isoformat(),
+        )
+    )
 
 
 def record_all_tenant_audit_access(

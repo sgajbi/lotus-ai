@@ -54,6 +54,10 @@ class AuditAccessOperation(str, Enum):
     # Reading the access-events ledger is itself a privileged audit read, so it
     # is recorded like any other (issue #167, S2).
     LIST_ACCESS_EVENTS = "LIST_ACCESS_EVENTS"
+    # Reading governed-action evidence (pending payloads/hashes, requester and
+    # approver identities) is a control-plane operator read, recorded on the
+    # same ledger (issue #157 correction).
+    LIST_GOVERNED_ACTIONS = "LIST_GOVERNED_ACTIONS"
 
 
 class AuditAccessOutcome(str, Enum):
