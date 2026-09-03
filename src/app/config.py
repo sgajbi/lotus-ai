@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import model_validator
+from pydantic import PrivateAttr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Promoted-profile hardening (issue #153 S2): protection defaults applied only
@@ -21,6 +21,25 @@ PROMOTED_PROFILE_DEFAULTS: dict[str, object] = {
     "readiness_probe_policy": "degrade",
     "startup_readiness_policy": "enforce",
 }
+
+# The promoted defaults that are PROTECTIONS (issue #233): for each of these,
+# any explicit divergence from the promoted value is a weakening - the
+# booleans only weaken to False, the store modes to per-process memory, the
+# policies to non-blocking postures. Explicit override still wins, but it must
+# be loud: a startup finding names every protection an operator overrode.
+# The tuning values (retry limit, breaker thresholds/window) are deliberately
+# not here - a different threshold is a choice, not a disabled protection.
+PROMOTED_PROTECTION_FIELDS: frozenset[str] = frozenset(
+    {
+        "live_text_quota_enforced",
+        "live_text_budget_enforced",
+        "live_text_degradation_enforced",
+        "provider_operations_store_mode",
+        "workflow_pack_admission_store_mode",
+        "readiness_probe_policy",
+        "startup_readiness_policy",
+    }
+)
 
 
 class Settings(BaseSettings):
@@ -118,6 +137,9 @@ class Settings(BaseSettings):
     caller_jwt_issuer: str | None = None
     caller_jwt_audience: str | None = None
     caller_jwt_public_keys: str = ""
+    # Maximum accepted credential validity window (exp - iat), issue #233: a
+    # leaked token must not replay for an issuer-chosen unbounded lifetime.
+    caller_jwt_max_lifetime_seconds: int = 3600
     http_allowed_hosts: str = "*"
     http_cors_allowed_origins: str = (
         "http://localhost,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:3000"
@@ -135,13 +157,38 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="LOTUS_AI_", extra="ignore")
 
+    _promoted_protection_overrides: list[str] = PrivateAttr(default_factory=list)
+
+    @property
+    def promoted_protection_overrides(self) -> list[str]:
+        """Protections an operator explicitly weakened below the promoted default.
+
+        Captured at construction, where ``model_fields_set`` is authoritative
+        about what the operator actually set (issue #233): a pre-existing
+        explicit weakening must not silently keep weaker posture. Empty
+        outside the promoted profile.
+        """
+
+        return list(self._promoted_protection_overrides)
+
     @model_validator(mode="after")
     def _apply_runtime_profile_defaults(self) -> "Settings":
         if self.runtime_profile != "promoted":
             return self
+        overrides: list[str] = []
         for field_name, promoted_value in PROMOTED_PROFILE_DEFAULTS.items():
             if field_name not in self.model_fields_set:
                 setattr(self, field_name, promoted_value)
+            elif (
+                field_name in PROMOTED_PROTECTION_FIELDS
+                and getattr(self, field_name) != promoted_value
+            ):
+                overrides.append(
+                    f"promoted override: {field_name} is explicitly weakened to "
+                    f"{getattr(self, field_name)!r} (promoted default {promoted_value!r}); "
+                    "this protection is operator-overridden"
+                )
+        self._promoted_protection_overrides = overrides
         return self
 
 

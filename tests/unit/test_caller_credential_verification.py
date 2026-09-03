@@ -281,7 +281,11 @@ def test_evaluation_condition_promoted_profile_end_to_end(tmp_path: Path) -> Non
         accepted = client.post(
             "/ai/tasks/execute",
             json=payload,
-            headers={"Authorization": _bearer(subject="lotus-manage")},
+            headers={
+                "Authorization": _bearer(
+                    subject="lotus-manage", extra_claims={"jti": "tok-149-e2e"}
+                )
+            },
         )
         assert accepted.status_code == 200
         assert accepted.json()["status"] == "COMPLETED"
@@ -293,6 +297,9 @@ def test_evaluation_condition_promoted_profile_end_to_end(tmp_path: Path) -> Non
     assert record.authorization.caller_identity_source == "verified_service_jwt"
     assert record.authorization.caller_identity_bound is True
     assert record.authorization.caller_credential_key_id == "platform_2026_08"
+    # The issuer-assigned token id rides the decision so a future revocation
+    # list can name exactly this token (issue #233).
+    assert record.authorization.caller_credential_token_id == "tok-149-e2e"
 
 
 def test_public_key_parsing_rejects_each_malformation() -> None:
@@ -341,3 +348,73 @@ def test_startup_findings_cover_the_caller_trust_posture() -> None:
     # Header mode outside promoted carries none either.
     settings.caller_trust_mode = "header"
     assert not [f for f in evaluate_startup_readiness().findings if "caller identity" in f]
+
+
+def test_credential_lifetime_is_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Issue #233: a leaked token must not replay for an issuer-chosen
+    unbounded lifetime. The accepted window (exp - iat) is bounded by
+    configuration; with iat required and never in the future, that also
+    bounds the remaining lifetime."""
+
+    _verified_mode_settings()
+
+    # The exact boundary is accepted; one second past it is not.
+    at_limit = _resolve_authenticated_caller(
+        x_caller_app=None, authorization=_bearer(expires_in_seconds=3600)
+    )
+    assert at_limit.caller_app == "lotus-advise"
+
+    with pytest.raises(HTTPException) as exc_info:
+        verify_caller_credential(_bearer(expires_in_seconds=3601))
+    _assert_credential_invalid(exc_info)
+    detail = exc_info.value.detail
+    assert isinstance(detail, dict)
+    assert "lifetime exceeds" in detail["detail"]
+
+
+def test_missing_future_and_non_numeric_issued_at_are_rejected() -> None:
+    _verified_mode_settings()
+    import time as _time
+
+    for overrides in (
+        {"omit_claims": ("iat",)},
+        {"extra_claims": {"iat": "yesterday"}},
+        {"extra_claims": {"iat": int(_time.time()) + 600}},
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            verify_caller_credential(_bearer(**overrides))
+        _assert_credential_invalid(exc_info)
+
+
+def test_credential_header_must_declare_typ_jwt() -> None:
+    _verified_mode_settings()
+    for token_type in (None, "JOSE"):
+        with pytest.raises(HTTPException) as exc_info:
+            verify_caller_credential(_bearer(token_type=token_type))
+        _assert_credential_invalid(exc_info)
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "typ JWT" in detail["detail"]
+
+
+def test_token_id_is_carried_when_present_and_validated() -> None:
+    """An optional jti is verified in shape, carried on the identity, and
+    absent stays honestly None - the future revocation surface (issue #233)."""
+
+    _verified_mode_settings()
+
+    with_jti = verify_caller_credential(_bearer(extra_claims={"jti": "tok-42"}))
+    assert with_jti.token_id == "tok-42"
+
+    without_jti = verify_caller_credential(_bearer())
+    assert without_jti.token_id is None
+
+    for bad_jti in ("", "   ", 123, "x" * 129):
+        with pytest.raises(HTTPException) as exc_info:
+            verify_caller_credential(_bearer(extra_claims={"jti": bad_jti}))
+        _assert_credential_invalid(exc_info)
+
+    caller = _resolve_authenticated_caller(
+        x_caller_app=None, authorization=_bearer(extra_claims={"jti": "tok-77"})
+    )
+    assert caller.credential_token_id == "tok-77"

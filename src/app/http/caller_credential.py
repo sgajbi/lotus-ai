@@ -72,6 +72,12 @@ class VerifiedCallerCredential:
 
     subject: str
     key_id: str
+    # Optional issuer-assigned token id (jti), carried for future revocation
+    # lists and recorded on the authorization decision (issue #233).
+    token_id: str | None = None
+
+
+_MAX_TOKEN_ID_LENGTH = 128
 
 
 def verify_caller_credential(authorization: str | None) -> VerifiedCallerCredential:
@@ -89,6 +95,9 @@ def verify_caller_credential(authorization: str | None) -> VerifiedCallerCredent
     algorithm = header.get("alg")
     if algorithm != "EdDSA":
         raise _credential_invalid(f"credential algorithm '{algorithm}' is not EdDSA")
+    token_type = header.get("typ")
+    if token_type != "JWT":
+        raise _credential_invalid("credential header must declare typ JWT")
     key_id = header.get("kid")
     if not isinstance(key_id, str) or not key_id:
         raise _credential_invalid("credential does not name a key id")
@@ -118,6 +127,20 @@ def verify_caller_credential(authorization: str | None) -> VerifiedCallerCredent
         raise _credential_invalid("credential does not carry a numeric expiry")
     if now >= float(expiry):
         raise _credential_invalid("credential has expired")
+    issued_at = payload.get("iat")
+    if not isinstance(issued_at, (int, float)):
+        raise _credential_invalid("credential does not carry a numeric issued-at claim")
+    if float(issued_at) > now:
+        raise _credential_invalid("credential is issued in the future")
+    # Bound the issuer-chosen validity window (issue #233): a leaked token must
+    # not replay for an unbounded lifetime. With iat required and not in the
+    # future, bounding exp-iat also bounds exp-now - the remaining lifetime can
+    # never exceed the issued lifetime.
+    max_lifetime = settings.caller_jwt_max_lifetime_seconds
+    if float(expiry) - float(issued_at) > max_lifetime:
+        raise _credential_invalid(
+            f"credential lifetime exceeds the accepted maximum of {max_lifetime} seconds"
+        )
     not_before = payload.get("nbf")
     if not_before is not None:
         if not isinstance(not_before, (int, float)):
@@ -125,10 +148,20 @@ def verify_caller_credential(authorization: str | None) -> VerifiedCallerCredent
         if now < float(not_before):
             raise _credential_invalid("credential is not valid yet")
 
+    token_id = payload.get("jti")
+    if token_id is not None:
+        if not isinstance(token_id, str) or not token_id.strip():
+            raise _credential_invalid("credential token id must be a non-empty string")
+        if len(token_id) > _MAX_TOKEN_ID_LENGTH:
+            raise _credential_invalid(
+                f"credential token id exceeds {_MAX_TOKEN_ID_LENGTH} characters"
+            )
+        token_id = token_id.strip()
+
     subject = payload.get("sub")
     if not isinstance(subject, str) or not subject.strip():
         raise _credential_invalid("credential does not carry a caller subject")
-    return VerifiedCallerCredential(subject=subject.strip(), key_id=key_id)
+    return VerifiedCallerCredential(subject=subject.strip(), key_id=key_id, token_id=token_id)
 
 
 def _extract_bearer_token(authorization: str | None) -> str:

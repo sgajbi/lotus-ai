@@ -52,7 +52,10 @@ def authorize_request(
     authenticated_caller = get_authenticated_caller()
     if authenticated_caller is not None and authenticated_caller.credential_key_id is not None:
         return decision.model_copy(
-            update={"caller_credential_key_id": authenticated_caller.credential_key_id}
+            update={
+                "caller_credential_key_id": authenticated_caller.credential_key_id,
+                "caller_credential_token_id": authenticated_caller.credential_token_id,
+            }
         )
     return decision
 

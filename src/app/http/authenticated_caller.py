@@ -30,6 +30,13 @@ class AuthenticatedCaller(BaseModel):
             "null under header trust."
         ),
     )
+    credential_token_id: str | None = Field(
+        default=None,
+        description=(
+            "Issuer-assigned token id (jti) of the verifying credential when it "
+            "carried one; recorded for future revocation lists (issue #233)."
+        ),
+    )
 
 
 def is_privileged_caller_identity_accepted(caller: AuthenticatedCaller) -> bool:
@@ -83,6 +90,7 @@ def _resolve_authenticated_caller(
             caller_app=credential.subject,
             trust_source=CALLER_TRUST_MODE_VERIFIED_JWT,
             credential_key_id=credential.key_id,
+            credential_token_id=credential.token_id,
         )
     if not caller_app:
         raise HTTPException(

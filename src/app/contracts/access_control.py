@@ -117,6 +117,14 @@ class AuthorizationDecision(BaseModel):
             "never reach authorization."
         ),
     )
+    caller_credential_token_id: str | None = Field(
+        default=None,
+        description=(
+            "Issuer-assigned token id (jti) of the verifying credential when it carried "
+            "one; recorded so a future revocation list can name exactly this token "
+            "(issue #233). Null under header trust or when the issuer minted no jti."
+        ),
+    )
     capability_type: AuthorizationCapabilityType = Field(
         description="Capability class evaluated by the access-control layer."
     )

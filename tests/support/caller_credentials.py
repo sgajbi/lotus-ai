@@ -40,7 +40,9 @@ def mint_caller_credential(
     audience: str = TEST_AUDIENCE,
     expires_in_seconds: int = 300,
     extra_claims: dict[str, Any] | None = None,
+    omit_claims: tuple[str, ...] = (),
     algorithm: str = "EdDSA",
+    token_type: str | None = "JWT",
 ) -> str:
     now = time.time()
     payload: dict[str, Any] = {
@@ -52,7 +54,11 @@ def mint_caller_credential(
     }
     if extra_claims:
         payload.update(extra_claims)
-    header = {"alg": algorithm, "typ": "JWT", "kid": key_id}
+    for claim in omit_claims:
+        payload.pop(claim, None)
+    header: dict[str, Any] = {"alg": algorithm, "kid": key_id}
+    if token_type is not None:
+        header["typ"] = token_type
     signing_input = f"{_b64url(header)}.{_b64url(payload)}"
     signature = signing_key.sign(signing_input.encode("ascii"))
     return f"{signing_input}.{_b64url_bytes(signature)}"
