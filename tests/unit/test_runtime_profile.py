@@ -1,5 +1,7 @@
 """Runtime profile derives protection defaults (issue #153, S2)."""
 
+import pytest
+
 from app.config import PROMOTED_PROFILE_DEFAULTS, Settings, settings
 from app.services.startup_policy import _provider_protection_findings
 
@@ -75,3 +77,58 @@ def test_local_profile_and_stub_mode_produce_no_protection_findings() -> None:
         "workflow-pack admission store: per-process memory leases cannot bound "
         "queue admission across replicas in the promoted profile"
     ]
+
+
+def test_explicitly_weakened_protections_are_captured_loudly() -> None:
+    """Issue #233: explicit override still wins, but never silently - every
+    protection field explicitly weaker than the promoted default is captured
+    at construction, where model_fields_set is authoritative."""
+
+    weakened = Settings(
+        runtime_profile="promoted",
+        startup_readiness_policy="warn",
+        provider_operations_store_mode="memory",
+        live_text_budget_enforced=False,
+    )
+    captured = weakened.promoted_protection_overrides
+    assert len(captured) == 3
+    assert any("startup_readiness_policy" in finding for finding in captured)
+    assert any("provider_operations_store_mode" in finding for finding in captured)
+    assert any("live_text_budget_enforced" in finding for finding in captured)
+    assert all("explicitly weakened" in finding for finding in captured)
+
+    # An explicit value EQUAL to the promoted default is not a weakening, a
+    # weakened tuning value is not a protection override, and outside the
+    # promoted profile nothing is captured.
+    assert (
+        Settings(
+            runtime_profile="promoted",
+            startup_readiness_policy="enforce",
+            provider_retry_limit=0,
+        ).promoted_protection_overrides
+        == []
+    )
+    assert Settings(runtime_profile="local").promoted_protection_overrides == []
+
+
+def test_startup_readiness_surfaces_promoted_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The captured overrides ride the startup findings, so a weakened
+    startup policy is loud even though - by the operator's own choice - it
+    no longer blocks."""
+
+    from app.services.startup_policy import evaluate_startup_readiness
+
+    monkeypatch.setattr(
+        settings,
+        "_promoted_protection_overrides",
+        [
+            "promoted override: startup_readiness_policy is explicitly weakened to "
+            "'warn' (promoted default 'enforce'); this protection is operator-overridden"
+        ],
+    )
+
+    evaluation = evaluate_startup_readiness()
+
+    assert any("promoted override: startup_readiness_policy" in f for f in evaluation.findings)

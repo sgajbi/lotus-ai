@@ -118,6 +118,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "artifact_object_store_root": settings.artifact_object_store_root,
         "startup_readiness_policy": settings.startup_readiness_policy,
         "readiness_probe_policy": settings.readiness_probe_policy,
+        "caller_jwt_max_lifetime_seconds": settings.caller_jwt_max_lifetime_seconds,
         "local_header_caller_identity_enabled": settings.local_header_caller_identity_enabled,
         "caller_trust_mode": settings.caller_trust_mode,
         "caller_jwt_issuer": settings.caller_jwt_issuer,

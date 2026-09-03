@@ -61,6 +61,9 @@ def evaluate_startup_readiness() -> StartupReadinessEvaluation:
 
     findings.extend(_caller_identity_findings())
     findings.extend(_provider_protection_findings())
+    # Explicit operator weakenings of promoted protections, captured at
+    # settings construction (issue #233): override wins, but never silently.
+    findings.extend(settings.promoted_protection_overrides)
 
     return _evaluation_for(findings)
 
