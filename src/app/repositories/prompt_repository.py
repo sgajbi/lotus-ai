@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from typing import Protocol
 
 from app.contracts.prompts import PromptDescriptor
@@ -25,6 +27,10 @@ class PromptRepository(Protocol):
     def list_prompt_rollout_events(
         self, task_id: str | None = None, limit: int = 20
     ) -> list[PromptRolloutEventRecord]: ...
+
+    def delete_prompt_rollout_events(self, event_ids: Sequence[str]) -> int:
+        """Delete rollout-event evidence by id (issue #158, S2b)."""
+        ...
 
     def save_prompt_rollout_transition(
         self,

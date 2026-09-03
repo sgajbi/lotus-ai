@@ -57,3 +57,9 @@ class AuditRepository(Protocol):
 
     def list_access_events(self, *, limit: int = 100) -> Sequence[AuditAccessEvent]:
         """List recent audit-read access events for bounded verification and support."""
+
+    def delete_access_events(self, event_ids: Sequence[str]) -> int:
+        """Delete access events by id for the lifecycle engine (issue #158, S2b)."""
+
+    def delete_lifecycle_events(self, event_ids: Sequence[str]) -> int:
+        """Delete lifecycle events by id for the lifecycle engine (issue #158, S2b)."""

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TypeVar
 from threading import Lock
 
 from app.contracts.audit import AuditRecordResponse
@@ -10,6 +11,9 @@ from app.contracts.audit_access import (
     AuditReadScope,
     AuditReadScopeMode,
 )
+
+
+_V = TypeVar("_V")
 
 
 class InMemoryAuditRepository:
@@ -103,6 +107,14 @@ class InMemoryAuditRepository:
                 if hold.released_at is None and (family_id is None or hold.family_id == family_id)
             ]
 
+    def delete_access_events(self, event_ids: Sequence[str]) -> int:
+        with self._lock:
+            return _pop_all(self._access_events, event_ids)
+
+    def delete_lifecycle_events(self, event_ids: Sequence[str]) -> int:
+        with self._lock:
+            return _pop_all(self._lifecycle_events, event_ids)
+
     def save_access_event(self, event: AuditAccessEvent) -> None:
         with self._lock:
             self._access_events[event.event_id] = event
@@ -115,6 +127,14 @@ class InMemoryAuditRepository:
                 reverse=True,
             )
             return events[:limit]
+
+
+def _pop_all(store: dict[str, _V], keys: Sequence[str]) -> int:
+    deleted = 0
+    for key in keys:
+        if store.pop(key, None) is not None:
+            deleted += 1
+    return deleted
 
 
 def _record_is_in_scope(record: AuditRecordResponse, scope: AuditReadScope) -> bool:

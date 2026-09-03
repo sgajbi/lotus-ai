@@ -36,7 +36,7 @@
       "legal_hold_supported": true,
       "erasure_key": "none",
       "evidence_class": "control_plane_evidence",
-      "enforcement": "DECLARED_ONLY"
+      "enforcement": "ENFORCED"
     },
     {
       "family_id": "workflow_run_records",

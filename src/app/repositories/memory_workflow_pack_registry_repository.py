@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from app.contracts.workflow_packs import (
     WorkflowPackControlEventDescriptor,
     WorkflowPackRegistrationDescriptor,
@@ -50,6 +52,13 @@ class InMemoryWorkflowPackRegistryRepository(WorkflowPackRegistryRepository):
             events = [event for event in events if event.version == version]
         events.sort(key=lambda event: event.recorded_at, reverse=True)
         return [event.model_copy(deep=True) for event in events[: max(limit, 1)]]
+
+    def delete_control_events(self, event_ids: Sequence[str]) -> int:
+        deleted = 0
+        for event_id in event_ids:
+            if self._events.pop(event_id, None) is not None:
+                deleted += 1
+        return deleted
 
     def save_control_event(self, event: WorkflowPackControlEventDescriptor) -> None:
         self._events[event.event_id] = event.model_copy(deep=True)

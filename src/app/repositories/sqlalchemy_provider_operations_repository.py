@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
 from sqlalchemy import delete, select
@@ -365,6 +367,30 @@ class SqlAlchemyProviderOperationsRepository(
             ),
             recorded_at=model.recorded_at,
         )
+
+    def delete_operations_events(self, event_ids: Sequence[str]) -> int:
+        if not event_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(ProviderOperationsEventModel).where(
+                    ProviderOperationsEventModel.event_id.in_(list(event_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
+
+    def delete_governed_actions(self, action_ids: Sequence[str]) -> int:
+        if not action_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(GovernedActionModel).where(
+                    GovernedActionModel.action_id.in_(list(action_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def get_governed_action(self, action_id: str) -> GovernedActionRecord | None:
         with self._session_factory() as session:

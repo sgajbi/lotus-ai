@@ -252,6 +252,12 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
         filtered.sort(key=lambda item: item.recorded_at, reverse=True)
         return filtered[: max(limit, 1)]
 
+    def delete_control_events(self, event_ids: Sequence[str]) -> int:
+        wanted = set(event_ids)
+        before = len(self._control_events)
+        self._control_events = [r for r in self._control_events if r.event_id not in wanted]
+        return before - len(self._control_events)
+
     def save_control_event(self, record: AsyncRuntimeControlEventRecord) -> None:
         self._control_events = [
             existing for existing in self._control_events if existing.event_id != record.event_id

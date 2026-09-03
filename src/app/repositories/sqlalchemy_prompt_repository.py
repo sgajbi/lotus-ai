@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
@@ -88,6 +90,18 @@ class SqlAlchemyPromptRepository(SqlAlchemyRepositoryBase):
             if state is None:
                 return None
             return self._to_rollout_state(state)
+
+    def delete_prompt_rollout_events(self, event_ids: Sequence[str]) -> int:
+        if not event_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(PromptRolloutEventModel).where(
+                    PromptRolloutEventModel.event_id.in_(list(event_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def list_prompt_rollout_events(
         self, task_id: str | None = None, limit: int = 20

@@ -295,6 +295,18 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
             ).all()
             return [self._to_control_event_record(model) for model in models]
 
+    def delete_control_events(self, event_ids: Sequence[str]) -> int:
+        if not event_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(AsyncControlEventModel).where(
+                    AsyncControlEventModel.event_id.in_(list(event_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
+
     def save_control_event(self, record: AsyncRuntimeControlEventRecord) -> None:
         model = AsyncControlEventModel(
             event_id=record.event_id,

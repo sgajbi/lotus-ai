@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.contracts.kill_switches import (
     KillSwitchActivationRecord,
@@ -18,6 +20,18 @@ class SqlAlchemyKillSwitchRepository(SqlAlchemyRepositoryBase):
         self._database_url = database_url
         self._ensure_sqlite_parent_directory()
         self._configure_sqlalchemy(database_url)
+
+    def delete_activations(self, switch_ids: Sequence[str]) -> int:
+        if not switch_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(KillSwitchActivationModel).where(
+                    KillSwitchActivationModel.switch_id.in_(list(switch_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def list_activations(self) -> list[KillSwitchActivationRecord]:
         with self._session_factory() as session:
