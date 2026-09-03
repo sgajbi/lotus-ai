@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from app.contracts.providers import ProviderExecutionRequest
 from app.services.provider_execution_config import resolve_provider_execution_config
 from app.services.task_execution_models import TaskExecutionContext
+
+
+def _as_cost_posture(value: str) -> Literal["conservative", "actual_only"]:
+    """An unrecognised configured posture falls back to conservative - the
+    direction that can only overstate spend, never understate it (issue #232)."""
+
+    return "actual_only" if value == "actual_only" else "conservative"
 
 
 def build_provider_execution_request(
@@ -29,6 +38,7 @@ def build_provider_execution_request(
         source_refs=context.request.context.source_refs,
         timeout_ms=config.timeout_ms,
         retry_limit=config.retry_limit,
+        failed_attempt_cost_posture=_as_cost_posture(config.failed_attempt_cost_posture),
         max_output_tokens=config.max_output_tokens,
         temperature=config.temperature,
         top_p=config.top_p,

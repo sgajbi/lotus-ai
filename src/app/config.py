@@ -10,6 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # the operator supplies the limits.
 PROMOTED_PROFILE_DEFAULTS: dict[str, object] = {
     "provider_retry_limit": 2,
+    "provider_failed_attempt_cost_posture": "conservative",
     "live_text_quota_enforced": True,
     "live_text_budget_enforced": True,
     "live_text_degradation_enforced": True,
@@ -38,6 +39,9 @@ PROMOTED_PROTECTION_FIELDS: frozenset[str] = frozenset(
         "workflow_pack_admission_store_mode",
         "readiness_probe_policy",
         "startup_readiness_policy",
+        # Billing-truth posture (issue #232): actual_only can only understate
+        # spend against the real bill, so weakening it in promoted must be loud.
+        "provider_failed_attempt_cost_posture",
     }
 )
 
@@ -83,6 +87,7 @@ class Settings(BaseSettings):
     live_text_circuit_open_seconds: int | None = None
     provider_timeout_ms: int = 4000
     provider_retry_limit: int = 0
+    provider_failed_attempt_cost_posture: str = "conservative"
     provider_max_output_tokens: int = 512
     live_text_temperature: float = 0.0
     live_text_top_p: float | None = None
