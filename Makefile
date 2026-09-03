@@ -1,8 +1,17 @@
-.PHONY: install lint module-budget-guard monetary-float-guard runtime-purity-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke migration-apply data-lifecycle-run runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
+.PHONY: install dependency-lock-replay-check lint module-budget-guard monetary-float-guard runtime-purity-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke migration-apply data-lifecycle-run runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
 
 install:
 	python -m pip install --upgrade pip
-	python -m pip install -e ".[dev]"
+	python -m pip install --require-hashes -r requirements-dev.lock.txt
+	python -m pip install --no-deps -e .
+
+# The audited dependency set is the installed set (issue #155): the lock must
+# replay from pyproject byte-identically, or the build refuses.
+dependency-lock-replay-check:
+	uv lock --check
+	uv export --format requirements-txt --no-emit-project -o requirements.lock.txt
+	uv export --format requirements-txt --no-emit-project --extra dev -o requirements-dev.lock.txt
+	git diff --exit-code -- uv.lock requirements.lock.txt requirements-dev.lock.txt
 
 lint:
 	python -m ruff check .
@@ -74,10 +83,11 @@ security-audit:
 
 check: lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke runtime-mode-smoke test
 
-ci: verify-dependencies lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke runtime-mode-smoke security-audit test-coverage docker-build
+ci: verify-dependencies dependency-lock-replay-check lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke runtime-mode-smoke security-audit test-coverage docker-build
 
 docker-build:
 	docker build -t backend-service:ci-test .
+	docker run --rm backend-service:ci-test python -c "import os, importlib.util; assert os.getuid() == 10001, 'runtime image must not run as root'; assert all(importlib.util.find_spec(m) is None for m in ('pytest', 'mypy', 'ruff', 'pip_audit')), 'dev tooling leaked into the runtime image'; import app.main"
 
 clean:
 	python -c "import shutil, pathlib; [shutil.rmtree(p, ignore_errors=True) for p in ['.pytest_cache', '.ruff_cache', '.mypy_cache']]; [pathlib.Path(p).unlink(missing_ok=True) for p in ['.coverage', '.coverage.unit', '.coverage.integration', '.coverage.e2e']]"

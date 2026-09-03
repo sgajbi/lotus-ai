@@ -40,7 +40,8 @@ dev = [
   "pytest-cov>=7.0.0",
   "httpx>=0.28.0",
   "coverage>=7.13.0",
-  "pip-audit>=2.10.0"
+  "pip-audit>=2.10.0",
+  "uv>=0.9.28"
 ]
 
 [tool.ruff]
