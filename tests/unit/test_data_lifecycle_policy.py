@@ -197,3 +197,15 @@ def test_loader_refuses_each_malformation_with_a_bounded_message(
     assert "in more than one family" in _load_from(_policy(_family(), _family("f2")))
     assert "must imply each other" in _load_from(_policy(_family(retention_days=None)))
     assert "must imply each other" in _load_from(_policy(_family(enforcement="NOT_TIME_BOUNDED")))
+    # Minimisation consistency (issue #158, S4): days and basis travel
+    # together, only on an ENFORCED family, and strictly inside its period.
+    assert "declared together" in _load_from(_policy(_family(minimised_retention_days=7)))
+    assert "declared together" in _load_from(_policy(_family(minimisation_basis="why")))
+    assert "requires an ENFORCED family" in _load_from(
+        _policy(_family(minimised_retention_days=7, minimisation_basis="why"))
+    )
+    assert "shorter than the family's own retention" in _load_from(
+        _policy(
+            _family(enforcement="ENFORCED", minimised_retention_days=30, minimisation_basis="why")
+        )
+    )

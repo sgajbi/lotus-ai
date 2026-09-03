@@ -120,7 +120,13 @@ class AuditRecordResponse(BaseModel):
     context_summary: str = Field(description="Short summary of the caller-provided context.")
     context_keys: list[str] = Field(description="Sorted list of structured context keys.")
     source_refs: list[str] = Field(description="Source references carried by the caller.")
-    result_preview: str = Field(description="Short preview of the generated result.")
+    result_preview: str = Field(
+        description=(
+            "Short preview of the generated result, capped at persistence time "
+            "(issue #158, S4): the caller received the full message in the task "
+            "response; the audit trail does not keep a second full copy."
+        )
+    )
     structured_output: dict[str, Any] = Field(
         default_factory=dict,
         description="Structured task result stored in the audit record.",

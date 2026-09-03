@@ -1046,6 +1046,98 @@ def test_run_records_eval_and_artifact_expiry_honour_their_semantics() -> None:
     assert all(result.deleted_count == 0 for result in second.results)
 
 
+def test_passing_case_content_expires_at_the_minimised_horizon() -> None:
+    """S4 minimisation: a passing case's content ages out at the declared
+    minimised horizon while a same-age failure keeps the full period for
+    defect forensics; failures still expire at the family horizon."""
+
+    from app.repositories.evaluation_runtime_repository import (
+        EvaluationCaseResultRecord,
+        EvaluationRunAttemptRecord,
+        EvaluationRunRecord,
+    )
+    from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+
+    evaluation = get_evaluation_runtime_store()
+    evaluation.save_run(
+        EvaluationRunRecord(
+            run_id="eval_min",
+            fixture_id="fixture",
+            manifest_version="foundation.v1",
+            lifecycle_status="COMPLETED",
+            triggered_by="operator-a",
+            submitted_at=_iso(5),
+            async_job_id=None,
+            latest_message="m",
+            verdict="PASS",
+            case_count=4,
+        )
+    )
+    evaluation.save_attempt(
+        EvaluationRunAttemptRecord(
+            attempt_id="att_eval_min",
+            run_id="eval_min",
+            attempt_number=1,
+            lifecycle_status="COMPLETED",
+            started_at=_iso(5),
+            completed_at=_iso(5),
+            worker_id=None,
+            latest_message="m",
+            verdict="PASS",
+            failure_reason=None,
+        )
+    )
+    for case_id, outcome, age in (
+        ("case_pass_aged", "PASS", 100),
+        ("case_fail_aged", "FAIL", 100),
+        ("case_pass_fresh", "PASS", 50),
+        ("case_fail_expired", "FAIL", 400),
+    ):
+        evaluation.save_case_result(
+            EvaluationCaseResultRecord(
+                case_result_id=case_id,
+                run_id="eval_min",
+                attempt_id="att_eval_min",
+                case_id=f"c-{case_id}",
+                fixture_id="fixture",
+                outcome=outcome,
+                summary="s",
+                evidence_refs=[],
+                artifact_ids=[],
+                provider_config_sha256=None,
+                recorded_at=_iso(age),
+            )
+        )
+
+    report = run_data_lifecycle(actor="test.operator")
+    results = {r.family_id: r for r in report.results}
+
+    assert results["evaluation_case_content"].deleted_count == 2
+    assert "(1 passing cases at the minimised horizon)" in results["evaluation_case_content"].detail
+    assert {c.case_result_id for c in evaluation.list_all_case_results(limit=10)} == {
+        "case_fail_aged",
+        "case_pass_fresh",
+    }
+
+    second = run_data_lifecycle(actor="test.operator")
+    assert all(result.deleted_count == 0 for result in second.results)
+
+
+def test_minimising_handlers_and_policy_declarations_agree() -> None:
+    """A declared minimised horizon without a handler honouring it would be a
+    policy claim the engine does not keep - and a minimising handler for an
+    undeclared family would delete ahead of the policy."""
+
+    from app.services.data_lifecycle_engine import MINIMISING_FAMILY_HANDLER_IDS
+
+    declared = {
+        family.family_id
+        for family in load_retention_policy().families
+        if family.minimised_retention_days is not None
+    }
+    assert declared == MINIMISING_FAMILY_HANDLER_IDS
+
+
 def test_retrieval_history_expiry_never_touches_current_versions() -> None:
     """S2d: only SUPERSEDED versions age out - the current version of a
     document is live reference state whatever its age - and ingestion-job

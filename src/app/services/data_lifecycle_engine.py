@@ -441,18 +441,31 @@ def _expire_evaluation_approval_evidence(
 def _expire_evaluation_case_content(
     family: RetentionFamily, cutoff: datetime
 ) -> tuple[list[str], str]:
-    """Bulky per-case content ages on its own instant; the run verdict stays."""
+    """Bulky per-case content ages on its own instant; the run verdict stays.
 
+    Minimisation (issue #158, S4): a PASSING case's content ages out at the
+    family's declared minimised horizon - it has no diagnostic purpose beyond
+    review - while failures keep the full period for defect forensics.
+    """
+
+    minimised_cutoff = cutoff
+    if family.minimised_retention_days is not None:
+        assert family.retention_days is not None  # pinned by policy validation
+        now = cutoff + timedelta(days=family.retention_days)
+        minimised_cutoff = now - timedelta(days=family.minimised_retention_days)
     repository = get_evaluation_runtime_store()
-    expired = [
-        record.case_result_id
-        for record in repository.list_all_case_results(limit=_CANDIDATE_BATCH_LIMIT)
-        if _is_before(record.recorded_at, cutoff)
-    ]
+    expired: list[str] = []
+    minimised = 0
+    for record in repository.list_all_case_results(limit=_CANDIDATE_BATCH_LIMIT):
+        if _is_before(record.recorded_at, cutoff):
+            expired.append(record.case_result_id)
+        elif record.outcome == "PASS" and _is_before(record.recorded_at, minimised_cutoff):
+            expired.append(record.case_result_id)
+            minimised += 1
     count = repository.delete_case_results(expired) if expired else 0
     return [f"evaluation_case_results:{case_id}" for case_id in expired], (
-        f"expired {count} evaluation case rows; run verdicts remain with the "
-        "approval evidence family"
+        f"expired {count} evaluation case rows ({minimised} passing cases at the "
+        "minimised horizon); run verdicts remain with the approval evidence family"
     )
 
 
@@ -504,6 +517,13 @@ def enforced_family_handler_ids() -> frozenset[str]:
     """The families the engine actually applies - pinned against the policy."""
 
     return frozenset(_ENFORCED_FAMILY_HANDLERS)
+
+
+# Families whose handler honours a declared minimised horizon (issue #158,
+# S4). Pinned bidirectionally against the policy by test: a declared
+# minimisation without a handler behind it would be a claim the engine does
+# not keep.
+MINIMISING_FAMILY_HANDLER_IDS = frozenset({"evaluation_case_content"})
 
 
 def _record_deletion_evidence(
