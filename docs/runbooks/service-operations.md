@@ -524,6 +524,15 @@ Runtime semantics under `ordered_fallback`:
 6. circuit-breaker bookkeeping is keyed per provider identity (`live_text_generation:<provider_id>`), so the primary's failures never open the alternate's breaker; `RESET_DEGRADATION` and `RESET_ALL_PROVIDER_OPERATIONS` control actions clear every candidate's counters
 7. `GET /platform/providers/routing-posture` names both candidates with their catalogue bindings and per-candidate breaker posture, and exposes `candidate_universe` - the same derivation the gateway enumerates from, so the posture cannot disagree with routing. Optional capability query parameters (`?structured_output_required=true`, `?tool_calling_required=true`) add per-candidate eligibility verdicts (`CAPABILITY_NOT_SUPPORTED`, `CAPABILITY_UNKNOWN`, `CAPABILITY_DEGRADED`) and `would_select_entry_id`. The serving identity is always stamped on the response and its audit record - there is no silent fallback
 
+## Provider Billing Truth
+
+Recorded spend covers every billed attempt of a live generation, not just the served one (issue #232): a retried timeout or 5xx may have generated and billed provider-side before failing.
+
+- `estimated_cost_usd` on responses and audit records is the attempt-summed figure, and the budget envelope records it. The composition — `failed_attempt_cost_usd`, `failed_attempt_cost_basis` (`ACTUAL_USAGE` | `CONSERVATIVE_ESTIMATE` | `MIXED` | `NONE`), `billed_attempt_count` — is on the provider execution response; the audit row's attempt context is `retry_count` and its cost posture.
+- `LOTUS_AI_PROVIDER_FAILED_ATTEMPT_COST_POSTURE` defaults to `conservative`: an unknown-usage billable-risk failure is estimated at the identical request body's input tokens plus the `max_output_tokens` ceiling - spend can overstate, never understate. `actual_only` bills failed attempts only on provider-reported usage; choosing it in the promoted profile is a loud protection-override finding.
+- Rate-limited (429) and connection-level failures are never billed - the provider did not generate.
+- Residual (recorded, not hidden): an execution whose every attempt fails records no spend; there is no usage evidence to price and the failure is visible on the operations ledger instead.
+
 ## Durable Provider Operations Recovery
 
 When `LOTUS_AI_PROVIDER_OPERATIONS_STORE_MODE=sqlalchemy`, quota, budget, and degradation posture are durable rather than process-local.

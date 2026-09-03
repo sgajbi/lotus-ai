@@ -110,6 +110,14 @@ def test_explicitly_weakened_protections_are_captured_loudly() -> None:
     )
     assert Settings(runtime_profile="local").promoted_protection_overrides == []
 
+    # Billing-truth posture is a protection (issue #232): actual_only can only
+    # understate spend, so choosing it in promoted is loud.
+    billing_weakened = Settings(
+        runtime_profile="promoted", provider_failed_attempt_cost_posture="actual_only"
+    ).promoted_protection_overrides
+    assert len(billing_weakened) == 1
+    assert "provider_failed_attempt_cost_posture" in billing_weakened[0]
+
 
 def test_startup_readiness_surfaces_promoted_overrides(
     monkeypatch: pytest.MonkeyPatch,

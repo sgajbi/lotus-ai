@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -667,6 +668,16 @@ class ProviderExecutionRequest(BaseModel):
     retry_limit: int = Field(
         description="Maximum bounded retry count allowed for this execution request."
     )
+    failed_attempt_cost_posture: Literal["conservative", "actual_only"] = Field(
+        default="conservative",
+        description=(
+            "How unknown-usage failed attempts are billed (issue #232): 'conservative' "
+            "estimates a billable-risk failed attempt (timeout, 5xx) at the final "
+            "attempt's input tokens - the identical request body - plus the "
+            "max_output_tokens ceiling; 'actual_only' bills failed attempts only when "
+            "the provider returned usage evidence before failing."
+        ),
+    )
     max_output_tokens: int = Field(
         description="Maximum bounded output-token budget allowed for this execution request."
     )
@@ -773,7 +784,29 @@ class ProviderExecutionResponse(BaseModel):
     )
     estimated_cost_usd: float | None = Field(
         default=None,
-        description="Estimated USD cost for the provider execution when rate-card data is configured.",
+        description="Estimated USD cost across every billed attempt of this execution "
+        "(issue #232) when rate-card data is configured - the final attempt plus any "
+        "failed-attempt billing per failed_attempt_cost_basis.",
+    )
+    failed_attempt_cost_usd: float | None = Field(
+        default=None,
+        description="Estimated USD cost attributed to failed attempts before the served "
+        "one (issue #232); null when no failed attempt was billed.",
+    )
+    failed_attempt_cost_basis: (
+        Literal["ACTUAL_USAGE", "CONSERVATIVE_ESTIMATE", "MIXED", "NONE"] | None
+    ) = Field(
+        default=None,
+        description="Evidence basis for failed-attempt billing (issue #232): ACTUAL_USAGE "
+        "from provider-reported usage on the failed attempt, CONSERVATIVE_ESTIMATE from "
+        "the identical request body's input tokens plus the max_output_tokens ceiling, "
+        "MIXED when both applied, NONE when nothing was billable. Null on stub or "
+        "single-attempt executions.",
+    )
+    billed_attempt_count: int | None = Field(
+        default=None,
+        description="Number of attempts included in estimated_cost_usd (issue #232); "
+        "1 means only the served attempt.",
     )
     rate_card_ref: str | None = Field(
         default=None,

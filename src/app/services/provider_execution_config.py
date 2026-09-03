@@ -66,6 +66,7 @@ class ProviderExecutionConfig:
     allowed_task_ids: str
     timeout_ms: int
     retry_limit: int
+    failed_attempt_cost_posture: str
     max_output_tokens: int
     temperature: float
     top_p: float | None
@@ -112,6 +113,7 @@ def resolve_provider_execution_config() -> ProviderExecutionConfig:
         allowed_task_ids=settings.live_text_allowed_task_ids,
         timeout_ms=max(settings.provider_timeout_ms, 1),
         retry_limit=max(settings.provider_retry_limit, 0),
+        failed_attempt_cost_posture=settings.provider_failed_attempt_cost_posture,
         max_output_tokens=max(settings.provider_max_output_tokens, 1),
         temperature=settings.live_text_temperature,
         top_p=settings.live_text_top_p,
@@ -220,6 +222,7 @@ def derive_fallback_execution_config(
         allowed_task_ids=config.allowed_task_ids,
         timeout_ms=config.timeout_ms,
         retry_limit=config.retry_limit,
+        failed_attempt_cost_posture=config.failed_attempt_cost_posture,
         max_output_tokens=config.max_output_tokens,
         temperature=config.temperature,
         top_p=config.top_p,

@@ -35,7 +35,10 @@ from app.providers.advisor_brief_quality_guardrails import (
     build_advisor_brief_user_message,
     normalize_advisor_brief_output,
 )
-from app.services.provider_usage_accounting import estimate_live_text_cost
+from app.services.provider_usage_accounting import (
+    estimate_live_text_cost,
+    settle_attempt_billing,
+)
 
 
 def execute_openai_compatible_text_request(
@@ -107,6 +110,14 @@ def execute_openai_compatible_text_request(
         output_tokens=output_tokens,
         model_revision=model_version or model_id,
     )
+    billing = settle_attempt_billing(
+        failed_attempts=extract_failed_attempts(response_payload),
+        posture=request.failed_attempt_cost_posture,
+        final_cost=cost,
+        final_input_tokens=input_tokens,
+        max_output_tokens=request.max_output_tokens,
+        model_revision=model_version or model_id,
+    )
     return ProviderExecutionResponse(
         provider_id=serving_provider_id,
         provider_mode=descriptor.runtime_mode.value,
@@ -121,7 +132,10 @@ def execute_openai_compatible_text_request(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         total_tokens=total_tokens,
-        estimated_cost_usd=cost.estimated_cost_usd,
+        estimated_cost_usd=billing.estimated_cost_usd,
+        failed_attempt_cost_usd=billing.failed_attempt_cost_usd,
+        failed_attempt_cost_basis=billing.failed_attempt_cost_basis,
+        billed_attempt_count=billing.billed_attempt_count,
         rate_card_ref=cost.rate_card_ref,
         stubbed=False,
         message=message,
@@ -213,6 +227,10 @@ def post_openai_compatible_response(
     deadline_at = _monotonic() + backoff_plan.total_deadline_seconds
     if execution_deadline_at is not None:
         deadline_at = min(deadline_at, execution_deadline_at)
+    # Usage evidence for each failed attempt that precedes the served one
+    # (issue #232): the provider may have generated and billed before failing,
+    # so the billing settlement needs what each attempt is known to have used.
+    failed_attempts: list[dict[str, object]] = []
     for attempt_index in range(bounded_retry_limit + 1):
         if execution_deadline_at is not None:
             remaining_seconds = execution_deadline_at - _monotonic()
@@ -245,6 +263,7 @@ def post_openai_compatible_response(
                 record_provider_span_outcome(attempt_span, outcome="success")
                 response_payload = cast(dict[str, Any], json.loads(response.read().decode("utf-8")))
                 response_payload["_lotus_retry_count"] = attempt_index
+                response_payload["_lotus_failed_attempts"] = failed_attempts
                 usage = response_payload.get("usage")
                 usage_fields = usage if isinstance(usage, dict) else {}
                 attempt_latency_ms = _attempt_latency_ms(attempt_started)
@@ -268,7 +287,7 @@ def post_openai_compatible_response(
                 )
                 return response_payload
         except error.HTTPError as exc:
-            load_error_payload(exc)
+            error_payload = load_error_payload(exc)
             category = failure_category_for_http_status(exc.code)
             retryable = is_retryable_provider_failure(category=category, http_status_code=exc.code)
             retry_decision = plan_retry(
@@ -297,6 +316,11 @@ def post_openai_compatible_response(
                 latency_ms=attempt_latency_ms,
             )
             if will_retry:
+                # 5xx may follow completed generation; 4xx (incl. 429) refuses
+                # before generation and carries no billable risk.
+                failed_attempts.append(
+                    _failed_attempt_evidence(error_payload, billable_risk=exc.code >= 500)
+                )
                 wait_for_retry(retry_decision)
                 continue
             deadline_stop = _governed_deadline_stop(
@@ -339,6 +363,9 @@ def post_openai_compatible_response(
                 latency_ms=attempt_latency_ms,
             )
             if will_retry:
+                # A timeout after acceptance may still have generated and
+                # billed provider-side.
+                failed_attempts.append(_failed_attempt_evidence({}, billable_risk=True))
                 wait_for_retry(retry_decision)
                 continue
             deadline_stop = _governed_deadline_stop(
@@ -381,6 +408,9 @@ def post_openai_compatible_response(
                 latency_ms=attempt_latency_ms,
             )
             if will_retry:
+                # Connection-level failure: the request did not reach a
+                # generating provider, so no billable risk.
+                failed_attempts.append(_failed_attempt_evidence({}, billable_risk=False))
                 wait_for_retry(retry_decision)
                 continue
             deadline_stop = _governed_deadline_stop(
@@ -534,6 +564,33 @@ def extract_retry_count(payload: dict[str, Any]) -> int:
     return as_int(payload.get("_lotus_retry_count")) or 0
 
 
+def _failed_attempt_evidence(
+    error_payload: dict[str, Any], *, billable_risk: bool
+) -> dict[str, object]:
+    """What one failed attempt is known to have used (issue #232).
+
+    An OpenAI-compatible error body rarely carries usage, but when it does
+    that is actual billing evidence and beats any estimate.
+    """
+
+    usage = error_payload.get("usage")
+    usage_fields = usage if isinstance(usage, dict) else {}
+    return {
+        "billable_risk": billable_risk,
+        "input_tokens": as_int(usage_fields.get("input_tokens")),
+        "output_tokens": as_int(usage_fields.get("output_tokens")),
+    }
+
+
+def extract_failed_attempts(payload: dict[str, Any]) -> list[dict[str, object]]:
+    attempts = payload.get("_lotus_failed_attempts")
+    return (
+        [attempt for attempt in attempts if isinstance(attempt, dict)]
+        if isinstance(attempts, list)
+        else []
+    )
+
+
 def as_str(value: object) -> str | None:
     return value if isinstance(value, str) and value.strip() else None
 
@@ -573,12 +630,25 @@ def build_structured_output(
         output_tokens=output_tokens,
         model_revision=configured_model_id,
     )
+    structured_billing = settle_attempt_billing(
+        failed_attempts=extract_failed_attempts(response_payload),
+        posture=request.failed_attempt_cost_posture,
+        final_cost=structured_cost,
+        final_input_tokens=input_tokens,
+        max_output_tokens=request.max_output_tokens,
+        model_revision=configured_model_id,
+    )
     structured_output.update(
         {
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "total_tokens": total_tokens,
-            "estimated_cost_usd": structured_cost.estimated_cost_usd,
+            # The attempt-summed figure (issue #232) - the same number the
+            # budget envelope records. The composition detail (basis, counts)
+            # lives on the response and audit record: the echo's SHAPE is
+            # pinned by the captured pack output contracts, so new keys here
+            # would fail output validation for every family.
+            "estimated_cost_usd": structured_billing.estimated_cost_usd,
             "rate_card_ref": structured_cost.rate_card_ref,
             "cost_posture": structured_cost.cost_posture,
         }

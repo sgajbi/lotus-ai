@@ -98,6 +98,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         ),
         "runtime_profile": settings.runtime_profile,
         "provider_retry_limit": settings.provider_retry_limit,
+        "provider_failed_attempt_cost_posture": settings.provider_failed_attempt_cost_posture,
         "provider_retention_confirmation_store_mode": (
             settings.provider_retention_confirmation_store_mode
         ),

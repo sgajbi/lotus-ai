@@ -23,6 +23,7 @@ ranges for the same scope key - the write-side invariant every producer
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
@@ -48,6 +49,102 @@ class UsageCostEstimate:
 
 
 UNKNOWN_COST = UsageCostEstimate(estimated_cost_usd=None, rate_card_ref=None)
+
+FailedAttemptCostBasis = Literal["ACTUAL_USAGE", "CONSERVATIVE_ESTIMATE", "MIXED", "NONE"]
+
+
+@dataclass(frozen=True)
+class AttemptBillingSettlement:
+    """Execution-level billing across every attempt (issue #232).
+
+    ``estimated_cost_usd`` is the figure spend recording and the budget
+    envelope use: the served attempt plus every billed failed attempt, so
+    recorded spend cannot understate the real bill by the retry factor.
+    """
+
+    estimated_cost_usd: float | None
+    failed_attempt_cost_usd: float | None
+    failed_attempt_cost_basis: FailedAttemptCostBasis | None
+    billed_attempt_count: int
+
+
+def settle_attempt_billing(
+    *,
+    failed_attempts: list[dict[str, object]],
+    posture: str,
+    final_cost: UsageCostEstimate,
+    final_input_tokens: int | None,
+    max_output_tokens: int,
+    model_revision: str | None = None,
+) -> AttemptBillingSettlement:
+    """Price the failed attempts behind a served response (issue #232).
+
+    Evidence order per failed attempt: provider-reported usage on the failed
+    attempt prices as ACTUAL_USAGE; otherwise, under the conservative posture,
+    a billable-risk failure (timeout, 5xx - the provider may have generated
+    and billed) prices at the final attempt's input tokens - the identical
+    request body - plus the max_output_tokens ceiling (CONSERVATIVE_ESTIMATE).
+    Non-billable failures (429 refused before generation, connection-level
+    errors) and unknown-usage failures under actual_only are never priced.
+    """
+
+    failed_total = 0.0
+    actual_count = 0
+    conservative_count = 0
+    for attempt in failed_attempts:
+        input_tokens = attempt.get("input_tokens")
+        output_tokens = attempt.get("output_tokens")
+        if isinstance(input_tokens, int) and isinstance(output_tokens, int):
+            attempt_cost = estimate_live_text_cost(
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                model_revision=model_revision,
+            )
+            if attempt_cost.estimated_cost_usd is not None:
+                failed_total += attempt_cost.estimated_cost_usd
+                actual_count += 1
+            continue
+        if (
+            posture == "conservative"
+            and attempt.get("billable_risk") is True
+            and final_input_tokens is not None
+        ):
+            attempt_cost = estimate_live_text_cost(
+                input_tokens=final_input_tokens,
+                output_tokens=max_output_tokens,
+                model_revision=model_revision,
+            )
+            if attempt_cost.estimated_cost_usd is not None:
+                failed_total += attempt_cost.estimated_cost_usd
+                conservative_count += 1
+
+    billed_failed = actual_count + conservative_count
+    if billed_failed == 0:
+        return AttemptBillingSettlement(
+            estimated_cost_usd=final_cost.estimated_cost_usd,
+            failed_attempt_cost_usd=None,
+            failed_attempt_cost_basis="NONE" if failed_attempts else None,
+            billed_attempt_count=1,
+        )
+    basis: FailedAttemptCostBasis
+    if actual_count and conservative_count:
+        basis = "MIXED"
+    elif actual_count:
+        basis = "ACTUAL_USAGE"
+    else:
+        basis = "CONSERVATIVE_ESTIMATE"
+    failed_cost = round(failed_total, 8)
+    total = (
+        round(final_cost.estimated_cost_usd + failed_cost, 8)
+        if final_cost.estimated_cost_usd is not None
+        else failed_cost
+    )
+    return AttemptBillingSettlement(
+        estimated_cost_usd=total,
+        failed_attempt_cost_usd=failed_cost,
+        failed_attempt_cost_basis=basis,
+        billed_attempt_count=1 + billed_failed,
+    )
 
 
 def save_rate_card(card: RateCard) -> None:
