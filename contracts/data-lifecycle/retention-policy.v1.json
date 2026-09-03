@@ -113,21 +113,17 @@
     },
     {
       "family_id": "retrieval_shared_reference",
-      "purpose": "Ingested platform reference sources, documents, chunks, versions and ingestion/index jobs shared across tenants.",
+      "purpose": "Superseded retrieval document versions and completed ingestion-job records: the ageable history behind the live reference index.",
       "tables": [
-        "retrieval_sources",
-        "retrieval_documents",
-        "retrieval_chunks",
-        "retrieval_index_jobs",
         "retrieval_document_versions",
         "retrieval_ingestion_jobs"
       ],
       "retention_days": 1095,
-      "retention_basis": "Shared reference content is versioned: superseded versions expire after three years; current versions are re-ingested, not retained past supersession. No tenant erasure - the content is not tenant-derived.",
+      "retention_basis": "Superseded versions expire after three years; ingestion-job records age with them. Current versions and the live index are current state, declared separately. No tenant erasure - the content is not tenant-derived.",
       "legal_hold_supported": true,
       "erasure_key": "shared_reference",
       "evidence_class": "reference_content",
-      "enforcement": "DECLARED_ONLY"
+      "enforcement": "ENFORCED"
     },
     {
       "family_id": "governed_registry_configuration",
@@ -177,6 +173,22 @@
       "erasure_key": "none",
       "evidence_class": "business_run_evidence",
       "enforcement": "ENFORCED"
+    },
+    {
+      "family_id": "retrieval_current_reference",
+      "purpose": "The live reference index: sources, current documents, chunks and index jobs.",
+      "tables": [
+        "retrieval_sources",
+        "retrieval_documents",
+        "retrieval_chunks",
+        "retrieval_index_jobs"
+      ],
+      "retention_days": null,
+      "retention_basis": "Current-state index content, superseded in place through re-ingestion; these rows carry no timestamps to age on, and their superseded history lives (and expires) in retrieval_document_versions. Time-bounding them would claim a mechanism the store cannot honour.",
+      "legal_hold_supported": true,
+      "erasure_key": "shared_reference",
+      "evidence_class": "reference_content",
+      "enforcement": "NOT_TIME_BOUNDED"
     }
   ]
 }

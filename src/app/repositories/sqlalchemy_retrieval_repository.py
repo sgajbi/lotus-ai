@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from collections import defaultdict
 from pathlib import Path
 from typing import Callable
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import delete, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.contracts.retrieval import (
@@ -98,6 +100,30 @@ class SqlAlchemyRetrievalRepository(SqlAlchemyRepositoryBase):
                 )
             ).all()
             return [self._to_document_version_descriptor(version) for version in versions]
+
+    def delete_document_versions(self, version_ids: Sequence[str]) -> int:
+        if not version_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(RetrievalDocumentVersionModel).where(
+                    RetrievalDocumentVersionModel.version_id.in_(list(version_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
+
+    def delete_ingestion_jobs(self, job_ids: Sequence[str]) -> int:
+        if not job_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(RetrievalIngestionJobModel).where(
+                    RetrievalIngestionJobModel.job_id.in_(list(job_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def save_document_version(self, descriptor: RetrievalDocumentVersionDescriptor) -> None:
         model = RetrievalDocumentVersionModel(

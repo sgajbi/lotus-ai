@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from copy import deepcopy
 
 from app.contracts.retrieval import (
@@ -304,6 +306,18 @@ class InMemoryRetrievalRepository(RetrievalRepository):
             key=lambda version: (version.created_at, version.version_id),
             reverse=True,
         )
+
+    def delete_document_versions(self, version_ids: Sequence[str]) -> int:
+        wanted = set(version_ids)
+        before = len(self._document_versions)
+        self._document_versions = [v for v in self._document_versions if v.version_id not in wanted]
+        return before - len(self._document_versions)
+
+    def delete_ingestion_jobs(self, job_ids: Sequence[str]) -> int:
+        wanted = set(job_ids)
+        before = len(self._ingestion_jobs)
+        self._ingestion_jobs = [j for j in self._ingestion_jobs if j.job_id not in wanted]
+        return before - len(self._ingestion_jobs)
 
     def save_document_version(self, descriptor: RetrievalDocumentVersionDescriptor) -> None:
         self._document_versions = [

@@ -44,6 +44,7 @@ from app.services.workflow_pack_queue_event_store import get_workflow_pack_queue
 from app.workflow_pack_execution_idempotency.store import (
     get_workflow_pack_execution_idempotency_store,
 )
+from app.services.retrieval_store import get_retrieval_repository
 from app.services.workflow_pack_admission_lease_store import (
     get_workflow_pack_admission_lease_repository,
 )
@@ -455,6 +456,37 @@ def _expire_evaluation_case_content(
     )
 
 
+def _expire_retrieval_reference_history(
+    family: RetentionFamily, cutoff: datetime
+) -> tuple[list[str], str]:
+    """Superseded version history and ingestion-job records past retention.
+
+    Only SUPERSEDED versions age out - the current version of a document is
+    live reference state and never expired by lifecycle, whatever its age.
+    """
+
+    repository = get_retrieval_repository()
+    deleted: list[str] = []
+    expired_versions = [
+        version.version_id
+        for version in repository.list_document_versions()
+        if version.lifecycle_status.value == "SUPERSEDED" and _is_before(version.created_at, cutoff)
+    ]
+    version_count = repository.delete_document_versions(expired_versions) if expired_versions else 0
+    deleted.extend(f"retrieval_document_versions:{vid}" for vid in expired_versions)
+    expired_jobs = [
+        job.job_id
+        for job in repository.list_ingestion_jobs()
+        if _is_before(job.requested_at, cutoff)
+    ]
+    job_count = repository.delete_ingestion_jobs(expired_jobs) if expired_jobs else 0
+    deleted.extend(f"retrieval_ingestion_jobs:{jid}" for jid in expired_jobs)
+    return deleted, (
+        f"expired {version_count} superseded document versions and {job_count} ingestion "
+        "jobs; current versions are live reference state and never expired"
+    )
+
+
 _ENFORCED_FAMILY_HANDLERS = {
     "audit_evidence": _expire_audit_evidence,
     "control_plane_evidence": _expire_control_plane_evidence,
@@ -462,6 +494,7 @@ _ENFORCED_FAMILY_HANDLERS = {
     "artifact_content": _expire_artifact_content,
     "evaluation_approval_evidence": _expire_evaluation_approval_evidence,
     "evaluation_case_content": _expire_evaluation_case_content,
+    "retrieval_shared_reference": _expire_retrieval_reference_history,
     "async_runtime_content": _expire_async_runtime_content,
     "transient_operational_leases": _expire_transient_leases,
 }
