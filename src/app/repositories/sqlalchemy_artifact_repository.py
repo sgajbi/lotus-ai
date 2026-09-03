@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.contracts.artifacts import ArtifactLifecycleStatus, ArtifactStorageBackend
 from app.db.models import ArtifactMetadataModel
@@ -29,6 +31,18 @@ class SqlAlchemyArtifactRepository(SqlAlchemyRepositoryBase, ArtifactRepository)
             if model is None:
                 return None
             return self._to_record(model)
+
+    def delete_artifacts(self, artifact_ids: Sequence[str]) -> int:
+        if not artifact_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(ArtifactMetadataModel).where(
+                    ArtifactMetadataModel.artifact_id.in_(list(artifact_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def save_artifact(self, record: ArtifactRecord) -> None:
         model = ArtifactMetadataModel(

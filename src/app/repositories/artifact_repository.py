@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -32,6 +34,9 @@ class ArtifactRepository(Protocol):
 
     def get_artifact(self, *, artifact_id: str) -> ArtifactRecord | None:
         """Fetch one persisted artifact metadata record."""
+
+    def delete_artifacts(self, artifact_ids: Sequence[str]) -> int:
+        """Delete artifact metadata by id (lifecycle engine, issue #158 S2c)."""
 
     def save_artifact(self, record: ArtifactRecord) -> None:
         """Persist one artifact metadata record."""

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.db.models import EvaluationCaseResultModel, EvaluationRunAttemptModel, EvaluationRunModel
 from app.repositories.evaluation_runtime_repository import (
@@ -83,6 +85,48 @@ class SqlAlchemyEvaluationRuntimeRepository(SqlAlchemyRepositoryBase, Evaluation
             if model is None:
                 return None
             return self._to_attempt_record(model)
+
+    def delete_runs_with_dependents(self, run_ids: Sequence[str]) -> tuple[int, int, int]:
+        if not run_ids:
+            return 0, 0, 0
+        ids = list(run_ids)
+        with self._session_factory() as session:
+            cases = session.execute(
+                delete(EvaluationCaseResultModel).where(EvaluationCaseResultModel.run_id.in_(ids))
+            )
+            attempts = session.execute(
+                delete(EvaluationRunAttemptModel).where(EvaluationRunAttemptModel.run_id.in_(ids))
+            )
+            runs = session.execute(
+                delete(EvaluationRunModel).where(EvaluationRunModel.run_id.in_(ids))
+            )
+            session.commit()
+            return (
+                int(getattr(runs, "rowcount", 0) or 0),
+                int(getattr(attempts, "rowcount", 0) or 0),
+                int(getattr(cases, "rowcount", 0) or 0),
+            )
+
+    def list_all_case_results(self, *, limit: int) -> list[EvaluationCaseResultRecord]:
+        with self._session_factory() as session:
+            models = session.scalars(
+                select(EvaluationCaseResultModel)
+                .order_by(EvaluationCaseResultModel.recorded_at.desc())
+                .limit(limit)
+            ).all()
+            return [self._to_case_result_record(model) for model in models]
+
+    def delete_case_results(self, case_result_ids: Sequence[str]) -> int:
+        if not case_result_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(EvaluationCaseResultModel).where(
+                    EvaluationCaseResultModel.case_result_id.in_(list(case_result_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def list_case_results(self, *, run_id: str) -> list[EvaluationCaseResultRecord]:
         with self._session_factory() as session:

@@ -36,6 +36,14 @@ from app.services.workflow_pack_registry_store import get_workflow_pack_registry
 from app.provider_retention_confirmations.store import (
     get_provider_retention_confirmation_store,
 )
+from app.services.artifact_store import get_artifact_repository
+from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+from app.services.workflow_pack_run_store import get_workflow_pack_run_store
+from app.services.workflow_pack_task_flow_store import get_workflow_pack_task_flow_store
+from app.services.workflow_pack_queue_event_store import get_workflow_pack_queue_event_store
+from app.workflow_pack_execution_idempotency.store import (
+    get_workflow_pack_execution_idempotency_store,
+)
 from app.services.workflow_pack_admission_lease_store import (
     get_workflow_pack_admission_lease_repository,
 )
@@ -313,9 +321,147 @@ def _expire_control_plane_evidence(
     )
 
 
+def _held_tenants(family: RetentionFamily) -> set[str]:
+    return {
+        hold.key_value
+        for hold in get_audit_store().list_active_legal_holds(family_id=family.family_id)
+        if hold.key_type == "tenant"
+    }
+
+
+def _expire_workflow_run_records(
+    family: RetentionFamily, cutoff: datetime
+) -> tuple[list[str], str]:
+    """Business run records past retention, honouring tenant-scoped holds.
+
+    Run events and flow checkpoints cascade with their parent - an event of a
+    held run stays regardless of its own age. Idempotency claims and queue
+    events age independently under the same tenant holds.
+    """
+
+    held = _held_tenants(family)
+    deleted: list[str] = []
+    details: list[str] = []
+
+    runs = get_workflow_pack_run_store()
+    expired_runs = [
+        record.run_id
+        for record in runs.list_runs(limit=_CANDIDATE_BATCH_LIMIT)
+        if _is_before(record.created_at, cutoff)
+        and (record.tenant_id is None or record.tenant_id not in held)
+    ]
+    if expired_runs:
+        run_count, event_count = runs.delete_runs_with_events(expired_runs)
+        deleted.extend(f"workflow_pack_runs:{run_id}" for run_id in expired_runs)
+        details.append(f"runs={run_count} run_events={event_count}")
+
+    flows = get_workflow_pack_task_flow_store()
+    expired_flows = [
+        record.descriptor.task_flow_id
+        for record in flows.list_task_flows()
+        if _is_before(record.descriptor.created_at, cutoff)
+        and (record.descriptor.tenant_id is None or record.descriptor.tenant_id not in held)
+    ]
+    if expired_flows:
+        flow_count, checkpoint_count = flows.delete_task_flows_with_checkpoints(expired_flows)
+        deleted.extend(f"workflow_pack_task_flows:{flow_id}" for flow_id in expired_flows)
+        details.append(f"task_flows={flow_count} checkpoints={checkpoint_count}")
+
+    queue_events = get_workflow_pack_queue_event_store()
+    expired_queue_events = [
+        record.descriptor.event_id
+        for record in queue_events.list_events(limit=_CANDIDATE_BATCH_LIMIT)
+        if _is_before(record.descriptor.recorded_at, cutoff)
+        and (record.descriptor.tenant_id is None or record.descriptor.tenant_id not in held)
+    ]
+    if expired_queue_events:
+        count = queue_events.delete_events(expired_queue_events)
+        deleted.extend(
+            f"workflow_pack_queue_events:{event_id}" for event_id in expired_queue_events
+        )
+        details.append(f"queue_events={count}")
+
+    idempotency = get_workflow_pack_execution_idempotency_store()
+    expired_idempotency = [
+        record.record_id
+        for record in idempotency.list_records(limit=_CANDIDATE_BATCH_LIMIT)
+        if _is_before(record.created_at, cutoff)
+        and (record.tenant_scope is None or record.tenant_scope not in held)
+    ]
+    if expired_idempotency:
+        count = idempotency.delete_records(expired_idempotency)
+        deleted.extend(
+            f"workflow_pack_execution_idempotency:{record_id}" for record_id in expired_idempotency
+        )
+        details.append(f"idempotency={count}")
+
+    detail = "; ".join(details) if details else "nothing past retention"
+    return deleted, (
+        f"expired workflow run records ({detail}); held tenants and cascading "
+        "children of held runs are untouched"
+    )
+
+
+def _expire_artifact_content(family: RetentionFamily, cutoff: datetime) -> tuple[list[str], str]:
+    """Aged artifacts, except rows retained for review (live obligation)."""
+
+    repository = get_artifact_repository()
+    expired = [
+        record.artifact_id
+        for record in repository.list_artifacts()
+        if _is_before(record.created_at, cutoff)
+        and record.retention_posture != "retained_for_review"
+    ]
+    count = repository.delete_artifacts(expired) if expired else 0
+    return [f"artifact_metadata:{artifact_id}" for artifact_id in expired], (
+        f"expired {count} artifact metadata rows; retained_for_review rows are never expired"
+    )
+
+
+def _expire_evaluation_approval_evidence(
+    family: RetentionFamily, cutoff: datetime
+) -> tuple[list[str], str]:
+    """Evaluation runs past retention, cascading attempts and any case rows."""
+
+    repository = get_evaluation_runtime_store()
+    expired_runs = [
+        record.run_id
+        for record in repository.list_runs()
+        if _is_before(record.submitted_at, cutoff)
+    ]
+    runs, attempts, cases = (
+        repository.delete_runs_with_dependents(expired_runs) if expired_runs else (0, 0, 0)
+    )
+    return [f"evaluation_runs:{run_id}" for run_id in expired_runs], (
+        f"expired {runs} evaluation runs with {attempts} attempts and {cases} case rows"
+    )
+
+
+def _expire_evaluation_case_content(
+    family: RetentionFamily, cutoff: datetime
+) -> tuple[list[str], str]:
+    """Bulky per-case content ages on its own instant; the run verdict stays."""
+
+    repository = get_evaluation_runtime_store()
+    expired = [
+        record.case_result_id
+        for record in repository.list_all_case_results(limit=_CANDIDATE_BATCH_LIMIT)
+        if _is_before(record.recorded_at, cutoff)
+    ]
+    count = repository.delete_case_results(expired) if expired else 0
+    return [f"evaluation_case_results:{case_id}" for case_id in expired], (
+        f"expired {count} evaluation case rows; run verdicts remain with the "
+        "approval evidence family"
+    )
+
+
 _ENFORCED_FAMILY_HANDLERS = {
     "audit_evidence": _expire_audit_evidence,
     "control_plane_evidence": _expire_control_plane_evidence,
+    "workflow_run_records": _expire_workflow_run_records,
+    "artifact_content": _expire_artifact_content,
+    "evaluation_approval_evidence": _expire_evaluation_approval_evidence,
+    "evaluation_case_content": _expire_evaluation_case_content,
     "async_runtime_content": _expire_async_runtime_content,
     "transient_operational_leases": _expire_transient_leases,
 }

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
@@ -68,3 +70,11 @@ class WorkflowPackExecutionIdempotencyRepository(Protocol):
     ) -> WorkflowPackExecutionIdempotencyRecord: ...
 
     def release(self, *, record_id: str, owner_token: str) -> None: ...
+
+    def list_records(self, *, limit: int) -> list[WorkflowPackExecutionIdempotencyRecord]:
+        """List records, newest first (lifecycle engine read)."""
+        ...
+
+    def delete_records(self, record_ids: Sequence[str]) -> int:
+        """Delete idempotency records by id (lifecycle engine, issue #158 S2c)."""
+        ...

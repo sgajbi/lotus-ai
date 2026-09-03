@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.contracts.artifacts import ArtifactDescriptor
 from app.contracts.evidence import ExecutionEvidenceDescriptor
@@ -133,6 +135,23 @@ class SqlAlchemyWorkflowPackRunRepository(SqlAlchemyRepositoryBase, WorkflowPack
         with self._session_factory() as session:
             session.merge(model)
             session.commit()
+
+    def delete_runs_with_events(self, run_ids: Sequence[str]) -> tuple[int, int]:
+        if not run_ids:
+            return 0, 0
+        ids = list(run_ids)
+        with self._session_factory() as session:
+            events = session.execute(
+                delete(WorkflowPackRunEventModel).where(WorkflowPackRunEventModel.run_id.in_(ids))
+            )
+            runs = session.execute(
+                delete(WorkflowPackRunModel).where(WorkflowPackRunModel.run_id.in_(ids))
+            )
+            session.commit()
+            return (
+                int(getattr(runs, "rowcount", 0) or 0),
+                int(getattr(events, "rowcount", 0) or 0),
+            )
 
     def list_events(self, *, run_id: str) -> list[WorkflowPackRunEventRecord]:
         with self._session_factory() as session:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -41,6 +43,10 @@ class WorkflowPackTaskFlowRepository(Protocol):
     def get_task_flow(self, *, task_flow_id: str) -> WorkflowPackTaskFlowRecord | None: ...
 
     def save_task_flow(self, record: WorkflowPackTaskFlowRecord) -> None: ...
+
+    def delete_task_flows_with_checkpoints(self, task_flow_ids: Sequence[str]) -> tuple[int, int]:
+        """Delete task flows and their checkpoints (lifecycle engine, issue #158 S2c)."""
+        ...
 
     def list_checkpoints(
         self, *, task_flow_id: str

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -21,3 +23,7 @@ class WorkflowPackQueueEventRepository(Protocol):
     ) -> list[WorkflowPackQueueEventRecord]: ...
 
     def save_event(self, record: WorkflowPackQueueEventRecord) -> None: ...
+
+    def delete_events(self, event_ids: Sequence[str]) -> int:
+        """Delete queue events by id (lifecycle engine, issue #158 S2c)."""
+        ...

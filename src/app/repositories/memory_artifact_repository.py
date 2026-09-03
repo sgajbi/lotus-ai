@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from copy import deepcopy
 
 from app.repositories.artifact_repository import ArtifactRecord, ArtifactRepository
@@ -22,6 +24,13 @@ class InMemoryArtifactRepository(ArtifactRepository):
         if record is None:
             return None
         return deepcopy(record)
+
+    def delete_artifacts(self, artifact_ids: Sequence[str]) -> int:
+        deleted = 0
+        for artifact_id in artifact_ids:
+            if self._records.pop(artifact_id, None) is not None:
+                deleted += 1
+        return deleted
 
     def save_artifact(self, record: ArtifactRecord) -> None:
         self._records[record.artifact_id] = deepcopy(record)

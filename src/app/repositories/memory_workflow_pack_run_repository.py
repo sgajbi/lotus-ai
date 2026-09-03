@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from copy import deepcopy
 
 from app.repositories.workflow_pack_run_repository import (
@@ -65,6 +67,14 @@ class InMemoryWorkflowPackRunRepository(WorkflowPackRunRepository):
 
     def save_run(self, record: WorkflowPackRunRecord) -> None:
         self._runs[record.run_id] = deepcopy(record)
+
+    def delete_runs_with_events(self, run_ids: Sequence[str]) -> tuple[int, int]:
+        runs = events = 0
+        for run_id in run_ids:
+            if self._runs.pop(run_id, None) is not None:
+                runs += 1
+            events += len(self._events.pop(run_id, []))
+        return runs, events
 
     def list_events(self, *, run_id: str) -> list[WorkflowPackRunEventRecord]:
         events = self._events.get(run_id, [])

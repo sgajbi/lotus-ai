@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from dataclasses import replace
 from threading import Lock
 
@@ -74,6 +76,21 @@ class InMemoryWorkflowPackExecutionIdempotencyRepository:
             )
             self._records[record_id] = indeterminate
             return indeterminate
+
+    def list_records(self, *, limit: int) -> list[WorkflowPackExecutionIdempotencyRecord]:
+        with self._lock:
+            records = sorted(
+                self._records.values(), key=lambda record: record.created_at, reverse=True
+            )
+            return list(records[:limit])
+
+    def delete_records(self, record_ids: Sequence[str]) -> int:
+        with self._lock:
+            deleted = 0
+            for record_id in record_ids:
+                if self._records.pop(record_id, None) is not None:
+                    deleted += 1
+            return deleted
 
     def release(self, *, record_id: str, owner_token: str) -> None:
         with self._lock:
