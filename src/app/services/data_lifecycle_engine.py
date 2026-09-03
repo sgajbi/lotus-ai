@@ -28,6 +28,14 @@ from app.contracts.audit_access import INTERNAL_AGGREGATE_AUDIT_SCOPE
 from app.services.audit_store import get_audit_store
 from app.services.async_runtime_store import get_async_runtime_store
 from app.services.data_lifecycle_policy import RetentionFamily, load_retention_policy
+from app.services.kill_switch_store import get_kill_switch_repository
+from app.services.model_catalogue_store import get_model_catalogue_repository
+from app.services.prompt_store import get_prompt_repository
+from app.services.provider_operations_store import get_provider_operations_store
+from app.services.workflow_pack_registry_store import get_workflow_pack_registry_store
+from app.provider_retention_confirmations.store import (
+    get_provider_retention_confirmation_store,
+)
 from app.services.workflow_pack_admission_lease_store import (
     get_workflow_pack_admission_lease_repository,
 )
@@ -175,8 +183,139 @@ def _expire_transient_leases(family: RetentionFamily, cutoff: datetime) -> tuple
     )
 
 
+def _expire_control_plane_evidence(
+    family: RetentionFamily, cutoff: datetime
+) -> tuple[list[str], str]:
+    """Control-plane evidence past retention, with three protective predicates.
+
+    An ENFORCING kill switch is current control state, never expired; a
+    PENDING governed action is a live approval intent, never expired; a drift
+    observation ages on its LAST observation, so a still-recurring drift is
+    never expired. Deleted ids are table-prefixed so the digest cannot
+    collide across tables within the one family event.
+    """
+
+    audit = get_audit_store()
+    ops = get_provider_operations_store()
+    prompts = get_prompt_repository()
+    async_runtime = get_async_runtime_store()
+    kill_switches = get_kill_switch_repository()
+    registry = get_workflow_pack_registry_store()
+    catalogue = get_model_catalogue_repository()
+    confirmations = get_provider_retention_confirmation_store()
+
+    deleted: list[str] = []
+    details: list[str] = []
+
+    def _expire(table: str, rows: list[tuple[str, str]], delete_fn: object) -> None:
+        expired = [pk for pk, instant in rows if _is_before(instant, cutoff)]
+        if expired:
+            count = delete_fn(expired)  # type: ignore[operator]
+            deleted.extend(f"{table}:{pk}" for pk in expired)
+            details.append(f"{table}={count}")
+
+    _expire(
+        "audit_access_events",
+        [
+            (e.event_id, e.recorded_at)
+            for e in audit.list_access_events(limit=_CANDIDATE_BATCH_LIMIT)
+        ],
+        audit.delete_access_events,
+    )
+    _expire(
+        "data_lifecycle_events",
+        [
+            (e.event_id, e.recorded_at)
+            for e in audit.list_lifecycle_events(limit=_CANDIDATE_BATCH_LIMIT)
+        ],
+        audit.delete_lifecycle_events,
+    )
+    _expire(
+        "provider_operations_events",
+        [
+            (e.event_id, e.recorded_at)
+            for e in ops.list_operations_events(limit=_CANDIDATE_BATCH_LIMIT)
+        ],
+        ops.delete_operations_events,
+    )
+    _expire(
+        "provider_governed_actions",
+        [
+            (a.action_id, a.requested_at)
+            for a in ops.list_governed_actions(
+                status=None, target=None, limit=_CANDIDATE_BATCH_LIMIT
+            )
+            if a.status.value != "PENDING"
+        ],
+        ops.delete_governed_actions,
+    )
+    _expire(
+        "prompt_rollout_events",
+        [
+            (e.event_id, e.recorded_at)
+            for e in prompts.list_prompt_rollout_events(limit=_CANDIDATE_BATCH_LIMIT)
+        ],
+        prompts.delete_prompt_rollout_events,
+    )
+    _expire(
+        "async_control_events",
+        [
+            (e.event_id, e.recorded_at)
+            for e in async_runtime.list_control_events(limit=_CANDIDATE_BATCH_LIMIT)
+        ],
+        async_runtime.delete_control_events,
+    )
+    _expire(
+        "kill_switch_activations",
+        [
+            (a.switch_id, a.activated_at)
+            for a in kill_switches.list_activations()
+            if a.cleared_at is not None or a.expiry_recorded_at is not None
+        ],
+        kill_switches.delete_activations,
+    )
+    _expire(
+        "workflow_pack_control_events",
+        [
+            (e.event_id, e.recorded_at)
+            for e in registry.list_control_events(limit=_CANDIDATE_BATCH_LIMIT)
+        ],
+        registry.delete_control_events,
+    )
+    _expire(
+        "model_catalogue_lifecycle_events",
+        [
+            (e.event_id, e.recorded_at)
+            for e in catalogue.list_all_lifecycle_events(limit=_CANDIDATE_BATCH_LIMIT)
+        ],
+        catalogue.delete_lifecycle_events,
+    )
+    _expire(
+        "model_revision_drift_observations",
+        [
+            (o.observation_id, o.last_observed_at)
+            for o in catalogue.list_all_drift_observations(limit=_CANDIDATE_BATCH_LIMIT)
+        ],
+        catalogue.delete_drift_observations,
+    )
+    _expire(
+        "provider_retention_confirmations",
+        [
+            (c.envelope.claims.confirmation_id, c.envelope.claims.issued_at_utc)
+            for c in confirmations.list_confirmations(limit=_CANDIDATE_BATCH_LIMIT)
+        ],
+        confirmations.delete_confirmations,
+    )
+    detail = "; ".join(details) if details else "nothing past retention"
+    return deleted, (
+        f"expired control-plane evidence ({detail}); enforcing switches, pending "
+        "governed actions and recently-observed drift are never expired"
+    )
+
+
 _ENFORCED_FAMILY_HANDLERS = {
     "audit_evidence": _expire_audit_evidence,
+    "control_plane_evidence": _expire_control_plane_evidence,
     "async_runtime_content": _expire_async_runtime_content,
     "transient_operational_leases": _expire_transient_leases,
 }

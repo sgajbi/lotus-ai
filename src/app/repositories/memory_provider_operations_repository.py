@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from copy import deepcopy
 
 from app.contracts.providers import (
@@ -171,6 +173,19 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
 
     def list_operations_events(self, *, limit: int) -> list[ProviderOperationsEventRecord]:
         return [deepcopy(record) for record in self._event_records[:limit]]
+
+    def delete_operations_events(self, event_ids: Sequence[str]) -> int:
+        wanted = set(event_ids)
+        before = len(self._event_records)
+        self._event_records = [r for r in self._event_records if r.event_id not in wanted]
+        return before - len(self._event_records)
+
+    def delete_governed_actions(self, action_ids: Sequence[str]) -> int:
+        deleted = 0
+        for action_id in action_ids:
+            if self._governed_actions.pop(action_id, None) is not None:
+                deleted += 1
+        return deleted
 
     def get_governed_action(self, action_id: str) -> GovernedActionRecord | None:
         record = self._governed_actions.get(action_id)

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
@@ -62,6 +64,18 @@ class SqlAlchemyWorkflowPackRegistryRepository(
         with self._session_factory() as session:
             session.merge(self._build_registration_model(registration))
             session.commit()
+
+    def delete_control_events(self, event_ids: Sequence[str]) -> int:
+        if not event_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(WorkflowPackControlEventModel).where(
+                    WorkflowPackControlEventModel.event_id.in_(list(event_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def list_control_events(
         self,

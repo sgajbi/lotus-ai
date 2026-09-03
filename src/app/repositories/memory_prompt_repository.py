@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from copy import deepcopy
 
 from app.contracts.prompts import (
@@ -60,6 +62,12 @@ class InMemoryPromptRepository(PromptRepository):
         if prompt is None:
             return None
         return deepcopy(prompt)
+
+    def delete_prompt_rollout_events(self, event_ids: Sequence[str]) -> int:
+        wanted = set(event_ids)
+        before = len(self._rollout_events)
+        self._rollout_events = [r for r in self._rollout_events if r.event_id not in wanted]
+        return before - len(self._rollout_events)
 
     def list_prompt_rollout_states(self) -> list[PromptRolloutStateRecord]:
         states = list(self._rollout_states.values())

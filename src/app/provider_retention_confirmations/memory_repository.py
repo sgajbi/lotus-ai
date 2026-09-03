@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from app.provider_retention_confirmations.repository import (
     ProviderRetentionConfirmationConflictError,
     ProviderRetentionConfirmationRecord,
@@ -21,6 +23,26 @@ class InMemoryProviderRetentionConfirmationRepository:
     ) -> ProviderRetentionConfirmationRecord | None:
         idempotency_key = self._idempotency_key_by_provider_ref.get(provider_confirmation_ref)
         return self._records.get(idempotency_key) if idempotency_key is not None else None
+
+    def list_confirmations(self, *, limit: int) -> list[ProviderRetentionConfirmationRecord]:
+        records = sorted(
+            self._records.values(),
+            key=lambda record: record.envelope.claims.issued_at_utc,
+            reverse=True,
+        )
+        return records[:limit]
+
+    def delete_confirmations(self, confirmation_ids: Sequence[str]) -> int:
+        wanted = set(confirmation_ids)
+        deleted = 0
+        for idempotency_key, record in list(self._records.items()):
+            if record.envelope.claims.confirmation_id in wanted:
+                self._records.pop(idempotency_key, None)
+                self._idempotency_key_by_provider_ref.pop(
+                    record.envelope.claims.provider_confirmation_ref, None
+                )
+                deleted += 1
+        return deleted
 
     def save(
         self, record: ProviderRetentionConfirmationRecord

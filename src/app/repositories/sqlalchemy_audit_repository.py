@@ -197,6 +197,20 @@ class SqlAlchemyAuditRepository(SqlAlchemyRepositoryBase):
                 DataLegalHoldRecord.model_validate(model, from_attributes=True) for model in models
             ]
 
+    def delete_access_events(self, event_ids: Sequence[str]) -> int:
+        return self._delete_by_ids(AuditAccessEventModel.event_id, event_ids)
+
+    def delete_lifecycle_events(self, event_ids: Sequence[str]) -> int:
+        return self._delete_by_ids(DataLifecycleEventModel.event_id, event_ids)
+
+    def _delete_by_ids(self, column: object, ids: Sequence[str]) -> int:
+        if not ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(delete(column.class_).where(column.in_(list(ids))))  # type: ignore[attr-defined]
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
+
     def save_access_event(self, event: AuditAccessEvent) -> None:
         model = AuditAccessEventModel(
             event_id=event.event_id,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Sequence
 from typing import Protocol
 
 from app.contracts.access_control import AuthorizationDecision
@@ -154,6 +155,12 @@ class ProviderOperationsRepository(Protocol):
         limit: int,
     ) -> list[GovernedActionRecord]:
         """List governed-action evidence records, newest requested first."""
+
+    def delete_operations_events(self, event_ids: Sequence[str]) -> int:
+        """Delete operations events by id for the lifecycle engine (issue #158, S2b)."""
+
+    def delete_governed_actions(self, action_ids: Sequence[str]) -> int:
+        """Delete non-current governed-action evidence by id (issue #158, S2b)."""
 
     def list_operations_events(self, *, limit: int) -> list[ProviderOperationsEventRecord]:
         """List most recent provider-operations control event records."""

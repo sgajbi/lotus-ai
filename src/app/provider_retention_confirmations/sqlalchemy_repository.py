@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from app.db.models import ProviderRetentionConfirmationModel
@@ -47,6 +49,27 @@ class SqlAlchemyProviderRetentionConfirmationRepository(SqlAlchemyRepositoryBase
                 )
             )
             return self._to_record(model) if model is not None else None
+
+    def list_confirmations(self, *, limit: int) -> list[ProviderRetentionConfirmationRecord]:
+        with self._session_factory() as session:
+            models = session.scalars(
+                select(ProviderRetentionConfirmationModel)
+                .order_by(ProviderRetentionConfirmationModel.recorded_at.desc())
+                .limit(limit)
+            ).all()
+            return [self._to_record(model) for model in models]
+
+    def delete_confirmations(self, confirmation_ids: Sequence[str]) -> int:
+        if not confirmation_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(ProviderRetentionConfirmationModel).where(
+                    ProviderRetentionConfirmationModel.confirmation_id.in_(list(confirmation_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def save(
         self, record: ProviderRetentionConfirmationRecord

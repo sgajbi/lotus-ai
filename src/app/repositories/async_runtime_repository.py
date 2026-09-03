@@ -141,5 +141,8 @@ class AsyncRuntimeRepository(Protocol):
     ) -> list[AsyncRuntimeControlEventRecord]:
         """List recent async control-plane events, optionally filtered by job."""
 
+    def delete_control_events(self, event_ids: Sequence[str]) -> int:
+        """Delete control events by id for the lifecycle engine (issue #158, S2b)."""
+
     def save_control_event(self, record: AsyncRuntimeControlEventRecord) -> None:
         """Persist one async control-plane event."""

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.contracts.model_catalogue import (
     ModelCapabilityDegradation,
@@ -89,6 +91,51 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
                 )
             )
             session.commit()
+
+    def list_all_lifecycle_events(self, *, limit: int) -> list[ModelLifecycleTransitionRecord]:
+        with self._session_factory() as session:
+            models = session.execute(
+                select(ModelCatalogueLifecycleEventModel)
+                .order_by(ModelCatalogueLifecycleEventModel.recorded_at.desc())
+                .limit(limit)
+            ).scalars()
+            return [
+                ModelLifecycleTransitionRecord.model_validate(model, from_attributes=True)
+                for model in models
+            ]
+
+    def delete_lifecycle_events(self, event_ids: Sequence[str]) -> int:
+        if not event_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(ModelCatalogueLifecycleEventModel).where(
+                    ModelCatalogueLifecycleEventModel.event_id.in_(list(event_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
+
+    def list_all_drift_observations(self, *, limit: int) -> list[ModelRevisionDriftObservation]:
+        with self._session_factory() as session:
+            models = session.execute(
+                select(ModelRevisionDriftObservationModel)
+                .order_by(ModelRevisionDriftObservationModel.last_observed_at.desc())
+                .limit(limit)
+            ).scalars()
+            return [self._to_drift_observation(model) for model in models]
+
+    def delete_drift_observations(self, observation_ids: Sequence[str]) -> int:
+        if not observation_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(ModelRevisionDriftObservationModel).where(
+                    ModelRevisionDriftObservationModel.observation_id.in_(list(observation_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def list_lifecycle_events(self, entry_id: str) -> list[ModelLifecycleTransitionRecord]:
         with self._session_factory() as session:

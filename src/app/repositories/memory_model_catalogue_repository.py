@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from app.contracts.model_catalogue import (
     ModelCatalogueEntry,
     ModelLifecycleTransitionRecord,
@@ -25,6 +27,29 @@ class InMemoryModelCatalogueRepository:
 
     def append_lifecycle_event(self, event: ModelLifecycleTransitionRecord) -> None:
         self._lifecycle_events.append(event.model_copy(deep=True))
+
+    def list_all_lifecycle_events(self, *, limit: int) -> list[ModelLifecycleTransitionRecord]:
+        events = sorted(self._lifecycle_events, key=lambda e: e.recorded_at, reverse=True)
+        return [event.model_copy(deep=True) for event in events[:limit]]
+
+    def delete_lifecycle_events(self, event_ids: Sequence[str]) -> int:
+        wanted = set(event_ids)
+        before = len(self._lifecycle_events)
+        self._lifecycle_events = [e for e in self._lifecycle_events if e.event_id not in wanted]
+        return before - len(self._lifecycle_events)
+
+    def list_all_drift_observations(self, *, limit: int) -> list[ModelRevisionDriftObservation]:
+        observations = sorted(
+            self._drift_observations.values(), key=lambda o: o.last_observed_at, reverse=True
+        )
+        return [observation.model_copy(deep=True) for observation in observations[:limit]]
+
+    def delete_drift_observations(self, observation_ids: Sequence[str]) -> int:
+        deleted = 0
+        for observation_id in observation_ids:
+            if self._drift_observations.pop(observation_id, None) is not None:
+                deleted += 1
+        return deleted
 
     def list_lifecycle_events(self, entry_id: str) -> list[ModelLifecycleTransitionRecord]:
         return sorted(
