@@ -458,9 +458,21 @@ def test_routing_posture_names_both_candidates_under_ordered_fallback() -> None:
     # from - one authority, so the read cannot disagree with routing
     # (issue #244, U3).
     assert posture.candidate_universe is not None
+    from app.contracts.model_catalogue import derive_candidate_identity_v2
+
     assert posture.candidate_universe.candidate_entry_ids == [
-        f"{PRIMARY}:gpt-5.4",
-        f"{ALTERNATE}:claude-sonnet-5",
+        derive_candidate_identity_v2(
+            provider_id=PRIMARY,
+            model_family="gpt-5.4",
+            model_revision="gpt-5.4",
+            deployment=None,
+        ),
+        derive_candidate_identity_v2(
+            provider_id=ALTERNATE,
+            model_family="claude-sonnet-5",
+            model_revision="claude-sonnet-5",
+            deployment=None,
+        ),
     ]
     assert posture.candidate_universe.exclusions == []
 

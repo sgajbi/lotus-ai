@@ -381,7 +381,12 @@ class ServingPolicyVersionRecord(BaseModel):
 
     version: int = Field(ge=1, description="Monotonic policy version; highest is operative.")
     ordered_entry_ids: list[str] = Field(
-        description="Catalogue entry ids in governed serving order - order is policy, never ranking."
+        description=(
+            "Serving identities in governed order - order is policy, never ranking. "
+            "Rows written since issue #314 store the CANONICAL candidate identity "
+            "(cand2_...); historical rows keep the v1 row key they were reviewed "
+            "under and are never rewritten - resolution accepts both, by exact key."
+        )
     )
     action: Literal["IDENTITY_ADD", "IDENTITY_REMOVE"] = Field(
         description="What produced this version."

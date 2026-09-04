@@ -28,6 +28,7 @@ from app.contracts.model_catalogue import (
     ModelCatalogueSeedSource,
     ModelLifecycleState,
     ModelRevisionDriftObservation,
+    CANDIDATE_IDENTITY_V2_PREFIX,
     derive_model_catalogue_entry_id,
 )
 from app.contracts.providers import (
@@ -409,6 +410,22 @@ def current_serving_order(
     return order, None
 
 
+def resolve_catalogue_entry_by_identity(identity: str) -> ModelCatalogueEntry | None:
+    """Resolve a serving identity in either representation (issue #314).
+
+    The canonical opaque candidate id (``cand2_...``) resolves through the
+    unique canonical index; anything else is treated as the v1 human-readable
+    row key and resolved by EXACT key lookup - never by parsing. Historical
+    serving-policy versions store v1 identities and must stay
+    reconstructable; new policy rows store the canonical id.
+    """
+
+    repository = get_model_catalogue_repository()
+    if identity.startswith(CANDIDATE_IDENTITY_V2_PREFIX):
+        return repository.get_entry_by_candidate_id(identity)
+    return repository.get_entry(identity)
+
+
 def derive_candidate_universe(config: ProviderExecutionConfig) -> CandidateUniverse:
     """Derive the ordered candidate universe from catalogue evidence bounded by policy.
 
@@ -435,48 +452,60 @@ def derive_candidate_universe(config: ProviderExecutionConfig) -> CandidateUnive
 
     candidate_entry_ids: list[str] = []
     exclusions: list[CandidateUniverseExclusionDescriptor] = []
-    for entry_id in ordered_entry_ids:
-        entry = repository.get_entry(entry_id)
+    considered_canonical_ids: set[str] = set()
+    for ordered_identity in ordered_entry_ids:
+        # Policy rows may carry either representation (issue #314): the v1
+        # row key on historical rows, the canonical candidate id on new
+        # ones. Resolution is exact-key in both cases - never parsing.
+        entry = resolve_catalogue_entry_by_identity(ordered_identity)
         if entry is None:
             exclusions.append(
                 CandidateUniverseExclusionDescriptor(
-                    entry_id=entry_id,
+                    entry_id=ordered_identity,
                     reason=CandidateUniverseExclusionReason.MODEL_NOT_CATALOGUED,
                     detail=(
-                        f"Policy orders `{entry_id}` but no governed catalogue entry exists for it."
+                        f"Policy orders `{ordered_identity}` but no governed catalogue "
+                        "entry exists for it."
                     ),
                 )
             )
             continue
+        considered_canonical_ids.add(entry.candidate_id_v2)
         if entry.lifecycle_state in _EXECUTION_INELIGIBLE_LIFECYCLE_STATES:
             exclusions.append(
                 CandidateUniverseExclusionDescriptor(
-                    entry_id=entry_id,
+                    entry_id=entry.entry_id,
                     reason=CandidateUniverseExclusionReason.LIFECYCLE_INELIGIBLE,
                     detail=(
-                        f"`{entry_id}` is {entry.lifecycle_state.value} and not eligible "
-                        "to serve new executions."
+                        f"`{entry.entry_id}` is {entry.lifecycle_state.value} and not "
+                        "eligible to serve new executions."
                     ),
                 )
             )
             continue
-        if entry_id not in materials:
+        if entry.candidate_id_v2 not in materials:
             exclusions.append(
                 CandidateUniverseExclusionDescriptor(
-                    entry_id=entry_id,
+                    entry_id=entry.entry_id,
                     reason=CandidateUniverseExclusionReason.CONNECTION_MATERIAL_MISSING,
                     detail=(
-                        f"Policy orders `{entry_id}` but no governed connection material "
-                        "says how to reach it (issue #295)."
+                        f"Policy orders `{entry.entry_id}` but no governed connection "
+                        "material says how to reach it (issue #295)."
                     ),
                 )
             )
             continue
-        candidate_entry_ids.append(entry_id)
+        # The universe enumerates CANONICAL candidate identities (issue
+        # #314): downstream resolution - connection material, execution
+        # config, capability posture - keys by the identity that cannot
+        # collide. Human-readable row keys stay on the catalogue surfaces.
+        candidate_entry_ids.append(entry.candidate_id_v2)
 
-    policy_entry_ids = set(candidate_entry_ids) | {exclusion.entry_id for exclusion in exclusions}
+    unresolved_ordered = {exclusion.entry_id for exclusion in exclusions}
     for entry in repository.list_entries():
-        if entry.entry_id in policy_entry_ids:
+        if entry.candidate_id_v2 in considered_canonical_ids:
+            continue
+        if entry.entry_id in unresolved_ordered:
             continue
         if entry.provider_mode != config.provider_mode:
             continue

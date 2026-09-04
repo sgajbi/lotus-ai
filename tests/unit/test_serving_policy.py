@@ -55,6 +55,17 @@ THIRD_MODEL = "claude-sonnet-5"
 THIRD_REVISION = "claude-sonnet-5-regional"
 
 
+def _canonical_third_id() -> str:
+    from app.contracts.model_catalogue import derive_candidate_identity_v2
+
+    return derive_candidate_identity_v2(
+        provider_id=THIRD_PROVIDER,
+        model_family=THIRD_MODEL,
+        model_revision=THIRD_REVISION,
+        deployment=None,
+    )
+
+
 def _third_entry_id() -> str:
     return derive_model_catalogue_entry_id(
         provider_id=THIRD_PROVIDER, model_revision=THIRD_REVISION, deployment=None
@@ -144,7 +155,8 @@ def test_identity_add_is_governed_two_step_and_binds_the_resulting_order() -> No
     )
     policy = changed.policy
     assert policy.version == 1
-    assert policy.ordered_entry_ids[-1] == entry_id
+    # New policy rows store the CANONICAL candidate identity (issue #314).
+    assert policy.ordered_entry_ids[-1] == _canonical_third_id()
     assert policy.action == "IDENTITY_ADD"
     assert policy.requested_by_key_id == "ops-key-alpha"
     assert policy.approver_key_id == "ops-key-beta"
@@ -258,13 +270,18 @@ def test_universe_follows_the_policy_order_and_records_its_version() -> None:
     _governed_add(entry_id)
 
     order, version = current_serving_order()
-    assert order[-1] == entry_id
+    # The stored order mixes representations honestly: the pair rows predate
+    # the canonical id, the new row stores it (issue #314).
+    assert order[-1] == _canonical_third_id()
     assert version == 1
 
     universe = derive_candidate_universe(resolve_provider_execution_config())
     assert universe.serving_policy_version == 1
-    assert universe.candidate_entry_ids == order
+    # The universe enumerates CANONICAL ids regardless of how each policy row
+    # spelled its identity.
     assert len(universe.candidate_entry_ids) == 3
+    assert all(cid.startswith("cand2_") for cid in universe.candidate_entry_ids)
+    assert universe.candidate_entry_ids[-1] == _canonical_third_id()
 
 
 def test_a_policy_identity_without_connection_material_is_a_reasoned_exclusion() -> None:
@@ -523,10 +540,11 @@ def test_status_surface_reports_history_newest_first() -> None:
     assert [record.version for record in status.versions] == [2, 1]
 
 
-def test_a_delimiter_ambiguous_identity_cannot_join_the_serving_policy() -> None:
-    """Issue #314 (P0 block): a revision containing the v1 delimiter renders
-    an ambiguous entry id - two distinct tuples can share it - so policy
-    admission refuses it until candidate identity v2 keys the policy."""
+def test_a_delimiter_ambiguous_identity_joins_the_policy_stored_canonically() -> None:
+    """Issue #314 (P0 resolved): the policy now stores the canonical
+    candidate identity, so an identity whose v1 row key is
+    delimiter-ambiguous is safely admissible - the stored id cannot
+    collide, and resolution is exact-key in both representations."""
 
     _ordered_fallback_settings()
     ambiguous_id = derive_model_catalogue_entry_id(
@@ -550,10 +568,70 @@ def test_a_delimiter_ambiguous_identity_cannot_join_the_serving_policy() -> None
         )
     )
 
+    pending = request_serving_policy_identity_add(
+        ServingPolicyIdentityAddRequest(entry_id=ambiguous_id, reason="widen"),
+        GOVERNED_REQUESTER,
+    )
+    changed = approve_serving_policy_identity_add(
+        ServingPolicyIdentityAddApprovalRequest(
+            action_id=pending.governed_action.action_id,
+            action_hash=pending.governed_action.action_hash,
+        ),
+        GOVERNED_APPROVER,
+    )
+    from app.contracts.model_catalogue import derive_candidate_identity_v2
+
+    stored = changed.policy.ordered_entry_ids[-1]
+    assert stored == derive_candidate_identity_v2(
+        provider_id="text.local",
+        model_family="qwen3:8b",
+        model_revision="qwen3:8b",
+        deployment=None,
+    )
+    assert stored.startswith("cand2_")
+
+
+def test_a_vanished_entry_refuses_the_pending_policy_addition() -> None:
+    """Issue #314 S2a: the approval re-resolves the target to its canonical
+    identity - an entry that vanished between request and approval refuses
+    the pending action rather than executing against nothing."""
+
+    from app.services.model_catalogue_store import reset_model_catalogue_store_cache
+
+    _ordered_fallback_settings()
+    entry_id = _catalogue_third_identity()
+    pending = request_serving_policy_identity_add(
+        ServingPolicyIdentityAddRequest(entry_id=entry_id, reason="widen"),
+        GOVERNED_REQUESTER,
+    )
+    # The catalogue store resets (entry gone); the governed action lives in
+    # the provider-operations store and survives.
+    reset_model_catalogue_store_cache()
+    settings.live_text_provider_id = None
+    settings.live_text_model_id = None
+
     with pytest.raises(HTTPException) as refused:
-        request_serving_policy_identity_add(
-            ServingPolicyIdentityAddRequest(entry_id=ambiguous_id, reason="widen"),
-            GOVERNED_REQUESTER,
+        approve_serving_policy_identity_add(
+            ServingPolicyIdentityAddApprovalRequest(
+                action_id=pending.governed_action.action_id,
+                action_hash=pending.governed_action.action_hash,
+            ),
+            GOVERNED_APPROVER,
         )
     assert refused.value.status_code == 409
-    assert "delimiter-ambiguous" in refused.value.detail
+    assert "no longer catalogued" in refused.value.detail
+
+
+def test_removal_accepts_the_canonical_identity_representation() -> None:
+    """Issue #314 S2a: the safety direction works in either representation -
+    an operator naming the canonical id removes the row the policy stores."""
+
+    _ordered_fallback_settings()
+    entry_id = _catalogue_third_identity()
+    _governed_add(entry_id)
+
+    removed = remove_serving_policy_identity(
+        ServingPolicyIdentityRemovalRequest(entry_id=_canonical_third_id(), reason="contain"),
+        GOVERNED_REQUESTER,
+    )
+    assert _canonical_third_id() not in removed.policy.ordered_entry_ids

@@ -24,8 +24,14 @@ class InMemoryModelCatalogueRepository:
         entry = self._entries.get(entry_id)
         return entry.model_copy(deep=True) if entry is not None else None
 
+    def get_entry_by_candidate_id(self, candidate_id_v2: str) -> ModelCatalogueEntry | None:
+        for entry in self._entries.values():
+            if entry.candidate_id_v2 == candidate_id_v2:
+                return entry.model_copy(deep=True)
+        return None
+
     def upsert_entry(self, entry: ModelCatalogueEntry) -> None:
-        self._entries[entry.entry_id] = entry.model_copy(deep=True)
+        self._entries[entry.entry_id] = _with_verified_canonical_identity(entry)
 
     def append_lifecycle_event(self, event: ModelLifecycleTransitionRecord) -> None:
         self._lifecycle_events.append(event.model_copy(deep=True))
@@ -99,3 +105,29 @@ class InMemoryModelCatalogueRepository:
         return [
             self._serving_policy_versions[version].model_copy(deep=True) for version in versions
         ]
+
+
+def _with_verified_canonical_identity(entry: ModelCatalogueEntry) -> ModelCatalogueEntry:
+    """Refuse a canonical id that has drifted from the structured tuple.
+
+    ``model_copy(update=...)`` bypasses pydantic validators, so a copy that
+    changed identity fields would otherwise carry the ORIGINAL entry's
+    canonical id into the store (issue #314). The write authority re-derives
+    and refuses a stale non-empty id loudly; an empty id is stamped.
+    """
+
+    from app.contracts.model_catalogue import derive_candidate_identity_v2
+
+    derived = derive_candidate_identity_v2(
+        provider_id=entry.provider_id,
+        model_family=entry.model_family,
+        model_revision=entry.model_revision,
+        deployment=entry.deployment,
+    )
+    if entry.candidate_id_v2 and entry.candidate_id_v2 != derived:
+        raise ValueError(
+            "candidate_id_v2 has drifted from the entry's structured serving tuple "
+            f"(expected '{derived}', got '{entry.candidate_id_v2}'); model_copy that "
+            "changes identity fields must reset candidate_id_v2 to ''"
+        )
+    return entry.model_copy(deep=True, update={"candidate_id_v2": derived})

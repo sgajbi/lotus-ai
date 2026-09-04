@@ -126,23 +126,12 @@ def request_serving_policy_identity_add(
                 "serving policy."
             ),
         )
-    if ":" in entry.model_revision or ":" in (entry.deployment or ""):
-        # The P0 collision block (issue #314): a revision or deployment
-        # containing the v1 delimiter renders a delimiter-ambiguous entry id
-        # - two distinct serving tuples can share it - so widening the
-        # serving policy with such an identity is refused until candidate
-        # identity v2 keys the policy. The catalogue row itself stays
-        # governed; only NEW policy admission is blocked.
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"`{request.entry_id}` has a delimiter-ambiguous v1 identity (its revision "
-                "or deployment contains ':'); serving-policy additions for such identities "
-                "are blocked until candidate identity v2 resolves the ambiguity (issue #314)."
-            ),
-        )
     order, _ = current_serving_order()
-    if request.entry_id in order:
+    # New policy rows store the CANONICAL candidate identity (issue #314) -
+    # the collision-proof digest, not the delimiter-ambiguous v1 row key.
+    # Historical rows keep their v1 identities, so membership checks cover
+    # both representations of this candidate.
+    if entry.candidate_id_v2 in order or request.entry_id in order:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"`{request.entry_id}` is already in the serving order.",
@@ -154,7 +143,7 @@ def request_serving_policy_identity_add(
         payload=_add_payload(
             entry_id=request.entry_id,
             reason=request.reason,
-            resulting_order=[*order, request.entry_id],
+            resulting_order=[*order, entry.candidate_id_v2],
         ),
         attribution=request.requested_by,
     )
@@ -178,13 +167,28 @@ def approve_serving_policy_identity_add(
     _require_provider_control(caller)
     saved: dict[str, ServingPolicyVersionRecord] = {}
 
+    def _canonical_for_target(target: str) -> str:
+        from app.services.model_catalogue import resolve_catalogue_entry_by_identity
+
+        entry = resolve_catalogue_entry_by_identity(target)
+        if entry is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"`{target}` is no longer catalogued; the pending policy addition "
+                    "cannot execute."
+                ),
+            )
+        return entry.candidate_id_v2
+
     def _execute(record: GovernedActionRecord) -> None:
         order, version = current_serving_order()
+        canonical = _canonical_for_target(record.target)
         new_version = ServingPolicyVersionRecord(
             version=(version or 0) + 1,
-            ordered_entry_ids=[*order, record.target],
+            ordered_entry_ids=[*order, canonical],
             action="IDENTITY_ADD",
-            changed_entry_id=record.target,
+            changed_entry_id=canonical,
             requested_by_key_id=record.requester_key_id or "unknown",
             approver_key_id=caller.credential_key_id,
             governed_action_id=record.action_id,
@@ -201,7 +205,7 @@ def approve_serving_policy_identity_add(
         current_payload_builder=lambda record: _add_payload(
             entry_id=record.target,
             reason=str(record.action_payload.get("reason")),
-            resulting_order=[*current_serving_order()[0], record.target],
+            resulting_order=[*current_serving_order()[0], _canonical_for_target(record.target)],
         ),
         attribution=request.approved_by,
         execute=_execute,
@@ -241,16 +245,28 @@ def remove_serving_policy_identity(
 
     _require_provider_control(caller)
     order, version = current_serving_order()
-    if request.entry_id not in order:
+    # Removal is safety-direction and must work in EITHER identity
+    # representation (issue #314): the operator may name the human row key
+    # while the policy row stores the canonical id, or vice versa - and a
+    # policy row whose catalogue entry has vanished must still be removable
+    # by its exact stored string.
+    from app.services.model_catalogue import resolve_catalogue_entry_by_identity
+
+    resolved = resolve_catalogue_entry_by_identity(request.entry_id)
+    removable = {request.entry_id}
+    if resolved is not None:
+        removable |= {resolved.entry_id, resolved.candidate_id_v2}
+    matched = [identity for identity in order if identity in removable]
+    if not matched:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"`{request.entry_id}` is not in the serving order.",
         )
     new_version = ServingPolicyVersionRecord(
         version=(version or 0) + 1,
-        ordered_entry_ids=[entry for entry in order if entry != request.entry_id],
+        ordered_entry_ids=[entry for entry in order if entry not in removable],
         action="IDENTITY_REMOVE",
-        changed_entry_id=request.entry_id,
+        changed_entry_id=matched[0],
         requested_by_key_id=(caller.credential_key_id or verified_caller_identity(caller)),
         approver_key_id=None,
         governed_action_id=None,

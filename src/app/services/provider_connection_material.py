@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from app.config import settings
-from app.contracts.model_catalogue import derive_model_catalogue_entry_id
+from app.contracts.model_catalogue import derive_candidate_identity_v2
 from app.services.provider_execution_config import (
     ProviderExecutionConfig,
     derive_fallback_execution_config,
@@ -68,8 +68,14 @@ def _entry_id(
     model_version: str | None,
     deployment: str | None = None,
 ) -> str:
-    return derive_model_catalogue_entry_id(
+    """The CANONICAL candidate identity for one connection entry (issue
+    #314): connection material keys by the identity that cannot collide,
+    matching the canonical ids the candidate universe enumerates - the
+    delimiter-ambiguous v1 row key is never a resolution key here."""
+
+    return derive_candidate_identity_v2(
         provider_id=provider_id,
+        model_family=model_id,
         model_revision=model_version or model_id,
         deployment=deployment,
     )

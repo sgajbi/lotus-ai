@@ -241,3 +241,59 @@ def test_collision_audit_over_current_configuration() -> None:
     # The audit names the known v1 ambiguity honestly: the default local
     # identity contains the delimiter inside its revision.
     assert any(":" in revision for (_, _, revision, _) in distinct_tuples)
+
+
+def test_canonical_lookup_resolves_hits_and_misses_on_both_adapters(tmp_path: Path) -> None:
+    """resolve_catalogue_entry_by_identity accepts either representation by
+    exact key on both store adapters, and a canonical id no row carries
+    resolves to None rather than being parsed or guessed."""
+
+    from app.repositories.sqlalchemy_model_catalogue_repository import (
+        SqlAlchemyModelCatalogueRepository,
+    )
+    from app.services.model_catalogue import resolve_catalogue_entry_by_identity
+    from app.services.model_catalogue_store import get_model_catalogue_repository
+    from tests.support.migration_runner import upgrade_database_to_head
+
+    entry = _entry("text.openai", "fam", "rev-1", "eu-1")
+    get_model_catalogue_repository().upsert_entry(entry)
+    by_canonical = resolve_catalogue_entry_by_identity(entry.candidate_id_v2)
+    assert by_canonical is not None and by_canonical.entry_id == entry.entry_id
+    by_row_key = resolve_catalogue_entry_by_identity(entry.entry_id)
+    assert by_row_key is not None and by_row_key.candidate_id_v2 == entry.candidate_id_v2
+    assert resolve_catalogue_entry_by_identity("cand2_" + "f" * 64) is None
+
+    database_url = f"sqlite:///{tmp_path / 'identity-v2-lookup.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyModelCatalogueRepository(database_url)
+    repository.upsert_entry(entry)
+    stored = repository.get_entry_by_candidate_id(entry.candidate_id_v2)
+    assert stored is not None and stored.entry_id == entry.entry_id
+    assert repository.get_entry_by_candidate_id("cand2_" + "f" * 64) is None
+
+
+def test_both_adapters_refuse_a_drifted_canonical_id(tmp_path: Path) -> None:
+    """The drift shield (issue #314 S2a): model_copy that changes identity
+    fields but keeps the original canonical id is refused loudly by BOTH
+    write adapters - never stored, never silently corrected past a
+    contradiction."""
+
+    from app.repositories.sqlalchemy_model_catalogue_repository import (
+        SqlAlchemyModelCatalogueRepository,
+    )
+    from app.services.model_catalogue_store import get_model_catalogue_repository
+    from tests.support.migration_runner import upgrade_database_to_head
+
+    original = _entry("text.openai", "fam", "rev-1", None)
+    drifted = original.model_copy(
+        update={"entry_id": "text.openai:rev-2", "model_revision": "rev-2"}
+    )
+
+    with pytest.raises(ValueError, match="drifted"):
+        get_model_catalogue_repository().upsert_entry(drifted)
+
+    database_url = f"sqlite:///{tmp_path / 'identity-v2-drift.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyModelCatalogueRepository(database_url)
+    with pytest.raises(ValueError, match="drifted"):
+        repository.upsert_entry(drifted)

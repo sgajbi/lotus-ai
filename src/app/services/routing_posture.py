@@ -44,6 +44,7 @@ from app.services.model_catalogue import (
     derive_candidate_universe,
     enforce_capability_requirements,
     ensure_model_catalogue_seeded,
+    resolve_catalogue_entry_by_identity,
 )
 from app.services.model_catalogue_store import get_model_catalogue_repository
 from app.services.provider_degradation_state import build_provider_degradation_status
@@ -178,11 +179,12 @@ def _build_capability_posture(
     eligible verdict names which evidence made it so.
     """
 
-    repository = get_model_catalogue_repository()
     candidates: list[CapabilityPostureCandidateDescriptor] = []
     would_select: str | None = None
     for entry_id in universe.candidate_entry_ids:
-        entry = repository.get_entry(entry_id)
+        # Universe ids are canonical candidate identities (issue #314);
+        # resolution accepts either representation, never parses.
+        entry = resolve_catalogue_entry_by_identity(entry_id)
         if entry is None:
             # The universe was derived moments ago; a vanished entry is a
             # concurrent catalogue change - report it as not catalogued.
