@@ -65,8 +65,17 @@ class CapabilityRequirements(BaseModel):
         gt=0,
         le=1_000,
         description=(
-            "Ceiling on the governed cost estimate for one execution, in the same "
-            "estimate currency as `estimated_cost_usd` on the response."
+            "Ceiling on the governed cost ESTIMATE for one execution, in the same "
+            "estimate currency as `estimated_cost_usd` on the response. Admission "
+            "runs before each attempt on Lotus's pre-execution estimate - the "
+            "documented ~4-bytes/token input approximation (upgraded by "
+            "provider-reported input from the same execution) plus the "
+            "max_output_tokens ceiling, under the candidate's own rate card. It "
+            "is not a guarantee on actual provider billing: a served attempt's "
+            "provider-reported usage may exceed its pre-attempt estimate and "
+            "settles as actual on the durable debit. The provable upper bound "
+            "lives in the platform hard-budget reservation (issue #300), which "
+            "bounds input by request-body bytes."
         ),
     )
 
