@@ -130,6 +130,42 @@ class ProviderOperationsRepository(Protocol):
         together (issue #289). Returns False - a complete no-op, counter
         untouched - when the debit identity is already recorded."""
 
+    def reserve_attempt_debit(
+        self,
+        record: ProviderAttemptDebitRecord,
+        *,
+        budget_key: str,
+        hard_limit_usd: float | None,
+    ) -> str:
+        """Atomically check-and-reserve one attempt's governed maximum
+        against the budget row (issue #300): the limit check, the debit row
+        insert (basis ``RESERVED_MAX``) and the counter advance are ONE
+        transaction, so two replicas cannot both admit the last available
+        budget. Returns ``RESERVED``; ``DUPLICATE`` when the identity
+        already exists (a crash-retry of the same attempt - the standing
+        row's reservation or settlement is the truth); or ``REFUSED`` -
+        nothing written - when the reservation would push the counter past
+        ``hard_limit_usd`` (``None`` never refuses)."""
+
+    def settle_attempt_debit(
+        self,
+        *,
+        debit_id: str,
+        budget_key: str,
+        basis: str,
+        amount_usd: float,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        rate_card_ref: str | None,
+        settled_at: str,
+    ) -> bool:
+        """Settle one reserved debit to its actual/conservative amount in
+        ONE transaction with the counter adjustment (issue #300). Only a row
+        whose basis is still ``RESERVED_MAX`` settles - a second settlement
+        is a complete no-op returning False, and a crash before settlement
+        leaves the conservative reservation standing (over-counting is the
+        safe direction)."""
+
     def list_attempt_debits(self, *, limit: int = 100) -> Sequence[ProviderAttemptDebitRecord]:
         """Attempt-debit evidence, newest first."""
 

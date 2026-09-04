@@ -277,17 +277,26 @@ def test_rate_limited_and_pre_connect_failures_never_debit(
 
     response = _run_transport(retry_limit=2, execution_id="exec-unbillable")
 
-    rows = [
-        row
+    rows = {
+        row.debit_id: row
         for row in get_provider_operations_store().list_attempt_debits()
         if row.debit_id.startswith("adbt:exec-unbillable:")
-    ]
-    # Only the served attempt debited: 429 refused before generation and the
-    # connection-level failure never reached a generating provider.
-    assert {row.debit_id for row in rows} == {"adbt:exec-unbillable:text.local:gpt-5.4:2"}
+    }
+    # Only the served attempt carries spend: 429 refused before generation
+    # and the connection-level failure never reached a generating provider.
+    # Their pre-attempt reservations (issue #300) settle to zero-amount
+    # RELEASED rows - admitted-then-released is durable evidence, not spend.
+    assert rows["adbt:exec-unbillable:text.local:gpt-5.4:0"].basis == "RELEASED"
+    assert rows["adbt:exec-unbillable:text.local:gpt-5.4:0"].amount_usd == 0.0
+    assert rows["adbt:exec-unbillable:text.local:gpt-5.4:1"].basis == "RELEASED"
+    assert rows["adbt:exec-unbillable:text.local:gpt-5.4:1"].amount_usd == 0.0
+    assert rows["adbt:exec-unbillable:text.local:gpt-5.4:2"].basis == "ACTUAL_USAGE"
     assert response.estimated_cost_usd == 0.0035
     assert response.failed_attempt_cost_basis == "NONE"
     assert response.billed_attempt_count == 1
+    budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
+    assert budget is not None
+    assert budget.current_spend_usd == 0.0035
 
 
 def test_candidates_sharing_an_execution_debit_cumulatively(
@@ -486,6 +495,94 @@ def test_three_same_provider_fallback_candidates_accumulate(
     budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
     assert budget is not None
     assert budget.current_spend_usd == total
+
+
+def test_hard_budget_refuses_admission_before_the_provider_is_called(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Issue #300: "hard" means enforceable BEFORE the money moves - an
+    attempt whose governed maximum (input bounded by request-body bytes,
+    output by the enforced cap) cannot fit the hard budget is refused with
+    nothing written and the provider never called."""
+
+    _seed_cost_scalars()
+    settings.live_text_budget_enforced = True
+    settings.live_text_hard_budget_usd = 0.001
+    calls = {"count": 0}
+
+    def _urlopen(request: object, timeout: float) -> _Response:
+        calls["count"] += 1
+        return _Response(_SUCCESS_BODY)
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    with raises(ProviderExecutionError) as exc_info:
+        _post_candidate(
+            provider_id="text.shared",
+            model_revision="model-a",
+            execution_id="exec-hard-budget",
+        )
+
+    assert exc_info.value.category.value == "BUDGET_EXCEEDED"
+    assert calls["count"] == 0
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-hard-budget:")
+    ]
+    assert rows == []
+    budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
+    assert budget is None or budget.current_spend_usd == 0.0
+
+
+def test_the_reservation_bound_survives_input_larger_than_the_estimate(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Issue #300/#301 boundary: provider-reported input tokens EXCEED the
+    request ceiling's ~4-bytes/token heuristic, yet stay within the
+    reservation's provable byte-count bound - the hard budget's governed
+    maximum was genuinely conservative, and the settled debit records the
+    larger actual usage."""
+
+    _seed_cost_scalars()
+    settings.live_text_budget_enforced = True
+    settings.live_text_hard_budget_usd = 5.0
+
+    body_probe: dict[str, int] = {}
+
+    def _urlopen(request: object, timeout: float) -> _Response:
+        data = getattr(request, "data", b"") or b""
+        body_probe["bytes"] = len(data)
+        # Report input usage above bytes//4 but below the byte count.
+        oversized_input = max(len(data) // 2, 1)
+        return _Response(
+            (
+                '{"id": "resp_billing", "model": "gpt-5.4", "output_text": "OK",'
+                f' "usage": {{"input_tokens": {oversized_input}, "output_tokens": 10,'
+                f' "total_tokens": {oversized_input + 10}}}}}'
+            ).encode("utf-8")
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    _post_candidate(
+        provider_id="text.shared",
+        model_revision="model-a",
+        execution_id="exec-oversized-input",
+    )
+
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-oversized-input:")
+    ]
+    assert len(rows) == 1
+    settled = rows[0]
+    assert settled.basis == "ACTUAL_USAGE"
+    assert settled.input_tokens is not None
+    # The actual usage beat the heuristic yet stayed under the provable bound.
+    assert settled.input_tokens > body_probe["bytes"] // 4
+    assert settled.input_tokens <= body_probe["bytes"]
 
 
 def test_gateway_mints_one_execution_identity_per_execution(

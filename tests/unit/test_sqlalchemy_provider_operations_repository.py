@@ -11,6 +11,7 @@ from app.contracts.access_control import (
 )
 from app.contracts.providers import ProviderFailureCategory, ProviderQuotaScope
 from app.repositories.provider_operations_repository import (
+    ProviderAttemptDebitRecord,
     ProviderBudgetStateRecord,
     ProviderDegradationStateRecord,
     ProviderOperationsEventRecord,
@@ -163,8 +164,6 @@ def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
     one transaction, a duplicate identity is a complete no-op, and deleting
     evidence never reverses the counter."""
 
-    from app.repositories.provider_operations_repository import ProviderAttemptDebitRecord
-
     database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-debits.db'}"
     upgrade_database_to_head(database_url)
     repository = SqlAlchemyProviderOperationsRepository(database_url)
@@ -212,6 +211,138 @@ def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
     budget = repository.get_budget_state(budget_key="live_text_generation")
     assert budget is not None
     assert budget.current_spend_usd == 0.01736
+
+
+def _reservation_record(debit_id: str, amount: float) -> ProviderAttemptDebitRecord:
+    return ProviderAttemptDebitRecord(
+        debit_id=debit_id,
+        provider_id="text.shared",
+        basis="RESERVED_MAX",
+        amount_usd=amount,
+        input_tokens=1000,
+        output_tokens=512,
+        rate_card_ref="default-live-text",
+        recorded_at="2026-09-04T00:00:00Z",
+        candidate_entry_id="text.shared:model-a",
+        model_revision="model-a",
+        attempt_index=0,
+    )
+
+
+def test_reserve_and_settle_lifecycle_enforces_the_hard_limit(
+    tmp_path: Path,
+) -> None:
+    """Issue #300: the check-and-reserve refuses past the limit and writes
+    nothing; settlement adjusts the counter exactly once; an unsettled
+    reservation stays counted (crash-before-settle is conservative)."""
+
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-budget-reserve.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyProviderOperationsRepository(database_url)
+    key = "live_text_generation"
+
+    first = _reservation_record("adbt:exec-r:text.shared:model-a:0", 0.6)
+    assert repository.reserve_attempt_debit(first, budget_key=key, hard_limit_usd=1.0) == (
+        "RESERVED"
+    )
+    assert repository.reserve_attempt_debit(first, budget_key=key, hard_limit_usd=1.0) == (
+        "DUPLICATE"
+    )
+    # A second reservation that would push past the limit is refused with
+    # NOTHING written - no row, no counter movement.
+    second = _reservation_record("adbt:exec-r:text.shared:model-b:0", 0.6)
+    assert repository.reserve_attempt_debit(second, budget_key=key, hard_limit_usd=1.0) == (
+        "REFUSED"
+    )
+    budget = repository.get_budget_state(budget_key=key)
+    assert budget is not None
+    assert budget.current_spend_usd == 0.6
+    assert len(repository.list_attempt_debits(limit=10)) == 1
+
+    # Crash-before-settle: the conservative reservation stays counted.
+    assert repository.sum_attempt_debits(debit_id_prefix="adbt:exec-r:") == 0.6
+
+    # Settlement adjusts to the evidenced amount exactly once.
+    assert (
+        repository.settle_attempt_debit(
+            debit_id=first.debit_id,
+            budget_key=key,
+            basis="ACTUAL_USAGE",
+            amount_usd=0.2,
+            input_tokens=100,
+            output_tokens=50,
+            rate_card_ref="default-live-text",
+            settled_at="2026-09-04T00:01:00Z",
+        )
+        is True
+    )
+    budget = repository.get_budget_state(budget_key=key)
+    assert budget is not None
+    assert budget.current_spend_usd == 0.2
+    # Idempotent: a second settlement is a complete no-op.
+    assert (
+        repository.settle_attempt_debit(
+            debit_id=first.debit_id,
+            budget_key=key,
+            basis="ACTUAL_USAGE",
+            amount_usd=0.2,
+            input_tokens=100,
+            output_tokens=50,
+            rate_card_ref="default-live-text",
+            settled_at="2026-09-04T00:02:00Z",
+        )
+        is False
+    )
+    budget = repository.get_budget_state(budget_key=key)
+    assert budget is not None
+    assert budget.current_spend_usd == 0.2
+
+    # The freed budget admits the retry of the refused candidate.
+    assert repository.reserve_attempt_debit(second, budget_key=key, hard_limit_usd=1.0) == (
+        "RESERVED"
+    )
+
+
+def test_two_concurrent_reservations_cannot_both_take_the_last_budget(
+    tmp_path: Path,
+) -> None:
+    """Issue #300's concurrency proof: the limit check and counter advance
+    are one guarded UPDATE, so of two racing reservations that each fit the
+    limit alone, exactly one is admitted."""
+
+    import threading
+
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-budget-race.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyProviderOperationsRepository(database_url)
+    key = "live_text_generation"
+    # Seed the budget row so both racers exercise the guarded UPDATE path.
+    repository.add_budget_spend(budget_key=key, amount_usd=0.0, updated_at="2026-09-04T00:00:00Z")
+
+    outcomes: dict[str, str] = {}
+    barrier = threading.Barrier(2)
+
+    def _race(debit_id: str) -> None:
+        record = _reservation_record(debit_id, 0.6)
+        barrier.wait()
+        outcomes[debit_id] = repository.reserve_attempt_debit(
+            record, budget_key=key, hard_limit_usd=1.0
+        )
+
+    threads = [
+        threading.Thread(target=_race, args=("adbt:exec-race:text.shared:model-a:0",)),
+        threading.Thread(target=_race, args=("adbt:exec-race:text.shared:model-b:0",)),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert sorted(outcomes.values()) == ["REFUSED", "RESERVED"]
+    budget = repository.get_budget_state(budget_key=key)
+    assert budget is not None
+    assert budget.current_spend_usd == 0.6
+    assert len(repository.list_attempt_debits(limit=10)) == 1
 
 
 def test_sqlalchemy_provider_operations_repository_records_events_and_resets_state(

@@ -37,7 +37,11 @@ from app.providers.advisor_brief_quality_guardrails import (
     build_advisor_brief_user_message,
     normalize_advisor_brief_output,
 )
-from app.services.provider_budget_policy import record_attempt_spend, spent_for_execution
+from app.services.provider_budget_policy import (
+    reserve_attempt_spend,
+    settle_attempt_spend,
+    spent_for_execution,
+)
 from app.services.provider_usage_accounting import (
     AttemptDebit,
     estimate_live_text_cost,
@@ -281,6 +285,12 @@ def post_openai_compatible_response(
         output_tokens: int | None,
         billable_risk: bool,
     ) -> AttemptDebit | None:
+        """Settle this attempt's pre-attempt reservation to its evidenced
+        debit (issue #300): actual usage, the conservative estimate for a
+        billable-risk failure, or a zero-amount release when the attempt
+        proved non-billable (429, pre-connect). Where no rate card priced a
+        reservation there is nothing to settle and nothing was ever owed."""
+
         debit = price_attempt(
             input_tokens=input_tokens,
             output_tokens=output_tokens,
@@ -290,15 +300,12 @@ def post_openai_compatible_response(
             max_output_tokens=payload_max_output,
             model_revision=model_revision,
         )
-        if debit is not None:
-            record_attempt_spend(
-                execution_id=debit_execution_id,
-                candidate_entry_id=candidate_entry_id,
-                provider_id=serving_provider_id,
-                model_revision=model_revision,
-                attempt_index=attempt_index,
-                debit=debit,
-            )
+        settle_attempt_spend(
+            execution_id=debit_execution_id,
+            candidate_entry_id=candidate_entry_id,
+            attempt_index=attempt_index,
+            debit=debit,
+        )
         return debit
 
     for attempt_index in range(bounded_retry_limit + 1):
@@ -347,6 +354,42 @@ def post_openai_compatible_response(
                         "The caller's max_estimated_cost_usd budget cannot support "
                         "the next attempt at its conservative bound; no further "
                         "attempt may start on this candidate."
+                    ),
+                )
+        # Atomic hard-budget admission (issue #300): reserve this attempt's
+        # governed maximum against the global budget row BEFORE calling the
+        # provider. The input bound is the request body's byte count - a
+        # provable ceiling (a byte-level token is at least one byte), unlike
+        # the request ceiling's documented ~4-bytes/token estimate - plus
+        # the provider-enforced output cap. One store transaction makes the
+        # check-and-reserve safe across replicas; settlement adjusts to the
+        # evidenced amount at the attempt boundary. Unpriceable candidates
+        # (no rate card) reserve nothing and never owe anything.
+        reservation = price_attempt(
+            input_tokens=None,
+            output_tokens=None,
+            billable_risk=True,
+            posture="conservative",
+            fallback_input_estimate=len(body),
+            max_output_tokens=payload_max_output,
+            model_revision=model_revision,
+        )
+        if reservation is not None:
+            admission = reserve_attempt_spend(
+                execution_id=debit_execution_id,
+                candidate_entry_id=candidate_entry_id,
+                provider_id=serving_provider_id,
+                model_revision=model_revision,
+                attempt_index=attempt_index,
+                reservation=reservation,
+            )
+            if admission == "REFUSED":
+                raise ProviderExecutionError(
+                    category=ProviderFailureCategory.BUDGET_EXCEEDED,
+                    message=(
+                        "The live-provider hard budget cannot support this attempt's "
+                        "governed maximum cost; admission is refused before the "
+                        "provider is called."
                     ),
                 )
         provider_request = urllib_request.Request(
@@ -540,9 +583,16 @@ def post_openai_compatible_response(
                 failure_class=ProviderFailureCategory.PROVIDER_TIMEOUT.value,
                 latency_ms=attempt_latency_ms,
             )
+            # Connection-level failure: the request did not reach a
+            # generating provider, so no billable risk - the reservation is
+            # released to zero at the same boundary (issue #300).
+            _debit_boundary(
+                attempt_index=attempt_index,
+                input_tokens=None,
+                output_tokens=None,
+                billable_risk=False,
+            )
             if will_retry:
-                # Connection-level failure: the request did not reach a
-                # generating provider, so no billable risk.
                 failed_attempts.append(_failed_attempt_evidence({}, billable_risk=False))
                 wait_for_retry(retry_decision)
                 continue
