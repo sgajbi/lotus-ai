@@ -187,6 +187,7 @@ class SqlAlchemyProviderOperationsRepository(
                     candidate_entry_id=record.candidate_entry_id,
                     model_revision=record.model_revision,
                     attempt_index=record.attempt_index,
+                    candidate_id_v2=record.candidate_id_v2,
                 )
             )
             budget = session.execute(
@@ -287,6 +288,7 @@ class SqlAlchemyProviderOperationsRepository(
                             candidate_entry_id=record.candidate_entry_id,
                             model_revision=record.model_revision,
                             attempt_index=record.attempt_index,
+                            candidate_id_v2=record.candidate_id_v2,
                         )
                     )
                     session.commit()
@@ -413,6 +415,7 @@ class SqlAlchemyProviderOperationsRepository(
                     candidate_entry_id=model.candidate_entry_id,
                     model_revision=model.model_revision,
                     attempt_index=model.attempt_index,
+                    candidate_id_v2=model.candidate_id_v2,
                 )
                 for model in models
             ]

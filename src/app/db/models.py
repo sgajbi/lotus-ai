@@ -273,6 +273,9 @@ class ProviderAttemptDebitModel(Base):
     candidate_entry_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
     model_revision: Mapped[str | None] = mapped_column(String(128), nullable=True)
     attempt_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Canonical candidate reference (issue #314): resolvable collision-proof
+    # identity on new rows; historical rows honestly null.
+    candidate_id_v2: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
 
 class ProviderDegradationStateModel(Base):

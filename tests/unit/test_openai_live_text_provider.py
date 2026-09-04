@@ -11,11 +11,13 @@ from app.providers.base import ProviderExecutionError
 from app.providers.openai_compatible_text_transport import (
     build_structured_output,
     build_user_message,
-    extract_balanced_json_object,
     extract_output_text,
     extract_usage,
-    parse_json_object,
     post_openai_compatible_response,
+)
+from app.providers.openai_response_parsing import (
+    extract_balanced_json_object,
+    parse_json_object,
     strip_json_code_fence,
 )
 from app.providers.local_openai_compatible_text_provider import LocalOpenAICompatibleTextProvider

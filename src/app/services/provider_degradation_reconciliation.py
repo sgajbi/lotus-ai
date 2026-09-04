@@ -116,19 +116,30 @@ def reconcile_provider_keyed_degradation_state() -> list[str]:
         # Malformed declared material is already its own startup finding.
         return []
     by_provider: dict[str, list[str]] = {}
+    repository = get_provider_operations_store()
     for material in materials.values():
-        # The carried-over key must match the key shape the BREAKER derives
-        # at runtime - the v1-shaped candidate identity - not the material
-        # map's canonical id (issue #314 S2a keys materials canonically; the
-        # breaker re-keys in S2b, and this derivation flips with it).
-        candidate_key = derive_model_catalogue_entry_id(
+        # The breaker keys by the CANONICAL candidate identity (issue #314
+        # S2b) - exactly the material map's key. A row still under the
+        # candidate's pre-canonical v1-shaped key is this candidate's own
+        # bookkeeping in the older spelling: carry an OPEN circuit to the
+        # canonical key one-to-one (the structured fields prove the
+        # mapping), drop a closed one.
+        canonical_key = f"{DEGRADATION_KEY_PREFIX}:{material.entry_id}"
+        legacy_candidate_key = f"{DEGRADATION_KEY_PREFIX}:" + derive_model_catalogue_entry_id(
             provider_id=material.provider_id,
             model_revision=material.model_version or material.model_id,
             deployment=material.deployment,
         )
-        by_provider.setdefault(material.provider_id, []).append(candidate_key)
-    repository = get_provider_operations_store()
-    for provider_id, entry_ids in sorted(by_provider.items()):
+        legacy_row = repository.get_degradation_state(degradation_key=legacy_candidate_key)
+        if legacy_row is not None:
+            if circuit_is_open(legacy_row):
+                if repository.get_degradation_state(degradation_key=canonical_key) is None:
+                    repository.save_degradation_state(
+                        replace(legacy_row, degradation_key=canonical_key)
+                    )
+            repository.reset_degradation_state(degradation_key=legacy_candidate_key)
+        by_provider.setdefault(material.provider_id, []).append(material.entry_id)
+    for provider_id, candidate_ids in sorted(by_provider.items()):
         provider_key = f"{DEGRADATION_KEY_PREFIX}:{provider_id}"
         row = repository.get_degradation_state(degradation_key=provider_key)
         if row is None:
@@ -136,8 +147,8 @@ def reconcile_provider_keyed_degradation_state() -> list[str]:
         if not circuit_is_open(row):
             repository.reset_degradation_state(degradation_key=provider_key)
             continue
-        for entry_id in sorted(entry_ids):
-            candidate_key = f"{DEGRADATION_KEY_PREFIX}:{entry_id}"
+        for candidate_id in sorted(candidate_ids):
+            candidate_key = f"{DEGRADATION_KEY_PREFIX}:{candidate_id}"
             if repository.get_degradation_state(degradation_key=candidate_key) is None:
                 repository.save_degradation_state(replace(row, degradation_key=candidate_key))
         repository.reset_degradation_state(degradation_key=provider_key)

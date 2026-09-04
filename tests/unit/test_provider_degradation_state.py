@@ -310,6 +310,17 @@ def _enforcing_breaker() -> None:
     settings.live_text_circuit_open_seconds = 60
 
 
+def _canonical_key(provider: str, model: str, revision: str | None = None) -> str:
+    from app.contracts.model_catalogue import derive_candidate_identity_v2
+
+    return "live_text_generation:" + derive_candidate_identity_v2(
+        provider_id=provider,
+        model_family=model,
+        model_revision=revision or model,
+        deployment=None,
+    )
+
+
 def test_reading_posture_never_writes_whatever_the_state() -> None:
     """The acceptance condition: posture is a read.
 
@@ -327,7 +338,12 @@ def test_reading_posture_never_writes_whatever_the_state() -> None:
     for _ in range(5):
         before = _degradation_snapshot()
         assert build_provider_degradation_status().status == "CIRCUIT_OPEN"
-        assert build_provider_degradation_status("text.openai:gpt-5.4").status == "CIRCUIT_OPEN"
+        assert (
+            build_provider_degradation_status(
+                _canonical_key("text.openai", "gpt-5.4").removeprefix("live_text_generation:")
+            ).status
+            == "CIRCUIT_OPEN"
+        )
         assert _degradation_snapshot() == before
 
 
@@ -396,7 +412,7 @@ def test_the_cooldown_deadline_is_stamped_once_per_crossing(monkeypatch: MonkeyP
 
     repository = get_provider_operations_store()
     stamped = repository.get_degradation_state(
-        degradation_key="live_text_generation:text.openai:gpt-5.4"
+        degradation_key=_canonical_key("text.openai", "gpt-5.4")
     )
     assert stamped is not None
     deadline = stamped.circuit_open_until
@@ -408,7 +424,7 @@ def test_the_cooldown_deadline_is_stamped_once_per_crossing(monkeypatch: MonkeyP
     with pytest.raises(ProviderExecutionError):
         enforce_provider_degradation_preflight()
     after = repository.get_degradation_state(
-        degradation_key="live_text_generation:text.openai:gpt-5.4"
+        degradation_key=_canonical_key("text.openai", "gpt-5.4")
     )
     assert after is not None
     assert after.circuit_open_until == deadline
@@ -475,7 +491,7 @@ def test_the_breaker_key_shapes_follow_the_configured_identity() -> None:
     settings.live_text_provider_id = "text.openai"
     settings.live_text_model_id = "gpt-5.4"
     settings.live_text_model_version = None
-    assert degradation_key_for() == "live_text_generation:text.openai:gpt-5.4"
+    assert degradation_key_for() == _canonical_key("text.openai", "gpt-5.4")
 
     settings.live_text_model_id = None
     assert degradation_key_for() == "live_text_generation:text.openai"

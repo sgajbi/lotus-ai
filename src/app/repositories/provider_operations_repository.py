@@ -57,6 +57,11 @@ class ProviderAttemptDebitRecord:
     candidate_entry_id: str | None = None
     model_revision: str | None = None
     attempt_index: int | None = None
+    # Resolvable canonical candidate reference (issue #314): the debit_id
+    # keeps its v1-shaped idempotency identity forever (historical evidence
+    # is never rewritten); new rows additionally bind the collision-proof
+    # canonical id.
+    candidate_id_v2: str | None = None
 
 
 @dataclass(frozen=True)

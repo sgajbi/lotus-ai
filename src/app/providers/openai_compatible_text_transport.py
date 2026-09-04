@@ -15,7 +15,10 @@ from app.contracts.providers import (
     ProviderExecutionResponse,
     ProviderFailureCategory,
 )
-from app.contracts.model_catalogue import derive_model_catalogue_entry_id
+from app.contracts.model_catalogue import (
+    derive_candidate_identity_v2,
+    derive_model_catalogue_entry_id,
+)
 from app.providers.base import ProviderAdapterDescriptor, ProviderExecutionError
 from app.services.provider_execution_overrides import (
     ensure_network_execution_permitted,
@@ -33,6 +36,11 @@ from app.services.tracing_runtime import (
     record_provider_span_outcome,
 )
 from app.services.structured_logging import correlation_id_var, log_event
+from app.providers.openai_response_parsing import (
+    as_int,
+    as_str,
+    parse_json_object_with_posture,
+)
 from app.providers.advisor_brief_quality_guardrails import (
     build_advisor_brief_user_message,
     normalize_advisor_brief_output,
@@ -109,6 +117,7 @@ def execute_openai_compatible_text_request(
         model_revision=model_version or model_id,
         cost_ceiling_usd=request.cost_ceiling_usd,
         deployment=deployment,
+        model_family=model_id,
     )
     output_message = extract_output_text(response_payload)
     message, structured_output = build_structured_output(
@@ -196,6 +205,7 @@ def post_openai_compatible_response(
     model_revision: str | None = None,
     cost_ceiling_usd: float | None = None,
     deployment: str | None = None,
+    model_family: str | None = None,
 ) -> dict[str, Any]:
     """POST one OpenAI-compatible request, labelling every surface it emits
     with ``serving_provider_id``.
@@ -273,6 +283,19 @@ def post_openai_compatible_response(
         )
         if model_revision
         else serving_provider_id
+    )
+    # Resolvable canonical reference on new debit evidence (issue #314):
+    # the debit_id keeps its v1-shaped idempotency identity; the canonical
+    # id rides alongside when the caller names a complete candidate.
+    candidate_id_v2 = (
+        derive_candidate_identity_v2(
+            provider_id=serving_provider_id,
+            model_family=model_family,
+            model_revision=model_revision,
+            deployment=deployment,
+        )
+        if model_revision and model_family
+        else None
     )
     # Conservative input estimate for attempts that never revealed usage:
     # the request body is hard evidence of what was sent; ~4 bytes/token is
@@ -385,6 +408,7 @@ def post_openai_compatible_response(
                 model_revision=model_revision,
                 attempt_index=attempt_index,
                 reservation=reservation,
+                candidate_id_v2=candidate_id_v2,
             )
             if admission == "REFUSED":
                 raise ProviderExecutionError(
@@ -627,6 +651,75 @@ def post_openai_compatible_response(
 _logger = logging.getLogger("app.provider")
 
 
+def is_advisor_brief_payload(payload: dict[str, Any]) -> bool:
+    return {"portfolio", "period", "performance", "supportability"}.issubset(payload.keys())
+
+
+def build_structured_output(
+    *,
+    descriptor: ProviderAdapterDescriptor,
+    request: ProviderExecutionRequest,
+    response_payload: dict[str, Any],
+    output_message: str,
+    configured_model_id: str | None = None,
+    provider_id: str | None = None,
+) -> tuple[str, dict[str, Any]]:
+    structured_output: dict[str, Any] = {
+        "provider_id": provider_id or descriptor.provider_id,
+        "provider_mode": descriptor.runtime_mode.value,
+        "adapter_kind": descriptor.adapter_kind.value,
+        "model_id": as_str(response_payload.get("model")) or configured_model_id,
+        "provider_request_id": as_str(response_payload.get("id")),
+        "output_label": request.output_label,
+        "safety_mode": request.safety_mode,
+        "redaction_posture": request.redaction_posture,
+        "source_refs": request.source_refs,
+        "retry_count": extract_retry_count(response_payload),
+    }
+    input_tokens, output_tokens, total_tokens = extract_usage(response_payload)
+    structured_cost = estimate_live_text_cost(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        model_revision=configured_model_id,
+    )
+    structured_billing = project_attempt_billing(
+        final_cost=structured_cost,
+        failed_debits=extract_failed_attempt_debits(response_payload),
+        had_failed_attempts=bool(extract_failed_attempts(response_payload)),
+    )
+    structured_output.update(
+        {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens,
+            # The attempt-summed figure (issue #232) - the same number the
+            # budget envelope records. The composition detail (basis, counts)
+            # lives on the response and audit record: the echo's SHAPE is
+            # pinned by the captured pack output contracts, so new keys here
+            # would fail output validation for every family.
+            "estimated_cost_usd": structured_billing.estimated_cost_usd,
+            "rate_card_ref": structured_cost.rate_card_ref,
+            "cost_posture": structured_cost.cost_posture,
+        }
+    )
+    if not is_advisor_brief_payload(request.context_payload):
+        return output_message, structured_output
+
+    parsed, salvaged = parse_json_object_with_posture(output_message)
+    if salvaged:
+        # The validator decides what salvage means per profile (issue #156):
+        # promoted rejects, local marks the output UNVALIDATED_LOCAL_ONLY.
+        structured_output["strict_json_salvaged"] = True
+    quality_result = normalize_advisor_brief_output(
+        parsed_output=parsed,
+        output_message=output_message,
+        context_payload=request.context_payload,
+        source_refs=request.source_refs,
+    )
+    structured_output.update(quality_result.structured_output)
+    return quality_result.message, structured_output
+
+
 def _governed_deadline_stop(
     *,
     execution_deadline_at: float | None,
@@ -815,147 +908,6 @@ def extract_failed_attempts(payload: dict[str, Any]) -> list[dict[str, object]]:
         if isinstance(attempts, list)
         else []
     )
-
-
-def as_str(value: object) -> str | None:
-    return value if isinstance(value, str) and value.strip() else None
-
-
-def as_int(value: object) -> int | None:
-    return value if isinstance(value, int) and value >= 0 else None
-
-
-def is_advisor_brief_payload(payload: dict[str, Any]) -> bool:
-    return {"portfolio", "period", "performance", "supportability"}.issubset(payload.keys())
-
-
-def build_structured_output(
-    *,
-    descriptor: ProviderAdapterDescriptor,
-    request: ProviderExecutionRequest,
-    response_payload: dict[str, Any],
-    output_message: str,
-    configured_model_id: str | None = None,
-    provider_id: str | None = None,
-) -> tuple[str, dict[str, Any]]:
-    structured_output: dict[str, Any] = {
-        "provider_id": provider_id or descriptor.provider_id,
-        "provider_mode": descriptor.runtime_mode.value,
-        "adapter_kind": descriptor.adapter_kind.value,
-        "model_id": as_str(response_payload.get("model")) or configured_model_id,
-        "provider_request_id": as_str(response_payload.get("id")),
-        "output_label": request.output_label,
-        "safety_mode": request.safety_mode,
-        "redaction_posture": request.redaction_posture,
-        "source_refs": request.source_refs,
-        "retry_count": extract_retry_count(response_payload),
-    }
-    input_tokens, output_tokens, total_tokens = extract_usage(response_payload)
-    structured_cost = estimate_live_text_cost(
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        model_revision=configured_model_id,
-    )
-    structured_billing = project_attempt_billing(
-        final_cost=structured_cost,
-        failed_debits=extract_failed_attempt_debits(response_payload),
-        had_failed_attempts=bool(extract_failed_attempts(response_payload)),
-    )
-    structured_output.update(
-        {
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "total_tokens": total_tokens,
-            # The attempt-summed figure (issue #232) - the same number the
-            # budget envelope records. The composition detail (basis, counts)
-            # lives on the response and audit record: the echo's SHAPE is
-            # pinned by the captured pack output contracts, so new keys here
-            # would fail output validation for every family.
-            "estimated_cost_usd": structured_billing.estimated_cost_usd,
-            "rate_card_ref": structured_cost.rate_card_ref,
-            "cost_posture": structured_cost.cost_posture,
-        }
-    )
-    if not is_advisor_brief_payload(request.context_payload):
-        return output_message, structured_output
-
-    parsed, salvaged = parse_json_object_with_posture(output_message)
-    if salvaged:
-        # The validator decides what salvage means per profile (issue #156):
-        # promoted rejects, local marks the output UNVALIDATED_LOCAL_ONLY.
-        structured_output["strict_json_salvaged"] = True
-    quality_result = normalize_advisor_brief_output(
-        parsed_output=parsed,
-        output_message=output_message,
-        context_payload=request.context_payload,
-        source_refs=request.source_refs,
-    )
-    structured_output.update(quality_result.structured_output)
-    return quality_result.message, structured_output
-
-
-def parse_json_object(value: str) -> dict[str, Any] | None:
-    parsed, _ = parse_json_object_with_posture(value)
-    return parsed
-
-
-def parse_json_object_with_posture(value: str) -> tuple[dict[str, Any] | None, bool]:
-    """Parse a model answer, reporting whether balanced-brace salvage ran.
-
-    Salvage is a recovery, not a validation: the output validator downgrades
-    or rejects salvaged output by runtime profile (issue #156).
-    """
-
-    normalized = strip_json_code_fence(value)
-    try:
-        parsed = json.loads(normalized)
-    except json.JSONDecodeError:
-        candidate = extract_balanced_json_object(normalized)
-        if candidate is None:
-            return None, True
-        try:
-            parsed = json.loads(candidate)
-        except json.JSONDecodeError:
-            return None, True
-        return (parsed, True) if isinstance(parsed, dict) else (None, True)
-    return (parsed if isinstance(parsed, dict) else None), False
-
-
-def strip_json_code_fence(value: str) -> str:
-    normalized = value.strip()
-    if normalized.startswith("```json"):
-        return normalized.removeprefix("```json").removesuffix("```").strip()
-    if normalized.startswith("```"):
-        return normalized.removeprefix("```").removesuffix("```").strip()
-    return normalized
-
-
-def extract_balanced_json_object(value: str) -> str | None:
-    start = value.find("{")
-    if start < 0:
-        return None
-    depth = 0
-    in_string = False
-    escaped = False
-    for index, char in enumerate(value[start:], start=start):
-        if in_string:
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                in_string = False
-            continue
-        if char == '"':
-            in_string = True
-            continue
-        if char == "{":
-            depth += 1
-        elif char == "}":
-            depth -= 1
-            if depth == 0:
-                return value[start : index + 1]
-    return None
 
 
 OPENAI_MANAGED_TEXT_DESCRIPTOR = ProviderAdapterDescriptor(

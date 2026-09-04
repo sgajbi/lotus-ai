@@ -144,6 +144,7 @@ def record_attempt_spend(
     model_revision: str | None,
     attempt_index: int,
     debit: AttemptDebit,
+    candidate_id_v2: str | None = None,
 ) -> bool:
     """Durably debit one provider attempt at its boundary (issue #289).
 
@@ -175,6 +176,7 @@ def record_attempt_spend(
             candidate_entry_id=candidate_entry_id,
             model_revision=model_revision,
             attempt_index=attempt_index,
+            candidate_id_v2=candidate_id_v2,
         ),
         budget_key=_BUDGET_KEY,
     )
@@ -188,6 +190,7 @@ def reserve_attempt_spend(
     model_revision: str | None,
     attempt_index: int,
     reservation: AttemptDebit,
+    candidate_id_v2: str | None = None,
 ) -> str:
     """Atomically reserve one attempt's governed maximum against the global
     budget row BEFORE the provider is called (issue #300).
@@ -221,6 +224,7 @@ def reserve_attempt_spend(
             candidate_entry_id=candidate_entry_id,
             model_revision=model_revision,
             attempt_index=attempt_index,
+            candidate_id_v2=candidate_id_v2,
         ),
         budget_key=_BUDGET_KEY,
         hard_limit_usd=hard_limit,
