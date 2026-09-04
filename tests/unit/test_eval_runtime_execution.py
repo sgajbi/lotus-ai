@@ -14,10 +14,10 @@ from app.contracts.prompts import PromptControlActionType
 from app.contracts.evals import EvaluationCaseOutcome
 from app.evals.fixture_manifest import EvaluationFixtureRuntimeCase
 from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+from app.services.eval_case_configuration import _apply_case_configuration
 from app.services.eval_runtime_execution import (
     _apply_prompt_rollback_for_evaluation,
     _apply_prompt_transition_for_evaluation,
-    _apply_case_configuration,
     _execute_fixture_case,
 )
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
