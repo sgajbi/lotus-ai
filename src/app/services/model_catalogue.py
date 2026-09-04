@@ -525,7 +525,10 @@ def bind_live_text_model_catalogue_entry() -> ModelCatalogueEntry:
     entry_id = derive_model_catalogue_entry_id(
         provider_id=provider_id,
         model_revision=model_revision,
-        deployment=None,
+        # The config's deployment participates in the identity (issue #303):
+        # a deployment-scoped candidate binds its own catalogue entry, never
+        # the direct-API entry of the same provider and revision.
+        deployment=config.deployment,
     )
     entry = get_model_catalogue_repository().get_entry(entry_id)
     if entry is None:

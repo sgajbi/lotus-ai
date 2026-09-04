@@ -80,6 +80,52 @@ class RoutingPostureCandidateDescriptor(BaseModel):
     )
 
 
+class ConnectionIdentityDescriptor(BaseModel):
+    """One governed identity's resolved connection facts (issue #303).
+
+    Answers the operator identity questions - which provider, which model
+    revision, which deployment, which region posture, which credential
+    reference - from the SAME merged connection-material map execution
+    resolves through (issue #298), so inspection and execution can never
+    disagree. The credential is a reference name only; the secret never
+    appears on any read surface.
+    """
+
+    entry_id: str = Field(min_length=1, description="Catalogue identity of the candidate.")
+    provider_id: str = Field(min_length=1, description="Provider this identity serves through.")
+    model_revision: str = Field(
+        min_length=1, description="Model revision (or model id when unversioned)."
+    )
+    deployment: str | None = Field(
+        default=None,
+        description="Hosting deployment identity; null for direct provider APIs.",
+    )
+    region: str | None = Field(
+        default=None,
+        description=(
+            "Informational residency posture declared on the connection material; "
+            "never an eligibility gate until a governed residency requirement exists."
+        ),
+    )
+    endpoint_host: str | None = Field(
+        default=None,
+        description="Host portion of the connection endpoint; never the full URL.",
+    )
+    credential_env: str | None = Field(
+        default=None,
+        description=(
+            "Name of the environment variable referenced for the credential; null for "
+            "seeded identities (settings-supplied credential) or keyless endpoints."
+        ),
+    )
+    seeded: bool = Field(
+        description=(
+            "True when the connection facts come from the legacy settings pair; false "
+            "for declared connection material."
+        ),
+    )
+
+
 class RoutingPostureResponse(BaseModel):
     service: str = Field(description="Service name emitting the routing posture.")
     version: str = Field(description="Current lotus-ai service version.")
@@ -128,6 +174,14 @@ class RoutingPostureResponse(BaseModel):
             "#244, S5): who is eligible, who is excluded and why, and who would be "
             "selected first. Present only when requirements were queried under the "
             "ordered strategy."
+        ),
+    )
+    connection_identities: list[ConnectionIdentityDescriptor] = Field(
+        default_factory=list,
+        description=(
+            "Every governed identity's resolved connection facts (issue #303), from the "
+            "same merged material map execution resolves through - provider, revision, "
+            "deployment, region posture and credential reference name per identity."
         ),
     )
     notes: list[str] = Field(description="Boundary statements this posture ships with.")
