@@ -203,8 +203,13 @@ def test_served_execution_debits_each_attempt_and_projects_them(
     response = _run_transport(retry_limit=1, execution_id="exec-served")
 
     rows = {row.debit_id: row for row in get_provider_operations_store().list_attempt_debits()}
-    failed_row = rows["adbt:exec-served:text.local:0"]
-    served_row = rows["adbt:exec-served:text.local:1"]
+    failed_row = rows["adbt:exec-served:text.local:gpt-5.4:0"]
+    served_row = rows["adbt:exec-served:text.local:gpt-5.4:1"]
+    # The full serving identity rides the durable evidence (issue #299).
+    assert served_row.candidate_entry_id == "text.local:gpt-5.4"
+    assert served_row.model_revision == "gpt-5.4"
+    assert served_row.attempt_index == 1
+    assert served_row.provider_id == "text.local"
     assert failed_row.basis == "CONSERVATIVE_ESTIMATE"
     assert failed_row.output_tokens == 512
     assert served_row.basis == "ACTUAL_USAGE"
@@ -244,8 +249,8 @@ def test_terminal_all_fail_execution_still_debits_every_billable_attempt(
         if row.debit_id.startswith("adbt:exec-allfail:")
     ]
     assert {row.debit_id for row in rows} == {
-        "adbt:exec-allfail:text.local:0",
-        "adbt:exec-allfail:text.local:1",
+        "adbt:exec-allfail:text.local:gpt-5.4:0",
+        "adbt:exec-allfail:text.local:gpt-5.4:1",
     }
     assert all(row.basis == "CONSERVATIVE_ESTIMATE" for row in rows)
     budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
@@ -279,7 +284,7 @@ def test_rate_limited_and_pre_connect_failures_never_debit(
     ]
     # Only the served attempt debited: 429 refused before generation and the
     # connection-level failure never reached a generating provider.
-    assert {row.debit_id for row in rows} == {"adbt:exec-unbillable:text.local:2"}
+    assert {row.debit_id for row in rows} == {"adbt:exec-unbillable:text.local:gpt-5.4:2"}
     assert response.estimated_cost_usd == 0.0035
     assert response.failed_attempt_cost_basis == "NONE"
     assert response.billed_attempt_count == 1
@@ -323,12 +328,164 @@ def test_candidates_sharing_an_execution_debit_cumulatively(
         if row.debit_id.startswith("adbt:exec-fallback:")
     ]
     assert {row.debit_id for row in rows} == {
-        "adbt:exec-fallback:text.primary:0",
-        "adbt:exec-fallback:text.alternate:0",
+        "adbt:exec-fallback:text.primary:gpt-5.4:0",
+        "adbt:exec-fallback:text.alternate:gpt-5.4:0",
     }
     budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
     assert budget is not None
     assert budget.current_spend_usd == round(sum(row.amount_usd for row in rows), 8)
+
+
+def _post_candidate(
+    *,
+    provider_id: str,
+    model_revision: str,
+    execution_id: str,
+    retry_limit: int = 0,
+) -> dict[str, object]:
+    from app.providers.openai_compatible_text_transport import (
+        post_openai_compatible_response,
+    )
+
+    return post_openai_compatible_response(
+        api_base="http://localhost:1234/v1",
+        api_key=None,
+        payload={"model": "gpt-5.4", "max_output_tokens": 512},
+        timeout_seconds=1.0,
+        serving_provider_id=provider_id,
+        require_api_key=False,
+        retry_limit=retry_limit,
+        execution_id=execution_id,
+        model_revision=model_revision,
+    )
+
+
+def test_same_provider_model_candidates_debit_distinctly(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Issue #299: two model candidates at the SAME provider, attempt 0 each,
+    are two debit records - a provider-keyed identity would have swallowed
+    the second as a duplicate and understated spend. Both records reach the
+    execution's consumed spend and the global budget envelope."""
+
+    from app.services.provider_budget_policy import spent_for_execution
+
+    _seed_cost_scalars()
+    _quiet_backoff(monkeypatch)
+
+    def _urlopen(request: object, timeout: float) -> _Response:
+        raise _http_error(503)
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    for revision in ("model-a", "model-b"):
+        with raises(ProviderExecutionError):
+            _post_candidate(
+                provider_id="text.shared",
+                model_revision=revision,
+                execution_id="exec-shared-provider",
+            )
+
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-shared-provider:")
+    ]
+    assert {row.debit_id for row in rows} == {
+        "adbt:exec-shared-provider:text.shared:model-a:0",
+        "adbt:exec-shared-provider:text.shared:model-b:0",
+    }
+    assert {row.candidate_entry_id for row in rows} == {
+        "text.shared:model-a",
+        "text.shared:model-b",
+    }
+    assert all(row.provider_id == "text.shared" for row in rows)
+    total = round(sum(row.amount_usd for row in rows), 8)
+    assert total > 0
+    assert spent_for_execution("exec-shared-provider") == total
+    budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
+    assert budget is not None
+    assert budget.current_spend_usd == total
+
+
+def test_a_retry_attempt_stays_distinct_from_a_fallback_attempt(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Issue #299: candidate A's retry (attempt 1) and same-provider
+    candidate B's first attempt (attempt 0) are different debits - attempt
+    indices restart per candidate, so only the candidate segment keeps them
+    apart."""
+
+    _seed_cost_scalars()
+    _quiet_backoff(monkeypatch)
+
+    def _urlopen(request: object, timeout: float) -> _Response:
+        raise _http_error(503)
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    with raises(ProviderExecutionError):
+        _post_candidate(
+            provider_id="text.shared",
+            model_revision="model-a",
+            execution_id="exec-retry-vs-fallback",
+            retry_limit=1,
+        )
+    with raises(ProviderExecutionError):
+        _post_candidate(
+            provider_id="text.shared",
+            model_revision="model-b",
+            execution_id="exec-retry-vs-fallback",
+        )
+
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-retry-vs-fallback:")
+    ]
+    assert {row.debit_id for row in rows} == {
+        "adbt:exec-retry-vs-fallback:text.shared:model-a:0",
+        "adbt:exec-retry-vs-fallback:text.shared:model-a:1",
+        "adbt:exec-retry-vs-fallback:text.shared:model-b:0",
+    }
+
+
+def test_three_same_provider_fallback_candidates_accumulate(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Issue #299 / the wider-universe north star: three candidates from ONE
+    provider all debit, spend accumulates across the shared execution, and
+    the durable rows are the number the envelope moved by."""
+
+    from app.services.provider_budget_policy import spent_for_execution
+
+    _seed_cost_scalars()
+    _quiet_backoff(monkeypatch)
+
+    def _urlopen(request: object, timeout: float) -> _Response:
+        raise _http_error(503)
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    for revision in ("model-a", "model-b", "model-c"):
+        with raises(ProviderExecutionError):
+            _post_candidate(
+                provider_id="text.shared",
+                model_revision=revision,
+                execution_id="exec-three-candidates",
+            )
+
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-three-candidates:")
+    ]
+    assert len(rows) == 3
+    total = round(sum(row.amount_usd for row in rows), 8)
+    assert spent_for_execution("exec-three-candidates") == total
+    budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
+    assert budget is not None
+    assert budget.current_spend_usd == total
 
 
 def test_gateway_mints_one_execution_identity_per_execution(
@@ -436,7 +593,7 @@ def test_cost_ceiling_refuses_the_next_attempt_before_it_starts(
         for row in get_provider_operations_store().list_attempt_debits()
         if row.debit_id.startswith("adbt:exec-ceiling:")
     ]
-    assert {row.debit_id for row in rows} == {"adbt:exec-ceiling:text.local:0"}
+    assert {row.debit_id for row in rows} == {"adbt:exec-ceiling:text.local:gpt-5.4:0"}
 
 
 def test_a_cheaper_fallback_candidate_fits_the_shared_remaining_ceiling(
@@ -491,7 +648,7 @@ def test_a_cheaper_fallback_candidate_fits_the_shared_remaining_ceiling(
         if row.debit_id.startswith("adbt:exec-cheap-fallback:")
     ]
     # Only the alternate billed, under its own card.
-    assert {row.debit_id for row in rows} == {"adbt:exec-cheap-fallback:text.alternate:0"}
+    assert {row.debit_id for row in rows} == {"adbt:exec-cheap-fallback:text.alternate:cheap-rev:0"}
     assert rows[0].rate_card_ref == "cheap-alternate"
 
 

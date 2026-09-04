@@ -19,7 +19,9 @@ def _seed_spend(
 ) -> bool:
     return record_attempt_spend(
         execution_id=execution_id,
+        candidate_entry_id="text.openai:gpt-5.4",
         provider_id="text.openai",
+        model_revision="gpt-5.4",
         attempt_index=attempt_index,
         debit=AttemptDebit(
             amount_usd=amount,

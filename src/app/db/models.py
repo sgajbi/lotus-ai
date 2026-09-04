@@ -258,6 +258,11 @@ class ProviderAttemptDebitModel(Base):
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rate_card_ref: Mapped[str] = mapped_column(String(128), nullable=False)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Full serving identity (issue #299): which catalogue candidate this
+    # debit describes. Null only on rows recorded before the columns existed.
+    candidate_entry_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    model_revision: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    attempt_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class ProviderDegradationStateModel(Base):

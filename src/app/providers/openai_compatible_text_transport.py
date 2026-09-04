@@ -15,6 +15,7 @@ from app.contracts.providers import (
     ProviderExecutionResponse,
     ProviderFailureCategory,
 )
+from app.contracts.model_catalogue import derive_model_catalogue_entry_id
 from app.providers.base import ProviderAdapterDescriptor, ProviderExecutionError
 from app.services.provider_execution_overrides import (
     ensure_network_execution_permitted,
@@ -251,6 +252,21 @@ def post_openai_compatible_response(
     # (direct callers) the transport mints one: production attempts always
     # debit.
     debit_execution_id = execution_id or uuid4().hex
+    # The debit identity segment is the CANDIDATE - the catalogue entry id
+    # binding provider, model revision and deployment (issue #299) - because
+    # two model candidates at the same provider are normal serving topology
+    # and a provider-keyed identity would collide their attempt debits. A
+    # caller that supplies no model revision cannot name a candidate; its
+    # debits key by provider honestly (and record no candidate identity).
+    candidate_entry_id = (
+        derive_model_catalogue_entry_id(
+            provider_id=serving_provider_id,
+            model_revision=model_revision,
+            deployment=None,
+        )
+        if model_revision
+        else serving_provider_id
+    )
     # Conservative input estimate for attempts that never revealed usage:
     # the request body is hard evidence of what was sent; ~4 bytes/token is
     # the documented approximation, replaced by provider-reported input
@@ -277,7 +293,9 @@ def post_openai_compatible_response(
         if debit is not None:
             record_attempt_spend(
                 execution_id=debit_execution_id,
+                candidate_entry_id=candidate_entry_id,
                 provider_id=serving_provider_id,
+                model_revision=model_revision,
                 attempt_index=attempt_index,
                 debit=debit,
             )
