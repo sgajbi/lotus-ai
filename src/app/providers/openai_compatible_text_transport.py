@@ -36,7 +36,7 @@ from app.providers.advisor_brief_quality_guardrails import (
     build_advisor_brief_user_message,
     normalize_advisor_brief_output,
 )
-from app.services.provider_budget_policy import record_attempt_spend
+from app.services.provider_budget_policy import record_attempt_spend, spent_for_execution
 from app.services.provider_usage_accounting import (
     AttemptDebit,
     estimate_live_text_cost,
@@ -101,6 +101,7 @@ def execute_openai_compatible_text_request(
         execution_id=request.execution_id,
         cost_posture=request.failed_attempt_cost_posture,
         model_revision=model_version or model_id,
+        cost_ceiling_usd=request.cost_ceiling_usd,
     )
     output_message = extract_output_text(response_payload)
     message, structured_output = build_structured_output(
@@ -186,6 +187,7 @@ def post_openai_compatible_response(
     execution_id: str | None = None,
     cost_posture: str = "conservative",
     model_revision: str | None = None,
+    cost_ceiling_usd: float | None = None,
 ) -> dict[str, Any]:
     """POST one OpenAI-compatible request, labelling every surface it emits
     with ``serving_provider_id``.
@@ -294,6 +296,41 @@ def post_openai_compatible_response(
                 )
             # An attempt may wait only for what remains of the budget.
             timeout_seconds = min(timeout_seconds, remaining_seconds)
+        if cost_ceiling_usd is not None:
+            # Pre-attempt cost admission (issue #290): the remaining ceiling
+            # must support this attempt at its conservative bound under THIS
+            # candidate's rate card. Consumption is the durable attempt
+            # debits, so retries and fallback candidates share one budget.
+            projected = price_attempt(
+                input_tokens=None,
+                output_tokens=None,
+                billable_risk=True,
+                posture="conservative",
+                fallback_input_estimate=input_estimate,
+                max_output_tokens=payload_max_output,
+                model_revision=model_revision,
+            )
+            if projected is None:
+                # A hard ceiling the platform cannot price fails closed: an
+                # unverifiable guarantee must not silently pass.
+                raise ProviderExecutionError(
+                    category=ProviderFailureCategory.REQUEST_COST_EXHAUSTED,
+                    message=(
+                        "The caller declared max_estimated_cost_usd, but no effective "
+                        "rate card prices this candidate; the hard cost ceiling "
+                        "cannot be verified and fails closed."
+                    ),
+                )
+            spent = spent_for_execution(debit_execution_id)
+            if round(spent + projected.amount_usd, 8) > cost_ceiling_usd:
+                raise ProviderExecutionError(
+                    category=ProviderFailureCategory.REQUEST_COST_EXHAUSTED,
+                    message=(
+                        "The caller's max_estimated_cost_usd budget cannot support "
+                        "the next attempt at its conservative bound; no further "
+                        "attempt may start on this candidate."
+                    ),
+                )
         provider_request = urllib_request.Request(
             endpoint,
             data=body,

@@ -276,7 +276,15 @@ def ensure_model_catalogue_seeded() -> ModelCatalogueSeedReport:
 # estimated-cost ceiling is declared-only until a pre-execution bound exists,
 # and the routing decision says so.
 ENFORCED_REQUIREMENT_DIMENSIONS = frozenset(
-    {"structured_output_required", "tool_calling_required", "max_latency_ms"}
+    {
+        "structured_output_required",
+        "tool_calling_required",
+        "max_latency_ms",
+        # One execution cost budget across retries and fallback (issue #290):
+        # pre-attempt admission consumes from the durable attempt debits, and
+        # a declared ceiling on an unpriceable candidate fails closed.
+        "max_estimated_cost_usd",
+    }
 )
 
 _CAPABILITY_FACT_BY_REQUIREMENT = {

@@ -123,6 +123,11 @@ class ProviderOperationsRepository(Protocol):
     def list_attempt_debits(self, *, limit: int = 100) -> Sequence[ProviderAttemptDebitRecord]:
         """Attempt-debit evidence, newest first."""
 
+    def sum_attempt_debits(self, *, debit_id_prefix: str) -> float:
+        """Total recorded spend across one execution's debit identities
+        (issue #290): the same durable rows that moved the envelope also
+        answer 'how much of the caller's ceiling is already consumed'."""
+
     def delete_attempt_debits(self, debit_ids: Sequence[str]) -> int:
         """Delete attempt-debit evidence rows for the lifecycle engine
         (control-plane evidence family). Deleting evidence never reverses

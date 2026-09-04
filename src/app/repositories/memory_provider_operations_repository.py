@@ -119,6 +119,16 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
                 deleted += 1
         return deleted
 
+    def sum_attempt_debits(self, *, debit_id_prefix: str) -> float:
+        return round(
+            sum(
+                record.amount_usd
+                for debit_id, record in self._attempt_debits.items()
+                if debit_id.startswith(debit_id_prefix)
+            ),
+            8,
+        )
+
     def get_degradation_state(
         self,
         *,

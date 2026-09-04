@@ -162,6 +162,15 @@ def record_attempt_spend(
     )
 
 
+def spent_for_execution(execution_id: str) -> float:
+    """This execution's consumed spend, from its durable attempt debits
+    (issue #290): the caller's cost ceiling admits or refuses the next
+    attempt against exactly the number the envelope recorded."""
+
+    repository = get_provider_operations_store()
+    return repository.sum_attempt_debits(debit_id_prefix=f"adbt:{execution_id}:")
+
+
 def reset_provider_budget_state() -> None:
     repository = get_provider_operations_store()
     repository.reset_budget_state(budget_key=_BUDGET_KEY)

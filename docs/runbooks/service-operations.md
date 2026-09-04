@@ -534,7 +534,7 @@ Runtime semantics under `ordered_fallback`:
 - When a response exists, `estimated_cost_usd` / `failed_attempt_cost_usd` / `failed_attempt_cost_basis` / `billed_attempt_count` are a **projection of the recorded attempt debits** — the durable rows are where spend became real, and response settlement never debits again.
 - Retry and fallback candidates share one execution identity and debit cumulatively under their own attempt identities and rate cards; spend is never reset mid-execution.
 - Debit rows are lifecycle-governed evidence (control-plane evidence family, 7y): their expiry never reverses the budget counter.
-- `max_estimated_cost_usd` remains an unenforced preference until the hard execution-cost ceiling lands (one budget across retries and fallback — the latency-budget precedent).
+- `max_estimated_cost_usd` is a **hard execution cost ceiling** (issue #290): one budget across every retry and fallback candidate, never reset. Before each attempt starts, the remaining ceiling must support that attempt at its conservative bound (input estimate + `max_output_tokens`) under the candidate's own rate card — a cheaper fallback can fit where the primary would not, and consumption is exactly the durable attempt debits. A refused attempt is `REQUEST_COST_EXHAUSTED` (the caller's ceiling, not the platform envelope) and bills nothing; a declared ceiling on a candidate no rate card prices fails closed — an unverifiable guarantee never silently passes.
 
 ## Durable Provider Operations Recovery
 

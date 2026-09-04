@@ -192,6 +192,11 @@ def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
     assert rows[0].basis == "CONSERVATIVE_ESTIMATE"
     assert rows[0].input_tokens == 200
 
+    # Execution-scoped consumption (issue #290): the sum answers the cost
+    # ceiling's admission question from the same durable rows.
+    assert repository.sum_attempt_debits(debit_id_prefix="adbt:exec-sql:") == 0.01736
+    assert repository.sum_attempt_debits(debit_id_prefix="adbt:exec-other:") == 0.0
+
     assert repository.delete_attempt_debits([]) == 0
     assert repository.delete_attempt_debits(["adbt:exec-sql:text.openai:0", "missing"]) == 1
     assert repository.list_attempt_debits(limit=10) == []
