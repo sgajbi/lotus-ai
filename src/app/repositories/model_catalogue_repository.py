@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from typing import Protocol
 
 from app.contracts.model_catalogue import (
+    CapabilityEvidenceRecord,
     ModelCatalogueEntry,
     ModelLifecycleTransitionRecord,
     ModelRevisionDriftObservation,
@@ -18,6 +19,16 @@ class ModelCatalogueRepository(Protocol):
     def get_entry(self, entry_id: str) -> ModelCatalogueEntry | None: ...
 
     def get_entry_by_candidate_id(self, candidate_id_v2: str) -> ModelCatalogueEntry | None: ...
+
+    def save_capability_evidence(self, record: CapabilityEvidenceRecord) -> None: ...
+
+    def list_capability_evidence(
+        self, *, candidate_id_v2: str, dimension: str
+    ) -> list[CapabilityEvidenceRecord]: ...
+
+    def list_all_capability_evidence(self, *, limit: int) -> list[CapabilityEvidenceRecord]: ...
+
+    def delete_capability_evidence(self, evidence_ids: "Sequence[str]") -> int: ...
 
     def upsert_entry(self, entry: ModelCatalogueEntry) -> None: ...
 

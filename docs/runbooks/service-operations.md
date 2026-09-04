@@ -430,6 +430,17 @@ Before treating retrieval or provider evaluation evidence as approval-ready:
 5. if replay or retry is required, apply the governed async control action first and then verify a new evaluation attempt appears instead of mutating prior case evidence in place
 6. treat `foundation_eval_*` run artifacts as historical baselines only; they do not satisfy current runtime-backed approval posture by themselves
 
+## Capability Evidence
+
+Observed-capability truth is scope-aware (issue #312) and layered — never one boolean:
+
+- **Declared**: the catalogue entry's assessed facts (provider/configuration assertion).
+- **Observed**: `capability_evidence_records` — one authoritative row per proof a fixture family declares, written only when a COMPLETED PASS run was served entirely by ONE candidate (mixed or unknown serving candidates yield nothing; unknown never upgrades into truth). Each row binds the canonical candidate identity, exact revision, dimension, scope (`GLOBAL`, or `OUTPUT_CONTRACT` with its key), fixture family, manifest version, run, verdict and provenance. Control-plane evidence family, 7-year expiry — expired evidence honestly reverts the claim to unknown.
+- **Certified**: the governed serving promotion (PASS-run evidence hash-bound through the two-step flow) — evidence enables the decision, never makes it; no auto-promotion exists.
+- **Eligibility**: `enforce_capability_requirements` consumes exactly the matching scoped PASS claim for the exact candidate AND revision — structured-output evidence for one approved output contract never becomes a universal statement, a GLOBAL claim serves everywhere, and revision-mismatched, scope-mismatched or absent evidence stays `CAPABILITY_UNKNOWN`.
+
+Fixture families declare proofs in the manifest as `proves: [{dimension, scope_type, scope_key?}]`, validated fail-closed (governed dimension vocabulary; `scope_key` required for non-GLOBAL scopes and forbidden for GLOBAL). A family that declares nothing proves nothing.
+
 ## Governed Actions
 
 One reusable governance pattern covers every high-impact control-plane action; there are no domain-specific approval frameworks. The rule is the **direction of risk**:

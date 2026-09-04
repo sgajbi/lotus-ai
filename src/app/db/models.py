@@ -889,6 +889,27 @@ class ModelCatalogueEntryModel(Base):
     )
 
 
+class CapabilityEvidenceModel(Base):
+    """Authoritative scope-aware observed-capability claims (issue #312):
+    one row per declared proof per PASS run, bound to the exact candidate,
+    scope, fixture, run and provenance."""
+
+    __tablename__ = "capability_evidence_records"
+
+    evidence_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    candidate_id_v2: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    model_revision: Mapped[str] = mapped_column(String(128), nullable=False)
+    dimension: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    scope_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    scope_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    fixture_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    manifest_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    evaluation_run_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    verdict: Mapped[str] = mapped_column(String(16), nullable=False)
+    triggered_by: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class DataLifecycleEventModel(Base):
     """Append-only deletion evidence (issue #158, S2a): what the lifecycle
     engine removed, by family and count, referencing content only by digest."""
