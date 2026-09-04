@@ -67,6 +67,12 @@ class ProviderFailureCategory(str, Enum):
     # request deadline was exhausted by earlier attempts, backoff, or
     # fallback, and no further attempt may start.
     REQUEST_DEADLINE_EXHAUSTED = "REQUEST_DEADLINE_EXHAUSTED"
+    # The caller's declared cost ceiling cannot support the next attempt
+    # (issue #290). Distinct from BUDGET_EXCEEDED: the platform envelope is
+    # fine - the request's own max_estimated_cost_usd budget was consumed by
+    # earlier attempts, or the candidate cannot be priced so a hard ceiling
+    # fails closed. A cheaper fallback candidate may still fit.
+    REQUEST_COST_EXHAUSTED = "REQUEST_COST_EXHAUSTED"
     PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
     PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"
     PROVIDER_UPSTREAM_ERROR = "PROVIDER_UPSTREAM_ERROR"
@@ -675,6 +681,15 @@ class ProviderExecutionRequest(BaseModel):
             "shared across retry and fallback candidates, it keys the idempotent "
             "per-attempt spend debits. Null only outside the gateway path; the "
             "transport then mints one so every live attempt still debits."
+        ),
+    )
+    cost_ceiling_usd: float | None = Field(
+        default=None,
+        description=(
+            "The caller's hard execution cost ceiling (issue #290), stamped once "
+            "from requirements.max_estimated_cost_usd: one budget across every "
+            "retry and fallback candidate, consumed by the durable attempt "
+            "debits and never reset mid-execution."
         ),
     )
     failed_attempt_cost_posture: Literal["conservative", "actual_only"] = Field(

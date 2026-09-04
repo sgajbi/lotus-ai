@@ -373,3 +373,151 @@ def test_gateway_mints_one_execution_identity_per_execution(
     assert captured[0] != captured[1]
     # A caller-supplied identity is preserved, never re-minted.
     assert captured[2] == "exec-preset"
+
+
+def _post_with_ceiling(
+    *,
+    provider_id: str,
+    model_revision: str,
+    execution_id: str,
+    ceiling: float,
+    retry_limit: int = 0,
+) -> dict[str, object]:
+    from app.providers.openai_compatible_text_transport import (
+        post_openai_compatible_response,
+    )
+
+    return post_openai_compatible_response(
+        api_base="http://localhost:1234/v1",
+        api_key=None,
+        payload={"model": "gpt-5.4", "max_output_tokens": 512},
+        timeout_seconds=1.0,
+        serving_provider_id=provider_id,
+        require_api_key=False,
+        retry_limit=retry_limit,
+        execution_id=execution_id,
+        model_revision=model_revision,
+        cost_ceiling_usd=ceiling,
+    )
+
+
+def test_cost_ceiling_refuses_the_next_attempt_before_it_starts(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Issue #290: one execution budget - the first attempt's conservative
+    debit consumes it, and the second attempt is refused pre-connect with
+    the bounded category; nothing is billed for the refused attempt."""
+
+    _seed_cost_scalars()
+    _quiet_backoff(monkeypatch)
+    calls = {"count": 0}
+
+    def _urlopen(request: object, timeout: float) -> _Response:
+        calls["count"] += 1
+        raise _http_error(503)
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    # Conservative bound per attempt with these scalars is well over 0.02:
+    # the first attempt fits, the retry cannot.
+    with raises(ProviderExecutionError) as exc_info:
+        _post_with_ceiling(
+            provider_id="text.local",
+            model_revision="gpt-5.4",
+            execution_id="exec-ceiling",
+            ceiling=0.02,
+            retry_limit=1,
+        )
+
+    assert exc_info.value.category.value == "REQUEST_COST_EXHAUSTED"
+    assert calls["count"] == 1
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-ceiling:")
+    ]
+    assert {row.debit_id for row in rows} == {"adbt:exec-ceiling:text.local:0"}
+
+
+def test_a_cheaper_fallback_candidate_fits_the_shared_remaining_ceiling(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Issue #290: the ceiling is shared, never reset - and the alternate's
+    admission prices under the ALTERNATE's rate card, so a cheaper candidate
+    fits where the primary would not."""
+
+    from app.contracts.rate_cards import RateCard, RateCardScopeKind
+    from app.services.provider_usage_accounting import save_rate_card
+
+    _seed_cost_scalars()
+    _quiet_backoff(monkeypatch)
+    save_rate_card(
+        RateCard(
+            card_id="cheap-alternate",
+            scope_kind=RateCardScopeKind.MODEL_REVISION,
+            scope_target="cheap-rev",
+            currency="USD",
+            input_cost_per_1k_tokens=0.0001,
+            output_cost_per_1k_tokens=0.0001,
+            effective_from_utc=None,
+            effective_to_utc=None,
+            created_at="2026-08-31T00:00:00Z",
+            last_updated_at="2026-08-31T00:00:00Z",
+        )
+    )
+    monkeypatch.setattr("urllib.request.urlopen", lambda request, timeout: _Response(_SUCCESS_BODY))
+
+    # The primary's conservative bound under the default card exceeds the
+    # ceiling outright: refused before any connection.
+    with raises(ProviderExecutionError) as exc_info:
+        _post_with_ceiling(
+            provider_id="text.primary",
+            model_revision="gpt-5.4",
+            execution_id="exec-cheap-fallback",
+            ceiling=0.01,
+        )
+    assert exc_info.value.category.value == "REQUEST_COST_EXHAUSTED"
+
+    payload = _post_with_ceiling(
+        provider_id="text.alternate",
+        model_revision="cheap-rev",
+        execution_id="exec-cheap-fallback",
+        ceiling=0.01,
+    )
+    assert payload["id"] == "resp_billing"
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-cheap-fallback:")
+    ]
+    # Only the alternate billed, under its own card.
+    assert {row.debit_id for row in rows} == {"adbt:exec-cheap-fallback:text.alternate:0"}
+    assert rows[0].rate_card_ref == "cheap-alternate"
+
+
+def test_a_declared_ceiling_on_an_unpriceable_candidate_fails_closed() -> None:
+    """Issue #290: no rate card means the ceiling cannot be verified - the
+    guarantee refuses rather than silently passing."""
+
+    with raises(ProviderExecutionError) as exc_info:
+        _post_with_ceiling(
+            provider_id="text.local",
+            model_revision="unpriced-rev",
+            execution_id="exec-unpriceable",
+            ceiling=5.0,
+        )
+    assert exc_info.value.category.value == "REQUEST_COST_EXHAUSTED"
+    assert "cannot be verified" in exc_info.value.message
+
+
+def test_gateway_stamps_the_cost_ceiling_from_requirements() -> None:
+    from app.contracts.capability_requirements import CapabilityRequirements
+    from app.services.provider_gateway import _apply_cost_ceiling
+    from tests.unit.test_provider_gateway import _request
+
+    stamped = _apply_cost_ceiling(
+        _request(requirements=CapabilityRequirements(max_estimated_cost_usd=0.25))
+    )
+    assert stamped.cost_ceiling_usd == 0.25
+    untouched = _apply_cost_ceiling(_request())
+    assert untouched.cost_ceiling_usd is None

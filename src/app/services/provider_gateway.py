@@ -68,6 +68,11 @@ _FALLBACK_TRIGGER_CATEGORIES = frozenset(
         ProviderFailureCategory.PROVIDER_TIMEOUT,
         ProviderFailureCategory.PROVIDER_RATE_LIMITED,
         ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
+        # The caller's cost ceiling refusing THIS candidate does not refuse
+        # the execution: a cheaper alternate's own admission check may still
+        # fit within the shared remaining ceiling (issue #290). The latency
+        # budget differs deliberately - exhausted time is global.
+        ProviderFailureCategory.REQUEST_COST_EXHAUSTED,
     }
 )
 
@@ -82,6 +87,7 @@ class ProviderGatewayUnavailableError(HTTPException):
 
 def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecutionResponse:
     request = _apply_latency_ceiling(request)
+    request = _apply_cost_ceiling(request)
     if request.execution_id is None:
         # One identity per execution, shared by every retry and fallback
         # candidate: attempt debits key on it (issue #289).
@@ -543,6 +549,21 @@ def _apply_latency_ceiling(request: ProviderExecutionRequest) -> ProviderExecuti
             "execution_deadline_at": _monotonic() + requirements.max_latency_ms / 1000.0,
         }
     )
+
+
+def _apply_cost_ceiling(request: ProviderExecutionRequest) -> ProviderExecutionRequest:
+    """Start the governed execution cost budget (issue #290).
+
+    `max_estimated_cost_usd` is one execution ceiling, not an attempt price:
+    it is stamped once here, every retry and fallback candidate consumes
+    from it through the durable attempt debits, and nothing resets it - the
+    latency budget's own design, applied to money.
+    """
+
+    requirements = request.requirements
+    if requirements is None or requirements.max_estimated_cost_usd is None:
+        return request
+    return request.model_copy(update={"cost_ceiling_usd": requirements.max_estimated_cost_usd})
 
 
 def _remaining_budget_ms(request: ProviderExecutionRequest) -> int | None:

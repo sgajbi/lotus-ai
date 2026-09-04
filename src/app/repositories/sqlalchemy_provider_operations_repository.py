@@ -4,7 +4,7 @@ from collections.abc import Sequence
 
 from pathlib import Path
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.contracts.access_control import (
@@ -246,6 +246,17 @@ class SqlAlchemyProviderOperationsRepository(
             )
             session.commit()
             return int(getattr(result, "rowcount", 0) or 0)
+
+    def sum_attempt_debits(self, *, debit_id_prefix: str) -> float:
+        with self._session_factory() as session:
+            total = session.execute(
+                select(func.coalesce(func.sum(ProviderAttemptDebitModel.amount_usd), 0.0)).where(
+                    # Identities are adbt:<uuid-hex>:<provider-id>:<index>;
+                    # none of those parts contain SQL LIKE wildcards.
+                    ProviderAttemptDebitModel.debit_id.like(f"{debit_id_prefix}%")
+                )
+            ).scalar_one()
+            return round(float(total), 8)
 
     def get_degradation_state(
         self,

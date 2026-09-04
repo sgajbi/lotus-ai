@@ -782,10 +782,13 @@ def test_an_assessed_candidate_serves_while_the_unassessed_one_is_rejected(
     assert decision.candidates[0].rejection_reason is ProviderFailureCategory.CAPABILITY_UNKNOWN
     assert decision.selected_provider_id == ALTERNATE
     assert decision.fallback_path == []
-    # The decision names what it held and what it did not: the cost ceiling
-    # has no pre-execution bound yet, and saying so is the contract.
-    assert decision.requirements_enforced_dimensions == ["structured_output_required"]
-    assert decision.requirements_unenforced_dimensions == ["max_estimated_cost_usd"]
+    # The decision names what it holds: the cost ceiling is enforced by
+    # pre-attempt admission over the durable attempt debits (issue #290).
+    assert decision.requirements_enforced_dimensions == [
+        "max_estimated_cost_usd",
+        "structured_output_required",
+    ]
+    assert decision.requirements_unenforced_dimensions == []
 
 
 def test_a_declared_latency_ceiling_tightens_the_execution_timeout(
