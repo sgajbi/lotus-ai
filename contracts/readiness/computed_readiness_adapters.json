@@ -1,0 +1,121 @@
+{
+  "description": "Every services/*_readiness*.py module that remains OUTSIDE the runbook readiness catalog, with the runtime surfaces its posture derives from (issue #284). A module may exist here or as a converted catalog domain, never neither: the bidirectional pin test refuses an unlisted module and a stale entry alike. These are computed adapters - their statuses derive from live state, and converting them to catalog data would destroy the derivation.",
+  "adapters": {
+    "access_control_activation_readiness.py": {
+      "derives_from": [
+        "access-control store mode and caller-policy runtime status"
+      ]
+    },
+    "artifact_activation_readiness.py": {
+      "derives_from": [
+        "artifact metadata/object store runtime status"
+      ]
+    },
+    "async_activation_readiness_service.py": {
+      "derives_from": [
+        "async runtime status (cutover state, queue backend, worker execution)",
+        "async operational state degraded findings"
+      ]
+    },
+    "capability_pack_activation_readiness.py": {
+      "derives_from": [
+        "per-pack approval gate (eval evidence)",
+        "downstream anchor presence on the pack descriptor",
+        "per-pack observability summary"
+      ]
+    },
+    "capability_pack_runbook_readiness.py": {
+      "derives_from": [
+        "first-use-case runbook readiness (catalog-derived)",
+        "use-case onboarding template presence",
+        "per-pack branching on the governed pack catalog"
+      ]
+    },
+    "deployment_split_activation_readiness.py": {
+      "derives_from": [
+        "deployment-split runtime status (configured vs effective stage, degradation)"
+      ]
+    },
+    "first_use_case_readiness.py": {
+      "derives_from": [
+        "caller-policy row for lotus-performance",
+        "staged eval fixture families and the first-use-case approval gate",
+        "safety execution outcome",
+        "audit-store runtime status",
+        "access-control/observability/resilience governance and artifact runtime surfaces"
+      ]
+    },
+    "governance_readiness.py": {
+      "derives_from": [
+        "shared summarize helpers only - no posture of its own"
+      ]
+    },
+    "observability_activation_readiness.py": {
+      "derives_from": [
+        "tracing/metrics settings and observability runtime status"
+      ]
+    },
+    "production_baseline_activation_readiness.py": {
+      "derives_from": [
+        "production-baseline runtime status (durable store seams, queue, secrets posture)"
+      ]
+    },
+    "production_go_live_activation_readiness.py": {
+      "derives_from": [
+        "production go-live runtime status (platform approval, freeze state)",
+        "provider governance status"
+      ]
+    },
+    "prompt_activation_readiness.py": {
+      "derives_from": [
+        "prompt and evaluation-runtime store modes"
+      ]
+    },
+    "prompt_evidence_readiness.py": {
+      "derives_from": [
+        "staged eval fixture inventory and the prompt approval gate"
+      ]
+    },
+    "provider_activation_readiness.py": {
+      "derives_from": [
+        "text/embedding configuration status",
+        "quota, budget and degradation policy validity",
+        "rollout posture and live execution state"
+      ]
+    },
+    "provider_evidence_readiness.py": {
+      "derives_from": [
+        "staged and recorded eval fixture inventories",
+        "provider approval gate summary",
+        "evidence category ids"
+      ]
+    },
+    "resilience_activation_readiness.py": {
+      "derives_from": [
+        "resilience runtime status (posture, recovery state)",
+        "restore plan step count",
+        "drill evidence readiness"
+      ]
+    },
+    "retrieval_activation_readiness.py": {
+      "derives_from": [
+        "retrieval mode/store settings and retrieval runtime status"
+      ]
+    },
+    "retrieval_evidence_readiness.py": {
+      "derives_from": [
+        "staged eval fixture inventory and retrieval runtime surfaces"
+      ]
+    },
+    "runtime_readiness.py": {
+      "derives_from": [
+        "every durable store seam's live status - the cross-cutting runtime probe"
+      ]
+    },
+    "safety_evidence_readiness.py": {
+      "derives_from": [
+        "staged eval fixture inventory and safety runtime outcome"
+      ]
+    }
+  }
+}
