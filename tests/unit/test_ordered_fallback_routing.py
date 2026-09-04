@@ -419,10 +419,19 @@ def test_fallback_configuration_findings_cover_each_misconfiguration() -> None:
     findings = fallback_configuration_findings(resolve_provider_execution_config())
     assert any("none is configured" in finding for finding in findings)
 
+    # A same-provider SIBLING model is legitimate failover now that breaker
+    # state is candidate-scoped (issues #304/#314) - no finding.
     _ordered_fallback_settings()
     settings.live_text_fallback_provider_id = PRIMARY
+    assert fallback_configuration_findings(resolve_provider_execution_config()) == []
+
+    # But a fallback that IS the primary candidate provides no failover.
+    _ordered_fallback_settings()
+    settings.live_text_fallback_provider_id = PRIMARY
+    settings.live_text_fallback_model_id = "gpt-5.4"
+    settings.live_text_fallback_model_version = None
     findings = fallback_configuration_findings(resolve_provider_execution_config())
-    assert any("equals the primary provider" in finding for finding in findings)
+    assert any("no failover" in finding for finding in findings)
 
     _ordered_fallback_settings()
     settings.routing_strategy = "weighted"

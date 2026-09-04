@@ -1,6 +1,16 @@
 from __future__ import annotations
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Float, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    ForeignKey,
+    Float,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -850,6 +860,28 @@ class ModelCatalogueEntryModel(Base):
     seed_source: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     last_updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Canonical serving-candidate identity (issue #314): the versioned opaque
+    # digest of the structured tuple, unique so an id-derivation regression
+    # can never let two logical candidates share one canonical identity.
+    candidate_id_v2: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # NULL-safe deployment for the structural uniqueness invariant: SQL NULLs
+    # never equal each other in a unique index, so the sentinel '' stands in
+    # for "no deployment" and one routable identity maps to one current row.
+    deployment_key: Mapped[str] = mapped_column(
+        String(128), nullable=False, server_default="", default=""
+    )
+
+    __table_args__ = (
+        Index("uq_model_catalogue_candidate_id_v2", "candidate_id_v2", unique=True),
+        Index(
+            "uq_model_catalogue_serving_tuple",
+            "provider_id",
+            "model_family",
+            "model_revision",
+            "deployment_key",
+            unique=True,
+        ),
+    )
 
 
 class DataLifecycleEventModel(Base):

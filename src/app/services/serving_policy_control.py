@@ -126,6 +126,21 @@ def request_serving_policy_identity_add(
                 "serving policy."
             ),
         )
+    if ":" in entry.model_revision or ":" in (entry.deployment or ""):
+        # The P0 collision block (issue #314): a revision or deployment
+        # containing the v1 delimiter renders a delimiter-ambiguous entry id
+        # - two distinct serving tuples can share it - so widening the
+        # serving policy with such an identity is refused until candidate
+        # identity v2 keys the policy. The catalogue row itself stays
+        # governed; only NEW policy admission is blocked.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"`{request.entry_id}` has a delimiter-ambiguous v1 identity (its revision "
+                "or deployment contains ':'); serving-policy additions for such identities "
+                "are blocked until candidate identity v2 resolves the ambiguity (issue #314)."
+            ),
+        )
     order, _ = current_serving_order()
     if request.entry_id in order:
         raise HTTPException(

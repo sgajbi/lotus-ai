@@ -77,6 +77,8 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
             model.seed_source = entry.seed_source.value
             model.created_at = entry.created_at
             model.last_updated_at = entry.last_updated_at
+            model.candidate_id_v2 = entry.candidate_id_v2
+            model.deployment_key = entry.deployment or ""
             session.commit()
 
     def append_lifecycle_event(self, event: ModelLifecycleTransitionRecord) -> None:
@@ -238,6 +240,10 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
             seed_source=ModelCatalogueSeedSource(model.seed_source),
             created_at=model.created_at,
             last_updated_at=model.last_updated_at,
+            # A stored canonical id is re-validated against the structured
+            # fields on read: drift refuses loudly instead of being papered
+            # over. A pre-backfill NULL is stamped from the tuple.
+            candidate_id_v2=model.candidate_id_v2 or "",
         )
 
     def _ensure_sqlite_parent_directory(self) -> None:
