@@ -227,6 +227,27 @@ def _authorize_request_inner(
     if tenant_decision is not None:
         return tenant_decision
 
+    if capability_type == AuthorizationCapabilityType.ASYNC_SUBMISSION:
+        # The tenant-assertion trust boundary (issue #302): async attribution
+        # is caller-asserted source truth, so the assertion is only accepted
+        # inside the caller's authorized tenant scope - the tenant policy
+        # evaluation above is the whole point of this capability. Any
+        # registered ACTIVE caller may submit, exactly as before.
+        return _allowed_decision(
+            caller_app=caller_app,
+            capability_type=capability_type,
+            tenant_id=tenant_id,
+            task_id=task_id,
+            tenant_policy_mode=policy.tenant_policy_mode,
+            requested_source_ids=requested_source_ids,
+            effective_source_ids=[],
+            summary=(
+                f"Caller '{caller_app}' is registered and active and may submit async "
+                "jobs; any asserted tenant attribution is within the caller's "
+                "authorized tenant scope."
+            ),
+        )
+
     if capability_type == AuthorizationCapabilityType.TASK_EXECUTION:
         if task_id not in policy.allowed_task_ids:
             return AuthorizationDecision(

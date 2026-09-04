@@ -29,6 +29,10 @@ class AuthorizationCapabilityType(str, Enum):
     TASK_EXECUTION = "task_execution"
     RETRIEVAL_EXECUTION = "retrieval_execution"
     LIVE_PROVIDER_EXECUTION = "live_provider_execution"
+    # Submitting async work while asserting tenant attribution (issue #302):
+    # the assertion trust model is caller-policy-bounded service assertion -
+    # an application may only assert tenants its tenant policy allows.
+    ASYNC_SUBMISSION = "async_submission"
     ASYNC_CONTROL = "async_control"
     PROMPT_CONTROL = "prompt_control"
     PROVIDER_CONTROL = "provider_control"

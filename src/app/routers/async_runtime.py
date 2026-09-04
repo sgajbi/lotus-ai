@@ -17,10 +17,12 @@ from app.contracts.async_runtime import (
     AsyncRuntimeStatusResponse,
     AsyncWorkerExecutionCatalogResponse,
 )
+from app.contracts.access_control import AuthorizationCapabilityType
 from app.http.authenticated_caller import (
     AuthenticatedCallerDependency,
     require_authenticated_caller_matches,
 )
+from app.services.access_control_authorization import authorize_request, require_authorized
 from app.services.async_activation_readiness_service import build_async_activation_readiness
 from app.services.async_runtime_control import (
     apply_async_control_action,
@@ -234,10 +236,20 @@ async def get_async_job_detail_route(job_id: str) -> AsyncJobDetailResponse:
         "Validates an async job submission against the current async runtime posture. Allowlisted "
         "job types are durably recorded in authoritative runtime state, staged-only job "
         "types return an explicit rejected response, and duplicate active retrieval-index "
-        "submissions are rejected with the owning runtime job id."
+        "submissions are rejected with the owning runtime job id. Tenant attribution is "
+        "caller-asserted source truth under a caller-policy-bounded trust model (not "
+        "cryptographically proven tenant identity): the asserted tenant_id must be within "
+        "the authenticated caller's authorized tenant scope, and a caller whose policy "
+        "requires tenant scope must assert one."
     ),
     responses={
         200: {"description": "Async job submission evaluated successfully."},
+        403: {
+            "description": (
+                "Caller is not registered, or the asserted tenant_id is outside the "
+                "caller's authorized tenant scope."
+            )
+        },
         404: {"description": "Unknown async job type."},
         500: {"description": "Unexpected server error."},
     },
@@ -247,4 +259,13 @@ async def submit_async_job_route(
     _authenticated_caller: AuthenticatedCallerDependency,
 ) -> AsyncJobSubmissionResponse:
     require_authenticated_caller_matches(request.caller_app)
+    # The tenant-assertion trust boundary (issue #302): attribution is
+    # accepted only inside the caller's authorized tenant scope.
+    require_authorized(
+        authorize_request(
+            caller_app=request.caller_app,
+            capability_type=AuthorizationCapabilityType.ASYNC_SUBMISSION,
+            tenant_id=request.tenant_id,
+        )
+    )
     return submit_async_job(request)

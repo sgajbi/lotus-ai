@@ -78,6 +78,69 @@ def test_authorize_request_blocks_restricted_tenant_mismatch() -> None:
     assert decision.outcome == AuthorizationOutcome.BLOCKED_TENANT_NOT_ALLOWED
 
 
+def test_async_submission_blocks_a_tenant_assertion_outside_the_caller_scope() -> None:
+    """Issue #302: tenant attribution is caller-asserted source truth, so the
+    assertion is accepted only inside the caller's authorized tenant scope -
+    an application cannot attribute async work to a tenant its policy does
+    not allow."""
+
+    decision = authorize_request(
+        caller_app="lotus-manage",
+        capability_type=AuthorizationCapabilityType.ASYNC_SUBMISSION,
+        tenant_id="tenant-us-002",
+    )
+
+    assert decision.allowed is False
+    assert decision.outcome == AuthorizationOutcome.BLOCKED_TENANT_NOT_ALLOWED
+
+
+def test_async_submission_allows_a_tenant_assertion_inside_the_caller_scope() -> None:
+    decision = authorize_request(
+        caller_app="lotus-manage",
+        capability_type=AuthorizationCapabilityType.ASYNC_SUBMISSION,
+        tenant_id="tenant-sg-001",
+    )
+
+    assert decision.allowed is True
+    assert decision.outcome == AuthorizationOutcome.ALLOWED
+    assert "authorized tenant scope" in decision.summary
+
+
+def test_async_submission_requires_attribution_from_a_tenant_required_caller() -> None:
+    """A caller whose policy demands tenant scope on its work must attribute
+    async submissions too - unattributed work from such a caller would be a
+    silent hole in the trust boundary."""
+
+    decision = authorize_request(
+        caller_app="lotus-manage",
+        capability_type=AuthorizationCapabilityType.ASYNC_SUBMISSION,
+    )
+
+    assert decision.allowed is False
+    assert decision.outcome == AuthorizationOutcome.BLOCKED_TENANT_REQUIRED
+
+
+def test_async_submission_keeps_current_behaviour_for_an_unrestricted_caller() -> None:
+    decision = authorize_request(
+        caller_app="lotus-platform",
+        capability_type=AuthorizationCapabilityType.ASYNC_SUBMISSION,
+    )
+
+    assert decision.allowed is True
+    assert decision.outcome == AuthorizationOutcome.ALLOWED
+
+
+def test_async_submission_blocks_an_unknown_caller() -> None:
+    decision = authorize_request(
+        caller_app="unregistered-app",
+        capability_type=AuthorizationCapabilityType.ASYNC_SUBMISSION,
+        tenant_id="tenant-sg-001",
+    )
+
+    assert decision.allowed is False
+    assert decision.outcome == AuthorizationOutcome.BLOCKED_UNKNOWN_CALLER
+
+
 def test_authorize_request_blocks_unapproved_retrieval_source() -> None:
     decision = authorize_request(
         caller_app="lotus-workbench",

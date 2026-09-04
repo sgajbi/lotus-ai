@@ -274,6 +274,70 @@ def test_async_job_submit_route_accepts_runtime_backed_submission(client: TestCl
     assert runtime_job["target_id"] == "retjob_lotus_platform_rfcs"
 
 
+def test_async_job_submit_route_blocks_a_tenant_assertion_outside_caller_scope(
+    client: TestClient,
+) -> None:
+    """Issue #302: the tenant-assertion trust boundary at the route. An
+    authenticated caller whose policy restricts tenants cannot attribute
+    async work to a tenant outside its authorized scope."""
+
+    response = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "retrieval_indexing",
+            "target_id": "retjob_lotus_platform_rfcs",
+            "caller_app": "lotus-manage",
+            "correlation_id": "corr-async-tenant-boundary-001",
+            "payload_summary": "Index newly approved RFC documents.",
+            "tenant_id": "tenant-us-002",
+        },
+    )
+
+    assert response.status_code == 403
+    assert "not authorized for caller 'lotus-manage'" in response.json()["detail"]
+
+
+def test_async_job_submit_route_accepts_a_tenant_assertion_inside_caller_scope(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "retrieval_indexing",
+            "target_id": "retjob_lotus_platform_rfcs",
+            "caller_app": "lotus-manage",
+            "correlation_id": "corr-async-tenant-boundary-002",
+            "payload_summary": "Index newly approved RFC documents.",
+            "tenant_id": "tenant-sg-001",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["accepted"] is True
+
+
+def test_async_job_submit_route_requires_attribution_from_tenant_required_caller(
+    client: TestClient,
+) -> None:
+    """A caller whose policy requires tenant scope must attribute its async
+    work - unattributed submissions from such a caller are refused rather
+    than silently landing as unattributable rows."""
+
+    response = client.post(
+        "/platform/async/jobs/submit",
+        json={
+            "job_type": "retrieval_indexing",
+            "target_id": "retjob_lotus_platform_rfcs",
+            "caller_app": "lotus-manage",
+            "correlation_id": "corr-async-tenant-boundary-003",
+            "payload_summary": "Index newly approved RFC documents.",
+        },
+    )
+
+    assert response.status_code == 403
+    assert "must supply tenant_id" in response.json()["detail"]
+
+
 def test_async_job_detail_route_exposes_runtime_attempt_and_lease_history(
     client: TestClient,
 ) -> None:
