@@ -299,3 +299,28 @@ def test_a_missing_credential_reference_resolves_to_no_key(
     )
     assert third is not None
     assert third.api_key is None
+
+
+def test_a_same_provider_sibling_fallback_is_a_legitimate_candidate() -> None:
+    """Issue #314 fossil removal: the pair-era rejection of ANY same-provider
+    alternate is gone - breaker state is candidate-scoped (#304), so a
+    same-provider sibling model is real failover. Only a fallback that is
+    the SAME candidate as the primary remains a misconfiguration."""
+
+    from app.services.provider_execution_config import fallback_configuration_findings
+
+    _pair_settings()
+    settings.routing_strategy = "ordered_fallback"
+    settings.live_text_fallback_provider_id = "text.openai"
+    settings.live_text_fallback_model_id = "gpt-5.4-mini"
+    settings.live_text_fallback_model_version = None
+    settings.live_text_fallback_api_base = "https://sibling.example/v1"
+    config = resolve_provider_execution_config()
+    assert fallback_configuration_findings(config) == []
+
+    # The same candidate as the primary provides no failover at all.
+    settings.live_text_fallback_model_id = "gpt-5.4"
+    settings.live_text_fallback_model_version = "gpt-5.4-2026-06-01"
+    config = resolve_provider_execution_config()
+    findings = fallback_configuration_findings(config)
+    assert any("no failover" in finding for finding in findings)

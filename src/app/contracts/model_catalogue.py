@@ -14,10 +14,12 @@ vocabulary migration when those slices land.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.contracts.governed_actions import GovernedActionRecord
 
@@ -52,10 +54,58 @@ def derive_model_catalogue_entry_id(
     The derivation is the duplicate guard: the same identity triple always maps
     to the same entry id, so a second write for the triple is an upsert of the
     existing row rather than a silent sibling.
+
+    KNOWN LIMITATION (issue #314): this is a delimiter-concatenated string and
+    identity components may themselves contain the delimiter, so two distinct
+    tuples can render identically (e.g. revision ``qwen3:8b`` with no
+    deployment vs revision ``qwen3`` with deployment ``8b``). It remains the
+    human-readable row key; the CANONICAL candidate identity is
+    ``derive_candidate_identity_v2`` and the structured fields - never parse
+    this string to recover identity components.
     """
 
     base = f"{provider_id}:{model_revision}"
     return f"{base}:{deployment}" if deployment else base
+
+
+CANDIDATE_IDENTITY_V2_PREFIX = "cand2_"
+
+
+def derive_candidate_identity_v2(
+    *,
+    provider_id: str,
+    model_family: str,
+    model_revision: str,
+    deployment: str | None,
+) -> str:
+    """The canonical serving-candidate identity (issue #314): a versioned,
+    opaque, deterministic identifier over the canonical serialization of the
+    full immutable serving tuple.
+
+    The canonical form is minified sorted-key JSON, so every component is
+    unambiguously delimited regardless of its characters and a null
+    deployment is distinct from every string. The digest makes the id
+    collision-resistant and replay-stable; the ``cand2_`` prefix versions the
+    scheme. Structured identity fields remain authoritative - semantics are
+    NEVER reconstructed by parsing this id. Commercial SKU/rate-card
+    identity is deliberately excluded: a different rate card is different
+    commercial evidence, not a distinct independently routable candidate.
+    """
+
+    canonical = json.dumps(
+        {
+            "v": 2,
+            "provider_id": provider_id,
+            "model_family": model_family,
+            "model_revision": model_revision,
+            "deployment": deployment,
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+        ensure_ascii=False,
+    )
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return f"{CANDIDATE_IDENTITY_V2_PREFIX}{digest}"
 
 
 class ModelCapabilityDegradation(BaseModel):
@@ -80,7 +130,21 @@ class ModelCatalogueEntry(BaseModel):
 
     entry_id: str = Field(
         min_length=1,
-        description="Deterministic identity derived from provider, revision and deployment.",
+        description=(
+            "Human-readable row key derived from provider, revision and deployment. "
+            "NOT the canonical identity - components may contain the delimiter, so "
+            "never parse it; candidate_id_v2 and the structured fields are "
+            "authoritative (issue #314)."
+        ),
+    )
+    candidate_id_v2: str = Field(
+        default="",
+        description=(
+            "Canonical serving-candidate identity (issue #314): versioned opaque "
+            "deterministic digest of the (provider, family, revision, deployment) "
+            "tuple. Stamped automatically from the structured fields; an explicit "
+            "value that contradicts them is refused."
+        ),
     )
     provider_id: str = Field(
         min_length=1,
@@ -174,6 +238,29 @@ class ModelCatalogueEntry(BaseModel):
     )
     created_at: str = Field(description="Instant this entry was first catalogued (UTC).")
     last_updated_at: str = Field(description="Instant this entry last changed (UTC).")
+
+    @model_validator(mode="after")
+    def _stamp_canonical_candidate_identity(self) -> ModelCatalogueEntry:
+        """Every entry carries its canonical identity, derived from the
+        authoritative structured fields (issue #314). An absent value is
+        stamped; an explicit value that contradicts the tuple is refused -
+        the id can never drift from the identity it names."""
+
+        derived = derive_candidate_identity_v2(
+            provider_id=self.provider_id,
+            model_family=self.model_family,
+            model_revision=self.model_revision,
+            deployment=self.deployment,
+        )
+        if not self.candidate_id_v2:
+            self.candidate_id_v2 = derived
+        elif self.candidate_id_v2 != derived:
+            raise ValueError(
+                "candidate_id_v2 must equal the canonical identity derived from the "
+                f"structured serving tuple (expected '{derived}', got "
+                f"'{self.candidate_id_v2}')"
+            )
+        return self
 
 
 class ModelCatalogueSeedReport(BaseModel):

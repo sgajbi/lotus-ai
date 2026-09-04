@@ -188,11 +188,24 @@ def fallback_configuration_findings(config: ProviderExecutionConfig) -> list[str
                 "provider routing: routing_strategy=ordered_fallback requires a complete "
                 "fallback identity (provider, model, endpoint) and none is configured"
             )
-        elif not missing and config.fallback_provider_id == config.provider_id:
+        elif (
+            not missing
+            and config.fallback_provider_id == config.provider_id
+            and config.fallback_model_id == config.model_id
+            and config.fallback_model_version == config.model_version
+        ):
+            # Same-provider SIBLINGS are legitimate candidates now that
+            # breaker state is candidate-scoped (issue #304) - the pair-era
+            # rejection of any same-provider alternate was an implementation
+            # limitation, not a policy, and is removed (issue #314). Only a
+            # fallback that is the SAME candidate as the primary remains a
+            # misconfiguration: it adds no failover at all. Provider
+            # diversity, where a deployment requires it, is a resilience
+            # policy to state explicitly - not an identity-layer rule.
             findings.append(
-                "provider routing: the fallback provider identity equals the primary provider "
-                "identity, which collapses per-candidate breaker bookkeeping into one key; "
-                "configure a distinct alternate provider"
+                "provider routing: the fallback identity is the same candidate as the "
+                "primary (same provider, model and revision), which provides no failover; "
+                "configure a distinct alternate candidate"
             )
     elif config.routing_strategy != "fixed":
         findings.append(
@@ -249,12 +262,17 @@ def compute_provider_config_sha256(
     seed: int | None,
     max_output_tokens: int,
 ) -> str:
-    """Digest of the resolved execution configuration (issue #151).
+    """Digest of the model identity and sampling configuration (issue #151).
 
-    Covers the model identity and the sampling configuration that shaped the
-    call, so two audit rows with the same digest were produced under the same
-    execution configuration - including deterministic stub executions. The
-    credential is deliberately excluded.
+    SCOPE, stated exactly (issue #314): the digest covers provider/model
+    identity and the sampling parameters that shaped the call - and nothing
+    else. Equality means "same model identity and sampling", NOT complete
+    execution-configuration equality: deployment, endpoint/api base,
+    provider mode and other execution-affecting dimensions are deliberately
+    outside it, and the historical digest field keeps this meaning rather
+    than being silently reinterpreted. The credential is excluded. A
+    complete versioned execution fingerprint is introduced only when a
+    consumer needs that stronger claim.
     """
 
     canonical = json.dumps(

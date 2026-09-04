@@ -521,3 +521,39 @@ def test_status_surface_reports_history_newest_first() -> None:
     assert status.current is not None
     assert status.current.version == 2
     assert [record.version for record in status.versions] == [2, 1]
+
+
+def test_a_delimiter_ambiguous_identity_cannot_join_the_serving_policy() -> None:
+    """Issue #314 (P0 block): a revision containing the v1 delimiter renders
+    an ambiguous entry id - two distinct tuples can share it - so policy
+    admission refuses it until candidate identity v2 keys the policy."""
+
+    _ordered_fallback_settings()
+    ambiguous_id = derive_model_catalogue_entry_id(
+        provider_id="text.local", model_revision="qwen3:8b", deployment=None
+    )
+    upsert_model_catalogue_entry(
+        ModelCatalogueEntry(
+            entry_id=ambiguous_id,
+            provider_id="text.local",
+            provider_mode="local_openai_compatible",
+            model_family="qwen3:8b",
+            model_revision="qwen3:8b",
+            deployment=None,
+            sku=None,
+            lifecycle_state=ModelLifecycleState.APPROVED,
+            revision_pinned=True,
+            modalities=["text"],
+            seed_source=ModelCatalogueSeedSource.SETTINGS_LIVE_TEXT,
+            created_at="2026-09-01T00:00:00Z",
+            last_updated_at="2026-09-01T00:00:00Z",
+        )
+    )
+
+    with pytest.raises(HTTPException) as refused:
+        request_serving_policy_identity_add(
+            ServingPolicyIdentityAddRequest(entry_id=ambiguous_id, reason="widen"),
+            GOVERNED_REQUESTER,
+        )
+    assert refused.value.status_code == 409
+    assert "delimiter-ambiguous" in refused.value.detail
