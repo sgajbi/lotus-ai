@@ -134,6 +134,81 @@
     },
     "workflow_pack_family": {
       "type": "string"
+    },
+    "idea_workflow_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "output_id",
+        "explanation_text",
+        "claims",
+        "proposed_actions"
+      ],
+      "properties": {
+        "output_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "explanation_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "claims": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "claim_id",
+              "claim_text",
+              "source_product_ids"
+            ],
+            "properties": {
+              "claim_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "claim_text": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_product_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        "proposed_actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "action_type",
+              "action_label"
+            ],
+            "properties": {
+              "action_type": {
+                "type": "string",
+                "enum": [
+                  "advisor_review",
+                  "request_missing_evidence"
+                ]
+              },
+              "action_label": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
     }
   },
   "required": [
@@ -149,6 +224,7 @@
     "family",
     "forbidden_actions",
     "human_review_required",
+    "idea_workflow_output",
     "lifecycle_status",
     "max_output_tokens",
     "output_label",
