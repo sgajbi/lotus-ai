@@ -257,6 +257,17 @@ def _expire_control_plane_evidence(
         ],
         ops.delete_attempt_debits,
     )
+    # Observed-capability evidence (issue #312) expires like the rest of
+    # the control-plane evidence family; eligibility then honestly reads
+    # the claim as unknown again.
+    _expire(
+        "capability_evidence_records",
+        [
+            (e.evidence_id, e.recorded_at)
+            for e in catalogue.list_all_capability_evidence(limit=_CANDIDATE_BATCH_LIMIT)
+        ],
+        catalogue.delete_capability_evidence,
+    )
     _expire(
         "provider_governed_actions",
         [

@@ -263,6 +263,36 @@ class ModelCatalogueEntry(BaseModel):
         return self
 
 
+class CapabilityEvidenceRecord(BaseModel):
+    """One authoritative, scope-aware observed-capability claim (issue #312).
+
+    Binds everything the claim depends on: the exact candidate (canonical
+    identity plus its revision, denormalized for audit honesty), the
+    capability dimension, the exact scope the fixtures exercised, the
+    fixture family and manifest that declared the proof, the evaluation run
+    that produced it, its verdict, and provenance. Evidence ENABLES the
+    governed lifecycle decision - it never makes it - and eligibility
+    consumes only PASS rows whose scope matches the execution at hand.
+    """
+
+    evidence_id: str = Field(min_length=1, description="Stable evidence record identifier.")
+    candidate_id_v2: str = Field(
+        min_length=1, description="Canonical identity of the candidate the run served."
+    )
+    model_revision: str = Field(min_length=1, description="Exact revision the run exercised.")
+    dimension: str = Field(min_length=1, description="Governed capability dimension proven.")
+    scope_type: str = Field(min_length=1, description="CapabilityEvidenceScopeType value.")
+    scope_key: str | None = Field(
+        default=None, description="Exact scope key for non-GLOBAL scope types."
+    )
+    fixture_id: str = Field(min_length=1, description="Fixture family that declared the proof.")
+    manifest_version: str = Field(min_length=1, description="Fixture manifest version at run time.")
+    evaluation_run_id: str = Field(min_length=1, description="The run that produced the claim.")
+    verdict: str = Field(min_length=1, description="The run's verdict (PASS rows are evidence).")
+    triggered_by: str | None = Field(default=None, description="Who triggered the producing run.")
+    recorded_at: str = Field(description="Instant the evidence was recorded (UTC).")
+
+
 class ModelCatalogueSeedReport(BaseModel):
     """Outcome of one idempotent seeding pass."""
 

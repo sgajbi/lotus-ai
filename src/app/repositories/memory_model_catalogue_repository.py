@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from app.contracts.model_catalogue import (
+    CapabilityEvidenceRecord,
     ServingPolicyVersionRecord,
     ModelCatalogueEntry,
     ModelLifecycleTransitionRecord,
@@ -16,6 +17,7 @@ class InMemoryModelCatalogueRepository:
         self._lifecycle_events: list[ModelLifecycleTransitionRecord] = []
         self._drift_observations: dict[str, ModelRevisionDriftObservation] = {}
         self._serving_policy_versions: dict[int, ServingPolicyVersionRecord] = {}
+        self._capability_evidence: dict[str, CapabilityEvidenceRecord] = {}
 
     def list_entries(self) -> list[ModelCatalogueEntry]:
         return [self._entries[entry_id].model_copy(deep=True) for entry_id in sorted(self._entries)]
@@ -29,6 +31,37 @@ class InMemoryModelCatalogueRepository:
             if entry.candidate_id_v2 == candidate_id_v2:
                 return entry.model_copy(deep=True)
         return None
+
+    def save_capability_evidence(self, record: CapabilityEvidenceRecord) -> None:
+        self._capability_evidence[record.evidence_id] = record.model_copy(deep=True)
+
+    def list_capability_evidence(
+        self, *, candidate_id_v2: str, dimension: str
+    ) -> list[CapabilityEvidenceRecord]:
+        return sorted(
+            (
+                record.model_copy(deep=True)
+                for record in self._capability_evidence.values()
+                if record.candidate_id_v2 == candidate_id_v2 and record.dimension == dimension
+            ),
+            key=lambda record: record.recorded_at,
+            reverse=True,
+        )
+
+    def list_all_capability_evidence(self, *, limit: int) -> list[CapabilityEvidenceRecord]:
+        records = sorted(
+            self._capability_evidence.values(),
+            key=lambda record: record.recorded_at,
+            reverse=True,
+        )
+        return [record.model_copy(deep=True) for record in records[: max(limit, 0)]]
+
+    def delete_capability_evidence(self, evidence_ids: Sequence[str]) -> int:
+        deleted = 0
+        for evidence_id in evidence_ids:
+            if self._capability_evidence.pop(evidence_id, None) is not None:
+                deleted += 1
+        return deleted
 
     def upsert_entry(self, entry: ModelCatalogueEntry) -> None:
         self._entries[entry.entry_id] = _with_verified_canonical_identity(entry)

@@ -361,6 +361,22 @@ def enforce_capability_requirements(
             entry, output_contract_key
         ):
             continue
+        # Observed evaluation evidence at an honest scope (issue #312): a
+        # PASS record binding this exact candidate AND revision, GLOBAL or
+        # scoped to exactly the output contract this execution validates
+        # under. Anything narrower, staler or revision-mismatched stays
+        # unknown - evidence is never widened by inference.
+        from app.services.capability_evidence import applicable_capability_evidence
+
+        if (
+            applicable_capability_evidence(
+                entry=entry,
+                dimension=fact_field,
+                output_contract_key=output_contract_key,
+            )
+            is not None
+        ):
+            continue
         raise ProviderExecutionError(
             category=ProviderFailureCategory.CAPABILITY_UNKNOWN,
             message=(

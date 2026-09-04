@@ -9,6 +9,7 @@ from pathlib import Path
 from sqlalchemy import delete, select
 
 from app.contracts.model_catalogue import (
+    CapabilityEvidenceRecord,
     ServingPolicyVersionRecord,
     ModelCapabilityDegradation,
     ModelCatalogueEntry,
@@ -19,6 +20,7 @@ from app.contracts.model_catalogue import (
     ModelRevisionDriftObservation,
 )
 from app.db.models import (
+    CapabilityEvidenceModel,
     ServingPolicyVersionModel,
     ModelCatalogueEntryModel,
     ModelCatalogueLifecycleEventModel,
@@ -313,6 +315,76 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
                 )
             )
             session.commit()
+
+    def save_capability_evidence(self, record: CapabilityEvidenceRecord) -> None:
+        with self._session_factory() as session:
+            model = session.get(CapabilityEvidenceModel, record.evidence_id)
+            if model is None:
+                model = CapabilityEvidenceModel(evidence_id=record.evidence_id)
+                session.add(model)
+            model.candidate_id_v2 = record.candidate_id_v2
+            model.model_revision = record.model_revision
+            model.dimension = record.dimension
+            model.scope_type = record.scope_type
+            model.scope_key = record.scope_key
+            model.fixture_id = record.fixture_id
+            model.manifest_version = record.manifest_version
+            model.evaluation_run_id = record.evaluation_run_id
+            model.verdict = record.verdict
+            model.triggered_by = record.triggered_by
+            model.recorded_at = record.recorded_at
+            session.commit()
+
+    def list_capability_evidence(
+        self, *, candidate_id_v2: str, dimension: str
+    ) -> list[CapabilityEvidenceRecord]:
+        with self._session_factory() as session:
+            models = session.scalars(
+                select(CapabilityEvidenceModel)
+                .where(
+                    CapabilityEvidenceModel.candidate_id_v2 == candidate_id_v2,
+                    CapabilityEvidenceModel.dimension == dimension,
+                )
+                .order_by(CapabilityEvidenceModel.recorded_at.desc())
+            ).all()
+            return [self._to_capability_evidence(model) for model in models]
+
+    def list_all_capability_evidence(self, *, limit: int) -> list[CapabilityEvidenceRecord]:
+        with self._session_factory() as session:
+            models = session.scalars(
+                select(CapabilityEvidenceModel)
+                .order_by(CapabilityEvidenceModel.recorded_at.desc())
+                .limit(max(limit, 0))
+            ).all()
+            return [self._to_capability_evidence(model) for model in models]
+
+    def delete_capability_evidence(self, evidence_ids: Sequence[str]) -> int:
+        if not evidence_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(CapabilityEvidenceModel).where(
+                    CapabilityEvidenceModel.evidence_id.in_(list(evidence_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
+
+    def _to_capability_evidence(self, model: CapabilityEvidenceModel) -> CapabilityEvidenceRecord:
+        return CapabilityEvidenceRecord(
+            evidence_id=model.evidence_id,
+            candidate_id_v2=model.candidate_id_v2,
+            model_revision=model.model_revision,
+            dimension=model.dimension,
+            scope_type=model.scope_type,
+            scope_key=model.scope_key,
+            fixture_id=model.fixture_id,
+            manifest_version=model.manifest_version,
+            evaluation_run_id=model.evaluation_run_id,
+            verdict=model.verdict,
+            triggered_by=model.triggered_by,
+            recorded_at=model.recorded_at,
+        )
 
     def list_serving_policy_versions(self, *, limit: int) -> list[ServingPolicyVersionRecord]:
         with self._session_factory() as session:
