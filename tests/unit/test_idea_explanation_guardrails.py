@@ -183,3 +183,86 @@ def test_idea_explanation_stub_coerces_malformed_lists_to_empty_output() -> None
     _, structured_output = result
     assert structured_output["reason_codes"] == []
     assert structured_output["requested_outputs"] == []
+
+
+def test_idea_explanation_stub_emits_consumer_idea_workflow_output_contract() -> None:
+    payload = cast(dict[str, Any], idea_explanation_payload())
+
+    result = build_idea_explanation_stub_result(context_payload=payload)
+
+    assert result is not None
+    message, structured_output = result
+    output = cast(dict[str, Any], structured_output["idea_workflow_output"])
+    assert output["output_id"] == "idea-explanation-output-idea-explanation-request-001"
+    assert output["explanation_text"] == message
+    claims = cast(list[dict[str, Any]], output["claims"])
+    assert [claim["claim_id"] for claim in claims] == [
+        "reason-01-high_cash_weight",
+        "reason-02-benchmark_drift_attention",
+    ]
+    assert all(
+        claim["source_product_ids"] == ["core-position-snapshot", "risk-concentration-snapshot"]
+        for claim in claims
+    )
+    assert "HIGH_CASH_WEIGHT" in claims[0]["claim_text"]
+    assert "idea-score-policy.v1" in claims[0]["claim_text"]
+    assert output["proposed_actions"] == [
+        {"action_type": "advisor_review", "action_label": "Review the evidence"}
+    ]
+
+
+def test_idea_explanation_stub_workflow_output_without_reason_codes_states_score_policy() -> None:
+    payload = cast(dict[str, Any], idea_explanation_payload())
+    cast(dict[str, Any], payload["redacted_evidence_packet"])["reason_codes"] = []
+
+    result = build_idea_explanation_stub_result(context_payload=payload)
+
+    assert result is not None
+    _, structured_output = result
+    output = cast(dict[str, Any], structured_output["idea_workflow_output"])
+    claims = cast(list[dict[str, Any]], output["claims"])
+    assert [claim["claim_id"] for claim in claims] == ["score-policy"]
+    assert "idea-score-policy.v1" in claims[0]["claim_text"]
+
+
+def test_idea_explanation_stub_workflow_output_requests_evidence_when_refs_missing() -> None:
+    payload = cast(dict[str, Any], idea_explanation_payload())
+    evidence = cast(dict[str, Any], payload["redacted_evidence_packet"])
+    evidence["source_refs"] = ["not-a-ref", {"product_id": "   "}]
+    cast(dict[str, Any], payload["explanation_request"])["request_id"] = ""
+
+    result = build_idea_explanation_stub_result(context_payload=payload)
+
+    assert result is not None
+    _, structured_output = result
+    output = cast(dict[str, Any], structured_output["idea_workflow_output"])
+    assert output["output_id"] == "idea-explanation-output"
+    claims = cast(list[dict[str, Any]], output["claims"])
+    assert all(claim["source_product_ids"] == [] for claim in claims)
+    assert output["proposed_actions"] == [
+        {"action_type": "advisor_review", "action_label": "Review the evidence"},
+        {
+            "action_type": "request_missing_evidence",
+            "action_label": "Request the missing governed evidence",
+        },
+    ]
+
+
+def test_idea_explanation_stub_workflow_output_deduplicates_product_ids_and_replays() -> None:
+    payload = cast(dict[str, Any], idea_explanation_payload())
+    evidence = cast(dict[str, Any], payload["redacted_evidence_packet"])
+    refs = cast(list[dict[str, Any]], evidence["source_refs"])
+    evidence["source_refs"] = refs + [dict(refs[0])]
+
+    first = build_idea_explanation_stub_result(context_payload=payload)
+    second = build_idea_explanation_stub_result(context_payload=payload)
+
+    assert first is not None
+    assert first == second
+    _, structured_output = first
+    output = cast(dict[str, Any], structured_output["idea_workflow_output"])
+    claims = cast(list[dict[str, Any]], output["claims"])
+    assert claims[0]["source_product_ids"] == [
+        "core-position-snapshot",
+        "risk-concentration-snapshot",
+    ]
