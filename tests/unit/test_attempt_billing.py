@@ -749,6 +749,50 @@ def test_a_cheaper_fallback_candidate_fits_the_shared_remaining_ceiling(
     assert rows[0].rate_card_ref == "cheap-alternate"
 
 
+def test_the_ceiling_bounds_the_estimate_never_actual_billing(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Issue #301: the contract decision made explicit. Admission runs on the
+    governed pre-execution estimate (~4 bytes/token); the provider then
+    reports input usage FAR above the heuristic - the settled debit and the
+    response project the larger ACTUAL amount, even beyond the declared
+    ceiling. The ceiling bounded the estimate, exactly as documented, and no
+    surface pretends actual billing was capped."""
+
+    _seed_cost_scalars()
+
+    def _urlopen(request: object, timeout: float) -> _Response:
+        return _Response(
+            b'{"id": "resp_billing", "model": "gpt-5.4", "output_text": "OK",'
+            b' "usage": {"input_tokens": 200000, "output_tokens": 10,'
+            b' "total_tokens": 200010}}'
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    payload = _post_with_ceiling(
+        provider_id="text.local",
+        model_revision="gpt-5.4",
+        execution_id="exec-estimate-contract",
+        ceiling=1.0,
+    )
+    assert payload["id"] == "resp_billing"
+
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-estimate-contract:")
+    ]
+    assert len(rows) == 1
+    settled = rows[0]
+    assert settled.basis == "ACTUAL_USAGE"
+    assert settled.input_tokens == 200000
+    # The actual settled amount exceeds the declared ceiling: the ceiling is
+    # an estimate bound, and the durable evidence records the actual truth
+    # rather than clamping to the claim.
+    assert settled.amount_usd > 1.0
+
+
 def test_a_declared_ceiling_on_an_unpriceable_candidate_fails_closed() -> None:
     """Issue #290: no rate card means the ceiling cannot be verified - the
     guarantee refuses rather than silently passing."""

@@ -592,10 +592,13 @@ class ProviderExecutionRequest(BaseModel):
     cost_ceiling_usd: float | None = Field(
         default=None,
         description=(
-            "The caller's hard execution cost ceiling (issue #290), stamped once "
-            "from requirements.max_estimated_cost_usd: one budget across every "
-            "retry and fallback candidate, consumed by the durable attempt "
-            "debits and never reset mid-execution."
+            "The caller's hard ceiling on the governed cost ESTIMATE (issue "
+            "#290), stamped once from requirements.max_estimated_cost_usd: one "
+            "budget across every retry and fallback candidate, consumed by the "
+            "durable attempt debits and never reset mid-execution. Admission "
+            "prices the pre-execution estimate, not actual provider billing "
+            "(issue #301) - the provable bound is the platform hard-budget "
+            "reservation."
         ),
     )
     failed_attempt_cost_posture: Literal["conservative", "actual_only"] = Field(
