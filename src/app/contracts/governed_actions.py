@@ -52,6 +52,11 @@ class GovernedActionType(str, Enum):
     # tenant-erasable family (issue #158, S3): governed two-step, receipt
     # signed - legal hold overrides it, and both are recorded.
     DATA_ERASURE = "DATA_ERASURE"
+    # Adding an identity to the serving policy widens what may serve
+    # (issue #295, S2) - risk-increasing, so it takes the two-step flow.
+    # Removal is risk-reducing and follows the safety direction: one
+    # verified principal, immediate, approved_by honestly null.
+    SERVING_POLICY_IDENTITY_ADD = "SERVING_POLICY_IDENTITY_ADD"
     # Runtime-originated: a worker quarantining or redriving a poisoned queue
     # job answers to a service identity, not a human approver, and is
     # explicitly SYSTEM_ORIGINATED rather than dressing a service string up

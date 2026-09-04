@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal, cast
+
 from collections.abc import Sequence
 
 from pathlib import Path
@@ -7,6 +9,7 @@ from pathlib import Path
 from sqlalchemy import delete, select
 
 from app.contracts.model_catalogue import (
+    ServingPolicyVersionRecord,
     ModelCapabilityDegradation,
     ModelCatalogueEntry,
     ModelCatalogueSeedSource,
@@ -15,6 +18,7 @@ from app.contracts.model_catalogue import (
     ModelRevisionDriftObservation,
 )
 from app.db.models import (
+    ServingPolicyVersionModel,
     ModelCatalogueEntryModel,
     ModelCatalogueLifecycleEventModel,
     ModelRevisionDriftObservationModel,
@@ -247,3 +251,55 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
         if not path.is_absolute():
             path = Path.cwd() / path
         path.parent.mkdir(parents=True, exist_ok=True)
+
+    def get_current_serving_policy(self) -> ServingPolicyVersionRecord | None:
+        with self._session_factory() as session:
+            model = session.scalars(
+                select(ServingPolicyVersionModel)
+                .order_by(ServingPolicyVersionModel.version.desc())
+                .limit(1)
+            ).first()
+            if model is None:
+                return None
+            return self._to_serving_policy_record(model)
+
+    def save_serving_policy_version(self, record: ServingPolicyVersionRecord) -> None:
+        with self._session_factory() as session:
+            if session.get(ServingPolicyVersionModel, record.version) is not None:
+                raise ValueError(f"serving policy version {record.version} already exists")
+            session.add(
+                ServingPolicyVersionModel(
+                    version=record.version,
+                    ordered_entry_ids=list(record.ordered_entry_ids),
+                    action=record.action,
+                    changed_entry_id=record.changed_entry_id,
+                    requested_by_key_id=record.requested_by_key_id,
+                    approver_key_id=record.approver_key_id,
+                    governed_action_id=record.governed_action_id,
+                    recorded_at=record.recorded_at,
+                )
+            )
+            session.commit()
+
+    def list_serving_policy_versions(self, *, limit: int) -> list[ServingPolicyVersionRecord]:
+        with self._session_factory() as session:
+            models = session.scalars(
+                select(ServingPolicyVersionModel)
+                .order_by(ServingPolicyVersionModel.version.desc())
+                .limit(max(limit, 0))
+            ).all()
+            return [self._to_serving_policy_record(model) for model in models]
+
+    def _to_serving_policy_record(
+        self, model: ServingPolicyVersionModel
+    ) -> ServingPolicyVersionRecord:
+        return ServingPolicyVersionRecord(
+            version=model.version,
+            ordered_entry_ids=list(model.ordered_entry_ids),
+            action=cast("Literal['IDENTITY_ADD', 'IDENTITY_REMOVE']", model.action),
+            changed_entry_id=model.changed_entry_id,
+            requested_by_key_id=model.requested_by_key_id,
+            approver_key_id=model.approver_key_id,
+            governed_action_id=model.governed_action_id,
+            recorded_at=model.recorded_at,
+        )

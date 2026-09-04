@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from app.contracts.model_catalogue import (
+    ServingPolicyVersionRecord,
     ModelCatalogueEntry,
     ModelLifecycleTransitionRecord,
     ModelRevisionDriftObservation,
@@ -14,6 +15,7 @@ class InMemoryModelCatalogueRepository:
         self._entries: dict[str, ModelCatalogueEntry] = {}
         self._lifecycle_events: list[ModelLifecycleTransitionRecord] = []
         self._drift_observations: dict[str, ModelRevisionDriftObservation] = {}
+        self._serving_policy_versions: dict[int, ServingPolicyVersionRecord] = {}
 
     def list_entries(self) -> list[ModelCatalogueEntry]:
         return [self._entries[entry_id].model_copy(deep=True) for entry_id in sorted(self._entries)]
@@ -79,3 +81,21 @@ class InMemoryModelCatalogueRepository:
             key=lambda observation: observation.last_observed_at,
             reverse=True,
         )
+
+    def get_current_serving_policy(self) -> ServingPolicyVersionRecord | None:
+        if not self._serving_policy_versions:
+            return None
+        return self._serving_policy_versions[max(self._serving_policy_versions)].model_copy(
+            deep=True
+        )
+
+    def save_serving_policy_version(self, record: ServingPolicyVersionRecord) -> None:
+        if record.version in self._serving_policy_versions:
+            raise ValueError(f"serving policy version {record.version} already exists")
+        self._serving_policy_versions[record.version] = record.model_copy(deep=True)
+
+    def list_serving_policy_versions(self, *, limit: int) -> list[ServingPolicyVersionRecord]:
+        versions = sorted(self._serving_policy_versions, reverse=True)[: max(limit, 0)]
+        return [
+            self._serving_policy_versions[version].model_copy(deep=True) for version in versions
+        ]

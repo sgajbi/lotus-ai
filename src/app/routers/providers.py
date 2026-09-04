@@ -16,6 +16,8 @@ from app.contracts.providers import (
     ProviderOperationsStatusResponse,
     ProviderQuotaPolicyResponse,
     ProviderRunbookReadinessResponse,
+)
+from app.contracts.provider_routing_posture import (
     RoutingPostureResponse,
 )
 from app.contracts.provider_operations import (
@@ -42,6 +44,19 @@ from app.services.provider_operator_profile import build_provider_operator_profi
 from app.services.provider_policy import build_provider_policy
 from app.services.provider_quota_policy import build_provider_quota_policy
 from app.services.readiness_catalog import build_provider_runbook_readiness
+from app.contracts.model_catalogue import (
+    ServingPolicyChangeResponse,
+    ServingPolicyIdentityAddApprovalRequest,
+    ServingPolicyIdentityAddRequest,
+    ServingPolicyIdentityRemovalRequest,
+    ServingPolicyStatusResponse,
+)
+from app.services.serving_policy_control import (
+    approve_serving_policy_identity_add,
+    build_serving_policy_status,
+    remove_serving_policy_identity,
+    request_serving_policy_identity_add,
+)
 from app.services.rate_card_catalogue import build_rate_card_catalogue
 from app.services.routing_posture import build_routing_posture
 
@@ -228,6 +243,105 @@ async def get_provider_operations_control_history_route() -> (
     ProviderOperationsControlHistoryResponse
 ):
     return build_provider_operations_control_history()
+
+
+@router.get(
+    "/serving-policy",
+    response_model=ServingPolicyStatusResponse,
+    operation_id="getServingPolicy",
+    summary="Read the governed serving-policy artifact",
+    description=(
+        "The operative ordered serving identities and their version history "
+        "(issue #295, S2). While no artifact exists, ordering honestly follows "
+        "the configured primary/fallback pair and `current` is null."
+    ),
+    responses={
+        200: {"description": "Current serving policy and version history."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def get_serving_policy_route(
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> ServingPolicyStatusResponse:
+    return build_serving_policy_status()
+
+
+@router.post(
+    "/serving-policy/identity-additions",
+    response_model=GovernedActionResponse,
+    operation_id="requestServingPolicyIdentityAdd",
+    summary="Request adding an identity to the serving policy",
+    description=(
+        "Step one of the governed two-step addition (issue #295, S2): adding an "
+        "identity widens what may serve, so a verified requester records the "
+        "intent and the hash binds the full resulting order. Nothing changes "
+        "until a DISTINCT verified credential approves."
+    ),
+    responses={
+        200: {"description": "Addition recorded and pending approval."},
+        403: {"description": "Caller is not authorized for provider control."},
+        404: {"description": "No catalogue entry exists for the identity."},
+        409: {"description": "The identity is ineligible or already in the order."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def request_serving_policy_identity_add_route(
+    request: ServingPolicyIdentityAddRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> GovernedActionResponse:
+    return request_serving_policy_identity_add(request, authenticated_caller)
+
+
+@router.post(
+    "/serving-policy/identity-addition-approvals",
+    response_model=ServingPolicyChangeResponse,
+    operation_id="approveServingPolicyIdentityAdd",
+    summary="Approve a pending serving-policy addition",
+    description=(
+        "Step two (issue #295, S2): a verified credential DISTINCT from the "
+        "requester approves the exact pending hash; the next immutable policy "
+        "version becomes operative and records both credentials and the "
+        "governed-action evidence reference."
+    ),
+    responses={
+        200: {"description": "Policy version written; the identity may now serve."},
+        403: {
+            "description": "Not authorized, unverified, or the same credential as the requester."
+        },
+        404: {"description": "No pending action exists for the given id."},
+        409: {"description": "The hash does not match, or the order changed since request."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def approve_serving_policy_identity_add_route(
+    request: ServingPolicyIdentityAddApprovalRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> ServingPolicyChangeResponse:
+    return approve_serving_policy_identity_add(request, authenticated_caller)
+
+
+@router.post(
+    "/serving-policy/identity-removals",
+    response_model=ServingPolicyChangeResponse,
+    operation_id="removeServingPolicyIdentity",
+    summary="Remove an identity from the serving policy immediately",
+    description=(
+        "Risk-reducing, so the safety direction applies (issue #295, S2): one "
+        "verified principal removes the identity immediately; the new version "
+        "records approver as null - honestly single-principal."
+    ),
+    responses={
+        200: {"description": "Policy version written; the identity no longer serves."},
+        403: {"description": "Caller is not authorized for provider control."},
+        404: {"description": "The identity is not in the serving order."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def remove_serving_policy_identity_route(
+    request: ServingPolicyIdentityRemovalRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> ServingPolicyChangeResponse:
+    return remove_serving_policy_identity(request, authenticated_caller)
 
 
 @router.post(

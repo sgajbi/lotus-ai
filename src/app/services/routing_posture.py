@@ -24,13 +24,15 @@ from app.contracts.providers import (
     ROUTING_POLICY_ORDERED_FALLBACK,
     ROUTING_POLICY_VERSION_V1,
     CandidateUniverse,
-    CapabilityPostureCandidateDescriptor,
-    CapabilityPostureDescriptor,
     ProviderDegradationStatusDescriptor,
     ProviderFailureCategory,
+    RoutingStrategy,
+)
+from app.contracts.provider_routing_posture import (
+    CapabilityPostureCandidateDescriptor,
+    CapabilityPostureDescriptor,
     RoutingPostureCandidateDescriptor,
     RoutingPostureResponse,
-    RoutingStrategy,
 )
 from app.providers.base import ProviderExecutionError
 from app.services.kill_switch_control import build_kill_switch_status

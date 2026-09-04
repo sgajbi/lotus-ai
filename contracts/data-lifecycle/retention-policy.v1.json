@@ -139,7 +139,8 @@
         "caller_policies",
         "model_catalogue_entries",
         "rate_cards",
-        "data_legal_holds"
+        "data_legal_holds",
+        "serving_policy_versions"
       ],
       "retention_days": null,
       "retention_basis": "Retained while operative: these rows ARE the current governed configuration, superseded through governed transitions whose evidence lives in the control_plane_evidence family, not through time-based expiry.",
