@@ -6,7 +6,7 @@ from app.services.governance_readiness import summarize_governance_flags
 from app.services.provider_activation_readiness import build_provider_activation_readiness
 from app.services.provider_evidence_readiness import build_provider_evidence_readiness
 from app.services.provider_expansion_policy import build_provider_expansion_policy
-from app.services.provider_runbook_readiness import build_provider_runbook_readiness
+from app.services.readiness_catalog import build_provider_runbook_readiness
 
 
 def build_provider_governance_status() -> ProviderGovernanceStatusResponse:

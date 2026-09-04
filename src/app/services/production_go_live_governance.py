@@ -12,9 +12,7 @@ from app.services.governance_readiness import summarize_governance_flags
 from app.services.production_go_live_activation_readiness import (
     build_production_go_live_activation_readiness,
 )
-from app.services.production_go_live_runbook_readiness import (
-    build_production_go_live_runbook_readiness,
-)
+from app.services.readiness_catalog import build_production_go_live_runbook_readiness
 from app.services.production_go_live_use_case_approval import (
     build_production_go_live_use_case_approval,
 )

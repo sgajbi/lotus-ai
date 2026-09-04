@@ -41,7 +41,7 @@ from app.services.provider_operations_status import build_provider_operations_st
 from app.services.provider_operator_profile import build_provider_operator_profile
 from app.services.provider_policy import build_provider_policy
 from app.services.provider_quota_policy import build_provider_quota_policy
-from app.services.provider_runbook_readiness import build_provider_runbook_readiness
+from app.services.readiness_catalog import build_provider_runbook_readiness
 from app.services.rate_card_catalogue import build_rate_card_catalogue
 from app.services.routing_posture import build_routing_posture
 

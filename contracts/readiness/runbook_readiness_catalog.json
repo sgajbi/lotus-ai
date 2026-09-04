@@ -318,5 +318,118 @@
         "notes": "Bounded retrieval observability and incident-evidence summaries are now exposed through `/platform/observability/retrieval-summary` and `/platform/observability/incident-summary`; external dashboards remain deployment-specific and are not an RFC-0013 activation gate."
       }
     ]
+  },
+  "async": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "async_operational_runbook",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "The service runbook now documents dedicated worker startup, queue-backed cutover, drain mode, degraded fallback review, and rollback between governed cutover states."
+      },
+      {
+        "item_id": "async_oncall_and_escalation",
+        "execution_state": "MISSING",
+        "required_for_activation": true,
+        "notes": "On-call ownership, escalation flow, and incident triage playbooks for worker execution must be defined before activation."
+      },
+      {
+        "item_id": "async_capacity_and_replay_procedures",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Replay, requeue, abandon, lease-expiry recovery, queue backlog review, queue outage response, and worker drain procedures are now documented for the queue-backed worker path."
+      },
+      {
+        "item_id": "async_observability_incident_views",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Bounded async observability and incident-evidence summaries are now exposed through `/platform/observability/async-summary` and `/platform/observability/incident-summary`; external dashboards remain deployment-specific and are not an RFC-0013 activation gate."
+      }
+    ]
+  },
+  "provider": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "provider_operational_runbook",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Provider operating model, mode switching sequence, and verification surfaces are now documented in the integration guide and service operations runbook.",
+        "computed_note_suffix": "provider_rollout_posture"
+      },
+      {
+        "item_id": "provider_oncall_and_escalation",
+        "execution_state": "MISSING",
+        "required_for_activation": true,
+        "notes": "On-call ownership, vendor escalation path, and incident triage playbooks for live provider execution must be defined before activation."
+      },
+      {
+        "item_id": "provider_cost_and_rate_limit_controls",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Runbooks now document provider usage limits, rate-limit incidents, and cost-protection responses, including how operators review and reset durable quota state safely through the control-plane action surface."
+      },
+      {
+        "item_id": "provider_spend_anomaly_response",
+        "execution_state": "MISSING",
+        "required_for_activation": true,
+        "notes": "Runbooks for soft-budget alerts, hard-budget blocks, and spend-anomaly escalation are not yet documented, including how durable spend posture is reviewed and recovered safely through the control-plane action surface."
+      },
+      {
+        "item_id": "provider_incident_response_and_rollback",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Provider incident response, mode rollback, and safe reversion procedures for live execution are now documented for stub, managed, and local provider profiles."
+      },
+      {
+        "item_id": "provider_embedding_rollout_and_recovery",
+        "execution_state": "PARTIAL",
+        "required_for_activation": true,
+        "notes": "Bounded live embedding rollout and recovery expectations are now documented at a foundation level, but formal operator approval is still pending."
+      },
+      {
+        "item_id": "provider_degradation_and_circuit_response",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Runbooks now cover degraded-upstream operation, circuit-open response, cooldown review, and safe re-enable procedures, including durable circuit-state recovery through the control-plane action surface."
+      },
+      {
+        "item_id": "provider_observability_incident_views",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Bounded provider observability and incident-evidence summaries are now exposed through `/platform/observability/provider-summary` and `/platform/observability/incident-summary`; external dashboards remain a deployment concern rather than an RFC-0013 activation gate."
+      }
+    ]
+  },
+  "production_go_live": {
+    "family": "runbook",
+    "items": [
+      {
+        "item_id": "production_go_live_platform_review",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Production go-live review now distinguishes technically running, production-capable, and production-approved posture through dedicated platform endpoints."
+      },
+      {
+        "item_id": "production_go_live_managed_infrastructure_boundary",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Managed-secret and managed object-storage approval boundaries are now documented as explicit production go-live prerequisites instead of deployment recommendations."
+      },
+      {
+        "item_id": "production_go_live_provider_freeze_and_rollback",
+        "execution_state": "DOCUMENTED_ONLY",
+        "required_for_activation": true,
+        "notes": "Provider freeze posture now maps to `ALLOWLISTED_DISABLED`, and rollback guidance explicitly treats that bounded rollout state as the first production-safe target."
+      },
+      {
+        "item_id": "production_go_live_provider_incident_alignment",
+        "execution_state": "PARTIAL",
+        "required_for_activation": true,
+        "notes": "Provider incident, escalation, spend-anomaly, degradation, and recovery runbooks must also be complete before production go-live can be treated as fully approved; the status derives from the provider runbook surface.",
+        "computed_status": "provider_runbook_alignment"
+      }
+    ]
   }
 }

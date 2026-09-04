@@ -17,9 +17,7 @@ from app.services.production_go_live_activation_readiness import (
 from app.services.production_go_live_governance import (
     build_production_go_live_governance_status,
 )
-from app.services.production_go_live_runbook_readiness import (
-    build_production_go_live_runbook_readiness,
-)
+from app.services.readiness_catalog import build_production_go_live_runbook_readiness
 from app.services.production_go_live_use_case_approval import (
     build_production_go_live_use_case_approval,
 )
@@ -51,11 +49,22 @@ def test_production_go_live_runbook_readiness_tracks_provider_runbook_dependency
 
     assert readiness.runbook_ready is False
     assert readiness.required_item_count == 4
-    assert readiness.completed_required_item_count == 3
+    # Honest catalog states (issue #284): documented posture is
+    # DOCUMENTED_ONLY, never READY, so nothing counts as completed until a
+    # control is actually enforced.
+    assert readiness.completed_required_item_count == 0
     assert any(
         item.runbook_id == "production_go_live_provider_freeze_and_rollback"
         for item in readiness.items
     )
+    alignment = next(
+        item
+        for item in readiness.items
+        if item.runbook_id == "production_go_live_provider_incident_alignment"
+    )
+    # Derived, not declared: the provider runbook surface is not enforced,
+    # so the alignment item resolves PARTIAL through its catalog hook.
+    assert alignment.status == "PARTIAL"
     assert len(readiness.go_live_checklist) == 4
 
 
