@@ -86,6 +86,17 @@ class DataErasureFamilyResult(BaseModel):
     held: bool = Field(
         description="True when an active legal hold for this tenant kept the family untouched."
     )
+    unattributable_count: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Rows in this family carrying no source-owned tenant attribution "
+            "(issue #291): pre-attribution history and platform-owned content that "
+            "tenant erasure honestly cannot reach - they leave only by the family's "
+            "own time-bounded expiry. Null for families whose stores are fully "
+            "attributed."
+        ),
+    )
 
 
 class DataErasureReceiptClaims(BaseModel):

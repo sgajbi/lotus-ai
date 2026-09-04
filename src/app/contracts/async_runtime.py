@@ -253,6 +253,14 @@ class AsyncJobSubmissionRequest(BaseModel):
     payload_summary: str = Field(
         description="Short description of the intended async work payload."
     )
+    tenant_id: str | None = Field(
+        default=None,
+        description=(
+            "Source-owned tenant attribution for the client-derived content this "
+            "job carries (issue #291): stamped by the submitting caller at creation, "
+            "never inferred later. Null means platform-owned work."
+        ),
+    )
 
 
 class AsyncJobSubmissionResponse(BaseModel):

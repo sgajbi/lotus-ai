@@ -345,3 +345,37 @@ def test_find_active_duplicate_submission_ignores_non_retrieval_job_types() -> N
     )
 
     assert duplicate is None
+
+
+def test_submission_stamps_source_owned_tenant_attribution() -> None:
+    """Issue #291: the submitting caller states its tenant at creation; the
+    job carries it durably, and a transition rebuild preserves it."""
+
+    from dataclasses import replace
+
+    from app.services.async_runtime_store import get_async_runtime_store
+
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-tenant-001",
+            payload_summary="Index newly approved RFC documents.",
+            tenant_id="tenant-sg-001",
+        )
+    )
+    assert response.accepted is True
+    assert response.job_id is not None
+
+    store = get_async_runtime_store()
+    job = store.get_job(job_id=response.job_id)
+    assert job is not None
+    assert job.tenant_id == "tenant-sg-001"
+
+    # Transition rebuilds go through dataclasses.replace, so attribution can
+    # never be dropped by a status change.
+    store.save_job(replace(job, lifecycle_status="COMPLETED", latest_message="done"))
+    completed = store.get_job(job_id=response.job_id)
+    assert completed is not None
+    assert completed.tenant_id == "tenant-sg-001"

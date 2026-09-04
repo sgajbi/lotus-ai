@@ -26,6 +26,10 @@ class ArtifactRecord:
     superseded_by_artifact_id: str | None
     created_at: str
     created_by: str
+    # Source-owned tenant attribution at creation (issue #291): propagated
+    # from the generating job/run; None is platform-owned or pre-attribution
+    # history and is never inferred later.
+    tenant_id: str | None = None
 
 
 class ArtifactRepository(Protocol):

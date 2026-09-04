@@ -186,3 +186,87 @@ def test_erasure_requires_a_distinct_credential(monkeypatch: pytest.MonkeyPatch)
         )
     assert exc_info.value.status_code == 403
     assert "distinct" in exc_info.value.detail
+
+
+def test_erasure_covers_attributed_async_jobs_and_artifacts_with_payloads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Issue #291: tenant erasure reaches attributed async jobs (with
+    attempts) and artifacts (payload bytes AND metadata); NULL-attribution
+    rows are counted on the receipt, never erased, never inferred."""
+
+    from app.repositories.async_runtime_repository import AsyncRuntimeJobRecord
+    from app.services.artifact_payloads import persist_json_artifact
+    from app.services.artifact_store import get_artifact_object_store, get_artifact_repository
+    from app.services.async_runtime_store import get_async_runtime_store
+
+    _configure_attestation_keys(monkeypatch)
+    _seed_two_tenants()
+
+    jobs = get_async_runtime_store()
+
+    def _job(job_id: str, tenant: str | None) -> AsyncRuntimeJobRecord:
+        return AsyncRuntimeJobRecord(
+            job_id=job_id,
+            job_type="workflow_pack_execution",
+            target_id=None,
+            lifecycle_status="COMPLETED",
+            submitted_at=_iso(5),
+            caller_app="lotus-gateway",
+            correlation_id=f"corr-{job_id}",
+            payload_summary="snapshot",
+            execution_path="queue",
+            related_evaluation_run_id=None,
+            latest_message="m",
+            attempt_count=1,
+            artifact_ids=[],
+            tenant_id=tenant,
+        )
+
+    jobs.save_job(_job("job_keep_a", "tenant-a"))
+    jobs.save_job(_job("job_erase_b", "tenant-b"))
+    jobs.save_job(_job("job_platform", None))
+
+    def _artifact(source_id: str, tenant: str | None) -> str:
+        descriptor = persist_json_artifact(
+            domain="workflow_pack_runs",
+            artifact_type="advisor_brief_document",
+            source_object_kind="async_job",
+            source_object_id=source_id,
+            created_at=_iso(5),
+            created_by="worker-1",
+            payload_json=b'{"content": "generated"}',
+            tenant_id=tenant,
+        )
+        return descriptor.artifact_id
+
+    art_a = _artifact("job_keep_a", "tenant-a")
+    art_b = _artifact("job_erase_b", "tenant-b")
+    art_platform = _artifact("job_platform", None)
+
+    response = _erase_tenant_b()
+
+    remaining_jobs = {job.job_id for job in jobs.list_jobs()}
+    assert remaining_jobs == {"job_keep_a", "job_platform"}
+
+    artifacts = get_artifact_repository()
+    remaining_artifacts = {record.artifact_id for record in artifacts.list_artifacts()}
+    assert remaining_artifacts == {art_a, art_platform}
+    # The payload bytes went with the metadata - no orphaned content.
+    object_store = get_artifact_object_store()
+    erased_reference = f"workflow_pack_runs/async_job/job_erase_b/{art_b}.json"
+    assert object_store.get_object(object_key=erased_reference) is None
+    kept_reference = f"workflow_pack_runs/async_job/job_keep_a/{art_a}.json"
+    assert object_store.get_object(object_key=kept_reference) is not None
+
+    by_family = {f.family_id: f for f in response.receipt.claims.families}
+    async_result = by_family["async_runtime_content"]
+    # job + its submission attempt = 2 rows erased; the platform job is
+    # honestly counted as unattributable, not touched.
+    assert async_result.erased_count >= 1
+    assert async_result.unattributable_count == 1
+    artifact_result = by_family["artifact_content"]
+    assert artifact_result.erased_count == 1
+    assert artifact_result.unattributable_count == 1
+    # Fully attributed stores carry no unattributable claim.
+    assert by_family["audit_evidence"].unattributable_count is None

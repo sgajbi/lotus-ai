@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from app.contracts.async_runtime import AsyncJobStatus
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
@@ -32,20 +34,11 @@ def queue_next_async_attempt(
     )
     store.save_attempt(attempt)
     store.save_job(
-        AsyncRuntimeJobRecord(
-            job_id=job.job_id,
-            job_type=job.job_type,
-            target_id=job.target_id,
+        replace(
+            job,
             lifecycle_status=AsyncJobStatus.QUEUED.value,
-            submitted_at=job.submitted_at,
-            caller_app=job.caller_app,
-            correlation_id=job.correlation_id,
-            payload_summary=job.payload_summary,
-            execution_path=job.execution_path,
-            related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=reason_message,
             attempt_count=next_attempt_number,
-            artifact_ids=job.artifact_ids,
         )
     )
     queued_job = store.get_job(job_id=job.job_id)

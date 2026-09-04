@@ -28,6 +28,7 @@ def persist_json_artifact(
     retention_posture: str = "active",
     lineage_parent_artifact_id: str | None = None,
     superseded_by_artifact_id: str | None = None,
+    tenant_id: str | None = None,
 ) -> ArtifactDescriptor:
     artifact_id = f"artifact_{domain}_{uuid4().hex[:16]}"
     object_key = f"{domain}/{source_object_kind}/{source_object_id}/{artifact_id}.json"
@@ -53,6 +54,7 @@ def persist_json_artifact(
         superseded_by_artifact_id=superseded_by_artifact_id,
         created_at=created_at,
         created_by=created_by,
+        tenant_id=tenant_id,
     )
     get_artifact_repository().save_artifact(record)
     return ArtifactDescriptor.model_validate(record.__dict__)
@@ -146,3 +148,22 @@ def _find_latest_active_artifact(
 def _parse_storage_reference(storage_reference: str) -> str:
     _, _, object_key = storage_reference.partition("://")
     return object_key
+
+
+def delete_artifacts_with_payloads(
+    records: "list[ArtifactRecord] | tuple[ArtifactRecord, ...]",
+) -> int:
+    """Delete artifact payload bytes and metadata together (issue #291).
+
+    An expired or erased artifact must not leave orphaned content in the
+    object store: the metadata row is the only pointer to the payload, so
+    the bytes go first (idempotently), then the rows. Returns the metadata
+    delete count - the receipt's row semantics stay unchanged.
+    """
+
+    object_store = get_artifact_object_store()
+    for record in records:
+        _, _, object_key = record.storage_reference.partition("://")
+        if object_key:
+            object_store.delete_object(object_key=object_key)
+    return get_artifact_repository().delete_artifacts([r.artifact_id for r in records])

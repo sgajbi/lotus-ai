@@ -113,6 +113,7 @@ def submit_async_job(request: AsyncJobSubmissionRequest) -> AsyncJobSubmissionRe
         latest_message="Job accepted into durable async runtime state.",
         attempt_count=1,
         artifact_ids=[],
+        tenant_id=request.tenant_id,
     )
     attempt_record = AsyncRuntimeAttemptRecord(
         attempt_id=attempt_id,
