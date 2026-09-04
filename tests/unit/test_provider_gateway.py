@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from fastapi import HTTPException
 
@@ -233,6 +235,107 @@ def test_execute_text_generation_rejects_live_provider_when_quota_is_exceeded() 
     assert decision.candidates[0].rejection_reason is ProviderFailureCategory.QUOTA_EXCEEDED
     assert "rejected" in decision.selection_reason
     monkeypatch.undo()
+
+
+def test_fixed_path_executes_under_a_declared_primary_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Issue #298: the fixed live path resolves its execution config through
+    the same merged connection-material seam the ordered path enumerates
+    from - a declared override of the primary identity drives the actual
+    call's endpoint and credential, not just configuration inspection."""
+
+    captured: list[object] = []
+
+    class _CapturingAdapter:
+        def execute(
+            self, request: ProviderExecutionRequest, *, config: object | None = None
+        ) -> object:
+            captured.append(config)
+            return type(
+                "Response",
+                (),
+                {
+                    "provider_id": "text.openai",
+                    "provider_mode": "openai",
+                    "adapter_kind": ProviderAdapterKind.OPENAI_LIVE,
+                    "failure_category": None,
+                    "timeout_ms": request.timeout_ms,
+                    "retry_count": 0,
+                    "max_output_tokens": request.max_output_tokens,
+                    "model_id": "gpt-5.4",
+                    "provider_request_id": "req_override_1",
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                    "estimated_cost_usd": 0.01,
+                    "stubbed": False,
+                    "message": "live response",
+                    "structured_output": {},
+                },
+            )()
+
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "legacy-secret"
+    settings.live_text_api_base = "https://api.openai.com/v1"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    monkeypatch.setenv("OVERRIDE_PRIMARY_KEY", "override-secret")
+    settings.provider_connections_json = json.dumps(
+        [
+            {
+                "provider_id": "text.openai",
+                "model_id": "gpt-5.4",
+                "api_base": "https://override.example/v1",
+                "api_key_env": "OVERRIDE_PRIMARY_KEY",
+            }
+        ]
+    )
+    monkeypatch.setattr(
+        "app.services.provider_gateway.resolve_text_generation_adapter",
+        lambda mode: _CapturingAdapter(),
+    )
+
+    response = execute_text_generation(_request())
+
+    assert response.provider_id == "text.openai"
+    assert len(captured) == 1
+    executed_config = captured[0]
+    assert getattr(executed_config, "api_base", None) == "https://override.example/v1"
+    assert getattr(executed_config, "api_key", None) == "override-secret"
+    # Identity is unchanged by a connection override.
+    assert getattr(executed_config, "provider_id", None) == "text.openai"
+    assert getattr(executed_config, "model_id", None) == "gpt-5.4"
+
+
+def test_fixed_path_fails_closed_on_malformed_declared_material() -> None:
+    """Issue #298: with malformed declared material the platform cannot know
+    whether the serving identity's connection is overridden, so the fixed
+    live path refuses instead of serving under possibly-stale connection
+    truth - the same posture as the ordered path."""
+
+    settings.provider_mode = "openai"
+    settings.provider_rollout_state = "CANARY_ENABLED"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_provider_api_key = "secret"
+    settings.live_text_allowed_task_ids = "explain.v1"
+    settings.provider_connections_json = "{not json"
+
+    with pytest.raises(HTTPException) as exc_info:
+        execute_text_generation(_request())
+
+    assert exc_info.value.status_code == 503
+    assert "INVALID_LIVE_CONFIGURATION" in str(exc_info.value.detail)
+    assert "not valid JSON" in str(exc_info.value.detail)
+    assert isinstance(exc_info.value, ProviderGatewayUnavailableError)
+    decision = exc_info.value.routing_decision
+    assert decision.selected_provider_id is None
+    assert decision.candidates[0].rejection_reason is (
+        ProviderFailureCategory.INVALID_LIVE_CONFIGURATION
+    )
 
 
 def test_candidate_entry_identity_is_null_without_a_complete_identity() -> None:
