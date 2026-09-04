@@ -71,8 +71,10 @@ def _enforcing_primary() -> None:
 
 def test_an_open_legacy_circuit_still_refuses_execution_after_reconciliation() -> None:
     """The issue's evaluation condition: an open bare-key breaker present at
-    startup leaves the provider's breaker open, with the cooldown preserved,
-    and live execution still refused."""
+    startup leaves the candidate's breaker open, with the cooldown
+    preserved, and live execution still refused. The migration is now a
+    two-layer chain (issues #234, #304): bare key -> provider key ->
+    candidate key, all within one startup."""
 
     _enforcing_primary()
     _legacy_record(open_for_seconds=900)
@@ -81,12 +83,16 @@ def test_an_open_legacy_circuit_still_refuses_execution_after_reconciliation() -
 
     store = get_provider_operations_store()
     assert store.get_degradation_state(degradation_key=LEGACY_DEGRADATION_KEY) is None
-    migrated = store.get_degradation_state(degradation_key=degradation_key_for(PRIMARY))
+    # The intermediate provider-keyed row was itself carried forward.
+    assert store.get_degradation_state(degradation_key=f"live_text_generation:{PRIMARY}") is None
+    migrated = store.get_degradation_state(
+        degradation_key=f"live_text_generation:{PRIMARY}:gpt-5.4"
+    )
     assert migrated is not None
     assert migrated.consecutive_failure_count == 5
     assert migrated.last_failure_category is ProviderFailureCategory.PROVIDER_TIMEOUT
 
-    status = build_provider_degradation_status(PRIMARY)
+    status = build_provider_degradation_status(f"{PRIMARY}:gpt-5.4")
     assert status.status == "CIRCUIT_OPEN"
     assert status.circuit_open_remaining_seconds is not None
     assert status.circuit_open_remaining_seconds > 0
@@ -200,3 +206,74 @@ def test_the_migration_behaves_identically_on_the_sql_store(tmp_path: Path) -> N
     # Idempotent against a durable store too.
     assert reconcile_legacy_degradation_state() == []
     assert store.get_degradation_state(degradation_key=degradation_key_for(PRIMARY)) == migrated
+
+
+def test_an_open_provider_keyed_circuit_carries_to_every_candidate_of_that_provider() -> None:
+    """Issue #304: an OPEN provider-keyed row was refusing every candidate of
+    that provider, so the migration carries it to EACH configured candidate
+    of the provider - preserving the refusal is the safe direction - and a
+    CLOSED provider row drops without ceremony."""
+
+    import json
+
+    _enforcing_primary()
+    settings.provider_connections_json = json.dumps(
+        [
+            {
+                "provider_id": PRIMARY,
+                "model_id": "gpt-5.4-mini",
+                "api_base": "https://sibling.example/v1",
+            }
+        ]
+    )
+    store = get_provider_operations_store()
+    open_until = (datetime.now(UTC) + timedelta(seconds=900)).isoformat()
+    store.save_degradation_state(
+        ProviderDegradationStateRecord(
+            degradation_key=f"live_text_generation:{PRIMARY}",
+            consecutive_failure_count=7,
+            last_failure_category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+            circuit_open_until=open_until,
+            timeout_failure_count=7,
+            rate_limited_failure_count=0,
+            upstream_error_failure_count=0,
+            updated_at=datetime.now(UTC).isoformat(),
+        )
+    )
+
+    apply_startup_readiness_policy()
+
+    assert store.get_degradation_state(degradation_key=f"live_text_generation:{PRIMARY}") is None
+    for candidate_key in (
+        f"live_text_generation:{PRIMARY}:gpt-5.4",
+        f"live_text_generation:{PRIMARY}:gpt-5.4-mini",
+    ):
+        carried = store.get_degradation_state(degradation_key=candidate_key)
+        assert carried is not None, candidate_key
+        assert carried.circuit_open_until == open_until
+        assert carried.consecutive_failure_count == 7
+
+    # A CLOSED provider-keyed row is dropped, and nothing is created for it.
+    store.save_degradation_state(
+        ProviderDegradationStateRecord(
+            degradation_key="live_text_generation:text.claude",
+            consecutive_failure_count=1,
+            last_failure_category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+            circuit_open_until=None,
+            timeout_failure_count=1,
+            rate_limited_failure_count=0,
+            upstream_error_failure_count=0,
+            updated_at=datetime.now(UTC).isoformat(),
+        )
+    )
+    settings.live_text_fallback_provider_id = "text.claude"
+    settings.live_text_fallback_model_id = "claude-sonnet-5"
+    settings.live_text_fallback_api_base = "https://alternate.example/v1"
+    apply_startup_readiness_policy()
+    assert store.get_degradation_state(degradation_key="live_text_generation:text.claude") is None
+    assert (
+        store.get_degradation_state(
+            degradation_key="live_text_generation:text.claude:claude-sonnet-5"
+        )
+        is None
+    )

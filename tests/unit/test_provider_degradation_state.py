@@ -327,7 +327,7 @@ def test_reading_posture_never_writes_whatever_the_state() -> None:
     for _ in range(5):
         before = _degradation_snapshot()
         assert build_provider_degradation_status().status == "CIRCUIT_OPEN"
-        assert build_provider_degradation_status("text.openai").status == "CIRCUIT_OPEN"
+        assert build_provider_degradation_status("text.openai:gpt-5.4").status == "CIRCUIT_OPEN"
         assert _degradation_snapshot() == before
 
 
@@ -395,7 +395,9 @@ def test_the_cooldown_deadline_is_stamped_once_per_crossing(monkeypatch: MonkeyP
         record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
 
     repository = get_provider_operations_store()
-    stamped = repository.get_degradation_state(degradation_key="live_text_generation:text.openai")
+    stamped = repository.get_degradation_state(
+        degradation_key="live_text_generation:text.openai:gpt-5.4"
+    )
     assert stamped is not None
     deadline = stamped.circuit_open_until
 
@@ -405,7 +407,9 @@ def test_the_cooldown_deadline_is_stamped_once_per_crossing(monkeypatch: MonkeyP
         build_provider_degradation_status()
     with pytest.raises(ProviderExecutionError):
         enforce_provider_degradation_preflight()
-    after = repository.get_degradation_state(degradation_key="live_text_generation:text.openai")
+    after = repository.get_degradation_state(
+        degradation_key="live_text_generation:text.openai:gpt-5.4"
+    )
     assert after is not None
     assert after.circuit_open_until == deadline
 

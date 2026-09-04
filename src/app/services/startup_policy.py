@@ -12,6 +12,7 @@ from app.http.caller_credential import (
 from app.services.data_lifecycle_policy import data_lifecycle_policy_findings
 from app.services.provider_degradation_reconciliation import (
     reconcile_legacy_degradation_state,
+    reconcile_provider_keyed_degradation_state,
 )
 from app.services.provider_connection_material import connection_material_findings
 from app.services.provider_execution_config import (
@@ -88,7 +89,9 @@ def apply_startup_readiness_policy() -> StartupReadinessEvaluation:
     an operator surface without changing the state it is describing.
     """
 
-    reconciliation_findings = reconcile_legacy_degradation_state()
+    reconciliation_findings = (
+        reconcile_legacy_degradation_state() + reconcile_provider_keyed_degradation_state()
+    )
     evaluated = evaluate_startup_readiness()
     evaluation = _evaluation_for(reconciliation_findings + evaluated.findings)
     if evaluation.findings:
