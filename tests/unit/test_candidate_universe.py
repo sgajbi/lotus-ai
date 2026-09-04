@@ -13,6 +13,7 @@ import pytest
 from app.contracts.model_catalogue import (
     ModelCatalogueSeedSource,
     ModelLifecycleState,
+    derive_candidate_identity_v2,
     derive_model_catalogue_entry_id,
 )
 from app.contracts.providers import (
@@ -40,6 +41,17 @@ PRIMARY_ENTRY = derive_model_catalogue_entry_id(
 ALTERNATE_ENTRY = derive_model_catalogue_entry_id(
     provider_id=ALTERNATE, model_revision="claude-sonnet-5", deployment=None
 )
+# The universe enumerates CANONICAL candidate identities (issue #314);
+# exclusions keep the human-readable row keys for operator legibility.
+PRIMARY_CANONICAL = derive_candidate_identity_v2(
+    provider_id=PRIMARY, model_family="gpt-5.4", model_revision="gpt-5.4", deployment=None
+)
+ALTERNATE_CANONICAL = derive_candidate_identity_v2(
+    provider_id=ALTERNATE,
+    model_family="claude-sonnet-5",
+    model_revision="claude-sonnet-5",
+    deployment=None,
+)
 
 
 def test_derived_universe_matches_the_configured_pair() -> None:
@@ -50,7 +62,7 @@ def test_derived_universe_matches_the_configured_pair() -> None:
     universe = derive_candidate_universe(resolve_provider_execution_config())
 
     assert universe.source is CandidateUniverseSource.CATALOGUE_DERIVED
-    assert universe.candidate_entry_ids == [PRIMARY_ENTRY, ALTERNATE_ENTRY]
+    assert universe.candidate_entry_ids == [PRIMARY_CANONICAL, ALTERNATE_CANONICAL]
     assert universe.exclusions == []
 
 
@@ -66,7 +78,7 @@ def test_lifecycle_ineligible_policy_identity_is_excluded_with_its_reason() -> N
 
     universe = derive_candidate_universe(resolve_provider_execution_config())
 
-    assert universe.candidate_entry_ids == [ALTERNATE_ENTRY]
+    assert universe.candidate_entry_ids == [ALTERNATE_CANONICAL]
     assert [e.reason for e in universe.exclusions] == [
         CandidateUniverseExclusionReason.LIFECYCLE_INELIGIBLE
     ]
@@ -90,7 +102,7 @@ def test_uncatalogued_policy_identity_is_excluded_with_its_reason() -> None:
 
     universe = derive_candidate_universe(ghost)
 
-    assert universe.candidate_entry_ids == [PRIMARY_ENTRY]
+    assert universe.candidate_entry_ids == [PRIMARY_CANONICAL]
     reasons_by_entry = {e.entry_id: e.reason for e in universe.exclusions}
     assert reasons_by_entry["text.ghost:phantom-1"] is (
         CandidateUniverseExclusionReason.MODEL_NOT_CATALOGUED
@@ -123,6 +135,10 @@ def test_serving_eligible_entry_outside_policy_is_policy_excluded() -> None:
                     "model_revision": revision,
                     "lifecycle_state": state,
                     "seed_source": ModelCatalogueSeedSource.APPROVED_WORKFLOW_RUN_MODEL_INVENTORY,
+                    # model_copy bypasses the stamping validator: an identity
+                    # change must reset the canonical id so the write
+                    # authority re-derives it (issue #314).
+                    "candidate_id_v2": "",
                 }
             )
         )
@@ -132,7 +148,7 @@ def test_serving_eligible_entry_outside_policy_is_policy_excluded() -> None:
 
     universe = derive_candidate_universe(resolve_provider_execution_config())
 
-    assert universe.candidate_entry_ids == [PRIMARY_ENTRY, ALTERNATE_ENTRY]
+    assert universe.candidate_entry_ids == [PRIMARY_CANONICAL, ALTERNATE_CANONICAL]
     policy_excluded = [
         e
         for e in universe.exclusions
@@ -161,6 +177,7 @@ def test_ordered_routing_decision_carries_universe_evidence(
     repository.upsert_entry(
         template.model_copy(
             update={
+                "candidate_id_v2": "",
                 "entry_id": shadow_id,
                 "model_revision": "gpt-5.5-preview",
                 "lifecycle_state": ModelLifecycleState.APPROVED,
@@ -284,7 +301,7 @@ def test_routing_posture_shows_the_universe_an_execution_would_get() -> None:
 
     universe = posture.candidate_universe
     assert universe is not None
-    assert universe.candidate_entry_ids == [ALTERNATE_ENTRY]
+    assert universe.candidate_entry_ids == [ALTERNATE_CANONICAL]
     assert [e.entry_id for e in universe.exclusions] == [PRIMARY_ENTRY]
     assert universe.exclusions[0].reason is (CandidateUniverseExclusionReason.LIFECYCLE_INELIGIBLE)
 
@@ -305,13 +322,13 @@ def test_capability_posture_answers_who_is_eligible_and_who_would_serve() -> Non
 
     capability = posture.capability_posture
     assert capability is not None
-    assert [c.entry_id for c in capability.candidates] == [PRIMARY_ENTRY, ALTERNATE_ENTRY]
+    assert [c.entry_id for c in capability.candidates] == [PRIMARY_CANONICAL, ALTERNATE_CANONICAL]
     assert capability.candidates[0].eligible is True
     assert capability.candidates[0].rejection_reason is None
     # The unassessed alternate fails closed AS unknown, never silently.
     assert capability.candidates[1].eligible is False
     assert capability.candidates[1].rejection_reason is (ProviderFailureCategory.CAPABILITY_UNKNOWN)
-    assert capability.would_select_entry_id == PRIMARY_ENTRY
+    assert capability.would_select_entry_id == PRIMARY_CANONICAL
 
     # Without a capability query there is no capability posture.
     assert build_routing_posture().capability_posture is None
@@ -361,4 +378,4 @@ def test_capability_posture_reflects_an_operator_degradation() -> None:
     )
     assert "failing contract validation" in str(capability.candidates[0].detail)
     assert capability.candidates[1].eligible is True
-    assert capability.would_select_entry_id == ALTERNATE_ENTRY
+    assert capability.would_select_entry_id == ALTERNATE_CANONICAL

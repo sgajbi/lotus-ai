@@ -126,8 +126,18 @@ def test_posture_reports_connection_identities_without_leaking_credentials(
 
     posture = build_routing_posture()
 
+    from app.contracts.model_catalogue import derive_candidate_identity_v2
+
     identities = {identity.entry_id: identity for identity in posture.connection_identities}
-    scoped = identities["text.regional:claude-sonnet-5:eu-frankfurt-1"]
+    # Connection identities key by the CANONICAL candidate id (issue #314).
+    scoped = identities[
+        derive_candidate_identity_v2(
+            provider_id="text.regional",
+            model_family="claude-sonnet-5",
+            model_revision="claude-sonnet-5",
+            deployment="eu-frankfurt-1",
+        )
+    ]
     assert scoped.provider_id == "text.regional"
     assert scoped.model_revision == "claude-sonnet-5"
     assert scoped.deployment == "eu-frankfurt-1"
@@ -136,7 +146,14 @@ def test_posture_reports_connection_identities_without_leaking_credentials(
     assert scoped.credential_env == "EU_IDENTITY_KEY"
     assert scoped.seeded is False
 
-    seeded = identities["text.openai:gpt-5.4"]
+    seeded = identities[
+        derive_candidate_identity_v2(
+            provider_id="text.openai",
+            model_family="gpt-5.4",
+            model_revision="gpt-5.4",
+            deployment=None,
+        )
+    ]
     assert seeded.seeded is True
     assert seeded.deployment is None
     assert seeded.credential_env is None

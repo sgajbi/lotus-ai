@@ -162,7 +162,12 @@ class CandidateUniverse(BaseModel):
 
     source: CandidateUniverseSource = Field(description="Where the enumeration came from.")
     candidate_entry_ids: list[str] = Field(
-        description="Ordered catalogue entry ids eligible to serve this execution.",
+        description=(
+            "Ordered CANONICAL candidate identities (cand2_..., issue #314) eligible "
+            "to serve this execution - collision-proof digests of each candidate's "
+            "structured serving tuple; the human-readable row keys stay on the "
+            "catalogue surfaces."
+        ),
     )
     exclusions: list[CandidateUniverseExclusionDescriptor] = Field(
         default_factory=list,

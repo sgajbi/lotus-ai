@@ -27,7 +27,10 @@ from app.contracts.model_catalogue import ModelCatalogueEntry
 from app.providers.base import ProviderExecutionError
 from app.providers.registry import resolve_text_generation_adapter
 from app.services.access_control_authorization import authorize_request, require_authorized
-from app.contracts.model_catalogue import derive_model_catalogue_entry_id
+from app.contracts.model_catalogue import (
+    derive_candidate_identity_v2,
+    derive_model_catalogue_entry_id,
+)
 from app.services.provider_execution_config import (
     ProviderExecutionConfig,
     derive_fallback_execution_config,
@@ -138,13 +141,21 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
                     config=config,
                 ),
             )
-        primary_entry_id, _ = _candidate_entry_identity(config)
-        if primary_entry_id is not None:
+        if config.provider_id and config.model_id:
             # One connection authority (issue #298): the fixed path serves
             # the primary identity, so its execution config resolves through
             # the same merged material seam the ordered path enumerates from
             # - a declared override of the primary drives the actual call.
-            resolved = derive_candidate_execution_config(config, primary_entry_id)
+            # The seam keys by the CANONICAL candidate identity (issue #314).
+            resolved = derive_candidate_execution_config(
+                config,
+                derive_candidate_identity_v2(
+                    provider_id=config.provider_id,
+                    model_family=config.model_id,
+                    model_revision=config.model_version or config.model_id,
+                    deployment=config.deployment,
+                ),
+            )
             if resolved is not None:
                 execution_config = resolved
         try:

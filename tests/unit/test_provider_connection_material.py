@@ -12,7 +12,7 @@ import json
 import pytest
 
 from app.config import settings
-from app.contracts.model_catalogue import derive_model_catalogue_entry_id
+from app.contracts.model_catalogue import derive_candidate_identity_v2
 from app.services.provider_connection_material import (
     configured_connection_materials,
     connection_material_findings,
@@ -39,9 +39,14 @@ def _pair_settings() -> None:
     settings.live_text_fallback_api_key = None
 
 
-def _entry(provider: str, model: str, version: str | None) -> str:
-    return derive_model_catalogue_entry_id(
-        provider_id=provider, model_revision=version or model, deployment=None
+def _entry(provider: str, model: str, version: str | None, deployment: str | None = None) -> str:
+    # Connection material keys by the CANONICAL candidate identity (issue
+    # #314), matching the ids the candidate universe enumerates.
+    return derive_candidate_identity_v2(
+        provider_id=provider,
+        model_family=model,
+        model_revision=version or model,
+        deployment=deployment,
     )
 
 
@@ -211,16 +216,10 @@ def test_a_deployment_scoped_identity_is_its_own_catalogue_identity(
     )
     config = resolve_provider_execution_config()
 
-    scoped_id = derive_model_catalogue_entry_id(
-        provider_id="text.regional",
-        model_revision="claude-sonnet-5-2026-05",
-        deployment="eu-frankfurt-1",
+    scoped_id = _entry(
+        "text.regional", "claude-sonnet-5", "claude-sonnet-5-2026-05", "eu-frankfurt-1"
     )
-    unscoped_id = derive_model_catalogue_entry_id(
-        provider_id="text.regional",
-        model_revision="claude-sonnet-5-2026-05",
-        deployment=None,
-    )
+    unscoped_id = _entry("text.regional", "claude-sonnet-5", "claude-sonnet-5-2026-05")
     assert scoped_id != unscoped_id
 
     materials = configured_connection_materials(config)

@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime
 
+from app.contracts.model_catalogue import derive_model_catalogue_entry_id
 from app.repositories.provider_operations_repository import ProviderDegradationStateRecord
 from app.services.provider_degradation_state import (
     DEGRADATION_KEY_PREFIX,
@@ -116,7 +117,16 @@ def reconcile_provider_keyed_degradation_state() -> list[str]:
         return []
     by_provider: dict[str, list[str]] = {}
     for material in materials.values():
-        by_provider.setdefault(material.provider_id, []).append(material.entry_id)
+        # The carried-over key must match the key shape the BREAKER derives
+        # at runtime - the v1-shaped candidate identity - not the material
+        # map's canonical id (issue #314 S2a keys materials canonically; the
+        # breaker re-keys in S2b, and this derivation flips with it).
+        candidate_key = derive_model_catalogue_entry_id(
+            provider_id=material.provider_id,
+            model_revision=material.model_version or material.model_id,
+            deployment=material.deployment,
+        )
+        by_provider.setdefault(material.provider_id, []).append(candidate_key)
     repository = get_provider_operations_store()
     for provider_id, entry_ids in sorted(by_provider.items()):
         provider_key = f"{DEGRADATION_KEY_PREFIX}:{provider_id}"

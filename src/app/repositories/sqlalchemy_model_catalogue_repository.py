@@ -12,6 +12,7 @@ from app.contracts.model_catalogue import (
     ServingPolicyVersionRecord,
     ModelCapabilityDegradation,
     ModelCatalogueEntry,
+    derive_candidate_identity_v2,
     ModelCatalogueSeedSource,
     ModelLifecycleState,
     ModelLifecycleTransitionRecord,
@@ -42,6 +43,17 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
     def get_entry(self, entry_id: str) -> ModelCatalogueEntry | None:
         with self._session_factory() as session:
             model = session.get(ModelCatalogueEntryModel, entry_id)
+            if model is None:
+                return None
+            return self._to_entry(model)
+
+    def get_entry_by_candidate_id(self, candidate_id_v2: str) -> ModelCatalogueEntry | None:
+        with self._session_factory() as session:
+            model = session.execute(
+                select(ModelCatalogueEntryModel).where(
+                    ModelCatalogueEntryModel.candidate_id_v2 == candidate_id_v2
+                )
+            ).scalar_one_or_none()
             if model is None:
                 return None
             return self._to_entry(model)
@@ -77,7 +89,22 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
             model.seed_source = entry.seed_source.value
             model.created_at = entry.created_at
             model.last_updated_at = entry.last_updated_at
-            model.candidate_id_v2 = entry.candidate_id_v2
+            # The write authority re-derives the canonical id: a model_copy
+            # that changed identity fields but kept the original's id is
+            # refused rather than stored (issue #314).
+            derived_candidate_id = derive_candidate_identity_v2(
+                provider_id=entry.provider_id,
+                model_family=entry.model_family,
+                model_revision=entry.model_revision,
+                deployment=entry.deployment,
+            )
+            if entry.candidate_id_v2 and entry.candidate_id_v2 != derived_candidate_id:
+                raise ValueError(
+                    "candidate_id_v2 has drifted from the entry's structured serving "
+                    f"tuple (expected '{derived_candidate_id}', got "
+                    f"'{entry.candidate_id_v2}')"
+                )
+            model.candidate_id_v2 = derived_candidate_id
             model.deployment_key = entry.deployment or ""
             session.commit()
 
