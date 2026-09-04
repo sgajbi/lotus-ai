@@ -1,26 +1,26 @@
-"""Attempt-level billing truth (issue #232).
+"""Attempt-level durable billing (issue #289, superseding #232's settlement).
 
-Recorded spend must cover every billed attempt of a non-idempotent
-generation, not just the served one: a retried 5xx or timeout may have
-generated and billed provider-side. The settlement prices actual usage
-evidence first, conservative estimates second (identical request body's
-input tokens plus the max_output_tokens ceiling), and never bills failures
-that cannot have generated (429, connection-level).
+Every potentially billable provider attempt debits Lotus spend exactly once
+at its own boundary - durably, idempotently, and regardless of whether the
+execution later succeeds, fails completely, falls back, or the process dies.
+The response, when one exists, merely projects the recorded evidence.
 """
 
 from email.message import Message
 from io import BytesIO
 from urllib import error
 
-from pytest import MonkeyPatch
+from pytest import MonkeyPatch, raises
 
 from app.config import settings
-from app.services.provider_budget_policy import record_provider_spend
+from app.contracts.providers import ProviderExecutionResponse
+from app.providers.base import ProviderExecutionError
 from app.services.provider_operations_store import get_provider_operations_store
 from app.services.provider_usage_accounting import (
-    AttemptBillingSettlement,
+    AttemptDebit,
     UsageCostEstimate,
-    settle_attempt_billing,
+    price_attempt,
+    project_attempt_billing,
 )
 
 
@@ -30,208 +30,346 @@ def _seed_cost_scalars() -> None:
     settings.live_text_output_cost_per_1k_tokens = 0.03
 
 
-_FINAL_COST = UsageCostEstimate(estimated_cost_usd=0.0035, rate_card_ref="default-live-text")
+def test_price_attempt_follows_the_evidence_order() -> None:
+    _seed_cost_scalars()
 
-
-def _settle(
-    attempts: list[dict[str, object]], *, posture: str = "conservative"
-) -> AttemptBillingSettlement:
-    return settle_attempt_billing(
-        failed_attempts=attempts,
-        posture=posture,
-        final_cost=_FINAL_COST,
-        final_input_tokens=200,
+    actual = price_attempt(
+        input_tokens=200,
+        output_tokens=100,
+        billable_risk=True,
+        posture="conservative",
+        fallback_input_estimate=999,
         max_output_tokens=512,
         model_revision="gpt-5.4",
     )
+    assert actual is not None
+    assert actual.basis == "ACTUAL_USAGE"
+    assert actual.amount_usd == 0.005
+    assert actual.rate_card_ref
+
+    conservative = price_attempt(
+        input_tokens=None,
+        output_tokens=None,
+        billable_risk=True,
+        posture="conservative",
+        fallback_input_estimate=200,
+        max_output_tokens=512,
+        model_revision="gpt-5.4",
+    )
+    assert conservative is not None
+    assert conservative.basis == "CONSERVATIVE_ESTIMATE"
+    assert conservative.amount_usd == 0.01736
+    assert conservative.input_tokens == 200
+    assert conservative.output_tokens == 512
+
+    # Non-billable risk, actual_only posture, or a missing rate card never
+    # price - no debit is the explicit outcome, not a silent zero.
+    assert (
+        price_attempt(
+            input_tokens=None,
+            output_tokens=None,
+            billable_risk=False,
+            posture="conservative",
+            fallback_input_estimate=200,
+            max_output_tokens=512,
+            model_revision="gpt-5.4",
+        )
+        is None
+    )
+    assert (
+        price_attempt(
+            input_tokens=None,
+            output_tokens=None,
+            billable_risk=True,
+            posture="actual_only",
+            fallback_input_estimate=200,
+            max_output_tokens=512,
+            model_revision="gpt-5.4",
+        )
+        is None
+    )
 
 
-def test_settlement_prices_each_evidence_class_honestly() -> None:
-    _seed_cost_scalars()
+def test_projection_restates_recorded_debits() -> None:
+    final = UsageCostEstimate(estimated_cost_usd=0.0035, rate_card_ref="default-live-text")
+    conservative = AttemptDebit(
+        amount_usd=0.01736,
+        basis="CONSERVATIVE_ESTIMATE",
+        input_tokens=200,
+        output_tokens=512,
+        rate_card_ref="default-live-text",
+    )
+    actual = AttemptDebit(
+        amount_usd=0.005,
+        basis="ACTUAL_USAGE",
+        input_tokens=200,
+        output_tokens=100,
+        rate_card_ref="default-live-text",
+    )
 
-    # No failed attempts: the served attempt is the whole bill.
-    single = _settle([])
+    single = project_attempt_billing(final_cost=final, failed_debits=[], had_failed_attempts=False)
     assert single.estimated_cost_usd == 0.0035
     assert single.failed_attempt_cost_usd is None
     assert single.failed_attempt_cost_basis is None
     assert single.billed_attempt_count == 1
 
-    # Unknown-usage billable-risk failure under the conservative posture:
-    # input tokens are the identical request body's 200; output is the
-    # 512-token ceiling -> 0.002 + 0.01536.
-    conservative = _settle([{"billable_risk": True, "input_tokens": None, "output_tokens": None}])
-    assert conservative.failed_attempt_cost_usd == 0.01736
-    assert conservative.estimated_cost_usd == 0.02086
-    assert conservative.failed_attempt_cost_basis == "CONSERVATIVE_ESTIMATE"
-    assert conservative.billed_attempt_count == 2
+    unbilled = project_attempt_billing(final_cost=final, failed_debits=[], had_failed_attempts=True)
+    assert unbilled.failed_attempt_cost_basis == "NONE"
+    assert unbilled.billed_attempt_count == 1
 
-    # Provider-reported usage on the failed attempt is actual evidence and
-    # beats any estimate.
-    actual = _settle([{"billable_risk": True, "input_tokens": 200, "output_tokens": 100}])
-    assert actual.failed_attempt_cost_usd == 0.005
-    assert actual.failed_attempt_cost_basis == "ACTUAL_USAGE"
-
-    mixed = _settle(
-        [
-            {"billable_risk": True, "input_tokens": 200, "output_tokens": 100},
-            {"billable_risk": True, "input_tokens": None, "output_tokens": None},
-        ]
+    mixed = project_attempt_billing(
+        final_cost=final, failed_debits=[conservative, actual], had_failed_attempts=True
     )
     assert mixed.failed_attempt_cost_basis == "MIXED"
-    assert mixed.billed_attempt_count == 3
     assert mixed.failed_attempt_cost_usd == 0.02236
+    assert mixed.estimated_cost_usd == 0.02586
+    assert mixed.billed_attempt_count == 3
 
-    # A failure that cannot have generated (429 refused pre-generation,
-    # connection-level) is never billed, whatever the posture.
-    unbillable = _settle([{"billable_risk": False, "input_tokens": None, "output_tokens": None}])
-    assert unbillable.estimated_cost_usd == 0.0035
-    assert unbillable.failed_attempt_cost_basis == "NONE"
-    assert unbillable.billed_attempt_count == 1
 
-    # actual_only never estimates - it bills only usage evidence.
-    actual_only = _settle(
-        [{"billable_risk": True, "input_tokens": None, "output_tokens": None}],
-        posture="actual_only",
+class _Response:
+    def __init__(self, body: bytes) -> None:
+        self._body = body
+
+    def __enter__(self) -> "_Response":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self._body
+
+
+_SUCCESS_BODY = (
+    b'{"id": "resp_billing", "model": "gpt-5.4", "output_text": "OK",'
+    b' "usage": {"input_tokens": 200, "output_tokens": 50, "total_tokens": 250}}'
+)
+
+
+def _quiet_backoff(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.provider_retry_backoff._sleep", lambda delay: None)
+    monkeypatch.setattr("app.services.provider_retry_backoff._jitter_source", lambda: 0.0)
+
+
+def _http_error(code: int) -> error.HTTPError:
+    return error.HTTPError(
+        url="http://localhost/v1/responses",
+        code=code,
+        msg="failure",
+        hdrs=Message(),
+        fp=BytesIO(b"{}"),
     )
-    assert actual_only.estimated_cost_usd == 0.0035
-    assert actual_only.failed_attempt_cost_basis == "NONE"
 
 
-def test_transport_bills_the_failed_attempt_behind_a_served_retry(
+def _run_transport(*, retry_limit: int, execution_id: str) -> "ProviderExecutionResponse":
+    from app.providers.local_openai_compatible_text_provider import (
+        LocalOpenAICompatibleTextProvider,
+    )
+    from app.providers.openai_compatible_text_transport import (
+        execute_openai_compatible_text_request,
+    )
+    from tests.unit.test_provider_gateway import _request
+
+    return execute_openai_compatible_text_request(
+        descriptor=LocalOpenAICompatibleTextProvider().descriptor,
+        request=_request(retry_limit=retry_limit, execution_id=execution_id),
+        api_base="http://localhost:1234/v1",
+        api_key=None,
+        require_api_key=False,
+        model_id="gpt-5.4",
+        model_version=None,
+    )
+
+
+def test_served_execution_debits_each_attempt_and_projects_them(
     monkeypatch: MonkeyPatch,
 ) -> None:
-    """The issue's acceptance: fails once with a 5xx, succeeds on retry -
-    recorded spend covers both attempts under the conservative posture."""
-
-    from app.providers.local_openai_compatible_text_provider import (
-        LocalOpenAICompatibleTextProvider,
-    )
-    from app.providers.openai_compatible_text_transport import (
-        execute_openai_compatible_text_request,
-    )
-    from tests.unit.test_provider_gateway import _request
+    """Fails once with a 5xx, succeeds on retry: BOTH attempts are durable
+    debit rows, the budget envelope moved at each boundary, and the response
+    figures equal the recorded evidence - spend was real before settlement."""
 
     _seed_cost_scalars()
-    monkeypatch.setattr("app.services.provider_retry_backoff._sleep", lambda delay: None)
-    monkeypatch.setattr("app.services.provider_retry_backoff._jitter_source", lambda: 0.0)
-
+    _quiet_backoff(monkeypatch)
     attempts = {"count": 0}
-
-    class _Response:
-        def __enter__(self) -> "_Response":
-            return self
-
-        def __exit__(self, *args: object) -> None:
-            return None
-
-        def read(self) -> bytes:
-            return (
-                b'{"id": "resp_billing", "model": "gpt-5.4", "output_text": "OK",'
-                b' "usage": {"input_tokens": 200, "output_tokens": 50, "total_tokens": 250}}'
-            )
 
     def _urlopen(request: object, timeout: float) -> _Response:
         attempts["count"] += 1
         if attempts["count"] == 1:
-            raise error.HTTPError(
-                url="http://localhost/v1/responses",
-                code=503,
-                msg="unavailable",
-                hdrs=Message(),
-                fp=BytesIO(b"{}"),
-            )
-        return _Response()
+            raise _http_error(503)
+        return _Response(_SUCCESS_BODY)
 
     monkeypatch.setattr("urllib.request.urlopen", _urlopen)
 
-    response = execute_openai_compatible_text_request(
-        descriptor=LocalOpenAICompatibleTextProvider().descriptor,
-        request=_request(retry_limit=1),
-        api_base="http://localhost:1234/v1",
-        api_key=None,
-        require_api_key=False,
-        model_id="gpt-5.4",
-        model_version=None,
-    )
+    response = _run_transport(retry_limit=1, execution_id="exec-served")
 
-    assert attempts["count"] == 2
-    assert response.retry_count == 1
-    # Final attempt 0.0035 plus the conservative estimate for the failed one
-    # (200 input tokens of the identical body + the 512-token ceiling).
-    assert response.failed_attempt_cost_usd == 0.01736
-    assert response.estimated_cost_usd == 0.02086
+    rows = {row.debit_id: row for row in get_provider_operations_store().list_attempt_debits()}
+    failed_row = rows["adbt:exec-served:text.local:0"]
+    served_row = rows["adbt:exec-served:text.local:1"]
+    assert failed_row.basis == "CONSERVATIVE_ESTIMATE"
+    assert failed_row.output_tokens == 512
+    assert served_row.basis == "ACTUAL_USAGE"
+    assert served_row.amount_usd == 0.0035
+
+    assert response.failed_attempt_cost_usd == failed_row.amount_usd
+    assert response.estimated_cost_usd == round(failed_row.amount_usd + served_row.amount_usd, 8)
     assert response.failed_attempt_cost_basis == "CONSERVATIVE_ESTIMATE"
     assert response.billed_attempt_count == 2
-    # The structured echo carries the same summed figure - one cost truth.
-    # (The composition detail lives only on the response/audit level: the
-    # echo's shape is pinned by the captured pack output contracts.)
-    assert response.structured_output["estimated_cost_usd"] == 0.02086
-    assert "billed_attempt_count" not in response.structured_output
+    assert response.structured_output["estimated_cost_usd"] == response.estimated_cost_usd
 
-    # The budget envelope records the summed figure.
-    record_provider_spend(response)
     budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
     assert budget is not None
-    assert budget.current_spend_usd == 0.02086
+    assert budget.current_spend_usd == response.estimated_cost_usd
 
 
-def test_a_rate_limited_retry_is_not_billed(monkeypatch: MonkeyPatch) -> None:
-    """429 refuses before generation: retried rate-limits carry no billable
-    risk and the settlement says NONE."""
-
-    from app.providers.local_openai_compatible_text_provider import (
-        LocalOpenAICompatibleTextProvider,
-    )
-    from app.providers.openai_compatible_text_transport import (
-        execute_openai_compatible_text_request,
-    )
-    from tests.unit.test_provider_gateway import _request
+def test_terminal_all_fail_execution_still_debits_every_billable_attempt(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """The steering's P1 case: no success ever exists, yet both billable-risk
+    attempts moved the envelope at their boundaries."""
 
     _seed_cost_scalars()
-    monkeypatch.setattr("app.services.provider_retry_backoff._sleep", lambda delay: None)
-    monkeypatch.setattr("app.services.provider_retry_backoff._jitter_source", lambda: 0.0)
+    _quiet_backoff(monkeypatch)
 
+    def _urlopen(request: object, timeout: float) -> _Response:
+        raise _http_error(503)
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    with raises(ProviderExecutionError):
+        _run_transport(retry_limit=1, execution_id="exec-allfail")
+
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-allfail:")
+    ]
+    assert {row.debit_id for row in rows} == {
+        "adbt:exec-allfail:text.local:0",
+        "adbt:exec-allfail:text.local:1",
+    }
+    assert all(row.basis == "CONSERVATIVE_ESTIMATE" for row in rows)
+    budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
+    assert budget is not None
+    assert budget.current_spend_usd == round(sum(row.amount_usd for row in rows), 8)
+
+
+def test_rate_limited_and_pre_connect_failures_never_debit(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _seed_cost_scalars()
+    _quiet_backoff(monkeypatch)
     attempts = {"count": 0}
-
-    class _Response:
-        def __enter__(self) -> "_Response":
-            return self
-
-        def __exit__(self, *args: object) -> None:
-            return None
-
-        def read(self) -> bytes:
-            return (
-                b'{"id": "resp_429", "model": "gpt-5.4", "output_text": "OK",'
-                b' "usage": {"input_tokens": 200, "output_tokens": 50, "total_tokens": 250}}'
-            )
 
     def _urlopen(request: object, timeout: float) -> _Response:
         attempts["count"] += 1
         if attempts["count"] == 1:
-            raise error.HTTPError(
-                url="http://localhost/v1/responses",
-                code=429,
-                msg="rate limited",
-                hdrs=Message(),
-                fp=BytesIO(b"{}"),
-            )
-        return _Response()
+            raise _http_error(429)
+        if attempts["count"] == 2:
+            raise error.URLError("connection refused")
+        return _Response(_SUCCESS_BODY)
 
     monkeypatch.setattr("urllib.request.urlopen", _urlopen)
 
-    response = execute_openai_compatible_text_request(
-        descriptor=LocalOpenAICompatibleTextProvider().descriptor,
-        request=_request(retry_limit=1),
-        api_base="http://localhost:1234/v1",
-        api_key=None,
-        require_api_key=False,
-        model_id="gpt-5.4",
-        model_version=None,
-    )
+    response = _run_transport(retry_limit=2, execution_id="exec-unbillable")
 
-    assert response.retry_count == 1
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-unbillable:")
+    ]
+    # Only the served attempt debited: 429 refused before generation and the
+    # connection-level failure never reached a generating provider.
+    assert {row.debit_id for row in rows} == {"adbt:exec-unbillable:text.local:2"}
     assert response.estimated_cost_usd == 0.0035
-    assert response.failed_attempt_cost_usd is None
     assert response.failed_attempt_cost_basis == "NONE"
     assert response.billed_attempt_count == 1
+
+
+def test_candidates_sharing_an_execution_debit_cumulatively(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Fallback semantics (issue #289): candidates share one execution
+    identity, each attempt keys its own debit, and spend accumulates - it is
+    never reset between candidates."""
+
+    _seed_cost_scalars()
+    _quiet_backoff(monkeypatch)
+    from app.providers.openai_compatible_text_transport import (
+        post_openai_compatible_response,
+    )
+
+    def _urlopen(request: object, timeout: float) -> _Response:
+        raise _http_error(503)
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+
+    for provider_id in ("text.primary", "text.alternate"):
+        with raises(ProviderExecutionError):
+            post_openai_compatible_response(
+                api_base="http://localhost:1234/v1",
+                api_key=None,
+                payload={"model": "gpt-5.4", "max_output_tokens": 512},
+                timeout_seconds=1.0,
+                serving_provider_id=provider_id,
+                require_api_key=False,
+                retry_limit=0,
+                execution_id="exec-fallback",
+                model_revision="gpt-5.4",
+            )
+
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-fallback:")
+    ]
+    assert {row.debit_id for row in rows} == {
+        "adbt:exec-fallback:text.primary:0",
+        "adbt:exec-fallback:text.alternate:0",
+    }
+    budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
+    assert budget is not None
+    assert budget.current_spend_usd == round(sum(row.amount_usd for row in rows), 8)
+
+
+def test_gateway_mints_one_execution_identity_per_execution(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """The gateway stamps execution_id once, at the top of the execution,
+    before candidate dispatch - retries and fallback candidates then share
+    it, and a fresh execution gets a fresh identity."""
+
+    from fastapi import HTTPException
+
+    from app.contracts.providers import ProviderExecutionRequest, ProviderFailureCategory
+    from app.services import provider_gateway
+    from app.services.provider_execution_config import ProviderExecutionConfig
+    from tests.unit.test_provider_gateway import _request
+
+    settings.provider_mode = "stub"
+    captured: list[str | None] = []
+
+    class _Adapter:
+        def execute(
+            self, request: ProviderExecutionRequest, *, config: ProviderExecutionConfig
+        ) -> object:
+            captured.append(request.execution_id)
+            raise ProviderExecutionError(
+                category=ProviderFailureCategory.UNSUPPORTED_MODE,
+                message="capture only",
+            )
+
+    monkeypatch.setattr(
+        provider_gateway, "resolve_text_generation_adapter", lambda mode: _Adapter()
+    )
+
+    for _ in range(2):
+        with raises(HTTPException):
+            provider_gateway.execute_text_generation(_request())
+    with raises(HTTPException):
+        provider_gateway.execute_text_generation(_request(execution_id="exec-preset"))
+
+    assert len(captured) == 3
+    assert captured[0] and captured[1]
+    assert captured[0] != captured[1]
+    # A caller-supplied identity is preserved, never re-minted.
+    assert captured[2] == "exec-preset"

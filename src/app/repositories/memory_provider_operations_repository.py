@@ -10,6 +10,7 @@ from app.contracts.providers import (
 )
 from app.contracts.governed_actions import GovernedActionRecord, GovernedActionStatus
 from app.repositories.provider_operations_repository import (
+    ProviderAttemptDebitRecord,
     ProviderBudgetStateRecord,
     ProviderDegradationStateRecord,
     ProviderOperationsEventRecord,
@@ -25,6 +26,7 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
         self._degradation_states: dict[str, ProviderDegradationStateRecord] = {}
         self._event_records: list[ProviderOperationsEventRecord] = []
         self._governed_actions: dict[str, GovernedActionRecord] = {}
+        self._attempt_debits: dict[str, ProviderAttemptDebitRecord] = {}
 
     def list_quota_states(self) -> list[ProviderQuotaStateRecord]:
         return [
@@ -90,6 +92,32 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
         )
         self._budget_states[budget_key] = deepcopy(updated)
         return deepcopy(updated)
+
+    def record_attempt_debit(self, record: ProviderAttemptDebitRecord, *, budget_key: str) -> bool:
+        if record.debit_id in self._attempt_debits:
+            return False
+        self._attempt_debits[record.debit_id] = deepcopy(record)
+        self.add_budget_spend(
+            budget_key=budget_key,
+            amount_usd=record.amount_usd,
+            updated_at=record.recorded_at,
+        )
+        return True
+
+    def list_attempt_debits(self, *, limit: int = 100) -> Sequence[ProviderAttemptDebitRecord]:
+        records = sorted(
+            self._attempt_debits.values(),
+            key=lambda item: (item.recorded_at, item.debit_id),
+            reverse=True,
+        )
+        return [deepcopy(record) for record in records[: max(limit, 0)]]
+
+    def delete_attempt_debits(self, debit_ids: Sequence[str]) -> int:
+        deleted = 0
+        for debit_id in debit_ids:
+            if self._attempt_debits.pop(debit_id, None) is not None:
+                deleted += 1
+        return deleted
 
     def get_degradation_state(
         self,

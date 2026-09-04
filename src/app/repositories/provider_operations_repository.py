@@ -29,6 +29,27 @@ class ProviderBudgetStateRecord:
 
 
 @dataclass(frozen=True)
+class ProviderAttemptDebitRecord:
+    """One durable economic debit at a provider attempt boundary (issue #289).
+
+    The debit_id is the idempotent attempt identity
+    (``adbt:<execution_id>:<provider_id>:<attempt_index>``): recording the
+    same identity twice is a no-op, so a crash-and-retry of the recording
+    call can never double-debit, and a process death after the attempt
+    loses nothing - the debit is already durable.
+    """
+
+    debit_id: str
+    provider_id: str
+    basis: str
+    amount_usd: float
+    input_tokens: int | None
+    output_tokens: int | None
+    rate_card_ref: str
+    recorded_at: str
+
+
+@dataclass(frozen=True)
 class ProviderDegradationStateRecord:
     degradation_key: str
     consecutive_failure_count: int
@@ -93,6 +114,19 @@ class ProviderOperationsRepository(Protocol):
         updated_at: str,
     ) -> ProviderBudgetStateRecord:
         """Atomically add spend to one provider budget state record and return the updated value."""
+
+    def record_attempt_debit(self, record: ProviderAttemptDebitRecord, *, budget_key: str) -> bool:
+        """Durably record one attempt debit and advance the budget counter
+        together (issue #289). Returns False - a complete no-op, counter
+        untouched - when the debit identity is already recorded."""
+
+    def list_attempt_debits(self, *, limit: int = 100) -> Sequence[ProviderAttemptDebitRecord]:
+        """Attempt-debit evidence, newest first."""
+
+    def delete_attempt_debits(self, debit_ids: Sequence[str]) -> int:
+        """Delete attempt-debit evidence rows for the lifecycle engine
+        (control-plane evidence family). Deleting evidence never reverses
+        the budget counter - the spend already happened."""
 
     def get_degradation_state(
         self,

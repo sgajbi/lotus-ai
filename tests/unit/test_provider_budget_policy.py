@@ -1,40 +1,33 @@
 from pathlib import Path
 
 from app.config import settings
-from app.contracts.providers import (
-    ProviderAdapterKind,
-    ProviderBudgetState,
-    ProviderExecutionResponse,
-)
+from app.contracts.providers import ProviderBudgetState
 from app.services.provider_budget_policy import (
     build_provider_budget_policy,
     enforce_provider_budget,
-    record_provider_spend,
+    record_attempt_spend,
 )
+from app.services.provider_usage_accounting import AttemptDebit
 from app.providers.base import ProviderExecutionError
 from app.services.provider_operations_store import reset_provider_operations_store_cache
 from app.services.rate_card_store import reset_rate_card_store_cache
 from tests.support.migration_runner import upgrade_database_to_head
 
 
-def _response(cost: float | None, *, stubbed: bool = False) -> ProviderExecutionResponse:
-    return ProviderExecutionResponse(
+def _seed_spend(
+    amount: float, *, execution_id: str = "exec-budget-test", attempt_index: int = 0
+) -> bool:
+    return record_attempt_spend(
+        execution_id=execution_id,
         provider_id="text.openai",
-        provider_mode="openai",
-        adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
-        failure_category=None,
-        timeout_ms=4000,
-        retry_count=0,
-        max_output_tokens=512,
-        model_id="gpt-5.4",
-        provider_request_id="req-budget-1",
-        input_tokens=100,
-        output_tokens=200,
-        total_tokens=300,
-        estimated_cost_usd=cost,
-        stubbed=stubbed,
-        message="live response",
-        structured_output={},
+        attempt_index=attempt_index,
+        debit=AttemptDebit(
+            amount_usd=amount,
+            basis="ACTUAL_USAGE",
+            input_tokens=100,
+            output_tokens=200,
+            rate_card_ref="default-live-text",
+        ),
     )
 
 
@@ -57,7 +50,7 @@ def test_provider_budget_policy_reports_soft_limit_after_tracked_spend() -> None
     settings.live_text_soft_budget_usd = 0.5
     settings.live_text_hard_budget_usd = 1.0
 
-    record_provider_spend(_response(0.75))
+    _seed_spend(0.75)
 
     response = build_provider_budget_policy()
 
@@ -104,7 +97,7 @@ def test_provider_budget_policy_blocks_when_hard_limit_is_reached() -> None:
     settings.live_text_soft_budget_usd = 0.5
     settings.live_text_hard_budget_usd = 1.0
 
-    record_provider_spend(_response(1.0))
+    _seed_spend(1.0)
 
     response = build_provider_budget_policy()
     assert response.budget_state == ProviderBudgetState.HARD_LIMIT_BLOCKED
@@ -129,19 +122,22 @@ def test_provider_budget_policy_enforcement_rejects_invalid_configuration() -> N
         raise AssertionError("Expected invalid budget configuration to block execution")
 
 
-def test_record_provider_spend_ignores_stubbed_or_unpriced_responses() -> None:
+def test_recording_the_same_attempt_identity_twice_debits_once() -> None:
+    """Issue #289: the attempt identity makes recording idempotent - a
+    crash-and-retry of the recording call can never double-debit."""
+
     settings.live_text_budget_enforced = True
     settings.live_text_input_cost_per_1k_tokens = 0.01
     settings.live_text_output_cost_per_1k_tokens = 0.03
     settings.live_text_soft_budget_usd = 1.0
     settings.live_text_hard_budget_usd = 2.0
 
-    record_provider_spend(_response(0.5, stubbed=True))
-    record_provider_spend(_response(None))
+    assert _seed_spend(0.5) is True
+    assert _seed_spend(0.5) is False
 
     response = build_provider_budget_policy()
 
-    assert response.current_spend_usd == 0.0
+    assert response.current_spend_usd == 0.5
     assert response.budget_state == ProviderBudgetState.BELOW_SOFT_LIMIT
 
 
@@ -157,7 +153,7 @@ def test_provider_budget_policy_persists_spend_in_sql_store_across_store_reset(
     settings.live_text_hard_budget_usd = 2.0
     upgrade_database_to_head(settings.database_url)
 
-    record_provider_spend(_response(0.75))
+    _seed_spend(0.75)
     reset_provider_operations_store_cache()
     reset_rate_card_store_cache()
 
@@ -179,7 +175,7 @@ def test_provider_budget_policy_durable_enforcement_blocks_on_persisted_hard_lim
     settings.live_text_hard_budget_usd = 1.0
     upgrade_database_to_head(settings.database_url)
 
-    record_provider_spend(_response(1.0))
+    _seed_spend(1.0)
     reset_provider_operations_store_cache()
     reset_rate_card_store_cache()
 

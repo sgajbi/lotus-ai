@@ -29,7 +29,8 @@
         "workflow_pack_control_events",
         "provider_retention_confirmations",
         "audit_access_events",
-        "data_lifecycle_events"
+        "data_lifecycle_events",
+        "provider_attempt_debits"
       ],
       "retention_days": 2555,
       "retention_basis": "Control-plane decision evidence retained seven years; it carries no client-derived content, so no tenant erasure key applies.",

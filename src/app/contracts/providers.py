@@ -668,6 +668,15 @@ class ProviderExecutionRequest(BaseModel):
     retry_limit: int = Field(
         description="Maximum bounded retry count allowed for this execution request."
     )
+    execution_id: str | None = Field(
+        default=None,
+        description=(
+            "Execution identity minted once per gateway execution (issue #289): "
+            "shared across retry and fallback candidates, it keys the idempotent "
+            "per-attempt spend debits. Null only outside the gateway path; the "
+            "transport then mints one so every live attempt still debits."
+        ),
+    )
     failed_attempt_cost_posture: Literal["conservative", "actual_only"] = Field(
         default="conservative",
         description=(

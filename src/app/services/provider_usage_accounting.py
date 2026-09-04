@@ -68,72 +68,97 @@ class AttemptBillingSettlement:
     billed_attempt_count: int
 
 
-def settle_attempt_billing(
+@dataclass(frozen=True)
+class AttemptDebit:
+    """One priced provider attempt (issue #289): what the boundary records
+    durably and the response later projects."""
+
+    amount_usd: float
+    basis: FailedAttemptCostBasis
+    input_tokens: int | None
+    output_tokens: int | None
+    rate_card_ref: str
+
+
+def price_attempt(
     *,
-    failed_attempts: list[dict[str, object]],
+    input_tokens: int | None,
+    output_tokens: int | None,
+    billable_risk: bool,
     posture: str,
-    final_cost: UsageCostEstimate,
-    final_input_tokens: int | None,
+    fallback_input_estimate: int,
     max_output_tokens: int,
     model_revision: str | None = None,
-) -> AttemptBillingSettlement:
-    """Price the failed attempts behind a served response (issue #232).
+) -> AttemptDebit | None:
+    """Price one attempt at its boundary (issue #289), in evidence order.
 
-    Evidence order per failed attempt: provider-reported usage on the failed
-    attempt prices as ACTUAL_USAGE; otherwise, under the conservative posture,
-    a billable-risk failure (timeout, 5xx - the provider may have generated
-    and billed) prices at the final attempt's input tokens - the identical
-    request body - plus the max_output_tokens ceiling (CONSERVATIVE_ESTIMATE).
-    Non-billable failures (429 refused before generation, connection-level
-    errors) and unknown-usage failures under actual_only are never priced.
+    Provider-reported usage prices as ACTUAL_USAGE. Otherwise, under the
+    conservative posture, a billable-risk attempt (timeout, 5xx, or a served
+    response whose usage was withheld - the provider may have generated and
+    billed) prices at the input estimate plus the max_output_tokens ceiling
+    as CONSERVATIVE_ESTIMATE. Non-billable failures (429 refused before
+    generation, connection-level errors) and unknown-usage attempts under
+    actual_only price as None - no debit. A missing rate card also prices
+    None: an unpriceable attempt cannot debit, which is the explicit
+    cost-unknown posture, not a silent zero.
     """
 
-    failed_total = 0.0
-    actual_count = 0
-    conservative_count = 0
-    for attempt in failed_attempts:
-        input_tokens = attempt.get("input_tokens")
-        output_tokens = attempt.get("output_tokens")
-        if isinstance(input_tokens, int) and isinstance(output_tokens, int):
-            attempt_cost = estimate_live_text_cost(
+    if isinstance(input_tokens, int) and isinstance(output_tokens, int):
+        cost = estimate_live_text_cost(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            model_revision=model_revision,
+        )
+        if cost.estimated_cost_usd is not None and cost.rate_card_ref is not None:
+            return AttemptDebit(
+                amount_usd=cost.estimated_cost_usd,
+                basis="ACTUAL_USAGE",
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
-                model_revision=model_revision,
+                rate_card_ref=cost.rate_card_ref,
             )
-            if attempt_cost.estimated_cost_usd is not None:
-                failed_total += attempt_cost.estimated_cost_usd
-                actual_count += 1
-            continue
-        if (
-            posture == "conservative"
-            and attempt.get("billable_risk") is True
-            and final_input_tokens is not None
-        ):
-            attempt_cost = estimate_live_text_cost(
-                input_tokens=final_input_tokens,
+        return None
+    if posture == "conservative" and billable_risk:
+        cost = estimate_live_text_cost(
+            input_tokens=fallback_input_estimate,
+            output_tokens=max_output_tokens,
+            model_revision=model_revision,
+        )
+        if cost.estimated_cost_usd is not None and cost.rate_card_ref is not None:
+            return AttemptDebit(
+                amount_usd=cost.estimated_cost_usd,
+                basis="CONSERVATIVE_ESTIMATE",
+                input_tokens=fallback_input_estimate,
                 output_tokens=max_output_tokens,
-                model_revision=model_revision,
+                rate_card_ref=cost.rate_card_ref,
             )
-            if attempt_cost.estimated_cost_usd is not None:
-                failed_total += attempt_cost.estimated_cost_usd
-                conservative_count += 1
+    return None
 
-    billed_failed = actual_count + conservative_count
-    if billed_failed == 0:
+
+def project_attempt_billing(
+    *,
+    final_cost: UsageCostEstimate,
+    failed_debits: list[AttemptDebit],
+    had_failed_attempts: bool,
+) -> AttemptBillingSettlement:
+    """Project the response-level figures from the attempt evidence
+    (issue #289): the durable debits are where spend became real; the
+    response merely restates them alongside the served attempt's cost."""
+
+    if not failed_debits:
         return AttemptBillingSettlement(
             estimated_cost_usd=final_cost.estimated_cost_usd,
             failed_attempt_cost_usd=None,
-            failed_attempt_cost_basis="NONE" if failed_attempts else None,
+            failed_attempt_cost_basis="NONE" if had_failed_attempts else None,
             billed_attempt_count=1,
         )
-    basis: FailedAttemptCostBasis
-    if actual_count and conservative_count:
-        basis = "MIXED"
-    elif actual_count:
-        basis = "ACTUAL_USAGE"
-    else:
-        basis = "CONSERVATIVE_ESTIMATE"
-    failed_cost = round(failed_total, 8)
+    bases = {debit.basis for debit in failed_debits}
+    basis: FailedAttemptCostBasis = (
+        "MIXED"
+        if len(bases) > 1
+        else ("ACTUAL_USAGE" if "ACTUAL_USAGE" in bases else "CONSERVATIVE_ESTIMATE")
+    )
+    failed_cost = round(sum(debit.amount_usd for debit in failed_debits), 8)
     total = (
         round(final_cost.estimated_cost_usd + failed_cost, 8)
         if final_cost.estimated_cost_usd is not None
@@ -143,7 +168,7 @@ def settle_attempt_billing(
         estimated_cost_usd=total,
         failed_attempt_cost_usd=failed_cost,
         failed_attempt_cost_basis=basis,
-        billed_attempt_count=1 + billed_failed,
+        billed_attempt_count=1 + len(failed_debits),
     )
 
 

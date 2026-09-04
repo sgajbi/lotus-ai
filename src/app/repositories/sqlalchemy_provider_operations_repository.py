@@ -21,12 +21,14 @@ from app.contracts.provider_operations import ProviderOperationsControlActionTyp
 from app.contracts.governed_actions import GovernedActionRecord
 from app.db.models import (
     GovernedActionModel,
+    ProviderAttemptDebitModel,
     ProviderBudgetStateModel,
     ProviderDegradationStateModel,
     ProviderOperationsEventModel,
     ProviderQuotaStateModel,
 )
 from app.repositories.provider_operations_repository import (
+    ProviderAttemptDebitRecord,
     ProviderBudgetStateRecord,
     ProviderDegradationStateRecord,
     ProviderOperationsEventRecord,
@@ -162,6 +164,88 @@ class SqlAlchemyProviderOperationsRepository(
                     session.rollback()
                     continue
         raise RuntimeError("Failed to add provider budget spend atomically.")
+
+    def record_attempt_debit(self, record: ProviderAttemptDebitRecord, *, budget_key: str) -> bool:
+        """Debit row and budget counter advance in ONE transaction: a crash
+        between them cannot happen, and a duplicate identity is a complete
+        no-op (the counter is untouched)."""
+
+        with self._session_factory() as session:
+            existing = session.get(ProviderAttemptDebitModel, record.debit_id)
+            if existing is not None:
+                return False
+            session.add(
+                ProviderAttemptDebitModel(
+                    debit_id=record.debit_id,
+                    provider_id=record.provider_id,
+                    basis=record.basis,
+                    amount_usd=record.amount_usd,
+                    input_tokens=record.input_tokens,
+                    output_tokens=record.output_tokens,
+                    rate_card_ref=record.rate_card_ref,
+                    recorded_at=record.recorded_at,
+                )
+            )
+            budget = session.execute(
+                select(ProviderBudgetStateModel)
+                .where(ProviderBudgetStateModel.budget_key == budget_key)
+                .with_for_update()
+            ).scalar_one_or_none()
+            if budget is None:
+                session.add(
+                    ProviderBudgetStateModel(
+                        budget_key=budget_key,
+                        current_spend_usd=round(record.amount_usd, 8),
+                        updated_at=record.recorded_at,
+                    )
+                )
+            else:
+                budget.current_spend_usd = round(budget.current_spend_usd + record.amount_usd, 8)
+                budget.updated_at = record.recorded_at
+            try:
+                session.commit()
+            except IntegrityError:
+                # A concurrent recorder won the same identity: their debit
+                # stands, ours is the duplicate.
+                session.rollback()
+                return False
+            return True
+
+    def list_attempt_debits(self, *, limit: int = 100) -> Sequence[ProviderAttemptDebitRecord]:
+        with self._session_factory() as session:
+            models = session.scalars(
+                select(ProviderAttemptDebitModel)
+                .order_by(
+                    ProviderAttemptDebitModel.recorded_at.desc(),
+                    ProviderAttemptDebitModel.debit_id.desc(),
+                )
+                .limit(max(limit, 0))
+            ).all()
+            return [
+                ProviderAttemptDebitRecord(
+                    debit_id=model.debit_id,
+                    provider_id=model.provider_id,
+                    basis=model.basis,
+                    amount_usd=model.amount_usd,
+                    input_tokens=model.input_tokens,
+                    output_tokens=model.output_tokens,
+                    rate_card_ref=model.rate_card_ref,
+                    recorded_at=model.recorded_at,
+                )
+                for model in models
+            ]
+
+    def delete_attempt_debits(self, debit_ids: Sequence[str]) -> int:
+        if not debit_ids:
+            return 0
+        with self._session_factory() as session:
+            result = session.execute(
+                delete(ProviderAttemptDebitModel).where(
+                    ProviderAttemptDebitModel.debit_id.in_(list(debit_ids))
+                )
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0)
 
     def get_degradation_state(
         self,
