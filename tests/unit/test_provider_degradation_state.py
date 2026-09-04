@@ -463,3 +463,22 @@ def test_a_success_still_closes_an_open_breaker(monkeypatch: MonkeyPatch) -> Non
     status = build_provider_degradation_status()
     assert status.status == "NORMAL"
     assert status.circuit_open_remaining_seconds is None
+
+
+def test_the_breaker_key_shapes_follow_the_configured_identity() -> None:
+    """Issue #304: complete model identity -> candidate entry key; provider
+    without a model -> provider key; neither -> the bare prefix."""
+
+    from app.services.provider_degradation_state import degradation_key_for
+
+    settings.provider_mode = "openai"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_model_version = None
+    assert degradation_key_for() == "live_text_generation:text.openai:gpt-5.4"
+
+    settings.live_text_model_id = None
+    assert degradation_key_for() == "live_text_generation:text.openai"
+
+    settings.live_text_provider_id = None
+    assert degradation_key_for() == "live_text_generation"

@@ -146,3 +146,15 @@ def test_posture_reports_connection_identities_without_leaking_credentials(
     rendered = posture.model_dump_json()
     assert "eu-secret" not in rendered
     assert "seeded-secret" not in rendered
+
+
+def test_the_breaker_read_key_degrades_to_the_provider_without_a_model() -> None:
+    """A config that names a provider but no model has no candidate entry id;
+    the breaker read names the provider, matching degradation_key_for."""
+
+    from app.services.provider_execution_config import resolve_provider_execution_config
+    from app.services.routing_posture import _candidate_identity_key
+
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = None
+    assert _candidate_identity_key(resolve_provider_execution_config()) == "text.openai"
