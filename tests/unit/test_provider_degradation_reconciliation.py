@@ -35,6 +35,17 @@ from tests.support.migration_runner import upgrade_database_to_head
 PRIMARY = "text.openai"
 
 
+def _canonical_key(provider: str, model: str, revision: str | None = None) -> str:
+    from app.contracts.model_catalogue import derive_candidate_identity_v2
+
+    return "live_text_generation:" + derive_candidate_identity_v2(
+        provider_id=provider,
+        model_family=model,
+        model_revision=revision or model,
+        deployment=None,
+    )
+
+
 def _legacy_record(*, open_for_seconds: int | None, failures: int = 5) -> None:
     circuit_open_until = (
         (datetime.now(UTC) + timedelta(seconds=open_for_seconds)).isoformat()
@@ -85,14 +96,14 @@ def test_an_open_legacy_circuit_still_refuses_execution_after_reconciliation() -
     assert store.get_degradation_state(degradation_key=LEGACY_DEGRADATION_KEY) is None
     # The intermediate provider-keyed row was itself carried forward.
     assert store.get_degradation_state(degradation_key=f"live_text_generation:{PRIMARY}") is None
-    migrated = store.get_degradation_state(
-        degradation_key=f"live_text_generation:{PRIMARY}:gpt-5.4"
-    )
+    migrated = store.get_degradation_state(degradation_key=_canonical_key(PRIMARY, "gpt-5.4"))
     assert migrated is not None
     assert migrated.consecutive_failure_count == 5
     assert migrated.last_failure_category is ProviderFailureCategory.PROVIDER_TIMEOUT
 
-    status = build_provider_degradation_status(f"{PRIMARY}:gpt-5.4")
+    status = build_provider_degradation_status(
+        _canonical_key(PRIMARY, "gpt-5.4").removeprefix("live_text_generation:")
+    )
     assert status.status == "CIRCUIT_OPEN"
     assert status.circuit_open_remaining_seconds is not None
     assert status.circuit_open_remaining_seconds > 0
@@ -245,8 +256,8 @@ def test_an_open_provider_keyed_circuit_carries_to_every_candidate_of_that_provi
 
     assert store.get_degradation_state(degradation_key=f"live_text_generation:{PRIMARY}") is None
     for candidate_key in (
-        f"live_text_generation:{PRIMARY}:gpt-5.4",
-        f"live_text_generation:{PRIMARY}:gpt-5.4-mini",
+        _canonical_key(PRIMARY, "gpt-5.4"),
+        _canonical_key(PRIMARY, "gpt-5.4-mini"),
     ):
         carried = store.get_degradation_state(degradation_key=candidate_key)
         assert carried is not None, candidate_key
@@ -273,7 +284,7 @@ def test_an_open_provider_keyed_circuit_carries_to_every_candidate_of_that_provi
     assert store.get_degradation_state(degradation_key="live_text_generation:text.claude") is None
     assert (
         store.get_degradation_state(
-            degradation_key="live_text_generation:text.claude:claude-sonnet-5"
+            degradation_key=_canonical_key("text.claude", "claude-sonnet-5")
         )
         is None
     )
@@ -307,3 +318,37 @@ def test_provider_keyed_reconciliation_edge_branches() -> None:
     # neither duplicates it nor crashes.
     settings.provider_connections_json = "{not json"
     assert reconcile_provider_keyed_degradation_state() == []
+
+
+def test_an_open_v1_candidate_circuit_carries_to_its_canonical_key() -> None:
+    """Issue #314 S2b: a breaker row still under the candidate's
+    pre-canonical v1-shaped key is the SAME candidate's protection decision
+    - the structured fields prove the one-to-one mapping - so an OPEN
+    circuit carries to the canonical key and a closed row drops."""
+
+    _enforcing_primary()
+    store = get_provider_operations_store()
+    open_until = (datetime.now(UTC) + timedelta(seconds=900)).isoformat()
+    store.save_degradation_state(
+        ProviderDegradationStateRecord(
+            degradation_key=f"live_text_generation:{PRIMARY}:gpt-5.4",
+            consecutive_failure_count=4,
+            last_failure_category=ProviderFailureCategory.PROVIDER_TIMEOUT,
+            circuit_open_until=open_until,
+            timeout_failure_count=4,
+            rate_limited_failure_count=0,
+            upstream_error_failure_count=0,
+            updated_at=datetime.now(UTC).isoformat(),
+        )
+    )
+
+    apply_startup_readiness_policy()
+
+    assert (
+        store.get_degradation_state(degradation_key=f"live_text_generation:{PRIMARY}:gpt-5.4")
+        is None
+    )
+    carried = store.get_degradation_state(degradation_key=_canonical_key(PRIMARY, "gpt-5.4"))
+    assert carried is not None
+    assert carried.circuit_open_until == open_until
+    assert carried.consecutive_failure_count == 4

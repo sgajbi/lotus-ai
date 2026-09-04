@@ -170,9 +170,18 @@ def test_always_failing_provider_opens_the_breaker_and_fast_rejects(
     # The enforcement state is durable and visible from a second repository
     # instance - what a second replica would read.
     second_replica = SqlAlchemyProviderOperationsRepository(database_url)
-    # Failure bookkeeping is keyed per candidate identity (issue #304).
+    # Failure bookkeeping is keyed per CANONICAL candidate identity
+    # (issues #304, #314).
+    from app.contracts.model_catalogue import derive_candidate_identity_v2
+
     degradation = second_replica.get_degradation_state(
-        degradation_key="live_text_generation:text.local:qwen3:8b"
+        degradation_key="live_text_generation:"
+        + derive_candidate_identity_v2(
+            provider_id="text.local",
+            model_family="qwen3:8b",
+            model_revision="qwen3:8b",
+            deployment=None,
+        )
     )
     assert degradation is not None
     assert degradation.consecutive_failure_count >= 3

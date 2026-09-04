@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from app.contracts.model_catalogue import derive_model_catalogue_entry_id
+from app.contracts.model_catalogue import derive_candidate_identity_v2
 from app.contracts.providers import (
     ProviderDegradationStatusDescriptor,
     ProviderFailureCategory,
@@ -45,12 +45,17 @@ def degradation_key_for(identity: str | None = None) -> str:
         return f"{DEGRADATION_KEY_PREFIX}:{identity}"
     config = resolve_provider_execution_config()
     if config.provider_id and config.model_id:
-        entry_id = derive_model_catalogue_entry_id(
+        # The candidate segment is the CANONICAL identity (issue #314 S2b):
+        # the collision-proof digest, matching the ids the universe
+        # enumerates and connection material keys by. Pre-canonical rows are
+        # carried over by startup reconciliation.
+        candidate_id = derive_candidate_identity_v2(
             provider_id=config.provider_id,
+            model_family=config.model_id,
             model_revision=config.model_version or config.model_id,
             deployment=config.deployment,
         )
-        return f"{DEGRADATION_KEY_PREFIX}:{entry_id}"
+        return f"{DEGRADATION_KEY_PREFIX}:{candidate_id}"
     if config.provider_id:
         return f"{DEGRADATION_KEY_PREFIX}:{config.provider_id}"
     return DEGRADATION_KEY_PREFIX

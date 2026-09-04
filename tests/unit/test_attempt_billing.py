@@ -819,3 +819,33 @@ def test_gateway_stamps_the_cost_ceiling_from_requirements() -> None:
     assert stamped.cost_ceiling_usd == 0.25
     untouched = _apply_cost_ceiling(_request())
     assert untouched.cost_ceiling_usd is None
+
+
+def test_debit_rows_carry_the_resolvable_canonical_reference(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Issue #314: new debit evidence binds the collision-proof canonical
+    candidate id alongside the v1-shaped idempotent debit_id - the
+    idempotency identity is never rewritten, and the canonical reference
+    makes the row resolvable under identity v2."""
+
+    from app.contracts.model_catalogue import derive_candidate_identity_v2
+
+    _seed_cost_scalars()
+    monkeypatch.setattr("urllib.request.urlopen", lambda request, timeout: _Response(_SUCCESS_BODY))
+
+    _run_transport(retry_limit=0, execution_id="exec-canonical-ref")
+
+    rows = [
+        row
+        for row in get_provider_operations_store().list_attempt_debits()
+        if row.debit_id.startswith("adbt:exec-canonical-ref:")
+    ]
+    assert len(rows) == 1
+    assert rows[0].debit_id == "adbt:exec-canonical-ref:text.local:gpt-5.4:0"
+    assert rows[0].candidate_id_v2 == derive_candidate_identity_v2(
+        provider_id="text.local",
+        model_family="gpt-5.4",
+        model_revision="gpt-5.4",
+        deployment=None,
+    )

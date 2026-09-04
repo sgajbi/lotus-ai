@@ -21,7 +21,11 @@ from app.services.provider_execution_config import (
     resolve_provider_execution_config,
 )
 from app.contracts.capability_requirements import CapabilityRequirements
-from app.contracts.model_catalogue import ModelCatalogueEntry, derive_model_catalogue_entry_id
+from app.contracts.model_catalogue import (
+    ModelCatalogueEntry,
+    derive_candidate_identity_v2,
+    derive_model_catalogue_entry_id,
+)
 from app.contracts.providers import (
     ROUTING_POLICY_FIXED_CONFIGURED_MODE,
     ROUTING_POLICY_ORDERED_FALLBACK,
@@ -119,13 +123,15 @@ def build_routing_posture(
 
 
 def _candidate_identity_key(config: ProviderExecutionConfig) -> str | None:
-    """The candidate identity a breaker read should name (issue #304): the
-    catalogue entry id when the config carries a complete model identity,
-    else the provider id, matching degradation_key_for's own derivation."""
+    """The candidate identity a breaker read should name (issues #304,
+    #314): the CANONICAL candidate id when the config carries a complete
+    model identity, else the provider id, matching degradation_key_for's
+    own derivation."""
 
     if config.provider_id and config.model_id:
-        return derive_model_catalogue_entry_id(
+        return derive_candidate_identity_v2(
             provider_id=config.provider_id,
+            model_family=config.model_id,
             model_revision=config.model_version or config.model_id,
             deployment=config.deployment,
         )
