@@ -185,16 +185,16 @@ def test_transient_primary_failure_falls_back_to_the_alternate(
     assert decision.fallback_path == [PRIMARY]
     assert "a later candidate served" in decision.selection_reason
 
-    # Failure bookkeeping is keyed per provider: the primary's failure never
-    # touches the alternate's breaker state.
+    # Failure bookkeeping is keyed per CANDIDATE (issue #304): the primary's
+    # failure never touches the alternate's breaker state.
     repository = get_provider_operations_store()
     primary_state = repository.get_degradation_state(
-        degradation_key=f"live_text_generation:{PRIMARY}"
+        degradation_key=f"live_text_generation:{PRIMARY}:gpt-5.4"
     )
     assert primary_state is not None
     assert primary_state.consecutive_failure_count == 1
     alternate_state = repository.get_degradation_state(
-        degradation_key=f"live_text_generation:{ALTERNATE}"
+        degradation_key=f"live_text_generation:{ALTERNATE}:claude-sonnet-5"
     )
     assert alternate_state is not None
     assert alternate_state.consecutive_failure_count == 0
@@ -664,8 +664,8 @@ def test_every_evidence_surface_names_the_serving_candidate(
     # The primary's breaker opened on its failure, so these genuinely differ -
     # reading the ambient config here would report the primary's open circuit
     # as though it described the execution that actually succeeded.
-    alternate_posture = build_provider_degradation_status(ALTERNATE)
-    primary_posture = build_provider_degradation_status(PRIMARY)
+    alternate_posture = build_provider_degradation_status(f"{ALTERNATE}:claude-sonnet-5")
+    primary_posture = build_provider_degradation_status(f"{PRIMARY}:gpt-5.4")
     assert primary_posture.status != alternate_posture.status
     provider_evidence = next(
         descriptor

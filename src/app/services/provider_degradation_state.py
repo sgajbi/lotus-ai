@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from app.contracts.model_catalogue import derive_model_catalogue_entry_id
 from app.contracts.providers import (
     ProviderDegradationStatusDescriptor,
     ProviderFailureCategory,
@@ -18,26 +19,40 @@ from app.services.provider_execution_config import resolve_provider_execution_co
 DEGRADATION_KEY_PREFIX = "live_text_generation"
 
 
-def degradation_key_for(provider_id: str | None = None) -> str:
-    """Failure bookkeeping is keyed per provider identity (issue #176, S3).
+def degradation_key_for(identity: str | None = None) -> str:
+    """Failure bookkeeping is keyed per CANDIDATE identity (issue #304).
 
-    Ordered fallback requires the primary's failures to never open the
-    alternate's breaker, so the key carries the provider identity of the
-    execution config in scope - the gateway's per-candidate config override
-    selects the candidate being checked or charged. Without a configured
-    provider identity (stub and disabled modes) the bare prefix remains the
-    key.
+    Issue #176 S3 keyed the breaker per provider so the primary's failures
+    could never open the alternate's breaker. The serving policy makes
+    same-provider model candidates normal topology, and a model-specific
+    failure says nothing about the provider's other models - so the key is
+    now the candidate's catalogue entry id (provider:revision[:deployment])
+    whenever the execution config names a complete model identity, keeping
+    a sibling candidate's health independent. A config with only a provider
+    (stub-adjacent shapes) keys by provider; with neither, the bare prefix
+    remains the key. Provider-wide outages open each candidate's breaker on
+    its own failures - the conservative direction.
 
-    Passing ``provider_id`` names an identity explicitly. Recording a failure
-    or a success omits it: those run inside the gateway's per-candidate
-    config override, so the ambient identity is already the right one.
-    Reading posture for evidence or an operator view happens after that
-    scope has exited and must name the identity it means (issue #237).
+    Passing ``identity`` names a candidate (entry id) or provider
+    explicitly. Recording a failure or a success omits it: those run inside
+    the gateway's per-candidate config override, so the ambient identity is
+    already the right one. Reading posture for evidence or an operator view
+    happens after that scope has exited and must name the identity it means
+    (issue #237).
     """
 
-    resolved = provider_id or resolve_provider_execution_config().provider_id
-    if resolved:
-        return f"{DEGRADATION_KEY_PREFIX}:{resolved}"
+    if identity:
+        return f"{DEGRADATION_KEY_PREFIX}:{identity}"
+    config = resolve_provider_execution_config()
+    if config.provider_id and config.model_id:
+        entry_id = derive_model_catalogue_entry_id(
+            provider_id=config.provider_id,
+            model_revision=config.model_version or config.model_id,
+            deployment=config.deployment,
+        )
+        return f"{DEGRADATION_KEY_PREFIX}:{entry_id}"
+    if config.provider_id:
+        return f"{DEGRADATION_KEY_PREFIX}:{config.provider_id}"
     return DEGRADATION_KEY_PREFIX
 
 
@@ -58,18 +73,18 @@ class ProviderDegradationState:
 
 
 def build_provider_degradation_status(
-    provider_id: str | None = None,
+    identity: str | None = None,
 ) -> ProviderDegradationStatusDescriptor:
     """Breaker posture for a provider identity.
 
-    ``provider_id`` names the identity to report on. Evidence for an
+    ``identity`` names the candidate (entry id) or provider to report on. Evidence for an
     execution must pass the identity that actually SERVED it: the gateway's
     per-candidate config override has already exited by the time evidence is
     built, so resolving the ambient config would report the primary's
     breaker for an alternate-served execution (issue #237).
     """
 
-    state = _resolve_provider_degradation_state(provider_id)
+    state = _resolve_provider_degradation_state(identity)
     return ProviderDegradationStatusDescriptor(
         status=state.status,
         enforcement_enabled=state.enforcement_enabled,
@@ -147,10 +162,10 @@ def reset_provider_degradation_state() -> None:
 
 
 def _resolve_provider_degradation_state(
-    provider_id: str | None = None,
+    identity: str | None = None,
 ) -> ProviderDegradationState:
     findings: list[str] = []
-    state_record = _load_degradation_record(provider_id)
+    state_record = _load_degradation_record(identity)
     # Enforcement thresholds are shared across candidates by construction
     # (see derive_fallback_execution_config), so the ambient read is correct
     # here even when the record above belongs to a named identity.
@@ -319,20 +334,20 @@ def _remaining_circuit_open_seconds(circuit_open_until: str | None) -> int | Non
     return remaining if remaining > 0 else None
 
 
-def _reclaim_elapsed_cooldown(provider_id: str | None = None) -> None:
+def _reclaim_elapsed_cooldown(identity: str | None = None) -> None:
     """Clear a cooldown that has run its course, before a new failure counts.
 
     The breaker served its cooldown, so the next failure starts a fresh
     budget instead of resuming a count those failures already paid for.
     """
 
-    state_record = _load_degradation_record(provider_id)
+    state_record = _load_degradation_record(identity)
     if state_record.circuit_open_until is None:
         return
     if _remaining_circuit_open_seconds(state_record.circuit_open_until) is not None:
         return
     _save_degradation_record(
-        provider_id=provider_id,
+        identity=identity,
         consecutive_failure_count=0,
         last_failure_category=None,
         circuit_open_until=None,
@@ -342,11 +357,11 @@ def _reclaim_elapsed_cooldown(provider_id: str | None = None) -> None:
     )
 
 
-def _open_circuit(provider_id: str | None = None) -> None:
-    state_record = _load_degradation_record(provider_id)
+def _open_circuit(identity: str | None = None) -> None:
+    state_record = _load_degradation_record(identity)
     cooldown_seconds = resolve_provider_execution_config().enforcement.circuit_open_seconds or 0
     _save_degradation_record(
-        provider_id=provider_id,
+        identity=identity,
         consecutive_failure_count=state_record.consecutive_failure_count,
         last_failure_category=state_record.last_failure_category,
         circuit_open_until=(_utcnow() + timedelta(seconds=cooldown_seconds)).isoformat(),
@@ -365,10 +380,10 @@ def _tracked_failure_categories() -> set[ProviderFailureCategory]:
 
 
 def _load_degradation_record(
-    provider_id: str | None = None,
+    identity: str | None = None,
 ) -> ProviderDegradationStateRecord:
     repository = get_provider_operations_store()
-    degradation_key = degradation_key_for(provider_id)
+    degradation_key = degradation_key_for(identity)
     record = repository.get_degradation_state(degradation_key=degradation_key)
     if record is not None:
         return record
@@ -386,7 +401,7 @@ def _load_degradation_record(
 
 def _save_degradation_record(
     *,
-    provider_id: str | None = None,
+    identity: str | None = None,
     consecutive_failure_count: int,
     last_failure_category: ProviderFailureCategory | None,
     circuit_open_until: str | None,
@@ -397,7 +412,7 @@ def _save_degradation_record(
     repository = get_provider_operations_store()
     repository.save_degradation_state(
         ProviderDegradationStateRecord(
-            degradation_key=degradation_key_for(provider_id),
+            degradation_key=degradation_key_for(identity),
             consecutive_failure_count=consecutive_failure_count,
             last_failure_category=last_failure_category,
             circuit_open_until=circuit_open_until,

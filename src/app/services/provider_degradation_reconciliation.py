@@ -28,6 +28,7 @@ from app.services.provider_degradation_state import (
     DEGRADATION_KEY_PREFIX,
     degradation_key_for,
 )
+from app.services.provider_connection_material import configured_connection_materials
 from app.services.provider_execution_config import resolve_provider_execution_config
 from app.services.provider_operations_store import get_provider_operations_store
 from app.services.runtime_readiness import get_provider_operations_store_runtime_status
@@ -84,6 +85,52 @@ def reconcile_legacy_degradation_state() -> list[str]:
     if repository.get_degradation_state(degradation_key=scoped_key) is None:
         repository.save_degradation_state(replace(legacy, degradation_key=scoped_key))
     repository.reset_degradation_state(degradation_key=LEGACY_DEGRADATION_KEY)
+    return []
+
+
+def reconcile_provider_keyed_degradation_state() -> list[str]:
+    """Migrate pre-#304 provider-keyed breaker rows to candidate keys.
+
+    Issue #304 re-keyed the breaker from ``live_text_generation:<provider>``
+    to the candidate entry id. The same conservative rule as the bare-key
+    migration applies, with one widening: an OPEN provider row was refusing
+    every candidate of that provider, so it is carried to EVERY currently
+    configured candidate of that provider - preserving the refusal is the
+    safe direction; each candidate's breaker then closes on its own
+    cooldown. Closed rows drop; provider-only keys still in live use (a
+    config with no model identity) are untouched because such providers
+    carry no connection material.
+    """
+
+    store_status = get_provider_operations_store_runtime_status()
+    if store_status.status != "READY":
+        return [
+            "provider degradation: provider-keyed breaker reconciliation was skipped because "
+            f"the provider-operations store is not ready ({store_status.detail})."
+        ]
+    config = resolve_provider_execution_config()
+    try:
+        materials = configured_connection_materials(config)
+    except ValueError:
+        # Malformed declared material is already its own startup finding.
+        return []
+    by_provider: dict[str, list[str]] = {}
+    for material in materials.values():
+        by_provider.setdefault(material.provider_id, []).append(material.entry_id)
+    repository = get_provider_operations_store()
+    for provider_id, entry_ids in sorted(by_provider.items()):
+        provider_key = f"{DEGRADATION_KEY_PREFIX}:{provider_id}"
+        row = repository.get_degradation_state(degradation_key=provider_key)
+        if row is None:
+            continue
+        if not circuit_is_open(row):
+            repository.reset_degradation_state(degradation_key=provider_key)
+            continue
+        for entry_id in sorted(entry_ids):
+            candidate_key = f"{DEGRADATION_KEY_PREFIX}:{entry_id}"
+            if repository.get_degradation_state(degradation_key=candidate_key) is None:
+                repository.save_degradation_state(replace(row, degradation_key=candidate_key))
+        repository.reset_degradation_state(degradation_key=provider_key)
     return []
 
 

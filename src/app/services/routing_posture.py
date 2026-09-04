@@ -63,9 +63,10 @@ def build_routing_posture(
         # Both reads name the alternate explicitly rather than relying on an
         # ambient override to mean it. Scope-implicit identity is how the
         # alternate's evidence used to come back describing the primary
-        # (issue #237).
+        # (issue #237). The breaker keys per candidate (issue #304), so the
+        # read names the alternate's full candidate identity.
         fallback_candidate = _resolve_candidate(alternate)
-        fallback_degradation = build_provider_degradation_status(alternate.provider_id)
+        fallback_degradation = build_provider_degradation_status(_candidate_identity_key(alternate))
     notes = [
         "Per-request gates (caller authorization, task/tenant/caller kill-switch scopes, "
         "quota counters) are evaluated per execution and recorded on its routing decision.",
@@ -75,7 +76,8 @@ def build_routing_posture(
             0,
             "The ordered-fallback policy attempts the primary candidate first; a transient "
             "provider failure or candidate-scoped rejection routes to the alternate, and "
-            "each candidate's breaker is keyed to its own provider identity.",
+            "each candidate's breaker is keyed to its own candidate identity - a sibling "
+            "model's failures never exclude a healthy candidate at the same provider.",
         )
     else:
         notes.insert(
@@ -113,6 +115,20 @@ def build_routing_posture(
         connection_identities=_build_connection_identities(config),
         notes=notes,
     )
+
+
+def _candidate_identity_key(config: ProviderExecutionConfig) -> str | None:
+    """The candidate identity a breaker read should name (issue #304): the
+    catalogue entry id when the config carries a complete model identity,
+    else the provider id, matching degradation_key_for's own derivation."""
+
+    if config.provider_id and config.model_id:
+        return derive_model_catalogue_entry_id(
+            provider_id=config.provider_id,
+            model_revision=config.model_version or config.model_id,
+            deployment=config.deployment,
+        )
+    return config.provider_id
 
 
 def _build_connection_identities(

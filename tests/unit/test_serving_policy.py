@@ -25,8 +25,10 @@ from app.contracts.model_catalogue import (
 )
 from app.contracts.providers import (
     CandidateUniverseExclusionReason,
+    ProviderAdapterKind,
     ProviderFailureCategory,
 )
+from app.providers.base import ProviderExecutionError
 from app.services.model_catalogue import (
     current_serving_order,
     derive_candidate_universe,
@@ -309,6 +311,134 @@ def test_the_third_identity_serves_when_earlier_candidates_fail(
     assert len(decision.candidates) == 3
     assert decision.selected_provider_id == THIRD_PROVIDER
     assert decision.serving_policy_version == 1
+
+
+class _ModelKeyedAdapter:
+    """Fails per (provider, model) - two same-provider candidates run through
+    one adapter, so provider-keyed failure injection cannot tell them apart."""
+
+    def __init__(self, failing: dict[tuple[str, str], ProviderFailureCategory]) -> None:
+        self.failing = failing
+        self.executed: list[tuple[str, str]] = []
+
+    def execute(self, request: object, *, config: object) -> object:
+        provider_id = getattr(config, "provider_id", None) or "provider.unavailable"
+        model_id = getattr(config, "model_id", None) or "model.unavailable"
+        self.executed.append((provider_id, model_id))
+        category = self.failing.get((provider_id, model_id))
+        if category is not None:
+            raise ProviderExecutionError(
+                category=category, message=f"simulated {provider_id}/{model_id}"
+            )
+        return type(
+            "Response",
+            (),
+            {
+                "provider_id": provider_id,
+                "provider_mode": getattr(config, "provider_mode", "openai"),
+                "adapter_kind": ProviderAdapterKind.OPENAI_LIVE,
+                "failure_category": None,
+                "timeout_ms": getattr(request, "timeout_ms", 4000),
+                "retry_count": 0,
+                "max_output_tokens": getattr(request, "max_output_tokens", 512),
+                "model_id": model_id,
+                "provider_request_id": f"req_{model_id}",
+                "input_tokens": 10,
+                "output_tokens": 20,
+                "total_tokens": 30,
+                "estimated_cost_usd": None,
+                "stubbed": False,
+                "message": f"served by {provider_id}/{model_id}",
+                "structured_output": {},
+            },
+        )()
+
+
+def test_a_sibling_model_failure_never_excludes_a_healthy_same_provider_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Issue #304: breaker health is CANDIDATE health. Same-provider model
+    candidates are normal serving topology; before the candidate-scoped
+    breaker key, model-A's repeated failures opened the PROVIDER breaker and
+    excluded healthy model-B at preflight - this test run against the
+    provider-keyed breaker is the recorded proof of that exclusion, and
+    against the candidate-scoped key it proves the fix: B serves while A
+    stays refused by its own breaker."""
+
+    _ordered_fallback_settings()
+    settings.live_text_degradation_enforced = True
+    settings.live_text_degraded_failure_count_threshold = 1
+    settings.live_text_circuit_open_failure_count_threshold = 1
+    settings.live_text_circuit_open_seconds = 60
+
+    sibling_revision = "gpt-5.4-mini"
+    sibling_id = derive_model_catalogue_entry_id(
+        provider_id=PRIMARY, model_revision=sibling_revision, deployment=None
+    )
+    upsert_model_catalogue_entry(
+        ModelCatalogueEntry(
+            entry_id=sibling_id,
+            provider_id=PRIMARY,
+            provider_mode="openai",
+            model_family="gpt-5.4-mini",
+            model_revision=sibling_revision,
+            deployment=None,
+            sku=None,
+            lifecycle_state=ModelLifecycleState.APPROVED,
+            revision_pinned=True,
+            modalities=["text"],
+            seed_source=ModelCatalogueSeedSource.SETTINGS_LIVE_TEXT,
+            created_at="2026-09-01T00:00:00Z",
+            last_updated_at="2026-09-01T00:00:00Z",
+        )
+    )
+    settings.provider_connections_json = json.dumps(
+        [
+            {
+                "provider_id": PRIMARY,
+                "model_id": "gpt-5.4-mini",
+                "model_version": sibling_revision,
+                "api_base": "https://sibling.example/v1",
+            }
+        ]
+    )
+    _governed_add(sibling_id)
+    adapter = _ModelKeyedAdapter(
+        failing={
+            (PRIMARY, "gpt-5.4"): ProviderFailureCategory.PROVIDER_TIMEOUT,
+            (ALTERNATE, "claude-sonnet-5"): ProviderFailureCategory.PROVIDER_TIMEOUT,
+        }
+    )
+    monkeypatch.setattr(
+        "app.services.provider_gateway.resolve_text_generation_adapter",
+        lambda mode: adapter,
+    )
+
+    from app.services.provider_gateway import execute_text_generation
+
+    # Execution 1: model-A and the alternate fail (opening their breakers);
+    # the healthy same-provider sibling serves.
+    first = execute_text_generation(_request())
+    assert first.provider_id == PRIMARY
+    assert first.model_catalogue_entry_id == sibling_id
+
+    # Execution 2: model-A and the alternate are refused at preflight by
+    # their OWN open breakers - and the sibling still serves, because
+    # model-A's failures never opened the sibling's breaker.
+    second = execute_text_generation(_request())
+    assert second.provider_id == PRIMARY
+    assert second.model_catalogue_entry_id == sibling_id
+    assert adapter.executed == [
+        (PRIMARY, "gpt-5.4"),
+        (ALTERNATE, "claude-sonnet-5"),
+        (PRIMARY, "gpt-5.4-mini"),
+        (PRIMARY, "gpt-5.4-mini"),
+    ]
+    decision = second.routing_decision
+    assert decision is not None
+    assert decision.candidates[0].rejection_reason is ProviderFailureCategory.CIRCUIT_OPEN
+    assert decision.candidates[1].rejection_reason is ProviderFailureCategory.CIRCUIT_OPEN
+    assert decision.candidates[2].rejection_reason is None
 
 
 def test_a_deployment_scoped_identity_serves_under_its_own_catalogue_identity(
