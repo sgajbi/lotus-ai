@@ -58,6 +58,7 @@ def test_sqlalchemy_evaluation_runtime_repository_round_trip(tmp_path: Path) -> 
             evidence_refs=["evidence://retrieval.answer.case_001"],
             artifact_ids=[],
             provider_config_sha256="d" * 64,
+            candidate_id_v2="cand2_" + "a" * 64,
             recorded_at="2026-03-23T00:05:00Z",
         )
     )
@@ -72,6 +73,8 @@ def test_sqlalchemy_evaluation_runtime_repository_round_trip(tmp_path: Path) -> 
     assert attempts[0].attempt_id == "evalrun_001_attempt_001"
     assert len(results) == 1
     assert results[0].case_id == "retrieval.answer.case_001"
+    # The served candidate's canonical reference round-trips (issue #312).
+    assert results[0].candidate_id_v2 == "cand2_" + "a" * 64
 
 
 def test_sqlalchemy_evaluation_runtime_repository_returns_empty_results_for_unknown_records(

@@ -50,6 +50,7 @@ def test_memory_evaluation_runtime_repository_round_trip() -> None:
             evidence_refs=["evidence://retrieval.answer.case_001"],
             artifact_ids=[],
             provider_config_sha256="d" * 64,
+            candidate_id_v2="cand2_" + "a" * 64,
             recorded_at="2026-03-23T00:05:00Z",
         )
     )

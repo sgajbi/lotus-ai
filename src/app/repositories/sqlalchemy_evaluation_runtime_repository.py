@@ -149,6 +149,7 @@ class SqlAlchemyEvaluationRuntimeRepository(SqlAlchemyRepositoryBase, Evaluation
             evidence_refs=record.evidence_refs,
             artifact_ids=record.artifact_ids,
             provider_config_sha256=record.provider_config_sha256,
+            candidate_id_v2=record.candidate_id_v2,
             recorded_at=record.recorded_at,
         )
         with self._session_factory() as session:
@@ -197,6 +198,7 @@ class SqlAlchemyEvaluationRuntimeRepository(SqlAlchemyRepositoryBase, Evaluation
             evidence_refs=list(model.evidence_refs),
             artifact_ids=list(model.artifact_ids),
             provider_config_sha256=model.provider_config_sha256,
+            candidate_id_v2=model.candidate_id_v2,
             recorded_at=model.recorded_at,
         )
 
