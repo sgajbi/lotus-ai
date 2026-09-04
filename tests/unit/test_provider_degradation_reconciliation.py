@@ -277,3 +277,33 @@ def test_an_open_provider_keyed_circuit_carries_to_every_candidate_of_that_provi
         )
         is None
     )
+
+
+def test_provider_keyed_reconciliation_edge_branches() -> None:
+    """The skipped-store finding and the malformed-material bail-out: neither
+    path writes anything, and each says exactly what it did not do."""
+
+    from unittest.mock import patch
+
+    from app.services.provider_degradation_reconciliation import (
+        reconcile_provider_keyed_degradation_state,
+    )
+
+    _enforcing_primary()
+
+    class _NotReady:
+        status = "BLOCKED"
+        detail = "store offline"
+
+    with patch(
+        "app.services.provider_degradation_reconciliation."
+        "get_provider_operations_store_runtime_status",
+        return_value=_NotReady(),
+    ):
+        findings = reconcile_provider_keyed_degradation_state()
+    assert any("was skipped" in finding for finding in findings)
+
+    # Malformed declared material is its own startup finding; reconciliation
+    # neither duplicates it nor crashes.
+    settings.provider_connections_json = "{not json"
+    assert reconcile_provider_keyed_degradation_state() == []
