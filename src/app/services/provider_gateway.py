@@ -36,6 +36,10 @@ from app.services.provider_execution_config import (
     resolve_provider_execution_config,
 )
 from app.services.kill_switch_control import enforce_kill_switches
+from app.services.provider_connection_material import (
+    connection_material_findings,
+    derive_candidate_execution_config,
+)
 from app.contracts.capability_requirements import CapabilityRequirements
 from app.services.model_catalogue import (
     ENFORCED_REQUIREMENT_DIMENSIONS,
@@ -217,7 +221,7 @@ def _execute_ordered_fallback(
             task_id=request.task_id,
         )
     )
-    findings = fallback_configuration_findings(config)
+    findings = fallback_configuration_findings(config) + connection_material_findings()
     alternate = derive_fallback_execution_config(config)
     if findings or alternate is None:
         detail = "; ".join(findings) or (
@@ -242,13 +246,13 @@ def _execute_ordered_fallback(
     # catalogue excludes never becomes a candidate - its reasoned exclusion
     # rides the routing decision instead.
     universe = derive_candidate_universe(config)
-    config_by_entry_id = {
-        _candidate_entry_identity(candidate)[0]: candidate for candidate in (config, alternate)
-    }
+    # Connection material resolves per governed identity (issue #295, S1):
+    # for the configured pair this returns exactly the primary and alternate
+    # configs it always did - the seam is general, the behaviour identical.
     candidates = [
-        config_by_entry_id[entry_id]
+        candidate
         for entry_id in universe.candidate_entry_ids
-        if entry_id in config_by_entry_id
+        if (candidate := derive_candidate_execution_config(config, entry_id)) is not None
     ]
     if not candidates:
         raise _empty_universe_refusal(

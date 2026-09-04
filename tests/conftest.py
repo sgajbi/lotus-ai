@@ -54,6 +54,7 @@ def reset_runtime_settings() -> Generator[None, None, None]:
         "live_text_model_version": settings.live_text_model_version,
         "live_text_provider_api_key": settings.live_text_provider_api_key,
         "routing_strategy": settings.routing_strategy,
+        "provider_connections_json": settings.provider_connections_json,
         "live_text_fallback_provider_id": settings.live_text_fallback_provider_id,
         "live_text_fallback_model_id": settings.live_text_fallback_model_id,
         "live_text_fallback_model_version": settings.live_text_fallback_model_version,

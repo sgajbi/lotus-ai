@@ -13,6 +13,7 @@ from app.services.data_lifecycle_policy import data_lifecycle_policy_findings
 from app.services.provider_degradation_reconciliation import (
     reconcile_legacy_degradation_state,
 )
+from app.services.provider_connection_material import connection_material_findings
 from app.services.provider_execution_config import (
     fallback_configuration_findings,
     resolve_provider_execution_config,
@@ -160,6 +161,7 @@ def _provider_protection_findings() -> list[str]:
     if settings.provider_mode not in {"openai", "local_openai_compatible"}:
         return findings
     findings.extend(fallback_configuration_findings(resolve_provider_execution_config()))
+    findings.extend(connection_material_findings())
     if not settings.live_text_quota_enforced:
         findings.append("provider quota: enforcement is disabled in promoted live mode")
     elif not any(

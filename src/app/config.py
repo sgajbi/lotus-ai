@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     live_text_model_version: str | None = None
     live_text_provider_api_key: str | None = None
     routing_strategy: str = "fixed"
+    # Per-identity connection material beyond the primary/fallback pair
+    # (issue #295): JSON list of {provider_id, model_id, model_version?,
+    # api_base, api_key_env?}. Credentials are environment REFERENCES,
+    # never secrets.
+    provider_connections_json: str = "[]"
     live_text_fallback_provider_id: str | None = None
     live_text_fallback_model_id: str | None = None
     live_text_fallback_model_version: str | None = None
