@@ -88,3 +88,61 @@ def test_posture_counts_enforcing_kill_switches_and_ignores_cleared_ones() -> No
     )
 
     assert build_routing_posture().enforcing_kill_switch_count == 1
+
+
+def test_posture_reports_connection_identities_without_leaking_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Issue #303: the posture answers the operator identity questions per
+    governed identity - provider, revision, deployment, region posture,
+    endpoint host and credential REFERENCE - from the same merged material
+    map execution resolves through, with the secret on no read surface."""
+
+    import json
+
+    monkeypatch.setattr(settings, "provider_mode", "openai")
+    monkeypatch.setattr(settings, "live_text_provider_id", "text.openai")
+    monkeypatch.setattr(settings, "live_text_model_id", "gpt-5.4")
+    monkeypatch.setattr(settings, "live_text_model_version", None)
+    monkeypatch.setattr(settings, "live_text_api_base", "https://api.openai.com/v1")
+    monkeypatch.setattr(settings, "live_text_provider_api_key", "seeded-secret")
+    monkeypatch.setenv("EU_IDENTITY_KEY", "eu-secret")
+    monkeypatch.setattr(
+        settings,
+        "provider_connections_json",
+        json.dumps(
+            [
+                {
+                    "provider_id": "text.regional",
+                    "model_id": "claude-sonnet-5",
+                    "api_base": "https://eu.example/v1",
+                    "api_key_env": "EU_IDENTITY_KEY",
+                    "deployment": "eu-frankfurt-1",
+                    "region": "eu-central",
+                }
+            ]
+        ),
+    )
+
+    posture = build_routing_posture()
+
+    identities = {identity.entry_id: identity for identity in posture.connection_identities}
+    scoped = identities["text.regional:claude-sonnet-5:eu-frankfurt-1"]
+    assert scoped.provider_id == "text.regional"
+    assert scoped.model_revision == "claude-sonnet-5"
+    assert scoped.deployment == "eu-frankfurt-1"
+    assert scoped.region == "eu-central"
+    assert scoped.endpoint_host == "eu.example"
+    assert scoped.credential_env == "EU_IDENTITY_KEY"
+    assert scoped.seeded is False
+
+    seeded = identities["text.openai:gpt-5.4"]
+    assert seeded.seeded is True
+    assert seeded.deployment is None
+    assert seeded.credential_env is None
+    assert seeded.endpoint_host == "api.openai.com"
+
+    # Secrets never reach a read surface - only reference names do.
+    rendered = posture.model_dump_json()
+    assert "eu-secret" not in rendered
+    assert "seeded-secret" not in rendered

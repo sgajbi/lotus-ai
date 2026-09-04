@@ -60,6 +60,7 @@ def execute_openai_compatible_text_request(
     model_id: str | None,
     model_version: str | None,
     provider_id: str | None = None,
+    deployment: str | None = None,
 ) -> ProviderExecutionResponse:
     # The serving identity is the execution config's provider id (issues
     # #226, #237): under ordered fallback both candidates run through the
@@ -107,6 +108,7 @@ def execute_openai_compatible_text_request(
         cost_posture=request.failed_attempt_cost_posture,
         model_revision=model_version or model_id,
         cost_ceiling_usd=request.cost_ceiling_usd,
+        deployment=deployment,
     )
     output_message = extract_output_text(response_payload)
     message, structured_output = build_structured_output(
@@ -193,6 +195,7 @@ def post_openai_compatible_response(
     cost_posture: str = "conservative",
     model_revision: str | None = None,
     cost_ceiling_usd: float | None = None,
+    deployment: str | None = None,
 ) -> dict[str, Any]:
     """POST one OpenAI-compatible request, labelling every surface it emits
     with ``serving_provider_id``.
@@ -266,7 +269,7 @@ def post_openai_compatible_response(
         derive_model_catalogue_entry_id(
             provider_id=serving_provider_id,
             model_revision=model_revision,
-            deployment=None,
+            deployment=deployment,
         )
         if model_revision
         else serving_provider_id

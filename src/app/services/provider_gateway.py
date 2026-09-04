@@ -488,7 +488,7 @@ def _candidate_entry_identity(
     entry_id = derive_model_catalogue_entry_id(
         provider_id=config.provider_id,
         model_revision=model_revision,
-        deployment=None,
+        deployment=config.deployment,
     )
     return entry_id, model_revision
 

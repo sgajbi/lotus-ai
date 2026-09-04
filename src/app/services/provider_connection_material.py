@@ -55,13 +55,23 @@ class ProviderConnectionMaterial:
     api_base: str
     api_key_env: str | None
     seeded: bool = False
+    # Deployment participates in the catalogue identity (issue #303); region
+    # is informational residency posture - surfaced for operators, never an
+    # eligibility gate until a governed residency requirement exists.
+    deployment: str | None = None
+    region: str | None = None
 
 
-def _entry_id(provider_id: str, model_id: str, model_version: str | None) -> str:
+def _entry_id(
+    provider_id: str,
+    model_id: str,
+    model_version: str | None,
+    deployment: str | None = None,
+) -> str:
     return derive_model_catalogue_entry_id(
         provider_id=provider_id,
         model_revision=model_version or model_id,
-        deployment=None,
+        deployment=deployment,
     )
 
 
@@ -108,16 +118,30 @@ def _parse_declared_connections(raw: str) -> list[ProviderConnectionMaterial]:
                 f"provider connection material: entry {index} 'api_key_env' must name an "
                 "environment variable when present"
             )
+        deployment = entry.get("deployment")
+        if deployment is not None and (not isinstance(deployment, str) or not deployment.strip()):
+            raise ValueError(
+                f"provider connection material: entry {index} 'deployment' must be a "
+                "non-empty string when present"
+            )
+        region = entry.get("region")
+        if region is not None and (not isinstance(region, str) or not region.strip()):
+            raise ValueError(
+                f"provider connection material: entry {index} 'region' must be a "
+                "non-empty string when present"
+            )
         assert isinstance(provider_id, str) and isinstance(model_id, str)
         assert isinstance(api_base, str)
         materials.append(
             ProviderConnectionMaterial(
-                entry_id=_entry_id(provider_id, model_id, model_version),
+                entry_id=_entry_id(provider_id, model_id, model_version, deployment),
                 provider_id=provider_id,
                 model_id=model_id,
                 model_version=model_version,
                 api_base=api_base,
                 api_key_env=api_key_env,
+                deployment=deployment,
+                region=region,
             )
         )
     return materials
@@ -236,6 +260,7 @@ def derive_candidate_execution_config(
         model_version=material.model_version,
         api_base=material.api_base,
         api_key=api_key,
+        deployment=material.deployment,
         allowed_task_ids=config.allowed_task_ids,
         timeout_ms=config.timeout_ms,
         retry_limit=config.retry_limit,

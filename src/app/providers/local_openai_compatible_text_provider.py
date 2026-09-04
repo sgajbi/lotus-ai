@@ -24,4 +24,5 @@ class LocalOpenAICompatibleTextProvider(TextGenerationProviderAdapter):
             model_id=config.model_id,
             model_version=config.model_version,
             provider_id=config.provider_id,
+            deployment=config.deployment,
         )

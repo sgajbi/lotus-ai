@@ -11,7 +11,10 @@ gateway would actually do.
 
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 from app.config import settings
+from app.services.provider_connection_material import configured_connection_materials
 from app.services.provider_execution_config import (
     ProviderExecutionConfig,
     derive_fallback_execution_config,
@@ -31,6 +34,7 @@ from app.contracts.providers import (
 from app.contracts.provider_routing_posture import (
     CapabilityPostureCandidateDescriptor,
     CapabilityPostureDescriptor,
+    ConnectionIdentityDescriptor,
     RoutingPostureCandidateDescriptor,
     RoutingPostureResponse,
 )
@@ -106,8 +110,39 @@ def build_routing_posture(
             if universe is not None and requirements is not None
             else None
         ),
+        connection_identities=_build_connection_identities(config),
         notes=notes,
     )
+
+
+def _build_connection_identities(
+    config: ProviderExecutionConfig,
+) -> list[ConnectionIdentityDescriptor]:
+    """Per-identity connection facts from the ONE merged material map (issues
+    #298, #303): the same resolution execution consumes, so the operator
+    answer to "which deployment/region/credential actually serves identity
+    X" can never disagree with the call that serves it."""
+
+    try:
+        materials = configured_connection_materials(config)
+    except ValueError:
+        # Malformed declared material is a startup finding and refuses live
+        # execution fail-closed; the posture read stays available and simply
+        # cannot enumerate identities it cannot resolve.
+        return []
+    return [
+        ConnectionIdentityDescriptor(
+            entry_id=material.entry_id,
+            provider_id=material.provider_id,
+            model_revision=material.model_version or material.model_id,
+            deployment=material.deployment,
+            region=material.region,
+            endpoint_host=urlsplit(material.api_base).netloc or None,
+            credential_env=material.api_key_env,
+            seeded=material.seeded,
+        )
+        for material in materials.values()
+    ]
 
 
 def _build_capability_posture(
@@ -191,7 +226,7 @@ def _resolve_candidate(config: ProviderExecutionConfig) -> RoutingPostureCandida
         entry_id = derive_model_catalogue_entry_id(
             provider_id=provider_id,
             model_revision=config.model_version or model_id,
-            deployment=None,
+            deployment=config.deployment,
         )
         entry = get_model_catalogue_repository().get_entry(entry_id)
     return RoutingPostureCandidateDescriptor(

@@ -78,6 +78,12 @@ class ProviderExecutionConfig:
     fallback_model_version: str | None = None
     fallback_api_base: str | None = None
     fallback_api_key: str | None = None
+    # Hosting deployment identity (issue #303): participates in the catalogue
+    # entry-id derivation exactly as the catalogue derives it, so a
+    # deployment-scoped candidate binds, debits and audits under its own
+    # governed identity. None for direct provider APIs - the settings pair
+    # never sets it; only declared connection material can.
+    deployment: str | None = None
 
 
 _provider_execution_config_override: ContextVar[ProviderExecutionConfig | None] = ContextVar(

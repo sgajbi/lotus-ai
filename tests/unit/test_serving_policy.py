@@ -311,6 +311,73 @@ def test_the_third_identity_serves_when_earlier_candidates_fail(
     assert decision.serving_policy_version == 1
 
 
+def test_a_deployment_scoped_identity_serves_under_its_own_catalogue_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Issue #303: a deployment-scoped candidate is a complete governed
+    identity - catalogued with its deployment, connected through declared
+    material carrying that deployment, policy-ordered, and when it serves
+    the response and decision bind the deployment-scoped entry id, never
+    the direct-API entry of the same provider and revision."""
+
+    _ordered_fallback_settings()
+    deployment = "eu-frankfurt-1"
+    scoped_id = derive_model_catalogue_entry_id(
+        provider_id=THIRD_PROVIDER, model_revision=THIRD_REVISION, deployment=deployment
+    )
+    upsert_model_catalogue_entry(
+        ModelCatalogueEntry(
+            entry_id=scoped_id,
+            provider_id=THIRD_PROVIDER,
+            provider_mode="openai",
+            model_family=THIRD_MODEL,
+            model_revision=THIRD_REVISION,
+            deployment=deployment,
+            sku=None,
+            lifecycle_state=ModelLifecycleState.APPROVED,
+            revision_pinned=True,
+            modalities=["text"],
+            seed_source=ModelCatalogueSeedSource.SETTINGS_LIVE_TEXT,
+            created_at="2026-09-01T00:00:00Z",
+            last_updated_at="2026-09-01T00:00:00Z",
+        )
+    )
+    settings.provider_connections_json = json.dumps(
+        [
+            {
+                "provider_id": THIRD_PROVIDER,
+                "model_id": THIRD_MODEL,
+                "model_version": THIRD_REVISION,
+                "api_base": "https://eu.example/v1",
+                "deployment": deployment,
+                "region": "eu-central",
+            }
+        ]
+    )
+    _governed_add(scoped_id)
+    adapter = _install_adapter(
+        monkeypatch,
+        failing={
+            PRIMARY: ProviderFailureCategory.PROVIDER_UPSTREAM_ERROR,
+            ALTERNATE: ProviderFailureCategory.PROVIDER_TIMEOUT,
+        },
+    )
+
+    from app.services.provider_gateway import execute_text_generation
+
+    response = execute_text_generation(_request())
+
+    assert response.provider_id == THIRD_PROVIDER
+    assert adapter.executed_provider_ids == [PRIMARY, ALTERNATE, THIRD_PROVIDER]
+    # The deployment-scoped identity is what served - bound, recorded and
+    # answerable from the response alone.
+    assert response.model_catalogue_entry_id == scoped_id
+    decision = response.routing_decision
+    assert decision is not None
+    assert decision.selected_provider_id == THIRD_PROVIDER
+    assert scoped_id in {candidate.model_catalogue_entry_id for candidate in decision.candidates}
+
+
 def test_status_surface_reports_history_newest_first() -> None:
     _ordered_fallback_settings()
     entry_id = _catalogue_third_identity()

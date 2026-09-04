@@ -185,6 +185,59 @@ def test_a_declared_override_drives_the_actual_execution_config(
     assert materials[alternate_id].api_base == alternate.api_base
 
 
+def test_a_deployment_scoped_identity_is_its_own_catalogue_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Issue #303: deployment participates in the catalogue identity exactly
+    as the catalogue derives it - a deployment-scoped declared entry is a
+    DIFFERENT governed identity from the direct-API entry of the same
+    provider and revision, and its execution config carries the deployment
+    so binding, debits and audit name the right entry."""
+
+    _pair_settings()
+    monkeypatch.setenv("EU_IDENTITY_KEY", "eu-secret")
+    settings.provider_connections_json = json.dumps(
+        [
+            {
+                "provider_id": "text.regional",
+                "model_id": "claude-sonnet-5",
+                "model_version": "claude-sonnet-5-2026-05",
+                "api_base": "https://eu.example/v1",
+                "api_key_env": "EU_IDENTITY_KEY",
+                "deployment": "eu-frankfurt-1",
+                "region": "eu-central",
+            }
+        ]
+    )
+    config = resolve_provider_execution_config()
+
+    scoped_id = derive_model_catalogue_entry_id(
+        provider_id="text.regional",
+        model_revision="claude-sonnet-5-2026-05",
+        deployment="eu-frankfurt-1",
+    )
+    unscoped_id = derive_model_catalogue_entry_id(
+        provider_id="text.regional",
+        model_revision="claude-sonnet-5-2026-05",
+        deployment=None,
+    )
+    assert scoped_id != unscoped_id
+
+    materials = configured_connection_materials(config)
+    assert scoped_id in materials
+    assert unscoped_id not in materials
+    assert materials[scoped_id].deployment == "eu-frankfurt-1"
+    assert materials[scoped_id].region == "eu-central"
+
+    derived = derive_candidate_execution_config(config, scoped_id)
+    assert derived is not None
+    assert derived.deployment == "eu-frankfurt-1"
+    assert derived.api_base == "https://eu.example/v1"
+    assert derived.api_key == "eu-secret"
+    # The direct-API identity of the same provider+revision has no material.
+    assert derive_candidate_execution_config(config, unscoped_id) is None
+
+
 def test_malformed_declared_material_fails_closed_with_bounded_findings() -> None:
     _pair_settings()
 
@@ -205,6 +258,16 @@ def test_malformed_declared_material_fails_closed_with_bounded_findings() -> Non
     config = resolve_provider_execution_config()
     with pytest.raises(ValueError, match="declared more than once"):
         configured_connection_materials(config)
+
+    settings.provider_connections_json = json.dumps(
+        [{"provider_id": "p", "model_id": "m", "api_base": "http://a", "deployment": "  "}]
+    )
+    assert any("'deployment' must be a non-empty" in f for f in connection_material_findings())
+
+    settings.provider_connections_json = json.dumps(
+        [{"provider_id": "p", "model_id": "m", "api_base": "http://a", "region": ""}]
+    )
+    assert any("'region' must be a non-empty" in f for f in connection_material_findings())
 
     settings.provider_connections_json = "[]"
     reset_connection_material_cache()
