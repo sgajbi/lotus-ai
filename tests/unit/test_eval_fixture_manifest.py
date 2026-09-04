@@ -603,3 +603,73 @@ def test_load_evaluation_fixture_family_rejects_non_list_case_payload(tmp_path: 
             match="non-list cases payload",
         ):
             load_evaluation_fixture_family(fixture_id="bad_fixture")
+
+
+def _capability_manifest(proves: object) -> dict[str, object]:
+    return {
+        "manifest_version": "foundation.v1",
+        "evidence_categories": [
+            {"category_id": "task_contract", "description": "Bounded task contract evidence."}
+        ],
+        "fixture_families": [
+            {
+                "fixture_id": "explanation_task_examples",
+                "status": "STAGED",
+                "description": "Golden examples for explanation-oriented tasks.",
+                "manifest_path": "docs/evals/fixtures/explain.v1/basic_cases.json",
+                "proves_capability_dimensions": proves,
+            }
+        ],
+    }
+
+
+def test_a_family_may_declare_governed_capability_dimensions() -> None:
+    """Issue #312 S1: the declaration vocabulary is exactly the capability
+    dimensions routing enforces - one authority, no parallel list."""
+
+    repo_root = Path(__file__).resolve().parents[2]
+    validate_evaluation_fixture_manifest(
+        repo_root=repo_root,
+        manifest_payload=_capability_manifest(["supports_structured_output"]),
+    )
+
+
+def test_an_unknown_capability_dimension_fails_the_manifest_gate_closed() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    with pytest.raises(
+        EvaluationFixtureManifestValidationError, match="unknown capability dimension"
+    ):
+        validate_evaluation_fixture_manifest(
+            repo_root=repo_root,
+            manifest_payload=_capability_manifest(["supports_time_travel"]),
+        )
+
+
+def test_malformed_capability_declarations_fail_the_manifest_gate_closed() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    with pytest.raises(EvaluationFixtureManifestValidationError, match="must be a list"):
+        validate_evaluation_fixture_manifest(
+            repo_root=repo_root,
+            manifest_payload=_capability_manifest("supports_structured_output"),
+        )
+    with pytest.raises(EvaluationFixtureManifestValidationError, match="non-empty strings"):
+        validate_evaluation_fixture_manifest(
+            repo_root=repo_root,
+            manifest_payload=_capability_manifest(["  "]),
+        )
+    with pytest.raises(EvaluationFixtureManifestValidationError, match="more than once"):
+        validate_evaluation_fixture_manifest(
+            repo_root=repo_root,
+            manifest_payload=_capability_manifest(
+                ["supports_structured_output", "supports_structured_output"]
+            ),
+        )
+
+
+def test_undeclared_families_prove_no_capability_dimensions() -> None:
+    """A family that declares nothing proves nothing - the shipped manifest
+    stays honest: none of its families were designed as capability proofs,
+    so every loaded family carries an empty proof scope."""
+
+    manifest = load_evaluation_fixture_manifest()
+    assert all(fixture.proves_capability_dimensions == [] for fixture in manifest.fixture_families)
