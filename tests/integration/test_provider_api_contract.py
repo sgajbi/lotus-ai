@@ -440,12 +440,16 @@ def test_provider_runbook_readiness_route(client: TestClient) -> None:
     assert body["service"] == "lotus-ai"
     assert body["runbook_ready"] is False
     assert body["required_item_count"] == 8
-    assert body["completed_required_item_count"] == 5
+    # Honest catalog vocabulary (issue #284): documented posture is
+    # DOCUMENTED_ONLY, an unwritten runbook is MISSING - nothing counts as
+    # completed until a control is actually enforced.
+    assert body["completed_required_item_count"] == 0
     assert body["items"][0]["runbook_id"] == "provider_operational_runbook"
-    assert body["items"][0]["status"] == "READY"
-    assert body["items"][1]["status"] == "NOT_READY"
+    assert body["items"][0]["status"] == "DOCUMENTED_ONLY"
+    assert body["items"][1]["status"] == "MISSING"
     assert body["items"][3]["runbook_id"] == "provider_spend_anomaly_response"
     assert body["items"][5]["runbook_id"] == "provider_embedding_rollout_and_recovery"
+    assert body["items"][5]["status"] == "PARTIAL"
     assert body["items"][6]["runbook_id"] == "provider_degradation_and_circuit_response"
 
 

@@ -6,7 +6,7 @@ from app.contracts.async_runtime import AsyncGovernanceStatusResponse
 from app.services.async_operational_state import build_async_operational_state
 from app.services.governance_readiness import summarize_governance_flags
 from app.services.async_activation_readiness_service import build_async_activation_readiness
-from app.services.async_runbook_readiness_service import build_async_runbook_readiness
+from app.services.readiness_catalog import build_async_runbook_readiness
 
 
 def build_async_governance_status() -> AsyncGovernanceStatusResponse:

@@ -91,9 +91,7 @@ from app.services.production_go_live_activation_readiness import (
     build_production_go_live_activation_readiness,
 )
 from app.services.production_go_live_governance import build_production_go_live_governance_status
-from app.services.production_go_live_runbook_readiness import (
-    build_production_go_live_runbook_readiness,
-)
+from app.services.readiness_catalog import build_production_go_live_runbook_readiness
 from app.services.production_go_live_use_case_approval import (
     build_production_go_live_use_case_approval,
 )

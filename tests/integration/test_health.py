@@ -553,7 +553,9 @@ def test_platform_runtime_status_route(client: TestClient) -> None:
     assert body["async_governance"]["blocking_area_count"] == 2
     assert body["async_governance"]["activation_readiness"]["activation_ready"] is False
     assert body["async_governance"]["runbook_readiness"]["runbook_ready"] is False
-    assert body["async_governance"]["runbook_readiness"]["completed_required_item_count"] == 3
+    # Honest catalog vocabulary (issue #284): documented posture no longer
+    # counts as completed - only enforced controls do.
+    assert body["async_governance"]["runbook_readiness"]["completed_required_item_count"] == 0
     assert body["provider_governance"]["governance_ready"] is False
     assert body["provider_governance"]["blocking_area_count"] == 3
     assert body["provider_governance"]["activation_readiness"]["activation_ready"] is False

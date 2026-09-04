@@ -29,7 +29,7 @@ from app.services.async_runtime_control import (
 from app.services.async_governance_status_service import build_async_governance_status
 from app.services.async_job_service import build_async_job_catalog, build_async_job_detail
 from app.services.async_queue_backend_service import build_async_queue_backend_catalog
-from app.services.async_runbook_readiness_service import build_async_runbook_readiness
+from app.services.readiness_catalog import build_async_runbook_readiness
 from app.services.async_submission_service import submit_async_job
 from app.services.async_runtime_status import build_async_runtime_status
 from app.services.async_worker_execution_service import build_async_worker_execution_catalog

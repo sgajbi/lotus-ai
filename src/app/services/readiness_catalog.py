@@ -7,18 +7,25 @@ replaces them with one catalog
 (``contracts/readiness/runbook_readiness_catalog.json``) and one builder:
 
 - every item declares an ``execution_state`` in ``{ENFORCED, PARTIAL,
-  DOCUMENTED_ONLY, OUT_OF_SCOPE}``; a state not computed from runtime
-  evidence is ``DOCUMENTED_ONLY``, never ``READY`` - the API now says what
-  is actually true;
+  DOCUMENTED_ONLY, OUT_OF_SCOPE, MISSING}``; a state not computed from
+  runtime evidence is ``DOCUMENTED_ONLY``, never ``READY`` - the API now
+  says what is actually true;
 - ``runbook_ready`` is derived (every required item ``ENFORCED``), never
   asserted;
 - the per-domain response contracts are unchanged in shape, so consumers
   keep parsing what they parsed before - only the honesty of the values
   changed.
 
-The provider runbook readiness stays in its own module for now: its notes
-interpolate live rollout posture and the go-live surface consumes it; it
-migrates with the mixed/computed group in the next slice.
+Issue #284 (slice 1) folds in the three remaining declared runbook
+domains - async, provider, and production go-live. Two of their values are
+genuinely derived, and the catalog says so per ITEM rather than per module:
+an item may name a ``computed_status`` or ``computed_note_suffix`` hook from
+the bounded registries below, and the builder resolves it at request time -
+declared posture stays data, derived posture stays computed, and an unknown
+hook reference refuses at load. ``MISSING`` joins the state vocabulary for a
+control that does not exist even on paper (the old ``NOT_READY`` literals):
+calling an absent runbook ``DOCUMENTED_ONLY`` would claim a document that
+was never written.
 """
 
 from __future__ import annotations
@@ -36,6 +43,10 @@ from app.contracts.access_control import (
     AccessControlRunbookReadinessItem,
     AccessControlRunbookReadinessResponse,
 )
+from app.contracts.async_runtime import (
+    AsyncRunbookReadinessItem,
+    AsyncRunbookReadinessResponse,
+)
 from app.contracts.artifacts import (
     ArtifactRunbookReadinessItem,
     ArtifactRunbookReadinessResponse,
@@ -51,6 +62,14 @@ from app.contracts.observability import (
 from app.contracts.production_baseline import (
     ProductionBaselineRunbookReadinessItem,
     ProductionBaselineRunbookReadinessResponse,
+)
+from app.contracts.production_go_live import (
+    ProductionGoLiveRunbookReadinessItem,
+    ProductionGoLiveRunbookReadinessResponse,
+)
+from app.contracts.providers import (
+    ProviderRunbookReadinessItem,
+    ProviderRunbookReadinessResponse,
 )
 from app.contracts.prompts import (
     PromptRunbookReadinessItem,
@@ -80,7 +99,7 @@ _CATALOG_PATH = (
     / "runbook_readiness_catalog.json"
 )
 
-EXECUTION_STATES = frozenset({"ENFORCED", "PARTIAL", "DOCUMENTED_ONLY", "OUT_OF_SCOPE"})
+EXECUTION_STATES = frozenset({"ENFORCED", "PARTIAL", "DOCUMENTED_ONLY", "OUT_OF_SCOPE", "MISSING"})
 
 _FIRST_USE_CASE_ID = "lotus_performance.analytics_commentary.v1"
 _FIRST_USE_CASE_CALLER_APP = "lotus-performance"
@@ -91,6 +110,34 @@ class CatalogRunbookItem(BaseModel):
     execution_state: str
     required_for_activation: bool
     notes: str
+    # Per-item derivation markers (issue #284): a non-null value names a hook
+    # in the bounded registries below, and the builder resolves it at request
+    # time. This is the catalog's `computed` marker - per item, because a
+    # module can mix declared and derived values.
+    computed_status: str | None = None
+    computed_note_suffix: str | None = None
+
+
+def _provider_rollout_posture_note_suffix() -> str:
+    from app.services.provider_rollout_posture import build_provider_rollout_posture
+
+    return build_provider_rollout_posture().notes
+
+
+def _provider_runbook_alignment_status() -> str:
+    """Go-live's provider alignment derives from the provider runbook surface:
+    enforced only when every required provider runbook item is enforced,
+    partial otherwise - the notes carry the dependency."""
+
+    return "ENFORCED" if build_provider_runbook_readiness().runbook_ready else "PARTIAL"
+
+
+COMPUTED_STATUS_HOOKS = {
+    "provider_runbook_alignment": _provider_runbook_alignment_status,
+}
+COMPUTED_NOTE_SUFFIX_HOOKS = {
+    "provider_rollout_posture": _provider_rollout_posture_note_suffix,
+}
 
 
 @lru_cache(maxsize=1)
@@ -104,6 +151,22 @@ def _load_catalog() -> dict[str, list[CatalogRunbookItem]]:
                 raise ValueError(
                     f"runbook readiness catalog: unknown execution_state "
                     f"'{item.execution_state}' on {domain}/{item.item_id}"
+                )
+            if (
+                item.computed_status is not None
+                and item.computed_status not in COMPUTED_STATUS_HOOKS
+            ):
+                raise ValueError(
+                    f"runbook readiness catalog: unknown computed_status hook "
+                    f"'{item.computed_status}' on {domain}/{item.item_id}"
+                )
+            if (
+                item.computed_note_suffix is not None
+                and item.computed_note_suffix not in COMPUTED_NOTE_SUFFIX_HOOKS
+            ):
+                raise ValueError(
+                    f"runbook readiness catalog: unknown computed_note_suffix hook "
+                    f"'{item.computed_note_suffix}' on {domain}/{item.item_id}"
                 )
         catalog[domain] = items
     return catalog
@@ -120,9 +183,24 @@ def catalog_runbook_items(domain: str) -> list[CatalogRunbookItem]:
     return list(catalog[domain])
 
 
-def _summarize(items: list[CatalogRunbookItem]) -> tuple[int, int, bool]:
-    required = [item for item in items if item.required_for_activation]
-    enforced = [item for item in required if item.execution_state == "ENFORCED"]
+def _resolve(item: CatalogRunbookItem) -> tuple[str, str]:
+    """One item's effective (status, notes): declared from the catalog, or
+    derived through its named hook at request time."""
+
+    status = (
+        COMPUTED_STATUS_HOOKS[item.computed_status]()
+        if item.computed_status is not None
+        else item.execution_state
+    )
+    notes = item.notes
+    if item.computed_note_suffix is not None:
+        notes = f"{notes} {COMPUTED_NOTE_SUFFIX_HOOKS[item.computed_note_suffix]()}"
+    return status, notes
+
+
+def _summarize(resolved: list[tuple[CatalogRunbookItem, str]]) -> tuple[int, int, bool]:
+    required = [status for item, status in resolved if item.required_for_activation]
+    enforced = [status for status in required if status == "ENFORCED"]
     return len(required), len(enforced), bool(required) and len(enforced) == len(required)
 
 
@@ -133,7 +211,10 @@ def _build(
     domain: str, item_cls: type[BaseModel], response_cls: type[_TResponse], **extra: object
 ) -> _TResponse:
     items = catalog_runbook_items(domain)
-    required_count, completed_count, ready = _summarize(items)
+    resolved = [(item, *_resolve(item)) for item in items]
+    required_count, completed_count, ready = _summarize(
+        [(item, status) for item, status, _ in resolved]
+    )
     return response_cls(
         service=settings.service_name,
         runbook_ready=ready,
@@ -142,11 +223,11 @@ def _build(
         items=[
             item_cls(
                 runbook_id=item.item_id,
-                status=item.execution_state,
+                status=status,
                 required_for_activation=item.required_for_activation,
-                notes=item.notes,
+                notes=notes,
             )
-            for item in items
+            for item, status, notes in resolved
         ],
         **extra,
     )
@@ -241,4 +322,38 @@ def build_retrieval_runbook_readiness() -> RetrievalRunbookReadinessResponse:
         RetrievalRunbookReadinessItem,
         RetrievalRunbookReadinessResponse,
         delivery_phase=settings.delivery_phase,
+    )
+
+
+def build_async_runbook_readiness() -> AsyncRunbookReadinessResponse:
+    return _build(
+        "async",
+        AsyncRunbookReadinessItem,
+        AsyncRunbookReadinessResponse,
+        version=settings.service_version,
+        delivery_phase=settings.delivery_phase,
+    )
+
+
+def build_provider_runbook_readiness() -> ProviderRunbookReadinessResponse:
+    return _build(
+        "provider",
+        ProviderRunbookReadinessItem,
+        ProviderRunbookReadinessResponse,
+        version=settings.service_version,
+    )
+
+
+def build_production_go_live_runbook_readiness() -> ProductionGoLiveRunbookReadinessResponse:
+    return _build(
+        "production_go_live",
+        ProductionGoLiveRunbookReadinessItem,
+        ProductionGoLiveRunbookReadinessResponse,
+        version=settings.service_version,
+        go_live_checklist=[
+            "Confirm `/platform/production-go-live/runtime-status` reports platform production approval and the intended provider freeze or rollback posture.",
+            "Confirm `/platform/production-go-live/activation-readiness` shows no remaining platform or provider blockers.",
+            "Confirm `/platform/production-go-live/use-case-approval` distinguishes limited-rollout readiness from active-production approval for the named downstream path.",
+            "Confirm `/platform/production-go-live/governance-status` and the embedded `production_go_live_governance` platform block match the detailed views before exposing real production traffic.",
+        ],
     )
