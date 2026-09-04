@@ -204,6 +204,26 @@ def test_catalog_hook_references_and_registries_agree() -> None:
     assert referenced_note_hooks == set(readiness_catalog.COMPUTED_NOTE_SUFFIX_HOOKS)
 
 
+def test_every_readiness_module_is_converted_or_a_named_computed_adapter() -> None:
+    """#284's closing invariant: a readiness module exists on disk only if the
+    computed-adapter registry names it with its deriving surfaces - and a
+    registry entry without a module is a stale claim. Converted domains have
+    no module at all; everything else is a computed adapter whose statuses
+    derive from live state (converting them to catalog data would destroy
+    the derivation - verified per body, not per grep)."""
+
+    services_dir = Path(readiness_catalog.__file__).resolve().parent
+    on_disk = {path.name for path in services_dir.glob("*readiness*.py")} - {"readiness_catalog.py"}
+    registry_path = (
+        Path(readiness_catalog._CATALOG_PATH).parent / "computed_readiness_adapters.json"
+    )
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    named = set(registry["adapters"])
+    assert on_disk == named
+    for module_name, entry in registry["adapters"].items():
+        assert entry["derives_from"], f"{module_name} names no deriving surface"
+
+
 def test_unknown_computed_hook_reference_is_refused_at_load(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
