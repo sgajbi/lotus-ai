@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -56,20 +58,10 @@ def redrive_queued_async_job(
     store = get_async_runtime_store()
     message = f"Queued async job re-driven to managed queue: {reason}"
     store.save_job(
-        AsyncRuntimeJobRecord(
-            job_id=job.job_id,
-            job_type=job.job_type,
-            target_id=job.target_id,
+        replace(
+            job,
             lifecycle_status=AsyncJobStatus.QUEUED.value,
-            submitted_at=job.submitted_at,
-            caller_app=job.caller_app,
-            correlation_id=job.correlation_id,
-            payload_summary=job.payload_summary,
-            execution_path=job.execution_path,
-            related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=message,
-            attempt_count=job.attempt_count,
-            artifact_ids=job.artifact_ids,
         )
     )
     return _control_event(
@@ -113,20 +105,10 @@ def quarantine_queued_async_job(
             )
         )
     store.save_job(
-        AsyncRuntimeJobRecord(
-            job_id=job.job_id,
-            job_type=job.job_type,
-            target_id=job.target_id,
+        replace(
+            job,
             lifecycle_status=AsyncJobStatus.ABANDONED.value,
-            submitted_at=job.submitted_at,
-            caller_app=job.caller_app,
-            correlation_id=job.correlation_id,
-            payload_summary=job.payload_summary,
-            execution_path=job.execution_path,
-            related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=f"Queued async job quarantined: {reason}",
-            attempt_count=job.attempt_count,
-            artifact_ids=job.artifact_ids,
         )
     )
     return _control_event(

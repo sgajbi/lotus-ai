@@ -65,9 +65,9 @@
         "async_job_attempts"
       ],
       "retention_days": 365,
-      "retention_basis": "Runtime state, not the evidence of record: the audit and run families hold the durable trail, so terminal job snapshots expire after one year. No tenant erasure key: job rows carry no tenant attribution today - a recorded linkage gap, the same class as artifact_content.",
+      "retention_basis": "Runtime state, not the evidence of record: the audit and run families hold the durable trail, so terminal job snapshots expire after one year. Tenant erasure covers rows attributed at creation (issue #291); pre-attribution and platform-owned rows carry NULL tenant - never inferred - and leave only by this family's own expiry.",
       "legal_hold_supported": true,
-      "erasure_key": "none",
+      "erasure_key": "tenant",
       "evidence_class": "runtime_state",
       "enforcement": "ENFORCED"
     },
@@ -171,9 +171,9 @@
         "artifact_metadata"
       ],
       "retention_days": 2555,
-      "retention_basis": "Produced documents retained seven years with the runs that made them. No tenant erasure key: artifact rows carry no tenant attribution today, and claiming one would be broader than the store can honour - tenant linkage is a recorded gap. Rows marked retained_for_review are never expired (live review obligation).",
+      "retention_basis": "Generated artifact metadata and payload bytes: seven years for review obligations, retained_for_review rows never expired by lifecycle. Tenant erasure covers rows attributed at creation from the generating job (issue #291); pre-attribution and platform-owned rows carry NULL tenant - never inferred - and leave only by this family's own expiry.",
       "legal_hold_supported": true,
-      "erasure_key": "none",
+      "erasure_key": "tenant",
       "evidence_class": "business_run_evidence",
       "enforcement": "ENFORCED"
     },

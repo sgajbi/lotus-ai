@@ -184,6 +184,7 @@ def submit_workflow_pack_execution_async(
             latest_message="Workflow-pack execution accepted into durable async runtime state.",
             attempt_count=1,
             artifact_ids=[snapshot_ref.artifact_id],
+            tenant_id=request.task_request.caller.tenant_id,
         )
         attempt_record = AsyncRuntimeAttemptRecord(
             attempt_id=attempt_id,

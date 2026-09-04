@@ -55,6 +55,7 @@ def test_sqlalchemy_async_runtime_repository_round_trip(tmp_path: Path) -> None:
             latest_message="Job submitted for future durable execution.",
             attempt_count=1,
             artifact_ids=[],
+            tenant_id="tenant-sg-001",
         )
     )
     repository.save_attempt(
@@ -91,6 +92,8 @@ def test_sqlalchemy_async_runtime_repository_round_trip(tmp_path: Path) -> None:
     assert job is not None
     assert repository.list_jobs() == [job]
     assert job.job_type == "retrieval_indexing"
+    # Source-owned tenant attribution survives the SQL round-trip (issue #291).
+    assert job.tenant_id == "tenant-sg-001"
     assert len(attempts) == 1
     assert attempts[0].attempt_id == "attempt-001"
     assert lease is not None

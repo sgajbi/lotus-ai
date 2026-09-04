@@ -414,18 +414,26 @@ def _expire_workflow_run_records(
 
 
 def _expire_artifact_content(family: RetentionFamily, cutoff: datetime) -> tuple[list[str], str]:
-    """Aged artifacts, except rows retained for review (live obligation)."""
+    """Aged artifacts, except rows retained for review (live obligation).
+
+    Payload bytes and metadata go together (issue #291): the row is the only
+    pointer to the object, so expiring metadata alone would orphan content
+    the family's retention claim says is gone.
+    """
+
+    from app.services.artifact_payloads import delete_artifacts_with_payloads
 
     repository = get_artifact_repository()
     expired = [
-        record.artifact_id
+        record
         for record in repository.list_artifacts()
         if _is_before(record.created_at, cutoff)
         and record.retention_posture != "retained_for_review"
     ]
-    count = repository.delete_artifacts(expired) if expired else 0
-    return [f"artifact_metadata:{artifact_id}" for artifact_id in expired], (
-        f"expired {count} artifact metadata rows; retained_for_review rows are never expired"
+    count = delete_artifacts_with_payloads(expired) if expired else 0
+    return [f"artifact_metadata:{record.artifact_id}" for record in expired], (
+        f"expired {count} artifact rows with their payload objects; "
+        "retained_for_review rows are never expired"
     )
 
 

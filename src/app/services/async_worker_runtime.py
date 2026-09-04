@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import json
@@ -132,20 +134,10 @@ def start_async_job(*, job_id: str, worker_id: str) -> None:
         )
     )
     store.save_job(
-        AsyncRuntimeJobRecord(
-            job_id=job.job_id,
-            job_type=job.job_type,
-            target_id=job.target_id,
+        replace(
+            job,
             lifecycle_status=AsyncJobStatus.RUNNING.value,
-            submitted_at=job.submitted_at,
-            caller_app=job.caller_app,
-            correlation_id=job.correlation_id,
-            payload_summary=job.payload_summary,
-            execution_path=job.execution_path,
-            related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=f"Job is running under worker '{worker_id}'.",
-            attempt_count=job.attempt_count,
-            artifact_ids=job.artifact_ids,
         )
     )
 
@@ -209,6 +201,7 @@ def complete_async_job(*, job_id: str, worker_id: str, message: str) -> None:
         source_object_id=job.job_id,
         created_at=_isoformat(now),
         created_by=worker_id,
+        tenant_id=job.tenant_id,
         payload_json=json.dumps(
             {
                 "job_id": job.job_id,
@@ -223,19 +216,10 @@ def complete_async_job(*, job_id: str, worker_id: str, message: str) -> None:
         ).encode("utf-8"),
     )
     store.save_job(
-        AsyncRuntimeJobRecord(
-            job_id=job.job_id,
-            job_type=job.job_type,
-            target_id=job.target_id,
+        replace(
+            job,
             lifecycle_status=AsyncJobStatus.COMPLETED.value,
-            submitted_at=job.submitted_at,
-            caller_app=job.caller_app,
-            correlation_id=job.correlation_id,
-            payload_summary=job.payload_summary,
-            execution_path=job.execution_path,
-            related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=message,
-            attempt_count=job.attempt_count,
             artifact_ids=[*job.artifact_ids, completion_artifact.artifact_id],
         )
     )
@@ -283,6 +267,7 @@ def fail_async_job(
         source_object_id=job.job_id,
         created_at=_isoformat(now),
         created_by=worker_id,
+        tenant_id=job.tenant_id,
         payload_json=json.dumps(
             {
                 "job_id": job.job_id,
@@ -297,19 +282,10 @@ def fail_async_job(
         ).encode("utf-8"),
     )
     store.save_job(
-        AsyncRuntimeJobRecord(
-            job_id=job.job_id,
-            job_type=job.job_type,
-            target_id=job.target_id,
+        replace(
+            job,
             lifecycle_status=AsyncJobStatus.FAILED.value,
-            submitted_at=job.submitted_at,
-            caller_app=job.caller_app,
-            correlation_id=job.correlation_id,
-            payload_summary=job.payload_summary,
-            execution_path=job.execution_path,
-            related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=f"Job failed terminally with reason '{failure_reason}'.",
-            attempt_count=job.attempt_count,
             artifact_ids=[*job.artifact_ids, failure_artifact.artifact_id],
         )
     )

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from collections.abc import Sequence
 from copy import deepcopy
 
@@ -125,20 +127,10 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
                 failure_reason=current_attempt.failure_reason,
                 recorded_message=attempt_message,
             )
-            claimed_job = AsyncRuntimeJobRecord(
-                job_id=job.job_id,
-                job_type=job.job_type,
-                target_id=job.target_id,
+            claimed_job = replace(
+                job,
                 lifecycle_status="CLAIMED",
-                submitted_at=job.submitted_at,
-                caller_app=job.caller_app,
-                correlation_id=job.correlation_id,
-                payload_summary=job.payload_summary,
-                execution_path=job.execution_path,
-                related_evaluation_run_id=job.related_evaluation_run_id,
                 latest_message=latest_message,
-                attempt_count=job.attempt_count,
-                artifact_ids=job.artifact_ids,
             )
             lease_id = f"{job.job_id}_lease_{current_attempt.attempt_number:03d}"
             lease = AsyncRuntimeLeaseRecord(
@@ -196,20 +188,10 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
             failure_reason=current_attempt.failure_reason,
             recorded_message=attempt_message,
         )
-        claimed_job = AsyncRuntimeJobRecord(
-            job_id=job.job_id,
-            job_type=job.job_type,
-            target_id=job.target_id,
+        claimed_job = replace(
+            job,
             lifecycle_status="CLAIMED",
-            submitted_at=job.submitted_at,
-            caller_app=job.caller_app,
-            correlation_id=job.correlation_id,
-            payload_summary=job.payload_summary,
-            execution_path=job.execution_path,
-            related_evaluation_run_id=job.related_evaluation_run_id,
             latest_message=latest_message,
-            attempt_count=job.attempt_count,
-            artifact_ids=job.artifact_ids,
         )
         lease = AsyncRuntimeLeaseRecord(
             lease_id=f"{job.job_id}_lease_{current_attempt.attempt_number:03d}",

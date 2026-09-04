@@ -22,6 +22,11 @@ class AsyncRuntimeJobRecord:
     latest_message: str
     attempt_count: int
     artifact_ids: list[str]
+    # Source-owned tenant attribution at creation (issue #291): stamped by
+    # the owning submission path when the job carries client-derived content
+    # for one tenant; None means platform-owned or pre-attribution history,
+    # and is never inferred later.
+    tenant_id: str | None = None
 
 
 @dataclass(frozen=True)

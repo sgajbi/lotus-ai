@@ -62,6 +62,7 @@ class SqlAlchemyArtifactRepository(SqlAlchemyRepositoryBase, ArtifactRepository)
             superseded_by_artifact_id=record.superseded_by_artifact_id,
             created_at=record.created_at,
             created_by=record.created_by,
+            tenant_id=record.tenant_id,
         )
         with self._session_factory() as session:
             session.merge(model)
@@ -85,6 +86,7 @@ class SqlAlchemyArtifactRepository(SqlAlchemyRepositoryBase, ArtifactRepository)
             superseded_by_artifact_id=model.superseded_by_artifact_id,
             created_at=model.created_at,
             created_by=model.created_by,
+            tenant_id=model.tenant_id,
         )
 
     def _ensure_sqlite_parent_directory(self) -> None:

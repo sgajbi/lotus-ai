@@ -147,9 +147,14 @@ def approve_data_erasure(
                     DataErasureFamilyResult(family_id=family_id, erased_count=0, held=True)
                 )
                 continue
-            erased = _ERASURE_EXECUTORS[family_id](tenant_id)
+            erased, unattributable = _ERASURE_EXECUTORS[family_id](tenant_id)
             results.append(
-                DataErasureFamilyResult(family_id=family_id, erased_count=erased, held=False)
+                DataErasureFamilyResult(
+                    family_id=family_id,
+                    erased_count=erased,
+                    held=False,
+                    unattributable_count=unattributable,
+                )
             )
             if erased:
                 get_audit_store().save_lifecycle_event(
@@ -221,7 +226,7 @@ def _expected_target(request: DataErasureApprovalRequest) -> str:
     return record.target
 
 
-def _erase_audit_evidence(tenant_id: str) -> int:
+def _erase_audit_evidence(tenant_id: str) -> tuple[int, int | None]:
     repository = get_audit_store()
     erased = 0
     while True:
@@ -230,11 +235,11 @@ def _erase_audit_evidence(tenant_id: str) -> int:
             limit=_ERASURE_BATCH_LIMIT,
         )
         if not records:
-            return erased
+            return erased, None
         erased += repository.delete_records([record.request_id for record in records])
 
 
-def _erase_workflow_run_records(tenant_id: str) -> int:
+def _erase_workflow_run_records(tenant_id: str) -> tuple[int, int | None]:
     """Erasure must be exhaustive - the receipt claims completeness - so every
     scan here is unbounded, unlike expiry's bounded batches (which self-heal on
     the next scheduled run)."""
@@ -270,12 +275,46 @@ def _erase_workflow_run_records(tenant_id: str) -> int:
     ]
     if record_ids:
         erased += idempotency.delete_records(record_ids)
-    return erased
+    return erased, None
+
+
+def _erase_async_runtime_content(tenant_id: str) -> tuple[int, int | None]:
+    """Attributed async jobs (with attempts and leases) for one tenant
+    (issue #291); NULL-attribution rows are counted honestly, never erased,
+    never inferred - they leave only by the family's own expiry."""
+
+    from app.services.async_runtime_store import get_async_runtime_store
+
+    store = get_async_runtime_store()
+    jobs = store.list_jobs()
+    mine = [job.job_id for job in jobs if job.tenant_id == tenant_id]
+    unattributable = sum(1 for job in jobs if job.tenant_id is None)
+    if not mine:
+        return 0, unattributable
+    deleted_jobs, deleted_attempts, deleted_leases = store.delete_job_records(mine)
+    return deleted_jobs + deleted_attempts + deleted_leases, unattributable
+
+
+def _erase_artifact_content(tenant_id: str) -> tuple[int, int | None]:
+    """Attributed artifacts for one tenant, payload bytes and metadata
+    together (issue #291); NULL-attribution rows are counted, never erased."""
+
+    from app.services.artifact_payloads import delete_artifacts_with_payloads
+    from app.services.artifact_store import get_artifact_repository
+
+    records = get_artifact_repository().list_artifacts()
+    mine = [record for record in records if record.tenant_id == tenant_id]
+    unattributable = sum(1 for record in records if record.tenant_id is None)
+    if not mine:
+        return 0, unattributable
+    return delete_artifacts_with_payloads(mine), unattributable
 
 
 _ERASURE_EXECUTORS = {
     "audit_evidence": _erase_audit_evidence,
     "workflow_run_records": _erase_workflow_run_records,
+    "async_runtime_content": _erase_async_runtime_content,
+    "artifact_content": _erase_artifact_content,
 }
 
 

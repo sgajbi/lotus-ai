@@ -351,6 +351,9 @@ class ArtifactMetadataModel(Base):
     superseded_by_artifact_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    # Source-owned tenant attribution (issue #291); NULL = platform-owned or
+    # pre-attribution history, never inferred.
+    tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
 
 
 class AsyncJobModel(Base):
@@ -369,6 +372,9 @@ class AsyncJobModel(Base):
     latest_message: Mapped[str] = mapped_column(Text, nullable=False)
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False)
     artifact_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    # Source-owned tenant attribution (issue #291); NULL = platform-owned or
+    # pre-attribution history, never inferred.
+    tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
 
     attempts: Mapped[list["AsyncJobAttemptModel"]] = relationship(back_populates="job")
     leases: Mapped[list["AsyncWorkerLeaseModel"]] = relationship(back_populates="job")
