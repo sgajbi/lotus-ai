@@ -4,8 +4,8 @@ from collections.abc import Sequence
 
 from pathlib import Path
 
-from sqlalchemy import delete, func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
@@ -212,6 +212,182 @@ class SqlAlchemyProviderOperationsRepository(
                 # stands, ours is the duplicate.
                 session.rollback()
                 return False
+            return True
+
+    def reserve_attempt_debit(
+        self,
+        record: ProviderAttemptDebitRecord,
+        *,
+        budget_key: str,
+        hard_limit_usd: float | None,
+    ) -> str:
+        """Check-and-reserve in ONE transaction (issue #300). The limit
+        check and the counter advance are a single guarded UPDATE - an
+        atomic compare-and-swap on the budget row that holds on every SQL
+        backend (row locks are a no-op on SQLite; a guarded statement is
+        not) - so two replicas cannot both admit the last available budget.
+        The debit row commits in the same transaction."""
+
+        for _ in range(4):
+            with self._session_factory() as session:
+                try:
+                    existing = session.get(ProviderAttemptDebitModel, record.debit_id)
+                    if existing is not None:
+                        return "DUPLICATE"
+                    guarded = update(ProviderBudgetStateModel).where(
+                        ProviderBudgetStateModel.budget_key == budget_key
+                    )
+                    if hard_limit_usd is not None:
+                        guarded = guarded.where(
+                            func.round(
+                                ProviderBudgetStateModel.current_spend_usd + record.amount_usd,
+                                8,
+                            )
+                            <= hard_limit_usd
+                        )
+                    result = session.execute(
+                        guarded.values(
+                            current_spend_usd=func.round(
+                                ProviderBudgetStateModel.current_spend_usd + record.amount_usd,
+                                8,
+                            ),
+                            updated_at=record.recorded_at,
+                        )
+                    )
+                    if int(getattr(result, "rowcount", 0) or 0) == 0:
+                        state = session.get(ProviderBudgetStateModel, budget_key)
+                        if state is not None:
+                            # The row exists, so the guard refused: reserving
+                            # would push the counter past the hard limit.
+                            session.rollback()
+                            return "REFUSED"
+                        if (
+                            hard_limit_usd is not None
+                            and round(record.amount_usd, 8) > hard_limit_usd
+                        ):
+                            session.rollback()
+                            return "REFUSED"
+                        session.add(
+                            ProviderBudgetStateModel(
+                                budget_key=budget_key,
+                                current_spend_usd=round(record.amount_usd, 8),
+                                updated_at=record.recorded_at,
+                            )
+                        )
+                    session.add(
+                        ProviderAttemptDebitModel(
+                            debit_id=record.debit_id,
+                            provider_id=record.provider_id,
+                            basis=record.basis,
+                            amount_usd=record.amount_usd,
+                            input_tokens=record.input_tokens,
+                            output_tokens=record.output_tokens,
+                            rate_card_ref=record.rate_card_ref,
+                            recorded_at=record.recorded_at,
+                            candidate_entry_id=record.candidate_entry_id,
+                            model_revision=record.model_revision,
+                            attempt_index=record.attempt_index,
+                        )
+                    )
+                    session.commit()
+                    return "RESERVED"
+                except IntegrityError:
+                    session.rollback()
+                    if session.get(ProviderAttemptDebitModel, record.debit_id) is not None:
+                        # A concurrent recorder won the same attempt identity.
+                        return "DUPLICATE"
+                    # Two replicas raced the first budget-row insert; retry -
+                    # the guarded UPDATE now finds the row.
+                    continue
+                except OperationalError:
+                    # Transient lock contention (SQLite lock upgrade,
+                    # serialization conflicts): the transaction applied
+                    # nothing - retry the whole guarded sequence.
+                    session.rollback()
+                    continue
+        raise RuntimeError("Failed to reserve provider attempt debit atomically.")
+
+    def settle_attempt_debit(
+        self,
+        *,
+        debit_id: str,
+        budget_key: str,
+        basis: str,
+        amount_usd: float,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        rate_card_ref: str | None,
+        settled_at: str,
+    ) -> bool:
+        for _ in range(4):
+            try:
+                return self._settle_attempt_debit_once(
+                    debit_id=debit_id,
+                    budget_key=budget_key,
+                    basis=basis,
+                    amount_usd=amount_usd,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    rate_card_ref=rate_card_ref,
+                    settled_at=settled_at,
+                )
+            except OperationalError:
+                continue
+        raise RuntimeError("Failed to settle provider attempt debit atomically.")
+
+    def _settle_attempt_debit_once(
+        self,
+        *,
+        debit_id: str,
+        budget_key: str,
+        basis: str,
+        amount_usd: float,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        rate_card_ref: str | None,
+        settled_at: str,
+    ) -> bool:
+        with self._session_factory() as session:
+            row = session.get(ProviderAttemptDebitModel, debit_id)
+            if row is None or row.basis != "RESERVED_MAX":
+                return False
+            reserved_amount = row.amount_usd
+            delta = round(amount_usd - reserved_amount, 8)
+            values: dict[str, object] = {
+                "basis": basis,
+                "amount_usd": amount_usd,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "recorded_at": settled_at,
+            }
+            if rate_card_ref is not None:
+                values["rate_card_ref"] = rate_card_ref
+            # Guarded on the reserved basis AND amount: only one settlement
+            # can win the row (atomic on every backend), so the counter
+            # adjustment below applies exactly once.
+            result = session.execute(
+                update(ProviderAttemptDebitModel)
+                .where(
+                    ProviderAttemptDebitModel.debit_id == debit_id,
+                    ProviderAttemptDebitModel.basis == "RESERVED_MAX",
+                    ProviderAttemptDebitModel.amount_usd == reserved_amount,
+                )
+                .values(**values)
+            )
+            if int(getattr(result, "rowcount", 0) or 0) == 0:
+                session.rollback()
+                return False
+            session.execute(
+                update(ProviderBudgetStateModel)
+                .where(ProviderBudgetStateModel.budget_key == budget_key)
+                .values(
+                    current_spend_usd=func.round(
+                        ProviderBudgetStateModel.current_spend_usd + delta, 8
+                    ),
+                    updated_at=settled_at,
+                )
+            )
+            session.commit()
             return True
 
     def list_attempt_debits(self, *, limit: int = 100) -> Sequence[ProviderAttemptDebitRecord]:

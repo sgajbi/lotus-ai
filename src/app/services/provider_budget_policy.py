@@ -107,6 +107,7 @@ def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
         findings=findings,
         usage_to_budget_notes=[
             "Tracked spend is recorded durably per provider attempt at the attempt boundary (issue #289): actual usage debits as actual, billable-risk failures debit conservatively, and an execution whose every attempt fails still moves the envelope.",
+            "Hard-limit admission is an atomic per-attempt check-and-reserve on the budget row (issue #300): each attempt reserves its governed maximum (input bounded by request-body bytes, output by the enforced cap) in one store transaction before the provider is called, then settles to the evidenced amount - concurrent replicas cannot jointly overshoot the limit, and a crash before settlement leaves the conservative reservation counted.",
             "Soft budget posture is advisory and inspectable; hard budget posture is blocking when enforcement is enabled.",
             "Tracked spend now flows through the configured provider-operations store so budget posture can remain durable when the SQL-backed provider-operations path is enabled.",
         ],
@@ -114,6 +115,12 @@ def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
 
 
 def enforce_provider_budget() -> None:
+    """Fast-path budget preflight: refuse an execution whose observed spend
+    already reached the hard limit. This read is advisory under concurrency
+    - the enforcement point that makes the limit actually hard is the
+    atomic per-attempt check-and-reserve (issue #300), which this preflight
+    merely short-circuits ahead of."""
+
     parsed = parse_provider_budget_policy()
     if not parsed.budget_enforced:
         return
@@ -170,6 +177,93 @@ def record_attempt_spend(
             attempt_index=attempt_index,
         ),
         budget_key=_BUDGET_KEY,
+    )
+
+
+def reserve_attempt_spend(
+    *,
+    execution_id: str,
+    candidate_entry_id: str,
+    provider_id: str,
+    model_revision: str | None,
+    attempt_index: int,
+    reservation: AttemptDebit,
+) -> str:
+    """Atomically reserve one attempt's governed maximum against the global
+    budget row BEFORE the provider is called (issue #300).
+
+    "Hard" means enforceable under concurrency: the limit check, the
+    reservation row (basis ``RESERVED_MAX``) and the counter advance are one
+    store transaction, so two replicas cannot both admit the last available
+    budget. The reservation amount is the provably safe maximum - input
+    bounded by the request body's byte count (a byte-level token is at
+    least one byte) plus the provider-enforced output cap - not the
+    documented ~4-bytes/token estimate the request ceiling uses. With
+    budget enforcement off the reservation still records (settlement keeps
+    evidence exact) but nothing refuses. Returns RESERVED, DUPLICATE (the
+    same attempt already reserved or settled - crash-retry convergence), or
+    REFUSED (nothing written).
+    """
+
+    enforcement = resolve_provider_execution_config().enforcement
+    hard_limit = enforcement.hard_budget_usd if enforcement.budget_enforced else None
+    repository = get_provider_operations_store()
+    return repository.reserve_attempt_debit(
+        ProviderAttemptDebitRecord(
+            debit_id=f"adbt:{execution_id}:{candidate_entry_id}:{attempt_index}",
+            provider_id=provider_id,
+            basis="RESERVED_MAX",
+            amount_usd=reservation.amount_usd,
+            input_tokens=reservation.input_tokens,
+            output_tokens=reservation.output_tokens,
+            rate_card_ref=reservation.rate_card_ref,
+            recorded_at=_utcnow(),
+            candidate_entry_id=candidate_entry_id,
+            model_revision=model_revision,
+            attempt_index=attempt_index,
+        ),
+        budget_key=_BUDGET_KEY,
+        hard_limit_usd=hard_limit,
+    )
+
+
+def settle_attempt_spend(
+    *,
+    execution_id: str,
+    candidate_entry_id: str,
+    attempt_index: int,
+    debit: AttemptDebit | None,
+) -> bool:
+    """Settle a reservation to the attempt's evidenced debit in one
+    transaction with the counter adjustment (issue #300) - or release it to
+    zero (basis ``RELEASED``) when the attempt proved non-billable (429,
+    pre-connect failure). Idempotent: only a still-reserved row settles. A
+    crash before settlement leaves the conservative reservation standing -
+    over-counting is the safe direction for a hard limit.
+    """
+
+    repository = get_provider_operations_store()
+    debit_id = f"adbt:{execution_id}:{candidate_entry_id}:{attempt_index}"
+    if debit is None:
+        return repository.settle_attempt_debit(
+            debit_id=debit_id,
+            budget_key=_BUDGET_KEY,
+            basis="RELEASED",
+            amount_usd=0.0,
+            input_tokens=None,
+            output_tokens=None,
+            rate_card_ref=None,
+            settled_at=_utcnow(),
+        )
+    return repository.settle_attempt_debit(
+        debit_id=debit_id,
+        budget_key=_BUDGET_KEY,
+        basis=debit.basis,
+        amount_usd=debit.amount_usd,
+        input_tokens=debit.input_tokens,
+        output_tokens=debit.output_tokens,
+        rate_card_ref=debit.rate_card_ref,
+        settled_at=_utcnow(),
     )
 
 

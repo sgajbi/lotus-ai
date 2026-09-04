@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from copy import deepcopy
+from dataclasses import replace
 
 from app.contracts.providers import (
     ProviderFailureCategory,
@@ -101,6 +102,61 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
             budget_key=budget_key,
             amount_usd=record.amount_usd,
             updated_at=record.recorded_at,
+        )
+        return True
+
+    def reserve_attempt_debit(
+        self,
+        record: ProviderAttemptDebitRecord,
+        *,
+        budget_key: str,
+        hard_limit_usd: float | None,
+    ) -> str:
+        if record.debit_id in self._attempt_debits:
+            return "DUPLICATE"
+        state = self._budget_states.get(budget_key)
+        current_spend = state.current_spend_usd if state is not None else 0.0
+        if hard_limit_usd is not None and round(current_spend + record.amount_usd, 8) > (
+            hard_limit_usd
+        ):
+            return "REFUSED"
+        self._attempt_debits[record.debit_id] = deepcopy(record)
+        self.add_budget_spend(
+            budget_key=budget_key,
+            amount_usd=record.amount_usd,
+            updated_at=record.recorded_at,
+        )
+        return "RESERVED"
+
+    def settle_attempt_debit(
+        self,
+        *,
+        debit_id: str,
+        budget_key: str,
+        basis: str,
+        amount_usd: float,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        rate_card_ref: str | None,
+        settled_at: str,
+    ) -> bool:
+        row = self._attempt_debits.get(debit_id)
+        if row is None or row.basis != "RESERVED_MAX":
+            return False
+        delta = round(amount_usd - row.amount_usd, 8)
+        self._attempt_debits[debit_id] = replace(
+            row,
+            basis=basis,
+            amount_usd=amount_usd,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            rate_card_ref=rate_card_ref if rate_card_ref is not None else row.rate_card_ref,
+            recorded_at=settled_at,
+        )
+        self.add_budget_spend(
+            budget_key=budget_key,
+            amount_usd=delta,
+            updated_at=settled_at,
         )
         return True
 
