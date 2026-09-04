@@ -247,6 +247,16 @@ def _expire_control_plane_evidence(
         ],
         ops.delete_operations_events,
     )
+    # Attempt-debit evidence (issue #289) expires like the rest of the
+    # family; deleting evidence never reverses the budget counter.
+    _expire(
+        "provider_attempt_debits",
+        [
+            (d.debit_id, d.recorded_at)
+            for d in ops.list_attempt_debits(limit=_CANDIDATE_BATCH_LIMIT)
+        ],
+        ops.delete_attempt_debits,
+    )
     _expire(
         "provider_governed_actions",
         [

@@ -352,7 +352,7 @@ def test_sqlalchemy_adapters_round_trip(tmp_path: object, monkeypatch: object) -
     assert results["audit_evidence"] == 1
     assert results["async_runtime_content"] == 1
     assert results["transient_operational_leases"] == 2
-    assert results["control_plane_evidence"] == 10
+    assert results["control_plane_evidence"] == 11
     assert results["workflow_run_records"] == 4
     assert results["artifact_content"] == 1
     assert results["evaluation_approval_evidence"] == 1
@@ -577,6 +577,23 @@ def _seed_control_plane_matrix() -> None:
             )
         )
 
+    from app.repositories.provider_operations_repository import ProviderAttemptDebitRecord
+
+    for debit_id, age in (("adbt_old", 2600), ("adbt_young", 10)):
+        ops.record_attempt_debit(
+            ProviderAttemptDebitRecord(
+                debit_id=debit_id,
+                provider_id="text.openai",
+                basis="ACTUAL_USAGE",
+                amount_usd=0.001,
+                input_tokens=10,
+                output_tokens=10,
+                rate_card_ref="default-live-text",
+                recorded_at=_iso(age),
+            ),
+            budget_key="live_text_generation",
+        )
+
     def _gact(action_id: str, status: "GovernedActionStatus", age: int) -> None:
         ops.upsert_governed_action(
             GovernedActionRecord(
@@ -770,9 +787,9 @@ def test_control_plane_evidence_expiry_honours_the_protective_predicates() -> No
 
     results = {r.family_id: r for r in report.results}
     control = results["control_plane_evidence"]
-    # aae_old, poe_old, gact_old_executed, pre_old, ace_old, ksw_old_cleared,
-    # wpe_old, mlc_old, drift_old, conf_old = 10 expired rows.
-    assert control.deleted_count == 10
+    # aae_old, poe_old, adbt_old, gact_old_executed, pre_old, ace_old,
+    # ksw_old_cleared, wpe_old, mlc_old, drift_old, conf_old = 11 expired rows.
+    assert control.deleted_count == 11
     assert "never expired" in control.detail
 
     ops = get_provider_operations_store()
@@ -793,11 +810,12 @@ def test_control_plane_evidence_expiry_honours_the_protective_predicates() -> No
     audit = get_audit_store()
     events = {e.family_id: e for e in audit.list_lifecycle_events(limit=20)}
     control_event = events["control_plane_evidence"]
-    assert control_event.row_count == 10
+    assert control_event.row_count == 11
     expected_ids = sorted(
         [
             "audit_access_events:aae_old",
             "provider_operations_events:poe_old",
+            "provider_attempt_debits:adbt_old",
             "provider_governed_actions:gact_old_executed",
             "prompt_rollout_events:pre_old",
             "async_control_events:ace_old",

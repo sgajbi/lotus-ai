@@ -16,7 +16,8 @@ from app.contracts.provider_operations import (
     ProviderOperationsResetIntentRequest,
 )
 from app.http.authenticated_caller import AuthenticatedCaller
-from app.services.provider_budget_policy import record_provider_spend
+from app.services.provider_budget_policy import record_attempt_spend
+from app.services.provider_usage_accounting import AttemptDebit
 from app.services.provider_degradation_state import record_provider_failure
 from app.services.provider_operations_control import (
     approve_provider_operations_reset,
@@ -29,6 +30,21 @@ from app.services.provider_request_builder import build_provider_execution_reque
 from app.services.task_execution_pipeline import validate_task_request
 from tests.support.migration_runner import upgrade_database_to_head
 from tests.unit.test_task_executor import _request
+
+
+def _seed_attempt_spend(amount: float, *, execution_id: str) -> None:
+    record_attempt_spend(
+        execution_id=execution_id,
+        provider_id="text.openai",
+        attempt_index=0,
+        debit=AttemptDebit(
+            amount_usd=amount,
+            basis="ACTUAL_USAGE",
+            input_tokens=100,
+            output_tokens=200,
+            rate_card_ref="default-live-text",
+        ),
+    )
 
 
 def _budget_response(cost: float) -> ProviderExecutionResponse:
@@ -111,7 +127,7 @@ def test_provider_operations_control_action_resets_durable_state_and_records_eve
         context=validate_task_request(_request("explain.v1"))
     )
     enforce_provider_quota(provider_request)
-    record_provider_spend(_budget_response(0.75))
+    _seed_attempt_spend(0.75, execution_id="exec-ops-control-1")
     record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
 
     response = _governed_reset(ProviderOperationsControlActionType.RESET_ALL_PROVIDER_OPERATIONS)

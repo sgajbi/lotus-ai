@@ -45,28 +45,20 @@ def test_provider_operations_status_reports_soft_budget_state_when_live_path_is_
     settings.live_text_soft_budget_usd = 0.5
     settings.live_text_hard_budget_usd = 1.0
 
-    from app.contracts.providers import ProviderAdapterKind, ProviderExecutionResponse
-    from app.services.provider_budget_policy import record_provider_spend
+    from app.services.provider_budget_policy import record_attempt_spend
+    from app.services.provider_usage_accounting import AttemptDebit
 
-    record_provider_spend(
-        ProviderExecutionResponse(
-            provider_id="text.openai",
-            provider_mode="openai",
-            adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
-            failure_category=None,
-            timeout_ms=4000,
-            retry_count=0,
-            max_output_tokens=512,
-            model_id="gpt-5.4",
-            provider_request_id="req-ops-1",
+    record_attempt_spend(
+        execution_id="exec-ops-status-soft",
+        provider_id="text.openai",
+        attempt_index=0,
+        debit=AttemptDebit(
+            amount_usd=0.75,
+            basis="ACTUAL_USAGE",
             input_tokens=100,
             output_tokens=200,
-            total_tokens=300,
-            estimated_cost_usd=0.75,
-            stubbed=False,
-            message="live response",
-            structured_output={},
-        )
+            rate_card_ref="default-live-text",
+        ),
     )
 
     status = build_provider_operations_status()
@@ -258,28 +250,20 @@ def test_provider_operations_status_reports_hard_budget_blocked_state() -> None:
     settings.live_text_output_cost_per_1k_tokens = 0.03
     settings.live_text_hard_budget_usd = 1.0
 
-    from app.contracts.providers import ProviderAdapterKind, ProviderExecutionResponse
-    from app.services.provider_budget_policy import record_provider_spend
+    from app.services.provider_budget_policy import record_attempt_spend
+    from app.services.provider_usage_accounting import AttemptDebit
 
-    record_provider_spend(
-        ProviderExecutionResponse(
-            provider_id="text.openai",
-            provider_mode="openai",
-            adapter_kind=ProviderAdapterKind.OPENAI_LIVE,
-            failure_category=None,
-            timeout_ms=4000,
-            retry_count=0,
-            max_output_tokens=512,
-            model_id="gpt-5.4",
-            provider_request_id="req-ops-budget-1",
+    record_attempt_spend(
+        execution_id="exec-ops-status-hard",
+        provider_id="text.openai",
+        attempt_index=0,
+        debit=AttemptDebit(
+            amount_usd=1.0,
+            basis="ACTUAL_USAGE",
             input_tokens=100,
             output_tokens=200,
-            total_tokens=300,
-            estimated_cost_usd=1.0,
-            stubbed=False,
-            message="live response",
-            structured_output={},
-        )
+            rate_card_ref="default-live-text",
+        ),
     )
 
     status = build_provider_operations_status()

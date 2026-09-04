@@ -5,6 +5,7 @@ import logging
 import time
 from typing import Any, cast
 from urllib import error, request as urllib_request
+from uuid import uuid4
 
 from app.contracts.providers import (
     ProviderAdapterKind,
@@ -35,9 +36,12 @@ from app.providers.advisor_brief_quality_guardrails import (
     build_advisor_brief_user_message,
     normalize_advisor_brief_output,
 )
+from app.services.provider_budget_policy import record_attempt_spend
 from app.services.provider_usage_accounting import (
+    AttemptDebit,
     estimate_live_text_cost,
-    settle_attempt_billing,
+    price_attempt,
+    project_attempt_billing,
 )
 
 
@@ -94,6 +98,9 @@ def execute_openai_compatible_text_request(
         require_api_key=require_api_key,
         retry_limit=request.retry_limit,
         execution_deadline_at=request.execution_deadline_at,
+        execution_id=request.execution_id,
+        cost_posture=request.failed_attempt_cost_posture,
+        model_revision=model_version or model_id,
     )
     output_message = extract_output_text(response_payload)
     message, structured_output = build_structured_output(
@@ -110,13 +117,14 @@ def execute_openai_compatible_text_request(
         output_tokens=output_tokens,
         model_revision=model_version or model_id,
     )
-    billing = settle_attempt_billing(
-        failed_attempts=extract_failed_attempts(response_payload),
-        posture=request.failed_attempt_cost_posture,
+    # The response projects the durable attempt debits (issue #289): the
+    # failed-attempt figures are exactly what the boundary recorded, and the
+    # served attempt's cost equals its own boundary debit by construction
+    # (same usage, same rate card).
+    billing = project_attempt_billing(
         final_cost=cost,
-        final_input_tokens=input_tokens,
-        max_output_tokens=request.max_output_tokens,
-        model_revision=model_version or model_id,
+        failed_debits=extract_failed_attempt_debits(response_payload),
+        had_failed_attempts=bool(extract_failed_attempts(response_payload)),
     )
     return ProviderExecutionResponse(
         provider_id=serving_provider_id,
@@ -175,6 +183,9 @@ def post_openai_compatible_response(
     require_api_key: bool,
     retry_limit: int = 0,
     execution_deadline_at: float | None = None,
+    execution_id: str | None = None,
+    cost_posture: str = "conservative",
+    model_revision: str | None = None,
 ) -> dict[str, Any]:
     """POST one OpenAI-compatible request, labelling every surface it emits
     with ``serving_provider_id``.
@@ -231,6 +242,45 @@ def post_openai_compatible_response(
     # (issue #232): the provider may have generated and billed before failing,
     # so the billing settlement needs what each attempt is known to have used.
     failed_attempts: list[dict[str, object]] = []
+    # Every potentially billable attempt debits durable spend AT ITS OWN
+    # BOUNDARY (issue #289) - the identity below keys the idempotent debit,
+    # so an execution that never succeeds, falls back, or dies later has
+    # already moved the budget envelope. Without a gateway-minted identity
+    # (direct callers) the transport mints one: production attempts always
+    # debit.
+    debit_execution_id = execution_id or uuid4().hex
+    # Conservative input estimate for attempts that never revealed usage:
+    # the request body is hard evidence of what was sent; ~4 bytes/token is
+    # the documented approximation, replaced by provider-reported input
+    # tokens the moment any attempt in this execution reveals them.
+    input_estimate = max(1, len(body) // 4)
+    payload_max_output = as_int(payload.get("max_output_tokens")) or 0
+
+    def _debit_boundary(
+        *,
+        attempt_index: int,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        billable_risk: bool,
+    ) -> AttemptDebit | None:
+        debit = price_attempt(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            billable_risk=billable_risk,
+            posture=cost_posture,
+            fallback_input_estimate=input_estimate,
+            max_output_tokens=payload_max_output,
+            model_revision=model_revision,
+        )
+        if debit is not None:
+            record_attempt_spend(
+                execution_id=debit_execution_id,
+                provider_id=serving_provider_id,
+                attempt_index=attempt_index,
+                debit=debit,
+            )
+        return debit
+
     for attempt_index in range(bounded_retry_limit + 1):
         if execution_deadline_at is not None:
             remaining_seconds = execution_deadline_at - _monotonic()
@@ -266,6 +316,14 @@ def post_openai_compatible_response(
                 response_payload["_lotus_failed_attempts"] = failed_attempts
                 usage = response_payload.get("usage")
                 usage_fields = usage if isinstance(usage, dict) else {}
+                # The served attempt debits at its own boundary too: spend is
+                # real before any response-layer settlement can run.
+                _debit_boundary(
+                    attempt_index=attempt_index,
+                    input_tokens=as_int(usage_fields.get("input_tokens")),
+                    output_tokens=as_int(usage_fields.get("output_tokens")),
+                    billable_risk=True,
+                )
                 attempt_latency_ms = _attempt_latency_ms(attempt_started)
                 record_provider_attempt(
                     provider_id=serving_provider_id,
@@ -315,12 +373,24 @@ def post_openai_compatible_response(
                 http_status=exc.code,
                 latency_ms=attempt_latency_ms,
             )
+            # 5xx may follow completed generation; 4xx (incl. 429) refuses
+            # before generation and carries no billable risk. The debit
+            # happens HERE, terminal or not: an execution whose every
+            # attempt fails has still moved the envelope (issue #289).
+            evidence = _failed_attempt_evidence(error_payload, billable_risk=exc.code >= 500)
+            error_input_tokens = as_int(evidence.get("input_tokens"))
+            if error_input_tokens is not None:
+                # Provider-reported input on a failed attempt is hard
+                # evidence for later conservative estimates of the same body.
+                input_estimate = error_input_tokens
+            debit = _debit_boundary(
+                attempt_index=attempt_index,
+                input_tokens=error_input_tokens,
+                output_tokens=as_int(evidence.get("output_tokens")),
+                billable_risk=exc.code >= 500,
+            )
             if will_retry:
-                # 5xx may follow completed generation; 4xx (incl. 429) refuses
-                # before generation and carries no billable risk.
-                failed_attempts.append(
-                    _failed_attempt_evidence(error_payload, billable_risk=exc.code >= 500)
-                )
+                failed_attempts.append(_with_debit(evidence, debit))
                 wait_for_retry(retry_decision)
                 continue
             deadline_stop = _governed_deadline_stop(
@@ -362,10 +432,18 @@ def post_openai_compatible_response(
                 failure_class=ProviderFailureCategory.PROVIDER_TIMEOUT.value,
                 latency_ms=attempt_latency_ms,
             )
+            # A timeout after acceptance may still have generated and billed
+            # provider-side - debited at the boundary, terminal or not.
+            debit = _debit_boundary(
+                attempt_index=attempt_index,
+                input_tokens=None,
+                output_tokens=None,
+                billable_risk=True,
+            )
             if will_retry:
-                # A timeout after acceptance may still have generated and
-                # billed provider-side.
-                failed_attempts.append(_failed_attempt_evidence({}, billable_risk=True))
+                failed_attempts.append(
+                    _with_debit(_failed_attempt_evidence({}, billable_risk=True), debit)
+                )
                 wait_for_retry(retry_decision)
                 continue
             deadline_stop = _governed_deadline_stop(
@@ -582,6 +660,46 @@ def _failed_attempt_evidence(
     }
 
 
+def _with_debit(evidence: dict[str, object], debit: AttemptDebit | None) -> dict[str, object]:
+    """Stamp what the boundary durably recorded onto the attempt evidence, so
+    the response projection restates the recorded numbers rather than
+    re-estimating them (issue #289)."""
+
+    if debit is not None:
+        evidence["debit_usd"] = debit.amount_usd
+        evidence["debit_basis"] = debit.basis
+        evidence["debit_input_tokens"] = debit.input_tokens
+        evidence["debit_output_tokens"] = debit.output_tokens
+        evidence["debit_rate_card_ref"] = debit.rate_card_ref
+    return evidence
+
+
+def extract_failed_attempt_debits(payload: dict[str, Any]) -> list[AttemptDebit]:
+    debits: list[AttemptDebit] = []
+    for attempt in extract_failed_attempts(payload):
+        amount = attempt.get("debit_usd")
+        basis = attempt.get("debit_basis")
+        rate_card_ref = attempt.get("debit_rate_card_ref")
+        if (
+            isinstance(amount, (int, float))
+            and not isinstance(amount, bool)
+            and basis in ("ACTUAL_USAGE", "CONSERVATIVE_ESTIMATE")
+            and isinstance(rate_card_ref, str)
+        ):
+            input_tokens = attempt.get("debit_input_tokens")
+            output_tokens = attempt.get("debit_output_tokens")
+            debits.append(
+                AttemptDebit(
+                    amount_usd=float(amount),  # monetary-float-ok: restating the recorded debit
+                    basis=basis,
+                    input_tokens=input_tokens if isinstance(input_tokens, int) else None,
+                    output_tokens=output_tokens if isinstance(output_tokens, int) else None,
+                    rate_card_ref=rate_card_ref,
+                )
+            )
+    return debits
+
+
 def extract_failed_attempts(payload: dict[str, Any]) -> list[dict[str, object]]:
     attempts = payload.get("_lotus_failed_attempts")
     return (
@@ -630,13 +748,10 @@ def build_structured_output(
         output_tokens=output_tokens,
         model_revision=configured_model_id,
     )
-    structured_billing = settle_attempt_billing(
-        failed_attempts=extract_failed_attempts(response_payload),
-        posture=request.failed_attempt_cost_posture,
+    structured_billing = project_attempt_billing(
         final_cost=structured_cost,
-        final_input_tokens=input_tokens,
-        max_output_tokens=request.max_output_tokens,
-        model_revision=configured_model_id,
+        failed_debits=extract_failed_attempt_debits(response_payload),
+        had_failed_attempts=bool(extract_failed_attempts(response_payload)),
     )
     structured_output.update(
         {

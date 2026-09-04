@@ -526,12 +526,15 @@ Runtime semantics under `ordered_fallback`:
 
 ## Provider Billing Truth
 
-Recorded spend covers every billed attempt of a live generation, not just the served one (issue #232): a retried timeout or 5xx may have generated and billed provider-side before failing.
+**Every potentially billable provider attempt debits Lotus spend exactly once, at its own boundary** (issue #289) — regardless of whether the execution succeeds, fails completely, falls back, or the process dies later.
 
-- `estimated_cost_usd` on responses and audit records is the attempt-summed figure, and the budget envelope records it. The composition — `failed_attempt_cost_usd`, `failed_attempt_cost_basis` (`ACTUAL_USAGE` | `CONSERVATIVE_ESTIMATE` | `MIXED` | `NONE`), `billed_attempt_count` — is on the provider execution response; the audit row's attempt context is `retry_count` and its cost posture.
-- `LOTUS_AI_PROVIDER_FAILED_ATTEMPT_COST_POSTURE` defaults to `conservative`: an unknown-usage billable-risk failure is estimated at the identical request body's input tokens plus the `max_output_tokens` ceiling - spend can overstate, never understate. `actual_only` bills failed attempts only on provider-reported usage; choosing it in the promoted profile is a loud protection-override finding.
-- Rate-limited (429) and connection-level failures are never billed - the provider did not generate.
-- Residual (recorded, not hidden): an execution whose every attempt fails records no spend; there is no usage evidence to price and the failure is visible on the operations ledger instead.
+- Each attempt records a durable debit row (`provider_attempt_debits`, on the provider-operations store) under an idempotent identity `adbt:<execution_id>:<provider_id>:<attempt_index>`; the budget counter advances in the same transaction. An execution whose every attempt fails has still moved the envelope, and a crash after an attempt loses nothing.
+- Pricing per attempt, in evidence order: provider-reported usage → `ACTUAL_USAGE` debit; unknown-usage timeout/5xx under the conservative posture → `CONSERVATIVE_ESTIMATE` debit at the input estimate (provider-reported input from any attempt of the same execution when available, else the documented request-body approximation of ~4 bytes/token) plus the `max_output_tokens` ceiling; 429 and connection-level failures → no debit (the provider did not generate); a missing rate card → no debit (the explicit cost-unknown posture, never a silent zero).
+- `LOTUS_AI_PROVIDER_FAILED_ATTEMPT_COST_POSTURE` defaults to `conservative` (spend can overstate, never understate); `actual_only` debits only on provider-reported usage, and choosing it in the promoted profile is a loud protection-override finding.
+- When a response exists, `estimated_cost_usd` / `failed_attempt_cost_usd` / `failed_attempt_cost_basis` / `billed_attempt_count` are a **projection of the recorded attempt debits** — the durable rows are where spend became real, and response settlement never debits again.
+- Retry and fallback candidates share one execution identity and debit cumulatively under their own attempt identities and rate cards; spend is never reset mid-execution.
+- Debit rows are lifecycle-governed evidence (control-plane evidence family, 7y): their expiry never reverses the budget counter.
+- `max_estimated_cost_usd` remains an unenforced preference until the hard execution-cost ceiling lands (one budget across retries and fallback — the latency-budget precedent).
 
 ## Durable Provider Operations Recovery
 

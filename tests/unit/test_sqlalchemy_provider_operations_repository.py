@@ -156,6 +156,51 @@ def test_sqlalchemy_provider_operations_repository_applies_atomic_mutations(
     assert degradation.upstream_error_failure_count == 1
 
 
+def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
+    tmp_path: Path,
+) -> None:
+    """Issue #289: the debit row and the budget counter advance together in
+    one transaction, a duplicate identity is a complete no-op, and deleting
+    evidence never reverses the counter."""
+
+    from app.repositories.provider_operations_repository import ProviderAttemptDebitRecord
+
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-debits.db'}"
+    upgrade_database_to_head(database_url)
+    repository = SqlAlchemyProviderOperationsRepository(database_url)
+
+    debit = ProviderAttemptDebitRecord(
+        debit_id="adbt:exec-sql:text.openai:0",
+        provider_id="text.openai",
+        basis="CONSERVATIVE_ESTIMATE",
+        amount_usd=0.01736,
+        input_tokens=200,
+        output_tokens=512,
+        rate_card_ref="default-live-text",
+        recorded_at="2026-03-23T00:00:00Z",
+    )
+
+    assert repository.record_attempt_debit(debit, budget_key="live_text_generation") is True
+    assert repository.record_attempt_debit(debit, budget_key="live_text_generation") is False
+
+    budget = repository.get_budget_state(budget_key="live_text_generation")
+    assert budget is not None
+    assert budget.current_spend_usd == 0.01736
+
+    rows = repository.list_attempt_debits(limit=10)
+    assert [row.debit_id for row in rows] == ["adbt:exec-sql:text.openai:0"]
+    assert rows[0].basis == "CONSERVATIVE_ESTIMATE"
+    assert rows[0].input_tokens == 200
+
+    assert repository.delete_attempt_debits([]) == 0
+    assert repository.delete_attempt_debits(["adbt:exec-sql:text.openai:0", "missing"]) == 1
+    assert repository.list_attempt_debits(limit=10) == []
+    # Evidence expiry never refunds the envelope.
+    budget = repository.get_budget_state(budget_key="live_text_generation")
+    assert budget is not None
+    assert budget.current_spend_usd == 0.01736
+
+
 def test_sqlalchemy_provider_operations_repository_records_events_and_resets_state(
     tmp_path: Path,
 ) -> None:

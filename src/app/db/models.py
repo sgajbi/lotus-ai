@@ -243,6 +243,23 @@ class ProviderBudgetStateModel(Base):
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
+class ProviderAttemptDebitModel(Base):
+    """Durable per-attempt economic evidence (issue #289): the debit id is
+    the idempotent attempt identity, so a row exists exactly once per
+    potentially billable attempt regardless of execution outcome."""
+
+    __tablename__ = "provider_attempt_debits"
+
+    debit_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    provider_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    basis: Mapped[str] = mapped_column(String(32), nullable=False)
+    amount_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rate_card_ref: Mapped[str] = mapped_column(String(128), nullable=False)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class ProviderDegradationStateModel(Base):
     __tablename__ = "provider_degradation_state"
 

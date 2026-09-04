@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 from fastapi import HTTPException, status
 
 from app.contracts.access_control import AuthorizationCapabilityType
@@ -43,7 +45,7 @@ from app.services.model_catalogue import (
     record_model_revision_drift,
 )
 from app.services.provider_policy import require_supported_text_generation_mode
-from app.services.provider_budget_policy import enforce_provider_budget, record_provider_spend
+from app.services.provider_budget_policy import enforce_provider_budget
 from app.services.provider_degradation_state import (
     enforce_provider_degradation_preflight,
     record_provider_failure,
@@ -80,6 +82,10 @@ class ProviderGatewayUnavailableError(HTTPException):
 
 def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecutionResponse:
     request = _apply_latency_ceiling(request)
+    if request.execution_id is None:
+        # One identity per execution, shared by every retry and fallback
+        # candidate: attempt debits key on it (issue #289).
+        request = request.model_copy(update={"execution_id": uuid4().hex})
     config = resolve_provider_execution_config()
     mode = require_supported_text_generation_mode()
     live_execution_state = build_provider_live_execution_state(task_id=request.task_id)
@@ -155,7 +161,8 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
             decided_at=decided_at,
         )
         if mode in LIVE_TEXT_MODES:
-            record_provider_spend(response)
+            # Spend was debited durably at each attempt boundary (issue
+            # #289); the response merely projects those debits.
             record_successful_provider_execution()
         return response
     except ProviderExecutionError as exc:
@@ -340,7 +347,6 @@ def _execute_ordered_fallback(
                 decided_at=_utc_now_iso(),
                 universe=universe,
             )
-            record_provider_spend(response)
             record_successful_provider_execution()
             return response
 

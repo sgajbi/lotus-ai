@@ -11,7 +11,8 @@ from app.contracts.providers import (
     ProviderExecutionResponse,
     ProviderFailureCategory,
 )
-from app.services.provider_budget_policy import record_provider_spend
+from app.services.provider_budget_policy import record_attempt_spend
+from app.services.provider_usage_accounting import AttemptDebit
 from app.services.provider_degradation_state import record_provider_failure
 from app.services.provider_operations_store import reset_provider_operations_store_cache
 from app.services.provider_quota_policy import enforce_provider_quota
@@ -28,6 +29,21 @@ from tests.support.caller_credentials import (
     mint_caller_credential,
     public_keys_setting,
 )
+
+
+def _seed_attempt_spend(amount: float, *, execution_id: str) -> None:
+    record_attempt_spend(
+        execution_id=execution_id,
+        provider_id="text.openai",
+        attempt_index=0,
+        debit=AttemptDebit(
+            amount_usd=amount,
+            basis="ACTUAL_USAGE",
+            input_tokens=100,
+            output_tokens=200,
+            rate_card_ref="default-live-text",
+        ),
+    )
 
 
 def _budget_response(cost: float | None, *, stubbed: bool = False) -> ProviderExecutionResponse:
@@ -208,7 +224,7 @@ def test_provider_budget_policy_route_reports_durable_sql_backed_spend(
     settings.live_text_hard_budget_usd = 1.0
     upgrade_database_to_head(settings.database_url)
 
-    record_provider_spend(_budget_response(0.75))
+    _seed_attempt_spend(0.75, execution_id="exec-contract-soft")
 
     response = client.get("/platform/providers/budget-policy")
 
@@ -338,7 +354,7 @@ def test_provider_operations_control_action_route_resets_durable_sql_backed_stat
     request = _request("explain.v1", expected_output_label=None)
     provider_request = build_provider_execution_request(context=validate_task_request(request))
     enforce_provider_quota(provider_request)
-    record_provider_spend(_budget_response(0.75))
+    _seed_attempt_spend(0.75, execution_id="exec-contract-reset")
     record_provider_failure(ProviderFailureCategory.PROVIDER_TIMEOUT)
 
     _verified_control_settings()

@@ -3,14 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.config import settings
-from app.services.provider_usage_accounting import resolve_effective_live_text_card
+from app.services.provider_usage_accounting import AttemptDebit, resolve_effective_live_text_card
 from app.contracts.providers import (
     ProviderBudgetPolicyResponse,
     ProviderBudgetState,
-    ProviderExecutionResponse,
     ProviderFailureCategory,
 )
 from app.providers.base import ProviderExecutionError
+from app.repositories.provider_operations_repository import ProviderAttemptDebitRecord
 from app.services.provider_operations_store import get_provider_operations_store
 from app.services.provider_execution_config import resolve_provider_execution_config
 
@@ -106,7 +106,7 @@ def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
         remaining_budget_usd=remaining_budget_usd,
         findings=findings,
         usage_to_budget_notes=[
-            "Tracked spend is derived only from structured live-provider cost evidence emitted by successful provider responses.",
+            "Tracked spend is recorded durably per provider attempt at the attempt boundary (issue #289): actual usage debits as actual, billable-risk failures debit conservatively, and an execution whose every attempt fails still moves the envelope.",
             "Soft budget posture is advisory and inspectable; hard budget posture is blocking when enforcement is enabled.",
             "Tracked spend now flows through the configured provider-operations store so budget posture can remain durable when the SQL-backed provider-operations path is enabled.",
         ],
@@ -129,16 +129,36 @@ def enforce_provider_budget() -> None:
         )
 
 
-def record_provider_spend(response: ProviderExecutionResponse) -> None:
-    if response.stubbed:
-        return
-    if response.estimated_cost_usd is None:
-        return
+def record_attempt_spend(
+    *,
+    execution_id: str,
+    provider_id: str,
+    attempt_index: int,
+    debit: AttemptDebit,
+) -> bool:
+    """Durably debit one provider attempt at its boundary (issue #289).
+
+    The identity is derived from the execution/candidate/attempt context, so
+    recording is idempotent: a crash after the attempt loses nothing, and a
+    duplicate recording is a complete no-op. The budget counter advances in
+    the same transaction, which is why an execution whose every attempt
+    fails still moves the envelope - spend becomes real per attempt, not at
+    response settlement.
+    """
+
     repository = get_provider_operations_store()
-    repository.add_budget_spend(
+    return repository.record_attempt_debit(
+        ProviderAttemptDebitRecord(
+            debit_id=f"adbt:{execution_id}:{provider_id}:{attempt_index}",
+            provider_id=provider_id,
+            basis=debit.basis,
+            amount_usd=debit.amount_usd,
+            input_tokens=debit.input_tokens,
+            output_tokens=debit.output_tokens,
+            rate_card_ref=debit.rate_card_ref,
+            recorded_at=_utcnow(),
+        ),
         budget_key=_BUDGET_KEY,
-        amount_usd=response.estimated_cost_usd,
-        updated_at=_utcnow(),
     )
 
 
