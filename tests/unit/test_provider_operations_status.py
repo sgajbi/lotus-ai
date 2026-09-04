@@ -50,7 +50,9 @@ def test_provider_operations_status_reports_soft_budget_state_when_live_path_is_
 
     record_attempt_spend(
         execution_id="exec-ops-status-soft",
+        candidate_entry_id="text.openai:gpt-5.4",
         provider_id="text.openai",
+        model_revision="gpt-5.4",
         attempt_index=0,
         debit=AttemptDebit(
             amount_usd=0.75,
@@ -255,7 +257,9 @@ def test_provider_operations_status_reports_hard_budget_blocked_state() -> None:
 
     record_attempt_spend(
         execution_id="exec-ops-status-hard",
+        candidate_entry_id="text.openai:gpt-5.4",
         provider_id="text.openai",
+        model_revision="gpt-5.4",
         attempt_index=0,
         debit=AttemptDebit(
             amount_usd=1.0,

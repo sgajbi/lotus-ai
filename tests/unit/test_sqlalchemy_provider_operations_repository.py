@@ -170,7 +170,7 @@ def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
     repository = SqlAlchemyProviderOperationsRepository(database_url)
 
     debit = ProviderAttemptDebitRecord(
-        debit_id="adbt:exec-sql:text.openai:0",
+        debit_id="adbt:exec-sql:text.openai:gpt-5.4:0",
         provider_id="text.openai",
         basis="CONSERVATIVE_ESTIMATE",
         amount_usd=0.01736,
@@ -178,6 +178,9 @@ def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
         output_tokens=512,
         rate_card_ref="default-live-text",
         recorded_at="2026-03-23T00:00:00Z",
+        candidate_entry_id="text.openai:gpt-5.4",
+        model_revision="gpt-5.4",
+        attempt_index=0,
     )
 
     assert repository.record_attempt_debit(debit, budget_key="live_text_generation") is True
@@ -188,9 +191,14 @@ def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
     assert budget.current_spend_usd == 0.01736
 
     rows = repository.list_attempt_debits(limit=10)
-    assert [row.debit_id for row in rows] == ["adbt:exec-sql:text.openai:0"]
+    assert [row.debit_id for row in rows] == ["adbt:exec-sql:text.openai:gpt-5.4:0"]
     assert rows[0].basis == "CONSERVATIVE_ESTIMATE"
     assert rows[0].input_tokens == 200
+    # The serving identity round-trips (issue #299): a later audit can name
+    # the catalogue entry, provider, revision and attempt from the row alone.
+    assert rows[0].candidate_entry_id == "text.openai:gpt-5.4"
+    assert rows[0].model_revision == "gpt-5.4"
+    assert rows[0].attempt_index == 0
 
     # Execution-scoped consumption (issue #290): the sum answers the cost
     # ceiling's admission question from the same durable rows.
@@ -198,7 +206,7 @@ def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
     assert repository.sum_attempt_debits(debit_id_prefix="adbt:exec-other:") == 0.0
 
     assert repository.delete_attempt_debits([]) == 0
-    assert repository.delete_attempt_debits(["adbt:exec-sql:text.openai:0", "missing"]) == 1
+    assert repository.delete_attempt_debits(["adbt:exec-sql:text.openai:gpt-5.4:0", "missing"]) == 1
     assert repository.list_attempt_debits(limit=10) == []
     # Evidence expiry never refunds the envelope.
     budget = repository.get_budget_state(budget_key="live_text_generation")

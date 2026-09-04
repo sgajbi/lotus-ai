@@ -33,10 +33,17 @@ class ProviderAttemptDebitRecord:
     """One durable economic debit at a provider attempt boundary (issue #289).
 
     The debit_id is the idempotent attempt identity
-    (``adbt:<execution_id>:<provider_id>:<attempt_index>``): recording the
-    same identity twice is a no-op, so a crash-and-retry of the recording
-    call can never double-debit, and a process death after the attempt
-    loses nothing - the debit is already durable.
+    (``adbt:<execution_id>:<candidate_entry_id>:<attempt_index>``): recording
+    the same identity twice is a no-op, so a crash-and-retry of the recording
+    call can never double-debit, and a process death after the attempt loses
+    nothing - the debit is already durable. The identity segment is the
+    CANDIDATE - the catalogue entry id binding provider, model revision and
+    deployment (issue #299) - because two model candidates at the same
+    provider are normal serving topology and a provider id would collide
+    their attempt debits. The row carries the full serving identity so a
+    later audit can answer which catalogue entry, provider, model revision,
+    rate card and attempt a debit describes; rows recorded before #299 have
+    null candidate columns (their debit_id carries only the provider id).
     """
 
     debit_id: str
@@ -47,6 +54,9 @@ class ProviderAttemptDebitRecord:
     output_tokens: int | None
     rate_card_ref: str
     recorded_at: str
+    candidate_entry_id: str | None = None
+    model_revision: str | None = None
+    attempt_index: int | None = None
 
 
 @dataclass(frozen=True)

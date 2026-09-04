@@ -184,6 +184,9 @@ class SqlAlchemyProviderOperationsRepository(
                     output_tokens=record.output_tokens,
                     rate_card_ref=record.rate_card_ref,
                     recorded_at=record.recorded_at,
+                    candidate_entry_id=record.candidate_entry_id,
+                    model_revision=record.model_revision,
+                    attempt_index=record.attempt_index,
                 )
             )
             budget = session.execute(
@@ -231,6 +234,9 @@ class SqlAlchemyProviderOperationsRepository(
                     output_tokens=model.output_tokens,
                     rate_card_ref=model.rate_card_ref,
                     recorded_at=model.recorded_at,
+                    candidate_entry_id=model.candidate_entry_id,
+                    model_revision=model.model_revision,
+                    attempt_index=model.attempt_index,
                 )
                 for model in models
             ]
@@ -251,7 +257,7 @@ class SqlAlchemyProviderOperationsRepository(
         with self._session_factory() as session:
             total = session.execute(
                 select(func.coalesce(func.sum(ProviderAttemptDebitModel.amount_usd), 0.0)).where(
-                    # Identities are adbt:<uuid-hex>:<provider-id>:<index>;
+                    # Identities are adbt:<uuid-hex>:<candidate-entry-id>:<index>;
                     # none of those parts contain SQL LIKE wildcards.
                     ProviderAttemptDebitModel.debit_id.like(f"{debit_id_prefix}%")
                 )

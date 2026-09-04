@@ -35,7 +35,9 @@ from tests.unit.test_task_executor import _request
 def _seed_attempt_spend(amount: float, *, execution_id: str) -> None:
     record_attempt_spend(
         execution_id=execution_id,
+        candidate_entry_id="text.openai:gpt-5.4",
         provider_id="text.openai",
+        model_revision="gpt-5.4",
         attempt_index=0,
         debit=AttemptDebit(
             amount_usd=amount,

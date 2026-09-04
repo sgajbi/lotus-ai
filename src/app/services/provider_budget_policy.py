@@ -132,7 +132,9 @@ def enforce_provider_budget() -> None:
 def record_attempt_spend(
     *,
     execution_id: str,
+    candidate_entry_id: str,
     provider_id: str,
+    model_revision: str | None,
     attempt_index: int,
     debit: AttemptDebit,
 ) -> bool:
@@ -144,12 +146,18 @@ def record_attempt_spend(
     the same transaction, which is why an execution whose every attempt
     fails still moves the envelope - spend becomes real per attempt, not at
     response settlement.
+
+    The candidate segment is the catalogue entry id, never the provider id
+    (issue #299): two model candidates at the same provider are normal
+    serving topology, and a provider-keyed identity would silently swallow
+    the second candidate's attempt 0 as a duplicate of the first's. The
+    row persists the full serving identity for later audit.
     """
 
     repository = get_provider_operations_store()
     return repository.record_attempt_debit(
         ProviderAttemptDebitRecord(
-            debit_id=f"adbt:{execution_id}:{provider_id}:{attempt_index}",
+            debit_id=f"adbt:{execution_id}:{candidate_entry_id}:{attempt_index}",
             provider_id=provider_id,
             basis=debit.basis,
             amount_usd=debit.amount_usd,
@@ -157,6 +165,9 @@ def record_attempt_spend(
             output_tokens=debit.output_tokens,
             rate_card_ref=debit.rate_card_ref,
             recorded_at=_utcnow(),
+            candidate_entry_id=candidate_entry_id,
+            model_revision=model_revision,
+            attempt_index=attempt_index,
         ),
         budget_key=_BUDGET_KEY,
     )

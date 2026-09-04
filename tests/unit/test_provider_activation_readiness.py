@@ -102,7 +102,9 @@ def test_provider_activation_readiness_reports_hard_budget_blocking() -> None:
 
     record_attempt_spend(
         execution_id="exec-activation-hard",
+        candidate_entry_id="text.openai:gpt-5.4",
         provider_id="text.openai",
+        model_revision="gpt-5.4",
         attempt_index=0,
         debit=AttemptDebit(
             amount_usd=1.0,
