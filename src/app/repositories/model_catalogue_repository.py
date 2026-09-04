@@ -8,6 +8,7 @@ from app.contracts.model_catalogue import (
     ModelCatalogueEntry,
     ModelLifecycleTransitionRecord,
     ModelRevisionDriftObservation,
+    ServingPolicyVersionRecord,
 )
 
 
@@ -17,6 +18,18 @@ class ModelCatalogueRepository(Protocol):
     def get_entry(self, entry_id: str) -> ModelCatalogueEntry | None: ...
 
     def upsert_entry(self, entry: ModelCatalogueEntry) -> None: ...
+
+    def get_current_serving_policy(self) -> ServingPolicyVersionRecord | None:
+        """The operative (highest-version) serving policy, if one exists."""
+        ...
+
+    def save_serving_policy_version(self, record: ServingPolicyVersionRecord) -> None:
+        """Append one immutable policy version; a duplicate version number is refused."""
+        ...
+
+    def list_serving_policy_versions(self, *, limit: int) -> list[ServingPolicyVersionRecord]:
+        """Policy versions, newest first."""
+        ...
 
     def append_lifecycle_event(self, event: ModelLifecycleTransitionRecord) -> None: ...
 

@@ -799,6 +799,22 @@ class ModelRevisionDriftObservationModel(Base):
     observation_count: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
+class ServingPolicyVersionModel(Base):
+    """Append-only serving-policy versions (issue #295, S2): the highest
+    version is the operative policy; every version records who changed it."""
+
+    __tablename__ = "serving_policy_versions"
+
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ordered_entry_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    changed_entry_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    requested_by_key_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    approver_key_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    governed_action_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    recorded_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class ModelCatalogueEntryModel(Base):
     __tablename__ = "model_catalogue_entries"
 

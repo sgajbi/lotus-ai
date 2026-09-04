@@ -531,6 +531,7 @@ def _build_ordered_routing_decision(
             universe.source if universe is not None else CandidateUniverseSource.CONFIGURED
         ),
         universe_exclusions=list(universe.exclusions) if universe is not None else [],
+        serving_policy_version=(universe.serving_policy_version if universe is not None else None),
     )
 
 

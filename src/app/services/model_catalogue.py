@@ -375,38 +375,67 @@ def enforce_capability_requirements(
         )
 
 
+def current_serving_order(
+    config: ProviderExecutionConfig | None = None,
+) -> tuple[list[str], int | None]:
+    """The operative ordered identities and the policy version they follow.
+
+    The stored serving-policy artifact (issue #295, S2) is the order when one
+    exists; until then the configured primary/fallback pair supplies it, and
+    the version is honestly None.
+    """
+
+    policy = get_model_catalogue_repository().get_current_serving_policy()
+    if policy is not None:
+        return list(policy.ordered_entry_ids), policy.version
+    resolved = config or resolve_provider_execution_config()
+    order: list[str] = []
+    for provider_id, model_id, model_version in (
+        (resolved.provider_id, resolved.model_id, resolved.model_version),
+        (
+            resolved.fallback_provider_id,
+            resolved.fallback_model_id,
+            resolved.fallback_model_version,
+        ),
+    ):
+        if provider_id and model_id:
+            order.append(
+                derive_model_catalogue_entry_id(
+                    provider_id=provider_id,
+                    model_revision=model_version or model_id,
+                    deployment=None,
+                )
+            )
+    return order, None
+
+
 def derive_candidate_universe(config: ProviderExecutionConfig) -> CandidateUniverse:
     """Derive the ordered candidate universe from catalogue evidence bounded by policy.
 
-    The policy bound is the configured primary/fallback identity order (issue
-    #244); the catalogue supplies the evidence each identity must earn
+    The policy bound is the governed serving order - the stored policy
+    artifact when one exists (issue #295, S2), the configured pair until
+    then; the catalogue supplies the evidence each identity must earn
     eligibility with. Every exclusion is reasoned: a policy identity with no
-    catalogue entry, a policy identity whose lifecycle refuses service, and -
-    the operator question configuration cannot answer - a serving-eligible
-    catalogue entry for this mode that no policy row lets serve.
+    catalogue entry, a policy identity whose lifecycle refuses service, a
+    policy identity with no governed connection material, and - the operator
+    question configuration cannot answer - a serving-eligible catalogue
+    entry for this mode that no policy row lets serve.
 
     Since U2 this derivation IS the ordered enumeration: an identity excluded
     here never becomes a candidate, and `source` records the flip on every
     routing decision.
     """
 
+    from app.services.provider_connection_material import configured_connection_materials
+
     ensure_model_catalogue_seeded()
     repository = get_model_catalogue_repository()
-    policy_order: list[tuple[str | None, str | None, str | None]] = [
-        (config.provider_id, config.model_id, config.model_version),
-        (config.fallback_provider_id, config.fallback_model_id, config.fallback_model_version),
-    ]
+    ordered_entry_ids, serving_policy_version = current_serving_order(config)
+    materials = configured_connection_materials(config)
 
     candidate_entry_ids: list[str] = []
     exclusions: list[CandidateUniverseExclusionDescriptor] = []
-    for provider_id, model_id, model_version in policy_order:
-        if not provider_id or not model_id:
-            continue
-        entry_id = derive_model_catalogue_entry_id(
-            provider_id=provider_id,
-            model_revision=model_version or model_id,
-            deployment=None,
-        )
+    for entry_id in ordered_entry_ids:
         entry = repository.get_entry(entry_id)
         if entry is None:
             exclusions.append(
@@ -427,6 +456,18 @@ def derive_candidate_universe(config: ProviderExecutionConfig) -> CandidateUnive
                     detail=(
                         f"`{entry_id}` is {entry.lifecycle_state.value} and not eligible "
                         "to serve new executions."
+                    ),
+                )
+            )
+            continue
+        if entry_id not in materials:
+            exclusions.append(
+                CandidateUniverseExclusionDescriptor(
+                    entry_id=entry_id,
+                    reason=CandidateUniverseExclusionReason.CONNECTION_MATERIAL_MISSING,
+                    detail=(
+                        f"Policy orders `{entry_id}` but no governed connection material "
+                        "says how to reach it (issue #295)."
                     ),
                 )
             )
@@ -458,6 +499,7 @@ def derive_candidate_universe(config: ProviderExecutionConfig) -> CandidateUnive
         source=CandidateUniverseSource.CATALOGUE_DERIVED,
         candidate_entry_ids=candidate_entry_ids,
         exclusions=exclusions,
+        serving_policy_version=serving_policy_version,
     )
 
 

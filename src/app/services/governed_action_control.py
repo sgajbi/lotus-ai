@@ -54,6 +54,7 @@ HUMAN_GOVERNED_ACTION_TYPES = frozenset(
         GovernedActionType.MODEL_LIFECYCLE_PROMOTE,
         GovernedActionType.MODEL_CAPABILITY_RESTORE,
         GovernedActionType.DATA_ERASURE,
+        GovernedActionType.SERVING_POLICY_IDENTITY_ADD,
     }
 )
 

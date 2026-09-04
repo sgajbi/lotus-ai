@@ -15,6 +15,7 @@ vocabulary migration when those slices land.
 from __future__ import annotations
 
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -285,6 +286,38 @@ OPERATOR_TERMINAL_LIFECYCLE_STATES = frozenset(
 )
 
 
+class ServingPolicyVersionRecord(BaseModel):
+    """One immutable version of the governed serving-policy artifact
+    (issue #295, S2): the ordered identities that may serve, with the acting
+    credentials recorded. Versions are append-only; the highest version is
+    the operative policy."""
+
+    version: int = Field(ge=1, description="Monotonic policy version; highest is operative.")
+    ordered_entry_ids: list[str] = Field(
+        description="Catalogue entry ids in governed serving order - order is policy, never ranking."
+    )
+    action: Literal["IDENTITY_ADD", "IDENTITY_REMOVE"] = Field(
+        description="What produced this version."
+    )
+    changed_entry_id: str = Field(min_length=1, description="The identity added or removed.")
+    requested_by_key_id: str = Field(
+        min_length=1, description="Verified credential that requested the change."
+    )
+    approver_key_id: str | None = Field(
+        default=None,
+        description=(
+            "Distinct verified credential that approved an IDENTITY_ADD; null for "
+            "IDENTITY_REMOVE, the risk-reducing safety direction taken by one "
+            "verified principal immediately."
+        ),
+    )
+    governed_action_id: str | None = Field(
+        default=None,
+        description="Governed-action evidence reference for two-step additions.",
+    )
+    recorded_at: str = Field(min_length=1)
+
+
 class ModelLifecycleTransitionRecord(BaseModel):
     """One durable lifecycle transition on a catalogue entry."""
 
@@ -512,3 +545,56 @@ class ModelRevisionDriftObservation(BaseModel):
     first_observed_at: str = Field(description="First instant this drift was observed (UTC).")
     last_observed_at: str = Field(description="Most recent instant this drift was observed (UTC).")
     observation_count: int = Field(ge=1, description="How many executions observed this drift.")
+
+
+class ServingPolicyIdentityAddRequest(BaseModel):
+    """Step one of adding an identity to the serving policy (issue #295, S2)."""
+
+    entry_id: str = Field(min_length=1, description="Catalogue entry to add to the serving order.")
+    reason: str = Field(min_length=1, description="Why this identity should be allowed to serve.")
+    requested_by: str | None = Field(
+        default=None, description="Optional human attribution alongside the verified credential."
+    )
+
+
+class ServingPolicyIdentityAddApprovalRequest(BaseModel):
+    """Step two: a distinct verified credential approves the exact pending change."""
+
+    action_id: str = Field(min_length=1)
+    action_hash: str = Field(min_length=64, max_length=64)
+    approved_by: str | None = Field(
+        default=None, description="Optional human attribution alongside the verified credential."
+    )
+
+
+class ServingPolicyIdentityRemovalRequest(BaseModel):
+    """Immediate risk-reducing removal by one verified principal (issue #295, S2)."""
+
+    entry_id: str = Field(min_length=1, description="Catalogue entry to remove from serving order.")
+    reason: str = Field(min_length=1, description="Why this identity must stop serving.")
+    requested_by: str | None = Field(
+        default=None, description="Optional human attribution alongside the verified identity."
+    )
+
+
+class ServingPolicyChangeResponse(BaseModel):
+    service: str
+    version: str
+    policy: ServingPolicyVersionRecord = Field(description="The new operative policy version.")
+    summary: list[str] = Field(default_factory=list)
+
+
+class ServingPolicyStatusResponse(BaseModel):
+    service: str
+    version: str
+    current: ServingPolicyVersionRecord | None = Field(
+        default=None,
+        description=(
+            "The operative serving policy; null while ordering still comes from "
+            "the configured primary/fallback pair."
+        ),
+    )
+    versions: list[ServingPolicyVersionRecord] = Field(
+        default_factory=list, description="Version history, newest first."
+    )
+    summary: list[str] = Field(default_factory=list)

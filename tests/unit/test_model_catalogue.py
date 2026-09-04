@@ -1182,3 +1182,51 @@ def test_capability_restore_re_request_supersedes_the_prior_intent(
         GOVERNED_APPROVER,
     )
     assert executed.entry.capability_degradations == {}
+
+
+def test_serving_policy_versions_round_trip_and_refuse_duplicates(tmp_path: "Path") -> None:
+    """Issue #295, S2: policy versions persist append-only on both adapters;
+    a duplicate version number is refused - versions are immutable."""
+
+    from app.contracts.model_catalogue import ServingPolicyVersionRecord
+    from app.repositories.memory_model_catalogue_repository import (
+        InMemoryModelCatalogueRepository,
+    )
+    from app.repositories.sqlalchemy_model_catalogue_repository import (
+        SqlAlchemyModelCatalogueRepository,
+    )
+    from tests.support.migration_runner import upgrade_database_to_head
+
+    database_url = f"sqlite:///{tmp_path / 'lotus-ai-serving-policy.db'}"
+    upgrade_database_to_head(database_url)
+
+    def _record(version: int) -> ServingPolicyVersionRecord:
+        return ServingPolicyVersionRecord(
+            version=version,
+            ordered_entry_ids=["entry-a", "entry-b"],
+            action="IDENTITY_ADD",
+            changed_entry_id="entry-b",
+            requested_by_key_id="ops-key-alpha",
+            approver_key_id="ops-key-beta",
+            governed_action_id="gact_1",
+            recorded_at="2026-09-04T00:00:00Z",
+        )
+
+    for repository in (
+        InMemoryModelCatalogueRepository(),
+        SqlAlchemyModelCatalogueRepository(database_url),
+    ):
+        assert repository.get_current_serving_policy() is None
+        repository.save_serving_policy_version(_record(1))
+        repository.save_serving_policy_version(
+            _record(2).model_copy(update={"action": "IDENTITY_REMOVE", "approver_key_id": None})
+        )
+        current = repository.get_current_serving_policy()
+        assert current is not None
+        assert current.version == 2
+        assert current.approver_key_id is None
+        assert [r.version for r in repository.list_serving_policy_versions(limit=10)] == [2, 1]
+        import pytest as _pytest
+
+        with _pytest.raises(ValueError, match="already exists"):
+            repository.save_serving_policy_version(_record(2))
