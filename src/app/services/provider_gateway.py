@@ -110,6 +110,7 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
     if mode in LIVE_TEXT_MODES and config.routing_strategy == "ordered_fallback":
         return _execute_ordered_fallback(request, mode=mode, config=config)
     catalogue_entry: ModelCatalogueEntry | None = None
+    execution_config = config
     if mode in LIVE_TEXT_MODES:
         require_authorized(
             authorize_request(
@@ -119,6 +120,33 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
                 task_id=request.task_id,
             )
         )
+        material_findings = connection_material_findings()
+        if material_findings:
+            # Malformed declared material means the platform cannot know
+            # whether the serving identity's connection is overridden -
+            # serving anyway could use stale connection truth, so the fixed
+            # path fails closed exactly as the ordered path does (#298).
+            raise ProviderGatewayUnavailableError(
+                detail=(
+                    f"{ProviderFailureCategory.INVALID_LIVE_CONFIGURATION.value}: "
+                    + "; ".join(material_findings)
+                ),
+                routing_decision=_build_rejected_routing_decision(
+                    requirements=request.requirements,
+                    mode_value=mode.value,
+                    category=ProviderFailureCategory.INVALID_LIVE_CONFIGURATION,
+                    config=config,
+                ),
+            )
+        primary_entry_id, _ = _candidate_entry_identity(config)
+        if primary_entry_id is not None:
+            # One connection authority (issue #298): the fixed path serves
+            # the primary identity, so its execution config resolves through
+            # the same merged material seam the ordered path enumerates from
+            # - a declared override of the primary drives the actual call.
+            resolved = derive_candidate_execution_config(config, primary_entry_id)
+            if resolved is not None:
+                execution_config = resolved
         try:
             # An operator kill switch outranks every automatic control.
             enforce_kill_switches(request)
@@ -148,7 +176,7 @@ def execute_text_generation(request: ProviderExecutionRequest) -> ProviderExecut
     adapter = resolve_text_generation_adapter(mode)
     decided_at = _utc_now_iso()
     try:
-        response = adapter.execute(_request_for_attempt(request), config=config)
+        response = adapter.execute(_request_for_attempt(request), config=execution_config)
         if catalogue_entry is not None:
             # Stamp the governed identity the execution was bound to; the
             # transport only knows settings strings and the provider echo.
@@ -246,9 +274,10 @@ def _execute_ordered_fallback(
     # catalogue excludes never becomes a candidate - its reasoned exclusion
     # rides the routing decision instead.
     universe = derive_candidate_universe(config)
-    # Connection material resolves per governed identity (issue #295, S1):
-    # for the configured pair this returns exactly the primary and alternate
-    # configs it always did - the seam is general, the behaviour identical.
+    # Connection material resolves per governed identity (issue #295 S1,
+    # #298): the merged material map is the one connection authority - an
+    # untouched pair resolves to exactly the configs it always did, and a
+    # declared override IS the config the candidate executes under.
     candidates = [
         candidate
         for entry_id in universe.candidate_entry_ids

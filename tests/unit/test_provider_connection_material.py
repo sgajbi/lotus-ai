@@ -124,6 +124,67 @@ def test_declared_material_overrides_the_seeded_identity() -> None:
     assert materials[alternate_id].api_base == "http://replacement-host:9999/v1"
 
 
+def test_a_declared_override_drives_the_actual_execution_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Issue #298: one catalogue identity -> one effective connection material
+    -> one execution config. A declared override of a seeded identity is not
+    merely visible in configuration inspection - it IS the config the
+    candidate executes under, endpoint and credential reference both."""
+
+    _pair_settings()
+    settings.live_text_fallback_api_key = "legacy-alternate-secret"
+    monkeypatch.setenv("REPLACEMENT_PRIMARY_KEY", "replacement-secret")
+    settings.provider_connections_json = json.dumps(
+        [
+            {
+                "provider_id": "text.openai",
+                "model_id": "gpt-5.4",
+                "model_version": "gpt-5.4-2026-06-01",
+                "api_base": "https://override.example/v1",
+                "api_key_env": "REPLACEMENT_PRIMARY_KEY",
+            },
+            {
+                "provider_id": "text.local",
+                "model_id": "qwen2.5",
+                "api_base": "http://replacement-host:9999/v1",
+            },
+        ]
+    )
+    config = resolve_provider_execution_config()
+    primary_id = _entry("text.openai", "gpt-5.4", "gpt-5.4-2026-06-01")
+    alternate_id = _entry("text.local", "qwen2.5", None)
+
+    primary = derive_candidate_execution_config(config, primary_id)
+    assert primary is not None
+    assert primary.api_base == "https://override.example/v1"
+    assert primary.api_key == "replacement-secret"
+    # The override replaces the connection, never the identity: inspection
+    # and execution resolve the same candidate.
+    assert (primary.provider_id, primary.model_id, primary.model_version) == (
+        config.provider_id,
+        config.model_id,
+        config.model_version,
+    )
+    # Shared protections still come from the primary config.
+    assert primary.timeout_ms == config.timeout_ms
+    assert primary.enforcement == config.enforcement
+
+    alternate = derive_candidate_execution_config(config, alternate_id)
+    assert alternate is not None
+    assert alternate.api_base == "http://replacement-host:9999/v1"
+    # The override replaces the credential reference too: none declared means
+    # no credential - the legacy alternate secret never silently follows the
+    # replacement endpoint.
+    assert alternate.api_key is None
+    assert alternate.provider_id == "text.local"
+
+    # Inspection truth == execution truth, per identity.
+    materials = configured_connection_materials(config)
+    assert materials[primary_id].api_base == primary.api_base
+    assert materials[alternate_id].api_base == alternate.api_base
+
+
 def test_malformed_declared_material_fails_closed_with_bounded_findings() -> None:
     _pair_settings()
 

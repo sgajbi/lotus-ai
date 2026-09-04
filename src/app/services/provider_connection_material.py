@@ -42,7 +42,11 @@ from app.services.provider_execution_config import (
 class ProviderConnectionMaterial:
     """One identity's connection facts. ``api_key_env`` names the variable
     holding the credential; the secret itself is resolved lazily at config
-    derivation and lives nowhere else."""
+    derivation and lives nowhere else. ``seeded`` marks material sourced
+    from the legacy settings pair rather than declared JSON: a seeded entry
+    renders back to exactly the legacy config (byte-equivalence), while a
+    declared entry - including a deliberate override of a seeded identity -
+    is the connection truth execution runs under (issue #298)."""
 
     entry_id: str
     provider_id: str
@@ -50,6 +54,7 @@ class ProviderConnectionMaterial:
     model_version: str | None
     api_base: str
     api_key_env: str | None
+    seeded: bool = False
 
 
 def _entry_id(provider_id: str, model_id: str, model_version: str | None) -> str:
@@ -144,6 +149,7 @@ def configured_connection_materials(
             model_version=config.model_version,
             api_base=config.api_base,
             api_key_env=None,
+            seeded=True,
         )
     if config.fallback_provider_id and config.fallback_model_id and config.fallback_api_base:
         alternate_id = _entry_id(
@@ -158,6 +164,7 @@ def configured_connection_materials(
             model_version=config.fallback_model_version,
             api_base=config.fallback_api_base,
             api_key_env=None,
+            seeded=True,
         )
     seen_declared: set[str] = set()
     for declared in _declared_connections_cached(settings.provider_connections_json):
@@ -190,28 +197,36 @@ def derive_candidate_execution_config(
 ) -> ProviderExecutionConfig | None:
     """The execution config one governed identity would serve under.
 
-    The primary and configured alternate resolve to exactly the configs
-    they resolved to before this module existed (byte-equivalence at two
-    candidates, pinned by test). Any other identity builds a fixed-strategy
-    config from its declared connection material under the SAME shared
-    protections as the alternate: timeout, retry budget, output bound,
-    sampling, task allowlist, and enforcement thresholds all come from the
-    primary config - a third candidate never runs under a weaker posture.
-    Returns None for an identity with no connection material.
+    The merged material map is the ONE connection authority (issue #298):
+    every entry id resolves through it, so what configuration inspection
+    reports and what execution runs under can never disagree. An untouched
+    seeded entry renders back to exactly the config the legacy pair always
+    produced (byte-equivalence at two candidates, pinned by test). A
+    declared entry - a third identity or a deliberate override of a seeded
+    one - builds a fixed-strategy config from its declared endpoint and
+    credential reference under the SAME shared protections as the
+    alternate: timeout, retry budget, output bound, sampling, task
+    allowlist, and enforcement thresholds all come from the primary config
+    - a declared candidate never runs under a weaker posture. A declared
+    override replaces the connection whole: endpoint AND credential
+    reference (an omitted ``api_key_env`` means no credential, and the
+    existing require-api-key fence refuses at execution rather than the
+    old secret silently following a new endpoint). Returns None for an
+    identity with no connection material.
     """
 
-    if config.provider_id and config.model_id:
-        primary_id = _entry_id(config.provider_id, config.model_id, config.model_version)
-        if entry_id == primary_id:
-            return config
-    alternate = derive_fallback_execution_config(config)
-    if alternate is not None and alternate.provider_id and alternate.model_id:
-        alternate_id = _entry_id(alternate.provider_id, alternate.model_id, alternate.model_version)
-        if entry_id == alternate_id:
-            return alternate
     material = configured_connection_materials(config).get(entry_id)
     if material is None:
         return None
+    if material.seeded:
+        # By construction a seeded material is the settings pair: render the
+        # primary as the config itself and the alternate as its legacy
+        # derivation - byte-equivalent to the pre-material behaviour.
+        if config.provider_id and config.model_id:
+            primary_id = _entry_id(config.provider_id, config.model_id, config.model_version)
+            if entry_id == primary_id:
+                return config
+        return derive_fallback_execution_config(config)
     api_key = os.environ.get(material.api_key_env) if material.api_key_env else None
     return ProviderExecutionConfig(
         provider_mode=config.provider_mode,
