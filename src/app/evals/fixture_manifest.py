@@ -11,6 +11,7 @@ from app.contracts.evals import (
     EvaluationFixtureCaseDescriptor,
     EvaluationFixtureDescriptor,
 )
+from app.contracts.model_catalogue import DEGRADABLE_CAPABILITY_DIMENSIONS
 
 
 class EvaluationFixtureManifest:
@@ -80,6 +81,7 @@ def load_evaluation_fixture_manifest() -> EvaluationFixtureManifest:
                     repo_root=repo_root,
                     manifest_path=item.get("manifest_path"),
                 ),
+                proves_capability_dimensions=list(item.get("proves_capability_dimensions", [])),
             )
             for item in payload["fixture_families"]
         ],
@@ -239,6 +241,37 @@ def _validate_fixture_families(*, repo_root: Path, fixture_families: Any) -> Non
                 f"Duplicate fixture family id '{fixture_id}' in evaluation fixture manifest."
             )
         fixture_ids.add(fixture_id)
+
+        proven = item.get("proves_capability_dimensions")
+        if proven is not None:
+            # Capability-scoped eval evidence (issue #312): a family may
+            # declare which governed capability dimensions a PASS over it
+            # proves. The vocabulary is exactly the set routing enforces -
+            # one authority, so an eval can never claim a dimension no
+            # routing decision consults. Unknown names fail the gate closed.
+            if not isinstance(proven, list):
+                raise EvaluationFixtureManifestValidationError(
+                    f"Fixture family '{fixture_id}' proves_capability_dimensions must be a list."
+                )
+            seen_dimensions: set[str] = set()
+            for dimension in proven:
+                if not isinstance(dimension, str) or not dimension.strip():
+                    raise EvaluationFixtureManifestValidationError(
+                        f"Fixture family '{fixture_id}' proves_capability_dimensions entries "
+                        "must be non-empty strings."
+                    )
+                if dimension not in DEGRADABLE_CAPABILITY_DIMENSIONS:
+                    raise EvaluationFixtureManifestValidationError(
+                        f"Fixture family '{fixture_id}' declares unknown capability "
+                        f"dimension '{dimension}'; governed dimensions are "
+                        f"{sorted(DEGRADABLE_CAPABILITY_DIMENSIONS)}."
+                    )
+                if dimension in seen_dimensions:
+                    raise EvaluationFixtureManifestValidationError(
+                        f"Fixture family '{fixture_id}' declares capability dimension "
+                        f"'{dimension}' more than once."
+                    )
+                seen_dimensions.add(dimension)
 
         status = EvaluationAssetStatus(item["status"])
         manifest_path = item.get("manifest_path")

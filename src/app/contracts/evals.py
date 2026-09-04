@@ -78,6 +78,15 @@ class EvaluationFixtureDescriptor(BaseModel):
         default=0,
         description="Number of concrete fixture cases currently staged for the family.",
     )
+    proves_capability_dimensions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "The governed capability dimensions a PASS over this family is evidence "
+            "for (issue #312) - drawn from the same vocabulary routing enforces. A "
+            "family that declares nothing proves nothing: one successful general "
+            "eval never becomes evidence for every capability."
+        ),
+    )
 
 
 class EvaluationFixtureCaseDescriptor(BaseModel):
