@@ -312,3 +312,33 @@ def test_run_next_evaluation_execution_job_fails_unsupported_claim() -> None:
     assert result is None
     fail_async_job.assert_called_once()
     assert fail_async_job.call_args.kwargs["failure_reason"] == "UNSUPPORTED_ASYNC_JOB_TYPE"
+
+
+def test_served_candidate_identity_is_exact_or_honestly_unknown() -> None:
+    """Issue #312 S2: capability evidence may only bind a candidate the case
+    provably served - the fixed strategy pins it exactly; ordered fallback
+    and incomplete identities are unknown and yield no evidence."""
+
+    from dataclasses import replace
+
+    from app.contracts.model_catalogue import derive_candidate_identity_v2
+    from app.services.provider_execution_config import (
+        resolve_provider_execution_config,
+        served_candidate_identity,
+    )
+
+    settings.provider_mode = "openai"
+    settings.live_text_provider_id = "text.openai"
+    settings.live_text_model_id = "gpt-5.4"
+    settings.live_text_model_version = "gpt-5.4-2026-06-01"
+    settings.routing_strategy = "fixed"
+    fixed = resolve_provider_execution_config()
+    assert served_candidate_identity(fixed) == derive_candidate_identity_v2(
+        provider_id="text.openai",
+        model_family="gpt-5.4",
+        model_revision="gpt-5.4-2026-06-01",
+        deployment=None,
+    )
+
+    assert served_candidate_identity(replace(fixed, routing_strategy="ordered_fallback")) is None
+    assert served_candidate_identity(replace(fixed, model_id=None)) is None

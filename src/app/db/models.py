@@ -522,6 +522,8 @@ class EvaluationCaseResultModel(Base):
     artifact_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     provider_config_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    # Served candidate's canonical identity (issue #312); null = unknown.
+    candidate_id_v2: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
     run: Mapped["EvaluationRunModel"] = relationship(back_populates="case_results")
 

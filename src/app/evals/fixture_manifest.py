@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any, cast
 
 from app.contracts.evals import (
+    CapabilityEvidenceScopeType,
+    CapabilityProofDeclaration,
     EvaluationAssetStatus,
     EvaluationEvidenceCategoryDescriptor,
     EvaluationFixtureCaseDescriptor,
@@ -81,7 +83,7 @@ def load_evaluation_fixture_manifest() -> EvaluationFixtureManifest:
                     repo_root=repo_root,
                     manifest_path=item.get("manifest_path"),
                 ),
-                proves_capability_dimensions=list(item.get("proves_capability_dimensions", [])),
+                proves=_parse_capability_proofs(item.get("proves")),
             )
             for item in payload["fixture_families"]
         ],
@@ -242,36 +244,7 @@ def _validate_fixture_families(*, repo_root: Path, fixture_families: Any) -> Non
             )
         fixture_ids.add(fixture_id)
 
-        proven = item.get("proves_capability_dimensions")
-        if proven is not None:
-            # Capability-scoped eval evidence (issue #312): a family may
-            # declare which governed capability dimensions a PASS over it
-            # proves. The vocabulary is exactly the set routing enforces -
-            # one authority, so an eval can never claim a dimension no
-            # routing decision consults. Unknown names fail the gate closed.
-            if not isinstance(proven, list):
-                raise EvaluationFixtureManifestValidationError(
-                    f"Fixture family '{fixture_id}' proves_capability_dimensions must be a list."
-                )
-            seen_dimensions: set[str] = set()
-            for dimension in proven:
-                if not isinstance(dimension, str) or not dimension.strip():
-                    raise EvaluationFixtureManifestValidationError(
-                        f"Fixture family '{fixture_id}' proves_capability_dimensions entries "
-                        "must be non-empty strings."
-                    )
-                if dimension not in DEGRADABLE_CAPABILITY_DIMENSIONS:
-                    raise EvaluationFixtureManifestValidationError(
-                        f"Fixture family '{fixture_id}' declares unknown capability "
-                        f"dimension '{dimension}'; governed dimensions are "
-                        f"{sorted(DEGRADABLE_CAPABILITY_DIMENSIONS)}."
-                    )
-                if dimension in seen_dimensions:
-                    raise EvaluationFixtureManifestValidationError(
-                        f"Fixture family '{fixture_id}' declares capability dimension "
-                        f"'{dimension}' more than once."
-                    )
-                seen_dimensions.add(dimension)
+        _validate_capability_proofs(fixture_id=fixture_id, proves=item.get("proves"))
 
         status = EvaluationAssetStatus(item["status"])
         manifest_path = item.get("manifest_path")
@@ -346,3 +319,70 @@ def _require_non_empty_string(value: Any, *, field_name: str) -> None:
         raise EvaluationFixtureManifestValidationError(
             f"Evaluation fixture manifest field '{field_name}' must be a non-empty string."
         )
+
+
+def _parse_capability_proofs(raw: object) -> list[CapabilityProofDeclaration]:
+    if raw is None:
+        return []
+    assert isinstance(raw, list)
+    return [CapabilityProofDeclaration.model_validate(entry) for entry in raw]
+
+
+def _validate_capability_proofs(*, fixture_id: str, proves: object) -> None:
+    """Scope-aware proof declarations, validated fail-closed (issue #312).
+
+    The dimension vocabulary is exactly the set routing enforces - one
+    authority, so an eval can never claim a dimension no routing decision
+    consults. The scope shape is part of the claim: a non-GLOBAL scope
+    requires its key (which scope was actually exercised), and a GLOBAL
+    claim must not smuggle one.
+    """
+
+    if proves is None:
+        return
+    if not isinstance(proves, list):
+        raise EvaluationFixtureManifestValidationError(
+            f"Fixture family '{fixture_id}' proves must be a list."
+        )
+    seen: set[tuple[str, str, str | None]] = set()
+    for entry in proves:
+        if not isinstance(entry, dict):
+            raise EvaluationFixtureManifestValidationError(
+                f"Fixture family '{fixture_id}' proves entries must be objects."
+            )
+        dimension = entry.get("dimension")
+        if not isinstance(dimension, str) or not dimension.strip():
+            raise EvaluationFixtureManifestValidationError(
+                f"Fixture family '{fixture_id}' proves entries require a non-empty 'dimension'."
+            )
+        if dimension not in DEGRADABLE_CAPABILITY_DIMENSIONS:
+            raise EvaluationFixtureManifestValidationError(
+                f"Fixture family '{fixture_id}' declares unknown capability "
+                f"dimension '{dimension}'; governed dimensions are "
+                f"{sorted(DEGRADABLE_CAPABILITY_DIMENSIONS)}."
+            )
+        scope_type = entry.get("scope_type")
+        valid_scopes = {scope.value for scope in CapabilityEvidenceScopeType}
+        if scope_type not in valid_scopes:
+            raise EvaluationFixtureManifestValidationError(
+                f"Fixture family '{fixture_id}' proves entries require scope_type in "
+                f"{sorted(valid_scopes)}."
+            )
+        scope_key = entry.get("scope_key")
+        if scope_type == CapabilityEvidenceScopeType.GLOBAL.value:
+            if scope_key is not None:
+                raise EvaluationFixtureManifestValidationError(
+                    f"Fixture family '{fixture_id}' declares a GLOBAL proof with a "
+                    "scope_key; a global claim must not smuggle a scope."
+                )
+        elif not isinstance(scope_key, str) or not scope_key.strip():
+            raise EvaluationFixtureManifestValidationError(
+                f"Fixture family '{fixture_id}' declares a {scope_type} proof without "
+                "its scope_key; a scoped claim must name the exact scope exercised."
+            )
+        marker = (dimension, str(scope_type), scope_key)
+        if marker in seen:
+            raise EvaluationFixtureManifestValidationError(
+                f"Fixture family '{fixture_id}' declares the same proof more than once."
+            )
+        seen.add(marker)

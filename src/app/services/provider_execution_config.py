@@ -29,6 +29,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 
 from app.config import settings
+from app.contracts.model_catalogue import derive_candidate_identity_v2
 
 
 @dataclass(frozen=True)
@@ -290,3 +291,26 @@ def compute_provider_config_sha256(
         separators=(",", ":"),
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def served_candidate_identity(config: ProviderExecutionConfig) -> str | None:
+    """The canonical identity of the candidate an eval case is served by,
+    or None when it cannot be pinned (issue #312).
+
+    Under the fixed strategy the configured candidate IS the serving
+    candidate, so the identity is exact. Under ordered fallback the server
+    may differ from the configured primary, and a config without a complete
+    model identity names no candidate at all - both are honestly unknown,
+    and an unknown serving candidate yields no capability evidence.
+    """
+
+    if config.routing_strategy != "fixed":
+        return None
+    if not (config.provider_id and config.model_id):
+        return None
+    return derive_candidate_identity_v2(
+        provider_id=config.provider_id,
+        model_family=config.model_id,
+        model_revision=config.model_version or config.model_id,
+        deployment=config.deployment,
+    )

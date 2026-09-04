@@ -47,6 +47,11 @@ class EvaluationCaseResultRecord:
     artifact_ids: list[str]
     provider_config_sha256: str | None
     recorded_at: str
+    # The served candidate's canonical identity (issue #312): captured only
+    # when the case's fixed-strategy configuration names one complete
+    # candidate (configured == served); None means unknown, and unknown
+    # yields no capability evidence.
+    candidate_id_v2: str | None = None
 
 
 class EvaluationRuntimeRepository(Protocol):

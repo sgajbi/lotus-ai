@@ -28,7 +28,7 @@ DEFAULT_MAX_LINES = 1000
 # Dated ceilings for modules that were already oversized when the budget
 # landed (2026-09-01). These may only shrink - see the module docstring.
 OVERSIZED_ALLOWLIST: dict[str, int] = {
-    "services/eval_runtime_execution.py": 1471,
+    "services/eval_runtime_execution.py": 1470,
     "services/workflow_pack_registry_seed.py": 1365,
     "routers/workflow_packs.py": 1250,
 }

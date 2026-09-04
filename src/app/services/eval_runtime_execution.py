@@ -45,17 +45,12 @@ from app.services.artifact_payloads import persist_json_artifact
 from app.services.embedding_live_execution_state import build_embedding_live_execution_state
 from app.services.evaluation_runtime_store import get_evaluation_runtime_store
 from app.services.prompt_rollout_models import PromptRolloutEventRecord, PromptRolloutStateRecord
-from app.services.local_openai_compatible_endpoint_probe import (
-    LocalOpenAICompatibleEndpointStatus,
-)
-from app.services.prompt_store import get_prompt_repository
-from app.services.prompt_store import reset_prompt_store_cache
+from app.services.local_openai_compatible_endpoint_probe import LocalOpenAICompatibleEndpointStatus
+from app.services.prompt_store import get_prompt_repository, reset_prompt_store_cache
 from app.services.provider_budget_policy import build_provider_budget_policy
 from app.contracts.rate_cards import RateCard, RateCardScopeKind
 from app.services.provider_usage_accounting import save_rate_card
-from app.services.rate_card_store import (
-    reset_rate_card_store_cache,
-)
+from app.services.rate_card_store import reset_rate_card_store_cache
 from app.services.runtime_mode_config import (
     override_runtime_mode_config,
     resolve_runtime_mode_config,
@@ -64,6 +59,7 @@ from app.services.provider_execution_config import (
     compute_provider_config_sha256,
     override_provider_execution_config,
     resolve_provider_execution_config,
+    served_candidate_identity,
 )
 from app.services.provider_execution_overrides import (
     hermetic_provider_execution,
@@ -238,6 +234,7 @@ def _evaluate_case(
             seed=case_provider_config.seed,
             max_output_tokens=case_provider_config.max_output_tokens,
         )
+        candidate_id_v2 = served_candidate_identity(case_provider_config)
         summary, outcome, evidence_refs = _execute_fixture_case(
             fixture_id=run.fixture_id,
             fixture_task_id=fixture_task_id,
@@ -261,6 +258,7 @@ def _evaluate_case(
                 "summary": summary,
                 "evidence_refs": evidence_refs,
                 "provider_config_sha256": provider_config_sha256,
+                "candidate_id_v2": candidate_id_v2,
             },
             sort_keys=True,
         ).encode("utf-8"),
@@ -277,6 +275,7 @@ def _evaluate_case(
         artifact_ids=[artifact.artifact_id],
         provider_config_sha256=provider_config_sha256,
         recorded_at=_utcnow_iso(),
+        candidate_id_v2=candidate_id_v2,
     )
 
 

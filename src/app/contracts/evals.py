@@ -64,6 +64,33 @@ class EvaluationEvidenceCategoryDescriptor(BaseModel):
     description: str = Field(description="Human-readable description of the evidence category.")
 
 
+class CapabilityEvidenceScopeType(str, Enum):
+    GLOBAL = "GLOBAL"
+    OUTPUT_CONTRACT = "OUTPUT_CONTRACT"
+
+
+class CapabilityProofDeclaration(BaseModel):
+    """One capability claim a PASS over a fixture family is evidence for
+    (issue #312), at exactly the scope the fixtures exercise.
+
+    A genuinely global claim declares GLOBAL scope with no key; a
+    workload-specific claim (e.g. structured output for ONE approved output
+    contract) declares its scope type and key, and never widens into a
+    universal statement. The dimension vocabulary is exactly the set
+    routing enforces.
+    """
+
+    dimension: str = Field(min_length=1, description="Governed capability dimension proven.")
+    scope_type: CapabilityEvidenceScopeType = Field(description="How broad the proof honestly is.")
+    scope_key: str | None = Field(
+        default=None,
+        description=(
+            "The exact scope exercised (e.g. the output-contract key); required for "
+            "every non-GLOBAL scope type and forbidden for GLOBAL."
+        ),
+    )
+
+
 class EvaluationFixtureDescriptor(BaseModel):
     fixture_id: str = Field(description="Stable evaluation fixture family identifier.")
     status: EvaluationAssetStatus = Field(
@@ -78,13 +105,13 @@ class EvaluationFixtureDescriptor(BaseModel):
         default=0,
         description="Number of concrete fixture cases currently staged for the family.",
     )
-    proves_capability_dimensions: list[str] = Field(
+    proves: list[CapabilityProofDeclaration] = Field(
         default_factory=list,
         description=(
-            "The governed capability dimensions a PASS over this family is evidence "
-            "for (issue #312) - drawn from the same vocabulary routing enforces. A "
-            "family that declares nothing proves nothing: one successful general "
-            "eval never becomes evidence for every capability."
+            "The scope-aware capability claims a PASS over this family is evidence "
+            "for (issue #312). A family that declares nothing proves nothing: one "
+            "successful general eval never becomes evidence for every capability, "
+            "and a scoped proof never becomes a global statement."
         ),
     )
 
@@ -258,6 +285,14 @@ class EvaluationCaseResultDescriptor(BaseModel):
     artifact_refs: list[ArtifactDescriptor] = Field(
         default_factory=list,
         description="Governed artifact descriptors attached to the persisted case outcome.",
+    )
+    candidate_id_v2: str | None = Field(
+        default=None,
+        description=(
+            "Canonical identity of the candidate that served this case (issue "
+            "#312); null when the serving candidate could not be pinned - and "
+            "an unknown candidate yields no capability evidence."
+        ),
     )
     provider_config_sha256: str | None = Field(
         default=None,
