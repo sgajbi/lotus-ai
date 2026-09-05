@@ -31,6 +31,14 @@ def seed_settled_attempt_spend(
     A repeat of the same attempt identity converges: the reservation reports
     DUPLICATE and the settlement is a no-op, so the return value preserves
     the old recorder's recorded/duplicate contract.
+
+    The seed states ``candidate_id_v2=None`` DELIBERATELY, minting a
+    legacy ``adbt:`` provider-keyed row (issue #337): these seeds model
+    pre-#333 history, which the budget sum must keep counting, and the
+    fixture candidate exists in no catalogue -- deriving a canonical id for
+    it would fabricate an identity nothing ever served. A test that needs a
+    canonical-segment (``adbt2:``) row should execute the real transport
+    path against a catalogued candidate instead of copying this helper.
     """
 
     debit = AttemptDebit(
