@@ -441,6 +441,8 @@ Observed-capability truth is scope-aware (issue #312) and layered — never one 
 
 Fixture families declare proofs in the manifest as `proves: [{dimension, scope_type, scope_key?}]`, validated fail-closed (governed dimension vocabulary; `scope_key` required for non-GLOBAL scopes and forbidden for GLOBAL). A family that declares nothing proves nothing.
 
+Two evidence boundaries hold at the run seam (issue #332): claims write only when the CURRENT manifest version equals the version the run executed under (a queued run across a fixture change yields no evidence, with a logged refusal — proof-producing content is pinned, never re-established from newer declarations), and a claim is applicable only while its producing run exists as a COMMITTED `COMPLETED` PASS record — the write happens after the run's terminal persistence, and the read side independently verifies the committed run, so evidence orphaned by a mid-write failure is never honored. **The version guard's stated precondition**: `manifest_version` is an operator-maintained label, not a content digest - the manifest gate validates structure, not content-to-version binding, so an unbumped fixture edit (or a version flipped back) defeats the pin. Every fixture-content change MUST bump `manifest_version` (hold that line in review); content-derived versioning is the recorded upgrade path if the label proves unreliable.
+
 ## Governed Actions
 
 One reusable governance pattern covers every high-impact control-plane action; there are no domain-specific approval frameworks. The rule is the **direction of risk**:

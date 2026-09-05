@@ -142,8 +142,6 @@ def execute_runtime_backed_evaluation_run(
         if all(result.outcome == EvaluationCaseOutcome.PASS.value for result in persisted_results)
         else EvaluationRunVerdict.FAIL
     )
-    if verdict == EvaluationRunVerdict.PASS:
-        record_capability_evidence_for_pass_run(run=run, results=persisted_results)
     completed_at = _utcnow_iso()
     store.save_attempt(
         EvaluationRunAttemptRecord(
@@ -173,6 +171,8 @@ def execute_runtime_backed_evaluation_run(
             case_count=run.case_count,
         )
     )
+    if verdict == EvaluationRunVerdict.PASS:
+        record_capability_evidence_for_pass_run(run=run, results=persisted_results)
     return EvaluationExecutionResult(
         run_id=run.run_id,
         attempt_id=attempt.attempt_id,
