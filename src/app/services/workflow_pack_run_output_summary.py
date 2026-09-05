@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import logging
 from typing import Any
 
 from app.contracts.artifacts import ArtifactDescriptor
@@ -8,10 +10,33 @@ from app.contracts.workflow_pack_runs import WorkflowPackIdeaLineageDescriptor
 from app.services.artifact_object_store import StoredArtifactObject
 from app.services.artifact_store import get_artifact_object_store
 
+_logger = logging.getLogger(__name__)
 
-def load_workflow_pack_run_output_summary(
+
+class SummaryArtifactMissingError(RuntimeError):
+    """No run_output_summary artifact is linked to the run."""
+
+
+class SummaryObjectMissingError(RuntimeError):
+    """The linked artifact's object bytes are no longer retrievable."""
+
+
+class SummaryIntegrityMismatchError(RuntimeError):
+    """The loaded bytes do not match the recorded checksum and size."""
+
+
+def load_verified_summary_object(
     artifact_refs: list[ArtifactDescriptor],
-) -> dict[str, Any]:
+) -> tuple[ArtifactDescriptor, StoredArtifactObject]:
+    """THE single read authority for run_output_summary bytes (issue #336).
+
+    Every consumer of summary bytes - the accepted-output surface and the
+    projection readers alike - resolves them through this function, so the
+    #328 integrity guarantee (loaded bytes ARE the persisted bytes; the
+    recorded checksum is never repaired at read time) cannot be bypassed by
+    a second resolution path.
+    """
+
     summary_artifact = next(
         (
             artifact
@@ -23,12 +48,36 @@ def load_workflow_pack_run_output_summary(
         None,
     )
     if summary_artifact is None:
-        return {}
+        raise SummaryArtifactMissingError()
     _, _, object_key = summary_artifact.storage_reference.partition("://")
-    stored_object: StoredArtifactObject | None = get_artifact_object_store().get_object(
-        object_key=object_key
-    )
+    stored_object = get_artifact_object_store().get_object(object_key=object_key)
     if stored_object is None:
+        raise SummaryObjectMissingError()
+    recorded_checksum = (summary_artifact.checksum_sha256 or "").strip().lower()
+    loaded_checksum = hashlib.sha256(stored_object.payload).hexdigest()
+    if (
+        not recorded_checksum
+        or loaded_checksum != recorded_checksum
+        or summary_artifact.byte_size != len(stored_object.payload)
+    ):
+        raise SummaryIntegrityMismatchError()
+    return summary_artifact, stored_object
+
+
+def load_workflow_pack_run_output_summary(
+    artifact_refs: list[ArtifactDescriptor],
+) -> dict[str, Any]:
+    try:
+        _, stored_object = load_verified_summary_object(artifact_refs)
+    except (SummaryArtifactMissingError, SummaryObjectMissingError):
+        return {}
+    except SummaryIntegrityMismatchError:
+        # Fail-closed for projections: tampered bytes are never served, the
+        # surface degrades to absent, and the mismatch is operator-visible.
+        _logger.warning(
+            "run_output_summary integrity mismatch: projection withheld "
+            "(bytes do not match the recorded checksum/size)"
+        )
         return {}
     try:
         payload = json.loads(stored_object.payload.decode("utf-8"))

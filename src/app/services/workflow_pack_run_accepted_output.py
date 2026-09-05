@@ -43,8 +43,13 @@ from app.contracts.workflow_pack_runs import (
     WorkflowPackRunRuntimeState,
 )
 from app.repositories.workflow_pack_run_repository import WorkflowPackRunRecord
-from app.services.artifact_store import get_artifact_object_store
 from app.services.workflow_pack_run_ledger import ensure_workflow_pack_run_store_ready
+from app.services.workflow_pack_run_output_summary import (
+    SummaryArtifactMissingError,
+    SummaryIntegrityMismatchError,
+    SummaryObjectMissingError,
+    load_verified_summary_object,
+)
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from app.services.workflow_pack_run_review_summary import (
     build_workflow_pack_run_review_summary,
@@ -217,44 +222,28 @@ def _accepting_review_identity(*, store: Any, run_id: str) -> AdvisorBriefAccept
 
 
 def _load_intact_output_payload(record: WorkflowPackRunRecord) -> dict[str, Any]:
-    summary_artifact = next(
-        (
-            artifact
-            for artifact in record.artifact_refs
-            if artifact.domain == "workflow_pack"
-            and artifact.artifact_type == "run_output_summary"
-            and artifact.storage_reference
-        ),
-        None,
-    )
-    if summary_artifact is None:
+    # The acceptance and VALIDATED evidence attach to the bytes that existed
+    # when the artifact was persisted. Publishing requires the loaded bytes to
+    # BE those bytes (issue #328); resolution goes through the ONE verified
+    # summary reader (issue #336) so no second path can bypass the gate.
+    try:
+        _, stored_object = load_verified_summary_object(record.artifact_refs)
+    except SummaryArtifactMissingError as exc:
         raise AcceptedOutputNotAvailableError(
             REASON_OUTPUT_ARTIFACT_MISSING,
             "The governed run-output artifact is not linked to this run.",
-        )
-    _, _, object_key = summary_artifact.storage_reference.partition("://")
-    stored_object = get_artifact_object_store().get_object(object_key=object_key)
-    if stored_object is None:
+        ) from exc
+    except SummaryObjectMissingError as exc:
         raise AcceptedOutputNotAvailableError(
             REASON_OUTPUT_ARTIFACT_MISSING,
             "The governed run-output artifact object is no longer retrievable.",
-        )
-    # The acceptance and VALIDATED evidence attach to the bytes that existed
-    # when the artifact was persisted. Publishing requires the loaded bytes to
-    # BE those bytes (issue #328): identity metadata alone cannot establish
-    # that, and the recorded checksum is never repaired at read time.
-    recorded_checksum = (summary_artifact.checksum_sha256 or "").strip().lower()
-    loaded_checksum = hashlib.sha256(stored_object.payload).hexdigest()
-    if (
-        not recorded_checksum
-        or loaded_checksum != recorded_checksum
-        or summary_artifact.byte_size != len(stored_object.payload)
-    ):
+        ) from exc
+    except SummaryIntegrityMismatchError as exc:
         raise AcceptedOutputNotAvailableError(
             REASON_OUTPUT_ARTIFACT_INTEGRITY,
             "The governed run-output artifact bytes do not match the checksum and "
             "size recorded when the output was persisted.",
-        )
+        ) from exc
     try:
         payload = json.loads(stored_object.payload.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:

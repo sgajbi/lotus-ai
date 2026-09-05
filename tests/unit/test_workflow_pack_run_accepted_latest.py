@@ -27,6 +27,7 @@ from app.repositories.workflow_pack_run_repository import (
 )
 from app.services import workflow_pack_run_accepted_latest as module
 from app.services import workflow_pack_run_accepted_output as output_module
+from app.services import workflow_pack_run_output_summary as summary_module
 from app.services.workflow_pack_run_accepted_latest import (
     AcceptedLatestNotFoundError,
     build_workflow_pack_run_accepted_latest,
@@ -85,7 +86,7 @@ def _stores(monkeypatch: pytest.MonkeyPatch) -> tuple[_Store, _ObjectStore]:
     for target in (module, output_module):
         monkeypatch.setattr(target, "ensure_workflow_pack_run_store_ready", lambda: None)
         monkeypatch.setattr(target, "get_workflow_pack_run_store", lambda: store)
-    monkeypatch.setattr(output_module, "get_artifact_object_store", lambda: objects)
+    monkeypatch.setattr(summary_module, "get_artifact_object_store", lambda: objects)
     return store, objects
 
 

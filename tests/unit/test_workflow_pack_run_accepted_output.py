@@ -26,6 +26,7 @@ from app.contracts.workflow_pack_run_accepted_output import (
 )
 from app.repositories.workflow_pack_run_repository import WorkflowPackRunRecord
 from app.services import workflow_pack_run_accepted_output as module
+from app.services import workflow_pack_run_output_summary as summary_module
 from app.services.workflow_pack_run_accepted_output import (
     AcceptedOutputNotAvailableError,
     AcceptedOutputNotFoundError,
@@ -183,7 +184,9 @@ def _wired(monkeypatch: pytest.MonkeyPatch) -> WireCallable:
             record = dataclasses.replace(record, artifact_refs=refreshed_refs)
         monkeypatch.setattr(module, "ensure_workflow_pack_run_store_ready", lambda: None)
         monkeypatch.setattr(module, "get_workflow_pack_run_store", lambda: _StoreStub(record))
-        monkeypatch.setattr(module, "get_artifact_object_store", lambda: _ObjectStoreStub(raw))
+        monkeypatch.setattr(
+            summary_module, "get_artifact_object_store", lambda: _ObjectStoreStub(raw)
+        )
         monkeypatch.setattr(
             module,
             "_accepting_review_identity",
@@ -285,7 +288,7 @@ def test_accepted_state_without_recorded_review_event_is_malformed(
     )
     monkeypatch.setattr(module, "ensure_workflow_pack_run_store_ready", lambda: None)
     monkeypatch.setattr(module, "get_workflow_pack_run_store", lambda: _StoreStub(record))
-    monkeypatch.setattr(module, "get_artifact_object_store", lambda: _ObjectStoreStub(raw))
+    monkeypatch.setattr(summary_module, "get_artifact_object_store", lambda: _ObjectStoreStub(raw))
     with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
         build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
     assert _reason(excinfo) == "output_artifact_malformed"

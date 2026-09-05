@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 from app.contracts.artifacts import (
     ArtifactDescriptor,
     ArtifactLifecycleStatus,
@@ -102,7 +104,7 @@ def build_workflow_pack_run_descriptor(
                 retention_posture="retained_for_review",
                 media_type="application/json",
                 byte_size=128,
-                checksum_sha256=f"sha256:{index}",
+                checksum_sha256=hashlib.sha256(f"{run_id}:{index}".encode("utf-8")).hexdigest(),
                 storage_backend=ArtifactStorageBackend.MEMORY,
                 storage_reference=f"memory://{run_id}/{index}",
                 created_at=created_at,
