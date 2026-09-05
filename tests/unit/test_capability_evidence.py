@@ -83,6 +83,16 @@ def _run(fixture_id: str = "capability_proof_examples") -> EvaluationRunRecord:
     )
 
 
+def _commit_run(run: EvaluationRunRecord) -> None:
+    """Persist the producing run as COMMITTED truth (issue #332): applicable
+    evidence requires a COMPLETED PASS run record, so read-side tests seed
+    exactly what the runtime writes."""
+
+    from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+
+    get_evaluation_runtime_store().save_run(run)
+
+
 def _case(case_id: str, candidate_id_v2: str | None) -> EvaluationCaseResultRecord:
     return EvaluationCaseResultRecord(
         case_result_id=f"attempt_{case_id}",
@@ -197,8 +207,10 @@ def test_eligibility_consumes_exactly_the_matching_scoped_claim(
 
     entry = _catalogued_entry()
     _declaring_manifest(monkeypatch)
+    producing_run = _run()
+    _commit_run(producing_run)
     record_capability_evidence_for_pass_run(
-        run=_run(),
+        run=producing_run,
         results=[_case("case_001", entry.candidate_id_v2)],
     )
 
@@ -346,6 +358,9 @@ def test_applicable_evidence_skips_non_pass_and_revision_mismatch() -> None:
     from app.contracts.model_catalogue import CapabilityEvidenceRecord
 
     entry = _catalogued_entry()
+    from dataclasses import replace as _dc_replace
+
+    _commit_run(_dc_replace(_run(), run_id="evalrun_cap_003"))
     repository = get_model_catalogue_repository()
     repository.save_capability_evidence(
         CapabilityEvidenceRecord(
@@ -386,3 +401,90 @@ def test_applicable_evidence_skips_non_pass_and_revision_mismatch() -> None:
         )
         is None
     )
+
+
+def test_a_queued_run_across_a_fixture_change_yields_no_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Audit boundary 1 (issue #332): the writer loads the CURRENT manifest
+    but the run executed under another version - labeling today's
+    declarations with the run's version would certify content the run never
+    exercised. The mismatch refuses loudly and writes nothing."""
+
+    import logging
+    from dataclasses import replace as _dc_replace
+
+    entry = _catalogued_entry()
+    _declaring_manifest(monkeypatch)
+    stale_run = _dc_replace(_run(), manifest_version="foundation.v0-before-change")
+
+    with caplog.at_level(logging.WARNING, logger="app.services.capability_evidence"):
+        record_capability_evidence_for_pass_run(
+            run=stale_run,
+            results=[_case("case_001", entry.candidate_id_v2)],
+        )
+
+    assert (
+        get_model_catalogue_repository().list_capability_evidence(
+            candidate_id_v2=entry.candidate_id_v2, dimension="supports_tool_calling"
+        )
+        == []
+    )
+    assert any("capability evidence refused" in r.getMessage() for r in caplog.records)
+
+
+def test_evidence_orphaned_by_an_uncommitted_run_is_never_applicable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Audit boundary 2 (issue #332): a claim whose producing run never
+    committed (crash between claim creation and terminal persistence, or a
+    run later removed) is never honored - the read side requires a
+    COMPLETED PASS run record."""
+
+    entry = _catalogued_entry()
+    _declaring_manifest(monkeypatch)
+    # Claims written, but the producing run is NEVER committed to the store.
+    record_capability_evidence_for_pass_run(
+        run=_run(),
+        results=[_case("case_001", entry.candidate_id_v2)],
+    )
+    assert (
+        applicable_capability_evidence(
+            entry=entry, dimension="supports_tool_calling", output_contract_key=None
+        )
+        is None
+    )
+
+    # Committing the producing run makes the SAME claims applicable - the
+    # gate is contingency, not deletion.
+    _commit_run(_run())
+    applicable = applicable_capability_evidence(
+        entry=entry, dimension="supports_tool_calling", output_contract_key=None
+    )
+    assert applicable is not None
+    assert applicable.evaluation_run_id == "evalrun_cap_001"
+
+
+def test_a_failed_or_incomplete_producing_run_never_backs_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from dataclasses import replace as _dc_replace
+
+    entry = _catalogued_entry()
+    _declaring_manifest(monkeypatch)
+    record_capability_evidence_for_pass_run(
+        run=_run(),
+        results=[_case("case_001", entry.candidate_id_v2)],
+    )
+    for broken in (
+        _dc_replace(_run(), lifecycle_status="FAILED", verdict="FAIL"),
+        _dc_replace(_run(), lifecycle_status="RUNNING", verdict="PASS"),
+    ):
+        _commit_run(broken)
+        assert (
+            applicable_capability_evidence(
+                entry=entry, dimension="supports_tool_calling", output_contract_key=None
+            )
+            is None
+        ), broken.lifecycle_status

@@ -10,6 +10,8 @@ never makes it, and unknown never upgrades into truth.
 
 from __future__ import annotations
 
+import logging
+
 from datetime import UTC, datetime
 
 from app.contracts.evals import CapabilityEvidenceScopeType, EvaluationRunVerdict
@@ -19,6 +21,8 @@ from app.repositories.evaluation_runtime_repository import (
     EvaluationRunRecord,
 )
 from app.services.model_catalogue_store import get_model_catalogue_repository
+
+_logger = logging.getLogger(__name__)
 
 
 def record_capability_evidence_for_pass_run(
@@ -34,6 +38,21 @@ def record_capability_evidence_for_pass_run(
     from app.evals.fixture_manifest import load_evaluation_fixture_manifest
 
     manifest = load_evaluation_fixture_manifest()
+    if manifest.manifest_version != run.manifest_version:
+        # Version pinning, fail-closed (issue #332): the run executed under
+        # one manifest version but the CURRENT manifest is another - loading
+        # today's declarations would label them with the run's version,
+        # certifying content the run never exercised. A queued run across a
+        # fixture change yields no evidence, loudly.
+        _logger.warning(
+            "capability evidence refused: run %s executed under manifest %s "
+            "but the current manifest is %s - proof-producing content cannot "
+            "be re-established",
+            run.run_id,
+            run.manifest_version,
+            manifest.manifest_version,
+        )
+        return
     fixture = next((f for f in manifest.fixture_families if f.fixture_id == run.fixture_id), None)
     if fixture is None or not fixture.proves:
         return
@@ -79,13 +98,27 @@ def applicable_capability_evidence(
     evidence stays unknown - never widened, never inferred.
     """
 
+    from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+
     repository = get_model_catalogue_repository()
+    runtime_store = get_evaluation_runtime_store()
     for record in repository.list_capability_evidence(
         candidate_id_v2=entry.candidate_id_v2, dimension=dimension
     ):
         if record.verdict != EvaluationRunVerdict.PASS.value:
             continue
         if record.model_revision != entry.model_revision:
+            continue
+        # Committed-producing-run contingency (issue #332): a claim is
+        # applicable only when its producing run exists as a COMPLETED PASS
+        # record - evidence orphaned by a failure between claim creation and
+        # run commitment (or surviving a deleted run) is never honored.
+        producing_run = runtime_store.get_run(run_id=record.evaluation_run_id)
+        if (
+            producing_run is None
+            or producing_run.lifecycle_status != "COMPLETED"
+            or producing_run.verdict != EvaluationRunVerdict.PASS.value
+        ):
             continue
         if record.scope_type == CapabilityEvidenceScopeType.GLOBAL.value:
             return record

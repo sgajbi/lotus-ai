@@ -95,6 +95,24 @@ def _governed_add(entry_id: str) -> None:
 
 
 def _observed_evidence(entry: ModelCatalogueEntry, run_id: str) -> None:
+    from app.repositories.evaluation_runtime_repository import EvaluationRunRecord
+    from app.services.evaluation_runtime_store import get_evaluation_runtime_store
+
+    # The claim's producing run must exist as COMMITTED truth (issue #332).
+    get_evaluation_runtime_store().save_run(
+        EvaluationRunRecord(
+            run_id=run_id,
+            fixture_id="capability_proof_examples",
+            manifest_version="foundation.v1",
+            lifecycle_status="COMPLETED",
+            triggered_by="operator-a",
+            submitted_at="2026-09-04T00:00:00Z",
+            async_job_id=None,
+            latest_message="done",
+            verdict="PASS",
+            case_count=1,
+        )
+    )
     get_model_catalogue_repository().save_capability_evidence(
         CapabilityEvidenceRecord(
             evidence_id=f"capev_proof_{entry.candidate_id_v2[:12]}",
