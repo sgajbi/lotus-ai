@@ -44,7 +44,7 @@ def test_memory_caller_policy_repository_allows_lotus_idea_review_gated_explain(
     assert policy.allow_live_provider is False
     assert policy.allowed_task_ids == ["explain.v1"]
     assert policy.tenant_policy_mode.value == "RESTRICTED"
-    assert policy.restricted_tenant_ids == ["tenant-sg-001"]
+    assert policy.restricted_tenant_ids == ["tenant-private-bank-sg", "tenant-sg-001"]
 
 
 def test_memory_caller_policy_repository_returns_none_for_unknown_caller() -> None:
