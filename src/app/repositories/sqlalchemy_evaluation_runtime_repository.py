@@ -48,6 +48,7 @@ class SqlAlchemyEvaluationRuntimeRepository(SqlAlchemyRepositoryBase, Evaluation
             latest_message=record.latest_message,
             verdict=record.verdict,
             case_count=record.case_count,
+            manifest_content_digest=record.manifest_content_digest,
         )
         with self._session_factory() as session:
             session.merge(model)
@@ -168,6 +169,7 @@ class SqlAlchemyEvaluationRuntimeRepository(SqlAlchemyRepositoryBase, Evaluation
             latest_message=model.latest_message,
             verdict=model.verdict,
             case_count=model.case_count,
+            manifest_content_digest=model.manifest_content_digest,
         )
 
     def _to_attempt_record(self, model: EvaluationRunAttemptModel) -> EvaluationRunAttemptRecord:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from functools import lru_cache
 from pathlib import Path
@@ -23,10 +24,16 @@ class EvaluationFixtureManifest:
         manifest_version: str,
         evidence_categories: list[EvaluationEvidenceCategoryDescriptor],
         fixture_families: list[EvaluationFixtureDescriptor],
+        manifest_content_digest: str | None = None,
     ) -> None:
         self.manifest_version = manifest_version
         self.evidence_categories = evidence_categories
         self.fixture_families = fixture_families
+        # Content-derived identity (issue #351): the digest is the equality
+        # the evidence version guard checks; manifest_version stays the
+        # human-readable name. Digest catches unbumped drift, label catches
+        # undigested intent - either mismatch refuses.
+        self.manifest_content_digest = manifest_content_digest
 
 
 class EvaluationFixtureFamily:
@@ -69,6 +76,9 @@ def load_evaluation_fixture_manifest() -> EvaluationFixtureManifest:
         payload = json.load(manifest_file)
     validate_evaluation_fixture_manifest(repo_root=repo_root, manifest_payload=payload)
     return EvaluationFixtureManifest(
+        manifest_content_digest=_compute_manifest_content_digest(
+            repo_root=repo_root, manifest_payload=payload
+        ),
         manifest_version=payload["manifest_version"],
         evidence_categories=[
             EvaluationEvidenceCategoryDescriptor(**item) for item in payload["evidence_categories"]
@@ -88,6 +98,40 @@ def load_evaluation_fixture_manifest() -> EvaluationFixtureManifest:
             for item in payload["fixture_families"]
         ],
     )
+
+
+def _compute_manifest_content_digest(*, repo_root: Path, manifest_payload: dict[str, Any]) -> str:
+    """The content identity the evidence guard compares (issue #351).
+
+    Canonical (sorted-key, minified) serialization over what a PASS run's
+    claims actually derive from: each family's id, its declared proofs, and
+    the byte digest of its referenced case file. The run's verdict derives
+    from case content, so an unbumped case edit is the same defect class as
+    an unbumped declaration edit - both change this digest. The
+    human-maintained manifest_version label is deliberately excluded: it is
+    checked separately, so a bumped label over identical content still opens
+    a new version epoch (both must match)."""
+
+    families = []
+    for item in sorted(manifest_payload["fixture_families"], key=lambda f: f["fixture_id"]):
+        # manifest_path is class-dependent, validated fail-closed BOTH ways:
+        # STAGED families MUST define it (a vanished case-file reference is
+        # a validation failure before this digest ever runs), DOCUMENTED
+        # families MUST NOT - their None case digest honestly says no case
+        # content exists to certify.
+        manifest_path = item.get("manifest_path")
+        case_file_sha256 = None
+        if manifest_path:
+            case_file_sha256 = hashlib.sha256((repo_root / manifest_path).read_bytes()).hexdigest()
+        families.append(
+            {
+                "fixture_id": item["fixture_id"],
+                "proves": item.get("proves") or [],
+                "case_file_sha256": case_file_sha256,
+            }
+        )
+    canonical = json.dumps({"v": 1, "families": families}, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def load_evaluation_fixture_family(*, fixture_id: str) -> EvaluationFixtureFamily:

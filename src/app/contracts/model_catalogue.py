@@ -287,6 +287,10 @@ class CapabilityEvidenceRecord(BaseModel):
     )
     fixture_id: str = Field(min_length=1, description="Fixture family that declared the proof.")
     manifest_version: str = Field(min_length=1, description="Fixture manifest version at run time.")
+    manifest_content_digest: str | None = Field(
+        default=None,
+        description="Content-derived manifest identity at run time (issue #351); null on historical rows.",
+    )
     evaluation_run_id: str = Field(min_length=1, description="The run that produced the claim.")
     verdict: str = Field(min_length=1, description="The run's verdict (PASS rows are evidence).")
     triggered_by: str | None = Field(default=None, description="Who triggered the producing run.")
