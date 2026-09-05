@@ -82,8 +82,11 @@ revision drift is recorded from the provider echo. Identity-bound,
 effective-dated rate cards price executions and carry cost posture onto audit
 records. The hard budget is admission-honest (#329): each attempt atomically
 reserves its provable maximum before the provider is called; only trustworthy
-provider-reported usage (or proven non-billability) settles a reservation
-down. Unknown usage holds the reserved maximum as `UNRESOLVED_MAX` exposure —
+provider-reported usage priced by an effective rate card settles a reservation
+down, and release-to-zero requires non-billability STATED at the settle call
+(#346) — never inferred from pricing availability, so a rate card expiring
+mid-attempt holds rather than releases. Unknown or unpriceable billable
+exposure holds the reserved maximum as `UNRESOLVED_MAX` —
 estimates are reported, never released against — until a governed four-eyes
 `BUDGET_RECONCILIATION` settles it to a provider-evidenced charge, and an
 enforced budget that cannot price a candidate refuses admission rather than
