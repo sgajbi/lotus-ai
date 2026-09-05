@@ -94,6 +94,7 @@ def _seed_unresolved_exposure() -> str:
                 rate_card_ref="default-live-text",
             ),
             candidate_id_v2=_CANONICAL,
+            billable_risk=True,
         )
         is True
     )

@@ -319,8 +319,11 @@ def post_openai_compatible_response(
         """Settle this attempt's pre-attempt reservation to its evidenced
         debit (issue #300): actual usage, the conservative estimate for a
         billable-risk failure, or a zero-amount release when the attempt
-        proved non-billable (429, pre-connect). Where no rate card priced a
-        reservation there is nothing to settle and nothing was ever owed."""
+        proved non-billable (429, pre-connect). Non-billability is STATED
+        via ``billable_risk`` (issue #346), never inferred from pricing
+        availability: a billable-risk attempt whose settle-time pricing
+        returns None (rate card expired mid-attempt) holds its reserved
+        maximum instead of releasing."""
 
         debit = price_attempt(
             input_tokens=input_tokens,
@@ -331,12 +334,25 @@ def post_openai_compatible_response(
             max_output_tokens=payload_max_output,
             model_revision=model_revision,
         )
+        if debit is None and billable_risk and input_tokens is not None:
+            # Served (or usage-revealing) attempt that cannot be priced: the
+            # observed usage is operator evidence for the governed
+            # reconciliation that will settle the held exposure.
+            log_event(
+                _logger,
+                "attempt_exposure_held_unpriceable",
+                execution_id=debit_execution_id,
+                attempt_index=attempt_index,
+                observed_input_tokens=input_tokens,
+                observed_output_tokens=output_tokens,
+            )
         settle_attempt_spend(
             execution_id=debit_execution_id,
             candidate_entry_id=candidate_entry_id,
             attempt_index=attempt_index,
             debit=debit,
             candidate_id_v2=candidate_id_v2,
+            billable_risk=billable_risk,
         )
         return debit
 

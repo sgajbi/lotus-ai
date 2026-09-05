@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi import HTTPException
@@ -77,13 +78,20 @@ def _reserve(execution_id: str, amount: float, *, attempt_index: int = 0) -> str
     )
 
 
-def _settle(execution_id: str, debit: AttemptDebit | None, *, attempt_index: int = 0) -> bool:
+def _settle(
+    execution_id: str,
+    debit: AttemptDebit | None,
+    *,
+    attempt_index: int = 0,
+    billable_risk: bool = True,
+) -> bool:
     return settle_attempt_spend(
         execution_id=execution_id,
         candidate_entry_id="text.openai:gpt-5.4",
         attempt_index=attempt_index,
         debit=debit,
         candidate_id_v2=_CANONICAL,
+        billable_risk=billable_risk,
     )
 
 
@@ -134,7 +142,7 @@ def test_usage_evidence_and_proven_non_billability_still_release() -> None:
     assert _counter() == 0.20
 
     assert _reserve("exec-nobill", 1.10) == "RESERVED"
-    assert _settle("exec-nobill", None) is True
+    assert _settle("exec-nobill", None, billable_risk=False) is True
     released = get_provider_operations_store().get_attempt_debit(debit_id=_debit_id("exec-nobill"))
     assert released is not None
     assert released.basis == "RELEASED"
@@ -520,3 +528,113 @@ def test_a_crash_between_release_and_evidence_recovers_the_true_outcome(
     assert recovered.governed_action.status is GovernedActionStatus.EXECUTED
     # Released exactly once.
     assert _counter() == 0.42
+
+
+def test_unpriceable_billable_exposure_holds_with_provenance_intact() -> None:
+    """Issue #346: the rate card expiring between admission and settlement
+    must not release the reservation - debit-None has TWO producers, and
+    only stated non-billability releases. The held row keeps the
+    reservation's provenance (tokens, rate_card_ref) for reconciliation."""
+
+    _enforce(1.50)
+    assert _reserve("exec-expiry", 1.10) == "RESERVED"
+
+    # Timeout/5xx after the card expired: pricing returns None, risk stands.
+    assert _settle("exec-expiry", None, billable_risk=True) is True
+    row = get_provider_operations_store().get_attempt_debit(debit_id=_debit_id("exec-expiry"))
+    assert row is not None
+    assert row.basis == "UNRESOLVED_MAX"
+    assert row.amount_usd == 1.10
+    assert row.input_tokens == 200
+    assert row.output_tokens == 512
+    assert row.rate_card_ref == "default-live-text"
+    assert _counter() == 1.10
+
+    # The audit reproduction inverted: the next 1.10 maximum is REFUSED and
+    # the caller's execution ceiling sees the held exposure.
+    assert _reserve("exec-expiry-b", 1.10) == "REFUSED"
+    assert spent_for_execution("exec-expiry") == 1.10
+
+    # Replay without double adjustment: the second settle is a no-op.
+    assert _settle("exec-expiry", None, billable_risk=True) is False
+    assert _counter() == 1.10
+
+    # Governed reconciliation restores headroom exactly once.
+    pending = request_budget_reconciliation(
+        BudgetReconciliationIntentRequest(
+            debit_id=_debit_id("exec-expiry"),
+            evidenced_amount_usd=0.30,
+            evidence_ref="invoice after card renewal",
+        ),
+        GOVERNED_REQUESTER,
+    )
+    approved = approve_budget_reconciliation(
+        BudgetReconciliationApprovalRequest(
+            action_id=pending.governed_action.action_id,
+            action_hash=pending.governed_action.action_hash,
+        ),
+        GOVERNED_APPROVER,
+    )
+    assert approved.released_amount_usd == 0.80
+    assert _counter() == 0.30
+    replay = approve_budget_reconciliation(
+        BudgetReconciliationApprovalRequest(
+            action_id=pending.governed_action.action_id,
+            action_hash=pending.governed_action.action_hash,
+        ),
+        GOVERNED_APPROVER,
+    )
+    assert replay.released_amount_usd == 0.80
+    assert _counter() == 0.30
+
+
+def test_rate_expiry_during_a_served_response_holds_and_logs_usage(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Issue #346, the decision stated: provider-reported usage WITHOUT an
+    effective rate card is not an evidenced amount - the served attempt
+    holds its reserved maximum, and the observed usage is logged as
+    reconciliation input evidence."""
+
+    from tests.unit.test_attempt_billing import (
+        _Response,
+        _SUCCESS_BODY,
+        _debit_key,
+        _run_transport,
+        _seed_cost_scalars,
+    )
+    import app.services.provider_usage_accounting as accounting
+
+    _seed_cost_scalars()
+    real_estimate = accounting.estimate_live_text_cost
+    calls = {"count": 0}
+
+    def _expiring_estimate(**kwargs: Any) -> Any:
+        calls["count"] += 1
+        if calls["count"] > 1:
+            # The card expired after admission priced the reservation.
+            return accounting.UNKNOWN_COST
+        return real_estimate(**kwargs)
+
+    monkeypatch.setattr(accounting, "estimate_live_text_cost", _expiring_estimate)
+    monkeypatch.setattr("urllib.request.urlopen", lambda request, timeout: _Response(_SUCCESS_BODY))
+
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="app.provider"):
+        response = _run_transport(retry_limit=0, execution_id="exec-served-expiry")
+    assert response.failure_category is None
+    # The observed usage rides operator evidence for reconciliation.
+    assert any(
+        "attempt_exposure_held_unpriceable" in record.getMessage() for record in caplog.records
+    )
+
+    row = get_provider_operations_store().get_attempt_debit(
+        debit_id=_debit_key("exec-served-expiry", 0)
+    )
+    assert row is not None
+    assert row.basis == "UNRESOLVED_MAX"
+    # Reservation provenance, not the served usage: the held amount is the
+    # admitted maximum and its tokens are the reservation's bounds.
+    assert row.output_tokens == 512

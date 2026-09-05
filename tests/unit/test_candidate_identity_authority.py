@@ -226,6 +226,7 @@ def test_distinct_candidates_sharing_the_legacy_key_debit_separately(
         attempt_index=0,
         debit=_debit(0.7),
         candidate_id_v2=family_a.candidate_id_v2,
+        billable_risk=True,
     )
     assert settle_attempt_spend(
         execution_id="exec-identity",
@@ -233,6 +234,7 @@ def test_distinct_candidates_sharing_the_legacy_key_debit_separately(
         attempt_index=0,
         debit=_debit(0.5),
         candidate_id_v2=family_b.candidate_id_v2,
+        billable_risk=True,
     )
 
     rows = operations_repo.list_attempt_debits()
@@ -373,6 +375,7 @@ def test_sql_debit_lifecycle_keys_on_the_canonical_identity(
         attempt_index=0,
         debit=_debit(0.6),
         candidate_id_v2=family_a.candidate_id_v2,
+        billable_risk=True,
     )
     assert settle_attempt_spend(
         execution_id="exec-sql",
@@ -380,6 +383,7 @@ def test_sql_debit_lifecycle_keys_on_the_canonical_identity(
         attempt_index=0,
         debit=_debit(0.4),
         candidate_id_v2=family_b.candidate_id_v2,
+        billable_risk=True,
     )
     # A pre-existing legacy-format row still counts toward the execution.
     assert (

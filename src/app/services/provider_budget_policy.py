@@ -109,7 +109,7 @@ def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
             "Tracked spend is recorded durably per provider attempt at the attempt boundary (issue #289): actual usage debits as actual, billable-risk failures debit conservatively, and an execution whose every attempt fails still moves the envelope.",
             "Hard-limit admission is an atomic per-attempt check-and-reserve on the budget row (issue #300): each attempt reserves its governed maximum in one store transaction before the provider is called - concurrent replicas cannot jointly overshoot the limit, and a crash before settlement leaves the conservative reservation counted.",
             "The reserved maximum assumes tokenization at no finer than one token per byte of the request body plus the provider-enforced output cap under the effective rate card (issue #329); the claim holds for byte-level or coarser tokenizers and does not cover provider-side minimum-billing or non-token charges.",
-            "Only trustworthy provider-reported usage settles a reservation down; a billable-risk attempt without usage holds its reserved maximum as UNRESOLVED_MAX exposure (issue #329) - estimates are reported but never release hard admission capacity - until governed four-eyes reconciliation settles it to a provider-evidenced charge.",
+            "Only trustworthy provider-reported usage priced by an effective rate card settles a reservation down; a billable-risk attempt without a priceable amount - usage withheld OR the rate card expired before settlement - holds its reserved maximum as UNRESOLVED_MAX exposure (issues #329/#346). RELEASED is reachable only from STATED non-billability (429, pre-connect), never inferred from pricing availability; estimates are reported but never release hard admission capacity; release happens only through governed four-eyes reconciliation to a provider-evidenced charge.",
             "Soft budget posture is advisory and inspectable; hard budget posture is blocking when enforcement is enabled.",
             "Tracked spend now flows through the configured provider-operations store so budget posture can remain durable when the SQL-backed provider-operations path is enabled.",
         ],
@@ -227,15 +227,25 @@ def settle_attempt_spend(
     attempt_index: int,
     debit: AttemptDebit | None,
     candidate_id_v2: str | None,
+    billable_risk: bool,
 ) -> bool:
     """Resolve a reservation with the attempt's evidence in one transaction
-    with the counter adjustment (issue #300), in evidence order (issue #329):
+    with the counter adjustment (issue #300), in evidence order (issues
+    #329/#346):
 
-    - trustworthy provider-reported usage (basis ``ACTUAL_USAGE``) settles to
-      the evidenced amount - the only evidence that may RELEASE hard
-      admission capacity at the attempt boundary;
-    - a proven non-billable attempt (429, pre-connect; ``debit is None``)
-      releases to zero, basis ``RELEASED``;
+    - trustworthy provider-reported usage priced by an effective rate card
+      (basis ``ACTUAL_USAGE``) settles to the evidenced amount - the only
+      evidence that may RELEASE hard admission capacity at the attempt
+      boundary;
+    - a PROVEN non-billable attempt (429, pre-connect:
+      ``billable_risk=False``) releases to zero, basis ``RELEASED``. The
+      caller STATES non-billability explicitly (issue #346) - it is never
+      inferred from pricing availability, because ``debit is None`` has two
+      producers: proven non-billability AND a rate card that expired before
+      settlement. Unpriceable billable exposure (``debit is None`` with
+      ``billable_risk=True`` - including a SERVED response whose usage
+      cannot be priced) holds its reserved maximum with the reservation's
+      provenance (tokens, rate_card_ref) intact on the row;
     - a billable-risk attempt WITHOUT usage (timeout, 5xx, usage withheld -
       basis ``CONSERVATIVE_ESTIMATE``) holds: the row moves to
       ``UNRESOLVED_MAX`` and the reserved maximum stays in the counter.
@@ -258,6 +268,14 @@ def settle_attempt_spend(
         candidate_id_v2=candidate_id_v2,
     )
     if debit is None:
+        if billable_risk:
+            # Rate card expired between admission and settlement: the
+            # attempt may have billed, and no price exists to evidence an
+            # amount - the reservation holds until governed reconciliation.
+            return repository.hold_attempt_debit_unresolved(
+                debit_id=debit_id,
+                held_at=_utcnow(),
+            )
         return repository.settle_attempt_debit(
             debit_id=debit_id,
             budget_key=_BUDGET_KEY,
@@ -272,11 +290,7 @@ def settle_attempt_spend(
     # basis that may release capacity at the attempt boundary. Every other
     # basis (CONSERVATIVE_ESTIMATE today; MIXED/NONE should they ever reach
     # settlement) holds - non-usage evidence never settles a reservation
-    # down. Note the ``debit is None`` branch above is scoped to PROVEN
-    # non-billability (429, pre-connect); an attempt whose settle-time
-    # pricing returns None despite billable risk (rate card expired
-    # mid-attempt) also reaches it - a narrow window tracked with the
-    # governance-recovery hardening (#340 era), not silently widened here.
+    # down.
     if debit.basis != "ACTUAL_USAGE":
         return repository.hold_attempt_debit_unresolved(
             debit_id=debit_id,
