@@ -2,8 +2,8 @@
 
 An audit that reports success when it could not verify anything is worse
 than no audit: it manufactures false assurance. These tests pin the
-failure modes - missing tool, unreadable listings, non-rebase merge
-settings, and runs that reached no verdict.
+failure modes - missing tool, unreadable listings, a merge commit breaking
+the linear-history enumeration premise, and runs that reached no verdict.
 """
 
 import json
@@ -41,20 +41,21 @@ def _fake_gh(monkeypatch: pytest.MonkeyPatch, responses: dict[str, object]) -> N
     monkeypatch.setattr(audit.subprocess, "run", run)
 
 
-REBASE_ONLY = json.dumps({"squash": False, "merge": False, "rebase": True})
-
-
 def test_a_missing_gh_cli_is_a_failure_not_a_pass(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(audit.shutil, "which", lambda _name: None)
     monkeypatch.setattr(sys, "argv", ["audit", "--fail-on-gap"])
     assert audit.main() == 1
 
 
-def test_non_rebase_merge_settings_refuse_to_audit(monkeypatch: pytest.MonkeyPatch) -> None:
-    _fake_gh(
-        monkeypatch,
-        {"repos/sgajbi/lotus-ai": json.dumps({"squash": True, "merge": False, "rebase": True})},
-    )
+def test_a_merge_commit_in_the_window_refuses_to_trust_enumeration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The per-commit enumeration is only correct over linear history - the
+    audit measures that invariant directly (the old proxy asserted the
+    repository's merge settings, which the workflow token can no longer
+    read). A two-parent commit refuses the whole audit, named by sha."""
+
+    _fake_gh(monkeypatch, {"repos/sgajbi/lotus-ai/commits": "abc123 2\ndef456 1\n"})
     monkeypatch.setattr(sys, "argv", ["audit", "--fail-on-gap"])
     assert audit.main() == 1
 
@@ -63,8 +64,7 @@ def test_unreadable_run_listing_is_a_failure(monkeypatch: pytest.MonkeyPatch) ->
     _fake_gh(
         monkeypatch,
         {
-            "repos/sgajbi/lotus-ai/commits": "abc123\n",
-            "repos/sgajbi/lotus-ai": REBASE_ONLY,
+            "repos/sgajbi/lotus-ai/commits": "abc123 1\n",
             "run": _Completed(returncode=1, stderr="API rate limit exceeded"),
         },
     )
@@ -78,8 +78,7 @@ def test_a_run_without_a_verdict_does_not_count_as_coverage(
     _fake_gh(
         monkeypatch,
         {
-            "repos/sgajbi/lotus-ai/commits": "abc123\n",
-            "repos/sgajbi/lotus-ai": REBASE_ONLY,
+            "repos/sgajbi/lotus-ai/commits": "abc123 1\n",
             "run": json.dumps([{"status": "completed", "conclusion": "cancelled"}]),
         },
     )
@@ -91,8 +90,7 @@ def test_a_verdict_bearing_run_is_coverage(monkeypatch: pytest.MonkeyPatch) -> N
     _fake_gh(
         monkeypatch,
         {
-            "repos/sgajbi/lotus-ai/commits": "abc123\n",
-            "repos/sgajbi/lotus-ai": REBASE_ONLY,
+            "repos/sgajbi/lotus-ai/commits": "abc123 1\n",
             "run": json.dumps([{"status": "completed", "conclusion": "success"}]),
         },
     )
@@ -105,7 +103,6 @@ def test_an_empty_commit_listing_is_a_failure(monkeypatch: pytest.MonkeyPatch) -
         monkeypatch,
         {
             "repos/sgajbi/lotus-ai/commits": "\n",
-            "repos/sgajbi/lotus-ai": REBASE_ONLY,
         },
     )
     monkeypatch.setattr(sys, "argv", ["audit", "--fail-on-gap"])

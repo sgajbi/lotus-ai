@@ -40,38 +40,41 @@ def _gh(*args: str) -> str:
     return completed.stdout
 
 
-def assert_rebase_only_merging() -> None:
-    """The per-commit enumeration is only correct under rebase merging."""
-
-    raw = _gh(
-        "api",
-        f"repos/{REPOSITORY}",
-        "--jq",
-        "{squash: .allow_squash_merge, merge: .allow_merge_commit, rebase: .allow_rebase_merge}",
-    )
-    settings = json.loads(raw)
-    if settings != {"squash": False, "merge": False, "rebase": True}:
-        raise AuditError(
-            "main-gate coverage assumes rebase-only merging; repository merge settings are "
-            f"{settings} - update the dispatcher enumeration before changing them"
-        )
-
-
 def main_commits(limit: int) -> list[str]:
-    """The most recent commits on main, newest first.
+    """The most recent commits on main, newest first - with linear history
+    verified DIRECTLY on the audited window.
 
-    Listing by ``sha=main`` walks first parents, which enumerates exactly the
-    commits on main ONLY because history is linear - the rebase-only assertion
-    above is what guarantees that. Do not loosen one without the other.
+    The per-commit enumeration is only correct when history is linear. The
+    old proxy (asserting the repository's rebase-only merge settings) broke
+    when the workflow token stopped being able to read those fields - every
+    ``allow_*`` value returned null and the audit failed closed daily while
+    real coverage was unknown. Measuring the invariant itself is stronger:
+    a merge commit in the window fails the audit the day it lands, named by
+    sha, with no dependence on token permissions or settings drift.
     """
 
     raw = _gh(
         "api",
         f"repos/{REPOSITORY}/commits?sha=main&per_page={limit}",
         "--jq",
-        ".[].sha",
+        r'.[] | "\(.sha) \(.parents | length)"',
     )
-    commits = [line.strip() for line in raw.splitlines() if line.strip()]
+    commits: list[str] = []
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        sha, _, parent_count = line.strip().partition(" ")
+        # A 0-parent root commit would also refuse here; acceptable - this
+        # repository's history is far deeper than any audit window, and an
+        # audit that somehow reaches the root SHOULD stop rather than trust
+        # an enumeration premise it can no longer distinguish.
+        if parent_count != "1":
+            raise AuditError(
+                f"main commit {sha} has {parent_count} parents; the per-commit "
+                "enumeration assumes linear (rebase-only) history - audit the "
+                "merge that produced it before trusting gate coverage"
+            )
+        commits.append(sha)
     if not commits:
         raise AuditError("no commits returned for main; coverage is unknown")
     return commits
@@ -108,7 +111,6 @@ def main() -> int:
     arguments = parser.parse_args()
 
     try:
-        assert_rebase_only_merging()
         commits = main_commits(arguments.limit)
         gaps = [sha for sha in commits if not has_verdict_bearing_run(sha)]
     except AuditError as error:
