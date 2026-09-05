@@ -45,6 +45,10 @@ from app.providers.advisor_brief_quality_guardrails import (
     build_advisor_brief_user_message,
     normalize_advisor_brief_output,
 )
+from app.providers.idea_explanation_quality_guardrails import (
+    is_idea_explanation_payload,
+    normalize_idea_explanation_output,
+)
 from app.services.provider_budget_policy import (
     require_priceable_admission,
     reserve_attempt_spend,
@@ -708,22 +712,43 @@ def build_structured_output(
             "cost_posture": structured_cost.cost_posture,
         }
     )
-    if not is_advisor_brief_payload(request.context_payload):
-        return output_message, structured_output
+    if is_advisor_brief_payload(request.context_payload):
+        parsed, salvaged = parse_json_object_with_posture(output_message)
+        if salvaged:
+            # The validator decides what salvage means per profile (issue
+            # #156): promoted rejects, local marks UNVALIDATED_LOCAL_ONLY.
+            structured_output["strict_json_salvaged"] = True
+        quality_result = normalize_advisor_brief_output(
+            parsed_output=parsed,
+            output_message=output_message,
+            context_payload=request.context_payload,
+            source_refs=request.source_refs,
+        )
+        structured_output.update(quality_result.structured_output)
+        return quality_result.message, structured_output
 
-    parsed, salvaged = parse_json_object_with_posture(output_message)
-    if salvaged:
-        # The validator decides what salvage means per profile (issue #156):
-        # promoted rejects, local marks the output UNVALIDATED_LOCAL_ONLY.
-        structured_output["strict_json_salvaged"] = True
-    quality_result = normalize_advisor_brief_output(
-        parsed_output=parsed,
-        output_message=output_message,
-        context_payload=request.context_payload,
-        source_refs=request.source_refs,
-    )
-    structured_output.update(quality_result.structured_output)
-    return quality_result.message, structured_output
+    if is_idea_explanation_payload(request.context_payload):
+        parsed, salvaged = parse_json_object_with_posture(output_message)
+        idea_result = normalize_idea_explanation_output(
+            parsed_output=parsed,
+            salvaged=salvaged,
+            output_message=output_message,
+            context_payload=request.context_payload,
+        )
+        if idea_result is not None:
+            if idea_result.refusal_reason is not None:
+                # Never manufacture (issue #330): the model-authored section
+                # is withheld and the registered pack contract rejects the
+                # output whole; the bounded reason is operator evidence.
+                log_event(
+                    _logger,
+                    "idea_explanation_output_refused",
+                    refusal_reason=idea_result.refusal_reason,
+                )
+            structured_output.update(idea_result.structured_output)
+            return idea_result.message, structured_output
+
+    return output_message, structured_output
 
 
 def _governed_deadline_stop(

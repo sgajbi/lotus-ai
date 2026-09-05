@@ -3,10 +3,18 @@ from __future__ import annotations
 from typing import Any
 
 
-def build_idea_explanation_stub_result(
-    *,
+def build_idea_service_envelope(
     context_payload: dict[str, object],
-) -> tuple[str, dict[str, object]] | None:
+) -> dict[str, object] | None:
+    """The SERVICE-OWNED portion of an idea-explanation output (issue #330).
+
+    Every field here derives deterministically from the caller's context
+    payload - identity, posture, authority blocks, review guidance. Both the
+    stub and the live path compose over this one envelope, which is what
+    makes it impossible for provenance or authority facts to come from model
+    prose: the model authors only ``idea_workflow_output``.
+    """
+
     redacted_evidence = context_payload.get("redacted_evidence_packet")
     explanation_request = context_payload.get("explanation_request")
     supportability = context_payload.get("supportability")
@@ -17,22 +25,13 @@ def build_idea_explanation_stub_result(
     ):
         return None
 
-    candidate_id = _as_str(redacted_evidence.get("candidate_id"))
-    evidence_packet_id = _as_str(redacted_evidence.get("evidence_packet_id"))
     source_refs = redacted_evidence.get("source_refs")
-    reason_codes = _string_list(redacted_evidence.get("reason_codes"))
-    requested_outputs = _string_list(explanation_request.get("requested_outputs"))
-
-    message = (
-        "Drafted a review-gated Lotus Idea explanation from redacted evidence packet "
-        f"{evidence_packet_id} for candidate {candidate_id}."
-    )
-    structured_output: dict[str, object] = {
+    return {
         "workflow_pack_family": "idea_explanation",
         "state": "REVIEW_REQUIRED",
         "scope": "advisor_and_reviewer_use_only",
-        "candidate_id": candidate_id,
-        "evidence_packet_id": evidence_packet_id,
+        "candidate_id": _as_str(redacted_evidence.get("candidate_id")),
+        "evidence_packet_id": _as_str(redacted_evidence.get("evidence_packet_id")),
         "evidence_content_hash": _as_str(redacted_evidence.get("evidence_content_hash")),
         "family": _as_str(redacted_evidence.get("family")),
         "lifecycle_status": _as_str(redacted_evidence.get("lifecycle_status")),
@@ -40,8 +39,8 @@ def build_idea_explanation_stub_result(
         "source_ref_count": len(source_refs) if isinstance(source_refs, list) else 0,
         "source_signal_count": _int_or_zero(redacted_evidence.get("source_signal_count")),
         "score_policy_version": _as_str(redacted_evidence.get("score_policy_version")),
-        "reason_codes": reason_codes,
-        "requested_outputs": requested_outputs,
+        "reason_codes": _string_list(redacted_evidence.get("reason_codes")),
+        "requested_outputs": _string_list(explanation_request.get("requested_outputs")),
         "purpose": _as_str(explanation_request.get("purpose")),
         "evaluation_ref": _as_str(explanation_request.get("evaluation_ref")),
         "human_review_required": True,
@@ -54,15 +53,47 @@ def build_idea_explanation_stub_result(
             "Do not treat the explanation as suitability approval, final advice, rebalance authority, or client-ready communication.",
             "Escalate missing or unsupported evidence back to the source-owning Lotus service.",
         ],
-        "idea_workflow_output": _idea_workflow_output(
-            message=message,
-            request_id=_as_str(explanation_request.get("request_id")),
-            candidate_id=candidate_id,
-            score_policy_version=_as_str(redacted_evidence.get("score_policy_version")),
-            reason_codes=reason_codes,
-            source_product_ids=_source_product_ids(source_refs),
-        ),
     }
+
+
+def packet_source_product_ids(context_payload: dict[str, object]) -> list[str]:
+    """The product ids the evidence packet itself names - the ONLY ids a
+    claim may ground in (issue #330)."""
+
+    redacted_evidence = context_payload.get("redacted_evidence_packet")
+    if not isinstance(redacted_evidence, dict):
+        return []
+    return _source_product_ids(redacted_evidence.get("source_refs"))
+
+
+def build_idea_explanation_stub_result(
+    *,
+    context_payload: dict[str, object],
+) -> tuple[str, dict[str, object]] | None:
+    envelope = build_idea_service_envelope(context_payload)
+    if envelope is None:
+        return None
+
+    redacted_evidence = context_payload.get("redacted_evidence_packet")
+    explanation_request = context_payload.get("explanation_request")
+    assert isinstance(redacted_evidence, dict)
+    assert isinstance(explanation_request, dict)
+
+    candidate_id = _as_str(redacted_evidence.get("candidate_id"))
+    evidence_packet_id = _as_str(redacted_evidence.get("evidence_packet_id"))
+    message = (
+        "Drafted a review-gated Lotus Idea explanation from redacted evidence packet "
+        f"{evidence_packet_id} for candidate {candidate_id}."
+    )
+    structured_output: dict[str, object] = dict(envelope)
+    structured_output["idea_workflow_output"] = _idea_workflow_output(
+        message=message,
+        request_id=_as_str(explanation_request.get("request_id")),
+        candidate_id=candidate_id,
+        score_policy_version=_as_str(redacted_evidence.get("score_policy_version")),
+        reason_codes=_string_list(redacted_evidence.get("reason_codes")),
+        source_product_ids=packet_source_product_ids(context_payload),
+    )
     return message, structured_output
 
 
