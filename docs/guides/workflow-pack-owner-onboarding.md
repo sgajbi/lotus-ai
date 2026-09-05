@@ -106,6 +106,69 @@ Avoid these patterns:
 4. keeping rollout posture only in prose rather than in the registry record,
 5. treating process-local control history as if it were durable production truth.
 
+## Pack Authority Boundaries
+
+Every registered pack family carries an explicit authority boundary: what evidence it may consume,
+and what it must never do. These boundaries are contract truth — moved here from the repository
+README, which now links to this section. When registering a new pack, add its boundary here in the
+same shape.
+
+The current executable pack set: advisor brief, workspace rationale, TWR inspection support brief,
+`proposal_memo_commentary.pack@v1`, the six `advisory_copilot_*.pack@v1` contracts (RFC-0027),
+`dpm_pm_memo.pack@v1`, `dpm_wave_pm_memo.pack@v1`, `dpm_operations_handoff_summary.pack@v1`,
+`dpm_exception_summary.pack@v1`, `outcome_review_narrative.pack@v1`, and
+`idea_explanation.pack@v1`. All are review-gated; `lotus-ai` owns pack execution, provider mode,
+safety, guardrail validation, run-ledger posture, queue policy, and deterministic stub behavior for
+each.
+
+Per-family boundaries:
+
+1. **Proposal memo commentary** (`lotus-advise`): consumes bounded memo evidence only. Cannot
+   mutate memo status, suitability, approval, or client-ready posture. `lotus-advise` remains the
+   advisor proposal memo evidence, review, and client-ready boundary authority.
+2. **Advisory copilot packs** (`lotus-advise`, RFC-0027): consume only copilot evidence packets
+   with source refs, model-risk controls, blocked client-ready posture, unsupported-claim posture,
+   and human-review requirements. Cannot approve advice, approve or waive policy, place orders,
+   send client messages, expose raw prompts or raw payloads, or infer missing advisory evidence.
+3. **DPM packs** (`lotus-manage`): the proof-pack PM memo consumes `DpmProofPackAiEvidenceInput`;
+   the wave PM memo and operations handoff summary consume `DpmWaveReportInput`; the exception
+   summary consumes bounded manage-owned monitoring exception evidence; the outcome-review
+   narrative consumes `DpmOutcomeAiEvidenceInput`. Pilot-scoped, support-only, review-gated: they
+   must not approve rebalances, place orders, produce client messages, score PMs, claim external
+   execution, produce routing instructions, or invent missing proof-pack, wave, exception, or
+   handoff evidence. `lotus-manage` remains the proof-pack and rebalance-wave evidence authority.
+4. **Idea explanation** (`lotus-idea`): consumes only redacted evidence packets, bounded
+   explanation requests, and supportability posture. `lotus-idea` remains the
+   opportunity-intelligence and idea-evidence authority. Cannot create suitability approval,
+   proposal authority, rebalance authority, client-ready publication, supported-feature promotion,
+   or missing source evidence. Caller policy recognizes `lotus-idea` only for restricted-tenant,
+   review-gated `explain.v1` execution — no live-provider, prompt-control, provider-control, or
+   async-control privilege.
+
+Cross-cutting pack facts:
+
+1. **Idempotent retries**: retryable synchronous callers can provide a stable business-operation
+   `idempotency_key`; matching retries return the retained original AI request and run lineage
+   without a second provider execution, while changed-input, active, or indeterminate duplicates
+   fail explicitly. Omitting the key preserves the one-request/one-run contract.
+2. **Portfolio-memory context** (proof-pack PM memo, wave PM memo, operations handoff summary,
+   and outcome-review narrative packs — the exception summary is deliberately not a consumer):
+   optional `portfolio_memory_context` from
+   `lotus-manage` report-input handoffs is validated as portfolio-matched, source-lineage-only,
+   capped to the bounded event-ref limit, governed by `NO_RAW_PAYLOADS`, and marked source-owned —
+   consumers must not reconstruct it. Outputs expose only a compact lineage summary, content hash,
+   event count, source systems, event types, and review guidance.
+3. **Signed provenance**: completed, reviewed, supportable non-stub runs can expose short-lived
+   signed attestations through `/platform/workflow-packs/runs/{run_id}/attestation`, with key
+   discovery at `/.well-known/lotus-ai-workflow-attestation-keys`; issuance requires an exact
+   effective model-risk inventory match and excludes raw prompts, generated output, and client or
+   portfolio payloads. See [workflow-run attestations](workflow-run-attestations.md).
+4. **Retention confirmations**: provider operations can issue a limited, not-certified
+   Ed25519-signed retention/deletion confirmation for completed live `idea_explanation.pack` runs.
+   The recorder is AI-owned; `lotus-idea` is only the audience. SQL persistence, tenant binding,
+   idempotency, provider failure posture, and no-raw-content claims are implementation-backed;
+   provider-native and bank approvals remain blocked.
+
 ## Documentation And Context Updates
 
 When onboarding a new workflow-pack family, update all of these together:
