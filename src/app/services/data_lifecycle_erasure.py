@@ -19,6 +19,7 @@ import hashlib
 import json
 from base64 import urlsafe_b64encode
 from datetime import UTC, datetime
+from typing import cast
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -39,6 +40,7 @@ from app.contracts.data_lifecycle import (
 from app.contracts.governed_actions import (
     GovernedActionRecord,
     GovernedActionResponse,
+    GovernedActionStatus,
     GovernedActionType,
 )
 from app.contracts.workflow_run_attestation import WorkflowRunAttestationSignature
@@ -53,6 +55,7 @@ from app.services.governed_action_control import (
     approve_and_execute_governed_action,
     submit_governed_action,
 )
+from app.services.provider_operations_store import get_provider_operations_store
 from app.services.workflow_pack_run_store import get_workflow_pack_run_store
 from app.services.workflow_pack_queue_event_store import get_workflow_pack_queue_event_store
 from app.services.workflow_pack_task_flow_store import get_workflow_pack_task_flow_store
@@ -131,6 +134,31 @@ def approve_data_erasure(
     evidences and issues the signed receipt."""
 
     _require_provider_control_authorization(caller)
+    # Signing readiness BEFORE destructive work (issue #327/F3): a missing or
+    # malformed receipt key must mean ZERO deletion, not an unreceipted one.
+    try:
+        ConfiguredWorkflowRunAttestationKeys(settings=settings).signer()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "The erasure-receipt signing key is not available; nothing was "
+                "erased. Configure the attestation signing material and retry."
+            ),
+        ) from exc
+
+    # A lost response is recoverable without re-erasing: an EXECUTED action
+    # with the same hash returns the SAME evidenced outcome, re-signed from
+    # the durable result payload.
+    existing = get_provider_operations_store().get_governed_action(request.action_id)
+    if (
+        existing is not None
+        and existing.status is GovernedActionStatus.EXECUTED
+        and existing.action_hash == request.action_hash
+        and existing.result_payload is not None
+    ):
+        return _erasure_response_from_result(existing)
+
     outcome: dict[str, object] = {}
 
     def _execute_erasure(record: GovernedActionRecord) -> None:
@@ -148,6 +176,20 @@ def approve_data_erasure(
                 )
                 continue
             erased, unattributable = _ERASURE_EXECUTORS[family_id](tenant_id)
+            # Deterministic per-action/family evidence id (issue #327): a
+            # recovery re-run after a crash merges the first pass's durable
+            # count instead of reporting an honest-but-empty re-deletion.
+            event_id = _family_erasure_event_id(record.action_id, family_id)
+            prior_event = next(
+                (
+                    event
+                    for event in get_audit_store().list_lifecycle_events(limit=10000)
+                    if event.event_id == event_id
+                ),
+                None,
+            )
+            if prior_event is not None:
+                erased = max(erased, prior_event.row_count)
             results.append(
                 DataErasureFamilyResult(
                     family_id=family_id,
@@ -159,7 +201,7 @@ def approve_data_erasure(
             if erased:
                 get_audit_store().save_lifecycle_event(
                     DataLifecycleEventRecord(
-                        event_id=f"dle_{uuid4().hex[:16]}",
+                        event_id=event_id,
                         family_id=family_id,
                         action=DataLifecycleAction.ERASURE,
                         key_scope=f"tenant:{tenant_id}",
@@ -186,6 +228,13 @@ def approve_data_erasure(
         ),
         attribution=request.approved_by,
         execute=_execute_erasure,
+        result_payload_builder=lambda: {
+            "results": [
+                result.model_dump(mode="json")
+                for result in cast(list[DataErasureFamilyResult], outcome["results"])
+            ],
+            "executed_at": outcome["executed_at"],
+        },
     )
     results = outcome["results"]
     assert isinstance(results, list)
@@ -207,6 +256,45 @@ def approve_data_erasure(
             f"distinct credential `{executed.approver_key_id}`.",
             "Held families are listed on the receipt with held=true; the receipt "
             "signature verifies against the published attestation keys.",
+        ],
+    )
+
+
+def _family_erasure_event_id(action_id: str, family_id: str) -> str:
+    digest = hashlib.sha256(f"{action_id}:{family_id}".encode("utf-8")).hexdigest()[:24]
+    return f"dle_{digest}"
+
+
+def _erasure_response_from_result(record: GovernedActionRecord) -> DataErasureApprovalResponse:
+    """Rebuild the evidenced erasure outcome from the durable result payload.
+
+    Re-signing the same claims is retrieval, not re-erasure: the counts,
+    families and execution instant are exactly the ones the executed action
+    recorded (issue #327/F3).
+    """
+
+    payload = record.result_payload or {}
+    raw_results = payload.get("results")
+    results = [
+        DataErasureFamilyResult.model_validate(item)
+        for item in (raw_results if isinstance(raw_results, list) else [])
+    ]
+    receipt = _issue_receipt(
+        tenant_id=record.target,
+        reason=str(record.action_payload.get("reason")),
+        governed_action_id=record.action_id,
+        families=results,
+        executed_at=str(payload.get("executed_at")),
+    )
+    return DataErasureApprovalResponse(
+        service=settings.service_name,
+        version=settings.service_version,
+        receipt=receipt,
+        governed_action=record,
+        summary=[
+            f"Erasure of tenant `{record.target}` under governed action "
+            f"`{record.action_id}` was already executed; this is the evidenced "
+            "outcome re-signed from durable results, not a re-erasure.",
         ],
     )
 

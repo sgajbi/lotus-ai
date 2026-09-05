@@ -66,6 +66,10 @@ class GovernedActionType(str, Enum):
 
 class GovernedActionStatus(str, Enum):
     PENDING = "PENDING"
+    # An approver's atomic claim on a PENDING action (issue #327): exactly one
+    # approval session owns the transition to execution; a claim that survives
+    # a crash is resumable only by the claiming credential.
+    CLAIMED = "CLAIMED"
     EXECUTED = "EXECUTED"
     SUPERSEDED = "SUPERSEDED"
 
@@ -116,6 +120,23 @@ class GovernedActionRecord(BaseModel):
         description="Signing credential that authenticated the approver; must differ from the requester's.",
     )
     approver_attribution: str | None = Field(default=None, max_length=256)
+    claimed_at: str | None = Field(
+        default=None,
+        max_length=64,
+        description=(
+            "Instant the approver's atomic claim transitioned this action from "
+            "PENDING (issue #327); execution evidence begins here."
+        ),
+    )
+    result_payload: dict[str, object] | None = Field(
+        default=None,
+        description=(
+            "Durable domain result of the executed action (issue #327), persisted "
+            "with the EXECUTED transition so evidence-bearing responses (e.g. an "
+            "erasure receipt) are retrievable after a lost response without "
+            "re-executing the effect."
+        ),
+    )
     approved_at: str | None = Field(default=None, max_length=64)
     executed_at: str | None = Field(default=None, max_length=64)
     superseded_by_action_id: str | None = Field(default=None, max_length=64)

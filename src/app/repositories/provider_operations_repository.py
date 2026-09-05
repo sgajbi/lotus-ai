@@ -234,6 +234,18 @@ class ProviderOperationsRepository(Protocol):
     ) -> GovernedActionRecord | None:
         """Fetch the pending governed action for one action type and target, if any."""
 
+    def transition_governed_action(
+        self,
+        *,
+        action_id: str,
+        expected_status: str,
+        record: GovernedActionRecord,
+    ) -> bool:
+        """Atomically replace the action iff its CURRENT status equals
+        ``expected_status`` (issue #327). Returns False without writing when
+        the action moved concurrently - the caller lost the transition."""
+        ...
+
     def upsert_governed_action(self, record: GovernedActionRecord) -> None:
         """Persist one governed-action record by action id."""
 

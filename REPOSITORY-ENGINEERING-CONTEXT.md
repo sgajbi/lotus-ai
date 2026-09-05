@@ -132,7 +132,15 @@ deletion writes an append-only `data_lifecycle_events` row referencing content
 only by digest. Tenant erasure is a governed two-step `DATA_ERASURE` action
 yielding an Ed25519-signed receipt verifiable against the published attestation
 keys; erasure overrides retention, legal hold overrides erasure, and both are
-recorded. Minimisation caps the audit `result_preview` at persistence and ages
+recorded. Governed execution is single-owner (#327): approval claims the action
+atomically (`PENDING→CLAIMED`, one compare-and-set authority in the repository;
+a duplicated approval loses the claim and receives 409), executes, then
+finalizes `CLAIMED→EXECUTED` with a durable result payload. Erasure proves
+signing readiness before any deletion (a missing receipt key means zero rows
+erased, 503, still approvable), replays a lost receipt from the durable result
+without re-erasing, and recovers a crash-interrupted run through deterministic
+per-action/family lifecycle events — resumable only by the claiming credential
+with an explicit resume flag. Minimisation caps the audit `result_preview` at persistence and ages
 passing evaluation-case content at a declared shorter horizon.
 
 **Current limitations.** Capability requirements exist for latency (one governed

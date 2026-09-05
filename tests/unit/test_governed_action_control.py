@@ -169,7 +169,11 @@ def test_a_new_request_supersedes_the_pending_one() -> None:
     assert _approve(second).status is GovernedActionStatus.EXECUTED
 
 
-def test_a_failed_execution_leaves_the_action_pending() -> None:
+def test_a_failed_execution_leaves_the_claim_resumable_by_its_owner() -> None:
+    """The atomic claim precedes the effect (issue #327): a failed execution
+    leaves the action CLAIMED under the approver's evidence, resumable only by
+    that credential - never silently re-approvable by anyone else."""
+
     record = _submit()
 
     def _explode(pending: object) -> None:
@@ -179,8 +183,35 @@ def test_a_failed_execution_leaves_the_action_pending() -> None:
         _approve(record, execute=_explode)
     stored = get_provider_operations_store().get_governed_action(record.action_id)
     assert stored is not None
-    assert stored.status is GovernedActionStatus.PENDING
-    assert stored.approver_key_id is None
+    assert stored.status is GovernedActionStatus.CLAIMED
+    assert stored.approver_key_id == APPROVER.credential_key_id
+    assert stored.claimed_at is not None
+
+    # A different verified credential cannot take over the claim.
+    from types import SimpleNamespace
+
+    other = SimpleNamespace(
+        caller_app="operator-service",
+        trust_source="verified_service_jwt",
+        credential_key_id="key-other",
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        _approve(record, caller=other)
+    assert exc_info.value.status_code == 409
+
+    # The claiming credential resumes EXPLICITLY: the (idempotent) effect
+    # re-runs and the action finalizes EXECUTED with the ORIGINAL claim
+    # evidence preserved.
+    effects: list[str] = []
+    executed = _approve(
+        record,
+        execute=lambda pending: effects.append(pending.action_id),
+        resume_interrupted_claim=True,
+    )
+    assert effects == [record.action_id]
+    assert executed.status is GovernedActionStatus.EXECUTED
+    assert executed.approver_key_id == APPROVER.credential_key_id
+    assert executed.claimed_at == stored.claimed_at
 
 
 def test_a_system_identity_cannot_originate_a_human_governed_action() -> None:
@@ -324,3 +355,63 @@ def test_governed_action_history_is_a_privileged_operator_read() -> None:
     assert len(allowed_events) == 1
     assert allowed_events[0].caller_app == "lotus-platform"
     assert allowed_events[0].returned_record_count == 1
+
+
+def test_approving_an_unknown_action_id_is_not_found() -> None:
+    record = _submit()
+    with pytest.raises(HTTPException) as exc_info:
+        _approve(record, action_id="gact_does_not_exist")
+    assert exc_info.value.status_code == 404
+
+
+def test_losing_the_claim_race_refuses_without_running_the_effect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Issue #327: the atomic PENDING->CLAIMED claim IS the execution
+    ownership. When a concurrent approval wins the transition between this
+    approval's read and its compare-and-set, this approval refuses with 409
+    and its domain callback never runs - the loser contributes no effect."""
+
+    record = _submit()
+    store = get_provider_operations_store()
+
+    def claim_already_taken(
+        *, action_id: str, expected_status: str, record: GovernedActionRecord
+    ) -> bool:
+        return False
+
+    monkeypatch.setattr(store, "transition_governed_action", claim_already_taken)
+    effects: list[str] = []
+    with pytest.raises(HTTPException) as exc_info:
+        _approve(record, execute=lambda pending: effects.append(pending.action_id))
+    assert exc_info.value.status_code == 409
+    assert "did not execute" in exc_info.value.detail
+    assert effects == []
+
+
+def test_a_claim_lost_during_execution_cannot_finalize_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Issue #327: EXECUTED evidence writes only over the caller's own live
+    claim (CLAIMED->EXECUTED compare-and-set). If the claim is gone by
+    finalization time, the domain effect has already run but the approval
+    reports 409 instead of stamping evidence over state it no longer owns."""
+
+    record = _submit()
+    store = get_provider_operations_store()
+    real_transition = store.transition_governed_action
+
+    def stolen_after_execution(
+        *, action_id: str, expected_status: str, record: GovernedActionRecord
+    ) -> bool:
+        if expected_status == GovernedActionStatus.CLAIMED.value:
+            return False
+        return real_transition(action_id=action_id, expected_status=expected_status, record=record)
+
+    monkeypatch.setattr(store, "transition_governed_action", stolen_after_execution)
+    effects: list[str] = []
+    with pytest.raises(HTTPException) as exc_info:
+        _approve(record, execute=lambda pending: effects.append(pending.action_id))
+    assert exc_info.value.status_code == 409
+    assert "could not be finalized" in exc_info.value.detail
+    assert effects == [record.action_id]

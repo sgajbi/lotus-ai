@@ -270,3 +270,140 @@ def test_erasure_covers_attributed_async_jobs_and_artifacts_with_payloads(
     assert artifact_result.unattributable_count == 1
     # Fully attributed stores carry no unattributable claim.
     assert by_family["audit_evidence"].unattributable_count is None
+
+
+def test_missing_signing_key_means_zero_deletion(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Audit F3: signing readiness is validated BEFORE destructive work - an
+    absent receipt key refuses the approval with nothing erased and the
+    governed action still PENDING and approvable after the key is fixed."""
+
+    _seed_two_tenants()
+    monkeypatch.setattr(settings, "workflow_run_attestation_key_id", "")
+    pending = request_data_erasure(
+        DataErasureIntentRequest(tenant_id="tenant-b", reason="Off-boarding."),
+        GOVERNED_REQUESTER,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        approve_data_erasure(
+            DataErasureApprovalRequest(
+                action_id=pending.governed_action.action_id,
+                action_hash=pending.governed_action.action_hash,
+            ),
+            GOVERNED_APPROVER,
+        )
+
+    assert exc_info.value.status_code == 503
+    audit_records = get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=100)
+    assert any(record.tenant_id == "tenant-b" for record in audit_records)
+    from app.services.provider_operations_store import get_provider_operations_store
+
+    stored = get_provider_operations_store().get_governed_action(pending.governed_action.action_id)
+    assert stored is not None
+    assert stored.status.value == "PENDING"
+
+
+def test_lost_receipt_is_retrievable_from_durable_results_without_reerasing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Audit F3: a response lost after execution returns the SAME evidenced
+    outcome on retry - counts from the durable result payload, no second
+    deletion pass, no 409."""
+
+    _configure_attestation_keys(monkeypatch)
+    _seed_two_tenants()
+    first = _erase_tenant_b()
+    first_counts = {
+        family.family_id: family.erased_count for family in first.receipt.claims.families
+    }
+    assert any(count > 0 for count in first_counts.values())
+
+    retry = approve_data_erasure(
+        DataErasureApprovalRequest(
+            action_id=first.governed_action.action_id,
+            action_hash=first.governed_action.action_hash,
+        ),
+        GOVERNED_APPROVER,
+    )
+
+    retry_counts = {
+        family.family_id: family.erased_count for family in retry.receipt.claims.families
+    }
+    assert retry_counts == first_counts
+    assert retry.governed_action.action_id == first.governed_action.action_id
+    assert retry.receipt.claims.executed_at == first.receipt.claims.executed_at
+    # Tenant A remains untouched by the retry.
+    audit_records = get_audit_store().list(scope=INTERNAL_AGGREGATE_AUDIT_SCOPE, limit=100)
+    assert any(record.tenant_id == "tenant-a" for record in audit_records)
+
+
+def test_crash_after_a_family_completes_recovers_the_evidenced_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Audit F3: a crash between families neither loses the completed family's
+    evidenced count nor forces a blind re-erasure - the deterministic per-
+    action/family lifecycle event carries the first pass's count into the
+    recovered receipt."""
+
+    _configure_attestation_keys(monkeypatch)
+    _seed_two_tenants()
+    pending = request_data_erasure(
+        DataErasureIntentRequest(tenant_id="tenant-b", reason="Off-boarding."),
+        GOVERNED_REQUESTER,
+    )
+
+    import app.services.data_lifecycle_erasure as erasure_module
+
+    original_executors = dict(erasure_module._ERASURE_EXECUTORS)
+    family_order = list(original_executors)
+    crash_on_entry = family_order[-1]
+
+    def _crashing(family_id: str) -> object:
+        executor = original_executors[family_id]
+
+        def run(tenant_id: str) -> tuple[int, int | None]:
+            # The crash lands BETWEEN families: every earlier family fully
+            # completed, including its durable lifecycle event.
+            if family_id == crash_on_entry:
+                raise RuntimeError("process died between families")
+            return executor(tenant_id)
+
+        return run
+
+    monkeypatch.setattr(
+        erasure_module,
+        "_ERASURE_EXECUTORS",
+        {family_id: _crashing(family_id) for family_id in family_order},
+    )
+
+    with pytest.raises(RuntimeError):
+        approve_data_erasure(
+            DataErasureApprovalRequest(
+                action_id=pending.governed_action.action_id,
+                action_hash=pending.governed_action.action_hash,
+            ),
+            GOVERNED_APPROVER,
+        )
+
+    # Recovery: the claiming credential retries with the original executors.
+    monkeypatch.setattr(erasure_module, "_ERASURE_EXECUTORS", original_executors)
+    monkeypatch.setattr(
+        erasure_module,
+        "approve_and_execute_governed_action",
+        lambda **kwargs: __import__(
+            "app.services.governed_action_control", fromlist=["x"]
+        ).approve_and_execute_governed_action(**kwargs, resume_interrupted_claim=True),
+    )
+    recovered = approve_data_erasure(
+        DataErasureApprovalRequest(
+            action_id=pending.governed_action.action_id,
+            action_hash=pending.governed_action.action_hash,
+        ),
+        GOVERNED_APPROVER,
+    )
+
+    counts = {family.family_id: family.erased_count for family in recovered.receipt.claims.families}
+    # Families that completed before the crash report their FIRST pass's
+    # evidenced counts, not an honest-but-empty re-deletion.
+    assert sum(counts.values()) > 0
+    assert any(counts[family_id] > 0 for family_id in family_order[:-1])
