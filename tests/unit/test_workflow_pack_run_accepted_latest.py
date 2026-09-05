@@ -9,6 +9,7 @@ tenant isolation without an existence oracle.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any
 
@@ -103,6 +104,31 @@ def _seed_run(
     artifact_intact: bool = True,
 ) -> None:
     store, objects = stores
+    raw: bytes | None = None
+    if artifact_intact:
+        structured: dict[str, Any] = {
+            "advisor_brief_status": "complete",
+            "coverage_state": "complete",
+            "portfolio_id": portfolio_id,
+            "period": "YTD",
+            "grounded_summary": f"Summary for {run_id}.",
+            "talking_points": [],
+            "risks_and_exceptions": [],
+        }
+        if as_of_date is not None:
+            structured["as_of_date"] = as_of_date
+        if reporting_currency is not None:
+            structured["reporting_currency"] = reporting_currency
+        raw = json.dumps(
+            {
+                "run_id": run_id,
+                "pack_id": "advisor_brief.pack",
+                "source_refs": [],
+                "evidence_types": [],
+                "structured_output": structured,
+            }
+        ).encode("utf-8")
+        objects.objects[f"runs/{run_id}.json"] = raw
     store.runs[run_id] = WorkflowPackRunRecord(
         run_id=run_id,
         pack_id="advisor_brief.pack",
@@ -134,8 +160,8 @@ def _seed_run(
                 lifecycle_status=ArtifactLifecycleStatus.RUNTIME_GENERATED,
                 retention_posture="retained_for_review",
                 media_type="application/json",
-                byte_size=512,
-                checksum_sha256="0" * 64,
+                byte_size=len(raw) if raw is not None else 512,
+                checksum_sha256=(hashlib.sha256(raw).hexdigest() if raw is not None else "0" * 64),
                 storage_backend=ArtifactStorageBackend.MEMORY,
                 storage_reference=f"artifact://runs/{run_id}.json",
                 created_at=created_at,
@@ -161,29 +187,6 @@ def _seed_run(
                 recorded_at=reviewed_at,
             )
         )
-    if artifact_intact:
-        structured: dict[str, Any] = {
-            "advisor_brief_status": "complete",
-            "coverage_state": "complete",
-            "portfolio_id": portfolio_id,
-            "period": "YTD",
-            "grounded_summary": f"Summary for {run_id}.",
-            "talking_points": [],
-            "risks_and_exceptions": [],
-        }
-        if as_of_date is not None:
-            structured["as_of_date"] = as_of_date
-        if reporting_currency is not None:
-            structured["reporting_currency"] = reporting_currency
-        objects.objects[f"runs/{run_id}.json"] = json.dumps(
-            {
-                "run_id": run_id,
-                "pack_id": "advisor_brief.pack",
-                "source_refs": [],
-                "evidence_types": [],
-                "structured_output": structured,
-            }
-        ).encode("utf-8")
 
 
 def _lookup(**overrides: Any) -> Any:
@@ -451,3 +454,27 @@ def test_envelope_is_identity_only_and_pins_the_projection_hash(
         "content_hash_algorithm",
         "notes",
     }
+
+
+def test_latest_accepted_withholds_tampered_artifact_bytes(
+    _stores: tuple[_Store, _ObjectStore],
+) -> None:
+    """Same run/pack ids, valid JSON, changed narrative: the acceptance and
+    validation evidence belong to the persisted bytes, so the latest-accepted
+    composition refuses the changed content (issue #328)."""
+
+    _seed_run(
+        _stores,
+        run_id="wfr-tampered",
+        created_at="2026-08-30T09:00:00Z",
+        reviewed_at="2026-08-30T09:05:00Z",
+    )
+    store, objects = _stores
+    tampered = json.loads(objects.objects["runs/wfr-tampered.json"].decode("utf-8"))
+    tampered["structured_output"]["grounded_summary"] = "A different unreviewed narrative."
+    objects.objects["runs/wfr-tampered.json"] = json.dumps(tampered).encode("utf-8")
+
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        _lookup()
+
+    assert excinfo.value.reason_code == "output_artifact_integrity_mismatch"

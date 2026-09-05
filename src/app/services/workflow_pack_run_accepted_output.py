@@ -70,6 +70,7 @@ REASON_RUN_NOT_ACCEPTED = "run_not_accepted"
 REASON_RUN_SUPERSEDED = "run_superseded"
 REASON_OUTPUT_ARTIFACT_MISSING = "output_artifact_missing"
 REASON_OUTPUT_ARTIFACT_MALFORMED = "output_artifact_malformed"
+REASON_OUTPUT_ARTIFACT_INTEGRITY = "output_artifact_integrity_mismatch"
 REASON_OUTPUT_NOT_VALIDATED = "output_not_validated"
 
 ACCEPTED_OUTPUT_REASON_CODES = frozenset(
@@ -80,6 +81,7 @@ ACCEPTED_OUTPUT_REASON_CODES = frozenset(
         REASON_RUN_SUPERSEDED,
         REASON_OUTPUT_ARTIFACT_MISSING,
         REASON_OUTPUT_ARTIFACT_MALFORMED,
+        REASON_OUTPUT_ARTIFACT_INTEGRITY,
         REASON_OUTPUT_NOT_VALIDATED,
     }
 )
@@ -236,6 +238,22 @@ def _load_intact_output_payload(record: WorkflowPackRunRecord) -> dict[str, Any]
         raise AcceptedOutputNotAvailableError(
             REASON_OUTPUT_ARTIFACT_MISSING,
             "The governed run-output artifact object is no longer retrievable.",
+        )
+    # The acceptance and VALIDATED evidence attach to the bytes that existed
+    # when the artifact was persisted. Publishing requires the loaded bytes to
+    # BE those bytes (issue #328): identity metadata alone cannot establish
+    # that, and the recorded checksum is never repaired at read time.
+    recorded_checksum = (summary_artifact.checksum_sha256 or "").strip().lower()
+    loaded_checksum = hashlib.sha256(stored_object.payload).hexdigest()
+    if (
+        not recorded_checksum
+        or loaded_checksum != recorded_checksum
+        or summary_artifact.byte_size != len(stored_object.payload)
+    ):
+        raise AcceptedOutputNotAvailableError(
+            REASON_OUTPUT_ARTIFACT_INTEGRITY,
+            "The governed run-output artifact bytes do not match the checksum and "
+            "size recorded when the output was persisted.",
         )
     try:
         payload = json.loads(stored_object.payload.decode("utf-8"))

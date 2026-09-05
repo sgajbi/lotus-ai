@@ -7,6 +7,8 @@ determinism and sensitivity, directly against the service.
 
 from __future__ import annotations
 
+import dataclasses
+import hashlib
 import json
 from typing import Any
 
@@ -143,7 +145,13 @@ class _ObjectStoreStub:
         return _Stored()
 
 
-WireCallable = Callable[["WorkflowPackRunRecord | None", "dict[str, Any] | bytes | None"], None]
+WireCallable = Callable[..., None]
+
+
+def _serialize(payload: dict[str, Any] | bytes | None) -> bytes | None:
+    if isinstance(payload, dict):
+        return json.dumps(payload).encode("utf-8")
+    return payload
 
 
 @pytest.fixture
@@ -151,10 +159,28 @@ def _wired(monkeypatch: pytest.MonkeyPatch) -> WireCallable:
     def wire(
         record: WorkflowPackRunRecord | None,
         artifact_payload: dict[str, Any] | bytes | None,
+        *,
+        recorded_payload: dict[str, Any] | bytes | None = None,
     ) -> None:
-        raw = artifact_payload
-        if isinstance(raw, dict):
-            raw = json.dumps(raw).encode("utf-8")
+        raw = _serialize(artifact_payload)
+        # The descriptor records the checksum/size of the bytes that existed at
+        # persistence time (issue #328): by default that is what the store now
+        # holds; a tamper scenario records the ORIGINAL bytes while the store
+        # holds changed ones.
+        recorded = _serialize(recorded_payload) if recorded_payload is not None else raw
+        if record is not None and recorded is not None:
+            refreshed_refs = [
+                artifact.model_copy(
+                    update={
+                        "checksum_sha256": hashlib.sha256(recorded).hexdigest(),
+                        "byte_size": len(recorded),
+                    }
+                )
+                if artifact.artifact_type == "run_output_summary"
+                else artifact
+                for artifact in record.artifact_refs
+            ]
+            record = dataclasses.replace(record, artifact_refs=refreshed_refs)
         monkeypatch.setattr(module, "ensure_workflow_pack_run_store_ready", lambda: None)
         monkeypatch.setattr(module, "get_workflow_pack_run_store", lambda: _StoreStub(record))
         monkeypatch.setattr(module, "get_artifact_object_store", lambda: _ObjectStoreStub(raw))
@@ -243,13 +269,23 @@ def test_accepted_state_without_recorded_review_event_is_malformed(
     # Deliberately NOT using `_wired`: it stubs `_accepting_review_identity`, and
     # this pin is about that function refusing an ACCEPTED record whose event
     # ledger carries no review transition.
-    monkeypatch.setattr(module, "ensure_workflow_pack_run_store_ready", lambda: None)
-    monkeypatch.setattr(module, "get_workflow_pack_run_store", lambda: _StoreStub(_record()))
-    monkeypatch.setattr(
-        module,
-        "get_artifact_object_store",
-        lambda: _ObjectStoreStub(json.dumps(_artifact_payload()).encode("utf-8")),
+    raw = json.dumps(_artifact_payload()).encode("utf-8")
+    record = _record()
+    record = dataclasses.replace(
+        record,
+        artifact_refs=[
+            artifact.model_copy(
+                update={
+                    "checksum_sha256": hashlib.sha256(raw).hexdigest(),
+                    "byte_size": len(raw),
+                }
+            )
+            for artifact in record.artifact_refs
+        ],
     )
+    monkeypatch.setattr(module, "ensure_workflow_pack_run_store_ready", lambda: None)
+    monkeypatch.setattr(module, "get_workflow_pack_run_store", lambda: _StoreStub(record))
+    monkeypatch.setattr(module, "get_artifact_object_store", lambda: _ObjectStoreStub(raw))
     with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
         build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
     assert _reason(excinfo) == "output_artifact_malformed"
@@ -443,6 +479,7 @@ def test_every_refusal_reason_is_declared_in_the_vocabulary() -> None:
         module.REASON_RUN_SUPERSEDED,
         module.REASON_OUTPUT_ARTIFACT_MISSING,
         module.REASON_OUTPUT_ARTIFACT_MALFORMED,
+        module.REASON_OUTPUT_ARTIFACT_INTEGRITY,
         module.REASON_OUTPUT_NOT_VALIDATED,
     }
     assert raised == set(module.ACCEPTED_OUTPUT_REASON_CODES)
@@ -502,3 +539,47 @@ def test_incomplete_validation_evidence_fails_closed(missing: str, _wired: WireC
         build_workflow_pack_run_accepted_output(run_id="wfr-accepted-001", caller_tenant_id=TENANT)
     assert _reason(excinfo) == "output_not_validated"
     assert missing in excinfo.value.message
+
+
+def test_tampered_bytes_with_original_checksum_are_refused(_wired: WireCallable) -> None:
+    original = _artifact_payload()
+    changed = _artifact_payload()
+    changed["structured_output"]["grounded_summary"] = "A different unreviewed narrative."
+    _wired(_record(), changed, recorded_payload=original)
+
+    with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+        module.build_workflow_pack_run_accepted_output(
+            run_id="wfr-accepted-001", caller_tenant_id=TENANT
+        )
+
+    assert _reason(excinfo) == module.REASON_OUTPUT_ARTIFACT_INTEGRITY
+
+
+def test_artifact_without_a_recorded_checksum_is_refused(_wired: WireCallable) -> None:
+    record = _record()
+    stripped_refs = [
+        artifact.model_copy(update={"checksum_sha256": ""}) for artifact in record.artifact_refs
+    ]
+    payload = _artifact_payload()
+    _wired(dataclasses.replace(record, artifact_refs=stripped_refs), payload)
+    # Undo the wire fixture's checksum refresh: this scenario is exactly "no
+    # recorded integrity evidence".
+    import app.services.workflow_pack_run_accepted_output as service_module
+
+    class _Store:
+        def get_run(self, *, run_id: str) -> Any:
+            return dataclasses.replace(record, artifact_refs=stripped_refs)
+
+        def list_events(self, *, run_id: str) -> list[Any]:
+            return []
+
+    import pytest as _pytest
+
+    with _pytest.MonkeyPatch.context() as mp:
+        mp.setattr(service_module, "get_workflow_pack_run_store", lambda: _Store())
+        with pytest.raises(AcceptedOutputNotAvailableError) as excinfo:
+            module.build_workflow_pack_run_accepted_output(
+                run_id="wfr-accepted-001", caller_tenant_id=TENANT
+            )
+
+    assert _reason(excinfo) == module.REASON_OUTPUT_ARTIFACT_INTEGRITY
