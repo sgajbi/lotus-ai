@@ -30,11 +30,13 @@ Calling services remain responsible for:
 3. deciding how AI output is applied,
 4. handling user-facing consequences.
 
-## Current Product Shape
+## Availability
 
-The service is in a governed foundation phase with real runtime behavior already implemented.
+Implemented contracts, enabled providers, and certified live use are three distinct states: the
+capabilities below are implemented and tested, while live-provider enablement and per-pack live
+certification are separately governed.
 
-What is real today:
+What is implemented today:
 
 1. typed task contracts,
 2. prompt rollout state and audit traceability,

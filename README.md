@@ -1,360 +1,93 @@
 # lotus-ai
 
-Shared AI capability service for the Lotus ecosystem.
+Governed AI execution for Lotus wealth applications.
 
-Repository-local engineering context: `REPOSITORY-ENGINEERING-CONTEXT.md`
+`lotus-ai` is the shared service Lotus applications call when they need AI work done under
+banking-grade controls. A calling service sends bounded business context; `lotus-ai` executes the
+task against a governed model candidate and returns output that carries its own evidence — what
+served it, what grounded it, how it was validated, and what it cost. Domain decisions stay with the
+calling services: `lotus-ai` never owns portfolio, analytics, workflow, or advisory truth, and its
+output is always marked non-authoritative until the caller applies it.
 
-`lotus-ai` provides governed AI execution and control-plane capabilities for Lotus applications. It
-exists to let downstream services use prompts, retrieval, safety controls, evaluation gates, async
-execution, and provider-routing seams without moving portfolio, analytics, workflow, or business
-authority out of the services that already own those domains.
+## What It Does
 
-## What This Repository Owns
+- **Explanations and summaries** (`explain.v1`, `summarize.v1`) — narrative output over
+  caller-supplied evidence: advisor briefs, proposal memo commentary, portfolio-management memos,
+  idea explanations.
+- **Structured outputs** — classification, extraction, and schema-validated generation
+  (`classify.v1`, `extract.v1`, `generate_structured.v1`).
+- **Governed retrieval** — search and citation-carrying answers over curated, attributable sources
+  (`knowledge_search.v1`, `knowledge_answer.v1`) — bounded retrieval, not a general search platform.
+- **Traceable execution** — every run records its routing decision, serving identity, prompt
+  version, safety verdict, grounding validation, cost evidence, and audit trail; reviewed non-stub
+  runs can expose signed attestations.
 
-`lotus-ai` owns:
+Consumers integrate through one public execution contract, `POST /ai/tasks/execute`, and through
+review-gated workflow packs registered for specific Lotus applications
+([task execution contract](docs/guides/task-execution-contract.md),
+[integration guide](docs/guides/integration-guide.md)).
 
-1. bounded AI task execution contracts,
-2. prompt rollout and audit traceability,
-3. governed retrieval and citation-carrying answer paths,
-4. safety labeling, redaction posture, and safety evidence surfaces,
-5. runtime-backed evaluation and approval-gate posture,
-6. async runtime and worker-backed job execution for governed AI work,
-7. provider policy, quota, budget, and degradation control surfaces,
-8. workflow-pack registry and activation-control discovery surfaces,
-9. AI-specific observability, evidence, and control-plane APIs.
+## Availability
 
-`lotus-ai` does not own:
-
-1. portfolio, holdings, booking, or transaction truth,
-2. performance or risk analytics truth,
-3. advisory or management workflow authority,
-4. user-facing business decisions outside the explicit task contracts it exposes.
-
-Calling systems remain responsible for assembling business context, preserving domain semantics, and
-deciding how AI output is applied or rejected.
-
-## Current Product Shape
-
-`lotus-ai` is in a governed foundation phase. This is not a placeholder repository. The service
-already has real runtime seams, durable stores, and operator-facing governance surfaces for prompt
-selection, retrieval posture, provider controls, evaluation approval, async execution, and caller
-authorization.
-
-The current supported task families are:
-
-1. `explain.v1`
-2. `summarize.v1`
-3. `classify.v1`
-4. `extract.v1`
-5. `generate_structured.v1`
-6. `knowledge_search.v1`
-7. `knowledge_answer.v1`
-
-Important posture limits:
-
-1. live provider execution remains deliberately rollout-governed,
-2. the bounded capability catalog is broader than the current live-provider allowlist,
-3. retrieval is governed and bounded rather than a general search platform,
-4. prompt bodies remain repository-managed even though runtime prompt selection is durable,
-5. workflow-pack registry records are control-plane metadata, not a second editable home for workflow logic,
-6. workflow-pack registrations must point to real owning-repository artifacts rather than placeholder definitions in `lotus-ai`,
-7. workflow-pack registry and control state can now run either in-memory or through a SQL-backed durable store, and the current executable workflow-pack set includes advisor brief, workspace rationale, TWR inspection support brief, the review-gated `proposal_memo_commentary.pack@v1` contract for `lotus-advise` advisor proposal memo evidence, the six review-gated `advisory_copilot_*.pack@v1` contracts for RFC-0027 `lotus-advise` evidence packets, the review-gated `dpm_pm_memo.pack@v1` contract for `lotus-manage` `DpmProofPackAiEvidenceInput`, the review-gated `dpm_wave_pm_memo.pack@v1` and `dpm_operations_handoff_summary.pack@v1` contracts for `lotus-manage` `DpmWaveReportInput`, the review-gated `dpm_exception_summary.pack@v1` contract for bounded `lotus-manage` monitoring exception evidence, the review-gated `outcome_review_narrative.pack@v1` contract for `lotus-manage` `DpmOutcomeAiEvidenceInput`, and the review-gated `idea_explanation.pack@v1` contract for `lotus-idea` redacted opportunity evidence packets,
-8. the service should be treated as a governed capability layer, not a business-domain authority.
-9. AI provider operations can issue a limited, not-certified Ed25519-signed retention/deletion
-   confirmation for completed live `idea_explanation.pack` runs. The recorder is AI-owned;
-   `lotus-idea` is only the audience. SQL persistence, tenant binding, idempotency, provider failure
-   posture, and no-raw-content claims are implementation-backed, while provider-native and bank
-   approvals remain blocked.
-
-For proposal memo commentary, RFC-0027 advisory copilot, DPM PM memo, exception summary,
-operations handoff summary, and idea explanation support, `lotus-ai` owns workflow-pack execution, provider mode, safety, guardrail validation,
-run-ledger posture, queue policy, and deterministic stub behavior.
-Retryable synchronous workflow-pack callers can provide a stable business-operation
-`idempotency_key`; matching retries return the retained original AI request and run lineage without
-a second provider execution, while changed-input, active, or indeterminate duplicates fail
-explicitly. Omitting the key preserves the existing one-request/one-run contract.
-`lotus-advise` remains the advisor proposal memo evidence, review, and client-ready boundary
-authority. The proposal memo commentary pack consumes bounded memo evidence only and cannot mutate
-memo status, suitability, approval, or client-ready posture.
-The advisory copilot packs consume only `lotus-advise` copilot evidence packets with source refs,
-model-risk controls, blocked client-ready posture, unsupported-claim posture, and human-review
-requirements. They cannot approve advice, approve or waive policy, place orders, send client
-messages, expose raw prompts or raw payloads, or infer missing advisory evidence.
-`lotus-manage` remains the proof-pack and rebalance-wave evidence authority. The proof-pack pack
-consumes `DpmProofPackAiEvidenceInput`; the wave PM memo and operations handoff summary packs
-consume `DpmWaveReportInput`; the exception summary pack consumes bounded manage-owned monitoring
-exception evidence. These packs are pilot-scoped, support-only, and review-gated; they must not
-approve rebalances, place orders, produce client messages, score PMs, claim external execution,
-produce routing instructions, or invent missing proof-pack, wave, exception, or handoff evidence.
-`lotus-idea` remains the opportunity-intelligence and idea-evidence authority. The idea explanation
-pack consumes only redacted evidence packets, bounded explanation requests, and supportability
-posture from `lotus-idea`; it cannot create suitability approval, proposal authority, rebalance
-authority, client-ready publication, supported-feature promotion, or missing source evidence. The
-caller policy recognizes `lotus-idea` only for restricted-tenant, review-gated `explain.v1`
-execution and does not grant live-provider, prompt-control, provider-control, or async-control
-privilege.
-
-Completed, reviewed, supportable non-stub workflow-pack runs can expose short-lived signed
-provenance through `/platform/workflow-packs/runs/{run_id}/attestation`, with public Ed25519 key
-discovery at `/.well-known/lotus-ai-workflow-attestation-keys`. Issuance requires an exact effective
-model-risk inventory match and excludes raw prompts, generated output, and client or portfolio
-payloads. See [Workflow-Run Attestations](docs/guides/workflow-run-attestations.md).
-
-For DPM portfolio-memory support, the proof-pack PM memo, wave PM memo, operations handoff summary,
-and outcome-review narrative packs can consume optional `portfolio_memory_context` emitted by
-`lotus-manage` report-input handoffs. `lotus-ai` validates that the context is portfolio-matched,
-source-lineage-only, capped to the bounded event-ref limit, governed by `NO_RAW_PAYLOADS`, and
-explicitly marked as source-owned truth that consumers must not reconstruct. Generated outputs
-expose only a compact portfolio-memory lineage summary, content hash, event count, source systems,
-event types, and review guidance.
-
-## Architectural Shape
-
-The service is a FastAPI application with explicit control-plane and data-plane seams.
-
-Core areas:
-
-1. `src/app/contracts/`
-   public task and platform contract models.
-2. `src/app/services/`
-   orchestration, runtime-context assembly, evidence mapping, and audit flow.
-3. `src/app/providers/`
-   provider adapters and execution transports; provider policy, rollout, quota,
-   budget, and degradation handling live in `src/app/services/` (`provider_*` modules).
-4. `src/app/prompts/`
-   prompt definitions, rollout state, and prompt governance surfaces.
-5. `src/app/retrieval/`
-   source governance, indexed-search posture, and retrieval execution seams.
-6. `src/app/services/safety_*.py`
-   output-label-aware policy and runtime safety posture.
-7. `src/app/evals/`
-   evaluation inventory, runtime execution, and approval-gate evidence.
-8. `src/app/routers/`
-   public API surfaces.
-9. `src/app/services/workflow_pack_registry.py`
-   workflow-pack registration catalog, owner-artifact references, and validation seams.
-
-Task execution is intentionally explicit. A request flows through:
-
-1. capability and request validation,
-2. runtime-context construction,
-3. prompt and safety posture resolution,
-4. provider or retrieval execution,
-5. evidence assembly,
-6. audit persistence.
-
-Detailed architecture references:
-
-- `docs/architecture/system-overview.md`
-- `docs/architecture/scalability-and-deployment-model.md`
-- `docs/architecture/startup-readiness-deployment-policy.md`
-- `docs/architecture/feature-status-and-roadmap.md`
-
-## Repository Layout
-
-- `src/` application code
-- `tests/` unit, integration, and e2e validation
-- `docs/architecture/` architecture and roadmap guidance
-- `docs/guides/` integration and contract guidance
-- `docs/runbooks/` service operations guidance
-- `docs/security/` security and governance posture
-- `docs/standards/` local standards
-- `docs/rfcs/` repo-local RFC inventory
-- `docs/evals/` evaluation strategy and fixtures
-- `wiki/` canonical source pages for the GitHub wiki
+The task contracts, workflow packs, governance surfaces, and durable stores above are implemented
+and tested. Live model providers are separately rollout-governed: the enabled live-provider
+allowlist is narrower than the implemented capability catalog, and certified live use additionally
+requires evaluation-gate and model-risk approval per pack. The current state of each capability is
+maintained in [feature status and roadmap](docs/architecture/feature-status-and-roadmap.md).
 
 ## Quick Start
 
-Install dependencies and run the fast local gate:
+Prerequisites: Python 3.13, `make`, and Docker (for the prod-shaped stack).
 
 ```powershell
 make install
 make check
-```
-
-Run the API directly:
-
-```powershell
 uvicorn app.main:app --reload --port 8140
 ```
 
-Run the prod-shaped local Docker stack:
+Expected result: `make check` finishes green (lint, typecheck, fast tests), and
+`http://localhost:8140/docs` serves the interactive API documentation. For the prod-shaped local
+stack instead, run `docker compose up --build`:
+PostgreSQL stays internal to the Compose network on `postgres:5432`,
+Redis stays internal to the Compose network on `redis:6379`,
+and only the application port `8140` is published.
 
-```powershell
-docker compose up --build
-```
+## Where To Go Next
 
-API docs are available at `http://localhost:8140/docs`.
+| Topic | Start here |
+| --- | --- |
+| Integration | [Task execution contract](docs/guides/task-execution-contract.md), [integration guide](docs/guides/integration-guide.md), [workflow-pack owner onboarding](docs/guides/workflow-pack-owner-onboarding.md) |
+| Capabilities and status | [Feature status and roadmap](docs/architecture/feature-status-and-roadmap.md), [platform surfaces](wiki/Platform-Surfaces.md) |
+| Architecture | [System overview](docs/architecture/system-overview.md), [scalability and deployment](docs/architecture/scalability-and-deployment-model.md), [REPOSITORY-ENGINEERING-CONTEXT.md](REPOSITORY-ENGINEERING-CONTEXT.md) |
+| Operations | [Service operations runbook](docs/runbooks/service-operations.md), [provider mode switching](docs/runbooks/provider-mode-switching.md) |
+| Security and governance | [Security and governance](docs/security/security-and-governance.md) |
+| Evaluation | [Evaluation strategy](docs/evals/evaluation-strategy.md) |
+| Contribution | [Local standards](docs/standards/), [RFC index](docs/rfcs/README.md) |
 
-Local Docker runtime notes:
+## Architecture In Brief
 
-1. PostgreSQL stays internal to the Compose network on `postgres:5432`,
-2. Redis stays internal to the Compose network on `redis:6379`,
-3. only the application port `8140` is published for local API access.
+A FastAPI application with explicit control-plane and data-plane seams. A task request flows
+through capability validation, runtime-context construction, prompt and safety resolution, provider
+or retrieval execution, evidence assembly, and audit persistence — in that order, deterministically.
+Provider serving follows a governed candidate policy (order is policy, never ranking); each
+candidate passes kill-switch, circuit-breaker, catalogue-binding, quota, and budget fences under
+its own frozen execution config. Prompt bodies are repository-managed; prompt selection, provider
+controls, evaluation gates, retrieval sources, async execution, and workflow-pack activation are
+durable governed state with operator surfaces.
 
-## Common Commands
+Ownership boundary in one rule: calling services own business context and remain accountable for
+user-facing consequences; `lotus-ai` executes governed AI behavior against that context. Pack-level
+authority boundaries (what each workflow pack may consume and must never do) are specified in
+[workflow-pack owner onboarding](docs/guides/workflow-pack-owner-onboarding.md).
 
-- `make install` - install development dependencies
-- `make check` - fast local gate
-- `make ci` - PR-grade local gate
-- `make rfc0002-idea-proof-gate` - deterministic local-dev proof for
-  `idea_explanation.pack@v1` execution, review, source-safe lineage, and fail-closed live-provider
-  certification boundaries
-- `make runtime-mode-smoke` - verify startup, migration, and runtime-mode posture
-- `make migration-apply` - apply Alembic migrations
-- `make docker-build` - Docker build validation
+## Validation
 
-## Validation and CI
-
-`lotus-ai` follows the Lotus lane model:
-
-1. `Remote Feature Lane`
-2. `Pull Request Merge Gate`
-3. `Main Releasability Gate`
-
-Merged pull requests to `main` also dispatch `main-releasability.yml` through
-`.github/workflows/merged-pr-main-releasability.yml`, giving RFC and release-governance work
-exact-main evidence instead of relying on stale branch checks or manual reruns.
-
-Repo-native validation mapping:
-
-- fast local gate: `make check`
-- PR-grade gate: `make ci`
-- runtime smoke: `make runtime-mode-smoke`
-- Docker validation: `make docker-build`
-
-The enforced gates currently include:
-
-1. lint and typecheck,
-2. OpenAPI quality,
-3. evaluation fixture manifest validation,
-4. evaluation run artifact validation,
-5. async job artifact validation,
-6. migration smoke,
-7. dependency health and security audit,
-8. coverage-backed test execution,
-9. Docker build validation.
-
-The RFC-0002 Idea explanation proof gate runs locally through `make check`
-(`make rfc0002-idea-proof-gate`); it is not wired into the CI workflows.
-It is intentionally conservative. It executes
-`idea_explanation.pack@v1` through the governed HTTP boundary, applies a reviewer acceptance,
-verifies source-safe consumer/source-event projections, and verifies that signed workflow-run
-attestation and provider-retention confirmation remain non-issuable in local stub mode. It clears
-local owner-repo proof for guardrails and lineage, but preserves live-provider, approved
-model-risk-inventory, signed non-stub attestation, and provider-native retention/deletion blockers.
-The artifact contract is
-`contracts/rfc-0002/lotus-ai-idea-explanation-workflow-proof.v1.json`.
-Generate a source-safe handoff artifact when needed:
-
-```powershell
-python scripts/generate_rfc0002_idea_explanation_proof.py `
-  --output output/rfc0002-idea-explanation-proof.json
-```
-
-## Integration Contract
-
-The first executable public contract is:
-
-- `POST /ai/tasks/execute`
-
-Downstream teams should integrate against the contract and preserve the audit metadata rather than
-assuming unrestricted live-model behavior.
-
-The core integration references are:
-
-- `docs/guides/task-execution-contract.md`
-- `docs/guides/integration-guide.md`
-- `docs/guides/workflow-pack-owner-onboarding.md`
-- `docs/guides/prompt-registry-and-audit.md`
-- `docs/guides/retrieval-and-vector-store.md`
-
-For a grouped map of the current execution, audit, task-runtime, and platform surfaces derived from
-the actual router layout, use the wiki page:
-
-- `wiki/Platform-Surfaces.md`
-
-Practical rule:
-
-1. calling services own business context,
-2. `lotus-ai` executes governed AI behavior against that context,
-3. downstream systems remain accountable for user-facing consequences.
-
-## Operations and Runtime Posture
-
-Key health and operator surfaces:
-
-- `/health/live`
-- `/health/ready`
-- `/platform/runtime-status`
-- `/platform/providers/operations-status`
-- `/platform/prompts/runtime-status`
-- `/platform/retrieval/runtime-status`
-- `/platform/safety/runtime-status`
-- `/platform/evals/runtime-status`
-- `/platform/async/governance-status`
-- `/platform/workflow-packs/registry`
-- `/platform/workflow-packs/registry/{pack_id}/default`
-- `/platform/workflow-packs/eligibility/evaluate`
-- `/platform/workflow-packs/control-history`
-- `/platform/workflow-packs/runs`
-
-Workflow-pack registry records should be read as control-plane onboarding truth:
-
-1. the primary `definition_ref` must resolve to a real owner artifact,
-2. `definition_refs` show the contract, service, router, tests, and optional RFC or UI evidence used to justify the registration,
-3. `GET /platform/workflow-packs/registry/{pack_id}/default` resolves only registered, activation-eligible, non-superseded versions and does not auto-promote discovered or dark successor versions,
-4. when `LOTUS_AI_WORKFLOW_PACK_REGISTRY_STORE_MODE=sqlalchemy`, activation state and control history are restart-safe only after migrations are applied and `/platform/runtime-status` reports the embedded registry store as `READY`,
-5. `lotus-ai` tracks those references for governance, but the implementation remains owned by the downstream repository.
-
-Operational guidance lives in:
-
-- `docs/runbooks/service-operations.md`
-- `docs/runbooks/provider-mode-switching.md`
-
-For a grouped operator-facing and control-plane view of those surfaces, use:
-
-- `wiki/Platform-Surfaces.md`
-
-## Security and Governance
-
-The service is built for a banking-oriented environment with explicit governance boundaries:
-
-1. domain apps remain accountable for business meaning,
-2. prompt changes must remain reviewable,
-3. retrieval sources must remain curated and attributable,
-4. safety, audit, and approval boundaries must stay explicit,
-5. framework adoption must not obscure runtime behavior or policy gates.
-
-Source:
-
-- `docs/security/security-and-governance.md`
-
-## Documentation Map
-
-Best starting points:
-
-- system overview: `docs/architecture/system-overview.md`
-- feature status and roadmap: `docs/architecture/feature-status-and-roadmap.md`
-- phased roadmap: `docs/architecture/phased-roadmap.md`
-- first use-case guide: `docs/guides/lotus-performance-first-use-case.md`
-- service operations runbook: `docs/runbooks/service-operations.md`
-- evaluation strategy: `docs/evals/evaluation-strategy.md`
-- local RFC index: `docs/rfcs/README.md`
-
-Platform governance:
-
-- `../lotus-platform/rfcs/RFC-0069-lotus-ai-shared-ai-platform-service.md`
-- `../lotus-platform/rfcs/RFC-0072-platform-wide-multi-lane-ci-validation-and-release-governance.md`
-- `../lotus-platform/context/LOTUS-ENGINEERING-CONTEXT.md`
+Three CI lanes gate every change: Remote Feature Lane, Pull Request Merge Gate, and Main
+Releasability Gate (merged PRs dispatch exact-main evidence automatically). Locally, `make check`
+is the fast gate and `make ci` the PR-grade gate; the enforced checks and operator procedures are
+documented in the [service operations runbook](docs/runbooks/service-operations.md).
 
 ## Wiki
 
-The live GitHub wiki is:
-
-- `https://github.com/sgajbi/lotus-ai/wiki`
-
-The canonical authored source for that wiki lives under `wiki/` in this repository.
-
-If you use a separate local clone of `https://github.com/sgajbi/lotus-ai.wiki.git`, treat it only
-as a publish target for the live wiki, not as a second maintained documentation tree.
+The [GitHub wiki](https://github.com/sgajbi/lotus-ai/wiki) is published from the `wiki/` directory
+in this repository — authored source lives here, the wiki repository is only a publish target.
