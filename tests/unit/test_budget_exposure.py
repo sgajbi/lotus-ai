@@ -638,3 +638,27 @@ def test_rate_expiry_during_a_served_response_holds_and_logs_usage(
     # Reservation provenance, not the served usage: the held amount is the
     # admitted maximum and its tokens are the reservation's bounds.
     assert row.output_tokens == 512
+
+
+def test_budget_rounding_compiles_for_postgres_not_only_sqlite() -> None:
+    """Regression pin from the issue #344 fence lane: every guarded budget
+    statement crashed on PostgreSQL because scaled ROUND is NUMERIC-only
+    there (``round(double precision, integer) does not exist``), while
+    SQLite accepted it - the whole hard-budget guarantee was unreachable on
+    the production engine. Compiling the expression for the PostgreSQL
+    dialect keeps that divergence visible in the fast lane, without needing
+    a database."""
+
+    from sqlalchemy.dialects import postgresql, sqlite
+
+    from app.db.models import ProviderBudgetStateModel
+    from app.repositories.sqlalchemy_provider_operations_repository import (
+        _rounded_spend_sql,
+    )
+
+    expression = _rounded_spend_sql(ProviderBudgetStateModel.current_spend_usd + 0.5)
+    postgres_sql = str(expression.compile(dialect=postgresql.dialect()))
+    assert "CAST" in postgres_sql.upper() and "NUMERIC" in postgres_sql.upper()
+    # Still one rounded expression on SQLite: the fix is portable, not a
+    # PostgreSQL-only branch that lets the two backends drift.
+    assert "round" in str(expression.compile(dialect=sqlite.dialect())).lower()
