@@ -385,19 +385,14 @@ def test_crash_after_a_family_completes_recovers_the_evidenced_counts(
             GOVERNED_APPROVER,
         )
 
-    # Recovery: the claiming credential retries with the original executors.
+    # Recovery: the claiming credential retries with the original executors,
+    # stating the explicit resume intent through the PUBLIC contract field.
     monkeypatch.setattr(erasure_module, "_ERASURE_EXECUTORS", original_executors)
-    monkeypatch.setattr(
-        erasure_module,
-        "approve_and_execute_governed_action",
-        lambda **kwargs: __import__(
-            "app.services.governed_action_control", fromlist=["x"]
-        ).approve_and_execute_governed_action(**kwargs, resume_interrupted_claim=True),
-    )
     recovered = approve_data_erasure(
         DataErasureApprovalRequest(
             action_id=pending.governed_action.action_id,
             action_hash=pending.governed_action.action_hash,
+            resume_interrupted_claim=True,
         ),
         GOVERNED_APPROVER,
     )

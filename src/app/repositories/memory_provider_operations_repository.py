@@ -97,17 +97,6 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
         self._budget_states[budget_key] = deepcopy(updated)
         return deepcopy(updated)
 
-    def record_attempt_debit(self, record: ProviderAttemptDebitRecord, *, budget_key: str) -> bool:
-        if record.debit_id in self._attempt_debits:
-            return False
-        self._attempt_debits[record.debit_id] = deepcopy(record)
-        self.add_budget_spend(
-            budget_key=budget_key,
-            amount_usd=record.amount_usd,
-            updated_at=record.recorded_at,
-        )
-        return True
-
     def reserve_attempt_debit(
         self,
         record: ProviderAttemptDebitRecord,
@@ -162,6 +151,54 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
             updated_at=settled_at,
         )
         return True
+
+    def hold_attempt_debit_unresolved(self, *, debit_id: str, held_at: str) -> bool:
+        row = self._attempt_debits.get(debit_id)
+        if row is None or row.basis != "RESERVED_MAX":
+            return False
+        # The reserved amount stays on the row AND in the counter: unknown
+        # usage is unresolved exposure, not evidence of a smaller bill.
+        self._attempt_debits[debit_id] = replace(
+            row,
+            basis="UNRESOLVED_MAX",
+            recorded_at=held_at,
+        )
+        return True
+
+    def reconcile_attempt_debit(
+        self,
+        *,
+        debit_id: str,
+        budget_key: str,
+        amount_usd: float,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        rate_card_ref: str | None,
+        reconciled_at: str,
+    ) -> bool:
+        row = self._attempt_debits.get(debit_id)
+        if row is None or row.basis not in ("UNRESOLVED_MAX", "RESERVED_MAX"):
+            return False
+        delta = round(amount_usd - row.amount_usd, 8)
+        self._attempt_debits[debit_id] = replace(
+            row,
+            basis="RECONCILED",
+            amount_usd=amount_usd,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            rate_card_ref=rate_card_ref if rate_card_ref is not None else row.rate_card_ref,
+            recorded_at=reconciled_at,
+        )
+        self.add_budget_spend(
+            budget_key=budget_key,
+            amount_usd=delta,
+            updated_at=reconciled_at,
+        )
+        return True
+
+    def get_attempt_debit(self, *, debit_id: str) -> ProviderAttemptDebitRecord | None:
+        record = self._attempt_debits.get(debit_id)
+        return deepcopy(record) if record is not None else None
 
     def list_attempt_debits(self, *, limit: int = 100) -> Sequence[ProviderAttemptDebitRecord]:
         records = sorted(
@@ -325,12 +362,15 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
         action_id: str,
         expected_status: str,
         record: GovernedActionRecord,
+        expected_claimed_at: str | None = None,
     ) -> bool:
         # Process-local store: a lock IS the atomicity boundary here; the SQL
         # adapter carries the cross-replica guarantee (issue #327).
         with self._governed_action_transition_lock:
             current = self._governed_actions.get(action_id)
             if current is None or current.status.value != expected_status:
+                return False
+            if expected_claimed_at is not None and current.claimed_at != expected_claimed_at:
                 return False
             self._governed_actions[action_id] = record.model_copy(deep=True)
             return True

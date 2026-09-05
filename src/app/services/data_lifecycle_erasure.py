@@ -235,6 +235,7 @@ def approve_data_erasure(
             ],
             "executed_at": outcome["executed_at"],
         },
+        resume_interrupted_claim=request.resume_interrupted_claim,
     )
     results = outcome["results"]
     assert isinstance(results, list)

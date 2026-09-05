@@ -579,12 +579,14 @@ def _seed_control_plane_matrix() -> None:
 
     from app.repositories.provider_operations_repository import ProviderAttemptDebitRecord
 
+    # Seeded through the one remaining debit lifecycle (issue #329): reserve
+    # then settle, ending in the same ACTUAL_USAGE evidence rows as before.
     for debit_id, age in (("adbt_old", 2600), ("adbt_young", 10)):
-        ops.record_attempt_debit(
+        ops.reserve_attempt_debit(
             ProviderAttemptDebitRecord(
                 debit_id=debit_id,
                 provider_id="text.openai",
-                basis="ACTUAL_USAGE",
+                basis="RESERVED_MAX",
                 amount_usd=0.001,
                 input_tokens=10,
                 output_tokens=10,
@@ -592,6 +594,17 @@ def _seed_control_plane_matrix() -> None:
                 recorded_at=_iso(age),
             ),
             budget_key="live_text_generation",
+            hard_limit_usd=None,
+        )
+        ops.settle_attempt_debit(
+            debit_id=debit_id,
+            budget_key="live_text_generation",
+            basis="ACTUAL_USAGE",
+            amount_usd=0.001,
+            input_tokens=10,
+            output_tokens=10,
+            rate_card_ref="default-live-text",
+            settled_at=_iso(age),
         )
 
     def _gact(action_id: str, status: "GovernedActionStatus", age: int) -> None:

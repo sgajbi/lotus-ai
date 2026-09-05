@@ -12,6 +12,15 @@ from app.contracts.governed_actions import (
     GovernedActionResponse,
     GovernedActionStatus,
 )
+from app.contracts.providers import (
+    BudgetReconciliationApprovalRequest,
+    BudgetReconciliationApprovalResponse,
+    BudgetReconciliationIntentRequest,
+)
+from app.services.budget_reconciliation import (
+    approve_budget_reconciliation,
+    request_budget_reconciliation,
+)
 from app.services.data_lifecycle_erasure import approve_data_erasure, request_data_erasure
 from app.http.authenticated_caller import AuthenticatedCallerDependency
 from app.services.governed_action_control import build_governed_action_history
@@ -218,6 +227,70 @@ async def approve_data_erasure_route(
     authenticated_caller: AuthenticatedCallerDependency,
 ) -> DataErasureApprovalResponse:
     return approve_data_erasure(request, authenticated_caller)
+
+
+@router.post(
+    "/provider-budget/reconciliation-requests",
+    response_model=GovernedActionResponse,
+    operation_id="requestBudgetReconciliation",
+    summary="Request governed reconciliation of unresolved billable exposure",
+    description=(
+        "Step one of governed budget reconciliation (issue #329): records a pending "
+        "intent under the requester's verified credential to settle one unresolved "
+        "attempt debit (basis UNRESOLVED_MAX, or a crash-orphaned RESERVED_MAX) to a "
+        "provider-evidenced charge, and returns the action hash a distinct verified "
+        "credential must approve. The held maximum stays in the hard-budget counter "
+        "until the approval executes."
+    ),
+    responses={
+        200: {"description": "Reconciliation intent recorded and pending approval."},
+        403: {
+            "description": "Caller is not authorized for provider control, or carries no "
+            "verified credential."
+        },
+        404: {"description": "No attempt debit exists for the given id."},
+        409: {"description": "The debit is not unresolved exposure."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def request_budget_reconciliation_route(
+    request: BudgetReconciliationIntentRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> GovernedActionResponse:
+    return request_budget_reconciliation(request, authenticated_caller)
+
+
+@router.post(
+    "/provider-budget/reconciliation-approvals",
+    response_model=BudgetReconciliationApprovalResponse,
+    operation_id="approveBudgetReconciliation",
+    summary="Approve and execute a pending budget reconciliation",
+    description=(
+        "Step two of governed budget reconciliation (issue #329): a verified credential "
+        "DISTINCT from the requester's approves the exact pending action hash, which "
+        "settles the exposure to the evidenced charge (basis RECONCILED) and releases "
+        "the difference from the hard-budget counter - the only path that returns "
+        "unresolved admission capacity."
+    ),
+    responses={
+        200: {"description": "Reconciliation executed; released amount returned."},
+        403: {
+            "description": "Caller is not authorized, carries no verified credential, or is "
+            "the same credential that requested the action."
+        },
+        404: {"description": "No pending action exists for the given id."},
+        409: {
+            "description": "The action hash does not match, or the exposure was resolved "
+            "by other means since the request."
+        },
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def approve_budget_reconciliation_route(
+    request: BudgetReconciliationApprovalRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> BudgetReconciliationApprovalResponse:
+    return approve_budget_reconciliation(request, authenticated_caller)
 
 
 @router.get(

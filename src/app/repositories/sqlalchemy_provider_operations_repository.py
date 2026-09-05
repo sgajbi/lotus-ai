@@ -165,56 +165,6 @@ class SqlAlchemyProviderOperationsRepository(
                     continue
         raise RuntimeError("Failed to add provider budget spend atomically.")
 
-    def record_attempt_debit(self, record: ProviderAttemptDebitRecord, *, budget_key: str) -> bool:
-        """Debit row and budget counter advance in ONE transaction: a crash
-        between them cannot happen, and a duplicate identity is a complete
-        no-op (the counter is untouched)."""
-
-        with self._session_factory() as session:
-            existing = session.get(ProviderAttemptDebitModel, record.debit_id)
-            if existing is not None:
-                return False
-            session.add(
-                ProviderAttemptDebitModel(
-                    debit_id=record.debit_id,
-                    provider_id=record.provider_id,
-                    basis=record.basis,
-                    amount_usd=record.amount_usd,
-                    input_tokens=record.input_tokens,
-                    output_tokens=record.output_tokens,
-                    rate_card_ref=record.rate_card_ref,
-                    recorded_at=record.recorded_at,
-                    candidate_entry_id=record.candidate_entry_id,
-                    model_revision=record.model_revision,
-                    attempt_index=record.attempt_index,
-                    candidate_id_v2=record.candidate_id_v2,
-                )
-            )
-            budget = session.execute(
-                select(ProviderBudgetStateModel)
-                .where(ProviderBudgetStateModel.budget_key == budget_key)
-                .with_for_update()
-            ).scalar_one_or_none()
-            if budget is None:
-                session.add(
-                    ProviderBudgetStateModel(
-                        budget_key=budget_key,
-                        current_spend_usd=round(record.amount_usd, 8),
-                        updated_at=record.recorded_at,
-                    )
-                )
-            else:
-                budget.current_spend_usd = round(budget.current_spend_usd + record.amount_usd, 8)
-                budget.updated_at = record.recorded_at
-            try:
-                session.commit()
-            except IntegrityError:
-                # A concurrent recorder won the same identity: their debit
-                # stands, ours is the duplicate.
-                session.rollback()
-                return False
-            return True
-
     def reserve_attempt_debit(
         self,
         record: ProviderAttemptDebitRecord,
@@ -392,6 +342,87 @@ class SqlAlchemyProviderOperationsRepository(
             session.commit()
             return True
 
+    def hold_attempt_debit_unresolved(self, *, debit_id: str, held_at: str) -> bool:
+        for _ in range(4):
+            try:
+                with self._session_factory() as session:
+                    # Guarded on the reserved basis: exactly one transition
+                    # wins the row, and the amount - the reserved maximum -
+                    # never changes, so the counter needs no adjustment.
+                    result = session.execute(
+                        update(ProviderAttemptDebitModel)
+                        .where(
+                            ProviderAttemptDebitModel.debit_id == debit_id,
+                            ProviderAttemptDebitModel.basis == "RESERVED_MAX",
+                        )
+                        .values(basis="UNRESOLVED_MAX", recorded_at=held_at)
+                    )
+                    session.commit()
+                    return int(getattr(result, "rowcount", 0) or 0) == 1
+            except OperationalError:
+                continue
+        raise RuntimeError("Failed to hold provider attempt debit unresolved atomically.")
+
+    def reconcile_attempt_debit(
+        self,
+        *,
+        debit_id: str,
+        budget_key: str,
+        amount_usd: float,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        rate_card_ref: str | None,
+        reconciled_at: str,
+    ) -> bool:
+        for _ in range(4):
+            try:
+                with self._session_factory() as session:
+                    row = session.get(ProviderAttemptDebitModel, debit_id)
+                    if row is None or row.basis not in ("UNRESOLVED_MAX", "RESERVED_MAX"):
+                        return False
+                    held_amount = row.amount_usd
+                    held_basis = row.basis
+                    delta = round(amount_usd - held_amount, 8)
+                    values: dict[str, object] = {
+                        "basis": "RECONCILED",
+                        "amount_usd": amount_usd,
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "recorded_at": reconciled_at,
+                    }
+                    if rate_card_ref is not None:
+                        values["rate_card_ref"] = rate_card_ref
+                    # Guarded on the held basis AND amount: one reconciliation
+                    # wins the row, so the counter adjustment applies exactly
+                    # once (atomic on every backend).
+                    result = session.execute(
+                        update(ProviderAttemptDebitModel)
+                        .where(
+                            ProviderAttemptDebitModel.debit_id == debit_id,
+                            ProviderAttemptDebitModel.basis == held_basis,
+                            ProviderAttemptDebitModel.amount_usd == held_amount,
+                        )
+                        .values(**values)
+                    )
+                    if int(getattr(result, "rowcount", 0) or 0) == 0:
+                        session.rollback()
+                        return False
+                    session.execute(
+                        update(ProviderBudgetStateModel)
+                        .where(ProviderBudgetStateModel.budget_key == budget_key)
+                        .values(
+                            current_spend_usd=func.round(
+                                ProviderBudgetStateModel.current_spend_usd + delta, 8
+                            ),
+                            updated_at=reconciled_at,
+                        )
+                    )
+                    session.commit()
+                    return True
+            except OperationalError:
+                continue
+        raise RuntimeError("Failed to reconcile provider attempt debit atomically.")
+
     def list_attempt_debits(self, *, limit: int = 100) -> Sequence[ProviderAttemptDebitRecord]:
         with self._session_factory() as session:
             models = session.scalars(
@@ -419,6 +450,26 @@ class SqlAlchemyProviderOperationsRepository(
                 )
                 for model in models
             ]
+
+    def get_attempt_debit(self, *, debit_id: str) -> ProviderAttemptDebitRecord | None:
+        with self._session_factory() as session:
+            model = session.get(ProviderAttemptDebitModel, debit_id)
+            if model is None:
+                return None
+            return ProviderAttemptDebitRecord(
+                debit_id=model.debit_id,
+                provider_id=model.provider_id,
+                basis=model.basis,
+                amount_usd=model.amount_usd,
+                input_tokens=model.input_tokens,
+                output_tokens=model.output_tokens,
+                rate_card_ref=model.rate_card_ref,
+                recorded_at=model.recorded_at,
+                candidate_entry_id=model.candidate_entry_id,
+                model_revision=model.model_revision,
+                attempt_index=model.attempt_index,
+                candidate_id_v2=model.candidate_id_v2,
+            )
 
     def delete_attempt_debits(self, debit_ids: Sequence[str]) -> int:
         if not debit_ids:
@@ -717,21 +768,23 @@ class SqlAlchemyProviderOperationsRepository(
         action_id: str,
         expected_status: str,
         record: GovernedActionRecord,
+        expected_claimed_at: str | None = None,
     ) -> bool:
         # One guarded UPDATE in its own transaction (issue #327): the WHERE
         # predicate on the CURRENT status is the cross-replica claim - two
         # sessions cannot both move the same action out of expected_status.
+        # When a claim instant is expected, it fences everything racing on a
+        # LIVE claim (resume/finalize/release) to a single winner.
         payload = record.model_dump(mode="json")
         payload.pop("action_id", None)
         with self._session_factory() as session:
-            result = session.execute(
-                update(GovernedActionModel)
-                .where(
-                    GovernedActionModel.action_id == action_id,
-                    GovernedActionModel.status == expected_status,
-                )
-                .values(**payload)
+            statement = update(GovernedActionModel).where(
+                GovernedActionModel.action_id == action_id,
+                GovernedActionModel.status == expected_status,
             )
+            if expected_claimed_at is not None:
+                statement = statement.where(GovernedActionModel.claimed_at == expected_claimed_at)
+            result = session.execute(statement.values(**payload))
             session.commit()
             return int(getattr(result, "rowcount", 0) or 0) == 1
 

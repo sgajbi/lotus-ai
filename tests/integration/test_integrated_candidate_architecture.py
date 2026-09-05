@@ -312,7 +312,10 @@ def test_the_integrated_three_candidate_architecture_proof(
     debit_c = rows[f"adbt2:exec-proof-1:{candidate_c.candidate_id_v2}:0"]
     assert debit_a.candidate_id_v2 == candidate_a.candidate_id_v2
     assert debit_c.candidate_id_v2 == candidate_c.candidate_id_v2
-    assert debit_a.basis == "CONSERVATIVE_ESTIMATE"
+    # Candidate A failed without usage evidence, so its row HOLDS the
+    # reserved maximum as unresolved exposure (issue #329) - only candidate
+    # C's provider-reported usage settled to an evidenced amount.
+    assert debit_a.basis == "UNRESOLVED_MAX"
     assert debit_c.basis == "ACTUAL_USAGE"
     budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
     assert budget is not None

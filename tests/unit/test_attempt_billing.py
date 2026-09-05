@@ -200,8 +200,10 @@ def test_served_execution_debits_each_attempt_and_projects_them(
     monkeypatch: MonkeyPatch,
 ) -> None:
     """Fails once with a 5xx, succeeds on retry: BOTH attempts are durable
-    debit rows, the budget envelope moved at each boundary, and the response
-    figures equal the recorded evidence - spend was real before settlement."""
+    debit rows and the budget envelope moved at each boundary. The 5xx
+    attempt revealed no usage, so its row HOLDS the reserved maximum as
+    UNRESOLVED_MAX exposure (issue #329) - the response reports the estimate,
+    but the estimate releases nothing."""
 
     _seed_cost_scalars()
     _quiet_backoff(monkeypatch)
@@ -225,27 +227,39 @@ def test_served_execution_debits_each_attempt_and_projects_them(
     assert served_row.model_revision == "gpt-5.4"
     assert served_row.attempt_index == 1
     assert served_row.provider_id == "text.local"
-    assert failed_row.basis == "CONSERVATIVE_ESTIMATE"
+    assert failed_row.basis == "UNRESOLVED_MAX"
     assert failed_row.output_tokens == 512
     assert served_row.basis == "ACTUAL_USAGE"
     assert served_row.amount_usd == 0.0035
 
-    assert response.failed_attempt_cost_usd == failed_row.amount_usd
-    assert response.estimated_cost_usd == round(failed_row.amount_usd + served_row.amount_usd, 8)
+    # The response reports the ESTIMATE for the failed attempt - honest
+    # reporting posture - while the durable row holds the larger reserved
+    # maximum: the three-way distinction between estimate, unresolved
+    # reservation, and evidenced charge is visible in one execution.
+    assert response.failed_attempt_cost_usd is not None
+    assert failed_row.amount_usd > response.failed_attempt_cost_usd
+    assert response.estimated_cost_usd == round(
+        response.failed_attempt_cost_usd + served_row.amount_usd, 8
+    )
     assert response.failed_attempt_cost_basis == "CONSERVATIVE_ESTIMATE"
     assert response.billed_attempt_count == 2
     assert response.structured_output["estimated_cost_usd"] == response.estimated_cost_usd
 
     budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
     assert budget is not None
-    assert budget.current_spend_usd == response.estimated_cost_usd
+    # The counter keeps the unresolved maximum, not the estimate: unknown
+    # usage never releases hard admission capacity at the boundary.
+    assert budget.current_spend_usd == round(failed_row.amount_usd + served_row.amount_usd, 8)
+    assert budget.current_spend_usd > response.estimated_cost_usd
 
 
 def test_terminal_all_fail_execution_still_debits_every_billable_attempt(
     monkeypatch: MonkeyPatch,
 ) -> None:
     """The steering's P1 case: no success ever exists, yet both billable-risk
-    attempts moved the envelope at their boundaries."""
+    attempts moved the envelope at their boundaries - and with no usage ever
+    revealed, both rows hold their reserved maxima as UNRESOLVED_MAX
+    exposure (issue #329) rather than releasing to the heuristic estimate."""
 
     _seed_cost_scalars()
     _quiet_backoff(monkeypatch)
@@ -267,7 +281,7 @@ def test_terminal_all_fail_execution_still_debits_every_billable_attempt(
         _debit_key("exec-allfail", 0),
         _debit_key("exec-allfail", 1),
     }
-    assert all(row.basis == "CONSERVATIVE_ESTIMATE" for row in rows)
+    assert all(row.basis == "UNRESOLVED_MAX" for row in rows)
     budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
     assert budget is not None
     assert budget.current_spend_usd == round(sum(row.amount_usd for row in rows), 8)

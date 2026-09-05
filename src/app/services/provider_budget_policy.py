@@ -107,7 +107,9 @@ def parse_provider_budget_policy() -> ParsedProviderBudgetPolicy:
         findings=findings,
         usage_to_budget_notes=[
             "Tracked spend is recorded durably per provider attempt at the attempt boundary (issue #289): actual usage debits as actual, billable-risk failures debit conservatively, and an execution whose every attempt fails still moves the envelope.",
-            "Hard-limit admission is an atomic per-attempt check-and-reserve on the budget row (issue #300): each attempt reserves its governed maximum (input bounded by request-body bytes, output by the enforced cap) in one store transaction before the provider is called, then settles to the evidenced amount - concurrent replicas cannot jointly overshoot the limit, and a crash before settlement leaves the conservative reservation counted.",
+            "Hard-limit admission is an atomic per-attempt check-and-reserve on the budget row (issue #300): each attempt reserves its governed maximum in one store transaction before the provider is called - concurrent replicas cannot jointly overshoot the limit, and a crash before settlement leaves the conservative reservation counted.",
+            "The reserved maximum assumes tokenization at no finer than one token per byte of the request body plus the provider-enforced output cap under the effective rate card (issue #329); the claim holds for byte-level or coarser tokenizers and does not cover provider-side minimum-billing or non-token charges.",
+            "Only trustworthy provider-reported usage settles a reservation down; a billable-risk attempt without usage holds its reserved maximum as UNRESOLVED_MAX exposure (issue #329) - estimates are reported but never release hard admission capacity - until governed four-eyes reconciliation settles it to a provider-evidenced charge.",
             "Soft budget posture is advisory and inspectable; hard budget posture is blocking when enforcement is enabled.",
             "Tracked spend now flows through the configured provider-operations store so budget posture can remain durable when the SQL-backed provider-operations path is enabled.",
         ],
@@ -226,12 +228,26 @@ def settle_attempt_spend(
     debit: AttemptDebit | None,
     candidate_id_v2: str | None,
 ) -> bool:
-    """Settle a reservation to the attempt's evidenced debit in one
-    transaction with the counter adjustment (issue #300) - or release it to
-    zero (basis ``RELEASED``) when the attempt proved non-billable (429,
-    pre-connect failure). Idempotent: only a still-reserved row settles. A
-    crash before settlement leaves the conservative reservation standing -
-    over-counting is the safe direction for a hard limit.
+    """Resolve a reservation with the attempt's evidence in one transaction
+    with the counter adjustment (issue #300), in evidence order (issue #329):
+
+    - trustworthy provider-reported usage (basis ``ACTUAL_USAGE``) settles to
+      the evidenced amount - the only evidence that may RELEASE hard
+      admission capacity at the attempt boundary;
+    - a proven non-billable attempt (429, pre-connect; ``debit is None``)
+      releases to zero, basis ``RELEASED``;
+    - a billable-risk attempt WITHOUT usage (timeout, 5xx, usage withheld -
+      basis ``CONSERVATIVE_ESTIMATE``) holds: the row moves to
+      ``UNRESOLVED_MAX`` and the reserved maximum stays in the counter.
+      The estimate is reporting posture, not settlement evidence - nothing
+      establishes the provider consumed only the ~4-bytes/token guess, so
+      releasing headroom against it would let two admitted maxima jointly
+      exceed the hard limit. Unresolved exposure releases only through
+      governed reconciliation (``reconcile_attempt_spend``).
+
+    Idempotent: only a still-reserved row resolves. A crash before
+    resolution leaves the conservative reservation standing - over-counting
+    is the safe direction for a hard limit.
     """
 
     repository = get_provider_operations_store()
@@ -252,6 +268,20 @@ def settle_attempt_spend(
             rate_card_ref=None,
             settled_at=_utcnow(),
         )
+    # The invariant enforced where it is stated: ACTUAL_USAGE is the ONLY
+    # basis that may release capacity at the attempt boundary. Every other
+    # basis (CONSERVATIVE_ESTIMATE today; MIXED/NONE should they ever reach
+    # settlement) holds - non-usage evidence never settles a reservation
+    # down. Note the ``debit is None`` branch above is scoped to PROVEN
+    # non-billability (429, pre-connect); an attempt whose settle-time
+    # pricing returns None despite billable risk (rate card expired
+    # mid-attempt) also reaches it - a narrow window tracked with the
+    # governance-recovery hardening (#340 era), not silently widened here.
+    if debit.basis != "ACTUAL_USAGE":
+        return repository.hold_attempt_debit_unresolved(
+            debit_id=debit_id,
+            held_at=_utcnow(),
+        )
     return repository.settle_attempt_debit(
         debit_id=debit_id,
         budget_key=_BUDGET_KEY,
@@ -261,6 +291,54 @@ def settle_attempt_spend(
         output_tokens=debit.output_tokens,
         rate_card_ref=debit.rate_card_ref,
         settled_at=_utcnow(),
+    )
+
+
+def reconcile_attempt_spend(
+    *,
+    debit_id: str,
+    evidenced_amount_usd: float,
+    input_tokens: int | None,
+    output_tokens: int | None,
+    rate_card_ref: str | None,
+) -> bool:
+    """Settle one unresolved billable exposure to an operator-evidenced
+    charge (issue #329). This is the ONLY path that releases unresolved
+    reservation capacity, and it is reachable only through the governed
+    four-eyes reconciliation action - releasing hard-budget headroom is
+    risk-increasing. Returns False when the row is not unresolved (already
+    reconciled - retry convergence - or settled by usage evidence)."""
+
+    repository = get_provider_operations_store()
+    return repository.reconcile_attempt_debit(
+        debit_id=debit_id,
+        budget_key=_BUDGET_KEY,
+        amount_usd=evidenced_amount_usd,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        rate_card_ref=rate_card_ref,
+        reconciled_at=_utcnow(),
+    )
+
+
+def require_priceable_admission(reservation: AttemptDebit | None) -> None:
+    """Fail closed when an enforced hard budget cannot price an attempt
+    (issue #329): admitting an unpriceable attempt would bypass the limit
+    silently. With enforcement off, unpriceable attempts stay the explicit
+    cost-unknown posture and proceed."""
+
+    if reservation is not None:
+        return
+    enforcement = resolve_provider_execution_config().enforcement
+    if not enforcement.budget_enforced:
+        return
+    raise ProviderExecutionError(
+        category=ProviderFailureCategory.INVALID_BUDGET_CONFIGURATION,
+        message=(
+            "The live-provider hard budget is enforced but no effective rate card "
+            "prices this candidate; admission fails closed rather than bypassing "
+            "the limit."
+        ),
     )
 
 

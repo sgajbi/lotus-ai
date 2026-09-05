@@ -62,6 +62,11 @@ class GovernedActionType(str, Enum):
     # explicitly SYSTEM_ORIGINATED rather than dressing a service string up
     # as an approval (issue #157).
     ASYNC_QUEUE_RECOVERY = "ASYNC_QUEUE_RECOVERY"
+    # Settling an unresolved billable exposure to an operator-evidenced
+    # charge releases hard-budget admission headroom (issue #329) -
+    # risk-increasing, so it takes the two-step flow. Holding exposure is the
+    # automatic safe direction and needs no approval.
+    BUDGET_RECONCILIATION = "BUDGET_RECONCILIATION"
 
 
 class GovernedActionStatus(str, Enum):

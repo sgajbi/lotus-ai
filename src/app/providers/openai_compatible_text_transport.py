@@ -46,6 +46,7 @@ from app.providers.advisor_brief_quality_guardrails import (
     normalize_advisor_brief_output,
 )
 from app.services.provider_budget_policy import (
+    require_priceable_admission,
     reserve_attempt_spend,
     settle_attempt_spend,
     spent_for_execution,
@@ -401,6 +402,10 @@ def post_openai_compatible_response(
             max_output_tokens=payload_max_output,
             model_revision=model_revision,
         )
+        # An enforced hard budget that cannot price this candidate fails
+        # closed (issue #329): an unpriceable attempt must not slip past the
+        # limit by reserving nothing.
+        require_priceable_admission(reservation)
         if reservation is not None:
             admission = reserve_attempt_spend(
                 execution_id=debit_execution_id,

@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.contracts.capability_requirements import CapabilityRequirements
+from app.contracts.governed_actions import GovernedActionRecord
 
 
 from app.contracts.evals import EvaluationApprovalGateSummaryDescriptor
@@ -452,6 +453,66 @@ class ProviderBudgetPolicyResponse(BaseModel):
         default_factory=list,
         description="Human-readable notes describing how tracked spend is compared against configured budget thresholds.",
     )
+
+
+class BudgetReconciliationIntentRequest(BaseModel):
+    """Step one of governed budget reconciliation (issue #329).
+
+    Settling an unresolved billable exposure to an evidenced charge releases
+    hard-budget admission headroom - risk-increasing, so a verified requester
+    states the evidence and a distinct verified credential approves the exact
+    hash. Caller identity comes from the credential, never the body.
+    """
+
+    debit_id: str = Field(min_length=1, max_length=256)
+    evidenced_amount_usd: float = Field(
+        ge=0.0,
+        description="The charge the provider's own billing evidence establishes for this attempt.",
+    )
+    evidence_ref: str = Field(
+        min_length=1,
+        max_length=512,
+        description="Where the evidenced charge can be verified (invoice line, billing-console export, usage report).",
+    )
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    requested_by: str | None = Field(
+        default=None,
+        max_length=256,
+        description="Claimed operator name; recorded as unverified attribution.",
+    )
+
+
+class BudgetReconciliationApprovalRequest(BaseModel):
+    """Step two: a distinct verified credential approves the exact pending action."""
+
+    action_id: str = Field(min_length=1, max_length=64)
+    action_hash: str = Field(min_length=64, max_length=64)
+    approved_by: str | None = Field(default=None, max_length=256)
+    resume_interrupted_claim: bool = Field(
+        default=False,
+        description=(
+            "Explicit recovery intent (issue #327): resume a claim this same "
+            "credential holds after a crash. Never inferred; refused for any "
+            "other credential's claim."
+        ),
+    )
+
+
+class BudgetReconciliationApprovalResponse(BaseModel):
+    service: str = Field(description="Service name emitting the reconciliation outcome.")
+    version: str = Field(description="Current lotus-ai service version.")
+    governed_action: GovernedActionRecord = Field(
+        description="The executed governed action carrying requester and approver evidence."
+    )
+    debit_id: str = Field(description="The reconciled attempt-debit identity.")
+    evidenced_amount_usd: float = Field(
+        description="The charge the exposure settled to, from operator evidence."
+    )
+    released_amount_usd: float = Field(
+        description="Hard-budget headroom released by this reconciliation (held maximum minus evidenced charge)."
+    )
+    summary: list[str] = Field(default_factory=list)
 
 
 class ProviderConfigurationStatusDescriptor(BaseModel):
