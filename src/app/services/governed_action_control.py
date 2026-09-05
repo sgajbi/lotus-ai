@@ -98,13 +98,18 @@ def submit_governed_action(
     )
     prior = repository.get_pending_governed_action(action_type=action_type.value, target=target)
     if prior is not None:
-        repository.upsert_governed_action(
-            prior.model_copy(
+        # Guarded transition (issue #327): if the prior action was claimed or
+        # executed concurrently, supersession loses and that execution stands;
+        # this new request still records as the next pending intent.
+        repository.transition_governed_action(
+            action_id=prior.action_id,
+            expected_status=GovernedActionStatus.PENDING.value,
+            record=prior.model_copy(
                 update={
                     "status": GovernedActionStatus.SUPERSEDED,
                     "superseded_by_action_id": record.action_id,
                 }
-            )
+            ),
         )
     repository.upsert_governed_action(record)
     return record
@@ -119,6 +124,8 @@ def approve_and_execute_governed_action(
     current_payload_builder: Callable[[GovernedActionRecord], dict[str, str | None]],
     attribution: str | None,
     execute: Callable[[GovernedActionRecord], None],
+    result_payload_builder: Callable[[], dict[str, object]] | None = None,
+    resume_interrupted_claim: bool = False,
 ) -> GovernedActionRecord:
     """Validate a distinct verified approver against the exact action, then execute.
 
@@ -141,12 +148,21 @@ def approve_and_execute_governed_action(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No governed action exists for `{action_id}`.",
         )
-    if record.status is not GovernedActionStatus.PENDING:
+    # Resuming an interrupted claim is an EXPLICIT recovery intent, never an
+    # inference: a live claim raced by its own credential must refuse, or two
+    # same-credential approvals would both run the effect (issue #327).
+    resuming_own_claim = (
+        resume_interrupted_claim
+        and record.status is GovernedActionStatus.CLAIMED
+        and record.approver_key_id == caller.credential_key_id
+    )
+    if record.status is not GovernedActionStatus.PENDING and not resuming_own_claim:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
                 f"Governed action `{action_id}` is {record.status.value}; only a PENDING "
-                "action can be approved."
+                "action (or the claiming credential resuming its own interrupted claim) "
+                "can be approved."
             ),
         )
     if record.actor_class is not GovernedActorClass.HUMAN_APPROVED:
@@ -187,21 +203,65 @@ def approve_and_execute_governed_action(
             ),
         )
 
-    execute(record)
-
     now = _utc_now_iso()
-    executed = record.model_copy(
+    if resuming_own_claim:
+        claimed = record
+    else:
+        claimed = record.model_copy(
+            update={
+                "status": GovernedActionStatus.CLAIMED,
+                "approver_caller_app": caller.caller_app,
+                "approver_trust_source": caller.trust_source,
+                "approver_key_id": caller.credential_key_id,
+                "approver_attribution": attribution,
+                "approved_at": now,
+                "claimed_at": now,
+            }
+        )
+        # The atomic claim IS the transition ownership (issue #327): exactly
+        # one approval session moves PENDING to CLAIMED; a concurrent
+        # approval, supersession or execution makes this a refusal, never a
+        # second effect.
+        if not repository.transition_governed_action(
+            action_id=action_id,
+            expected_status=GovernedActionStatus.PENDING.value,
+            record=claimed,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Governed action `{action_id}` was claimed, superseded or executed "
+                    "concurrently; this approval did not execute."
+                ),
+            )
+
+    # The callback contract (issue #327): domain effects must be idempotent
+    # under the governed action identity - a crash between the claim and the
+    # EXECUTED write is recovered by the claiming credential re-approving,
+    # which re-invokes the callback.
+    execute(claimed)
+
+    executed = claimed.model_copy(
         update={
             "status": GovernedActionStatus.EXECUTED,
-            "approver_caller_app": caller.caller_app,
-            "approver_trust_source": caller.trust_source,
-            "approver_key_id": caller.credential_key_id,
-            "approver_attribution": attribution,
-            "approved_at": now,
-            "executed_at": now,
+            "executed_at": _utc_now_iso(),
+            "result_payload": (
+                result_payload_builder() if result_payload_builder is not None else None
+            ),
         }
     )
-    repository.upsert_governed_action(executed)
+    if not repository.transition_governed_action(
+        action_id=action_id,
+        expected_status=GovernedActionStatus.CLAIMED.value,
+        record=executed,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Governed action `{action_id}` left its claim while executing; the "
+                "domain effect ran but the execution evidence could not be finalized."
+            ),
+        )
     return executed
 
 

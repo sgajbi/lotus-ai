@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+
 from collections.abc import Sequence
 
 from copy import deepcopy
@@ -22,6 +24,7 @@ from app.repositories.provider_operations_repository import (
 
 class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
     def __init__(self) -> None:
+        self._governed_action_transition_lock = threading.Lock()
         self._quota_states: dict[tuple[ProviderQuotaScope, str], ProviderQuotaStateRecord] = {}
         self._budget_states: dict[str, ProviderBudgetStateRecord] = {}
         self._degradation_states: dict[str, ProviderDegradationStateRecord] = {}
@@ -315,6 +318,22 @@ class InMemoryProviderOperationsRepository(ProviderOperationsRepository):
         ]
         records.sort(key=lambda record: record.requested_at, reverse=True)
         return [record.model_copy(deep=True) for record in records[:limit]]
+
+    def transition_governed_action(
+        self,
+        *,
+        action_id: str,
+        expected_status: str,
+        record: GovernedActionRecord,
+    ) -> bool:
+        # Process-local store: a lock IS the atomicity boundary here; the SQL
+        # adapter carries the cross-replica guarantee (issue #327).
+        with self._governed_action_transition_lock:
+            current = self._governed_actions.get(action_id)
+            if current is None or current.status.value != expected_status:
+                return False
+            self._governed_actions[action_id] = record.model_copy(deep=True)
+            return True
 
     def upsert_governed_action(self, record: GovernedActionRecord) -> None:
         self._governed_actions[record.action_id] = record.model_copy(deep=True)

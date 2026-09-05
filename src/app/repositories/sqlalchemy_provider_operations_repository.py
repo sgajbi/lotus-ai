@@ -711,6 +711,30 @@ class SqlAlchemyProviderOperationsRepository(
             query = query.order_by(GovernedActionModel.requested_at.desc()).limit(limit)
             return [_to_governed_action_record(model) for model in session.execute(query).scalars()]
 
+    def transition_governed_action(
+        self,
+        *,
+        action_id: str,
+        expected_status: str,
+        record: GovernedActionRecord,
+    ) -> bool:
+        # One guarded UPDATE in its own transaction (issue #327): the WHERE
+        # predicate on the CURRENT status is the cross-replica claim - two
+        # sessions cannot both move the same action out of expected_status.
+        payload = record.model_dump(mode="json")
+        payload.pop("action_id", None)
+        with self._session_factory() as session:
+            result = session.execute(
+                update(GovernedActionModel)
+                .where(
+                    GovernedActionModel.action_id == action_id,
+                    GovernedActionModel.status == expected_status,
+                )
+                .values(**payload)
+            )
+            session.commit()
+            return int(getattr(result, "rowcount", 0) or 0) == 1
+
     def upsert_governed_action(self, record: GovernedActionRecord) -> None:
         with self._session_factory() as session:
             model = session.get(GovernedActionModel, record.action_id)

@@ -315,6 +315,8 @@ class GovernedActionModel(Base):
     approved_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
     executed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
     superseded_by_action_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    claimed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    result_payload: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 
 
 class ProviderOperationsEventModel(Base):
