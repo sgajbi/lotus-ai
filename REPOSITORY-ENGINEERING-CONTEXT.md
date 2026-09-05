@@ -80,7 +80,14 @@ unapproved revision is refused with `MODEL_LIFECYCLE_INELIGIBLE`), catalogue row
 are seeded from configuration and from the approved model-risk inventory, and
 revision drift is recorded from the provider echo. Identity-bound,
 effective-dated rate cards price executions and carry cost posture onto audit
-records.
+records. The hard budget is admission-honest (#329): each attempt atomically
+reserves its provable maximum before the provider is called; only trustworthy
+provider-reported usage (or proven non-billability) settles a reservation
+down. Unknown usage holds the reserved maximum as `UNRESOLVED_MAX` exposure —
+estimates are reported, never released against — until a governed four-eyes
+`BUDGET_RECONCILIATION` settles it to a provider-evidenced charge, and an
+enforced budget that cannot price a candidate refuses admission rather than
+reserving nothing.
 
 **Output validation.** Every provider output — structured channel and narrative
 message — passes one deterministic validator before safety redaction: evidence
@@ -140,7 +147,15 @@ signing readiness before any deletion (a missing receipt key means zero rows
 erased, 503, still approvable), replays a lost receipt from the durable result
 without re-erasing, and recovers a crash-interrupted run through deterministic
 per-action/family lifecycle events — resumable only by the claiming credential
-with an explicit resume flag. Minimisation caps the audit `result_preview` at persistence and ages
+with an explicit public resume flag, and resuming is itself exclusive: it
+rotates the claim instant under a compare-and-set, so concurrent resumes admit
+one winner before any effect, a superseded still-running executor cannot stamp
+evidence over the takeover (finalization is fenced to the owner's instant),
+and uncertain prior effects converge through the idempotent-callback contract.
+A claim whose credential disappears stays frozen by design — no timeout or
+lease may re-open the one-owner window; the operator recovery affordance is a
+governed four-eyes claim-release action (#340), which composes on the same
+fence (release and resume are CAS transitions racing on one claim instant). Minimisation caps the audit `result_preview` at persistence and ages
 passing evaluation-case content at a declared shorter horizon.
 
 **Current limitations.** Capability requirements exist for latency (one governed

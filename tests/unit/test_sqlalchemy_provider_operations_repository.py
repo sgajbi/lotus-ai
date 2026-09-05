@@ -160,8 +160,9 @@ def test_sqlalchemy_provider_operations_repository_applies_atomic_mutations(
 def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
     tmp_path: Path,
 ) -> None:
-    """Issue #289: the debit row and the budget counter advance together in
-    one transaction, a duplicate identity is a complete no-op, and deleting
+    """Issues #289/#300/#329: the debit row and the budget counter move
+    together in one transaction through the reserve->settle lifecycle, a
+    duplicate identity at either step is a complete no-op, and deleting
     evidence never reverses the counter."""
 
     database_url = f"sqlite:///{tmp_path / 'lotus-ai-provider-debits.db'}"
@@ -171,8 +172,8 @@ def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
     debit = ProviderAttemptDebitRecord(
         debit_id="adbt:exec-sql:text.openai:gpt-5.4:0",
         provider_id="text.openai",
-        basis="CONSERVATIVE_ESTIMATE",
-        amount_usd=0.01736,
+        basis="RESERVED_MAX",
+        amount_usd=0.05,
         input_tokens=200,
         output_tokens=512,
         rate_card_ref="default-live-text",
@@ -182,8 +183,44 @@ def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
         attempt_index=0,
     )
 
-    assert repository.record_attempt_debit(debit, budget_key="live_text_generation") is True
-    assert repository.record_attempt_debit(debit, budget_key="live_text_generation") is False
+    assert (
+        repository.reserve_attempt_debit(
+            debit, budget_key="live_text_generation", hard_limit_usd=None
+        )
+        == "RESERVED"
+    )
+    assert (
+        repository.reserve_attempt_debit(
+            debit, budget_key="live_text_generation", hard_limit_usd=None
+        )
+        == "DUPLICATE"
+    )
+    assert (
+        repository.settle_attempt_debit(
+            debit_id=debit.debit_id,
+            budget_key="live_text_generation",
+            basis="ACTUAL_USAGE",
+            amount_usd=0.01736,
+            input_tokens=200,
+            output_tokens=512,
+            rate_card_ref="default-live-text",
+            settled_at="2026-03-23T00:00:01Z",
+        )
+        is True
+    )
+    assert (
+        repository.settle_attempt_debit(
+            debit_id=debit.debit_id,
+            budget_key="live_text_generation",
+            basis="ACTUAL_USAGE",
+            amount_usd=0.01736,
+            input_tokens=200,
+            output_tokens=512,
+            rate_card_ref="default-live-text",
+            settled_at="2026-03-23T00:00:02Z",
+        )
+        is False
+    )
 
     budget = repository.get_budget_state(budget_key="live_text_generation")
     assert budget is not None
@@ -191,7 +228,7 @@ def test_sqlalchemy_attempt_debits_are_idempotent_and_transactional(
 
     rows = repository.list_attempt_debits(limit=10)
     assert [row.debit_id for row in rows] == ["adbt:exec-sql:text.openai:gpt-5.4:0"]
-    assert rows[0].basis == "CONSERVATIVE_ESTIMATE"
+    assert rows[0].basis == "ACTUAL_USAGE"
     assert rows[0].input_tokens == 200
     # The serving identity round-trips (issue #299): a later audit can name
     # the catalogue entry, provider, revision and attempt from the row alone.

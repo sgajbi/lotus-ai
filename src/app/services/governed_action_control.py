@@ -186,7 +186,15 @@ def approve_and_execute_governed_action(
                 "to the exact action requested; review the pending action and approve its hash."
             ),
         )
-    if compute_governed_action_hash(current_payload_builder(record)) != record.action_hash:
+    # Freshness guards the window BEFORE the claim: live domain state must
+    # still match what the approver reviewed. On the claiming credential's
+    # explicit resume the claim already validated this hash, and the executed
+    # effect may legitimately have changed the very state the rebuild reads -
+    # re-checking would refuse every crash recovery. The execute callback
+    # remains responsible for converging idempotently on resumed state.
+    if not resuming_own_claim and (
+        compute_governed_action_hash(current_payload_builder(record)) != record.action_hash
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
@@ -205,7 +213,39 @@ def approve_and_execute_governed_action(
 
     now = _utc_now_iso()
     if resuming_own_claim:
-        claimed = record
+        # Exclusive resume ownership (issue #327 follow-up): the credential
+        # match proves WHO may resume, not that the original executor
+        # stopped. Rotating the claim instant under a compare-and-set is the
+        # single-writer step - exactly one resumer (racing another resume,
+        # a still-running executor's finalization, or #340's release) wins
+        # BEFORE any effect runs; every competitor holds the stale instant
+        # and loses by construction.
+        stale_claim_instant = record.claimed_at
+        # The fence needs STRICT inequality: the winner's write must
+        # invalidate every competitor's expected value. Wall-clock
+        # microseconds can collide with the instant being replaced, so the
+        # rotation regenerates until it differs from the stale instant -
+        # a rotation equal to what it replaces would be a no-op fence.
+        # (Competitors expecting the SAME stale value need no such guard:
+        # whichever distinct value wins, their compare-and-set fails.)
+        rotated_claim_instant = now
+        while rotated_claim_instant == stale_claim_instant:
+            rotated_claim_instant = _utc_now_iso()
+        claimed = record.model_copy(update={"claimed_at": rotated_claim_instant})
+        if stale_claim_instant is None or not repository.transition_governed_action(
+            action_id=action_id,
+            expected_status=GovernedActionStatus.CLAIMED.value,
+            record=claimed,
+            expected_claimed_at=stale_claim_instant,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Governed action `{action_id}` changed hands while this resume "
+                    "started (another resume, a finalization, or a release won); "
+                    "this approval did not execute."
+                ),
+            )
     else:
         claimed = record.model_copy(
             update={
@@ -250,10 +290,15 @@ def approve_and_execute_governed_action(
             ),
         }
     )
+    # Finalization is fenced to THIS caller's claim instant: an executor
+    # whose claim was taken over (a resume rotated it) must not stamp
+    # evidence over state it no longer owns - the new owner's finalization
+    # is the one that lands.
     if not repository.transition_governed_action(
         action_id=action_id,
         expected_status=GovernedActionStatus.CLAIMED.value,
         record=executed,
+        expected_claimed_at=claimed.claimed_at,
     ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

@@ -76,6 +76,14 @@ class DataErasureApprovalRequest(BaseModel):
     action_id: str = Field(min_length=1, max_length=64)
     action_hash: str = Field(min_length=64, max_length=64)
     approved_by: str | None = Field(default=None, max_length=256)
+    resume_interrupted_claim: bool = Field(
+        default=False,
+        description=(
+            "Explicit recovery intent (issue #327): resume a claim this same "
+            "credential holds after a crash. Never inferred; refused for any "
+            "other credential's claim."
+        ),
+    )
 
 
 class DataErasureFamilyResult(BaseModel):

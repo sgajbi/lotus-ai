@@ -130,11 +130,6 @@ class ProviderOperationsRepository(Protocol):
     ) -> ProviderBudgetStateRecord:
         """Atomically add spend to one provider budget state record and return the updated value."""
 
-    def record_attempt_debit(self, record: ProviderAttemptDebitRecord, *, budget_key: str) -> bool:
-        """Durably record one attempt debit and advance the budget counter
-        together (issue #289). Returns False - a complete no-op, counter
-        untouched - when the debit identity is already recorded."""
-
     def reserve_attempt_debit(
         self,
         record: ProviderAttemptDebitRecord,
@@ -170,6 +165,36 @@ class ProviderOperationsRepository(Protocol):
         is a complete no-op returning False, and a crash before settlement
         leaves the conservative reservation standing (over-counting is the
         safe direction)."""
+
+    def hold_attempt_debit_unresolved(self, *, debit_id: str, held_at: str) -> bool:
+        """Mark one reserved debit's billable exposure UNRESOLVED (issue
+        #329): basis moves ``RESERVED_MAX`` → ``UNRESOLVED_MAX`` and NOTHING
+        else changes - the reserved amount stays on the row and in the
+        budget counter, because no usage evidence arrived to release it.
+        Returns False - a complete no-op - unless the row is still
+        ``RESERVED_MAX`` (idempotent under crash-retry)."""
+
+    def reconcile_attempt_debit(
+        self,
+        *,
+        debit_id: str,
+        budget_key: str,
+        amount_usd: float,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        rate_card_ref: str | None,
+        reconciled_at: str,
+    ) -> bool:
+        """Settle one unresolved exposure (``UNRESOLVED_MAX``, or a
+        ``RESERVED_MAX`` row orphaned by a crash) to an evidenced charge in
+        ONE transaction with the counter adjustment (issue #329): basis
+        becomes ``RECONCILED``. Only the governed reconciliation path calls
+        this - it is the sole way unresolved exposure releases hard
+        admission capacity. A second reconciliation is a no-op returning
+        False."""
+
+    def get_attempt_debit(self, *, debit_id: str) -> ProviderAttemptDebitRecord | None:
+        """Fetch one attempt-debit evidence row by its identity."""
 
     def list_attempt_debits(self, *, limit: int = 100) -> Sequence[ProviderAttemptDebitRecord]:
         """Attempt-debit evidence, newest first."""
@@ -240,10 +265,16 @@ class ProviderOperationsRepository(Protocol):
         action_id: str,
         expected_status: str,
         record: GovernedActionRecord,
+        expected_claimed_at: str | None = None,
     ) -> bool:
         """Atomically replace the action iff its CURRENT status equals
-        ``expected_status`` (issue #327). Returns False without writing when
-        the action moved concurrently - the caller lost the transition."""
+        ``expected_status`` (issue #327) - and, when ``expected_claimed_at``
+        is provided, iff the current claim instant equals it too. The claim
+        instant is the exclusive-ownership fence for everything that races on
+        a live claim (resume, finalization, and #340's release): each owner
+        rotates it on acquisition, so a competitor holding the stale instant
+        loses by construction. Returns False without writing when the action
+        moved concurrently - the caller lost the transition."""
         ...
 
     def upsert_governed_action(self, record: GovernedActionRecord) -> None:

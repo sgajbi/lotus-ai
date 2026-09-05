@@ -211,7 +211,11 @@ def test_a_failed_execution_leaves_the_claim_resumable_by_its_owner() -> None:
     assert effects == [record.action_id]
     assert executed.status is GovernedActionStatus.EXECUTED
     assert executed.approver_key_id == APPROVER.credential_key_id
-    assert executed.claimed_at == stored.claimed_at
+    # Resume ROTATES the claim instant - that rotation is the exclusive-
+    # ownership fence; the original approval evidence is what stays stable.
+    assert executed.claimed_at is not None
+    assert executed.claimed_at != stored.claimed_at
+    assert executed.approved_at == stored.approved_at
 
 
 def test_a_system_identity_cannot_originate_a_human_governed_action() -> None:
@@ -402,11 +406,20 @@ def test_a_claim_lost_during_execution_cannot_finalize_evidence(
     real_transition = store.transition_governed_action
 
     def stolen_after_execution(
-        *, action_id: str, expected_status: str, record: GovernedActionRecord
+        *,
+        action_id: str,
+        expected_status: str,
+        record: GovernedActionRecord,
+        expected_claimed_at: str | None = None,
     ) -> bool:
         if expected_status == GovernedActionStatus.CLAIMED.value:
             return False
-        return real_transition(action_id=action_id, expected_status=expected_status, record=record)
+        return real_transition(
+            action_id=action_id,
+            expected_status=expected_status,
+            record=record,
+            expected_claimed_at=expected_claimed_at,
+        )
 
     monkeypatch.setattr(store, "transition_governed_action", stolen_after_execution)
     effects: list[str] = []
@@ -415,3 +428,40 @@ def test_a_claim_lost_during_execution_cannot_finalize_evidence(
     assert exc_info.value.status_code == 409
     assert "could not be finalized" in exc_info.value.detail
     assert effects == [record.action_id]
+
+
+def test_a_same_tick_rotation_never_reuses_the_stale_instant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The fence is strict inequality (bb's review question on #329's PR):
+    if the wall clock returns the SAME instant as the stale claim, the
+    rotation regenerates until it differs - a rotation equal to what it
+    replaces would be a no-op fence letting a same-tick competitor pass."""
+
+    record = _submit()
+
+    def _explode(pending: object) -> None:
+        raise RuntimeError("first execution died")
+
+    with pytest.raises(RuntimeError):
+        _approve(record, execute=_explode)
+    stored = get_provider_operations_store().get_governed_action(record.action_id)
+    assert stored is not None
+    stale_instant = stored.claimed_at
+    assert stale_instant is not None
+
+    import app.services.governed_action_control as control_module
+
+    # Freeze the clock ON the stale instant for two ticks, then advance.
+    ticks = iter([stale_instant, stale_instant, "2099-01-01T00:00:00.000001+00:00"])
+    real_now = control_module._utc_now_iso
+    monkeypatch.setattr(
+        control_module,
+        "_utc_now_iso",
+        lambda: next(ticks, real_now()),
+    )
+
+    executed = _approve(record, execute=lambda pending: None, resume_interrupted_claim=True)
+    assert executed.status is GovernedActionStatus.EXECUTED
+    assert executed.claimed_at == "2099-01-01T00:00:00.000001+00:00"
+    assert executed.claimed_at != stale_instant
