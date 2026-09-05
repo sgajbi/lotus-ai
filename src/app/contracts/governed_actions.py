@@ -67,6 +67,12 @@ class GovernedActionType(str, Enum):
     # risk-increasing, so it takes the two-step flow. Holding exposure is the
     # automatic safe direction and needs no approval.
     BUDGET_RECONCILIATION = "BUDGET_RECONCILIATION"
+    # Releasing a frozen claim re-opens a dangerous action to approval
+    # (issue #340) - risk-increasing, two-step, and additionally requiring
+    # BOTH credentials to differ from the frozen claim's credential. The
+    # automatic path (TTL/lease) is explicitly rejected: it would re-open
+    # the one-owner window #327 closed.
+    CLAIM_RELEASE = "CLAIM_RELEASE"
 
 
 class GovernedActionStatus(str, Enum):
@@ -154,6 +160,52 @@ class GovernedActionResponse(BaseModel):
         description="The governed-action evidence record."
     )
     summary: list[str] = Field(description="Human-readable statements about the action.")
+
+
+class ClaimReleaseIntentRequest(BaseModel):
+    """Step one of governed claim release (issue #340).
+
+    Re-opens a frozen CLAIMED action to approval - risk-increasing, so a
+    verified requester states the intent and a DISTINCT verified credential
+    approves the exact hash; BOTH must also differ from the frozen claim's
+    credential, so the release is never a self-service second path to
+    execution.
+    """
+
+    target_action_id: str = Field(min_length=1, max_length=64)
+    reason: str = Field(
+        min_length=1,
+        description="Why the claim is considered frozen (credential rotated, operator gone).",
+    )
+    requested_by: str | None = Field(default=None, max_length=256)
+
+
+class ClaimReleaseApprovalRequest(BaseModel):
+    """Step two: a distinct verified credential approves the exact pending action."""
+
+    action_id: str = Field(min_length=1, max_length=64)
+    action_hash: str = Field(min_length=64, max_length=64)
+    approved_by: str | None = Field(default=None, max_length=256)
+    resume_interrupted_claim: bool = Field(
+        default=False,
+        description=(
+            "Explicit recovery intent (issue #327): resume a claim this same "
+            "credential holds after a crash. Never inferred; refused for any "
+            "other credential's claim."
+        ),
+    )
+
+
+class ClaimReleaseApprovalResponse(BaseModel):
+    service: str = Field(description="Publishing service identity.")
+    version: str = Field(description="Publishing service version.")
+    governed_action: GovernedActionRecord = Field(
+        description="The executed CLAIM_RELEASE action carrying the full evidence chain."
+    )
+    released_action: GovernedActionRecord = Field(
+        description="The target action after release: PENDING again, requester evidence intact."
+    )
+    summary: list[str] = Field(description="Human-readable statements about the release.")
 
 
 class GovernedActionHistoryResponse(BaseModel):

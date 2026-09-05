@@ -8,6 +8,9 @@ from app.contracts.data_lifecycle import (
     DataErasureIntentRequest,
 )
 from app.contracts.governed_actions import (
+    ClaimReleaseApprovalRequest,
+    ClaimReleaseApprovalResponse,
+    ClaimReleaseIntentRequest,
     GovernedActionHistoryResponse,
     GovernedActionResponse,
     GovernedActionStatus,
@@ -20,6 +23,10 @@ from app.contracts.providers import (
 from app.services.budget_reconciliation import (
     approve_budget_reconciliation,
     request_budget_reconciliation,
+)
+from app.services.governed_claim_release import (
+    approve_claim_release,
+    request_claim_release,
 )
 from app.services.data_lifecycle_erasure import approve_data_erasure, request_data_erasure
 from app.http.authenticated_caller import AuthenticatedCallerDependency
@@ -291,6 +298,71 @@ async def approve_budget_reconciliation_route(
     authenticated_caller: AuthenticatedCallerDependency,
 ) -> BudgetReconciliationApprovalResponse:
     return approve_budget_reconciliation(request, authenticated_caller)
+
+
+@router.post(
+    "/governed-actions/claim-release-requests",
+    response_model=GovernedActionResponse,
+    operation_id="requestClaimRelease",
+    summary="Request governed release of a frozen claim",
+    description=(
+        "Step one of governed claim release (issue #340): records a pending intent, under a "
+        "verified credential DISTINCT from the frozen claim's holder, to release a CLAIMED "
+        "governed action back to PENDING. The payload pins the target's hash, claim instant "
+        "and holder at request time. Nothing changes until a third distinct credential "
+        "approves; the holder's own resume path stays available and wins races by "
+        "compare-and-set."
+    ),
+    responses={
+        200: {"description": "Release intent recorded and pending approval."},
+        403: {
+            "description": "Caller is not authorized, carries no verified credential, or IS "
+            "the frozen claim's credential."
+        },
+        404: {"description": "No governed action exists for the target id."},
+        409: {"description": "The target is not CLAIMED."},
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def request_claim_release_route(
+    request: ClaimReleaseIntentRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> GovernedActionResponse:
+    return request_claim_release(request, authenticated_caller)
+
+
+@router.post(
+    "/governed-actions/claim-release-approvals",
+    response_model=ClaimReleaseApprovalResponse,
+    operation_id="approveClaimRelease",
+    summary="Approve and execute a pending claim release",
+    description=(
+        "Step two of governed claim release (issue #340): a verified credential DISTINCT "
+        "from both the requester and the frozen claim's holder approves the exact pending "
+        "hash. Execution releases the claim CLAIMED->PENDING by compare-and-set on the "
+        "pinned claim instant - a release racing the holder's resume admits exactly one "
+        "winner - wiping approver evidence while preserving the requester's, with the "
+        "release evidence durable on the executed action."
+    ),
+    responses={
+        200: {"description": "Claim released; the target action is PENDING again."},
+        403: {
+            "description": "Caller is not authorized, carries no verified credential, is the "
+            "requester, or is the frozen claim's credential."
+        },
+        404: {"description": "No pending action exists for the given id."},
+        409: {
+            "description": "The action hash does not match, or the target's claim moved "
+            "(resumed, finalized, or already released)."
+        },
+        500: {"description": "Unexpected server error."},
+    },
+)
+async def approve_claim_release_route(
+    request: ClaimReleaseApprovalRequest,
+    authenticated_caller: AuthenticatedCallerDependency,
+) -> ClaimReleaseApprovalResponse:
+    return approve_claim_release(request, authenticated_caller)
 
 
 @router.get(

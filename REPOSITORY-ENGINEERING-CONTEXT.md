@@ -164,9 +164,12 @@ one winner before any effect, a superseded still-running executor cannot stamp
 evidence over the takeover (finalization is fenced to the owner's instant),
 and uncertain prior effects converge through the idempotent-callback contract.
 A claim whose credential disappears stays frozen by design — no timeout or
-lease may re-open the one-owner window; the operator recovery affordance is a
-governed four-eyes claim-release action (#340), which composes on the same
-fence (release and resume are CAS transitions racing on one claim instant). Minimisation caps the audit `result_preview` at persistence and ages
+lease may re-open the one-owner window; the operator recovery is the governed
+CLAIM_RELEASE action (#340): two credentials BOTH distinct from the frozen
+holder release the claim back to PENDING by compare-and-set on the same claim
+instant resume rotates — release and resume race on one fence, one winner —
+with the release evidence durable and the re-approved effect converging under
+the idempotent-callback contract. Minimisation caps the audit `result_preview` at persistence and ages
 passing evaluation-case content at a declared shorter horizon.
 
 **Current limitations.** Capability requirements exist for latency (one governed
