@@ -26,7 +26,16 @@ COPY scripts/docker ./scripts/docker
 RUN sed -i 's/\r$//' scripts/docker/start-api.sh scripts/docker/start-worker.sh \
     && chmod +x scripts/docker/start-api.sh scripts/docker/start-worker.sh \
     && groupadd --gid 10001 app \
-    && useradd --uid 10001 --gid app --no-create-home app
+    && useradd --uid 10001 --gid app --no-create-home app \
+    # /data is the artifact object-store mount point (issue #325): a named
+    # volume initializes from the image directory's ownership on FIRST use,
+    # so app-owned here means a fresh volume is writable by the non-root
+    # runtime user in BOTH the API and worker containers - no root runtime,
+    # no world-writable workaround. A pre-existing root-owned volume cannot
+    # be repaired by a non-root container; recreate it (docker compose down
+    # -v) or chown it out-of-band.
+    && mkdir -p /data/object-store \
+    && chown -R app:app /data
 
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONPATH=/app/src

@@ -88,6 +88,8 @@ ci: verify-dependencies dependency-lock-replay-check lint typecheck openapi-gate
 docker-build:
 	docker build -t backend-service:ci-test .
 	docker run --rm backend-service:ci-test python -c "import os, importlib.util; assert os.getuid() == 10001, 'runtime image must not run as root'; assert all(importlib.util.find_spec(m) is None for m in ('pytest', 'mypy', 'ruff', 'pip_audit')), 'dev tooling leaked into the runtime image'; import app.main"
+	-docker volume rm -f lotus-ai-ci-first-write
+	docker run --rm -v lotus-ai-ci-first-write:/data backend-service:ci-test python -c "import pathlib; p = pathlib.Path('/data/object-store/first-write-proof'); p.write_text('ok'); assert p.read_text() == 'ok'; p.unlink()" && docker volume rm lotus-ai-ci-first-write
 
 clean:
 	python -c "import shutil, pathlib; [shutil.rmtree(p, ignore_errors=True) for p in ['.pytest_cache', '.ruff_cache', '.mypy_cache']]; [pathlib.Path(p).unlink(missing_ok=True) for p in ['.coverage', '.coverage.unit', '.coverage.integration', '.coverage.e2e']]"

@@ -52,6 +52,16 @@ startup — smoke-test a route that uses the store after changing one.
 | `LOTUS_AI_DATABASE_URL` | *(none)* — required by any `sqlalchemy` mode |
 | `LOTUS_AI_ARTIFACT_OBJECT_STORE_ROOT` | *(none)* |
 
+Split-runtime rule (issue #331): when `LOTUS_AI_ASYNC_CUTOVER_STATE` is
+`dedicated_workers_active`, every store shared by the API and the dedicated
+worker — workflow-pack registry, run (which carries execution idempotency),
+task-flow, queue-event, admission, the async runtime, and the stores the
+worker's execution path reads (kill-switch, provider-operations, rate-card,
+model-catalogue) — must use its `sqlalchemy` mode. A memory mode there is a startup readiness finding
+(blocking under the `enforce` policy): per-process state is invisible to the
+other process, so the worker cannot see the API's queue-event truth. The
+default `docker-compose.yml` sets all of them.
+
 ## Logging
 
 | variable | default |
