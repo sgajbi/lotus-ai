@@ -489,22 +489,13 @@ def test_execute_text_generation_rejects_live_provider_when_budget_is_exceeded()
     # Spend becomes real at the attempt boundary (issue #289), a layer this
     # test's fake adapter deliberately bypasses - seed the debit exactly as
     # the real transport records it, then prove the preflight blocks.
-    from app.services.provider_budget_policy import record_attempt_spend
-    from app.services.provider_usage_accounting import AttemptDebit
+    from tests.support.budget_seeding import seed_settled_attempt_spend
 
-    record_attempt_spend(
+    seed_settled_attempt_spend(
+        1.0,
         execution_id="exec-gateway-budget",
-        candidate_entry_id="text.openai:gpt-5.4",
-        provider_id="text.openai",
-        model_revision="gpt-5.4",
-        attempt_index=0,
-        debit=AttemptDebit(
-            amount_usd=1.0,
-            basis="ACTUAL_USAGE",
-            input_tokens=10,
-            output_tokens=20,
-            rate_card_ref="default-live-text",
-        ),
+        input_tokens=10,
+        output_tokens=20,
     )
 
     with pytest.raises(HTTPException) as exc_info:

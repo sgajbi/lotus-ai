@@ -297,3 +297,22 @@ def test_both_adapters_refuse_a_drifted_canonical_id(tmp_path: Path) -> None:
     repository = SqlAlchemyModelCatalogueRepository(database_url)
     with pytest.raises(ValueError, match="drifted"):
         repository.upsert_entry(drifted)
+
+
+def test_candidate_identity_v2_grammar_is_the_debit_segment_guarantee() -> None:
+    """The attempt-debit identity embeds candidate_id_v2 between colon
+    delimiters (``adbt2:{execution}:{candidate_id_v2}:{attempt}``). This
+    grammar is what keeps that segment delimiter-unambiguous -- the defect
+    the legacy entry-id segment had: ``cand2_`` plus exactly 64 hex digits,
+    colon-free by construction, for every input including hostile ones."""
+
+    import re as _re
+
+    for deployment in (None, "eu-west-1", "with:colons", "unicode-\u2603"):
+        identity = derive_candidate_identity_v2(
+            provider_id="provider:with:colons",
+            model_family="family:x",
+            model_revision="rev:1",
+            deployment=deployment,
+        )
+        assert _re.fullmatch(r"cand2_[0-9a-f]{64}", identity), identity
