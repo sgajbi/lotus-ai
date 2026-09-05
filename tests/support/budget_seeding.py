@@ -66,6 +66,7 @@ def seed_settled_attempt_spend(
             attempt_index=attempt_index,
             debit=debit,
             candidate_id_v2=None,
+            billable_risk=True,
         )
     finally:
         settings.live_text_budget_enforced = previous
