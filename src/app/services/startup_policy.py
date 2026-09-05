@@ -64,6 +64,7 @@ def evaluate_startup_readiness() -> StartupReadinessEvaluation:
 
     findings.extend(_caller_identity_findings())
     findings.extend(_provider_protection_findings())
+    findings.extend(_split_runtime_coherence_findings())
     # Explicit operator weakenings of promoted protections, captured at
     # settings construction (issue #233): override wins, but never silently.
     findings.extend(settings.promoted_protection_overrides)
@@ -102,6 +103,55 @@ def apply_startup_readiness_policy() -> StartupReadinessEvaluation:
             "lotus-ai startup readiness policy blocked startup: " + "; ".join(evaluation.findings)
         )
     return evaluation
+
+
+def _split_runtime_coherence_findings() -> list[str]:
+    """The split deployment must share ALL its cross-process state (issue
+    #331, audit F7): with a dedicated worker active, a memory-backed store
+    for state both processes read is not a degraded mode - it is a broken
+    topology (the worker looks up ADMISSION_QUEUED in a queue-event store
+    the API wrote in its own process; an operator kill switch flipped
+    through the API never reaches the executing worker; worker-side budget
+    settlement moves a per-process counter). The map below enumerates every
+    store the worker's execution path reads or writes - workflow-pack state,
+    async runtime, and the operator-protection/economics stores the
+    transport touches (kill switches, provider operations, rate cards,
+    model catalogue). Memory stores reporting READY is appropriate for
+    single-process use and establishes nothing here.
+
+    These findings ride the uniform startup_readiness_policy DELIBERATELY:
+    under `warn` they log and boot proceeds, under `enforce` they block -
+    the same captured-never-silent operator-override discipline as every
+    other protection (issue #233). A special-case policy bypass for
+    "categorical" findings would be a second policy mechanism."""
+
+    if settings.async_cutover_state != "dedicated_workers_active":
+        return []
+    shared_state_modes = {
+        "workflow-pack registry": settings.workflow_pack_registry_store_mode,
+        "workflow-pack run ledger (carries execution idempotency)": (
+            settings.workflow_pack_run_store_mode
+        ),
+        "workflow-pack task-flow": settings.workflow_pack_task_flow_store_mode,
+        "workflow-pack queue-event": settings.workflow_pack_queue_event_store_mode,
+        "workflow-pack admission": settings.workflow_pack_admission_store_mode,
+        "async runtime": settings.async_runtime_store_mode,
+        "kill-switch": settings.kill_switch_store_mode,
+        "provider-operations (quota/budget/degradation/governed actions)": (
+            settings.provider_operations_store_mode
+        ),
+        "rate-card": settings.rate_card_store_mode,
+        "model-catalogue": settings.model_catalogue_store_mode,
+    }
+    return [
+        (
+            f"split runtime: the {name} store is per-process memory, invisible to the "
+            "dedicated worker; configure the SQL-backed mode for every store shared "
+            "by API and worker"
+        )
+        for name, mode in shared_state_modes.items()
+        if mode == "memory"
+    ]
 
 
 def _caller_identity_findings() -> list[str]:

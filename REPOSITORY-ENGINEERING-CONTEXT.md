@@ -230,7 +230,11 @@ Runtime model:
 Boundary rules:
 
 1. other Lotus apps provide structured business context and remain responsible for business meaning,
-2. `lotus-ai` provides bounded governed AI capabilities with audit and evidence,
+2. `lotus-ai` provides bounded governed AI capabilities with audit and evidence
+   (the advertised split API+worker deployment shares ALL cross-process state
+   durably — a memory store for shared workflow state is a startup readiness
+   finding, #331 — and the runtime image owns `/data` so fresh volumes are
+   writable by the non-root user in both containers, #325),
 3. framework choices must not obscure control flow, governance, or auditability,
 4. live-provider, retrieval, async, and workflow-pack control seams remain rollout-governed and evidence-backed,
 5. every AI output carries a deterministic validation verdict and the `non_authoritative_ai_output` authority marking on the response and the audit record (evidence grounding, numeric grounding, per-task/per-pack JSON Schema contracts under `contracts/ai-task-outputs/`, strict-JSON posture); REJECTED outputs are withheld whole with the failing rule ids, a pack family without an output contract cannot be registered, and the eval runtime executes through the same pipeline so eval and production verdicts agree,
