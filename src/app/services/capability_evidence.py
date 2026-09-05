@@ -38,19 +38,29 @@ def record_capability_evidence_for_pass_run(
     from app.evals.fixture_manifest import load_evaluation_fixture_manifest
 
     manifest = load_evaluation_fixture_manifest()
-    if manifest.manifest_version != run.manifest_version:
+    digest_mismatch = (
+        run.manifest_content_digest is not None
+        and manifest.manifest_content_digest != run.manifest_content_digest
+    )
+    if manifest.manifest_version != run.manifest_version or digest_mismatch:
         # Version pinning, fail-closed (issue #332): the run executed under
         # one manifest version but the CURRENT manifest is another - loading
         # today's declarations would label them with the run's version,
         # certifying content the run never exercised. A queued run across a
         # fixture change yields no evidence, loudly.
+        # Both must match (issue #351): the digest catches unbumped content
+        # drift, the label catches undigested operator intent - either
+        # mismatch refuses. Historical runs without a digest stay guarded by
+        # the label alone, stated rather than backfilled.
         _logger.warning(
             "capability evidence refused: run %s executed under manifest %s "
-            "but the current manifest is %s - proof-producing content cannot "
-            "be re-established",
+            "(digest %s) but the current manifest is %s (digest %s) - "
+            "proof-producing content cannot be re-established",
             run.run_id,
             run.manifest_version,
+            run.manifest_content_digest,
             manifest.manifest_version,
+            manifest.manifest_content_digest,
         )
         return
     fixture = next((f for f in manifest.fixture_families if f.fixture_id == run.fixture_id), None)
@@ -76,6 +86,7 @@ def record_capability_evidence_for_pass_run(
                 scope_key=proof.scope_key,
                 fixture_id=run.fixture_id,
                 manifest_version=run.manifest_version,
+                manifest_content_digest=run.manifest_content_digest,
                 evaluation_run_id=run.run_id,
                 verdict=EvaluationRunVerdict.PASS.value,
                 triggered_by=run.triggered_by,

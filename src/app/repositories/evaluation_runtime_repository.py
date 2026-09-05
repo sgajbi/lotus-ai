@@ -18,6 +18,7 @@ class EvaluationRunRecord:
     latest_message: str
     verdict: str | None
     case_count: int
+    manifest_content_digest: str | None = None
 
 
 @dataclass(frozen=True)

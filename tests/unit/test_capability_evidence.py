@@ -134,6 +134,7 @@ def _declaring_manifest(monkeypatch: pytest.MonkeyPatch) -> None:
         manifest_version="foundation.v1",
         evidence_categories=[],
         fixture_families=[declaring],
+        manifest_content_digest="f" * 64,
     )
     monkeypatch.setattr(
         "app.evals.fixture_manifest.load_evaluation_fixture_manifest", lambda: manifest
@@ -488,3 +489,76 @@ def test_a_failed_or_incomplete_producing_run_never_backs_evidence(
             )
             is None
         ), broken.lifecycle_status
+
+
+def test_an_unbumped_content_edit_refuses_via_the_digest(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Issue #351: the run executed under one content digest, the manifest
+    now carries another, but the LABEL never moved - the digest guard
+    refuses what the label guard cannot see."""
+
+    import logging
+    from dataclasses import replace as _dc_replace
+
+    entry = _catalogued_entry()
+    _declaring_manifest(monkeypatch)
+    drifted_run = _dc_replace(_run(), manifest_content_digest="a" * 64)
+
+    with caplog.at_level(logging.WARNING, logger="app.services.capability_evidence"):
+        record_capability_evidence_for_pass_run(
+            run=drifted_run,
+            results=[_case("case_001", entry.candidate_id_v2)],
+        )
+
+    assert (
+        get_model_catalogue_repository().list_capability_evidence(
+            candidate_id_v2=entry.candidate_id_v2, dimension="supports_tool_calling"
+        )
+        == []
+    )
+    assert any("digest" in r.getMessage() for r in caplog.records)
+
+
+def test_a_historical_run_without_a_digest_stays_label_guarded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stated, not backfilled: a pre-#351 run (digest None) writes claims
+    under the label guard alone, and the claims carry a null digest."""
+
+    entry = _catalogued_entry()
+    _declaring_manifest(monkeypatch)
+    historical = _run()
+    assert historical.manifest_content_digest is None
+    _commit_run(historical)
+    record_capability_evidence_for_pass_run(
+        run=historical,
+        results=[_case("case_001", entry.candidate_id_v2)],
+    )
+    records = get_model_catalogue_repository().list_capability_evidence(
+        candidate_id_v2=entry.candidate_id_v2, dimension="supports_tool_calling"
+    )
+    assert len(records) == 1
+    assert records[0].manifest_content_digest is None
+
+
+def test_a_matching_digest_writes_claims_that_carry_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from dataclasses import replace as _dc_replace
+
+    entry = _catalogued_entry()
+    _declaring_manifest(monkeypatch)
+    current_digest = "f" * 64
+    pinned_run = _dc_replace(_run(), manifest_content_digest=current_digest)
+    _commit_run(pinned_run)
+    record_capability_evidence_for_pass_run(
+        run=pinned_run,
+        results=[_case("case_001", entry.candidate_id_v2)],
+    )
+    records = get_model_catalogue_repository().list_capability_evidence(
+        candidate_id_v2=entry.candidate_id_v2, dimension="supports_tool_calling"
+    )
+    assert len(records) == 1
+    assert records[0].manifest_content_digest == current_digest

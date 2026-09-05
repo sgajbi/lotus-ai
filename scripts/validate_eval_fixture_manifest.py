@@ -23,7 +23,9 @@ def main() -> int:
         "Evaluation fixture manifest validation passed "
         f"({REPO_ROOT / 'docs' / 'evals' / 'fixture-manifest.json'}; "
         f"{len(manifest.fixture_families)} families, "
-        f"{sum(fixture.case_count for fixture in manifest.fixture_families)} staged cases)"
+        f"{sum(fixture.case_count for fixture in manifest.fixture_families)} staged cases; "
+        f"version {manifest.manifest_version}, "
+        f"content digest {manifest.manifest_content_digest})"
     )
     return 0
 

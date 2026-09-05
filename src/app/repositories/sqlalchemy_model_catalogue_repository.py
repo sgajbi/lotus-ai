@@ -329,6 +329,7 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
             model.scope_key = record.scope_key
             model.fixture_id = record.fixture_id
             model.manifest_version = record.manifest_version
+            model.manifest_content_digest = record.manifest_content_digest
             model.evaluation_run_id = record.evaluation_run_id
             model.verdict = record.verdict
             model.triggered_by = record.triggered_by
@@ -380,6 +381,7 @@ class SqlAlchemyModelCatalogueRepository(SqlAlchemyRepositoryBase):
             scope_key=model.scope_key,
             fixture_id=model.fixture_id,
             manifest_version=model.manifest_version,
+            manifest_content_digest=model.manifest_content_digest,
             evaluation_run_id=model.evaluation_run_id,
             verdict=model.verdict,
             triggered_by=model.triggered_by,

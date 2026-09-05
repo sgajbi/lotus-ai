@@ -223,11 +223,13 @@ def _submit_runtime_backed_evaluation_run(
             "message": "Evaluation execution is not allowlisted for runtime-backed submission.",
         }
 
+    manifest = load_evaluation_fixture_manifest()
     get_evaluation_runtime_store().save_run(
         EvaluationRunRecord(
             run_id=run_id,
             fixture_id=fixture_id,
-            manifest_version=load_evaluation_fixture_manifest().manifest_version,
+            manifest_version=manifest.manifest_version,
+            manifest_content_digest=manifest.manifest_content_digest,
             lifecycle_status=AsyncJobStatus.QUEUED.value,
             triggered_by=triggered_by,
             submitted_at=submitted_at,

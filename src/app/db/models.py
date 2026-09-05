@@ -484,6 +484,7 @@ class EvaluationRunModel(Base):
     latest_message: Mapped[str] = mapped_column(Text, nullable=False)
     verdict: Mapped[str | None] = mapped_column(String(64), nullable=True)
     case_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    manifest_content_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     attempts: Mapped[list["EvaluationRunAttemptModel"]] = relationship(back_populates="run")
     case_results: Mapped[list["EvaluationCaseResultModel"]] = relationship(back_populates="run")
@@ -906,6 +907,7 @@ class CapabilityEvidenceModel(Base):
     scope_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
     fixture_id: Mapped[str] = mapped_column(String(128), nullable=False)
     manifest_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    manifest_content_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
     evaluation_run_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     verdict: Mapped[str] = mapped_column(String(16), nullable=False)
     triggered_by: Mapped[str | None] = mapped_column(String(256), nullable=True)
