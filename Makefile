@@ -1,4 +1,4 @@
-.PHONY: install dependency-lock-replay-check lint module-budget-guard monetary-float-guard runtime-purity-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke migration-apply data-lifecycle-run runtime-mode-smoke test test-unit test-integration test-e2e test-coverage coverage-gate security-audit check ci docker-build clean
+.PHONY: install dependency-lock-replay-check lint module-budget-guard monetary-float-guard runtime-purity-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke migration-apply data-lifecycle-run runtime-mode-smoke test test-unit test-integration test-e2e test-postgres test-coverage coverage-gate security-audit check ci docker-build clean
 
 install:
 	python -m pip install --upgrade pip
@@ -70,6 +70,12 @@ test-integration:
 
 test-e2e:
 	python -m pytest tests/e2e
+
+# Fence proofs on real PostgreSQL (issue #344). Point
+# LOTUS_AI_POSTGRES_TEST_URL at a disposable database; in CI the lane is
+# fail-closed via LOTUS_AI_POSTGRES_TEST_REQUIRED.
+test-postgres:
+	python -m pytest tests/postgres -v
 
 test-coverage:
 	COVERAGE_FILE=.coverage.unit python -m pytest tests/unit --cov=src --cov-report=

@@ -116,9 +116,41 @@ jobs:
       - name: Verify SQL-backed runtime modes
         run: make runtime-mode-smoke
 
+  postgres-fence-proof:
+    name: PR Merge Gate / PostgreSQL Fence Proof
+    needs: [lint-typecheck-security]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: lotus_ai
+          POSTGRES_USER: lotus_ai
+          POSTGRES_PASSWORD: lotus_ai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lotus_ai -d lotus_ai"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+      - name: Install
+        run: make install
+      - name: Prove CAS fences on PostgreSQL
+        env:
+          LOTUS_AI_POSTGRES_TEST_URL: postgresql+psycopg://lotus_ai:lotus_ai@localhost:5432/lotus_ai
+          LOTUS_AI_POSTGRES_TEST_REQUIRED: "1"
+        run: make test-postgres
+
   coverage-gate:
     name: PR Merge Gate / Coverage Gate (Combined)
-    needs: [test-suites, runtime-mode-smoke]
+    needs: [test-suites, runtime-mode-smoke, postgres-fence-proof]
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: "--no-deprecation"

@@ -4,8 +4,9 @@ from collections.abc import Sequence
 
 from pathlib import Path
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import Float, Numeric, cast, delete, func, select, update
 from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.contracts.access_control import (
     AuthorizationCapabilityType,
@@ -36,6 +37,20 @@ from app.repositories.provider_operations_repository import (
     ProviderQuotaStateRecord,
 )
 from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
+
+
+def _rounded_spend_sql(expression: ColumnElement[float]) -> ColumnElement[float]:
+    """Round a monetary SQL expression to 8 decimal places portably.
+
+    PostgreSQL defines scaled ROUND only for NUMERIC - round(double
+    precision, integer) does not exist - so the guarded budget statements
+    that pass on SQLite crash on the production engine (the first catch of
+    the issue #344 fence lane). Cast through NUMERIC for the scaled round,
+    then back to the column's float type so comparison and assignment
+    semantics stay identical on both backends.
+    """
+
+    return cast(func.round(cast(expression, Numeric(24, 12)), 8), Float)
 
 
 class SqlAlchemyProviderOperationsRepository(
@@ -190,17 +205,15 @@ class SqlAlchemyProviderOperationsRepository(
                     )
                     if hard_limit_usd is not None:
                         guarded = guarded.where(
-                            func.round(
-                                ProviderBudgetStateModel.current_spend_usd + record.amount_usd,
-                                8,
+                            _rounded_spend_sql(
+                                ProviderBudgetStateModel.current_spend_usd + record.amount_usd
                             )
                             <= hard_limit_usd
                         )
                     result = session.execute(
                         guarded.values(
-                            current_spend_usd=func.round(
-                                ProviderBudgetStateModel.current_spend_usd + record.amount_usd,
-                                8,
+                            current_spend_usd=_rounded_spend_sql(
+                                ProviderBudgetStateModel.current_spend_usd + record.amount_usd
                             ),
                             updated_at=record.recorded_at,
                         )
@@ -333,8 +346,8 @@ class SqlAlchemyProviderOperationsRepository(
                 update(ProviderBudgetStateModel)
                 .where(ProviderBudgetStateModel.budget_key == budget_key)
                 .values(
-                    current_spend_usd=func.round(
-                        ProviderBudgetStateModel.current_spend_usd + delta, 8
+                    current_spend_usd=_rounded_spend_sql(
+                        ProviderBudgetStateModel.current_spend_usd + delta
                     ),
                     updated_at=settled_at,
                 )
@@ -411,8 +424,8 @@ class SqlAlchemyProviderOperationsRepository(
                         update(ProviderBudgetStateModel)
                         .where(ProviderBudgetStateModel.budget_key == budget_key)
                         .values(
-                            current_spend_usd=func.round(
-                                ProviderBudgetStateModel.current_spend_usd + delta, 8
+                            current_spend_usd=_rounded_spend_sql(
+                                ProviderBudgetStateModel.current_spend_usd + delta
                             ),
                             updated_at=reconciled_at,
                         )

@@ -22,7 +22,8 @@ targets, measured across `.github/workflows/*.yml` on `main`:
 ```
 async-job-gate   docker-build   eval-manifest-gate   eval-run-gate   install
 lint             migration-smoke   openapi-gate      runtime-mode-smoke
-security-audit   test-unit      typecheck           verify-dependencies
+security-audit   test-postgres  test-unit           typecheck
+verify-dependencies
 ```
 
 Two consequences to keep in mind:
@@ -42,6 +43,7 @@ relying on the lanes to repeat it.
 - `make ci` - PR-grade local gate
 - `make rfc0002-idea-proof-gate` - RFC-0002 Idea explanation local-dev proof gate
 - `make runtime-mode-smoke` - targeted startup and runtime-mode smoke
+- `make test-postgres` - CAS fence proofs on real PostgreSQL (see below)
 - `make migration-apply` - apply Alembic migrations
 - `make docker-build` - Docker build validation
 
@@ -118,6 +120,34 @@ Three gates deserve special attention because they are easy to misread:
 
 These keep the evidence layer truthful. They are part of the product contract for `lotus-ai`, not
 just developer convenience.
+
+## PostgreSQL Fence Proof
+
+`make test-postgres` runs `tests/postgres` against a real PostgreSQL, certifying the compare-and-set
+fences behind governed claims and hard-budget accounting on the engine operators actually deploy:
+the claim fence, the claim-instant rotation fence, release-versus-resume, reserve admission of the
+last headroom, reconcile-releases-once, and settle-versus-hold. Every scenario races two independent
+repository sessions (separate engines and pools, asserted distinct backends) through a barrier, and
+mirrors a SQLite counterpart in `tests/unit` so backend drift stays visible.
+
+The lane is a required job in both `pr-merge-gate` and `main-releasability`, backed by a
+`postgres:16-alpine` service container, and `coverage-gate` depends on it - a red fence blocks merge
+like any other gate. It is **fail-closed**: with `LOTUS_AI_POSTGRES_TEST_REQUIRED` set, a missing or
+unreachable database fails the lane instead of skipping it, because a gate that silently skips is a
+dead gate that reads as a pass. Locally, set `LOTUS_AI_POSTGRES_TEST_URL` to a disposable database
+(for example `postgresql+psycopg://lotus_ai:lotus_ai@localhost:5433/lotus_ai`); without it the lane
+skips with an explicit reason.
+
+Isolation baseline is READ COMMITTED (asserted, not assumed): single-statement CAS needs no elevated
+isolation, since a blocked guarded `UPDATE` re-evaluates its `WHERE` against the committed winner and
+matches zero rows. One scenario deliberately raises isolation to REPEATABLE READ to exercise the
+loser's serialization failure and the repository's retry-and-converge path.
+
+This lane found a real defect on its first run: scaled `ROUND` is `NUMERIC`-only on PostgreSQL, so
+every guarded budget statement raised `round(double precision, integer) does not exist` there while
+passing on SQLite - the hard-budget guarantee was unreachable on the production engine. The fix casts
+through `NUMERIC` once, in `_rounded_spend_sql`, and a dialect-compilation pin in the unit lane keeps
+the divergence catchable without a database.
 
 ## Validation Sources
 
