@@ -48,9 +48,14 @@ def _rounded_spend_sql(expression: ColumnElement[float]) -> ColumnElement[float]
     the issue #344 fence lane). Cast through NUMERIC for the scaled round,
     then back to the column's float type so comparison and assignment
     semantics stay identical on both backends.
+
+    The NUMERIC is deliberately unconstrained: bare Numeric compiles to
+    PostgreSQL's arbitrary-precision NUMERIC, so no monetary magnitude can
+    overflow the cast. A declared precision would only add a bound to
+    defend.
     """
 
-    return cast(func.round(cast(expression, Numeric(24, 12)), 8), Float)
+    return cast(func.round(cast(expression, Numeric()), 8), Float)
 
 
 class SqlAlchemyProviderOperationsRepository(

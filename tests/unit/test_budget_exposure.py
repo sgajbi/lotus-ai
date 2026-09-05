@@ -649,16 +649,22 @@ def test_budget_rounding_compiles_for_postgres_not_only_sqlite() -> None:
     dialect keeps that divergence visible in the fast lane, without needing
     a database."""
 
-    from sqlalchemy.dialects import postgresql, sqlite
+    from sqlalchemy import create_engine
 
     from app.db.models import ProviderBudgetStateModel
     from app.repositories.sqlalchemy_provider_operations_repository import (
         _rounded_spend_sql,
     )
 
+    # Engines are created, never connected: this pin must stay database-free.
+    postgres_dialect = create_engine("postgresql+psycopg://pin:pin@localhost/pin").dialect
+    sqlite_dialect = create_engine("sqlite://").dialect
+
     expression = _rounded_spend_sql(ProviderBudgetStateModel.current_spend_usd + 0.5)
-    postgres_sql = str(expression.compile(dialect=postgresql.dialect()))
-    assert "CAST" in postgres_sql.upper() and "NUMERIC" in postgres_sql.upper()
+    postgres_sql = str(expression.compile(dialect=postgres_dialect)).upper()
+    # Unconstrained NUMERIC: no monetary magnitude can overflow the cast.
+    assert "CAST" in postgres_sql
+    assert "NUMERIC" in postgres_sql and "NUMERIC(" not in postgres_sql
     # Still one rounded expression on SQLite: the fix is portable, not a
     # PostgreSQL-only branch that lets the two backends drift.
-    assert "round" in str(expression.compile(dialect=sqlite.dialect())).lower()
+    assert "round" in str(expression.compile(dialect=sqlite_dialect)).lower()
