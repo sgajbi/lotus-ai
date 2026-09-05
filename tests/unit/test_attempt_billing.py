@@ -13,6 +13,7 @@ from urllib import error
 from pytest import MonkeyPatch, raises
 
 from app.config import settings
+from app.contracts.model_catalogue import derive_candidate_identity_v2
 from app.contracts.providers import ProviderExecutionResponse
 from app.providers.base import ProviderExecutionError
 from app.services.provider_operations_store import get_provider_operations_store
@@ -161,6 +162,20 @@ def _http_error(code: int) -> error.HTTPError:
     )
 
 
+_CANONICAL_GPT54 = derive_candidate_identity_v2(
+    provider_id="text.local",
+    model_family="gpt-5.4",
+    model_revision="gpt-5.4",
+    deployment=None,
+)
+
+
+def _debit_key(execution_id: str, attempt_index: int) -> str:
+    """The canonical-segment debit identity minted by the transport (issue #326)."""
+
+    return f"adbt2:{execution_id}:{_CANONICAL_GPT54}:{attempt_index}"
+
+
 def _run_transport(*, retry_limit: int, execution_id: str) -> "ProviderExecutionResponse":
     from app.providers.local_openai_compatible_text_provider import (
         LocalOpenAICompatibleTextProvider,
@@ -203,8 +218,8 @@ def test_served_execution_debits_each_attempt_and_projects_them(
     response = _run_transport(retry_limit=1, execution_id="exec-served")
 
     rows = {row.debit_id: row for row in get_provider_operations_store().list_attempt_debits()}
-    failed_row = rows["adbt:exec-served:text.local:gpt-5.4:0"]
-    served_row = rows["adbt:exec-served:text.local:gpt-5.4:1"]
+    failed_row = rows[_debit_key("exec-served", 0)]
+    served_row = rows[_debit_key("exec-served", 1)]
     # The full serving identity rides the durable evidence (issue #299).
     assert served_row.candidate_entry_id == "text.local:gpt-5.4"
     assert served_row.model_revision == "gpt-5.4"
@@ -246,11 +261,11 @@ def test_terminal_all_fail_execution_still_debits_every_billable_attempt(
     rows = [
         row
         for row in get_provider_operations_store().list_attempt_debits()
-        if row.debit_id.startswith("adbt:exec-allfail:")
+        if row.debit_id.startswith("adbt2:exec-allfail:")
     ]
     assert {row.debit_id for row in rows} == {
-        "adbt:exec-allfail:text.local:gpt-5.4:0",
-        "adbt:exec-allfail:text.local:gpt-5.4:1",
+        _debit_key("exec-allfail", 0),
+        _debit_key("exec-allfail", 1),
     }
     assert all(row.basis == "CONSERVATIVE_ESTIMATE" for row in rows)
     budget = get_provider_operations_store().get_budget_state(budget_key="live_text_generation")
@@ -280,17 +295,17 @@ def test_rate_limited_and_pre_connect_failures_never_debit(
     rows = {
         row.debit_id: row
         for row in get_provider_operations_store().list_attempt_debits()
-        if row.debit_id.startswith("adbt:exec-unbillable:")
+        if row.debit_id.startswith("adbt2:exec-unbillable:")
     }
     # Only the served attempt carries spend: 429 refused before generation
     # and the connection-level failure never reached a generating provider.
     # Their pre-attempt reservations (issue #300) settle to zero-amount
     # RELEASED rows - admitted-then-released is durable evidence, not spend.
-    assert rows["adbt:exec-unbillable:text.local:gpt-5.4:0"].basis == "RELEASED"
-    assert rows["adbt:exec-unbillable:text.local:gpt-5.4:0"].amount_usd == 0.0
-    assert rows["adbt:exec-unbillable:text.local:gpt-5.4:1"].basis == "RELEASED"
-    assert rows["adbt:exec-unbillable:text.local:gpt-5.4:1"].amount_usd == 0.0
-    assert rows["adbt:exec-unbillable:text.local:gpt-5.4:2"].basis == "ACTUAL_USAGE"
+    assert rows[_debit_key("exec-unbillable", 0)].basis == "RELEASED"
+    assert rows[_debit_key("exec-unbillable", 0)].amount_usd == 0.0
+    assert rows[_debit_key("exec-unbillable", 1)].basis == "RELEASED"
+    assert rows[_debit_key("exec-unbillable", 1)].amount_usd == 0.0
+    assert rows[_debit_key("exec-unbillable", 2)].basis == "ACTUAL_USAGE"
     assert response.estimated_cost_usd == 0.0035
     assert response.failed_attempt_cost_basis == "NONE"
     assert response.billed_attempt_count == 1
@@ -829,8 +844,6 @@ def test_debit_rows_carry_the_resolvable_canonical_reference(
     idempotency identity is never rewritten, and the canonical reference
     makes the row resolvable under identity v2."""
 
-    from app.contracts.model_catalogue import derive_candidate_identity_v2
-
     _seed_cost_scalars()
     monkeypatch.setattr("urllib.request.urlopen", lambda request, timeout: _Response(_SUCCESS_BODY))
 
@@ -839,10 +852,10 @@ def test_debit_rows_carry_the_resolvable_canonical_reference(
     rows = [
         row
         for row in get_provider_operations_store().list_attempt_debits()
-        if row.debit_id.startswith("adbt:exec-canonical-ref:")
+        if row.debit_id.startswith("adbt2:exec-canonical-ref:")
     ]
     assert len(rows) == 1
-    assert rows[0].debit_id == "adbt:exec-canonical-ref:text.local:gpt-5.4:0"
+    assert rows[0].debit_id == _debit_key("exec-canonical-ref", 0)
     assert rows[0].candidate_id_v2 == derive_candidate_identity_v2(
         provider_id="text.local",
         model_family="gpt-5.4",

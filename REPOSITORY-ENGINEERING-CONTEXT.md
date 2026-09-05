@@ -53,18 +53,29 @@ thresholds. Evaluation and per-candidate routing install it through a contextvar
 override, so no code path reads mutable process settings mid-request.
 
 **Routing.** `LOTUS_AI_ROUTING_STRATEGY` is `fixed` (one configured identity) or
-`ordered_fallback` (configured primary, then one governed alternate). Both
-candidates pass the same fences under their own execution config: kill switches,
-per-provider circuit breaker, and governed catalogue binding. Quota counters and
-the budget envelope are request-scoped and charged once. Every execution records
-a routing decision — each candidate, its rejection reason where rejected, the
-selection, and the `fallback_path`. Whichever candidate serves, it is the one
-named on every surface: audit record, routing decision, response, cost, metrics
-labels, structured logs, tracing spans, bounded failure messages, breaker
-evidence, and the attested run ledger all carry the serving identity.
+`ordered_fallback`. The ordered candidate list comes from the versioned governed
+serving policy over catalogue entries when one exists (N candidates, order is
+policy — no weights, no optimizer, no cost/latency reordering); the configured
+primary-plus-alternate pair is only the ungoverned seed shape. Every candidate
+passes the same fences under its own frozen execution config: kill switches,
+candidate-scoped circuit breaker, and governed catalogue binding. Quota counters
+and the budget envelope are request-scoped and charged once. Every execution
+records a routing decision — each candidate, its rejection reason where
+rejected, the selection, and the `fallback_path`. Whichever candidate serves is
+the one named on every surface: audit record, routing decision, response, cost,
+metrics labels, structured logs, tracing spans, bounded failure messages,
+breaker evidence, and the attested run ledger.
 
 **Model catalogue.** Provider, family, revision, deployment, and SKU are
-first-class governed identity. Lifecycle state gates execution (a retired or
+first-class governed identity. The canonical candidate identity
+(`candidate_id_v2`, hash of the full serving tuple) is authoritative at the
+write, seed, bind and accounting boundaries: row identity is immutable (a write
+or reseed that would replace a row with a different canonical candidate is
+refused — governance posture never transfers across an identity change), live
+binding compares the structured tuple rather than the derived key, and new
+attempt debits are keyed by the canonical identity (`adbt2:`); the legacy
+colon-delimited row key survives only as row locator and historical reference.
+Lifecycle state gates execution (a retired or
 unapproved revision is refused with `MODEL_LIFECYCLE_INELIGIBLE`), catalogue rows
 are seeded from configuration and from the approved model-risk inventory, and
 revision drift is recorded from the provider echo. Identity-bound,
@@ -145,10 +156,12 @@ Primary areas:
    provider adapters and one shared execution transport (provider policy, quota,
    budget, and degradation state live in `src/app/services/`). Routing selects
    among candidates under `LOTUS_AI_ROUTING_STRATEGY`: `fixed` resolves the one
-   configured identity, `ordered_fallback` attempts a configured primary then one
-   governed alternate. Every execution records a routing decision — every
-   candidate, its rejection reason where rejected, the selection, and the
-   `fallback_path` — on its response, audit record, and evidence bundle.
+   configured identity; `ordered_fallback` walks the governed serving policy's
+   ordered candidates (deterministic order, never ranking), falling back to the
+   configured primary/alternate pair only when no policy exists. Every execution
+   records a routing decision — every candidate, its rejection reason where
+   rejected, the selection, and the `fallback_path` — on its response, audit
+   record, and evidence bundle.
 2. `src/app/prompts/`
    prompt registry and rollout state.
 3. `src/app/retrieval/`

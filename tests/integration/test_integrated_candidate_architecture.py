@@ -299,14 +299,17 @@ def test_the_integrated_three_candidate_architecture_proof(
     rows = {
         row.debit_id: row
         for row in get_provider_operations_store().list_attempt_debits()
-        if row.debit_id.startswith("adbt:exec-proof-1:")
+        if row.debit_id.startswith("adbt2:exec-proof-1:")
     }
+    # The debit identity segment is the CANONICAL candidate (issue #326):
+    # distinct candidates can never collapse into one reservation, and the
+    # id resolves each debit to its exact serving tuple.
     assert set(rows) == {
-        f"adbt:exec-proof-1:{candidate_a.entry_id}:0",
-        f"adbt:exec-proof-1:{candidate_c.entry_id}:0",
+        f"adbt2:exec-proof-1:{candidate_a.candidate_id_v2}:0",
+        f"adbt2:exec-proof-1:{candidate_c.candidate_id_v2}:0",
     }
-    debit_a = rows[f"adbt:exec-proof-1:{candidate_a.entry_id}:0"]
-    debit_c = rows[f"adbt:exec-proof-1:{candidate_c.entry_id}:0"]
+    debit_a = rows[f"adbt2:exec-proof-1:{candidate_a.candidate_id_v2}:0"]
+    debit_c = rows[f"adbt2:exec-proof-1:{candidate_c.candidate_id_v2}:0"]
     assert debit_a.candidate_id_v2 == candidate_a.candidate_id_v2
     assert debit_c.candidate_id_v2 == candidate_c.candidate_id_v2
     assert debit_a.basis == "CONSERVATIVE_ESTIMATE"
