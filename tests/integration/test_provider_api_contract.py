@@ -11,8 +11,6 @@ from app.contracts.providers import (
     ProviderExecutionResponse,
     ProviderFailureCategory,
 )
-from app.services.provider_budget_policy import record_attempt_spend
-from app.services.provider_usage_accounting import AttemptDebit
 from app.services.provider_degradation_state import record_provider_failure
 from app.services.provider_operations_store import reset_provider_operations_store_cache
 from app.services.provider_quota_policy import enforce_provider_quota
@@ -22,6 +20,7 @@ from app.services.eval_async_execution import run_next_evaluation_execution_job
 from app.services.eval_run_submission_service import submit_evaluation_run
 from app.contracts.evals import EvaluationRunSubmissionRequest
 from tests.support.migration_runner import upgrade_database_to_head
+from tests.support.budget_seeding import seed_settled_attempt_spend
 from tests.support.runtime_settings import override_runtime_settings
 from tests.unit.test_task_executor import _request
 from tests.support.caller_credentials import (
@@ -32,20 +31,7 @@ from tests.support.caller_credentials import (
 
 
 def _seed_attempt_spend(amount: float, *, execution_id: str) -> None:
-    record_attempt_spend(
-        execution_id=execution_id,
-        candidate_entry_id="text.openai:gpt-5.4",
-        provider_id="text.openai",
-        model_revision="gpt-5.4",
-        attempt_index=0,
-        debit=AttemptDebit(
-            amount_usd=amount,
-            basis="ACTUAL_USAGE",
-            input_tokens=100,
-            output_tokens=200,
-            rate_card_ref="default-live-text",
-        ),
-    )
+    seed_settled_attempt_spend(amount, execution_id=execution_id)
 
 
 def _budget_response(cost: float | None, *, stubbed: bool = False) -> ProviderExecutionResponse:

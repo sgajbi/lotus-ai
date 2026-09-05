@@ -5,9 +5,8 @@ from app.contracts.providers import ProviderBudgetState
 from app.services.provider_budget_policy import (
     build_provider_budget_policy,
     enforce_provider_budget,
-    record_attempt_spend,
 )
-from app.services.provider_usage_accounting import AttemptDebit
+from tests.support.budget_seeding import seed_settled_attempt_spend
 from app.providers.base import ProviderExecutionError
 from app.services.provider_operations_store import reset_provider_operations_store_cache
 from app.services.rate_card_store import reset_rate_card_store_cache
@@ -17,19 +16,8 @@ from tests.support.migration_runner import upgrade_database_to_head
 def _seed_spend(
     amount: float, *, execution_id: str = "exec-budget-test", attempt_index: int = 0
 ) -> bool:
-    return record_attempt_spend(
-        execution_id=execution_id,
-        candidate_entry_id="text.openai:gpt-5.4",
-        provider_id="text.openai",
-        model_revision="gpt-5.4",
-        attempt_index=attempt_index,
-        debit=AttemptDebit(
-            amount_usd=amount,
-            basis="ACTUAL_USAGE",
-            input_tokens=100,
-            output_tokens=200,
-            rate_card_ref="default-live-text",
-        ),
+    return seed_settled_attempt_spend(
+        amount, execution_id=execution_id, attempt_index=attempt_index
     )
 
 
@@ -125,8 +113,10 @@ def test_provider_budget_policy_enforcement_rejects_invalid_configuration() -> N
 
 
 def test_recording_the_same_attempt_identity_twice_debits_once() -> None:
-    """Issue #289: the attempt identity makes recording idempotent - a
-    crash-and-retry of the recording call can never double-debit."""
+    """Issue #289, via the lifecycle (follow-up to #333): the same attempt
+    identity converges -- the second reservation reports DUPLICATE and the
+    second settlement is a no-op, so a crash-and-retry of the recording
+    sequence can never double-debit."""
 
     settings.live_text_budget_enforced = True
     settings.live_text_input_cost_per_1k_tokens = 0.01

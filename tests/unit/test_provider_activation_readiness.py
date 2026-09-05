@@ -97,22 +97,13 @@ def test_provider_activation_readiness_reports_hard_budget_blocking() -> None:
     settings.live_text_output_cost_per_1k_tokens = 0.03
     settings.live_text_hard_budget_usd = 1.0
 
-    from app.services.provider_budget_policy import record_attempt_spend
-    from app.services.provider_usage_accounting import AttemptDebit
+    from tests.support.budget_seeding import seed_settled_attempt_spend
 
-    record_attempt_spend(
+    seed_settled_attempt_spend(
+        1.0,
         execution_id="exec-activation-hard",
-        candidate_entry_id="text.openai:gpt-5.4",
-        provider_id="text.openai",
-        model_revision="gpt-5.4",
-        attempt_index=0,
-        debit=AttemptDebit(
-            amount_usd=1.0,
-            basis="ACTUAL_USAGE",
-            input_tokens=100,
-            output_tokens=200,
-            rate_card_ref="default-live-text",
-        ),
+        input_tokens=100,
+        output_tokens=200,
     )
 
     readiness = build_provider_activation_readiness()

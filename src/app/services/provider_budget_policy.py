@@ -158,57 +158,6 @@ def _attempt_debit_id(
     return f"adbt:{execution_id}:{candidate_entry_id}:{attempt_index}"
 
 
-def record_attempt_spend(
-    *,
-    execution_id: str,
-    candidate_entry_id: str,
-    provider_id: str,
-    model_revision: str | None,
-    attempt_index: int,
-    debit: AttemptDebit,
-    candidate_id_v2: str | None = None,
-) -> bool:
-    """Durably debit one provider attempt at its boundary (issue #289).
-
-    The identity is derived from the execution/candidate/attempt context, so
-    recording is idempotent: a crash after the attempt loses nothing, and a
-    duplicate recording is a complete no-op. The budget counter advances in
-    the same transaction, which is why an execution whose every attempt
-    fails still moves the envelope - spend becomes real per attempt, not at
-    response settlement.
-
-    The candidate segment is the catalogue entry id, never the provider id
-    (issue #299): two model candidates at the same provider are normal
-    serving topology, and a provider-keyed identity would silently swallow
-    the second candidate's attempt 0 as a duplicate of the first's. The
-    row persists the full serving identity for later audit.
-    """
-
-    repository = get_provider_operations_store()
-    return repository.record_attempt_debit(
-        ProviderAttemptDebitRecord(
-            debit_id=_attempt_debit_id(
-                execution_id=execution_id,
-                candidate_entry_id=candidate_entry_id,
-                attempt_index=attempt_index,
-                candidate_id_v2=candidate_id_v2,
-            ),
-            provider_id=provider_id,
-            basis=debit.basis,
-            amount_usd=debit.amount_usd,
-            input_tokens=debit.input_tokens,
-            output_tokens=debit.output_tokens,
-            rate_card_ref=debit.rate_card_ref,
-            recorded_at=_utcnow(),
-            candidate_entry_id=candidate_entry_id,
-            model_revision=model_revision,
-            attempt_index=attempt_index,
-            candidate_id_v2=candidate_id_v2,
-        ),
-        budget_key=_BUDGET_KEY,
-    )
-
-
 def reserve_attempt_spend(
     *,
     execution_id: str,
@@ -217,10 +166,16 @@ def reserve_attempt_spend(
     model_revision: str | None,
     attempt_index: int,
     reservation: AttemptDebit,
-    candidate_id_v2: str | None = None,
+    candidate_id_v2: str | None,
 ) -> str:
     """Atomically reserve one attempt's governed maximum against the global
     budget row BEFORE the provider is called (issue #300).
+
+    ``candidate_id_v2`` has no default on purpose (follow-up to #333): the
+    debit identity diverges silently if one side of the reserve/settle pair
+    omits it, so every caller must STATE the canonical identity -- an
+    explicit ``None`` means the caller names no canonical candidate and the
+    legacy provider-keyed segment applies.
 
     "Hard" means enforceable under concurrency: the limit check, the
     reservation row (basis ``RESERVED_MAX``) and the counter advance are one
@@ -269,7 +224,7 @@ def settle_attempt_spend(
     candidate_entry_id: str,
     attempt_index: int,
     debit: AttemptDebit | None,
-    candidate_id_v2: str | None = None,
+    candidate_id_v2: str | None,
 ) -> bool:
     """Settle a reservation to the attempt's evidenced debit in one
     transaction with the counter adjustment (issue #300) - or release it to
