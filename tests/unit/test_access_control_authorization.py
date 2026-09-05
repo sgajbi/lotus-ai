@@ -256,3 +256,30 @@ def test_authorize_request_blocks_async_control_without_tenant_noise_for_non_ope
 
     assert decision.allowed is False
     assert decision.outcome == AuthorizationOutcome.BLOCKED_ASYNC_CONTROL_NOT_ALLOWED
+
+
+def test_authorize_request_admits_lotus_idea_canonical_platform_tenant() -> None:
+    """Issue #323: real Idea candidates carry the canonical platform tenant;
+    the first live idea-explanation journey execution was refused because the
+    caller policy admitted only the lotus-ai-local proof fixture tenant."""
+
+    decision = authorize_request(
+        caller_app="lotus-idea",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        tenant_id="tenant-private-bank-sg",
+        task_id="explain.v1",
+    )
+
+    assert decision.allowed is True
+
+
+def test_authorize_request_still_blocks_lotus_idea_unadmitted_tenant() -> None:
+    decision = authorize_request(
+        caller_app="lotus-idea",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        tenant_id="tenant-not-admitted",
+        task_id="explain.v1",
+    )
+
+    assert decision.allowed is False
+    assert decision.outcome == AuthorizationOutcome.BLOCKED_TENANT_NOT_ALLOWED

@@ -104,7 +104,9 @@ _DEFAULT_POLICIES = [
         allow_provider_control=False,
         allow_audit_read_all_tenants=False,
         tenant_policy_mode=TenantPolicyMode.RESTRICTED,
-        restricted_tenant_ids=["tenant-sg-001"],
+        # The canonical platform tenant carried by real Idea candidates, plus the
+        # lotus-ai-local runtime-proof fixture tenant (issue #323).
+        restricted_tenant_ids=["tenant-private-bank-sg", "tenant-sg-001"],
     ),
     CallerPolicyDescriptor(
         caller_app="lotus-workbench",
