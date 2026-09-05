@@ -37,7 +37,15 @@ class ArtifactDescriptor(BaseModel):
     )
     media_type: str = Field(description="Media type for the stored payload.")
     byte_size: int = Field(description="Persisted payload size in bytes.")
-    checksum_sha256: str = Field(description="SHA-256 checksum of the stored payload.")
+    checksum_sha256: str = Field(
+        # Bare lowercase hex, pinned at the contract (issue #336): the read
+        # gate compares against a bare hexdigest, so a writer adopting the
+        # platform's `sha256:<hex>` travel form would fail-closed the whole
+        # accepted-output surface. The grammar refuses that drift at
+        # persistence instead.
+        pattern=r"^[0-9a-f]{64}$",
+        description="SHA-256 checksum of the stored payload (bare lowercase hex).",
+    )
     storage_backend: ArtifactStorageBackend = Field(
         description="Configured object-store backend holding the payload bytes."
     )

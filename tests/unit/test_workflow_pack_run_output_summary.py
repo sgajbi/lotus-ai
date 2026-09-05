@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 from app.contracts.artifacts import (
     ArtifactDescriptor,
     ArtifactLifecycleStatus,
@@ -23,7 +25,7 @@ def _summary_artifact(storage_reference: str) -> ArtifactDescriptor:
         retention_posture="active",
         media_type="application/json",
         byte_size=2,
-        checksum_sha256="sha256-test",
+        checksum_sha256=hashlib.sha256(b"summary-test").hexdigest(),
         storage_backend=ArtifactStorageBackend.MEMORY,
         storage_reference=storage_reference,
         created_at="2026-04-21T12:00:00Z",

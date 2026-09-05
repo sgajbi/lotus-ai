@@ -269,6 +269,8 @@ Before treating the artifact backbone as stronger governed rollout posture:
 6. confirm the embedded `artifact_runtime` and `artifact_governance` blocks in `GET /platform/runtime-status` match the detailed artifact views
 7. treat artifact archive posture as a reviewable metadata transition rather than ad hoc payload deletion or raw filesystem cleanup
 
+Two artifact-integrity boundaries (issue #336): the checksum grammar is bare lowercase hex, pinned by the `ArtifactDescriptor` contract at persistence — a writer adopting the `sha256:<hex>` travel form is refused when it writes, not discovered as a full accepted-output outage at read. And `run_output_summary` bytes have ONE read authority — `load_verified_summary_object` (checksum + byte-size verification, never repaired at read time) — used by the accepted-output surface and every projection reader (consumer view, source events); do not add a raw artifact/download or export path that resolves a `storage_reference` directly, and review any new `storage_reference` consumer against this monopoly (queue request-snapshot and recovery reads resolve their OWN artifact types, not run output summaries).
+
 ## Observability Governance
 
 Before treating the in-service observability layer as governed rollout posture:
