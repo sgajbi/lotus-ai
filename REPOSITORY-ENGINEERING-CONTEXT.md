@@ -92,7 +92,15 @@ reserving nothing.
 **Output validation.** Every provider output — structured channel and narrative
 message — passes one deterministic validator before safety redaction: evidence
 grounding against supplied references, numeric grounding of percent and currency
-tokens, per-task and per-pack JSON Schema contracts, and strict-JSON posture. The
+tokens, per-task and per-pack JSON Schema contracts, and strict-JSON posture.
+Live domain shaping exists per pack family, never generically: advisor briefs
+and idea explanations (#330) each parse the provider answer into their
+registered contract, with every service-owned provenance/authority field
+composed from the caller's context (shared with the stub path), the
+model-authored section validated for grounding and consumer completeness, and
+contract failure refusing whole — the idea contract is an anyOf(stub, live)
+union like the advisor brief's, and a failed answer never becomes a
+manufactured explanation. The
 verdict and an explicit `non_authoritative_ai_output` marking ride the response
 and the audit record; a rejected output is withheld whole. The verdict is also
 carried as execution evidence, so it reaches the run record and every projection

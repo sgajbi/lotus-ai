@@ -3,251 +3,535 @@
   "$id": "https://lotus.ai/contracts/ai-task-outputs/idea_explanation.pack.v1.json",
   "title": "idea_explanation.pack output contract",
   "description": "Structured output contract for idea_explanation.pack executions, derived from the deterministic governed stub runtime; the review-gated, non-authoritative posture of the output is part of the contract.",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "adapter_kind": {
-      "type": "string"
-    },
-    "candidate_id": {
-      "type": "string"
-    },
-    "client_ready_publication": {
-      "type": "string"
-    },
-    "context_keys": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "context_summary": {
-      "type": "string"
-    },
-    "downstream_authority": {
-      "type": "string"
-    },
-    "evaluation_ref": {
-      "type": "string"
-    },
-    "evidence_content_hash": {
-      "type": "string"
-    },
-    "evidence_packet_id": {
-      "type": "string"
-    },
-    "family": {
-      "type": "string"
-    },
-    "forbidden_actions": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "human_review_required": {
-      "type": "boolean"
-    },
-    "lifecycle_status": {
-      "type": "string"
-    },
-    "max_output_tokens": {
-      "type": "integer"
-    },
-    "output_label": {
-      "type": "string"
-    },
-    "phase": {
-      "type": "string"
-    },
-    "provider_id": {
-      "type": "string"
-    },
-    "provider_mode": {
-      "type": "string"
-    },
-    "purpose": {
-      "type": "string"
-    },
-    "reason_codes": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "redaction_posture": {
-      "type": "string"
-    },
-    "requested_outputs": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "retry_count": {
-      "type": "integer"
-    },
-    "review_guidance": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "review_posture": {
-      "type": "string"
-    },
-    "safety_mode": {
-      "type": "string"
-    },
-    "scope": {
-      "type": "string"
-    },
-    "score_policy_version": {
-      "type": "string"
-    },
-    "source_ref_count": {
-      "type": "integer"
-    },
-    "source_refs": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "source_signal_count": {
-      "type": "integer"
-    },
-    "state": {
-      "type": "string"
-    },
-    "stub_reason": {
-      "type": "string"
-    },
-    "timeout_ms": {
-      "type": "integer"
-    },
-    "unsupported_claims": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "workflow_pack_family": {
-      "type": "string"
-    },
-    "idea_workflow_output": {
+  "anyOf": [
+    {
+      "description": "Deterministic stub execution shape: the stub adapter's request echoes (phase, stub_reason, context/timeout fields) are present.",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "output_id",
-        "explanation_text",
-        "claims",
-        "proposed_actions"
-      ],
       "properties": {
-        "output_id": {
-          "type": "string",
-          "minLength": 1
+        "adapter_kind": {
+          "type": "string"
         },
-        "explanation_text": {
-          "type": "string",
-          "minLength": 1
+        "candidate_id": {
+          "type": "string"
         },
-        "claims": {
+        "client_ready_publication": {
+          "type": "string"
+        },
+        "context_keys": {
           "type": "array",
-          "minItems": 1,
           "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "claim_id",
-              "claim_text",
-              "source_product_ids"
-            ],
-            "properties": {
-              "claim_id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "claim_text": {
-                "type": "string",
-                "minLength": 1
-              },
-              "source_product_ids": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
+            "type": "string"
+          }
+        },
+        "context_summary": {
+          "type": "string"
+        },
+        "downstream_authority": {
+          "type": "string"
+        },
+        "evaluation_ref": {
+          "type": "string"
+        },
+        "evidence_content_hash": {
+          "type": "string"
+        },
+        "evidence_packet_id": {
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "forbidden_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "human_review_required": {
+          "type": "boolean"
+        },
+        "lifecycle_status": {
+          "type": "string"
+        },
+        "max_output_tokens": {
+          "type": "integer"
+        },
+        "output_label": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "provider_id": {
+          "type": "string"
+        },
+        "provider_mode": {
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redaction_posture": {
+          "type": "string"
+        },
+        "requested_outputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "retry_count": {
+          "type": "integer"
+        },
+        "review_guidance": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_posture": {
+          "type": "string"
+        },
+        "safety_mode": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "score_policy_version": {
+          "type": "string"
+        },
+        "source_ref_count": {
+          "type": "integer"
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_signal_count": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "stub_reason": {
+          "type": "string"
+        },
+        "timeout_ms": {
+          "type": "integer"
+        },
+        "unsupported_claims": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workflow_pack_family": {
+          "type": "string"
+        },
+        "idea_workflow_output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "output_id",
+            "explanation_text",
+            "claims",
+            "proposed_actions"
+          ],
+          "properties": {
+            "output_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "explanation_text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "claims": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "claim_id",
+                  "claim_text",
+                  "source_product_ids"
+                ],
+                "properties": {
+                  "claim_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "claim_text": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_product_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            },
+            "proposed_actions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "action_type",
+                  "action_label"
+                ],
+                "properties": {
+                  "action_type": {
+                    "type": "string",
+                    "enum": [
+                      "advisor_review",
+                      "request_missing_evidence"
+                    ]
+                  },
+                  "action_label": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "adapter_kind",
+        "candidate_id",
+        "client_ready_publication",
+        "context_keys",
+        "context_summary",
+        "downstream_authority",
+        "evaluation_ref",
+        "evidence_content_hash",
+        "evidence_packet_id",
+        "family",
+        "forbidden_actions",
+        "human_review_required",
+        "idea_workflow_output",
+        "lifecycle_status",
+        "max_output_tokens",
+        "output_label",
+        "phase",
+        "provider_id",
+        "provider_mode",
+        "purpose",
+        "reason_codes",
+        "redaction_posture",
+        "requested_outputs",
+        "retry_count",
+        "review_guidance",
+        "review_posture",
+        "safety_mode",
+        "scope",
+        "score_policy_version",
+        "source_ref_count",
+        "source_refs",
+        "source_signal_count",
+        "state",
+        "stub_reason",
+        "timeout_ms",
+        "unsupported_claims",
+        "workflow_pack_family"
+      ]
+    },
+    {
+      "description": "Live provider execution shape (issue #330): the service-owned envelope and the model-authored idea_workflow_output are identical to the stub branch; the live transport's identity/usage/cost metadata rides alongside, and the stub adapter's echoes are absent. A live output whose provider answer failed the pack contract omits idea_workflow_output and therefore fails validation whole - refusal by contract, never a manufactured explanation.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "adapter_kind": {
+          "type": "string"
+        },
+        "candidate_id": {
+          "type": "string"
+        },
+        "client_ready_publication": {
+          "type": "string"
+        },
+        "downstream_authority": {
+          "type": "string"
+        },
+        "evaluation_ref": {
+          "type": "string"
+        },
+        "evidence_content_hash": {
+          "type": "string"
+        },
+        "evidence_packet_id": {
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "forbidden_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "human_review_required": {
+          "type": "boolean"
+        },
+        "lifecycle_status": {
+          "type": "string"
+        },
+        "output_label": {
+          "type": "string"
+        },
+        "provider_id": {
+          "type": "string"
+        },
+        "provider_mode": {
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redaction_posture": {
+          "type": "string"
+        },
+        "requested_outputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "retry_count": {
+          "type": "integer"
+        },
+        "review_guidance": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_posture": {
+          "type": "string"
+        },
+        "safety_mode": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "score_policy_version": {
+          "type": "string"
+        },
+        "source_ref_count": {
+          "type": "integer"
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_signal_count": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "unsupported_claims": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workflow_pack_family": {
+          "type": "string"
+        },
+        "idea_workflow_output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "output_id",
+            "explanation_text",
+            "claims",
+            "proposed_actions"
+          ],
+          "properties": {
+            "output_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "explanation_text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "claims": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "claim_id",
+                  "claim_text",
+                  "source_product_ids"
+                ],
+                "properties": {
+                  "claim_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "claim_text": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_product_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            },
+            "proposed_actions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "action_type",
+                  "action_label"
+                ],
+                "properties": {
+                  "action_type": {
+                    "type": "string",
+                    "enum": [
+                      "advisor_review",
+                      "request_missing_evidence"
+                    ]
+                  },
+                  "action_label": {
+                    "type": "string",
+                    "minLength": 1
+                  }
                 }
               }
             }
           }
         },
-        "proposed_actions": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "action_type",
-              "action_label"
-            ],
-            "properties": {
-              "action_type": {
-                "type": "string",
-                "enum": [
-                  "advisor_review",
-                  "request_missing_evidence"
-                ]
-              },
-              "action_label": {
-                "type": "string",
-                "minLength": 1
-              }
-            }
-          }
+        "model_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider_request_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "total_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "estimated_cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "rate_card_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cost_posture": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
-      }
+      },
+      "required": [
+        "adapter_kind",
+        "candidate_id",
+        "client_ready_publication",
+        "cost_posture",
+        "downstream_authority",
+        "estimated_cost_usd",
+        "evaluation_ref",
+        "evidence_content_hash",
+        "evidence_packet_id",
+        "family",
+        "forbidden_actions",
+        "human_review_required",
+        "idea_workflow_output",
+        "input_tokens",
+        "lifecycle_status",
+        "model_id",
+        "output_label",
+        "output_tokens",
+        "provider_id",
+        "provider_mode",
+        "provider_request_id",
+        "purpose",
+        "rate_card_ref",
+        "reason_codes",
+        "redaction_posture",
+        "requested_outputs",
+        "retry_count",
+        "review_guidance",
+        "review_posture",
+        "safety_mode",
+        "scope",
+        "score_policy_version",
+        "source_ref_count",
+        "source_refs",
+        "source_signal_count",
+        "state",
+        "total_tokens",
+        "unsupported_claims",
+        "workflow_pack_family"
+      ]
     }
-  },
-  "required": [
-    "adapter_kind",
-    "candidate_id",
-    "client_ready_publication",
-    "context_keys",
-    "context_summary",
-    "downstream_authority",
-    "evaluation_ref",
-    "evidence_content_hash",
-    "evidence_packet_id",
-    "family",
-    "forbidden_actions",
-    "human_review_required",
-    "idea_workflow_output",
-    "lifecycle_status",
-    "max_output_tokens",
-    "output_label",
-    "phase",
-    "provider_id",
-    "provider_mode",
-    "purpose",
-    "reason_codes",
-    "redaction_posture",
-    "requested_outputs",
-    "retry_count",
-    "review_guidance",
-    "review_posture",
-    "safety_mode",
-    "scope",
-    "score_policy_version",
-    "source_ref_count",
-    "source_refs",
-    "source_signal_count",
-    "state",
-    "stub_reason",
-    "timeout_ms",
-    "unsupported_claims",
-    "workflow_pack_family"
   ]
 }
