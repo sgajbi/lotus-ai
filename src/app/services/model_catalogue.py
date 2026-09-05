@@ -14,11 +14,13 @@ seeded field actually changed.
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.services.structured_logging import log_event
 from app.contracts.model_catalogue import (
     OPERATOR_TERMINAL_LIFECYCLE_STATES,
     ModelCatalogueEntry,
@@ -51,6 +53,7 @@ from app.services.provider_execution_config import (
     resolve_provider_execution_config,
 )
 
+_logger = logging.getLogger("app.services.model_catalogue")
 _LIVE_TEXT_MODES = frozenset(
     {
         ProviderExecutionMode.OPENAI.value,
@@ -74,6 +77,17 @@ _EXECUTION_INELIGIBLE_LIFECYCLE_STATES = frozenset(
 )
 
 
+class CandidateIdentityConflictError(ValueError):
+    """A write would replace a stored row with a DIFFERENT canonical candidate.
+
+    The legacy row key omits the model family and is delimiter-ambiguous, so
+    two distinct candidates can share it. Row identity is immutable at the
+    write authority (issue #326): governance posture never transfers across a
+    canonical-identity change, and the conflicting write is refused rather
+    than silently replacing the row.
+    """
+
+
 def upsert_model_catalogue_entry(entry: ModelCatalogueEntry) -> None:
     """Write one catalogue entry, enforcing the deterministic-identity guard."""
 
@@ -87,7 +101,16 @@ def upsert_model_catalogue_entry(entry: ModelCatalogueEntry) -> None:
             "model catalogue entry id must equal the identity derived from provider, "
             f"revision and deployment (expected '{expected_entry_id}', got '{entry.entry_id}')"
         )
-    get_model_catalogue_repository().upsert_entry(entry)
+    repository = get_model_catalogue_repository()
+    existing = repository.get_entry(entry.entry_id)
+    if existing is not None and existing.candidate_id_v2 != entry.candidate_id_v2:
+        raise CandidateIdentityConflictError(
+            f"catalogue row '{entry.entry_id}' holds canonical candidate "
+            f"'{existing.candidate_id_v2}'; refusing to replace it with "
+            f"'{entry.candidate_id_v2}' - row identity is immutable and governance "
+            "posture never transfers across a canonical-identity change"
+        )
+    repository.upsert_entry(entry)
 
 
 def build_seed_model_catalogue_entries() -> list[ModelCatalogueEntry]:
@@ -237,12 +260,25 @@ def ensure_model_catalogue_seeded() -> ModelCatalogueSeedReport:
     """Idempotently reconcile the store with the configured seed rows."""
 
     repository = get_model_catalogue_repository()
-    created = updated = unchanged = 0
+    created = updated = unchanged = identity_conflicts = 0
     for entry in build_seed_model_catalogue_entries():
         existing = repository.get_entry(entry.entry_id)
         if existing is None:
             upsert_model_catalogue_entry(entry)
             created += 1
+            continue
+        if existing.candidate_id_v2 != entry.candidate_id_v2:
+            # The stored row is a DIFFERENT canonical candidate sharing the
+            # ambiguous legacy row key (issue #326). Nothing may transfer:
+            # not the row, not its lifecycle, not its assessed capabilities.
+            log_event(
+                _logger,
+                "model_catalogue_seed_identity_conflict",
+                entry_id=entry.entry_id,
+                stored_candidate_id_v2=existing.candidate_id_v2,
+                seed_candidate_id_v2=entry.candidate_id_v2,
+            )
+            identity_conflicts += 1
             continue
         candidate = entry.model_copy(update={"created_at": existing.created_at})
         if (
@@ -268,6 +304,7 @@ def ensure_model_catalogue_seeded() -> ModelCatalogueSeedReport:
         created_count=created,
         updated_count=updated,
         unchanged_count=unchanged,
+        identity_conflict_count=identity_conflicts,
     )
 
 
@@ -580,6 +617,24 @@ def bind_live_text_model_catalogue_entry() -> ModelCatalogueEntry:
         raise ProviderExecutionError(
             category=ProviderFailureCategory.MODEL_NOT_CATALOGUED,
             message=f"No governed model-catalogue entry exists for '{entry_id}'.",
+        )
+    if (
+        entry.provider_id != provider_id
+        or entry.model_revision != model_revision
+        or entry.deployment != config.deployment
+    ):
+        # The legacy row key is delimiter-ambiguous, so a resolved row may be
+        # a different serving tuple than the one this execution requested
+        # (issue #326). Binding compares the structured tuple, never just the
+        # derived key.
+        raise ProviderExecutionError(
+            category=ProviderFailureCategory.MODEL_NOT_CATALOGUED,
+            message=(
+                f"Model-catalogue entry '{entry_id}' resolves to serving identity "
+                f"('{entry.provider_id}', '{entry.model_revision}', '{entry.deployment}'), "
+                f"which is not the requested ('{provider_id}', '{model_revision}', "
+                f"'{config.deployment}'); refusing an identity-mismatched binding."
+            ),
         )
     if entry.lifecycle_state in _EXECUTION_INELIGIBLE_LIFECYCLE_STATES:
         raise ProviderExecutionError(

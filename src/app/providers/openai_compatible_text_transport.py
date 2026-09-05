@@ -331,6 +331,7 @@ def post_openai_compatible_response(
             candidate_entry_id=candidate_entry_id,
             attempt_index=attempt_index,
             debit=debit,
+            candidate_id_v2=candidate_id_v2,
         )
         return debit
 

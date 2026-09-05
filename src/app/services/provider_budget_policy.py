@@ -136,6 +136,28 @@ def enforce_provider_budget() -> None:
         )
 
 
+def _attempt_debit_id(
+    *,
+    execution_id: str,
+    candidate_entry_id: str,
+    attempt_index: int,
+    candidate_id_v2: str | None,
+) -> str:
+    """The idempotent identity of one attempt debit (issue #326).
+
+    When the caller names a complete candidate, the canonical identity is the
+    debit segment: the legacy entry id omits the model family and is
+    delimiter-ambiguous, so two DISTINCT candidates can share it and would
+    silently collapse into one reservation. Without a canonical identity the
+    caller named no candidate (provider-keyed debits), where the legacy
+    segment is unambiguous and stays for continuity with existing rows.
+    """
+
+    if candidate_id_v2:
+        return f"adbt2:{execution_id}:{candidate_id_v2}:{attempt_index}"
+    return f"adbt:{execution_id}:{candidate_entry_id}:{attempt_index}"
+
+
 def record_attempt_spend(
     *,
     execution_id: str,
@@ -165,7 +187,12 @@ def record_attempt_spend(
     repository = get_provider_operations_store()
     return repository.record_attempt_debit(
         ProviderAttemptDebitRecord(
-            debit_id=f"adbt:{execution_id}:{candidate_entry_id}:{attempt_index}",
+            debit_id=_attempt_debit_id(
+                execution_id=execution_id,
+                candidate_entry_id=candidate_entry_id,
+                attempt_index=attempt_index,
+                candidate_id_v2=candidate_id_v2,
+            ),
             provider_id=provider_id,
             basis=debit.basis,
             amount_usd=debit.amount_usd,
@@ -213,7 +240,12 @@ def reserve_attempt_spend(
     repository = get_provider_operations_store()
     return repository.reserve_attempt_debit(
         ProviderAttemptDebitRecord(
-            debit_id=f"adbt:{execution_id}:{candidate_entry_id}:{attempt_index}",
+            debit_id=_attempt_debit_id(
+                execution_id=execution_id,
+                candidate_entry_id=candidate_entry_id,
+                attempt_index=attempt_index,
+                candidate_id_v2=candidate_id_v2,
+            ),
             provider_id=provider_id,
             basis="RESERVED_MAX",
             amount_usd=reservation.amount_usd,
@@ -237,6 +269,7 @@ def settle_attempt_spend(
     candidate_entry_id: str,
     attempt_index: int,
     debit: AttemptDebit | None,
+    candidate_id_v2: str | None = None,
 ) -> bool:
     """Settle a reservation to the attempt's evidenced debit in one
     transaction with the counter adjustment (issue #300) - or release it to
@@ -247,7 +280,12 @@ def settle_attempt_spend(
     """
 
     repository = get_provider_operations_store()
-    debit_id = f"adbt:{execution_id}:{candidate_entry_id}:{attempt_index}"
+    debit_id = _attempt_debit_id(
+        execution_id=execution_id,
+        candidate_entry_id=candidate_entry_id,
+        attempt_index=attempt_index,
+        candidate_id_v2=candidate_id_v2,
+    )
     if debit is None:
         return repository.settle_attempt_debit(
             debit_id=debit_id,
@@ -277,7 +315,11 @@ def spent_for_execution(execution_id: str) -> float:
     attempt against exactly the number the envelope recorded."""
 
     repository = get_provider_operations_store()
-    return repository.sum_attempt_debits(debit_id_prefix=f"adbt:{execution_id}:")
+    # Both identity generations count: canonical-segment debits (adbt2) are
+    # the current form; legacy-segment rows remain readable history.
+    return repository.sum_attempt_debits(
+        debit_id_prefix=f"adbt2:{execution_id}:"
+    ) + repository.sum_attempt_debits(debit_id_prefix=f"adbt:{execution_id}:")
 
 
 def reset_provider_budget_state() -> None:

@@ -173,18 +173,21 @@ def test_reseeding_is_idempotent_and_preserves_created_at(
     assert (second_report.created_count, second_report.updated_count) == (0, 0)
     assert second_report.unchanged_count == 1
 
-    # Same derived identity (text.local:qwen3:8b), different seeded content:
-    # the revision is now explicit and the family differs, so this must be an
-    # in-place update that keeps the original created_at.
+    # Same LEGACY row key (text.local:qwen3:8b) but a DIFFERENT canonical
+    # candidate: the family changes from "qwen3:8b" to "qwen3". Row identity
+    # is immutable at the write authority (issue #326) - the reseed refuses
+    # the replacement instead of silently transferring the row, and the
+    # stored candidate keeps its original identity and provenance.
     monkeypatch.setattr(settings, "live_text_model_version", "qwen3:8b")
     monkeypatch.setattr(settings, "live_text_model_id", "qwen3")
     third_report = ensure_model_catalogue_seeded()
-    assert (third_report.created_count, third_report.updated_count) == (0, 1)
-    updated_entry = get_model_catalogue_repository().get_entry("text.local:qwen3:8b")
-    assert updated_entry is not None
-    assert updated_entry.model_family == "qwen3"
-    assert updated_entry.revision_pinned is True
-    assert updated_entry.created_at == first_created_at
+    assert (third_report.created_count, third_report.updated_count) == (0, 0)
+    assert third_report.identity_conflict_count == 1
+    stored_entry = get_model_catalogue_repository().get_entry("text.local:qwen3:8b")
+    assert stored_entry is not None
+    assert stored_entry.model_family == "qwen3:8b"
+    assert stored_entry.revision_pinned is False
+    assert stored_entry.created_at == first_created_at
 
 
 def test_store_accessor_defaults_to_memory_and_reset_clears_state(

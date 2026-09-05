@@ -299,6 +299,15 @@ class ModelCatalogueSeedReport(BaseModel):
     created_count: int = Field(ge=0, description="Entries created by this pass.")
     updated_count: int = Field(ge=0, description="Existing entries whose seeded fields changed.")
     unchanged_count: int = Field(ge=0, description="Entries already up to date.")
+    identity_conflict_count: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Seed candidates refused because the stored row under the same legacy "
+            "row key holds a DIFFERENT canonical candidate identity; nothing was "
+            "overwritten and no governance posture was transferred (issue #326)."
+        ),
+    )
 
 
 class ModelCatalogueResponse(BaseModel):
