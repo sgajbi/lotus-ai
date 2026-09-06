@@ -46,6 +46,12 @@ If you need the shortest accurate orientation, read these in order:
 6. [Validation and CI](Validation-and-CI) — gates, and what CI actually invokes
 7. [Operations Runbook](Operations-Runbook) — operating and supporting it
 
+Repository contributors and coding agents start with the tool-neutral
+[AGENTS.md](https://github.com/sgajbi/lotus-ai/blob/main/AGENTS.md), then the concise
+[repository engineering context](https://github.com/sgajbi/lotus-ai/blob/main/REPOSITORY-ENGINEERING-CONTEXT.md).
+That context routes each task to the necessary contract, runbook, or RFC without requiring the
+whole documentation estate to be loaded.
+
 ## Current Posture
 
 `lotus-ai` is in a governed foundation phase. That means two things at once:
@@ -143,12 +149,12 @@ If you are:
 
 The wiki is a navigation and onboarding layer. Detailed source material lives in the repo:
 
-- `README.md`
-- `REPOSITORY-ENGINEERING-CONTEXT.md`
-- `docs/architecture/system-overview.md`
-- `docs/architecture/feature-status-and-roadmap.md`
-- `docs/guides/task-execution-contract.md`
-- `docs/runbooks/service-operations.md`
+- [README](https://github.com/sgajbi/lotus-ai/blob/main/README.md)
+- [Repository engineering context](https://github.com/sgajbi/lotus-ai/blob/main/REPOSITORY-ENGINEERING-CONTEXT.md)
+- [System overview](https://github.com/sgajbi/lotus-ai/blob/main/docs/architecture/system-overview.md)
+- [Feature status and roadmap](https://github.com/sgajbi/lotus-ai/blob/main/docs/architecture/feature-status-and-roadmap.md)
+- [Task execution contract](https://github.com/sgajbi/lotus-ai/blob/main/docs/guides/task-execution-contract.md)
+- [Service operations](https://github.com/sgajbi/lotus-ai/blob/main/docs/runbooks/service-operations.md)
 
 ## Quick Commands
 
