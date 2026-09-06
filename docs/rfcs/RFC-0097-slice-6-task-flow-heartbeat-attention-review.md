@@ -34,7 +34,7 @@ flows without becoming a separate task-flow authority.
    - 106 passed.
 4. `git diff --check`
    - passed with existing CRLF normalization warnings only.
-5. `powershell -ExecutionPolicy Bypass -File C:\Users\Sandeep\projects\lotus-platform\automation\Sync-RepoWikis.ps1 -CheckOnly -Repository lotus-ai`
+5. `powershell -ExecutionPolicy Bypass -File <lotus-platform>/automation/Sync-RepoWikis.ps1 -CheckOnly -Repository lotus-ai`
    - reported expected branch-local drift for `Platform-Surfaces.md`; publish after merge to `main`.
 
 ## Remaining RFC-0097 Gaps

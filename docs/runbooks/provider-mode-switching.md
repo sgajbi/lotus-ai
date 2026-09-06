@@ -6,6 +6,9 @@ This runbook defines the approved operator procedure for switching `lotus-ai` be
 2. managed OpenAI execution,
 3. local OpenAI-compatible execution.
 
+**Prerequisite:** run every command below from the repository root, with Docker running and
+the `.env` file already carrying the target mode's settings.
+
 Use this runbook together with:
 
 1. `GET /platform/providers/operator-profile`
@@ -49,7 +52,6 @@ LOTUS_AI_PROVIDER_MODE=disabled
 Switch procedure:
 
 ```powershell
-cd C:\Users\Sandeep\projects\lotus-ai
 docker compose up -d --force-recreate lotus-ai lotus-ai-worker
 ```
 
@@ -85,7 +87,6 @@ LOTUS_AI_PROVIDER_MAX_OUTPUT_TOKENS=4096
 Switch procedure:
 
 ```powershell
-cd C:\Users\Sandeep\projects\lotus-ai
 docker compose up -d --force-recreate lotus-ai lotus-ai-worker
 ```
 
@@ -107,7 +108,6 @@ Use when:
 Bring up Ollama:
 
 ```powershell
-cd C:\Users\Sandeep\projects\lotus-ai
 docker compose --profile local-llm up -d ollama
 docker compose exec ollama ollama pull qwen3:8b
 ```
@@ -129,7 +129,6 @@ LOTUS_AI_PROVIDER_MAX_OUTPUT_TOKENS=4096
 Switch procedure:
 
 ```powershell
-cd C:\Users\Sandeep\projects\lotus-ai
 docker compose up -d --force-recreate lotus-ai lotus-ai-worker
 ```
 

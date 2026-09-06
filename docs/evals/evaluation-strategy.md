@@ -117,7 +117,7 @@ That gate validates:
 
 The source of truth for fixture inventory is now:
 
-1. [fixture-manifest.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixture-manifest.json)
+1. [fixture-manifest.json](fixture-manifest.json)
 
 This manifest is versioned so evaluation catalog and runtime status surfaces can point to a governed
 artifact instead of only hardcoded service metadata.
@@ -135,27 +135,27 @@ That gate validates:
 
 The first concrete staged fixture asset now exists at:
 
-1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/explain.v1/basic_cases.json)
+1. [basic_cases.json](fixtures/explain.v1/basic_cases.json)
 
 The second concrete staged fixture asset now exists at:
 
-1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/summarize.v1/basic_cases.json)
+1. [basic_cases.json](fixtures/summarize.v1/basic_cases.json)
 
 The first retrieval-oriented staged fixture asset now exists at:
 
-1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/retrieval.search/basic_cases.json)
+1. [basic_cases.json](fixtures/retrieval.search/basic_cases.json)
 
 The first provider-policy staged fixture asset now exists at:
 
-1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/providers.policy/basic_cases.json)
+1. [basic_cases.json](fixtures/providers.policy/basic_cases.json)
 
 The first safety-policy staged fixture asset now exists at:
 
-1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/safety.policy/basic_cases.json)
+1. [basic_cases.json](fixtures/safety.policy/basic_cases.json)
 
 The task-capability contract fixture asset now exists at:
 
-1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/tasks.contracts/basic_cases.json)
+1. [basic_cases.json](fixtures/tasks.contracts/basic_cases.json)
 
 This gives the platform real file-backed fixture families for task capability contracts, `explain.v1`,
 `summarize.v1`, governed retrieval citation/refusal behavior, provider-policy behavior, and

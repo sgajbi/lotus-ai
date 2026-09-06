@@ -332,20 +332,20 @@ In practical feature terms, the roadmap is:
 
 For a new engineer:
 
-1. [README](C:/Users/Sandeep/projects/lotus-ai/README.md)
-2. [system-overview.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/system-overview.md)
+1. [README](../../README.md)
+2. [system-overview.md](system-overview.md)
 3. this document
-4. [phased-roadmap.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/phased-roadmap.md)
-5. [docs/rfcs/README.md](C:/Users/Sandeep/projects/lotus-ai/docs/rfcs/README.md)
+4. [phased-roadmap.md](phased-roadmap.md)
+5. [docs/rfcs/README.md](../rfcs/README.md)
 
 For someone integrating a client app:
 
-1. [integration-guide.md](C:/Users/Sandeep/projects/lotus-ai/docs/guides/integration-guide.md)
-2. [task-execution-contract.md](C:/Users/Sandeep/projects/lotus-ai/docs/guides/task-execution-contract.md)
+1. [integration-guide.md](../guides/integration-guide.md)
+2. [task-execution-contract.md](../guides/task-execution-contract.md)
 3. this document
 
 For an operator:
 
-1. [service-operations.md](C:/Users/Sandeep/projects/lotus-ai/docs/runbooks/service-operations.md)
-2. [system-overview.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/system-overview.md)
+1. [service-operations.md](../runbooks/service-operations.md)
+2. [system-overview.md](system-overview.md)
 3. this document

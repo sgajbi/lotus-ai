@@ -35,7 +35,7 @@ This is acceptable while payloads remain small, but it does not scale well for:
 
 The architecture already documents the target:
 
-1. [scalability-and-deployment-model.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/scalability-and-deployment-model.md#L1) explicitly calls for object storage once evaluation, retrieval, or trace payloads outgrow relational storage.
+1. [scalability-and-deployment-model.md](../architecture/scalability-and-deployment-model.md#L1) explicitly calls for object storage once evaluation, retrieval, or trace payloads outgrow relational storage.
 
 ## Problem Statement
 

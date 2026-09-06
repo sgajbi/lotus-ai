@@ -678,8 +678,7 @@ These packs must still avoid inventing new analytical truth.
 
 ## OpenClaw Reference Findings
 
-This RFC was tightened after a local review of the cloned `openclaw` repository under
-`c:\Users\Sandeep\projects\openclaw`.
+This RFC was tightened after a local review of a local checkout of the external `openclaw` repository.
 
 The following findings materially informed the design:
 

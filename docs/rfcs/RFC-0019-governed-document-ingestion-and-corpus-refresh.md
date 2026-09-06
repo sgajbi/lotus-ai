@@ -22,10 +22,10 @@ But corpus growth is still constrained by staged, repository-managed content rat
 
 The architecture and retrieval docs already point toward this gap:
 
-1. [scalability-and-deployment-model.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/scalability-and-deployment-model.md#L1) explicitly names large document ingestion as async-capable work,
-2. [retrieval-and-vector-store.md](C:/Users/Sandeep/projects/lotus-ai/docs/guides/retrieval-and-vector-store.md#L1) still says live embedding generation, runtime vector writes, and production retrieval execution remain incomplete,
-3. [retrieval_runbook_readiness.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/retrieval_runbook_readiness.py#L1) still calls out reindex, replay, failure recovery, and corpus refresh as incomplete,
-4. current retrieval job detail in [job_registry.py](C:/Users/Sandeep/projects/lotus-ai/src/app/retrieval/job_registry.py#L1) centers on indexing staged sources, not on governed ingestion of new document material.
+1. [scalability-and-deployment-model.md](../architecture/scalability-and-deployment-model.md#L1) explicitly names large document ingestion as async-capable work,
+2. [retrieval-and-vector-store.md](../guides/retrieval-and-vector-store.md#L1) still says live embedding generation, runtime vector writes, and production retrieval execution remain incomplete,
+3. [retrieval_activation_readiness.py](../../src/app/services/retrieval_activation_readiness.py#L1) still calls out reindex, replay, failure recovery, and corpus refresh as incomplete,
+4. current retrieval job detail in [job_registry.py](../../src/app/retrieval/job_registry.py#L1) centers on indexing staged sources, not on governed ingestion of new document material.
 
 This means retrieval will eventually hit a product ceiling unless corpus onboarding becomes a first-class platform capability.
 

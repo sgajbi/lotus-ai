@@ -27,10 +27,10 @@ The platform already has:
 
 But prompt activation is still intentionally blocked:
 
-1. [prompt_governance.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/prompt_governance.py#L1) reports `runtime_mutation_enabled=False` and `promotion_write_api_enabled=False`,
-2. [prompt_activation_readiness.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/prompt_activation_readiness.py#L1) explicitly says no live approval and rollback workflow exists,
-3. [prompt_runbook_readiness.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/prompt_runbook_readiness.py#L1) shows change review and rollback still not ready,
-4. [prompt_evidence_readiness.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/prompt_evidence_readiness.py#L1) shows no runtime-backed regression or rollback evidence pack yet.
+1. [prompt_governance.py](../../src/app/services/prompt_governance.py#L1) reports `runtime_mutation_enabled=False` and `promotion_write_api_enabled=False`,
+2. [prompt_activation_readiness.py](../../src/app/services/prompt_activation_readiness.py#L1) explicitly says no live approval and rollback workflow exists,
+3. [prompt_activation_readiness.py](../../src/app/services/prompt_activation_readiness.py#L1) shows change review and rollback still not ready,
+4. [prompt_evidence_readiness.py](../../src/app/services/prompt_evidence_readiness.py#L1) shows no runtime-backed regression or rollback evidence pack yet.
 
 That means the platform can execute with fixed prompts, but cannot yet govern prompt evolution as a first-class enterprise runtime capability.
 

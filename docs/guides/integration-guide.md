@@ -135,8 +135,9 @@ LOTUS_AI_PROVIDER_MODE=disabled
 
 Then recreate the API and worker containers:
 
+Run these from the repository root:
+
 ```powershell
-cd C:\Users\Sandeep\projects\lotus-ai
 docker compose up -d --force-recreate lotus-ai lotus-ai-worker
 ```
 
@@ -430,7 +431,7 @@ If retrieval is used:
 3. platform docs and approved standards should be favored over ad hoc notes.
 ## Provider Switching Runbook
 
-Use [provider-mode-switching.md](C:/Users/Sandeep/projects/lotus-ai/docs/runbooks/provider-mode-switching.md) as the authoritative operator procedure for:
+Use [provider-mode-switching.md](../runbooks/provider-mode-switching.md) as the authoritative operator procedure for:
 
 1. switching between `disabled`, `openai`, and `local_openai_compatible`,
 2. bringing up developer-local Ollama,

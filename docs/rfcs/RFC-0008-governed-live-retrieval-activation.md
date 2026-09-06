@@ -46,8 +46,8 @@ At proposal time the retrieval layer had an asymmetry:
 
 At proposal time the code made that gap explicit:
 
-1. [retrieval_execution_status.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/retrieval_execution_status.py#L1) reports `live_search_enabled=False` even when retrieval mode is enabled,
-2. [retrieval_gateway.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/retrieval_gateway.py#L1) returns catalog-only hits when retrieval is disabled and a `503` when retrieval is enabled because no live backend is wired,
+1. [retrieval_execution_status.py](../../src/app/services/retrieval_execution_status.py#L1) reports `live_search_enabled=False` even when retrieval mode is enabled,
+2. [retrieval_gateway.py](../../src/app/services/retrieval_gateway.py#L1) returns catalog-only hits when retrieval is disabled and a `503` when retrieval is enabled because no live backend is wired,
 3. retrieval activation and runbook surfaces therefore describe a rollout target that the service still cannot actually execute.
 
 This leaves `lotus-ai` short of the runtime behavior a shared AI platform needs:

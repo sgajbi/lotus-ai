@@ -42,9 +42,9 @@ That makes the current control plane good for contract hardening, but not yet go
 
 Today provider operations state is held in process-local globals:
 
-1. quota counters in [provider_quota_policy.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/provider_quota_policy.py#L1),
-2. spend totals in [provider_budget_policy.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/provider_budget_policy.py#L1),
-3. degradation and circuit-breaker counters in [provider_degradation_state.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/provider_degradation_state.py#L1).
+1. quota counters in [provider_quota_policy.py](../../src/app/services/provider_quota_policy.py#L1),
+2. spend totals in [provider_budget_policy.py](../../src/app/services/provider_budget_policy.py#L1),
+3. degradation and circuit-breaker counters in [provider_degradation_state.py](../../src/app/services/provider_degradation_state.py#L1).
 
 That creates real limitations:
 

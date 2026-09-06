@@ -27,9 +27,9 @@ The platform now has:
 
 But safety posture still has a hard limit:
 
-1. [safety_policy.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/safety_policy.py#L1) marks `runtime_redaction_engine` as `DOCUMENTED`,
-2. [safety_runtime.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/safety_runtime.py#L1) only records static control metadata rather than enforcing redaction,
-3. [safety_status.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/safety_status.py#L1) reports `runtime_redaction_active=False`,
+1. [safety_policy.py](../../src/app/services/safety_policy.py#L1) marks `runtime_redaction_engine` as `DOCUMENTED`,
+2. [safety_runtime.py](../../src/app/services/safety_runtime.py#L1) only records static control metadata rather than enforcing redaction,
+3. [safety_status.py](../../src/app/services/safety_status.py#L1) reports `runtime_redaction_active=False`,
 4. the runbooks and runtime status are honest, but the platform still relies on calling applications to do too much of the last-mile safety work.
 
 Once live provider and retrieval paths are materially useful, this becomes the next highest-risk and highest-value gap to close.

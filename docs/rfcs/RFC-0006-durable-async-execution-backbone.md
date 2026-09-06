@@ -45,9 +45,9 @@ This RFC should stop at the durable async backbone itself. Higher-level consumer
 
 Today async behavior is still mostly a governed contract shell:
 
-1. submissions are rejected in [async_submission_service.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/async_submission_service.py#L1),
-2. job catalogs and detail views are read from static governed artifacts in [async_job_service.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/async_job_service.py#L1),
-3. the current registry loader in [job_registry.py](C:/Users/Sandeep/projects/lotus-ai/src/app/async_runtime/job_registry.py#L1) validates docs, not runtime execution state.
+1. submissions are rejected in [async_submission_service.py](../../src/app/services/async_submission_service.py#L1),
+2. job catalogs and detail views are read from static governed artifacts in [async_job_service.py](../../src/app/services/async_job_service.py#L1),
+3. the current registry loader in [job_registry.py](../../src/app/async_runtime/job_registry.py#L1) validates docs, not runtime execution state.
 
 This creates real limitations:
 

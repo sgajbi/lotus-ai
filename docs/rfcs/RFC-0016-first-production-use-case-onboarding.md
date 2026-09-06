@@ -27,9 +27,9 @@ The architecture and integration guidance have consistently pointed toward one p
 
 The current docs already identify the preferred first integration path:
 
-1. [README.md](C:/Users/Sandeep/projects/lotus-ai/README.md#L1) says cross-app adoption should start with one Lotus app integration,
-2. [integration-guide.md](C:/Users/Sandeep/projects/lotus-ai/docs/guides/integration-guide.md#L1) highlights `lotus-performance` analytics commentary as a strong bounded integration candidate,
-3. [phased-roadmap.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/phased-roadmap.md#L1) now identifies `lotus-performance` analytics commentary as the preferred first integration.
+1. [README.md](../../README.md#L1) says cross-app adoption should start with one Lotus app integration,
+2. [integration-guide.md](../guides/integration-guide.md#L1) highlights `lotus-performance` analytics commentary as a strong bounded integration candidate,
+3. [phased-roadmap.md](../architecture/phased-roadmap.md#L1) now identifies `lotus-performance` analytics commentary as the preferred first integration.
 
 Without a real first-use-case RFC:
 

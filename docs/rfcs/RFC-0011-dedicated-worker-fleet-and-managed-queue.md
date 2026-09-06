@@ -29,9 +29,9 @@ The platform now has:
 
 But the active runtime still uses an in-process worker path:
 
-1. [async_worker_execution_service.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/async_worker_execution_service.py#L1) marks `in_process_stub` as the active worker execution,
-2. [async_queue_backend_service.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/async_queue_backend_service.py#L1) marks `service_database` as the active queue backend and keeps `redis_queue` disabled,
-3. [scalability-and-deployment-model.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/scalability-and-deployment-model.md#L1) already states that API-serving and worker concerns should scale independently.
+1. [async_worker_execution_service.py](../../src/app/services/async_worker_execution_service.py#L1) marks `in_process_stub` as the active worker execution,
+2. [async_queue_backend_service.py](../../src/app/services/async_queue_backend_service.py#L1) marks `service_database` as the active queue backend and keeps `redis_queue` disabled,
+3. [scalability-and-deployment-model.md](../architecture/scalability-and-deployment-model.md#L1) already states that API-serving and worker concerns should scale independently.
 
 That means the async control plane is durable, but the operational deployment model is not yet complete.
 
