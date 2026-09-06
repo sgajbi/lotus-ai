@@ -144,7 +144,7 @@ jobs:
         run: make install
       - name: Prove CAS fences on PostgreSQL
         env:
-          LOTUS_AI_POSTGRES_TEST_URL: postgresql+psycopg://lotus_ai:lotus_ai@localhost:5432/lotus_ai
+          LOTUS_AI_POSTGRES_TEST_URL: postgresql+psycopg://lotus_ai:lotus_ai@localhost:59999/lotus_ai
           LOTUS_AI_POSTGRES_TEST_REQUIRED: "1"
         run: make test-postgres
 
