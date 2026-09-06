@@ -57,7 +57,7 @@ into whichever interpreter `python` resolves to, and installing into a system Py
 on distributions that follow PEP 668:
 
 ```bash
-python3.12 -m venv .venv
+python3.12 -m venv .venv          # Windows: py -3.12 -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
 ```
 
