@@ -26,10 +26,10 @@ But the provider layer is still materially incomplete for the next phase of plat
 
 Current code and docs make the gap explicit:
 
-1. [provider_policy.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/provider_policy.py#L1) allows `openai` only for text generation, while embeddings are limited to `disabled` and `stub`,
-2. [provider_catalog.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/provider_catalog.py#L1) exposes only `embeddings.stub`,
-3. [retrieval_activation_readiness.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/retrieval_activation_readiness.py#L1) explicitly calls out embedding-provider execution as part of future retrieval rollout,
-4. [README.md](C:/Users/Sandeep/projects/lotus-ai/README.md#L1) still says live retrieval search remains disabled until embeddings and vector indexing are wired.
+1. [provider_policy.py](../../src/app/services/provider_policy.py#L1) allows `openai` only for text generation, while embeddings are limited to `disabled` and `stub`,
+2. [provider_catalog.py](../../src/app/services/provider_catalog.py#L1) exposes only `embeddings.stub`,
+3. [retrieval_activation_readiness.py](../../src/app/services/retrieval_activation_readiness.py#L1) explicitly calls out embedding-provider execution as part of future retrieval rollout,
+4. [README.md](../../README.md#L1) still says live retrieval search remains disabled until embeddings and vector indexing are wired.
 
 This means the provider platform is still asymmetric:
 

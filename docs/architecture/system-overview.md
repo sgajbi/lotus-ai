@@ -26,7 +26,7 @@ The service is intentionally being built in layers.
 
 The required scalability posture is documented separately in:
 
-- [scalability-and-deployment-model.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/scalability-and-deployment-model.md)
+- [scalability-and-deployment-model.md](scalability-and-deployment-model.md)
 
 That document should be treated as a strict architecture rule, not optional guidance.
 

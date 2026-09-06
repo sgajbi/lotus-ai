@@ -514,7 +514,7 @@ Before any future live-provider activation slice:
 
 Authoritative procedure:
 
-1. use [provider-mode-switching.md](C:/Users/Sandeep/projects/lotus-ai/docs/runbooks/provider-mode-switching.md)
+1. use [provider-mode-switching.md](provider-mode-switching.md)
 2. treat `/platform/providers/operator-profile` as the summary-first operator surface for active mode and verification steps
 3. do not treat `.env` changes alone as a completed switch; container recreation plus task-level verification is required
 

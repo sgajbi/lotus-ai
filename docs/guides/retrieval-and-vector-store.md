@@ -144,7 +144,7 @@ Retrieval evaluation is now staged with file-backed fixture inventory.
 
 Current staged retrieval evaluation assets:
 
-1. [basic_cases.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixtures/retrieval.search/basic_cases.json)
+1. [basic_cases.json](../evals/fixtures/retrieval.search/basic_cases.json)
 
 These fixtures now validate runtime-backed live retrieval approval posture:
 

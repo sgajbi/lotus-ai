@@ -11,11 +11,11 @@ This demo shows the first bounded `lotus-ai` use case end to end:
 
 The demo writes every invoked API input and output to:
 
-- [generated/captures](/C:/Users/Sandeep/projects/lotus-ai/demo/lotus-performance-first-use-case/generated/captures)
+- [generated/captures](generated/captures)
 
 It also stores local runtime logs and demo state in:
 
-- [generated/runtime](/C:/Users/Sandeep/projects/lotus-ai/demo/lotus-performance-first-use-case/generated/runtime)
+- [generated/runtime](generated/runtime)
 
 That runtime directory is scratch space for local reruns and keeps only a checked-in `.gitignore`.
 
@@ -65,10 +65,10 @@ powershell -ExecutionPolicy Bypass -File demo/lotus-performance-first-use-case/r
 
 ## Key Files
 
-- [run-demo.ps1](/C:/Users/Sandeep/projects/lotus-ai/demo/lotus-performance-first-use-case/run-demo.ps1)
-- [requests/lotus-performance-twr.request.json](/C:/Users/Sandeep/projects/lotus-ai/demo/lotus-performance-first-use-case/requests/lotus-performance-twr.request.json)
-- [requests/lotus-ai-explain.request.json](/C:/Users/Sandeep/projects/lotus-ai/demo/lotus-performance-first-use-case/requests/lotus-ai-explain.request.json)
-- [requests/lotus-ai-first-use-case-eval.request.json](/C:/Users/Sandeep/projects/lotus-ai/demo/lotus-performance-first-use-case/requests/lotus-ai-first-use-case-eval.request.json)
+- [run-demo.ps1](run-demo.ps1)
+- [requests/lotus-performance-twr.request.json](requests/lotus-performance-twr.request.json)
+- [requests/lotus-ai-explain.request.json](requests/lotus-ai-explain.request.json)
+- [requests/lotus-ai-first-use-case-eval.request.json](requests/lotus-ai-first-use-case-eval.request.json)
 
 ## Expected Outcome
 

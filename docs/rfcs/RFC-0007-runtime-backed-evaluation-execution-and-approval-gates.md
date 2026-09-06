@@ -38,9 +38,9 @@ Without runtime-backed evaluation execution:
 
 Today evaluation posture is still largely documentation-backed:
 
-1. run catalogs and detail views are loaded from static governed artifacts in [eval_run_service.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/eval_run_service.py#L1),
-2. recorded runs come from manifest files in [run_registry.py](C:/Users/Sandeep/projects/lotus-ai/src/app/evals/run_registry.py#L1),
-3. evaluation runtime status explicitly says no live runner is active in [eval_status.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/eval_status.py#L1),
+1. run catalogs and detail views are loaded from static governed artifacts in [eval_run_service.py](../../src/app/services/eval_run_service.py#L1),
+2. recorded runs come from manifest files in [run_registry.py](../../src/app/evals/run_registry.py#L1),
+3. evaluation runtime status explicitly says no live runner is active in [eval_status.py](../../src/app/services/eval_status.py#L1),
 4. rollout evidence for retrieval and provider governance is therefore stronger than foundation scaffolding, but weaker than authoritative runtime truth.
 
 This creates real limitations:

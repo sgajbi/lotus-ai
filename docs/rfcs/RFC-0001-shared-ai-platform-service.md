@@ -101,17 +101,17 @@ Implemented foundation scope includes:
 
 | Original requirement | Implemented reality | Evidence |
 | --- | --- | --- |
-| Separate shared AI service exists | `lotus-ai` is a standalone FastAPI backend with its own contracts, routers, startup policy, and metadata surfaces | [main.py](C:/Users/Sandeep/projects/lotus-ai/src/app/main.py#L1), [README.md](C:/Users/Sandeep/projects/lotus-ai/README.md#L1) |
-| Clear ownership boundary versus domain apps | Service docs and contracts consistently position `lotus-ai` as assistive/governed infrastructure rather than business truth | [README.md](C:/Users/Sandeep/projects/lotus-ai/README.md#L1), [system-overview.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/system-overview.md#L1) |
-| Contract-first architecture | API and internal boundaries are modeled explicitly through `contracts`, routers, and service-layer orchestration | [contracts](C:/Users/Sandeep/projects/lotus-ai/src/app/contracts), [routers](C:/Users/Sandeep/projects/lotus-ai/src/app/routers), [services](C:/Users/Sandeep/projects/lotus-ai/src/app/services) |
-| Shared provider layer | Provider gateway, policy, governance, and runtime posture exist even while live execution remains disabled | [provider_gateway.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/provider_gateway.py#L1), [providers.py](C:/Users/Sandeep/projects/lotus-ai/src/app/routers/providers.py#L1) |
-| Shared prompt layer | Prompt registry, runtime selection, and governance/readiness surfaces exist | [prompts.py](C:/Users/Sandeep/projects/lotus-ai/src/app/routers/prompts.py#L1), [prompt_runtime.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/prompt_runtime.py#L1) |
-| Shared retrieval layer | Retrieval metadata, governance, execution, and retrieval-backed task behavior exist in bounded form | [retrieval.py](C:/Users/Sandeep/projects/lotus-ai/src/app/routers/retrieval.py#L1), [retrieval_service.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/retrieval_service.py#L1), [task_execution_contract.md](C:/Users/Sandeep/projects/lotus-ai/docs/guides/task-execution-contract.md#L1) |
-| Shared safety layer | Safety posture is modeled explicitly and reflected in runtime and audit behavior | [safety.py](C:/Users/Sandeep/projects/lotus-ai/src/app/routers/safety.py#L1), [task_execution_mapping.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/task_execution_mapping.py#L1) |
-| Shared audit and telemetry posture | Audit persistence and bounded audit inspection are implemented | [audit.py](C:/Users/Sandeep/projects/lotus-ai/src/app/routers/audit.py#L1), [sqlalchemy_audit_repository.py](C:/Users/Sandeep/projects/lotus-ai/src/app/repositories/sqlalchemy_audit_repository.py#L1) |
-| Shared evaluation harnesses | Eval catalog, eval runtime, run artifacts, validation gates, and fixture manifest are implemented | [evals.py](C:/Users/Sandeep/projects/lotus-ai/src/app/routers/evals.py#L1), [fixture-manifest.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/fixture-manifest.json#L1), [run-artifacts.json](C:/Users/Sandeep/projects/lotus-ai/docs/evals/run-artifacts.json#L1) |
-| Shared async platform posture | Async contracts, job artifacts, submission path, and governance/readiness surfaces are implemented | [async_runtime.py](C:/Users/Sandeep/projects/lotus-ai/src/app/routers/async_runtime.py#L1), [job-artifacts.json](C:/Users/Sandeep/projects/lotus-ai/docs/async/job-artifacts.json#L1) |
-| Reusable AI task APIs | Bounded task APIs exist with real execution pipeline and dedicated inspection surfaces | [tasks.py](C:/Users/Sandeep/projects/lotus-ai/src/app/routers/tasks.py#L1), [task_runtime.py](C:/Users/Sandeep/projects/lotus-ai/src/app/routers/task_runtime.py#L1) |
+| Separate shared AI service exists | `lotus-ai` is a standalone FastAPI backend with its own contracts, routers, startup policy, and metadata surfaces | [main.py](../../src/app/main.py#L1), [README.md](../../README.md#L1) |
+| Clear ownership boundary versus domain apps | Service docs and contracts consistently position `lotus-ai` as assistive/governed infrastructure rather than business truth | [README.md](../../README.md#L1), [system-overview.md](../architecture/system-overview.md#L1) |
+| Contract-first architecture | API and internal boundaries are modeled explicitly through `contracts`, routers, and service-layer orchestration | [contracts](../../src/app/contracts), [routers](../../src/app/routers), [services](../../src/app/services) |
+| Shared provider layer | Provider gateway, policy, governance, and runtime posture exist even while live execution remains disabled | [provider_gateway.py](../../src/app/services/provider_gateway.py#L1), [providers.py](../../src/app/routers/providers.py#L1) |
+| Shared prompt layer | Prompt registry, runtime selection, and governance/readiness surfaces exist | [prompts.py](../../src/app/routers/prompts.py#L1), [prompt_runtime.py](../../src/app/services/prompt_runtime.py#L1) |
+| Shared retrieval layer | Retrieval metadata, governance, execution, and retrieval-backed task behavior exist in bounded form | [retrieval.py](../../src/app/routers/retrieval.py#L1), [retrieval_service.py](../../src/app/services/retrieval_service.py#L1), [task_execution_contract.md](../guides/task-execution-contract.md#L1) |
+| Shared safety layer | Safety posture is modeled explicitly and reflected in runtime and audit behavior | [safety.py](../../src/app/routers/safety.py#L1), [task_execution_mapping.py](../../src/app/services/task_execution_mapping.py#L1) |
+| Shared audit and telemetry posture | Audit persistence and bounded audit inspection are implemented | [audit.py](../../src/app/routers/audit.py#L1), [sqlalchemy_audit_repository.py](../../src/app/repositories/sqlalchemy_audit_repository.py#L1) |
+| Shared evaluation harnesses | Eval catalog, eval runtime, run artifacts, validation gates, and fixture manifest are implemented | [evals.py](../../src/app/routers/evals.py#L1), [fixture-manifest.json](../evals/fixture-manifest.json#L1), [run-artifacts.json](../evals/run-artifacts.json#L1) |
+| Shared async platform posture | Async contracts, job artifacts, submission path, and governance/readiness surfaces are implemented | [async_runtime.py](../../src/app/routers/async_runtime.py#L1), [job-artifacts.json](../async/job-artifacts.json#L1) |
+| Reusable AI task APIs | Bounded task APIs exist with real execution pipeline and dedicated inspection surfaces | [tasks.py](../../src/app/routers/tasks.py#L1), [task_runtime.py](../../src/app/routers/task_runtime.py#L1) |
 
 ## Current Reality
 
@@ -150,9 +150,9 @@ Implemented.
 
 Evidence:
 
-1. [main.py](C:/Users/Sandeep/projects/lotus-ai/src/app/main.py#L1)
-2. [README.md](C:/Users/Sandeep/projects/lotus-ai/README.md#L1)
-3. [system-overview.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/system-overview.md#L1)
+1. [main.py](../../src/app/main.py#L1)
+2. [README.md](../../README.md#L1)
+3. [system-overview.md](../architecture/system-overview.md#L1)
 
 ### 2. The repo clearly documents what it does and does not own.
 
@@ -160,9 +160,9 @@ Implemented.
 
 Evidence:
 
-1. [README.md](C:/Users/Sandeep/projects/lotus-ai/README.md#L1)
-2. [RFC-0001-shared-ai-platform-service.md](C:/Users/Sandeep/projects/lotus-ai/docs/rfcs/RFC-0001-shared-ai-platform-service.md#L1)
-3. [decision-log.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/decision-log.md#L1)
+1. [README.md](../../README.md#L1)
+2. [RFC-0001-shared-ai-platform-service.md](RFC-0001-shared-ai-platform-service.md#L1)
+3. [decision-log.md](../architecture/decision-log.md#L1)
 
 ### 3. The platform can depend on `lotus-ai` for shared AI infrastructure without moving domain logic into it.
 
@@ -170,9 +170,9 @@ Implemented.
 
 Evidence:
 
-1. [tasks.py](C:/Users/Sandeep/projects/lotus-ai/src/app/routers/tasks.py#L1)
-2. [task_execution_pipeline.py](C:/Users/Sandeep/projects/lotus-ai/src/app/services/task_execution_pipeline.py#L1)
-3. [system-overview.md](C:/Users/Sandeep/projects/lotus-ai/docs/architecture/system-overview.md#L1)
+1. [tasks.py](../../src/app/routers/tasks.py#L1)
+2. [task_execution_pipeline.py](../../src/app/services/task_execution_pipeline.py#L1)
+3. [system-overview.md](../architecture/system-overview.md#L1)
 
 ## Close-Out Notes
 
