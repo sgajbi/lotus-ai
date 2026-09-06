@@ -1,464 +1,202 @@
 # Repository Engineering Context
 
-This file provides repository-local engineering context for `lotus-ai`.
+This is the durable repository-local orientation for `lotus-ai`. Read [AGENTS.md](AGENTS.md)
+first. Load the specialist references below only when the task needs them; GitHub issues and pull
+requests hold temporary delivery status.
 
-For platform-wide truth, read:
+Shared Lotus context remains authoritative in `lotus-platform`:
 
-1. `../lotus-platform/context/LOTUS-QUICKSTART-CONTEXT.md`
-2. `../lotus-platform/context/LOTUS-ENGINEERING-CONTEXT.md`
-3. `../lotus-platform/context/CONTEXT-REFERENCE-MAP.md`
+1. [Lotus Quickstart Context](https://github.com/sgajbi/lotus-platform/blob/main/context/LOTUS-QUICKSTART-CONTEXT.md)
+2. [Lotus Engineering Context](https://github.com/sgajbi/lotus-platform/blob/main/context/LOTUS-ENGINEERING-CONTEXT.md)
+3. [Lotus Skill Routing Map](https://github.com/sgajbi/lotus-platform/blob/main/context/LOTUS-SKILL-ROUTING-MAP.md)
+4. [Context Reference Map](https://github.com/sgajbi/lotus-platform/blob/main/context/CONTEXT-REFERENCE-MAP.md)
 
 ## Repository Role
 
-`lotus-ai` is the shared AI capability service for the Lotus ecosystem.
-
-It provides governed AI task execution, retrieval, prompt, safety, evaluation, async, and workflow-pack control-plane foundations for other Lotus applications.
+`lotus-ai` is the shared governed AI capability service for Lotus applications. It executes bounded
+AI tasks and workflow packs while preserving the authority of the calling domain service.
 
 ## Business And Domain Responsibility
 
 This repository owns:
 
-1. shared AI execution capabilities,
-2. prompt, provider, retrieval, safety, and evaluation governance,
-3. async AI run infrastructure,
-4. workflow-pack registration and activation control-plane seams,
-5. AI-specific observability, evidence, and control-plane surfaces.
+1. governed AI task execution and provider routing,
+2. prompt, model, retrieval, safety, evaluation, and activation controls,
+3. durable async execution, workflow-pack runtime state, and operator controls,
+4. AI-specific audit, lineage, cost, observability, and signed execution evidence.
 
-It does not own portfolio, performance, risk, advisory, or management domain truth.
+It does not own portfolio, transaction, performance, risk, advisory, management, reporting, or
+client truth. Every AI output is marked `non_authoritative_ai_output` until an authoritative caller
+validates and applies it. AI output must never create approval, suitability, execution, or financial
+truth by implication.
 
 ## Current-State Summary
 
-What is true right now, as distinct from what the architecture is. Keep this
-section short and dated; when an item resolves, delete it rather than growing a
-changelog.
+Implemented task contracts, workflow packs, governance surfaces, and durable stores support
+controlled local and integration use. Live provider, retrieval, and pack activation remain
+separately evidence-gated; implementation presence is not production certification.
 
-**As of 2026-09-06:**
+The default posture is conservative:
 
-1. **Proven and merged.** The governed-execution ownership arc is complete
-   end to end — claim, resume fence, and governed claim release on one
-   compare-and-set (#327, #340) — with seven transition fences certified on
-   real PostgreSQL and the retry path certified by an observed SQLSTATE
-   `40001` (#344). Accepted-output reads resolve through a single verified
-   authority (#336), and capability evidence is guarded by a manifest content
-   digest as well as its version label (#351).
-2. **Enforced, with a stated gap.** `quality/branch_protection_policy.v1.json`
-   declares main's target posture and is compared daily against live
-   protection. One divergence is reported by design: the PostgreSQL fence job
-   is declared required but not yet in live protection (#358). Enforcement
-   currently runs through the live-required Coverage Gate, which fails naming
-   the upstream job.
-3. **Blocked on operators, not on engineering.** #358 needs a branch-protection
-   write and a `LOTUS_AUTOMERGE_TOKEN` with `administration: read`; no Lotus
-   repository holds an Actions secret.
-4. **Blocked on external evidence.** The first declaring evaluation fixture
-   family (#332) needs an expert-reviewed corpus and measured advisor
-   comprehension — a technical fixture pass cannot supply either. #115
-   (provider-native retention/deletion confirmation), #122 (live Idea
-   certification), and #126 remain externally owned.
-5. **Carried upstream limitation.** The branch-protection checker compares
-   required-context names but not their source-app bindings
-   (`lotus-gateway#740`). Stated, deliberately not fixed locally: the checker
-   is a verbatim lift, and a local fix would fork it.
+1. live provider execution, retrieval, and embeddings are disabled unless explicitly activated,
+2. provider output is accepted only after deterministic grounding and contract validation,
+3. rejected output is withheld rather than returned as plausible content,
+4. promoted runtime profiles require durable stores and explicit economic limits,
+5. calling services retain business meaning, decision authority, and downstream consequences.
 
-Nothing above is a live-provider or attested-production claim. Stub and
-local-only journeys are never certification.
-
-## Current Architecture
-
-What `lotus-ai` is today, as one control plane rather than a set of subsystems.
-
-**The execution spine.** A caller asks for a governed AI task or workflow pack. The
-request is authenticated and authorized, bound to a prompt and an execution
-configuration, routed to a provider candidate, executed, validated, and recorded
-with evidence:
-
-`caller identity → caller-policy authorization → task/pack binding → execution config
-→ routing decision → provider execution → output validation → audit + evidence`
-
-**Caller identity.** `LOTUS_AI_CALLER_TRUST_MODE` selects the boundary: `header`
-(local runtimes; a startup finding in the promoted profile) or
-`verified_service_jwt`, where the caller is the `sub` claim of a platform-issued
-EdDSA credential verified against a configured issuer, audience, and rotating key
-map. Failures are fail-closed `401 CALLER_CREDENTIAL_INVALID` with no header
-fallback. Every protected router additionally requires the caller to be a
-registered ACTIVE caller-policy entry; capability rules, tenant restriction, and
-privileged audit scope all key off that policy.
-
-**Execution configuration.** One frozen `ProviderExecutionConfig` per execution
-carries model identity, endpoint, credential, sampling, and enforcement
-thresholds. Evaluation and per-candidate routing install it through a contextvar
-override, so no code path reads mutable process settings mid-request.
-
-**Routing.** `LOTUS_AI_ROUTING_STRATEGY` is `fixed` (one configured identity) or
-`ordered_fallback`. The ordered candidate list comes from the versioned governed
-serving policy over catalogue entries when one exists (N candidates, order is
-policy — no weights, no optimizer, no cost/latency reordering); the configured
-primary-plus-alternate pair is only the ungoverned seed shape. Every candidate
-passes the same fences under its own frozen execution config: kill switches,
-candidate-scoped circuit breaker, and governed catalogue binding. Quota counters
-and the budget envelope are request-scoped and charged once. Every execution
-records a routing decision — each candidate, its rejection reason where
-rejected, the selection, and the `fallback_path`. Whichever candidate serves is
-the one named on every surface: audit record, routing decision, response, cost,
-metrics labels, structured logs, tracing spans, bounded failure messages,
-breaker evidence, and the attested run ledger.
-
-**Model catalogue.** Provider, family, revision, deployment, and SKU are
-first-class governed identity. The canonical candidate identity
-(`candidate_id_v2`, hash of the full serving tuple) is authoritative at the
-write, seed, bind and accounting boundaries: row identity is immutable (a write
-or reseed that would replace a row with a different canonical candidate is
-refused — governance posture never transfers across an identity change), live
-binding compares the structured tuple rather than the derived key, and new
-attempt debits are keyed by the canonical identity (`adbt2:`); the legacy
-colon-delimited row key survives only as row locator and historical reference.
-Lifecycle state gates execution (a retired or
-unapproved revision is refused with `MODEL_LIFECYCLE_INELIGIBLE`), catalogue rows
-are seeded from configuration and from the approved model-risk inventory, and
-revision drift is recorded from the provider echo. Identity-bound,
-effective-dated rate cards price executions and carry cost posture onto audit
-records. The hard budget is admission-honest (#329): each attempt atomically
-reserves its provable maximum before the provider is called; only trustworthy
-provider-reported usage priced by an effective rate card settles a reservation
-down, and release-to-zero requires non-billability STATED at the settle call
-(#346) — never inferred from pricing availability, so a rate card expiring
-mid-attempt holds rather than releases. Unknown or unpriceable billable
-exposure holds the reserved maximum as `UNRESOLVED_MAX` —
-estimates are reported, never released against — until a governed four-eyes
-`BUDGET_RECONCILIATION` settles it to a provider-evidenced charge, and an
-enforced budget that cannot price a candidate refuses admission rather than
-reserving nothing.
-
-**Output validation.** Every provider output — structured channel and narrative
-message — passes one deterministic validator before safety redaction: evidence
-grounding against supplied references, numeric grounding of percent and currency
-tokens, per-task and per-pack JSON Schema contracts, and strict-JSON posture.
-Live domain shaping exists per pack family, never generically: advisor briefs
-and idea explanations (#330) each parse the provider answer into their
-registered contract, with every service-owned provenance/authority field
-composed from the caller's context (shared with the stub path), the
-model-authored section validated for grounding and consumer completeness, and
-contract failure refusing whole — the idea contract is an anyOf(stub, live)
-union like the advisor brief's, and a failed answer never becomes a
-manufactured explanation. The
-verdict and an explicit `non_authoritative_ai_output` marking ride the response
-and the audit record; a rejected output is withheld whole. The verdict is also
-carried as execution evidence, so it reaches the run record and every projection
-built from that bundle, and accepted-output publishes only what has a proven
-`VALIDATED` verdict — a run whose evidence carries no verdict is refused rather
-than grandfathered, because authority is proven at generation time or it is
-absent. A workflow-pack family
-cannot be registered without an output contract.
-
-**Operator controls, deliberately distinct.** Routing selects an eligible
-candidate; the circuit breaker is automatic health protection keyed per provider
-identity, and an open circuit survives the deployment that rekeys its
-bookkeeping or becomes a startup finding rather than a silent drop; kill
-switches are explicit operator prohibition across six scopes with HARD_KILL and
-DRAIN semantics; evaluation gates decide whether a model may be
-eligible at all; lifecycle governs promotion and retirement. These are separate
-mechanisms with separate evidence, composed into operator views rather than
-merged into one state machine.
-
-**Runtime profiles.** `LOTUS_AI_RUNTIME_PROFILE=promoted` derives the protection
-set (retries with backoff, quota/budget/breaker enforcement, SQL-backed
-provider-operations and admission stores, degrade readiness, enforce startup)
-for keys the operator did not set explicitly. It never invents economic limits:
-missing quota tables or budget ceilings are blocking startup findings.
-
-**Durability and replicas.** Store-mode seams keep audit, prompts, retrieval,
-caller policy, workflow-pack registry/run/task-flow/queue-event, provider
-operations, model catalogue, rate cards, kill switches, and admission leases in
-memory or in migration-backed SQL. Admission capacity binds across replicas
-through atomic leases with TTL reclamation.
-
-**Readiness as data.** The runbook-readiness family is one catalog plus one
-builder; execution states are `ENFORCED` / `PARTIAL` / `DOCUMENTED_ONLY` /
-`OUT_OF_SCOPE` and readiness is derived, never asserted. A lint-lane guard
-refuses new copy-paste readiness modules and ratchets module size.
-
-**Data lifecycle.** Retention is policy-as-data
-(`contracts/data-lifecycle/retention-policy.v1.json`) over every ORM table, with
-a bidirectional coverage invariant; one idempotent engine applies every declared
-period (legal holds override expiry; six protective predicates keep live state —
-enforcing switches, pending governed actions, in-flight jobs, review-retained
-artifacts, current document versions, recurring drift — out of reach), and every
-deletion writes an append-only `data_lifecycle_events` row referencing content
-only by digest. Tenant erasure is a governed two-step `DATA_ERASURE` action
-yielding an Ed25519-signed receipt verifiable against the published attestation
-keys; erasure overrides retention, legal hold overrides erasure, and both are
-recorded. Governed execution is single-owner (#327): approval claims the action
-atomically (`PENDING→CLAIMED`, one compare-and-set authority in the repository;
-a duplicated approval loses the claim and receives 409), executes, then
-finalizes `CLAIMED→EXECUTED` with a durable result payload. Erasure proves
-signing readiness before any deletion (a missing receipt key means zero rows
-erased, 503, still approvable), replays a lost receipt from the durable result
-without re-erasing, and recovers a crash-interrupted run through deterministic
-per-action/family lifecycle events — resumable only by the claiming credential
-with an explicit public resume flag, and resuming is itself exclusive: it
-rotates the claim instant under a compare-and-set, so concurrent resumes admit
-one winner before any effect, a superseded still-running executor cannot stamp
-evidence over the takeover (finalization is fenced to the owner's instant),
-and uncertain prior effects converge through the idempotent-callback contract.
-A claim whose credential disappears stays frozen by design — no timeout or
-lease may re-open the one-owner window; the operator recovery is the governed
-CLAIM_RELEASE action (#340): two credentials BOTH distinct from the frozen
-holder release the claim back to PENDING by compare-and-set on the same claim
-instant resume rotates — release and resume race on one fence, one winner —
-with the release evidence durable and the re-approved effect converging under
-the idempotent-callback contract. Minimisation caps the audit `result_preview` at persistence and ages
-passing evaluation-case content at a declared shorter horizon. Seven of those
-transition fences — the claim fence, claim-instant rotation, release-versus-resume,
-hard-budget reserve admission, reconcile-releases-once, settle-versus-hold and
-release-versus-hold — are certified on real PostgreSQL by the fail-closed fence
-lane (`make test-postgres`, #344), racing two independent database sessions per
-scenario and mirroring a SQLite counterpart so backend drift stays visible. The
-erasure behaviours (signing readiness, per-family recovery, receipt replay) are
-proven on SQLite in the unit and integration lanes and are NOT in that lane. The retry path is certified rather than assumed: one
-scenario forces a REPEATABLE READ conflict and asserts the observed SQLSTATE
-40001 before convergence, and fails if retry handling is removed. The delivery
-controls that admit those merges are themselves declared and compared:
-`quality/branch_protection_policy.v1.json` records main's governed posture
-field by field, its offline shape runs in both blocking lanes, and the daily
-audit compares it against live protection (scheduled-only and PAT-gated while
-one declared context is still pending an operator write — issue #358).
-
-**Current limitations.** Capability requirements exist for latency (one governed
-end-to-end budget), structured output, and tool calling (catalogue-evidence
-eligibility inside the routing decision), with cost recorded as a preference;
-cost has not yet graduated to a hard requirement (its billing-truth prerequisite
-closed with #232), and residency, classification, and quality-floor dimensions
-await concrete enforcement stories. Dual control binds two distinct verified
-service credentials, not verified human principals — the platform identity
-dependency recorded on #157's closure. Twenty-one activation/evidence readiness
-modules still predate the readiness catalog (the runbook family converted in
-issue #154; consolidation is #284). Provider-side retention execution and external
-certification evidence remain externally blocked (#115, #122, #126). Forward
-priorities live on the North Star execution board (#246).
+Current delivery priority and external evidence dependencies belong on the
+[`lotus-ai` issue tracker](https://github.com/sgajbi/lotus-ai/issues), not in this file.
 
 ## Architecture And Module Map
 
-Primary areas:
+A request follows one explicit execution spine:
 
-1. `src/app/providers/`
-   provider adapters and one shared execution transport (provider policy, quota,
-   budget, and degradation state live in `src/app/services/`). Routing selects
-   among candidates under `LOTUS_AI_ROUTING_STRATEGY`: `fixed` resolves the one
-   configured identity; `ordered_fallback` walks the governed serving policy's
-   ordered candidates (deterministic order, never ranking), falling back to the
-   configured primary/alternate pair only when no policy exists. Every execution
-   records a routing decision — every candidate, its rejection reason where
-   rejected, the selection, and the `fallback_path` — on its response, audit
-   record, and evidence bundle.
-2. `src/app/prompts/`
-   prompt registry and rollout state.
-3. `src/app/retrieval/`
-   retrieval and indexed-search capabilities.
-4. `src/app/services/safety_*.py`
-   output controls and safety policy.
-5. `src/app/evals/`
-   evaluation and evidence foundations.
-6. `src/app/services/`
-   orchestration and runtime services.
-7. `src/app/contracts/`
-   public request and response models.
-8. `src/app/routers/`
-   API surfaces.
-9. `docs/`
-   architecture, standards, guides, and local RFCs.
-10. `wiki/`
-   canonical local source pages for the GitHub wiki and repo onboarding navigation.
+```text
+verified caller -> policy and task/pack binding -> frozen execution configuration
+                -> governed provider/retrieval execution -> deterministic validation
+                -> audit, evidence, cost, and response
+```
+
+Primary ownership areas:
+
+| Area | Responsibility |
+| --- | --- |
+| `src/app/contracts/` | Public request, response, and evidence contracts |
+| `src/app/routers/` | FastAPI transport, authorization, and problem-detail mapping |
+| `src/app/services/` | Execution orchestration and governance controls |
+| `src/app/providers/` | Provider adapters and execution transport |
+| `src/app/prompts/` | Prompt definitions, selection, and rollout state |
+| `src/app/retrieval/` | Governed sources, indexing, grounding, and search |
+| `src/app/evals/` | Runtime evaluation and approval evidence |
+| `contracts/` | Machine-readable output, policy, lifecycle, and evidence contracts |
+| `alembic/` | Migration-managed durable state |
+| `docs/` | Detailed architecture, standards, guides, RFCs, and runbooks |
+| `wiki/` | Authored source for concise published onboarding and operations pages |
+
+Detailed component behavior belongs in the
+[system overview](docs/architecture/system-overview.md). Capability maturity belongs in
+[feature status and roadmap](docs/architecture/feature-status-and-roadmap.md).
 
 ## Runtime And Integration Boundaries
 
-Runtime model:
+1. Callers send structured, minimized business context and source references.
+2. Caller identity and active caller policy are verified before protected execution. Verified JWT
+   mode fails closed and does not fall back to caller-supplied headers.
+3. One frozen execution configuration binds model identity and enforcement settings for a run.
+4. Governed routing order is policy, not model ranking; every attempted and selected candidate is
+   recorded.
+5. Quota, budget, circuit-breaker, kill-switch, lifecycle, and evaluation controls remain distinct
+   mechanisms with distinct evidence.
+6. Provider output passes evidence grounding, numeric grounding, task or pack schema validation,
+   and safety handling before it can be returned.
+7. Shared API and worker deployments must use durable cross-process stores. In-memory modes are
+   development seams, not promoted distributed-runtime posture.
+8. Workflow packs constrain AI behavior but do not absorb the caller's domain workflow or
+   authority.
+9. PostgreSQL is the durable production-shaped database; Redis is the queue transport, not the
+   authoritative job ledger.
 
-1. shared FastAPI service with bounded AI control-plane and data-plane seams,
-2. consumed by other Lotus apps for governed AI tasks,
-3. workflow-pack registry records define runtime registration truth without centralizing business workflow logic,
-4. workflow-pack default-version resolution is exposed as a conservative read-only control-plane
-   route over registered, activation-eligible, non-superseded versions; it does not auto-promote
-   discovered or dark successor versions,
-5. workflow-pack registry records, workflow-pack run records, RFC-0097 task-flow records, and RFC-0098 queue-event records provide bounded, inspectable runtime posture without taking workflow authority, and these workflow-pack source-truth seams can move between in-memory and SQL-backed runtime posture through explicit governed store-mode seams,
-6. does not replace upstream domain logic or workflow authority,
-7. owns a thin HTTP boundary and shared problem-details error envelope while keeping business
-   rules in routers/services and domain guardrails.
+Frameworks and provider SDKs are adapters. They must not become the authority for request flow,
+task semantics, validation, policy, or audit evidence.
 
-Boundary rules:
+## Task Routes
 
-1. other Lotus apps provide structured business context and remain responsible for business meaning,
-2. `lotus-ai` provides bounded governed AI capabilities with audit and evidence
-   (the advertised split API+worker deployment shares ALL cross-process state
-   durably — a memory store for shared workflow state is a startup readiness
-   finding, #331 — and the runtime image owns `/data` so fresh volumes are
-   writable by the non-root user in both containers, #325),
-3. framework choices must not obscure control flow, governance, or auditability,
-4. live-provider, retrieval, async, and workflow-pack control seams remain rollout-governed and evidence-backed,
-5. every AI output carries a deterministic validation verdict and the `non_authoritative_ai_output` authority marking on the response and the audit record (evidence grounding, numeric grounding, per-task/per-pack JSON Schema contracts under `contracts/ai-task-outputs/`, strict-JSON posture); REJECTED outputs are withheld whole with the failing rule ids, a pack family without an output contract cannot be registered, and the eval runtime executes through the same pipeline so eval and production verdicts agree,
-6. `LOTUS_AI_RUNTIME_PROFILE=promoted` applies the protection default set (retries with backoff, quota/budget/breaker enforcement, SQL-backed provider-operations and admission stores, degrade readiness, enforce startup) while explicit per-key settings always win; the setting-by-profile table lives in `docs/runbooks/service-operations.md` (Runtime Profile).
+Load only the route relevant to the change:
+
+| Task | Required local references |
+| --- | --- |
+| Task API or consumer integration | [Task execution contract](docs/guides/task-execution-contract.md), [integration guide](docs/guides/integration-guide.md) |
+| Workflow-pack change | [Workflow-pack owner onboarding](docs/guides/workflow-pack-owner-onboarding.md), owning RFC and output contract |
+| Provider or model governance | [Provider mode switching](docs/runbooks/provider-mode-switching.md), [service operations](docs/runbooks/service-operations.md) |
+| Retrieval or corpus work | [Retrieval and vector store](docs/guides/retrieval-and-vector-store.md), applicable retrieval contracts |
+| Evaluation or activation | [Evaluation strategy](docs/evals/evaluation-strategy.md), applicable fixture manifest and RFC |
+| Async worker or recovery | [System overview](docs/architecture/system-overview.md), [service operations](docs/runbooks/service-operations.md) |
+| Security, identity, or tenant controls | [Security and governance](docs/security/security-and-governance.md), relevant contract and RFC |
+| Migration or durable-state change | [Migration contract](docs/standards/migration-contract.md), Alembic history, PostgreSQL proofs |
+| RFC or roadmap work | [RFC index](docs/rfcs/README.md), platform RFC governance through the skill routing map |
 
 ## Repo-Native Commands
 
-Use these commands as the primary local contract:
+Run commands from the repository root in an activated Python 3.12 environment.
 
-1. install
-   `make install`
-2. fast local gate
-   `make check`
-3. PR-grade local gate
-   `make ci`
-4. runtime-mode smoke
-   `make runtime-mode-smoke`
-5. Docker build
-   `make docker-build`
-6. RFC-0002 Idea explanation proof gate
-   `make rfc0002-idea-proof-gate`
-7. PostgreSQL CAS fence proofs (needs `LOTUS_AI_POSTGRES_TEST_URL`)
-   `make test-postgres`
-8. branch-protection policy document shape
-   `make branch-protection-policy-gate`
+| Purpose | Command |
+| --- | --- |
+| Install locked dependencies | `make install` |
+| Fast local gate | `make check` |
+| PR-grade gate | `make ci` |
+| Unit, integration, or E2E tests | `make test-unit`, `make test-integration`, `make test-e2e` |
+| Runtime-mode proof | `make runtime-mode-smoke` |
+| Real PostgreSQL fence proof | `make test-postgres` |
+| Migration SQL validation | `make migration-smoke` |
+| API contract gate | `make openapi-gate` |
+| Docker runtime proof | `make docker-build` |
+
+`make test-postgres` requires `LOTUS_AI_POSTGRES_TEST_URL` pointing to a disposable database. CI
+uses `LOTUS_AI_POSTGRES_TEST_REQUIRED` to prevent silent skipping in the PostgreSQL lane.
 
 ## Validation And CI Expectations
 
-`lotus-ai` uses explicit CI lanes:
+The delivery lanes are Remote Feature Lane, Pull Request Merge Gate, and Main Releasability Gate.
+Use targeted tests while iterating, then run the narrowest repository-native gate that covers the
+changed contract. `make ci` is the local PR-grade composition; GitHub checks remain the authority
+for exact-head and exact-main evidence.
 
-1. `Remote Feature Lane`
-2. `Pull Request Merge Gate`
-3. `Main Releasability Gate`
+Tests must prove behavior, including:
 
-Merged PRs to `main` dispatch `main-releasability.yml` through
-`.github/workflows/merged-pr-main-releasability.yml`, so post-merge RFC and release evidence can
-bind to the exact mainline commit.
+1. non-authoritative output and source-authority boundaries,
+2. fail-closed identity, policy, activation, and economic controls,
+3. deterministic validation and whole-output rejection,
+4. idempotency, replay, lease fencing, and recovery,
+5. audit, lineage, model identity, and cost evidence,
+6. real PostgreSQL concurrency semantics where database isolation matters.
 
-Important validation expectations:
-
-1. OpenAPI, evaluation-manifest, evaluation-run, async-job, and migration gates are active,
-2. RFC-0002 Idea explanation local-dev proof is part of `make check` and `make ci`,
-3. security and dependency health are part of the real CI contract,
-4. coverage and Docker build are part of the merge gate,
-5. AI posture changes should remain evidence-backed and bounded rather than speculative,
-6. `make test-postgres` proves the governed-claim and hard-budget CAS fences on a real
-   PostgreSQL and is fail-closed in CI (a missing or unreachable database fails the lane
-   rather than skipping it); locally it skips unless `LOTUS_AI_POSTGRES_TEST_URL` is set,
-7. `coverage-gate` runs with `if: always()` and asserts every upstream job succeeded, so an
-   upstream failure is a FAILED required check naming the job rather than a skipped one.
-
-`make branch-protection-policy-gate` validates the policy DOCUMENT only. A green offline
-run is never evidence that live protection matches the declared posture; the live comparison
-runs in the daily audit and needs a credential that no Lotus repository currently holds
-(issue #358). The declared posture is the target, so one divergence is reported by design
-until an operator makes the branch-protection write.
-
-## Traps That Have Cost Real Time Here
-
-Each of these was a live defect or a wasted cycle in this repository. They are
-recorded because a green result had another explanation nobody tested for, and
-that shape recurs.
-
-**SQLite-green SQL is not PostgreSQL-correct.** The unit and integration lanes
-run SQLite; production runs PostgreSQL, and SQLite is permissive where
-PostgreSQL is strict. Scaled `ROUND` is `NUMERIC`-only on PostgreSQL, so every
-guarded budget statement raised `round(double precision, integer) does not
-exist` there while passing green here — the entire hard-budget guarantee was
-unreachable in production until issue #344. PostgreSQL also enforces
-`VARCHAR(n)` where SQLite ignores it, which is why alembic's default 32-char
-`version_num` column truncates real revision ids on PostgreSQL only (the boot
-order in `scripts/docker/start-api.sh` widens it before upgrading; any harness
-applying migrations must do the same). When writing backend-generic SQL, pin
-the compiled shape for the PostgreSQL dialect in the fast lane — see
-`test_budget_rounding_compiles_for_postgres_not_only_sqlite`, which needs no
-database — and prove behaviour in `tests/postgres`.
-
-**A regression pin must fail once per regression it claims to catch.** After
-fixing a defect, revert the fix in a scratch copy, run the new test, confirm it
-FAILS, then restore. Do this per claim, not once: the rounding pin above claims
-two (the raw `round` and a re-introduced precision bound) and both were
-verified to fail independently. A pin that cannot fail is a dead gate wearing a
-green check.
-
-**Synchronising on call entry is not synchronising on the database.** A barrier
-around two repository calls proves both entered together, not that their
-transactions overlapped; under REPEATABLE READ the snapshot opens at the first
-statement, so barrier-synchronised calls can execute sequentially and produce
-the same one-winner outcome as a real conflict. `tests/postgres` therefore
-forces the ordering with a priming read and asserts the observed SQLSTATE
-`40001` rather than inferring it. An earlier version of that test passed with
-the repository's retry handling deleted entirely.
-
-**Per-commit gating and workflow edits.** `merged-pr-main-releasability.yml`
-tags every merged commit and dispatches the gate against that tag, so a
-multi-commit PR gates each commit. Touch `.github/workflows/**` in the FIRST
-commit of a PR and not again, or keep the PR single-commit; a later commit
-changing workflow files risks the dispatch being refused for the revisions
-whose workflow tree differs from the default branch tip. PR #355 is the worked
-safe shape (workflows in the first commit only) and every commit on `main`
-carries exactly one gate run — verify with
-`gh run list --commit <full-sha> --workflow main-releasability.yml`, never
-`--branch main`.
-
-**Verbatim lifts are never edited on arrival.**
-`scripts/check_branch_protection_policy.py` and
-`tests/unit/test_branch_protection_policy.py` are copies of the platform
-canonical (`lotus-gateway`); only `quality/branch_protection_policy.v1.json` is
-repository-specific. Verify parity with
-`git rev-parse <ref>:<path>` on **committed** refs — a blob SHA hashes what git
-stored, so it needs no line-ending normalisation, while a working-tree or
-pre-commit hash proves nothing about what landed. Lift only from the canonical's
-MERGED state, never an open PR head. If a local config rejects the canonical,
-fix it centrally and re-lift (#359 took a narrow, named interim exemption; #361
-deleted it once the canonical was typed): an edit on arrival forks the copy and
-forks stop receiving canonical fixes silently.
-
-**Tooling.** Never write file content through a shell heredoc — backslash
-escapes are mangled into real control bytes; write patch scripts to the
-scratchpad and run them by path, then byte-scan before pushing. Never pipe a
-gate through `tee` or `tail`: the pipeline reports the last command's status and
-the gate can raise beneath a green check. And `gh issue close --comment` on an
-ALREADY-closed issue silently discards the comment — when a PR auto-closes an
-issue via `Closes #N`, post closure evidence with `gh issue comment` and verify
-it landed.
-
-**Before shipping a rule, name a case in hand that would falsify it and measure
-that case.** The claims above were each checked against this repository rather
-than carried over from a sibling.
+Do not replace database proof with mocks, weaken an assertion to accommodate a defect, or call a
+stub/live fixture production certification. Review findings marked `BLOCKING` or `MUST-FIX` remain
+merge gates under [AGENTS.md](AGENTS.md).
 
 ## Standards And RFCs That Govern This Repository
 
-Most relevant current governance:
+Repository standards live in [docs/standards](docs/standards/). The
+[RFC index](docs/rfcs/README.md) distinguishes implemented, draft, and superseded design truth.
+Shared Lotus engineering and documentation conventions remain platform-owned; link to them rather
+than copying them locally.
 
-1. `../lotus-platform/rfcs/RFC-0069-lotus-ai-shared-ai-platform-service.md`
-2. `../lotus-platform/rfcs/RFC-0072-platform-wide-multi-lane-ci-validation-and-release-governance.md`
-3. `../lotus-platform/rfcs/RFC-0073-lotus-ecosystem-engineering-context-and-agent-guidance-system.md`
-4. `docs/architecture/system-overview.md`
-5. `docs/security/security-and-governance.md`
+Key local standards are:
+
+1. [Enterprise readiness](docs/standards/enterprise-readiness.md)
+2. [Durability and consistency](docs/standards/durability-consistency.md)
+3. [Data model ownership](docs/standards/data-model-ownership.md)
+4. [Migration contract](docs/standards/migration-contract.md)
+5. [API documentation](docs/standards/api-documentation.md)
+6. [Scalability and availability](docs/standards/scalability-availability.md)
 
 ## Known Constraints And Implementation Notes
 
-1. this service has a large documented current-state posture, so context drift is a serious risk if docs are not kept current,
-2. live AI rollout must remain governed, bounded, and evidence-backed,
-3. domain ownership should stay in the calling services even when `lotus-ai` adds value,
-4. retrieval, prompt, provider, safety, and async seams should remain explicit and auditable,
-5. `wiki/` inside the main repo is the authored source of truth for the repository wiki,
-6. any separate local clone of `https://github.com/sgajbi/lotus-ai.wiki.git` is only a publish target
-   and must not become a second maintained documentation source.
+1. Live providers require independent activation, evaluation, model-risk, retention, and operator
+   evidence; code and deterministic fixtures alone do not satisfy those controls.
+2. Dual control currently binds distinct verified service credentials, not verified human
+   principals.
+3. Some readiness families predate the shared readiness catalog; do not copy their legacy module
+   shape into new work.
+4. Cost is recorded and budget admission is enforced where configured, but cost preference is not
+   a general model-ranking authority.
+5. Local header identity is for explicitly configured local runtime only.
 
 ## Context Maintenance Rule
 
-Update this document when:
+Keep durable repository facts here: ownership, architecture, boundaries, task routes, canonical
+commands, validation expectations, and lasting constraints. Keep delivery status, commit history,
+temporary blockers, and planned issue order in GitHub.
 
-1. major bounded capability posture changes,
-2. live-provider or retrieval rollout posture changes materially,
-3. repo-native commands or validation gates change,
-4. architecture or control-plane seams change materially,
-5. the service’s current phase or governance posture changes,
-6. the wiki ownership or publication workflow changes,
-7. new workflow-pack onboarding lessons become durable enough to help future pack owners or future agents.
+Update this file when a repository responsibility, architecture boundary, canonical command, or
+completion requirement changes. Update central `lotus-platform` context only when the convention is
+ecosystem-wide.
 
 ## Cross-Links
 
-1. `../lotus-platform/context/LOTUS-QUICKSTART-CONTEXT.md`
-2. `../lotus-platform/context/LOTUS-ENGINEERING-CONTEXT.md`
-3. `../lotus-platform/context/CONTEXT-REFERENCE-MAP.md`
-4. `../lotus-platform/context/Repository-Engineering-Context-Contract.md`
-5. [Lotus Developer Onboarding](../lotus-platform/docs/onboarding/LOTUS-DEVELOPER-ONBOARDING.md)
-6. [Lotus Agent Ramp-Up](../lotus-platform/docs/onboarding/LOTUS-AGENT-RAMP-UP.md)
+1. [README](README.md) — product front door and recommended quick start
+2. [System overview](docs/architecture/system-overview.md) — detailed implementation architecture
+3. [Feature status and roadmap](docs/architecture/feature-status-and-roadmap.md) — capability posture
+4. [Service operations](docs/runbooks/service-operations.md) — operations and recovery
+5. [Security and governance](docs/security/security-and-governance.md) — trust boundaries and controls
+6. [GitHub wiki](https://github.com/sgajbi/lotus-ai/wiki) — published onboarding navigation
