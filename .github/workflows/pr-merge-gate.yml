@@ -151,10 +151,26 @@ jobs:
   coverage-gate:
     name: PR Merge Gate / Coverage Gate (Combined)
     needs: [test-suites, runtime-mode-smoke, postgres-fence-proof]
+    # Runs even when a dependency failed, so a failed upstream gate becomes a
+    # FAILED required check here rather than a skipped one. A skipped required
+    # check blocks the merge button but reports as absent, not as a failure -
+    # which reads like "not applicable" instead of "this gate said no".
+    if: always()
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: "--no-deprecation"
     steps:
+      - name: Require every upstream gate to have succeeded
+        run: |
+          FAILED=""
+          [ "${{ needs.test-suites.result }}" = "success" ] || FAILED="$FAILED test-suites(${{ needs.test-suites.result }})"
+          [ "${{ needs.runtime-mode-smoke.result }}" = "success" ] || FAILED="$FAILED runtime-mode-smoke(${{ needs.runtime-mode-smoke.result }})"
+          [ "${{ needs.postgres-fence-proof.result }}" = "success" ] || FAILED="$FAILED postgres-fence-proof(${{ needs.postgres-fence-proof.result }})"
+          if [ -n "$FAILED" ]; then
+            echo "Upstream gate(s) did not succeed:$FAILED" >&2
+            exit 1
+          fi
+          echo "All upstream gates succeeded."
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:

@@ -21,12 +21,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from threading import Barrier
+from threading import Barrier, Event
 from typing import TypeVar
 from uuid import uuid4
 
-from sqlalchemy import text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import event, select, text
+from sqlalchemy.engine import ExceptionContext
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.contracts.governed_actions import (
     GovernedActionRecord,
@@ -34,6 +35,7 @@ from app.contracts.governed_actions import (
     GovernedActionType,
     GovernedActorClass,
 )
+from app.db.models import ProviderAttemptDebitModel
 from app.repositories.provider_operations_repository import ProviderAttemptDebitRecord
 from app.repositories.sqlalchemy_provider_operations_repository import (
     SqlAlchemyProviderOperationsRepository,
@@ -368,6 +370,56 @@ def test_settle_and_hold_race_resolves_the_row_exactly_once(
         assert budget.current_spend_usd == 1.0
 
 
+def test_release_and_hold_race_resolves_the_row_exactly_once(
+    postgres_database_url: str,
+) -> None:
+    """The non-billable release racing the hold. Both resolve a RESERVED_MAX
+    row but in OPPOSITE budget directions - a proven non-billable attempt
+    (429 refused before generation) releases the whole reservation to zero,
+    while unpriceable billable exposure holds the reserved maximum. Exactly
+    one wins, and the counter follows that winner: the settle-vs-hold test
+    below covers the same fence for evidenced ACTUAL_USAGE."""
+
+    session_a, session_b = _two_sessions(postgres_database_url)
+    budget_key = f"pg_release_hold_{uuid4().hex}"
+    record = _reserved_debit(f"adbt2:pg-release-hold-{uuid4().hex}:cand2_r:0", amount_usd=1.0)
+    assert (
+        session_a.reserve_attempt_debit(record, budget_key=budget_key, hard_limit_usd=None)
+        == "RESERVED"
+    )
+
+    def release() -> bool:
+        # What settle_attempt_spend issues for billable_risk=False.
+        return session_a.settle_attempt_debit(
+            debit_id=record.debit_id,
+            budget_key=budget_key,
+            basis="RELEASED",
+            amount_usd=0.0,
+            input_tokens=None,
+            output_tokens=None,
+            rate_card_ref=None,
+            settled_at=_T1,
+        )
+
+    def hold() -> bool:
+        return session_b.hold_attempt_debit_unresolved(debit_id=record.debit_id, held_at=_T1)
+
+    release_won, hold_won = _race(release, hold)
+    assert sorted([release_won, hold_won]) == [False, True]
+    budget = session_a.get_budget_state(budget_key=budget_key)
+    row = session_b.get_attempt_debit(debit_id=record.debit_id)
+    assert budget is not None and row is not None
+    if release_won:
+        assert row.basis == "RELEASED"
+        assert row.amount_usd == 0.0
+        # The full reservation came back: nothing was billable.
+        assert budget.current_spend_usd == 0.0
+    else:
+        assert row.basis == "UNRESOLVED_MAX"
+        assert row.amount_usd == 1.0
+        assert budget.current_spend_usd == 1.0
+
+
 class _RepeatableReadProviderOperationsRepository(SqlAlchemyProviderOperationsRepository):
     """The fences never require elevated isolation; this subclass exists to
     prove the loser's serialization failure under REPEATABLE READ funnels
@@ -380,27 +432,105 @@ class _RepeatableReadProviderOperationsRepository(SqlAlchemyProviderOperationsRe
         self._session_factory = sessionmaker(bind=self._engine, autoflush=False, future=True)
 
 
-def test_repeatable_read_serialization_conflict_retries_and_converges(
+def test_repeatable_read_conflict_raises_40001_and_the_repository_converges(
     postgres_database_url: str,
 ) -> None:
-    session_a = _RepeatableReadProviderOperationsRepository(postgres_database_url)
-    session_b = _RepeatableReadProviderOperationsRepository(postgres_database_url)
+    """Retry certification, not retry assumption.
+
+    A barrier around two repository calls proves only that both ENTERED at
+    the same time; under REPEATABLE READ the snapshot opens at the
+    transaction's first statement, so two barrier-synchronised calls can
+    still execute sequentially and produce the same [False, True] as a real
+    conflict. That outcome is therefore not evidence of a retry.
+
+    This test forces the ordering instead: the loser's transaction opens its
+    snapshot with a priming read, the winner then commits its own
+    transition, and only then does the loser's guarded UPDATE run - which
+    PostgreSQL must refuse with SQLSTATE 40001 (serialization_failure). The
+    40001 is OBSERVED at the engine's error boundary rather than inferred,
+    and the assertion is that the repository's retry loop then opens a fresh
+    snapshot and converges to an honest False. Remove the retry handling and
+    the OperationalError escapes instead: the call raises, and this test
+    fails.
+    """
+
+    winner = SqlAlchemyProviderOperationsRepository(postgres_database_url)
+    loser = _RepeatableReadProviderOperationsRepository(postgres_database_url)
     budget_key = f"pg_rr_{uuid4().hex}"
     record = _reserved_debit(f"adbt2:pg-rr-{uuid4().hex}:cand2_z:0", amount_usd=1.0)
     assert (
-        session_a.reserve_attempt_debit(record, budget_key=budget_key, hard_limit_usd=None)
+        winner.reserve_attempt_debit(record, budget_key=budget_key, hard_limit_usd=None)
         == "RESERVED"
     )
 
-    outcomes = _race(
-        lambda: session_a.hold_attempt_debit_unresolved(debit_id=record.debit_id, held_at=_T1),
-        lambda: session_b.hold_attempt_debit_unresolved(debit_id=record.debit_id, held_at=_T1),
+    observed_sqlstates: list[str] = []
+
+    @event.listens_for(loser._engine, "handle_error")
+    def _capture_sqlstate(context: ExceptionContext) -> None:
+        sqlstate = getattr(context.original_exception, "sqlstate", None)
+        if sqlstate is not None:
+            observed_sqlstates.append(str(sqlstate))
+
+    snapshot_open = Event()
+    winner_committed = Event()
+    sessions_opened = {"count": 0}
+    real_factory = loser._session_factory
+
+    def priming_session_factory() -> Session:
+        session = real_factory()
+        sessions_opened["count"] += 1
+        if sessions_opened["count"] == 1:
+            # First statement in this transaction: under REPEATABLE READ it
+            # pins the snapshot, BEFORE the winner commits. The retry's
+            # second session is left plain so it can converge.
+            session.execute(
+                select(ProviderAttemptDebitModel).where(
+                    ProviderAttemptDebitModel.debit_id == record.debit_id
+                )
+            ).all()
+            snapshot_open.set()
+            assert winner_committed.wait(timeout=15), "winner never committed"
+        return session
+
+    loser._session_factory = priming_session_factory  # type: ignore[assignment]
+
+    def run_loser() -> bool:
+        return loser.hold_attempt_debit_unresolved(debit_id=record.debit_id, held_at=_T1)
+
+    def run_winner() -> bool:
+        assert snapshot_open.wait(timeout=15), "loser never opened its snapshot"
+        settled = winner.settle_attempt_debit(
+            debit_id=record.debit_id,
+            budget_key=budget_key,
+            basis="ACTUAL_USAGE",
+            amount_usd=0.4,
+            input_tokens=90,
+            output_tokens=30,
+            rate_card_ref="default-live-text",
+            settled_at=_T1,
+        )
+        winner_committed.set()
+        return settled
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        loser_future = pool.submit(run_loser)
+        winner_future = pool.submit(run_winner)
+        winner_result = winner_future.result(timeout=30)
+        loser_result = loser_future.result(timeout=30)
+
+    # The conflict genuinely happened, by SQLSTATE and not by inference.
+    assert "40001" in observed_sqlstates, (
+        f"expected a serialization_failure (40001); observed {observed_sqlstates}"
     )
-    # The loser's UPDATE raises a serialization failure under REPEATABLE
-    # READ; the retry loop re-runs it, finds the basis already moved, and
-    # converges to an honest False instead of surfacing the conflict.
-    assert sorted(outcomes) == [False, True]
-    row = session_b.get_attempt_debit(debit_id=record.debit_id)
-    assert row is not None
-    assert row.basis == "UNRESOLVED_MAX"
-    assert row.amount_usd == 1.0
+    # More than one session means the retry loop actually re-ran.
+    assert sessions_opened["count"] >= 2
+    assert winner_result is True
+    # Converged, and honestly: the winner's settlement stands, and the
+    # loser reports that it did not resolve the row - not an exception.
+    assert loser_result is False
+    row = winner.get_attempt_debit(debit_id=record.debit_id)
+    budget = winner.get_budget_state(budget_key=budget_key)
+    assert row is not None and budget is not None
+    assert row.basis == "ACTUAL_USAGE"
+    assert row.amount_usd == 0.4
+    assert budget.current_spend_usd == 0.4
