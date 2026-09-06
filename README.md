@@ -37,13 +37,40 @@ maintained in [feature status and roadmap](docs/architecture/feature-status-and-
 
 ## Quick Start
 
-Prerequisites: Python 3.13, `make`, and Docker (for the prod-shaped stack).
+Prerequisites, each pinned by a source you can check:
 
-```powershell
+| Tool | Version | Needed for | Where that version is pinned |
+| --- | --- | --- | --- |
+| Python | 3.12 | everything | `pyproject.toml` (`requires-python = ">=3.12"`), `mypy.ini`, ruff `target-version`, all three CI lanes, and the `Dockerfile` base image |
+| `make` | any | every repo-native command | `Makefile` |
+| Docker | any current release | the prod-shaped stack, `make docker-build`, `make test-postgres` | `docker-compose.yml`, `Dockerfile` |
+
+`>=3.12` permits newer interpreters, but every gate — CI, type checking, lint target, and the
+runtime image — runs 3.12, so 3.12 is what reproduces the gates locally.
+
+Two tools are deliberately *not* prerequisites: `uv` is a dev dependency installed by
+`make install`, and `gh` is needed only for the main-gate coverage audit and the live
+branch-protection comparison, never for `make check`.
+
+From a fresh checkout, create and activate a virtual environment first — `make install` installs
+into whichever interpreter `python` resolves to, and installing into a system Python fails outright
+on distributions that follow PEP 668:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
+```
+
+Then, from the repository root:
+
+```bash
 make install
 make check
 uvicorn app.main:app --reload --port 8140
 ```
+
+Dependencies install from `requirements-dev.lock.txt` under `--require-hashes`, so the resulting
+environment is identical on any machine.
 
 Expected result: `make check` finishes green (lint, typecheck, fast tests), and
 `http://localhost:8140/docs` serves the interactive API documentation. For the prod-shaped local
