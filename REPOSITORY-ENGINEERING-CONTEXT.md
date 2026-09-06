@@ -177,7 +177,12 @@ the fail-closed fence lane (`make test-postgres`, #344), racing two independent
 database sessions per scenario and mirroring a SQLite counterpart so backend
 drift stays visible. The retry path is certified rather than assumed: one
 scenario forces a REPEATABLE READ conflict and asserts the observed SQLSTATE
-40001 before convergence, and fails if retry handling is removed.
+40001 before convergence, and fails if retry handling is removed. The delivery
+controls that admit those merges are themselves declared and compared:
+`quality/branch_protection_policy.v1.json` records main's governed posture
+field by field, its offline shape runs in both blocking lanes, and the daily
+audit compares it against live protection (scheduled-only and PAT-gated while
+one declared context is still pending an operator write — issue #358).
 
 **Current limitations.** Capability requirements exist for latency (one governed
 end-to-end budget), structured output, and tool calling (catalogue-evidence

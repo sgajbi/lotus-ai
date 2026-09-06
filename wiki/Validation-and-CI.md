@@ -20,10 +20,10 @@ local run has proven. **No workflow invokes `make check` or `make ci`.** The lan
 targets, measured across `.github/workflows/*.yml` on `main`:
 
 ```
-async-job-gate   docker-build   eval-manifest-gate   eval-run-gate   install
-lint             migration-smoke   openapi-gate      runtime-mode-smoke
-security-audit   test-postgres  test-unit           typecheck
-verify-dependencies
+async-job-gate   branch-protection-policy-gate     docker-build
+eval-manifest-gate   eval-run-gate   install   lint   migration-smoke
+openapi-gate   runtime-mode-smoke   security-audit   test-postgres
+test-unit   typecheck   verify-dependencies
 ```
 
 Two consequences to keep in mind:
@@ -44,6 +44,7 @@ relying on the lanes to repeat it.
 - `make rfc0002-idea-proof-gate` - RFC-0002 Idea explanation local-dev proof gate
 - `make runtime-mode-smoke` - targeted startup and runtime-mode smoke
 - `make test-postgres` - CAS fence proofs on real PostgreSQL (see below)
+- `make branch-protection-policy-gate` - branch-protection policy shape (see below)
 - `make migration-apply` - apply Alembic migrations
 - `make docker-build` - Docker build validation
 
@@ -63,9 +64,10 @@ relying on the lanes to repeat it.
 5. evaluation run artifact validation,
 6. async job artifact validation,
 7. RFC-0002 Idea explanation local-dev proof validation,
-8. migration smoke,
-9. runtime-mode smoke,
-10. unit-test execution.
+8. branch-protection policy document shape,
+9. migration smoke,
+10. runtime-mode smoke,
+11. unit-test execution.
 
 The RFC-0002 proof gate executes `idea_explanation.pack@v1` through the governed HTTP boundary,
 accepts the review-gated run, validates source-safe consumer/source-event evidence, and proves that
@@ -120,6 +122,41 @@ Three gates deserve special attention because they are easy to misread:
 
 These keep the evidence layer truthful. They are part of the product contract for `lotus-ai`, not
 just developer convenience.
+
+## Branch Protection Policy Gate
+
+Live branch protection is configuration that nothing exercises: if `enforce_admins`, the required
+contexts, or conversation resolution were silently weakened, every merge would still look normal.
+`quality/branch_protection_policy.v1.json` declares main's governed posture field by field, and
+`scripts/check_branch_protection_policy.py` compares live protection against it, failing in **both**
+drift directions — when protection weakens, and when an exception's text is removed without the
+configuration strengthening. Both the checker and its unit tests are **verbatim lifts** of the
+platform reference (`lotus-gateway`), kept byte-identical so a canonical fix propagates by
+re-lifting; the policy table is the only repository-specific input. `mypy.ini` carries a narrow,
+named exemption for exactly those two files for that reason.
+
+`make branch-protection-policy-gate` runs the **offline shape check** and is part of `make check`
+and both blocking merge lanes, so the table cannot rot. The **live comparison** runs in the daily
+`Main Gate Coverage Audit`, invoked bare — piping it through `tee` would report `tee`'s exit status
+and let the checker raise beneath a green check.
+
+Two honest limits apply today, both tracked in issue #358:
+
+1. **The live comparison is scheduled, not blocking.** The pattern requires a blocking pre-merge home
+   because a scheduled-only run cannot stop a merge. This adoption begins from *known drift*, which
+   the pattern's drift-first transition rule permits: a blocking live step today would deadlock every
+   PR on an operator action that has not happened. The blocking step is a committed follow-up for
+   when the drift clears.
+2. **It authenticates with a PAT that does not exist yet.** `github.token` cannot carry
+   `administration: read`. Until an operator provisions `LOTUS_AUTOMERGE_TOKEN`, the step fails
+   closed on authentication — deliberately, because a silent pass without the token is the exact
+   gate-liveness defect this control exists to prevent.
+
+The declared posture is the **target**, so the table currently reports one real divergence:
+`PR Merge Gate / PostgreSQL Fence Proof` is declared required but is not yet in live protection.
+That is recorded as a documented exception with its compensating control (Coverage Gate is
+live-required and fails explicitly when the fence fails) and a `retires_when` naming the operator
+write. The gap now reports itself daily instead of living in a merged PR body.
 
 ## PostgreSQL Fence Proof
 

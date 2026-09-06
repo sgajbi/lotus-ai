@@ -86,6 +86,8 @@ jobs:
         run: make eval-run-gate
       - name: Async Job Gate
         run: make async-job-gate
+      - name: Branch Protection Policy Gate (offline shape)
+        run: make branch-protection-policy-gate
       - name: Migration Smoke
         env:
           LOTUS_AI_DATABASE_URL: "sqlite:///:memory:"
