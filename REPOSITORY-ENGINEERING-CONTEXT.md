@@ -171,10 +171,13 @@ instant resume rotates — release and resume race on one fence, one winner —
 with the release evidence durable and the re-approved effect converging under
 the idempotent-callback contract. Minimisation caps the audit `result_preview` at persistence and ages
 passing evaluation-case content at a declared shorter horizon. Every one of
-those fences — plus hard-budget reserve admission, reconcile-releases-once and
-settle-versus-hold — is certified on real PostgreSQL by the fail-closed fence
-lane (`make test-postgres`, #344), racing two independent database sessions per
-scenario and mirroring a SQLite counterpart so backend drift stays visible.
+those fences — plus hard-budget reserve admission, reconcile-releases-once,
+settle-versus-hold and release-versus-hold — is certified on real PostgreSQL by
+the fail-closed fence lane (`make test-postgres`, #344), racing two independent
+database sessions per scenario and mirroring a SQLite counterpart so backend
+drift stays visible. The retry path is certified rather than assumed: one
+scenario forces a REPEATABLE READ conflict and asserts the observed SQLSTATE
+40001 before convergence, and fails if retry handling is removed.
 
 **Current limitations.** Capability requirements exist for latency (one governed
 end-to-end budget), structured output, and tool calling (catalogue-evidence

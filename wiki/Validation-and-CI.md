@@ -126,22 +126,43 @@ just developer convenience.
 `make test-postgres` runs `tests/postgres` against a real PostgreSQL, certifying the compare-and-set
 fences behind governed claims and hard-budget accounting on the engine operators actually deploy:
 the claim fence, the claim-instant rotation fence, release-versus-resume, reserve admission of the
-last headroom, reconcile-releases-once, and settle-versus-hold. Every scenario races two independent
-repository sessions (separate engines and pools, asserted distinct backends) through a barrier, and
-mirrors a SQLite counterpart in `tests/unit` so backend drift stays visible.
+last headroom, reconcile-releases-once, settle-versus-hold for evidenced `ACTUAL_USAGE`, and
+release-versus-hold for a proven non-billable attempt (the two resolve a reservation in opposite
+budget directions, so both belong in the proof). Every scenario races two independent repository
+sessions (separate engines and pools, asserted distinct backends), and mirrors a SQLite counterpart
+in `tests/unit` so backend drift stays visible.
 
-The lane is a required job in both `pr-merge-gate` and `main-releasability`, backed by a
-`postgres:16-alpine` service container, and `coverage-gate` depends on it - a red fence blocks merge
-like any other gate. It is **fail-closed**: with `LOTUS_AI_POSTGRES_TEST_REQUIRED` set, a missing or
-unreachable database fails the lane instead of skipping it, because a gate that silently skips is a
-dead gate that reads as a pass. Locally, set `LOTUS_AI_POSTGRES_TEST_URL` to a disposable database
-(for example `postgresql+psycopg://lotus_ai:lotus_ai@localhost:5433/lotus_ai`); without it the lane
-skips with an explicit reason.
+The lane runs in both `pr-merge-gate` and `main-releasability`, backed by a `postgres:16-alpine`
+service container. **A red fence produces a FAILED required check, not a skipped one:**
+`coverage-gate` (a required context) runs with `if: always()` and asserts every upstream job
+succeeded, so a fence failure fails that gate explicitly rather than leaving it skipped. A skipped
+required check still blocks the merge button, but it reports as absent rather than as a refusal -
+"not applicable" instead of "this gate said no". The same guard covers the unit/integration/e2e
+suites and the runtime-mode smoke.
+
+The lane is **fail-closed**, and all three postures are verified rather than assumed: with
+`LOTUS_AI_POSTGRES_TEST_REQUIRED` set, a missing URL fails and an unreachable database fails; without
+it, a local run skips with an actionable reason. A non-PostgreSQL URL always fails, since pointing
+this lane at SQLite would make it tautological rather than merely absent. The posture decisions live
+in `tests/support/postgres_lane.py` and are pinned in `tests/unit/test_postgres_lane_gating.py`, so
+the failure modes are provable in the fast lane without a database. Locally, set
+`LOTUS_AI_POSTGRES_TEST_URL` to a disposable database (for example
+`postgresql+psycopg://lotus_ai:lotus_ai@localhost:5433/lotus_ai`).
 
 Isolation baseline is READ COMMITTED (asserted, not assumed): single-statement CAS needs no elevated
 isolation, since a blocked guarded `UPDATE` re-evaluates its `WHERE` against the committed winner and
-matches zero rows. One scenario deliberately raises isolation to REPEATABLE READ to exercise the
-loser's serialization failure and the repository's retry-and-converge path.
+matches zero rows.
+
+**Retry certification is observed, not inferred.** One scenario raises isolation to REPEATABLE READ
+to prove the repository's retry path. A barrier alone would not establish this: under REPEATABLE READ
+the snapshot opens at the transaction's first statement, so two barrier-synchronised calls can still
+run sequentially and produce the same one-winner outcome as a real conflict. The test therefore
+forces the ordering - the loser's transaction opens its snapshot with a priming read, the winner
+commits its transition, and only then does the loser's guarded `UPDATE` run - and asserts that
+PostgreSQL raised **SQLSTATE 40001** (`serialization_failure`), captured at the engine's error
+boundary, before the repository's retry opened a fresh snapshot and converged to an honest `False`.
+Removing the retry handling makes the `SerializationFailure` escape and the test fail, which is the
+property that makes it certification rather than assumption.
 
 This lane found a real defect on its first run: scaled `ROUND` is `NUMERIC`-only on PostgreSQL, so
 every guarded budget statement raised `round(double precision, integer) does not exist` there while
