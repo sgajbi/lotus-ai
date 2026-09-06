@@ -29,9 +29,18 @@ From a fresh checkout, create and activate a virtual environment first — `make
 into whichever interpreter `python` resolves to, and installing into a system Python fails outright
 on distributions that follow PEP 668:
 
+Linux and macOS:
+
 ```bash
-python3.12 -m venv .venv          # Windows: py -3.12 -m venv .venv
-source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
+python3.12 -m venv .venv
+source .venv/bin/activate
+```
+
+Windows PowerShell:
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
 Then install dependencies from the repository root:
