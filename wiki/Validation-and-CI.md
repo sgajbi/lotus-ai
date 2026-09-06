@@ -131,16 +131,28 @@ contexts, or conversation resolution were silently weakened, every merge would s
 `scripts/check_branch_protection_policy.py` compares live protection against it, failing in **both**
 drift directions — when protection weakens, and when an exception's text is removed without the
 configuration strengthening. Both the checker and its unit tests are **verbatim lifts** of the
-platform reference (`lotus-gateway`), kept byte-identical so a canonical fix propagates by
-re-lifting; the policy table is the only repository-specific input. `mypy.ini` carries a narrow,
-named exemption for exactly those two files for that reason.
+platform reference (`lotus-gateway`), kept byte-identical — git-object identical to that
+repository's `main` — so a canonical fix propagates by re-lifting rather than being re-derived
+here; the policy table is the only repository-specific input. The checker is typed strict-clean
+upstream, so this repository needs **no mypy exemption** for it: the lift is verbatim with no
+local edits at all.
 
 `make branch-protection-policy-gate` runs the **offline shape check** and is part of `make check`
-and both blocking merge lanes, so the table cannot rot. The **live comparison** runs in the daily
-`Main Gate Coverage Audit`, invoked bare — piping it through `tee` would report `tee`'s exit status
-and let the checker raise beneath a green check.
+and both blocking merge lanes, so the table cannot rot. Offline validation checks the *document*,
+never live protection — a green offline gate is not evidence that live protection matches the
+declared posture, and must never be read as certification of it. The **live comparison** runs in
+the daily `Main Gate Coverage Audit`, invoked bare — piping it through `tee` would report `tee`'s
+exit status and let the checker raise beneath a green check.
 
-Two honest limits apply today, both tracked in issue #358:
+**Carried upstream limitation (`lotus-gateway#740`).** The checker compares required-context
+*names* but not their source-app bindings (`required_status_checks.checks[].app_id`). A required
+check whose binding is removed or replaced keeps its name, so the comparison reports a clean match
+while a different GitHub App — or a legacy commit status — could satisfy protection in its place.
+This is stated rather than fixed here on purpose: implementing a local version would fork this
+repository's copy from the canonical control, and a forked copy stops receiving canonical fixes
+silently. The fix is consumed from upstream when it lands.
+
+Two further limits apply today, both tracked in issue #358:
 
 1. **The live comparison is scheduled, not blocking.** The pattern requires a blocking pre-merge home
    because a scheduled-only run cannot stop a merge. This adoption begins from *known drift*, which
@@ -152,11 +164,17 @@ Two honest limits apply today, both tracked in issue #358:
    closed on authentication — deliberately, because a silent pass without the token is the exact
    gate-liveness defect this control exists to prevent.
 
+Both limits are **operator-dependent**: neither the branch-protection write nor the credential can
+be made by this repository's automation, and neither is claimed as done.
+
 The declared posture is the **target**, so the table currently reports one real divergence:
 `PR Merge Gate / PostgreSQL Fence Proof` is declared required but is not yet in live protection.
-That is recorded as a documented exception with its compensating control (Coverage Gate is
-live-required and fails explicitly when the fence fails) and a `retires_when` naming the operator
-write. The gap now reports itself daily instead of living in a merged PR body.
+That is recorded as a documented exception with its compensating control — `PR Merge Gate /
+Coverage Gate (Combined)` **is** live-required and runs with `if: always()`, asserting every
+upstream job succeeded, so a fence failure produces a failed required check naming
+`postgres-fence-proof(failure)` — and a `retires_when` naming the operator write. Fence
+enforcement therefore holds today through that required gate; the gap now reports itself daily
+instead of living in a merged PR body.
 
 ## PostgreSQL Fence Proof
 
