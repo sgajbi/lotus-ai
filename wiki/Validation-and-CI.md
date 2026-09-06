@@ -183,9 +183,16 @@ fences behind governed claims and hard-budget accounting on the engine operators
 the claim fence, the claim-instant rotation fence, release-versus-resume, reserve admission of the
 last headroom, reconcile-releases-once, settle-versus-hold for evidenced `ACTUAL_USAGE`, and
 release-versus-hold for a proven non-billable attempt (the two resolve a reservation in opposite
-budget directions, so both belong in the proof). Every scenario races two independent repository
-sessions (separate engines and pools, asserted distinct backends), and mirrors a SQLite counterpart
-in `tests/unit` so backend drift stays visible.
+budget directions, so both belong in the proof). Each of those seven races two independent
+repository sessions — separate engines and pools, asserted to be distinct backends — through a
+barrier.
+
+The mirroring is of *semantics*, not race-for-race: the claim fence and the reconciliation race
+have concurrent SQLite counterparts (`test_governed_execution_ownership.py`,
+`test_budget_exposure.py`), while settle-versus-hold and release-versus-hold are raced only here,
+their SQLite siblings covering the same transitions sequentially. So a divergence in fence
+*behaviour* is visible across backends, but concurrency for those two is proven on PostgreSQL
+alone.
 
 The lane runs in both `pr-merge-gate` and `main-releasability`, backed by a `postgres:16-alpine`
 service container. **A red fence produces a FAILED required check, not a skipped one:**

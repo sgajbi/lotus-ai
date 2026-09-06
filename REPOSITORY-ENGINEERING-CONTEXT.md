@@ -170,12 +170,14 @@ holder release the claim back to PENDING by compare-and-set on the same claim
 instant resume rotates — release and resume race on one fence, one winner —
 with the release evidence durable and the re-approved effect converging under
 the idempotent-callback contract. Minimisation caps the audit `result_preview` at persistence and ages
-passing evaluation-case content at a declared shorter horizon. Every one of
-those fences — plus hard-budget reserve admission, reconcile-releases-once,
-settle-versus-hold and release-versus-hold — is certified on real PostgreSQL by
-the fail-closed fence lane (`make test-postgres`, #344), racing two independent
-database sessions per scenario and mirroring a SQLite counterpart so backend
-drift stays visible. The retry path is certified rather than assumed: one
+passing evaluation-case content at a declared shorter horizon. Seven of those
+transition fences — the claim fence, claim-instant rotation, release-versus-resume,
+hard-budget reserve admission, reconcile-releases-once, settle-versus-hold and
+release-versus-hold — are certified on real PostgreSQL by the fail-closed fence
+lane (`make test-postgres`, #344), racing two independent database sessions per
+scenario and mirroring a SQLite counterpart so backend drift stays visible. The
+erasure behaviours (signing readiness, per-family recovery, receipt replay) are
+proven on SQLite in the unit and integration lanes and are NOT in that lane. The retry path is certified rather than assumed: one
 scenario forces a REPEATABLE READ conflict and asserts the observed SQLSTATE
 40001 before convergence, and fails if retry handling is removed. The delivery
 controls that admit those merges are themselves declared and compared:
@@ -274,6 +276,10 @@ Use these commands as the primary local contract:
    `make docker-build`
 6. RFC-0002 Idea explanation proof gate
    `make rfc0002-idea-proof-gate`
+7. PostgreSQL CAS fence proofs (needs `LOTUS_AI_POSTGRES_TEST_URL`)
+   `make test-postgres`
+8. branch-protection policy document shape
+   `make branch-protection-policy-gate`
 
 ## Validation And CI Expectations
 
@@ -293,7 +299,91 @@ Important validation expectations:
 2. RFC-0002 Idea explanation local-dev proof is part of `make check` and `make ci`,
 3. security and dependency health are part of the real CI contract,
 4. coverage and Docker build are part of the merge gate,
-5. AI posture changes should remain evidence-backed and bounded rather than speculative.
+5. AI posture changes should remain evidence-backed and bounded rather than speculative,
+6. `make test-postgres` proves the governed-claim and hard-budget CAS fences on a real
+   PostgreSQL and is fail-closed in CI (a missing or unreachable database fails the lane
+   rather than skipping it); locally it skips unless `LOTUS_AI_POSTGRES_TEST_URL` is set,
+7. `coverage-gate` runs with `if: always()` and asserts every upstream job succeeded, so an
+   upstream failure is a FAILED required check naming the job rather than a skipped one.
+
+`make branch-protection-policy-gate` validates the policy DOCUMENT only. A green offline
+run is never evidence that live protection matches the declared posture; the live comparison
+runs in the daily audit and needs a credential that no Lotus repository currently holds
+(issue #358). The declared posture is the target, so one divergence is reported by design
+until an operator makes the branch-protection write.
+
+## Traps That Have Cost Real Time Here
+
+Each of these was a live defect or a wasted cycle in this repository. They are
+recorded because a green result had another explanation nobody tested for, and
+that shape recurs.
+
+**SQLite-green SQL is not PostgreSQL-correct.** The unit and integration lanes
+run SQLite; production runs PostgreSQL, and SQLite is permissive where
+PostgreSQL is strict. Scaled `ROUND` is `NUMERIC`-only on PostgreSQL, so every
+guarded budget statement raised `round(double precision, integer) does not
+exist` there while passing green here — the entire hard-budget guarantee was
+unreachable in production until issue #344. PostgreSQL also enforces
+`VARCHAR(n)` where SQLite ignores it, which is why alembic's default 32-char
+`version_num` column truncates real revision ids on PostgreSQL only (the boot
+order in `scripts/docker/start-api.sh` widens it before upgrading; any harness
+applying migrations must do the same). When writing backend-generic SQL, pin
+the compiled shape for the PostgreSQL dialect in the fast lane — see
+`test_budget_rounding_compiles_for_postgres_not_only_sqlite`, which needs no
+database — and prove behaviour in `tests/postgres`.
+
+**A regression pin must fail once per regression it claims to catch.** After
+fixing a defect, revert the fix in a scratch copy, run the new test, confirm it
+FAILS, then restore. Do this per claim, not once: the rounding pin above claims
+two (the raw `round` and a re-introduced precision bound) and both were
+verified to fail independently. A pin that cannot fail is a dead gate wearing a
+green check.
+
+**Synchronising on call entry is not synchronising on the database.** A barrier
+around two repository calls proves both entered together, not that their
+transactions overlapped; under REPEATABLE READ the snapshot opens at the first
+statement, so barrier-synchronised calls can execute sequentially and produce
+the same one-winner outcome as a real conflict. `tests/postgres` therefore
+forces the ordering with a priming read and asserts the observed SQLSTATE
+`40001` rather than inferring it. An earlier version of that test passed with
+the repository's retry handling deleted entirely.
+
+**Per-commit gating and workflow edits.** `merged-pr-main-releasability.yml`
+tags every merged commit and dispatches the gate against that tag, so a
+multi-commit PR gates each commit. Touch `.github/workflows/**` in the FIRST
+commit of a PR and not again, or keep the PR single-commit; a later commit
+changing workflow files risks the dispatch being refused for the revisions
+whose workflow tree differs from the default branch tip. PR #355 is the worked
+safe shape (workflows in the first commit only) and every commit on `main`
+carries exactly one gate run — verify with
+`gh run list --commit <full-sha> --workflow main-releasability.yml`, never
+`--branch main`.
+
+**Verbatim lifts are never edited on arrival.**
+`scripts/check_branch_protection_policy.py` and
+`tests/unit/test_branch_protection_policy.py` are copies of the platform
+canonical (`lotus-gateway`); only `quality/branch_protection_policy.v1.json` is
+repository-specific. Verify parity with
+`git rev-parse <ref>:<path>` on **committed** refs — a blob SHA hashes what git
+stored, so it needs no line-ending normalisation, while a working-tree or
+pre-commit hash proves nothing about what landed. Lift only from the canonical's
+MERGED state, never an open PR head. If a local config rejects the canonical,
+fix it centrally and re-lift (#359 took a narrow, named interim exemption; #361
+deleted it once the canonical was typed): an edit on arrival forks the copy and
+forks stop receiving canonical fixes silently.
+
+**Tooling.** Never write file content through a shell heredoc — backslash
+escapes are mangled into real control bytes; write patch scripts to the
+scratchpad and run them by path, then byte-scan before pushing. Never pipe a
+gate through `tee` or `tail`: the pipeline reports the last command's status and
+the gate can raise beneath a green check. And `gh issue close --comment` on an
+ALREADY-closed issue silently discards the comment — when a PR auto-closes an
+issue via `Closes #N`, post closure evidence with `gh issue comment` and verify
+it landed.
+
+**Before shipping a rule, name a case in hand that would falsify it and measure
+that case.** The claims above were each checked against this repository rather
+than carried over from a sibling.
 
 ## Standards And RFCs That Govern This Repository
 
