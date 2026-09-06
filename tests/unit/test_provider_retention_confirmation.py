@@ -355,3 +355,107 @@ def _discovery(
             )
         ],
     )
+
+
+def test_verification_selects_the_right_key_among_rotated_and_revoked_keys() -> None:
+    """Issue #115 residual: key rotation with several keys in discovery.
+
+    The verifier selects by (key_id, rotation_epoch) from a list, but every
+    other test supplies a discovery document containing exactly one key. That
+    leaves the selection itself unproven: an implementation that always took
+    keys[0], or matched on key_id while ignoring rotation_epoch, would pass
+    the whole existing suite.
+
+    Here discovery carries three entries - a revoked predecessor epoch, an
+    unrelated active key, and the active key that actually signed - so a
+    verifier that picks the wrong one fails.
+    """
+
+    envelope = _issue(BASE_RUN, _request())
+    signing_key_id = envelope.signature.key_id
+    signing_epoch = envelope.signature.rotation_epoch
+    public_key = (
+        base64.urlsafe_b64encode(PRIVATE_KEY.public_key().public_bytes_raw()).rstrip(b"=").decode()
+    )
+    other_public_key = (
+        base64.urlsafe_b64encode(Ed25519PrivateKey.generate().public_key().public_bytes_raw())
+        .rstrip(b"=")
+        .decode()
+    )
+
+    def _key(
+        *, key_id: str, rotation_epoch: int, status: str, material: str
+    ) -> WorkflowRunAttestationPublicKey:
+        return WorkflowRunAttestationPublicKey(
+            key_id=key_id,
+            algorithm="EdDSA",
+            curve="Ed25519",
+            public_key_base64url=material,
+            rotation_epoch=rotation_epoch,
+            status=status,
+            not_before_utc="2026-07-01T00:00:00Z",
+            not_after_utc="2026-10-01T00:00:00Z",
+        )
+
+    rotated = WorkflowRunAttestationKeyDiscoveryResponse(
+        schema_version="lotus-ai.workflow-run-attestation-keys.v1",
+        issuer="lotus-ai",
+        keys=[
+            # The revoked predecessor epoch of the SAME key id, listed first so
+            # a keys[0] shortcut would reject a valid confirmation.
+            _key(
+                key_id=signing_key_id,
+                rotation_epoch=signing_epoch - 1,
+                status="revoked",
+                material=other_public_key,
+            ),
+            # An unrelated active key that must not be used to verify.
+            _key(
+                key_id="workflow-attestation-unrelated",
+                rotation_epoch=signing_epoch,
+                status="active",
+                material=other_public_key,
+            ),
+            _key(
+                key_id=signing_key_id,
+                rotation_epoch=signing_epoch,
+                status="active",
+                material=public_key,
+            ),
+        ],
+    )
+
+    # The correct active key is selected across rotation, so this verifies.
+    verify_provider_retention_confirmation(
+        envelope,
+        key_discovery=rotated,
+        expected_tenant_id="tenant-sg-001",
+        at_utc=NOW + timedelta(minutes=1),
+    )
+
+    # Rotation epoch is part of the identity: an envelope claiming the retired
+    # epoch resolves to the revoked key and is refused, rather than falling
+    # back to the active key with the same id.
+    retired = envelope.model_copy(
+        update={
+            "signature": envelope.signature.model_copy(update={"rotation_epoch": signing_epoch - 1})
+        }
+    )
+    with pytest.raises(ValueError, match="revoked"):
+        verify_provider_retention_confirmation(
+            retired,
+            key_discovery=rotated,
+            expected_tenant_id="tenant-sg-001",
+            at_utc=NOW + timedelta(minutes=1),
+        )
+
+    # Two entries sharing the signer's exact identity are ambiguous, and
+    # ambiguity must fail closed rather than resolve to whichever came first.
+    ambiguous = rotated.model_copy(update={"keys": list(rotated.keys) + [rotated.keys[-1]]})
+    with pytest.raises(ValueError, match="unknown or ambiguous"):
+        verify_provider_retention_confirmation(
+            envelope,
+            key_discovery=ambiguous,
+            expected_tenant_id="tenant-sg-001",
+            at_utc=NOW + timedelta(minutes=1),
+        )
