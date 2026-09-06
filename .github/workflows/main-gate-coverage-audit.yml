@@ -32,3 +32,20 @@ jobs:
           python scripts/audit_main_gate_coverage.py \
             --limit "${{ github.event.inputs.limit || '50' }}" \
             --fail-on-gap
+      - name: Enforce Branch Protection Policy
+        # Runs even when the audit above failed: two independent delivery
+        # controls, and a skipped check reads as absent rather than as a
+        # refusal.
+        if: ${{ !cancelled() }}
+        env:
+          # github.token cannot carry administration:read, which the branch
+          # protection endpoint requires; a repository PAT can. A missing or
+          # unauthorized token FAILS this step rather than passing it
+          # silently - a silent pass without the token is exactly the
+          # gate-liveness defect this control exists to prevent. No Lotus
+          # repository holds an Actions secret as of 2026-09-06, so this
+          # step fails closed until an operator provisions one (issue #358).
+          GH_TOKEN: ${{ secrets.LOTUS_AUTOMERGE_TOKEN }}
+        # Invoked BARE: piping through tee would report tee's exit status and
+        # leave the checker able to raise beneath a green check.
+        run: python scripts/check_branch_protection_policy.py

@@ -1,4 +1,4 @@
-.PHONY: install dependency-lock-replay-check lint module-budget-guard monetary-float-guard runtime-purity-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke migration-apply data-lifecycle-run runtime-mode-smoke test test-unit test-integration test-e2e test-postgres test-coverage coverage-gate security-audit check ci docker-build clean
+.PHONY: install dependency-lock-replay-check lint module-budget-guard monetary-float-guard runtime-purity-guard verify-dependencies typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke migration-apply data-lifecycle-run branch-protection-policy-gate runtime-mode-smoke test test-unit test-integration test-e2e test-postgres test-coverage coverage-gate security-audit check ci docker-build clean
 
 install:
 	python -m pip install --upgrade pip
@@ -37,6 +37,12 @@ openapi-gate:
 
 eval-manifest-gate:
 	python scripts/validate_eval_fixture_manifest.py
+
+# Offline shape only - the live comparison needs administration:read and runs
+# in the scheduled audit (issue #358). This keeps the policy table itself from
+# rotting in the blocking lane.
+branch-protection-policy-gate:
+	python scripts/check_branch_protection_policy.py --offline
 
 eval-run-gate:
 	python scripts/validate_eval_run_artifacts.py
@@ -87,7 +93,7 @@ test-coverage:
 security-audit:
 	python scripts/dependency_health_check.py
 
-check: lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke runtime-mode-smoke test
+check: lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate branch-protection-policy-gate migration-smoke runtime-mode-smoke test
 
 ci: verify-dependencies dependency-lock-replay-check lint typecheck openapi-gate eval-manifest-gate eval-run-gate async-job-gate rfc0002-idea-proof-gate migration-smoke runtime-mode-smoke security-audit test-coverage docker-build
 
