@@ -326,3 +326,43 @@ def _assert_rejects(payload: dict[str, object], detail: str) -> None:
         validate_advisory_copilot_payload(payload)
     assert exc_info.value.status_code == 422
     assert detail in str(exc_info.value.detail)
+
+
+def test_advisory_copilot_executed_identity_cannot_drift_from_the_approved_one() -> None:
+    """Issue #126. Advise fail-closes when the executed model identity
+    disagrees with the approved one, and the original failure was exactly
+    that: `MODEL_IDENTITY_SOURCE_DISAGREEMENT` with a `COPILOT_MODEL_IDENTITY_
+    MISMATCH` fallback, which left the run at `UNAVAILABLE`.
+
+    The producer resolves the executed identity FROM the approved identity, so
+    the response and the structured result agree by construction. This pins
+    that construction: a change that sourced the provider id from anywhere
+    else - the descriptor default, a config value, a hardcoded string - would
+    reintroduce the disagreement Advise is right to reject.
+    """
+
+    from app.providers.stub_text_provider import _advisory_copilot_model_risk_identity
+
+    approved: dict[str, object] = {
+        "model_risk": {
+            "approved_provider_id": "lotus-ai",
+            "approved_model_version": "lotus-ai-governed-model.v1",
+        }
+    }
+    provider_id, model_version = _advisory_copilot_model_risk_identity(approved)
+    assert provider_id == "lotus-ai"
+    assert model_version == "lotus-ai-governed-model.v1"
+
+    # A different approved identity must be followed, not overridden by any
+    # local default - otherwise the executed identity is the producer's
+    # opinion rather than the approval.
+    other: dict[str, object] = {
+        "model_risk": {
+            "approved_provider_id": "lotus-ai-alternate",
+            "approved_model_version": "lotus-ai-governed-model.v2",
+        }
+    }
+    assert _advisory_copilot_model_risk_identity(other) == (
+        "lotus-ai-alternate",
+        "lotus-ai-governed-model.v2",
+    )
