@@ -7,7 +7,10 @@ from typing import cast
 import pytest
 from fastapi import HTTPException
 
+from app.contracts.providers import ProviderExecutionRequest
 from app.providers.advisory_copilot_stub import build_advisory_copilot_stub_result
+from app.providers.stub_text_provider import StubTextProvider
+from app.services.provider_execution_config import resolve_provider_execution_config
 from app.services.advisory_copilot_guardrails import validate_advisory_copilot_payload
 from tests.support.workflow_pack_fixtures import advisory_copilot_payload
 
@@ -328,17 +331,20 @@ def _assert_rejects(payload: dict[str, object], detail: str) -> None:
     assert detail in str(exc_info.value.detail)
 
 
-def test_advisory_copilot_executed_identity_cannot_drift_from_the_approved_one() -> None:
-    """Issue #126. Advise fail-closes when the executed model identity
-    disagrees with the approved one, and the original failure was exactly
-    that: `MODEL_IDENTITY_SOURCE_DISAGREEMENT` with a `COPILOT_MODEL_IDENTITY_
-    MISMATCH` fallback, which left the run at `UNAVAILABLE`.
+def test_advisory_copilot_identity_helper_follows_the_approved_identity() -> None:
+    """Issue #126, helper scope only.
 
-    The producer resolves the executed identity FROM the approved identity, so
-    the response and the structured result agree by construction. This pins
-    that construction: a change that sourced the provider id from anywhere
-    else - the descriptor default, a config value, a hardcoded string - would
-    reintroduce the disagreement Advise is right to reject.
+    This exercises `_advisory_copilot_model_risk_identity` directly. It proves
+    the helper reads the approved provider and model version out of the
+    structured output rather than substituting a local default, and nothing
+    more. It is NOT evidence that an executed response agrees with its audit
+    record, and it is not evidence about a real provider: the identity here is
+    supplied by the test and echoed back.
+
+    The response-level agreement is pinned by
+    test_advisory_copilot_response_identity_matches_the_record_it_carries, and
+    real-provider identity has to come from verified execution, which no stub
+    can supply.
     """
 
     from app.providers.stub_text_provider import _advisory_copilot_model_risk_identity
@@ -349,11 +355,12 @@ def test_advisory_copilot_executed_identity_cannot_drift_from_the_approved_one()
             "approved_model_version": "lotus-ai-governed-model.v1",
         }
     }
-    provider_id, model_version = _advisory_copilot_model_risk_identity(approved)
-    assert provider_id == "lotus-ai"
-    assert model_version == "lotus-ai-governed-model.v1"
+    assert _advisory_copilot_model_risk_identity(approved) == (
+        "lotus-ai",
+        "lotus-ai-governed-model.v1",
+    )
 
-    # A different approved identity must be followed, not overridden by any
+    # A different approved identity must be followed, not overridden by a
     # local default - otherwise the executed identity is the producer's
     # opinion rather than the approval.
     other: dict[str, object] = {
@@ -366,3 +373,161 @@ def test_advisory_copilot_executed_identity_cannot_drift_from_the_approved_one()
         "lotus-ai-alternate",
         "lotus-ai-governed-model.v2",
     )
+
+
+def test_advisory_copilot_response_identity_matches_the_record_it_carries() -> None:
+    """Issue #126, at the boundary the original failure occurred on.
+
+    Advise fail-closed with `MODEL_IDENTITY_SOURCE_DISAGREEMENT` and a
+    `COPILOT_MODEL_IDENTITY_MISMATCH` fallback because the executed identity on
+    the response disagreed with the approved identity in the structured record
+    accompanying it. That is a property of the response object, so this drives
+    the provider through its public `execute` entry point and compares the two
+    fields Advise compares, rather than asserting a helper's return value.
+
+    Scope, stated plainly: this proves the producer emits an internally
+    consistent response. It does not prove a real provider executed under that
+    identity - the adapter is a stub, `stubbed` is True, and an approved
+    identity echoed by a stub is not execution attestation. That evidence has
+    to come from verified live execution and is tracked outside this test.
+    """
+
+    request = ProviderExecutionRequest.model_validate(
+        {
+            "task_id": "explain.v1",
+            "caller_app": "lotus-advise",
+            "requested_by": "advisor.reviewer@lotus",
+            "tenant_id": "tenant-sg-001",
+            "prompt_version": "advisory-copilot-proposal-explanation.v1",
+            "system_instructions": "Explain bounded advisory posture only.",
+            "output_contract_notes": "Do not emit suitability approval.",
+            "output_label": "EXPLANATION_ONLY",
+            "safety_mode": "documented_only",
+            "redaction_posture": "MINIMIZATION_REQUIRED",
+            "context_summary": "Explain governed advisory copilot posture.",
+            "context_payload": _payload(),
+            "source_refs": [],
+            "timeout_ms": 4000,
+            "retry_limit": 0,
+            "max_output_tokens": 512,
+        }
+    )
+
+    response = StubTextProvider().execute(request, config=resolve_provider_execution_config())
+    model_risk = cast(dict[str, object], response.structured_output["model_risk"])
+
+    # The two fields Advise compares, taken from the same response.
+    assert response.provider_id == model_risk["approved_provider_id"]
+    assert response.model_version == model_risk["approved_model_version"]
+
+    # And it is the approval that decides, not a default that happens to
+    # match. The descriptor's own provider id is different, so a response
+    # falling back to it would still be internally consistent with nothing.
+    assert response.provider_id != StubTextProvider.descriptor.provider_id
+
+    # The stub is labelled as one. This is the fact that stops the assertion
+    # above being read as execution attestation.
+    assert response.stubbed is True
+
+
+def test_advisory_copilot_response_identity_follows_a_changed_approval() -> None:
+    """The agreement above must come from the approval, not from a constant.
+
+    Two values can agree because one is derived from the other, or because
+    both happen to be the same literal. Changing the approved identity and
+    requiring the response to move with it separates those, which a single
+    fixed-value assertion cannot.
+    """
+
+    payload = _payload()
+    _dict_at(payload, "model_risk_controls")["approved_provider_id"] = "lotus-ai-alternate"
+    _dict_at(payload, "model_risk_controls")["approved_model_version"] = (
+        "lotus-ai-governed-model.v9"
+    )
+
+    request = ProviderExecutionRequest.model_validate(
+        {
+            "task_id": "explain.v1",
+            "caller_app": "lotus-advise",
+            "requested_by": "advisor.reviewer@lotus",
+            "tenant_id": "tenant-sg-001",
+            "prompt_version": "advisory-copilot-proposal-explanation.v1",
+            "system_instructions": "Explain bounded advisory posture only.",
+            "output_contract_notes": "Do not emit suitability approval.",
+            "output_label": "EXPLANATION_ONLY",
+            "safety_mode": "documented_only",
+            "redaction_posture": "MINIMIZATION_REQUIRED",
+            "context_summary": "Explain governed advisory copilot posture.",
+            "context_payload": payload,
+            "source_refs": [],
+            "timeout_ms": 4000,
+            "retry_limit": 0,
+            "max_output_tokens": 512,
+        }
+    )
+
+    response = StubTextProvider().execute(request, config=resolve_provider_execution_config())
+    model_risk = cast(dict[str, object], response.structured_output["model_risk"])
+
+    assert model_risk["approved_provider_id"] == "lotus-ai-alternate"
+    assert response.provider_id == "lotus-ai-alternate"
+    assert response.model_version == "lotus-ai-governed-model.v9"
+
+
+def test_advisory_copilot_absent_approval_is_not_replaced_by_a_plausible_identity() -> None:
+    """Absence must surface as absence, so the mismatch is visible downstream.
+
+    The producer and the consumer split this refusal. lotus-ai never fabricates
+    an approved identity: with no approval present it falls back to the stub's
+    own descriptor id and a null model version. Advise then sees an executed
+    identity that does not match an approved one and fail-closes with
+    `MODEL_IDENTITY_SOURCE_DISAGREEMENT`.
+
+    The dangerous alternative is the producer filling the gap with something
+    that looks approved - the last approved value, a configured default, the
+    descriptor id presented as though it were the approval. That would make the
+    two fields agree and remove the consumer's only signal, converting a
+    fail-closed refusal into a silent pass. This pins that the gap stays a gap.
+    """
+
+    payload = _payload()
+    controls = _dict_at(payload, "model_risk_controls")
+    controls["approved_provider_id"] = ""
+    controls["approved_model_version"] = ""
+
+    request = ProviderExecutionRequest.model_validate(
+        {
+            "task_id": "explain.v1",
+            "caller_app": "lotus-advise",
+            "requested_by": "advisor.reviewer@lotus",
+            "tenant_id": "tenant-sg-001",
+            "prompt_version": "advisory-copilot-proposal-explanation.v1",
+            "system_instructions": "Explain bounded advisory posture only.",
+            "output_contract_notes": "Do not emit suitability approval.",
+            "output_label": "EXPLANATION_ONLY",
+            "safety_mode": "documented_only",
+            "redaction_posture": "MINIMIZATION_REQUIRED",
+            "context_summary": "Explain governed advisory copilot posture.",
+            "context_payload": payload,
+            "source_refs": [],
+            "timeout_ms": 4000,
+            "retry_limit": 0,
+            "max_output_tokens": 512,
+        }
+    )
+
+    response = StubTextProvider().execute(request, config=resolve_provider_execution_config())
+    model_risk = cast(dict[str, object], response.structured_output["model_risk"])
+
+    # No approval was stated, so none is claimed.
+    assert not model_risk["approved_provider_id"]
+    assert not model_risk["approved_model_version"]
+
+    # The executed identity falls back to the adapter's own, and the model
+    # version stays null rather than borrowing a previously approved one.
+    assert response.provider_id == StubTextProvider.descriptor.provider_id
+    assert response.model_version is None
+
+    # The two disagree, which is the whole point: a consumer comparing them
+    # has something to refuse on.
+    assert response.provider_id != model_risk["approved_provider_id"]
