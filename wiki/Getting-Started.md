@@ -10,11 +10,33 @@ There are two useful local postures for `lotus-ai`:
 Use the first when you are changing code quickly. Use the second when you need to exercise runtime
 and durability behavior more truthfully.
 
+## Prerequisites
+
+| Tool | Version | Needed for | Where that version is pinned |
+| --- | --- | --- | --- |
+| Python | 3.12 | everything | `pyproject.toml` (`requires-python = ">=3.12"`), `mypy.ini`, ruff `target-version`, all three CI lanes, and the `Dockerfile` base image |
+| `make` | any | every repo-native command | `Makefile` |
+| Docker | any current release | the prod-shaped stack, `make docker-build`, `make test-postgres` | `docker-compose.yml`, `Dockerfile` |
+
+`>=3.12` permits newer interpreters, but every gate runs 3.12, so 3.12 is what reproduces the
+gates locally. `uv` and `gh` are not prerequisites: `uv` is a dev dependency installed by
+`make install`, and `gh` is needed only for the main-gate coverage audit and the live
+branch-protection comparison.
+
 ## Fast Local Loop
 
-Install dependencies:
+From a fresh checkout, create and activate a virtual environment first — `make install` installs
+into whichever interpreter `python` resolves to, and installing into a system Python fails outright
+on distributions that follow PEP 668:
 
-```powershell
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
+```
+
+Then install dependencies from the repository root:
+
+```bash
 make install
 ```
 
