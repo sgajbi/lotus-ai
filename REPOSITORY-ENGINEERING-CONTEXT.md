@@ -26,6 +26,43 @@ This repository owns:
 
 It does not own portfolio, performance, risk, advisory, or management domain truth.
 
+## Current-State Summary
+
+What is true right now, as distinct from what the architecture is. Keep this
+section short and dated; when an item resolves, delete it rather than growing a
+changelog.
+
+**As of 2026-09-06:**
+
+1. **Proven and merged.** The governed-execution ownership arc is complete
+   end to end — claim, resume fence, and governed claim release on one
+   compare-and-set (#327, #340) — with seven transition fences certified on
+   real PostgreSQL and the retry path certified by an observed SQLSTATE
+   `40001` (#344). Accepted-output reads resolve through a single verified
+   authority (#336), and capability evidence is guarded by a manifest content
+   digest as well as its version label (#351).
+2. **Enforced, with a stated gap.** `quality/branch_protection_policy.v1.json`
+   declares main's target posture and is compared daily against live
+   protection. One divergence is reported by design: the PostgreSQL fence job
+   is declared required but not yet in live protection (#358). Enforcement
+   currently runs through the live-required Coverage Gate, which fails naming
+   the upstream job.
+3. **Blocked on operators, not on engineering.** #358 needs a branch-protection
+   write and a `LOTUS_AUTOMERGE_TOKEN` with `administration: read`; no Lotus
+   repository holds an Actions secret.
+4. **Blocked on external evidence.** The first declaring evaluation fixture
+   family (#332) needs an expert-reviewed corpus and measured advisor
+   comprehension — a technical fixture pass cannot supply either. #115
+   (provider-native retention/deletion confirmation), #122 (live Idea
+   certification), and #126 remain externally owned.
+5. **Carried upstream limitation.** The branch-protection checker compares
+   required-context names but not their source-app bindings
+   (`lotus-gateway#740`). Stated, deliberately not fixed locally: the checker
+   is a verbatim lift, and a local fix would fork it.
+
+Nothing above is a live-provider or attested-production claim. Stub and
+local-only journeys are never certification.
+
 ## Current Architecture
 
 What `lotus-ai` is today, as one control plane rather than a set of subsystems.
@@ -195,7 +232,7 @@ await concrete enforcement stories. Dual control binds two distinct verified
 service credentials, not verified human principals — the platform identity
 dependency recorded on #157's closure. Twenty-one activation/evidence readiness
 modules still predate the readiness catalog (the runbook family converted in
-#154; consolidation is #284). Provider-side retention execution and external
+issue #154; consolidation is #284). Provider-side retention execution and external
 certification evidence remain externally blocked (#115, #122, #126). Forward
 priorities live on the North Star execution board (#246).
 
