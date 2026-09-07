@@ -156,30 +156,50 @@ def _record_worker_liveness_for_cycle(*, worker_id: str) -> bool:
     and the health command reports unhealthy. Silence here buys time, never a
     healthy verdict.
 
-    Returns whether the queue backend was reachable, which the loop uses to
-    pace its retries. A recording failure returns False - unknown is treated as
-    unavailable, so the loop backs off rather than hammering a backend it has
-    no evidence about.
+    Returns whether the QUEUE BACKEND was reachable, which the loop uses to
+    pace its retries.
+
+    That is deliberately not "did this function succeed". An earlier version
+    returned False on any failure here, so a marker write that could not reach
+    its path made an idle worker with a perfectly healthy queue back off - two
+    unrelated faults collapsed into one signal, and a disk problem would have
+    silently slowed polling. A failed marker write says nothing about the
+    backend, so only queue evidence decides the pacing.
     """
+
+    queue_available = True
+    try:
+        snapshot = get_async_delivery_queue().snapshot()
+        queue_available = bool(snapshot.backend_available)
+    except Exception:
+        # Failing to obtain the snapshot IS queue evidence: the worker could
+        # not ask the backend anything.
+        logging.getLogger(__name__).warning(
+            "async_worker_queue_snapshot_failed",
+            extra={"worker_id": worker_id},
+            exc_info=True,
+        )
+        return False
 
     try:
         posture = get_async_runtime_posture()
-        snapshot = get_async_delivery_queue().snapshot()
         record_worker_liveness(
             worker_id=worker_id,
-            queue_backend_available=snapshot.backend_available,
+            queue_backend_available=queue_available,
             queue_backend_id=snapshot.backend_id,
             cutover_state=posture.cutover_state.value,
             drain_enabled=settings.async_worker_drain_enabled,
         )
     except Exception:
+        # Logged and swallowed: it must not kill a worker that is otherwise
+        # executing jobs, and it is still fail-closed because the unrefreshed
+        # marker ages past the staleness bound and health reports unhealthy.
         logging.getLogger(__name__).warning(
             "async_worker_liveness_record_failed",
             extra={"worker_id": worker_id},
             exc_info=True,
         )
-        return False
-    return bool(snapshot.backend_available)
+    return queue_available
 
 
 def _dispatch_delivery(

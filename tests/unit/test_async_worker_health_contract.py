@@ -435,3 +435,67 @@ def test_the_backoff_cap_stays_inside_the_health_staleness_bound() -> None:
     from app.services.async_worker_fleet import _QUEUE_BACKOFF_MAX_SECONDS
 
     assert _QUEUE_BACKOFF_MAX_SECONDS < settings.async_worker_liveness_max_age_seconds
+
+
+def test_a_marker_write_failure_does_not_look_like_a_queue_outage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two unrelated faults must not collapse into one pacing signal.
+
+    An earlier version returned False from the recording helper on ANY failure,
+    so a marker write that could not reach its path made an idle worker with a
+    perfectly healthy queue back off. CI caught it through an existing test
+    asserting an idle loop sleeps its normal interval - a disk problem would
+    have silently slowed polling and looked like a Redis outage.
+
+    Only queue evidence may decide the pacing.
+    """
+
+    from app.services import async_worker_fleet
+
+    monkeypatch.setattr(
+        settings, "async_worker_liveness_path", str(tmp_path / "no-such-dir" / "x" / "m.json")
+    )
+    monkeypatch.setattr(
+        async_worker_fleet,
+        "record_worker_liveness",
+        lambda **_: (_ for _ in ()).throw(OSError("read-only file system")),
+    )
+    monkeypatch.setattr(
+        async_worker_fleet,
+        "get_async_delivery_queue",
+        lambda: type(
+            "Q",
+            (),
+            {
+                "snapshot": lambda self: type(
+                    "S", (), {"backend_available": True, "backend_id": "redis_queue"}
+                )()
+            },
+        )(),
+    )
+    monkeypatch.setattr(async_worker_fleet, "get_async_runtime_posture", lambda: _real_posture())
+
+    queue_available = async_worker_fleet._record_worker_liveness_for_cycle(worker_id=WORKER_ID)
+
+    assert queue_available is True, "a failed marker write was reported as a queue outage"
+
+
+def test_an_unobtainable_queue_snapshot_is_queue_evidence(
+    marker_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Divergence half: not everything should be forgiven.
+
+    Failing to obtain the snapshot IS queue evidence - the worker could not ask
+    the backend anything - so that must still pace as unavailable.
+    """
+
+    from app.services import async_worker_fleet
+
+    monkeypatch.setattr(
+        async_worker_fleet,
+        "get_async_delivery_queue",
+        lambda: (_ for _ in ()).throw(ConnectionError("cannot reach redis")),
+    )
+
+    assert async_worker_fleet._record_worker_liveness_for_cycle(worker_id=WORKER_ID) is False
