@@ -499,3 +499,124 @@ def test_an_unobtainable_queue_snapshot_is_queue_evidence(
     )
 
     assert async_worker_fleet._record_worker_liveness_for_cycle(worker_id=WORKER_ID) is False
+
+
+def test_the_docker_health_entrypoint_exits_zero_only_when_healthy(
+    marker_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The process Docker actually runs, which had no test at all.
+
+    Docker reads the EXIT CODE; everything else in this file tests the function
+    behind it. A correct verdict that the entrypoint reported with the wrong
+    exit status would leave the container health exactly as broken as before,
+    and nothing here would have noticed.
+    """
+
+    from app import worker_health_main
+
+    _record()
+    assert worker_health_main.main() == 0
+    healthy_output = json.loads(capsys.readouterr().out)
+    assert healthy_output["healthy"] is True
+    assert healthy_output["reason_code"] == WorkerHealthReason.HEALTHY
+
+    marker_path.unlink()
+    assert worker_health_main.main() == 1
+    unhealthy_output = json.loads(capsys.readouterr().out)
+    assert unhealthy_output["healthy"] is False
+    # The reason is printed so `docker inspect` tells an operator what to fix
+    # rather than only that the probe failed.
+    assert unhealthy_output["reason_code"] == WorkerHealthReason.MARKER_MISSING
+    assert unhealthy_output["detail"]
+
+
+def test_a_failed_marker_write_leaves_no_temporary_file_behind(
+    marker_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Temp files must not accumulate in the worker's data volume.
+
+    The write is atomic via a temp file plus os.replace. If the replace fails,
+    the temp file has to be removed: the worker writes one every cycle, so a
+    leak here fills the volume of a long-running container - and a full volume
+    then breaks the marker write, which is the health signal.
+    """
+
+    import os as os_module
+
+    def _failing_replace(src: str, dst: str) -> None:
+        raise OSError("replace failed")
+
+    monkeypatch.setattr(os_module, "replace", _failing_replace)
+
+    with pytest.raises(OSError):
+        _record()
+
+    leftovers = list(marker_path.parent.iterdir())
+    assert leftovers == [], f"temporary files left behind: {[p.name for p in leftovers]}"
+
+
+def test_a_marker_path_that_cannot_be_read_is_unhealthy(
+    marker_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An OSError reading the marker must fail closed, not raise out of the probe.
+
+    Docker reads an exit code; an unhandled exception and an unhealthy verdict
+    both produce a non-zero exit, but only the verdict tells an operator why.
+    """
+
+    marker_path.mkdir(parents=True, exist_ok=True)  # a directory, not a file
+
+    verdict = evaluate_worker_health()
+
+    assert verdict.healthy is False
+    assert verdict.reason_code == WorkerHealthReason.MARKER_UNREADABLE
+
+
+def test_a_malformed_timestamp_is_unhealthy(marker_path: Path) -> None:
+    """Distinct from the naive-timestamp case: this one is not a date at all."""
+
+    marker_path.write_text(
+        json.dumps(
+            {
+                "marker_version": MARKER_VERSION,
+                "worker_id": WORKER_ID,
+                "recorded_at": "not-a-timestamp",
+                "queue_backend_available": True,
+                "queue_backend_id": "redis_queue",
+                "cutover_state": "dedicated_workers_active",
+                "drain_enabled": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    verdict = evaluate_worker_health()
+
+    assert verdict.healthy is False
+    assert verdict.reason_code == WorkerHealthReason.MARKER_UNREADABLE
+
+
+def test_a_cleanup_failure_does_not_mask_the_original_write_failure(
+    marker_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Cleanup of cleanup: the first error is the one worth reporting.
+
+    If removing the temporary file also fails, swallowing that is right - but
+    only so long as the ORIGINAL failure still propagates. Masking it would
+    turn a failed marker write into silence, and silence here eventually
+    becomes a stale marker whose cause nobody can find.
+    """
+
+    import os as os_module
+
+    def _failing_replace(src: str, dst: str) -> None:
+        raise OSError("replace failed")
+
+    def _failing_unlink(path: str) -> None:
+        raise OSError("unlink failed too")
+
+    monkeypatch.setattr(os_module, "replace", _failing_replace)
+    monkeypatch.setattr(os_module, "unlink", _failing_unlink)
+
+    with pytest.raises(OSError, match="replace failed"):
+        _record()
