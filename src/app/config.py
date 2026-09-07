@@ -141,6 +141,17 @@ class Settings(BaseSettings):
     async_worker_id: str = "lotus-ai-worker-1"
     async_worker_queue_poll_seconds: int = 5
     async_worker_drain_enabled: bool = False
+    # Worker-owned health contract (issue #369). The worker runs no HTTP server,
+    # so its health cannot be an HTTP probe; it records a liveness marker each
+    # loop cycle and the health command reads that. The path is inside the
+    # container's own writable volume because the marker is evidence about THIS
+    # process - a shared or remote location would let one worker's liveness
+    # answer for another's.
+    async_worker_liveness_path: str = "/data/lotus-ai-worker-liveness.json"
+    # Bound after which an unrefreshed marker means stopped or stalled. Must
+    # exceed the poll timeout plus idle sleep, or a worker blocked on a normal
+    # empty-queue poll would report unhealthy.
+    async_worker_liveness_max_age_seconds: int = 60
     evaluation_runtime_store_mode: str = "memory"
     artifact_store_mode: str = "memory"
     artifact_object_store_mode: str = "memory"

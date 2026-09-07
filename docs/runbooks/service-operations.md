@@ -24,6 +24,11 @@
 
 ## Health and Readiness
 
+These endpoints are the **API** service's health contract. The dedicated async
+worker has its own, described in the next section, and the two are not
+interchangeable: the worker runs no HTTP server and binds no port, so none of
+these endpoints exist inside the worker container.
+
 - Liveness: /health/live
 - Readiness: /health/ready
 - General health: /health
@@ -109,6 +114,70 @@
 - First production use-case readiness: /platform/use-cases/first-production-use-case/readiness
 - First production use-case runbook readiness: /platform/use-cases/first-production-use-case/runbook-readiness
 - First production use-case governance status: /platform/use-cases/first-production-use-case/governance-status
+
+## Worker Health (dedicated async worker)
+
+The `lotus-ai-worker` container has a **different** health contract from the API,
+and mixing them is what issue #369 fixed. Before that fix the worker service
+defined no `healthcheck`, so it inherited the image `HEALTHCHECK`, which probes
+`http://127.0.0.1:8140/health/live`. The worker binds no port, so every probe
+failed and Docker reported a permanently unhealthy worker while it was executing
+jobs correctly. A false unhealthy is not a safe default: it is indistinguishable
+from a real failure, so it hides one.
+
+**What the worker health answers.** Not "is a process running" and not "can it
+serve HTTP", but: *did this worker's loop complete a cycle recently, and did it
+reach the queue backend it needs to do any work at all.*
+
+**How it works.** Each loop cycle the worker writes a liveness marker to
+`LOTUS_AI_ASYNC_WORKER_LIVENESS_PATH` (default `/data/lotus-ai-worker-liveness.json`)
+recording its worker id, the cycle timestamp, the queue backend id and whether
+that backend was reachable, and the runtime cutover posture. The container
+`HEALTHCHECK` runs `python -m app.worker_health_main`, which reads that marker in
+a separate process and exits non-zero unless it is present, recent, this
+worker's, and records a reachable backend. There is no HTTP server in the worker
+and none is added for health: a probe standing up its own server would report on
+the probe rather than on the worker.
+
+**It reports unhealthy when** — each with a distinct reason code in the probe
+output, so `docker inspect` tells an operator what to fix:
+
+| Reason code | Meaning |
+| --- | --- |
+| `WORKER_LIVENESS_MARKER_MISSING` | No cycle has completed. Normal only during `start_period`. |
+| `WORKER_LIVENESS_STALE` | Marker older than `LOTUS_AI_ASYNC_WORKER_LIVENESS_MAX_AGE_SECONDS` (default 60s): the worker is stopped, stalled, or its clock disagrees. |
+| `WORKER_QUEUE_BACKEND_UNAVAILABLE` | The worker is running but could not reach Redis on its last cycle. Unable to serve, so unhealthy rather than degraded. |
+| `WORKER_RUNTIME_CONFIG_INVALID` | Runtime posture is not `dedicated_workers_active`, so this worker consumes nothing. |
+| `WORKER_LIVENESS_MARKER_FOREIGN_WORKER` | The marker belongs to another worker id. One worker's liveness never answers for another's. |
+| `WORKER_LIVENESS_MARKER_UNREADABLE` | Marker absent, truncated, wrong version, or carrying a timestamp with no timezone. |
+
+**Detection bound.** `interval: 15s` with `retries: 3`, so a severed queue
+dependency is reported unhealthy within roughly 45 seconds of the worker
+recording it. The staleness bound must stay above the queue poll timeout plus
+idle sleep, or a worker blocked on a normal empty-queue poll reports unhealthy.
+
+**Operator check.**
+
+```
+docker compose ps                     # worker health column
+docker inspect --format '{{json .State.Health}}' lotus-ai-lotus-ai-worker-1
+docker compose exec lotus-ai-worker python -m app.worker_health_main
+```
+
+**Deliberate negative test.** Stop the queue backend and the worker must go
+unhealthy within the bound, then recover when it returns:
+
+```
+docker compose stop redis
+# wait ~45s, then:
+docker compose ps                     # lotus-ai-worker: unhealthy
+docker compose start redis
+# wait ~30s, then:
+docker compose ps                     # lotus-ai-worker: healthy
+```
+
+If the worker stays healthy with Redis stopped, the health contract is not
+wired — treat that as a defect, not as resilience.
 
 ## HTTP Boundary Controls
 

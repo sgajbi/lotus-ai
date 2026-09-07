@@ -92,6 +92,24 @@ services:
       LOTUS_AI_SECRET_SOURCE_MODE: local_or_unspecified
       LOTUS_AI_DATABASE_URL: ${LOTUS_AI_DATABASE_URL:-postgresql+psycopg://lotus:lotus@postgres:5432/lotus_ai}
       LOTUS_AI_ASYNC_WORKER_ID: lotus-ai-worker-1
+    # Worker-owned health (issue #369). Without this the worker inherits the
+    # image HEALTHCHECK, which probes http://127.0.0.1:8140/health/live - a port
+    # the worker never binds - so every probe failed and Docker reported a
+    # permanently unhealthy worker while it was executing jobs correctly.
+    #
+    # This reads the liveness marker the worker loop writes: present, recent,
+    # this worker's, and recording a reachable queue backend. It is not an HTTP
+    # probe and starts no server, so it answers about the worker rather than
+    # about a probe stood up to satisfy it.
+    #
+    # interval + retries bound detection: a severed queue backend is reported
+    # unhealthy within 3 x 15s after the marker records it.
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.worker_health_main"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
     volumes:
       - lotus-ai-data:/data
     depends_on:
