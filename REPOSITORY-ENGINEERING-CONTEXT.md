@@ -95,6 +95,25 @@ Detailed component behavior belongs in the
    authority.
 9. PostgreSQL is the durable production-shaped database; Redis is the queue transport, not the
    authoritative job ledger.
+10. **The API and the dedicated worker have different health contracts and are not
+    interchangeable.** The API answers `/health/live` and `/health/ready` over HTTP. The worker
+    binds no port, so none of those endpoints exist inside its container: it writes a liveness
+    marker each loop cycle and the container `HEALTHCHECK` runs `python -m app.worker_health_main`
+    in a separate process to read it. Worker health answers "did this worker's loop run recently
+    AND reach the queue backend it needs", with distinct fail-closed reason codes rather than one
+    boolean.
+
+    Two rules follow, both learned by the defect this replaced — the worker inherited the API image
+    probe and reported permanently unhealthy while executing jobs correctly:
+
+    - Never satisfy a container health check by standing up a server the workload does not
+      otherwise run. That reports on the probe, not on the workload.
+    - A queue-backend outage must leave the worker running and reporting the outage, not kill it.
+      A health contract cannot detect what kills it first, and a worker that dies takes its own
+      diagnosis with it.
+
+    Operational detail, reason codes and the deliberate negative test live in
+    `docs/runbooks/service-operations.md`.
 
 Frameworks and provider SDKs are adapters. They must not become the authority for request flow,
 task semantics, validation, policy, or audit evidence.
