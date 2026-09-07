@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from time import sleep
 
 from app.config import settings
+from app.services.async_worker_health import record_worker_liveness
 from app.contracts.async_runtime import AsyncCutoverState
 from app.services.async_delivery_queue import AsyncQueueDeliveryMessage, get_async_delivery_queue
 from app.services.async_delivery_recovery import recover_unhandled_delivery
@@ -33,7 +35,29 @@ def process_next_async_delivery(
         return None
     if settings.async_worker_drain_enabled:
         return None
-    delivery = get_async_delivery_queue().dequeue(timeout_seconds=timeout_seconds)
+    try:
+        delivery = get_async_delivery_queue().dequeue(timeout_seconds=timeout_seconds)
+    except Exception:
+        # A queue backend outage must not kill the worker (issue #369). Before
+        # this, a stopped Redis raised ConnectionError straight out of dequeue,
+        # the loop had no handler, and the container exited 1 - so the worker
+        # could not report an unavailable queue backend, because it was gone
+        # before it could record anything. A health contract cannot detect what
+        # kills it first.
+        #
+        # Scoped to the dequeue call alone on purpose: job execution below must
+        # keep surfacing its own failures through the existing recovery path,
+        # not be swallowed here. The cycle returns as idle, the loop records
+        # queue_backend_available=False from the queue's own snapshot, and the
+        # health command reports WORKER_QUEUE_BACKEND_UNAVAILABLE until the
+        # backend returns. Logged with a traceback so a real dequeue bug is
+        # visible rather than silently retried forever.
+        logging.getLogger(__name__).warning(
+            "async_worker_queue_dequeue_failed",
+            extra={"worker_id": worker_id},
+            exc_info=True,
+        )
+        return None
     if delivery is None:
         return None
     result = _dispatch_delivery(worker_id=worker_id, delivery=delivery)
@@ -63,14 +87,98 @@ def run_dedicated_worker_loop(
     max_cycles: int | None = None,
 ) -> None:
     completed_cycles = 0
+    consecutive_queue_failures = 0
     while max_cycles is None or completed_cycles < max_cycles:
         processed = process_next_async_delivery(
             worker_id=worker_id,
             timeout_seconds=timeout_seconds,
         )
         completed_cycles += 1
+        # Recorded every cycle, after the work, so the marker is evidence that
+        # this loop ran rather than that the process started (issue #369). An
+        # idle worker records too: the container health contract must not
+        # require job traffic to report a healthy worker, or a correctly idle
+        # worker would look stopped.
+        queue_available = _record_worker_liveness_for_cycle(worker_id=worker_id)
+        if queue_available:
+            consecutive_queue_failures = 0
+        else:
+            consecutive_queue_failures += 1
         if processed is None:
-            sleep(idle_sleep_seconds)
+            sleep(
+                _idle_sleep_for_cycle(
+                    idle_sleep_seconds=idle_sleep_seconds,
+                    consecutive_queue_failures=consecutive_queue_failures,
+                )
+            )
+
+
+def _idle_sleep_for_cycle(
+    *,
+    idle_sleep_seconds: float,
+    consecutive_queue_failures: int,
+) -> float:
+    """Back off while the queue backend is unreachable.
+
+    Surviving a queue outage (issue #369) means the loop keeps running against a
+    dead backend. At the normal idle interval that is several failed connections
+    per second, each logging a traceback, for as long as the outage lasts -
+    unbounded log growth introduced by the fix rather than by the defect.
+
+    Backoff is capped so recovery stays prompt: the worker must return to
+    healthy soon after the backend does, and the cap keeps the retry interval
+    well inside the health staleness bound so a recovering worker refreshes its
+    marker before it can be called stale.
+    """
+
+    if consecutive_queue_failures <= 0:
+        return idle_sleep_seconds
+    backoff = idle_sleep_seconds * (2 ** min(consecutive_queue_failures, _QUEUE_BACKOFF_SHIFT_CAP))
+    return min(backoff, _QUEUE_BACKOFF_MAX_SECONDS)
+
+
+_QUEUE_BACKOFF_SHIFT_CAP = 8
+_QUEUE_BACKOFF_MAX_SECONDS = 5.0
+
+
+def _record_worker_liveness_for_cycle(*, worker_id: str) -> bool:
+    """Record this cycle's worker-owned health evidence.
+
+    The queue snapshot is the existing durable signal for backend reachability
+    and already returns backend_available=False rather than raising, so a
+    Redis outage becomes recorded evidence instead of an exception that would
+    stop the loop writing markers at all.
+
+    A failure to WRITE the marker is logged and swallowed here on purpose: it
+    must not kill a worker that is otherwise executing jobs. It is still
+    fail-closed, because the unrefreshed marker ages past the staleness bound
+    and the health command reports unhealthy. Silence here buys time, never a
+    healthy verdict.
+
+    Returns whether the queue backend was reachable, which the loop uses to
+    pace its retries. A recording failure returns False - unknown is treated as
+    unavailable, so the loop backs off rather than hammering a backend it has
+    no evidence about.
+    """
+
+    try:
+        posture = get_async_runtime_posture()
+        snapshot = get_async_delivery_queue().snapshot()
+        record_worker_liveness(
+            worker_id=worker_id,
+            queue_backend_available=snapshot.backend_available,
+            queue_backend_id=snapshot.backend_id,
+            cutover_state=posture.cutover_state.value,
+            drain_enabled=settings.async_worker_drain_enabled,
+        )
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "async_worker_liveness_record_failed",
+            extra={"worker_id": worker_id},
+            exc_info=True,
+        )
+        return False
+    return bool(snapshot.backend_available)
 
 
 def _dispatch_delivery(
