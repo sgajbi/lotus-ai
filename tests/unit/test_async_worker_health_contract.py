@@ -335,7 +335,7 @@ def test_a_queue_outage_makes_the_worker_unhealthy_rather_than_killing_it(
         "get_async_runtime_posture",
         lambda: _real_posture(),
     )
-    monkeypatch.setattr(async_worker_fleet.settings, "async_worker_drain_enabled", False)
+    monkeypatch.setattr(settings, "async_worker_drain_enabled", False)
 
     # The loop must complete the cycle rather than propagating the outage.
     async_worker_fleet.run_dedicated_worker_loop(
@@ -389,7 +389,7 @@ def test_job_execution_failures_are_not_swallowed_by_the_queue_outage_handler(
         lambda: _real_posture(),
     )
     monkeypatch.setattr(async_worker_fleet, "_dispatch_delivery", _exploding_dispatch)
-    monkeypatch.setattr(async_worker_fleet.settings, "async_worker_drain_enabled", False)
+    monkeypatch.setattr(settings, "async_worker_drain_enabled", False)
 
     with pytest.raises(RuntimeError, match="job execution blew up"):
         async_worker_fleet.process_next_async_delivery(worker_id=WORKER_ID, timeout_seconds=0)

@@ -133,7 +133,8 @@ def _idle_sleep_for_cycle(
 
     if consecutive_queue_failures <= 0:
         return idle_sleep_seconds
-    backoff = idle_sleep_seconds * (2 ** min(consecutive_queue_failures, _QUEUE_BACKOFF_SHIFT_CAP))
+    shift = min(consecutive_queue_failures, _QUEUE_BACKOFF_SHIFT_CAP)
+    backoff = float(idle_sleep_seconds) * float(2**shift)
     return min(backoff, _QUEUE_BACKOFF_MAX_SECONDS)
 
 
