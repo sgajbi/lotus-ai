@@ -28,9 +28,26 @@ jobs:
       - name: Audit main gate coverage
         env:
           GH_TOKEN: ${{ github.token }}
+        # `--fail-on-gap` only. Coverage is what this gate enforces: a commit
+        # with no terminal verdict is a dispatch defect and is actionable now.
+        #
+        # Failed verdicts are REPORTED, with each commit named, but do not fail
+        # the step. They are recorded history under #373 - the tree at those
+        # commits genuinely does not pass, so re-running reproduces the failure
+        # and no action clears them. Failing on them would make this a gate
+        # that cannot pass, which is how a control stops being read. Pass
+        # --fail-on-failed-verdict deliberately when auditing a window that is
+        # expected to be clean.
+        #
+        # Bounded recheck so a gate mid-flight is not reported as a gap, and an
+        # explicit age limit so one that never concludes ages into STALE rather
+        # than holding the audit open until it looks like evidence.
         run: |
           python scripts/audit_main_gate_coverage.py \
             --limit "${{ github.event.inputs.limit || '50' }}" \
+            --pending-max-age-minutes 90 \
+            --recheck-attempts 3 \
+            --recheck-delay-seconds 20 \
             --fail-on-gap
       - name: Enforce Branch Protection Policy
         # Runs even when the audit above failed: two independent delivery
