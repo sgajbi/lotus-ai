@@ -328,6 +328,53 @@ The practical reading rule is:
 1. startup policy tells you whether the process should have been allowed to come up,
 2. readiness-probe policy tells you whether traffic should still be routed.
 
+## Worker Health
+
+**The API and the dedicated worker have different health contracts and are not
+interchangeable.** The API answers `/health/live` and `/health/ready` over HTTP. The worker binds
+no port, so none of those endpoints exist inside its container. Diagnosing a worker by calling an
+API endpoint tells you nothing about the worker.
+
+The worker writes a liveness marker each loop cycle, and the container `HEALTHCHECK` runs
+`python -m app.worker_health_main` in a separate process to read it. It answers a narrower question
+than "is a process running": **did this worker's loop run recently, AND reach the queue backend it
+needs**, with a distinct reason code rather than one boolean.
+
+| Reason code | Meaning |
+| --- | --- |
+| `WORKER_LIVENESS_MARKER_MISSING` | No cycle has completed. Normal only during `start_period`. |
+| `WORKER_LIVENESS_STALE` | Marker older than `LOTUS_AI_ASYNC_WORKER_LIVENESS_MAX_AGE_SECONDS` (default 60s): stopped, stalled, or its clock disagrees. |
+| `WORKER_QUEUE_BACKEND_UNAVAILABLE` | Running but could not reach Redis on its last cycle. Unable to serve, so unhealthy rather than degraded. |
+| `WORKER_RUNTIME_CONFIG_INVALID` | Runtime posture is not `dedicated_workers_active`, so this worker consumes nothing. |
+| `WORKER_LIVENESS_MARKER_FOREIGN_WORKER` | The marker belongs to another worker id. One worker's liveness never answers for another's. |
+| `WORKER_LIVENESS_MARKER_UNREADABLE` | Absent, truncated, wrong version, or a timestamp with no timezone. |
+
+**Operator check:**
+
+```
+docker compose ps                                              # worker health column
+docker compose exec lotus-ai-worker python -m app.worker_health_main
+```
+
+Exit 0 healthy, exit 1 unhealthy, and the verdict JSON names the reason code.
+
+**Two rules this contract exists to enforce**, both learned from the defect it replaced - the
+worker inherited the API image's probe and reported permanently unhealthy while executing jobs
+correctly:
+
+1. Never satisfy a container health check by standing up a server the workload does not otherwise
+   run. That reports on the probe, not on the workload.
+2. A queue-backend outage must leave the worker running and reporting the outage, not kill it. A
+   health contract cannot detect what kills it first, and a worker that dies takes its own
+   diagnosis with it.
+
+Detection bound: `interval: 15s` with `retries: 3`, so a severed queue dependency is reported
+unhealthy within roughly 45 seconds. The staleness bound must stay above the queue poll timeout
+plus idle sleep, or a worker blocked on a normal empty-queue poll reports unhealthy.
+
+Full detail, including the deliberate negative test, is in
+[service operations](https://github.com/sgajbi/lotus-ai/blob/main/docs/runbooks/service-operations.md).
+
 ## Provider Changes
 
 Treat provider-mode changes as operational changes, not just config edits.
