@@ -144,6 +144,28 @@ declared posture, and must never be read as certification of it. The **live comp
 the daily `Main Gate Coverage Audit`, invoked bare — piping it through `tee` would report `tee`'s
 exit status and let the checker raise beneath a green check.
 
+**That workflow runs two independent controls and they fail for different reasons.** Read which
+step failed before concluding anything: the branch-protection comparison fails closed when the
+`administration:read` credential is absent (a documented, operator-gated exception, #358), while
+the coverage half reports on main's commits.
+
+**The coverage half answers two questions separately**, because collapsing them hid real defects in
+both directions:
+
+- **coverage** - does a terminal, *evaluated* verdict exist for each commit on main?
+- **outcome** - if one exists, did the tree pass or fail?
+
+Seven states keep apart cases that were previously one word: `PASSED`, `FAILED`, `ABSENT`,
+`PENDING`, `STALE`, `UNEVALUATED`, `EVIDENCE_UNAVAILABLE`. Only `PASSED` and `FAILED` are coverage
+- a verdict exists either way, **which is not the same as main being green**. A run that is still
+executing is `PENDING` within an age limit and `STALE` past it, so a gate that never concludes
+ages out rather than becoming accepted evidence.
+
+The step fails on coverage gaps only. Failing verdicts are reported and named but do not fail it:
+the tree at those commits genuinely does not pass, no action clears them, and failing on them would
+make this a gate that cannot pass. Historical failures are recorded on #373.
+
+
 **Carried upstream limitation (`lotus-gateway#740`).** The checker compares required-context
 *names* but not their source-app bindings (`required_status_checks.checks[].app_id`). A required
 check whose binding is removed or replaced keeps its name, so the comparison reports a clean match
