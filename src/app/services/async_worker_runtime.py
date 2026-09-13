@@ -106,60 +106,59 @@ def claim_async_job_by_id(*, job_id: str, worker_id: str) -> AsyncWorkerClaimRes
 
 def start_async_job(*, job_id: str, worker_id: str, attempt_id: str) -> None:
     store = get_async_runtime_store()
-    now = _utcnow()
     transitioned = store.transition_current_claim(
         job_id=job_id,
         worker_id=worker_id,
         attempt_id=attempt_id,
-        now=_isoformat(now),
+        now=None,
         job_status=AsyncJobStatus.RUNNING.value,
         job_message=f"Job is running under worker '{worker_id}'.",
         attempt_status=AsyncJobStatus.RUNNING.value,
         attempt_message=f"Attempt started by worker '{worker_id}'.",
         failure_reason=None,
-        lease_expires_at=_isoformat(now + timedelta(seconds=_LEASE_SECONDS)),
+        lease_expires_at=None,
         terminal_artifact=None,
+        now_factory=_fresh_now,
+        lease_extension_seconds=_LEASE_SECONDS,
     )
     _require_current_claim(transitioned, job_id=job_id, worker_id=worker_id)
 
 
 def heartbeat_async_job(*, job_id: str, worker_id: str, attempt_id: str) -> None:
     store = get_async_runtime_store()
-    now = _utcnow()
     transitioned = store.transition_current_claim(
         job_id=job_id,
         worker_id=worker_id,
         attempt_id=attempt_id,
-        now=_isoformat(now),
+        now=None,
         job_status=None,
         job_message=None,
         attempt_status=None,
         attempt_message=f"Heartbeat recorded from worker '{worker_id}'.",
         failure_reason=None,
-        lease_expires_at=_isoformat(now + timedelta(seconds=_LEASE_SECONDS)),
+        lease_expires_at=None,
         terminal_artifact=None,
+        now_factory=_fresh_now,
+        lease_extension_seconds=_LEASE_SECONDS,
     )
     _require_current_claim(transitioned, job_id=job_id, worker_id=worker_id)
 
 
 def complete_async_job(*, job_id: str, worker_id: str, attempt_id: str, message: str) -> None:
     store = get_async_runtime_store()
-    now = _utcnow()
-    job, attempt, _lease = _load_claimed_runtime_state(
-        job_id=job_id, worker_id=worker_id, attempt_id=attempt_id
-    )
+    job = _get_runtime_job(job_id=job_id)
     completion_artifact = stage_json_artifact(
         domain="async",
         artifact_type="job_terminal_output",
         source_object_kind="async_job",
         source_object_id=job.job_id,
-        created_at=_isoformat(now),
+        created_at=_fresh_now(),
         created_by=worker_id,
         tenant_id=job.tenant_id,
         payload_json=json.dumps(
             {
                 "job_id": job.job_id,
-                "attempt_id": attempt.attempt_id,
+                "attempt_id": attempt_id,
                 "job_type": job.job_type,
                 "target_id": job.target_id,
                 "status": AsyncJobStatus.COMPLETED.value,
@@ -173,7 +172,7 @@ def complete_async_job(*, job_id: str, worker_id: str, attempt_id: str, message:
         job_id=job_id,
         worker_id=worker_id,
         attempt_id=attempt_id,
-        now=_isoformat(now),
+        now=None,
         job_status=AsyncJobStatus.COMPLETED.value,
         job_message=message,
         attempt_status=AsyncJobStatus.COMPLETED.value,
@@ -181,6 +180,7 @@ def complete_async_job(*, job_id: str, worker_id: str, attempt_id: str, message:
         failure_reason=None,
         lease_expires_at=None,
         terminal_artifact=completion_artifact,
+        now_factory=_fresh_now,
     )
     _publish_terminal_artifact_or_reject(
         transition=transitioned,
@@ -199,55 +199,42 @@ def fail_async_job(
     retryable: bool,
 ) -> None:
     store = get_async_runtime_store()
-    now = _utcnow()
-    job, attempt, _lease = _load_claimed_runtime_state(
-        job_id=job_id, worker_id=worker_id, attempt_id=attempt_id
-    )
+    job = _get_runtime_job(job_id=job_id)
     attempt_message = f"Attempt failed under worker '{worker_id}' with reason '{failure_reason}'."
     if retryable:
-        next_attempt_number = job.attempt_count + 1
-        next_attempt = AsyncRuntimeAttemptRecord(
-            attempt_id=f"{job.job_id}_attempt_{next_attempt_number:03d}",
-            job_id=job.job_id,
-            attempt_number=next_attempt_number,
-            lifecycle_status=AsyncJobStatus.QUEUED.value,
-            worker_id=None,
-            claimed_at=None,
-            heartbeat_at=None,
-            started_at=None,
-            completed_at=None,
-            failure_reason=None,
-            recorded_message=f"Retry queued after failure reason '{failure_reason}'.",
-        )
+        next_attempt_message = f"Retry queued after failure reason '{failure_reason}'."
         transitioned = store.transition_current_claim(
             job_id=job_id,
             worker_id=worker_id,
             attempt_id=attempt_id,
-            now=_isoformat(now),
+            now=None,
             job_status=AsyncJobStatus.QUEUED.value,
-            job_message=next_attempt.recorded_message,
+            job_message=next_attempt_message,
             attempt_status=AsyncJobStatus.FAILED.value,
             attempt_message=attempt_message,
             failure_reason=failure_reason,
             lease_expires_at=None,
             terminal_artifact=None,
-            next_attempt=next_attempt,
+            next_attempt_message=next_attempt_message,
+            now_factory=_fresh_now,
         )
         transitioned = _require_current_claim(transitioned, job_id=job_id, worker_id=worker_id)
-        publish_async_attempt_if_configured(job=transitioned.job, attempt=next_attempt)
+        if transitioned.next_attempt is None:
+            raise RuntimeError("Fenced retry transition did not mint its successor attempt.")
+        publish_async_attempt_if_configured(job=transitioned.job, attempt=transitioned.next_attempt)
         return
     failure_artifact = stage_json_artifact(
         domain="async",
         artifact_type="job_terminal_output",
         source_object_kind="async_job",
         source_object_id=job.job_id,
-        created_at=_isoformat(now),
+        created_at=_fresh_now(),
         created_by=worker_id,
         tenant_id=job.tenant_id,
         payload_json=json.dumps(
             {
                 "job_id": job.job_id,
-                "attempt_id": attempt.attempt_id,
+                "attempt_id": attempt_id,
                 "job_type": job.job_type,
                 "target_id": job.target_id,
                 "status": AsyncJobStatus.FAILED.value,
@@ -261,7 +248,7 @@ def fail_async_job(
         job_id=job_id,
         worker_id=worker_id,
         attempt_id=attempt_id,
-        now=_isoformat(now),
+        now=None,
         job_status=AsyncJobStatus.FAILED.value,
         job_message=f"Job failed terminally with reason '{failure_reason}'.",
         attempt_status=AsyncJobStatus.FAILED.value,
@@ -269,6 +256,7 @@ def fail_async_job(
         failure_reason=failure_reason,
         lease_expires_at=None,
         terminal_artifact=failure_artifact,
+        now_factory=_fresh_now,
     )
     _publish_terminal_artifact_or_reject(
         transition=transitioned,
@@ -280,7 +268,7 @@ def fail_async_job(
 
 def recover_expired_async_jobs(*, now: datetime | None = None) -> list[str]:
     store = get_async_runtime_store()
-    recovery_time = now or _utcnow()
+    recovery_time = now
     recovered_job_ids: list[str] = []
     for job in store.list_jobs():
         if job.lifecycle_status not in {
@@ -291,25 +279,13 @@ def recover_expired_async_jobs(*, now: datetime | None = None) -> list[str]:
         lease = store.get_active_lease(job_id=job.job_id)
         if lease is None:
             continue
-        if lease.lease_expires_at > _isoformat(recovery_time):
-            continue
-        next_attempt = AsyncRuntimeAttemptRecord(
-            attempt_id=f"{job.job_id}_attempt_{job.attempt_count + 1:03d}",
-            job_id=job.job_id,
-            attempt_number=job.attempt_count + 1,
-            lifecycle_status=AsyncJobStatus.QUEUED.value,
-            worker_id=None,
-            claimed_at=None,
-            heartbeat_at=None,
-            started_at=None,
-            completed_at=None,
-            failure_reason=None,
-            recorded_message="Retry queued after lease expiry recovery.",
-        )
         recovered = store.recover_expired_claim(
             job_id=job.job_id,
-            recovered_at=_isoformat(recovery_time),
-            next_attempt=next_attempt,
+            recovered_at=_isoformat(recovery_time) if recovery_time is not None else None,
+            next_attempt_message="Retry queued after lease expiry recovery.",
+            now_factory=(lambda: _isoformat(recovery_time))
+            if recovery_time is not None
+            else _fresh_now,
         )
         if recovered is None:
             continue
@@ -328,32 +304,14 @@ def recover_expired_async_jobs(*, now: datetime | None = None) -> list[str]:
     return recovered_job_ids
 
 
-def _load_claimed_runtime_state(
-    *,
-    job_id: str,
-    worker_id: str,
-    attempt_id: str,
-) -> tuple[AsyncRuntimeJobRecord, AsyncRuntimeAttemptRecord, AsyncRuntimeLeaseRecord]:
-    store = get_async_runtime_store()
-    job = store.get_job(job_id=job_id)
+def _get_runtime_job(*, job_id: str) -> AsyncRuntimeJobRecord:
+    job = get_async_runtime_store().get_job(job_id=job_id)
     if job is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Async job '{job_id}' was not found in runtime state.",
         )
-    lease = store.get_active_lease(job_id=job_id)
-    if lease is None or lease.worker_id != worker_id or lease.attempt_id != attempt_id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Async job '{job_id}' is not actively leased by worker '{worker_id}'.",
-        )
-    attempt = store.get_attempt(attempt_id=attempt_id)
-    if attempt is None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Active runtime attempt '{lease.attempt_id}' was not found for job '{job_id}'.",
-        )
-    return job, attempt, lease
+    return job
 
 
 def _require_current_claim(
@@ -394,6 +352,10 @@ def _publish_terminal_artifact_or_reject(
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+def _fresh_now() -> str:
+    return _isoformat(_utcnow())
 
 
 def _isoformat(value: datetime) -> str:

@@ -466,15 +466,15 @@ Operator rules:
 Current recovery expectations:
 
 1. queued, claimed, running, failed, completed, and abandoned posture must survive restart when the SQL-backed async-runtime store is active
-2. lease expiry should record an `ABANDONED` attempt and queue a new retryable attempt rather than mutating the prior attempt in place; the new attempt id is an immutable claim generation, even when a restarted worker reuses the same worker id
+2. lease expiry should record an `ABANDONED` attempt and queue a new retryable attempt rather than mutating the prior attempt in place; retry and recovery mint the new immutable generation from the job counter inside the guarded transaction, even when a restarted worker reuses the same worker id
 3. retrieval index jobs submitted through `POST /platform/retrieval/index-jobs/{job_id}/submit-async` should remain linked to their async runtime records after restart
 4. duplicate runtime-backed retrieval-index submissions should be rejected while an active queued, claimed, or running job already owns the same caller and target
 5. operator retry, replay, requeue, abandon, queued-job redrive, and queued-job quarantine actions should be applied through `/platform/async/control-plane-actions/apply` rather than ad hoc table edits
 6. when `cutover_state=dedicated_workers_active`, queue backlog, duplicate/redelivery counts, active worker identities, and degraded findings should be reviewed through `/platform/async/runtime-status`
 7. `LOTUS_AI_ASYNC_WORKER_DRAIN_ENABLED=true` should prevent new dedicated worker claims while leaving queued runtime truth and governed replay/requeue actions intact
 8. runtime-backed evaluation runs should preserve queued, claimed, running, completed, failed, and abandoned attempt history across async replay and recovery actions
-9. a worker that receives `409` after a heartbeat, completion, or failure attempt no longer owns the current unexpired generation; do not retry that mutation or publish a terminal artifact manually. Re-read job detail and use the current attempt or governed control-plane action as applicable.
-10. with SQL-backed async runtime, accepted terminal job state, attempt state, lease removal, job artifact reference, and terminal artifact metadata commit together. Payload bytes may be staged before that transaction, but a stale generation never publishes metadata or a job artifact reference.
+9. a worker that receives `409` after a start, heartbeat, completion, or failure attempt no longer owns the current unexpired generation; do not retry that mutation or publish a terminal artifact manually. Re-read job detail and use the current attempt or governed control-plane action as applicable.
+10. with SQL-backed async runtime, lease expiry is sampled only after the lease, job, and attempt rows are locked; accepted terminal job state, attempt state, lease removal, job artifact reference, and terminal artifact metadata commit together. Payload bytes may be staged before that transaction, but an expired or stale generation has its staged payload removed and never publishes metadata or a job artifact reference.
 
 Current dedicated worker operational checks:
 

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime, timedelta
 
 from pathlib import Path
+from typing import Callable
 
 from sqlalchemy import delete, select
 
@@ -281,7 +283,7 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
         job_id: str,
         worker_id: str,
         attempt_id: str,
-        now: str,
+        now: str | None,
         job_status: str | None,
         job_message: str | None,
         attempt_status: str | None,
@@ -289,7 +291,9 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
         failure_reason: str | None,
         lease_expires_at: str | None,
         terminal_artifact: ArtifactRecord | None,
-        next_attempt: AsyncRuntimeAttemptRecord | None = None,
+        next_attempt_message: str | None = None,
+        now_factory: Callable[[], str] | None = None,
+        lease_extension_seconds: int | None = None,
     ) -> AsyncRuntimeClaimTransition | None:
         """Apply one worker mutation only while its exact claim is current.
 
@@ -309,7 +313,7 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
                 )
                 .with_for_update()
             ).first()
-            if lease_model is None or lease_model.lease_expires_at <= now:
+            if lease_model is None:
                 session.rollback()
                 return None
 
@@ -329,6 +333,33 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
             ):
                 session.rollback()
                 return None
+            # Every row the transition mutates is locked before sampling time.
+            # A transaction-start timestamp (or a sample made before a lock
+            # wait) can otherwise admit a lease that expired while waiting.
+            effective_now = now_factory() if now_factory is not None else now
+            if effective_now is None:
+                raise ValueError("A fresh claim-transition timestamp is required.")
+            if lease_model.lease_expires_at <= effective_now:
+                session.rollback()
+                return None
+
+            successor: AsyncRuntimeAttemptRecord | None = None
+            if next_attempt_message is not None:
+                next_attempt_number = job_model.attempt_count + 1
+                successor = AsyncRuntimeAttemptRecord(
+                    attempt_id=f"{job_model.job_id}_attempt_{next_attempt_number:03d}",
+                    job_id=job_model.job_id,
+                    attempt_number=next_attempt_number,
+                    lifecycle_status="QUEUED",
+                    worker_id=None,
+                    claimed_at=None,
+                    heartbeat_at=None,
+                    started_at=None,
+                    completed_at=None,
+                    failure_reason=None,
+                    recorded_message=next_attempt_message,
+                )
+                job_model.attempt_count = successor.attempt_number
 
             if job_status is not None:
                 job_model.lifecycle_status = job_status
@@ -340,37 +371,43 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
 
             if attempt_status is not None:
                 attempt_model.lifecycle_status = attempt_status
-            attempt_model.heartbeat_at = now
+            attempt_model.heartbeat_at = effective_now
             if attempt_status == "RUNNING" and attempt_model.started_at is None:
-                attempt_model.started_at = now
+                attempt_model.started_at = effective_now
             if attempt_status in {"COMPLETED", "FAILED", "ABANDONED"}:
-                attempt_model.completed_at = now
+                attempt_model.completed_at = effective_now
             attempt_model.failure_reason = failure_reason
             attempt_model.recorded_message = attempt_message
 
             persisted_lease: AsyncRuntimeLeaseRecord | None
-            if lease_expires_at is None:
+            if lease_expires_at is None and lease_extension_seconds is None:
                 session.delete(lease_model)
                 persisted_lease = None
             else:
-                lease_model.heartbeat_at = now
-                lease_model.lease_expires_at = lease_expires_at
+                renewed_lease_expiry = (
+                    _extend_lease(effective_now, lease_extension_seconds)
+                    if lease_extension_seconds is not None
+                    else lease_expires_at
+                )
+                assert renewed_lease_expiry is not None
+                lease_model.heartbeat_at = effective_now
+                lease_model.lease_expires_at = renewed_lease_expiry
                 persisted_lease = self._to_lease_record(lease_model)
 
-            if next_attempt is not None:
+            if successor is not None:
                 session.add(
                     AsyncJobAttemptModel(
-                        attempt_id=next_attempt.attempt_id,
-                        job_id=next_attempt.job_id,
-                        attempt_number=next_attempt.attempt_number,
-                        lifecycle_status=next_attempt.lifecycle_status,
-                        worker_id=next_attempt.worker_id,
-                        claimed_at=next_attempt.claimed_at,
-                        heartbeat_at=next_attempt.heartbeat_at,
-                        started_at=next_attempt.started_at,
-                        completed_at=next_attempt.completed_at,
-                        failure_reason=next_attempt.failure_reason,
-                        recorded_message=next_attempt.recorded_message,
+                        attempt_id=successor.attempt_id,
+                        job_id=successor.job_id,
+                        attempt_number=successor.attempt_number,
+                        lifecycle_status=successor.lifecycle_status,
+                        worker_id=successor.worker_id,
+                        claimed_at=successor.claimed_at,
+                        heartbeat_at=successor.heartbeat_at,
+                        started_at=successor.started_at,
+                        completed_at=successor.completed_at,
+                        failure_reason=successor.failure_reason,
+                        recorded_message=successor.recorded_message,
                     )
                 )
             session.commit()
@@ -380,14 +417,16 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
                 job=self._to_job_record(job_model),
                 attempt=self._to_attempt_record(attempt_model),
                 lease=persisted_lease,
+                next_attempt=successor,
             )
 
     def recover_expired_claim(
         self,
         *,
         job_id: str,
-        recovered_at: str,
-        next_attempt: AsyncRuntimeAttemptRecord,
+        recovered_at: str | None,
+        next_attempt_message: str,
+        now_factory: Callable[[], str] | None = None,
     ) -> AsyncRuntimeRecoveryTransition | None:
         """Recover precisely one expired lease generation in one transaction."""
 
@@ -397,7 +436,7 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
                 .where(AsyncWorkerLeaseModel.job_id == job_id)
                 .with_for_update()
             ).first()
-            if lease_model is None or lease_model.lease_expires_at > recovered_at:
+            if lease_model is None:
                 session.rollback()
                 return None
             job_model = session.scalars(
@@ -412,14 +451,36 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
                 job_model is None
                 or attempt_model is None
                 or job_model.lifecycle_status not in {"CLAIMED", "RUNNING"}
-                or next_attempt.attempt_number != job_model.attempt_count + 1
             ):
                 session.rollback()
                 return None
+            # Recovery takes the same fresh-after-lock time boundary as every
+            # worker claim mutation; a lock wait must not recover too early.
+            effective_recovered_at = now_factory() if now_factory is not None else recovered_at
+            if effective_recovered_at is None:
+                raise ValueError("A fresh claim-recovery timestamp is required.")
+            if lease_model.lease_expires_at > effective_recovered_at:
+                session.rollback()
+                return None
+
+            next_attempt_number = job_model.attempt_count + 1
+            next_attempt = AsyncRuntimeAttemptRecord(
+                attempt_id=f"{job_model.job_id}_attempt_{next_attempt_number:03d}",
+                job_id=job_model.job_id,
+                attempt_number=next_attempt_number,
+                lifecycle_status="QUEUED",
+                worker_id=None,
+                claimed_at=None,
+                heartbeat_at=None,
+                started_at=None,
+                completed_at=None,
+                failure_reason=None,
+                recorded_message=next_attempt_message,
+            )
 
             attempt_model.lifecycle_status = "ABANDONED"
             attempt_model.heartbeat_at = lease_model.heartbeat_at
-            attempt_model.completed_at = recovered_at
+            attempt_model.completed_at = effective_recovered_at
             attempt_model.failure_reason = "LEASE_EXPIRED"
             attempt_model.recorded_message = (
                 "Attempt abandoned after lease expiry and queued for recovery."
@@ -628,4 +689,12 @@ def _build_legacy_control_authorization() -> AuthorizationDecision:
             "Legacy async control event predates explicit caller-authorization capture and is "
             "treated as a durable pre-RFC-0012 operator action."
         ),
+    )
+
+
+def _extend_lease(now: str, seconds: int) -> str:
+    return (
+        (datetime.fromisoformat(now.replace("Z", "+00:00")) + timedelta(seconds=seconds))
+        .isoformat()
+        .replace("+00:00", "Z")
     )

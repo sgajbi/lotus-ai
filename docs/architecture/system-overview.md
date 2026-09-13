@@ -403,10 +403,13 @@ The following slice activates stubbed worker lifecycle semantics on top of the s
 runtime. Allowlisted runtime-backed jobs can now be claimed, heartbeated, completed, failed, and
 recovered after lease expiry while keeping attempt history and active lease state inspectable
 through the public job-detail surface. Each attempt id is an immutable claim generation: a worker
-must present that generation for every heartbeat or terminal mutation, and the SQL-backed runtime
-locks and rechecks it with lease expiry in the transaction that writes the job, attempt, lease, and
-terminal artifact metadata. A restarted process that reuses a worker id therefore cannot publish
-over a reclaimed attempt.
+must present that generation for every heartbeat or terminal mutation. Retry and expiry recovery
+mint the successor from the job counter locked by that same transaction, incrementing it with the
+new attempt, so generations cannot be reused after a stale worker snapshot. The SQL-backed runtime
+locks the lease, job, and attempt before sampling the authoritative transition time and testing
+lease expiry; it then writes the job, attempt, lease, and terminal artifact metadata together. A
+payload staged before that boundary is deleted if the guarded transition loses or the lease expires.
+A restarted process that reuses a worker id therefore cannot publish over a reclaimed attempt.
 
 The first real consumer of that worker-backed async runtime is retrieval indexing. Concrete
 retrieval index jobs can now be submitted into the durable async backbone, executed through the

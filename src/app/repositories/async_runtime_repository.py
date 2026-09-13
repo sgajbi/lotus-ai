@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections.abc import Sequence
-from typing import Protocol
+from typing import Callable, Protocol
 
 from app.contracts.access_control import AuthorizationDecision
 from app.repositories.artifact_repository import ArtifactRecord
@@ -90,6 +90,7 @@ class AsyncRuntimeClaimTransition:
     job: AsyncRuntimeJobRecord
     attempt: AsyncRuntimeAttemptRecord
     lease: AsyncRuntimeLeaseRecord | None
+    next_attempt: AsyncRuntimeAttemptRecord | None = None
 
 
 @dataclass(frozen=True)
@@ -164,7 +165,7 @@ class AsyncRuntimeRepository(Protocol):
         job_id: str,
         worker_id: str,
         attempt_id: str,
-        now: str,
+        now: str | None,
         job_status: str | None,
         job_message: str | None,
         attempt_status: str | None,
@@ -172,28 +173,37 @@ class AsyncRuntimeRepository(Protocol):
         failure_reason: str | None,
         lease_expires_at: str | None,
         terminal_artifact: ArtifactRecord | None,
-        next_attempt: AsyncRuntimeAttemptRecord | None = None,
+        next_attempt_message: str | None = None,
+        now_factory: Callable[[], str] | None = None,
+        lease_extension_seconds: int | None = None,
     ) -> AsyncRuntimeClaimTransition | None:
         """Fence a claim mutation at the durable ownership boundary.
 
         Returns ``None`` when the lease is expired, reclaimed, or belongs to
         another immutable attempt generation.  Implementations must update
         job, attempt, lease, and terminal artifact metadata publication in one
-        transaction. ``None`` status/message fields preserve the locked value,
-        which prevents heartbeat from replaying a stale pre-transaction read.
+        transaction. A successor is minted from the *locked* job counter, and
+        the same transition advances that counter. ``now_factory`` is evaluated
+        after every row needed by the transition is locked, preventing a
+        timestamp captured before staging or lock wait from accepting an
+        expired lease. ``None``
+        status/message fields preserve the locked value, which prevents
+        heartbeat from replaying a stale pre-transaction read.
         """
 
     def recover_expired_claim(
         self,
         *,
         job_id: str,
-        recovered_at: str,
-        next_attempt: AsyncRuntimeAttemptRecord,
+        recovered_at: str | None,
+        next_attempt_message: str,
+        now_factory: Callable[[], str] | None = None,
     ) -> AsyncRuntimeRecoveryTransition | None:
         """Atomically abandon exactly the expired current generation.
 
         A recovery that loses to a heartbeat, terminal transition, or another
         recovery returns ``None`` and must not enqueue a duplicate attempt.
+        The successor generation is minted from the locked job counter.
         """
 
     def delete_job_records(self, job_ids: Sequence[str]) -> tuple[int, int, int]:
