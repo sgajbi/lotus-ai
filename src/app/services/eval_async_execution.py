@@ -52,12 +52,15 @@ def _execute_claimed_evaluation_job(
         fail_async_job(
             job_id=claim.job.job_id,
             worker_id=worker_id,
+            attempt_id=claim.attempt.attempt_id,
             failure_reason="UNSUPPORTED_ASYNC_JOB_TYPE",
             retryable=False,
         )
         return None
 
-    start_async_job(job_id=claim.job.job_id, worker_id=worker_id)
+    start_async_job(
+        job_id=claim.job.job_id, worker_id=worker_id, attempt_id=claim.attempt.attempt_id
+    )
     try:
         result = execute_runtime_backed_evaluation_run(
             run_id=claim.job.related_evaluation_run_id,
@@ -67,6 +70,7 @@ def _execute_claimed_evaluation_job(
         fail_async_job(
             job_id=claim.job.job_id,
             worker_id=worker_id,
+            attempt_id=claim.attempt.attempt_id,
             failure_reason=type(exc).__name__,
             retryable=False,
         )
@@ -85,6 +89,7 @@ def _execute_claimed_evaluation_job(
     complete_async_job(
         job_id=claim.job.job_id,
         worker_id=worker_id,
+        attempt_id=claim.attempt.attempt_id,
         message=completion_message,
     )
     return EvaluationAsyncExecutionResult(

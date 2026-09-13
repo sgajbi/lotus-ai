@@ -117,7 +117,7 @@ def test_run_retrieval_ingestion_job_by_id_rejects_unsupported_claim_type(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     async_job_id = "asyncjob_wrong_type"
-    failure_calls: list[tuple[str, str, str, bool]] = []
+    failure_calls: list[tuple[str, str, str, str, bool]] = []
     monkeypatch.setattr(
         "app.services.retrieval_ingestion_async_execution.claim_async_job_by_id",
         lambda job_id, worker_id: SimpleNamespace(
@@ -127,20 +127,29 @@ def test_run_retrieval_ingestion_job_by_id_rejects_unsupported_claim_type(
                 target_id="retjob_lotus_platform_rfcs",
                 caller_app="lotus-platform",
                 correlation_id="corr-unsupported",
-            )
+            ),
+            attempt=SimpleNamespace(attempt_id=f"{async_job_id}_attempt_001"),
         ),
     )
     monkeypatch.setattr(
         "app.services.retrieval_ingestion_async_execution.fail_async_job",
-        lambda job_id, worker_id, failure_reason, retryable: failure_calls.append(
-            (job_id, worker_id, failure_reason, retryable)
+        lambda job_id, worker_id, attempt_id, failure_reason, retryable: failure_calls.append(
+            (job_id, worker_id, attempt_id, failure_reason, retryable)
         ),
     )
 
     result = run_retrieval_ingestion_job_by_id(async_job_id=async_job_id, worker_id="worker-a")
 
     assert result is None
-    assert failure_calls == [(async_job_id, "worker-a", "UNSUPPORTED_ASYNC_JOB_TYPE", False)]
+    assert failure_calls == [
+        (
+            async_job_id,
+            "worker-a",
+            f"{async_job_id}_attempt_001",
+            "UNSUPPORTED_ASYNC_JOB_TYPE",
+            False,
+        )
+    ]
 
 
 def test_run_next_retrieval_ingestion_job_records_terminal_failure_when_follow_on_submission_raises(

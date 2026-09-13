@@ -82,6 +82,7 @@ def _execute_claimed_retrieval_index_job(
         fail_async_job(
             job_id=claim.job.job_id,
             worker_id=worker_id,
+            attempt_id=claim.attempt.attempt_id,
             failure_reason="UNSUPPORTED_ASYNC_JOB_TYPE",
             retryable=False,
         )
@@ -89,7 +90,9 @@ def _execute_claimed_retrieval_index_job(
 
     retrieval_job = get_retrieval_job_detail_or_raise(claim.job.target_id)
     repository = get_retrieval_repository()
-    start_async_job(job_id=claim.job.job_id, worker_id=worker_id)
+    start_async_job(
+        job_id=claim.job.job_id, worker_id=worker_id, attempt_id=claim.attempt.attempt_id
+    )
     repository.save_index_job(
         RetrievalIndexJobDescriptor(
             job_id=retrieval_job.job.job_id,
@@ -111,6 +114,7 @@ def _execute_claimed_retrieval_index_job(
         fail_async_job(
             job_id=claim.job.job_id,
             worker_id=worker_id,
+            attempt_id=claim.attempt.attempt_id,
             failure_reason=exc.category.value,
             retryable=False,
         )
@@ -141,6 +145,7 @@ def _execute_claimed_retrieval_index_job(
     complete_async_job(
         job_id=claim.job.job_id,
         worker_id=worker_id,
+        attempt_id=claim.attempt.attempt_id,
         message=completion_message,
     )
     return RetrievalAsyncExecutionResult(

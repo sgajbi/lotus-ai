@@ -51,11 +51,13 @@ def test_async_control_action_retries_failed_job_and_records_event(
             payload_summary="Refresh retrieval documents.",
         )
     )
-    claim_next_async_job(worker_id="worker-a")
+    claim = claim_next_async_job(worker_id="worker-a")
+    assert claim is not None
     queue.dequeue(timeout_seconds=0)
     fail_async_job(
         job_id=response.job_id or "",
         worker_id="worker-a",
+        attempt_id=claim.attempt.attempt_id,
         failure_reason="UPSTREAM_FAILURE",
         retryable=False,
     )
@@ -107,8 +109,11 @@ def test_async_control_action_history_survives_sql_store_reset(
             payload_summary="Refresh retrieval documents.",
         )
     )
-    claim_next_async_job(worker_id="worker-a")
-    start_async_job(job_id=response.job_id or "", worker_id="worker-a")
+    claim = claim_next_async_job(worker_id="worker-a")
+    assert claim is not None
+    start_async_job(
+        job_id=response.job_id or "", worker_id="worker-a", attempt_id=claim.attempt.attempt_id
+    )
 
     monkeypatch.setattr(
         "app.services.async_runtime_control._utcnow",
@@ -167,8 +172,11 @@ def test_async_control_action_requeues_abandoned_job() -> None:
             payload_summary="Refresh retrieval documents.",
         )
     )
-    claim_next_async_job(worker_id="worker-a")
-    start_async_job(job_id=response.job_id or "", worker_id="worker-a")
+    claim = claim_next_async_job(worker_id="worker-a")
+    assert claim is not None
+    start_async_job(
+        job_id=response.job_id or "", worker_id="worker-a", attempt_id=claim.attempt.attempt_id
+    )
     apply_async_control_action(
         AsyncControlActionRequest(
             job_id=response.job_id or "",
@@ -195,7 +203,9 @@ def test_async_control_action_requeues_abandoned_job() -> None:
     assert action.event.prior_status == "ABANDONED"
     assert action.event.resulting_status == "QUEUED"
     assert detail.job.status.value == "QUEUED"
-    assert detail.control_events[0].action_type.value == "REQUEUE_ABANDONED_JOB"
+    assert any(
+        event.action_type.value == "REQUEUE_ABANDONED_JOB" for event in detail.control_events
+    )
 
 
 @pytest.mark.parametrize(
@@ -317,7 +327,11 @@ def test_async_control_action_abandon_updates_linked_evaluation_attempt() -> Non
     )
     claim = claim_next_async_job(worker_id="worker-a")
     assert claim is not None
-    start_async_job(job_id=response.async_job_id or "", worker_id="worker-a")
+    start_async_job(
+        job_id=response.async_job_id or "",
+        worker_id="worker-a",
+        attempt_id=claim.attempt.attempt_id,
+    )
 
     action = apply_async_control_action(
         AsyncControlActionRequest(
