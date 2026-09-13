@@ -29,6 +29,7 @@ from app.services.async_worker_runtime import (
     complete_async_job,
     fail_async_job,
     heartbeat_async_job,
+    recover_expired_async_jobs,
     start_async_job,
 )
 from app.contracts.evals import EvaluationRunSubmissionRequest
@@ -125,7 +126,110 @@ def test_async_worker_runtime_retryable_failure_requeues_next_attempt(
     assert detail.attempts[0].status == "FAILED"
     assert detail.attempts[0].failure_reason == "TRANSIENT_TIMEOUT"
     assert detail.attempts[1].status == "QUEUED"
+
+
+def test_async_worker_runtime_mints_monotonic_retry_and_recovery_generations(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """The guarded counter, rather than a worker snapshot, owns successor ids."""
+
+    monkeypatch.setattr(
+        "app.services.async_worker_runtime._utcnow",
+        lambda: datetime(2026, 3, 23, 13, 30, tzinfo=UTC),
+    )
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-worker-monotonic-generations-001",
+            payload_summary="Prove retry and recovery generations never reuse an attempt id.",
+        )
+    )
+    first = claim_next_async_job(worker_id="worker-a")
+    assert first is not None
+
+    fail_async_job(
+        job_id=response.job_id or "",
+        worker_id="worker-a",
+        attempt_id=first.attempt.attempt_id,
+        failure_reason="TRANSIENT_TIMEOUT",
+        retryable=True,
+    )
+    second = claim_next_async_job(worker_id="worker-a")
+    assert second is not None and second.attempt.attempt_id.endswith("_attempt_002")
+
+    fail_async_job(
+        job_id=response.job_id or "",
+        worker_id="worker-a",
+        attempt_id=second.attempt.attempt_id,
+        failure_reason="TRANSIENT_TIMEOUT",
+        retryable=True,
+    )
+    third = claim_next_async_job(worker_id="worker-a")
+    assert third is not None and third.attempt.attempt_id.endswith("_attempt_003")
+
+    recovered = recover_expired_async_jobs(
+        now=datetime(2026, 3, 23, 13, 36, tzinfo=UTC),
+    )
+    assert recovered == [response.job_id]
+    detail = build_async_job_detail(job_id=response.job_id or "")
+    persisted_job = get_async_runtime_store().get_job(job_id=response.job_id or "")
+    assert persisted_job is not None and persisted_job.attempt_count == 4
+    assert [(attempt.attempt_number, attempt.status) for attempt in detail.attempts] == [
+        (1, "FAILED"),
+        (2, "FAILED"),
+        (3, "ABANDONED"),
+        (4, "QUEUED"),
+    ]
     assert detail.job.artifact_refs == []
+
+
+def test_async_completion_rechecks_expiry_after_staging_and_cleans_payload(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    """A payload staged before expiry is not publishable after expiry.
+
+    The two post-claim instants model staging crossing the boundary: the
+    durable transition receives its timestamp only after artifact staging.
+    """
+
+    settings.artifact_object_store_mode = "filesystem"
+    settings.artifact_object_store_root = str(tmp_path / "artifact-payloads")
+    instants = iter(
+        [
+            datetime(2026, 3, 23, 13, 30, tzinfo=UTC),
+            datetime(2026, 3, 23, 13, 34, 59, tzinfo=UTC),
+            datetime(2026, 3, 23, 13, 35, 1, tzinfo=UTC),
+        ]
+    )
+    monkeypatch.setattr("app.services.async_worker_runtime._utcnow", lambda: next(instants))
+    response = submit_async_job(
+        AsyncJobSubmissionRequest(
+            job_type="retrieval_indexing",
+            target_id="retjob_lotus_platform_rfcs",
+            caller_app="lotus-platform",
+            correlation_id="corr-async-worker-staging-expiry-001",
+            payload_summary="Reject terminal metadata after a staged payload crosses lease expiry.",
+        )
+    )
+    claim = claim_next_async_job(worker_id="worker-a")
+    assert claim is not None
+
+    with pytest.raises(HTTPException, match="no longer has an unexpired current claim") as error:
+        complete_async_job(
+            job_id=response.job_id or "",
+            worker_id="worker-a",
+            attempt_id=claim.attempt.attempt_id,
+            message="This terminal result crossed its lease boundary.",
+        )
+
+    assert error.value.status_code == 409
+    detail = build_async_job_detail(job_id=response.job_id or "")
+    assert detail.job.status.value == "CLAIMED"
+    assert detail.job.artifact_refs == []
+    assert get_artifact_repository().list_artifacts() == []
+    assert not [path for path in (tmp_path / "artifact-payloads").rglob("*") if path.is_file()]
 
 
 def test_async_worker_runtime_recovers_expired_lease_on_next_claim(
@@ -528,20 +632,6 @@ def test_sql_claim_transition_commits_retry_successor_with_failed_generation(
     assert claim is not None
     repository = get_async_runtime_store()
     assert isinstance(repository, SqlAlchemyAsyncRuntimeRepository)
-    successor = AsyncRuntimeAttemptRecord(
-        attempt_id=f"{response.job_id}_attempt_002",
-        job_id=response.job_id or "",
-        attempt_number=2,
-        lifecycle_status="QUEUED",
-        worker_id=None,
-        claimed_at=None,
-        heartbeat_at=None,
-        started_at=None,
-        completed_at=None,
-        failure_reason=None,
-        recorded_message="Retry queued after transient failure.",
-    )
-
     transition = repository.transition_current_claim(
         job_id=response.job_id or "",
         worker_id="worker-a",
@@ -554,19 +644,71 @@ def test_sql_claim_transition_commits_retry_successor_with_failed_generation(
         failure_reason="TRANSIENT_TIMEOUT",
         lease_expires_at=None,
         terminal_artifact=None,
-        next_attempt=successor,
+        next_attempt_message="Retry queued after transient failure.",
     )
 
     assert transition is not None and transition.lease is None
+    assert transition.next_attempt is not None
+    assert transition.next_attempt.attempt_id == f"{response.job_id}_attempt_002"
     detail = build_async_job_detail(job_id=response.job_id or "")
     assert detail.job.status.value == "QUEUED"
     assert [(attempt.attempt_number, attempt.status) for attempt in detail.attempts] == [
         (1, "FAILED"),
         (2, "QUEUED"),
     ]
+    second_claim = repository.claim_runnable_job_by_id(
+        job_id=response.job_id or "",
+        worker_id="worker-b",
+        claimed_at="2026-03-23T18:02:00+00:00",
+        heartbeat_at="2026-03-23T18:02:00+00:00",
+        lease_expires_at="2026-03-23T18:03:00+00:00",
+        latest_message="Retry generation claimed before expiry recovery.",
+        attempt_message="Retry generation claimed before expiry recovery.",
+    )
+    assert second_claim is not None and second_claim.attempt.attempt_number == 2
+    with pytest.raises(ValueError, match="fresh claim-transition timestamp"):
+        repository.transition_current_claim(
+            job_id=response.job_id or "",
+            worker_id="worker-b",
+            attempt_id=second_claim.attempt.attempt_id,
+            now=None,
+            job_status=None,
+            job_message=None,
+            attempt_status=None,
+            attempt_message="Malformed transition must not invent a clock value.",
+            failure_reason=None,
+            lease_expires_at=None,
+            terminal_artifact=None,
+        )
+    with pytest.raises(ValueError, match="fresh claim-recovery timestamp"):
+        repository.recover_expired_claim(
+            job_id=response.job_id or "",
+            recovered_at=None,
+            next_attempt_message="Malformed recovery must not invent a clock value.",
+        )
+    recovered = repository.recover_expired_claim(
+        job_id=response.job_id or "",
+        recovered_at="2026-03-23T18:04:00+00:00",
+        next_attempt_message="Recovery queued a strictly newer generation.",
+    )
+    assert recovered is not None and recovered.next_attempt.attempt_number == 3
+    recovered_detail = build_async_job_detail(job_id=response.job_id or "")
+    assert [(attempt.attempt_number, attempt.status) for attempt in recovered_detail.attempts] == [
+        (1, "FAILED"),
+        (2, "ABANDONED"),
+        (3, "QUEUED"),
+    ]
+    assert (
+        repository.recover_expired_claim(
+            job_id=response.job_id or "",
+            recovered_at="2026-03-23T18:04:00+00:00",
+            next_attempt_message="A missing lease cannot be recovered twice.",
+        )
+        is None
+    )
 
 
-def test_sql_recovery_rejects_unexpired_or_inconsistent_claim_state(
+def test_sql_recovery_rejects_unexpired_or_terminal_claim_state(
     tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
     settings.async_runtime_store_mode = "sqlalchemy"
@@ -589,37 +731,11 @@ def test_sql_recovery_rejects_unexpired_or_inconsistent_claim_state(
     assert claim is not None
     repository = get_async_runtime_store()
     assert isinstance(repository, SqlAlchemyAsyncRuntimeRepository)
-    next_attempt = AsyncRuntimeAttemptRecord(
-        attempt_id=f"{response.job_id}_attempt_002",
-        job_id=response.job_id or "",
-        attempt_number=2,
-        lifecycle_status="QUEUED",
-        worker_id=None,
-        claimed_at=None,
-        heartbeat_at=None,
-        started_at=None,
-        completed_at=None,
-        failure_reason=None,
-        recorded_message="Recovery queued a successor generation.",
-    )
-
     assert (
         repository.recover_expired_claim(
             job_id=response.job_id or "",
             recovered_at="2026-03-23T19:01:00+00:00",
-            next_attempt=next_attempt,
-        )
-        is None
-    )
-    assert (
-        repository.recover_expired_claim(
-            job_id=response.job_id or "",
-            recovered_at="2026-03-23T19:06:00+00:00",
-            next_attempt=replace(
-                next_attempt,
-                attempt_id=f"{response.job_id}_attempt_003",
-                attempt_number=3,
-            ),
+            next_attempt_message="Recovery queued a successor generation.",
         )
         is None
     )
@@ -663,7 +779,7 @@ def test_stage_json_artifact_defers_metadata_for_filesystem_payloads(tmp_path: P
     assert get_artifact_repository().get_artifact(artifact_id=staged.artifact_id) is None
 
 
-def test_memory_recovery_rejects_unexpired_and_non_successor_generations() -> None:
+def test_memory_recovery_rejects_unexpired_claim_state() -> None:
     repository = InMemoryAsyncRuntimeRepository()
     job_id = "asyncjob_memory_recovery_generation"
     repository.save_job(
@@ -709,37 +825,31 @@ def test_memory_recovery_rejects_unexpired_and_non_successor_generations() -> No
         attempt_message="Claimed.",
     )
     assert claim is not None
-    successor = AsyncRuntimeAttemptRecord(
-        attempt_id=f"{job_id}_attempt_002",
-        job_id=job_id,
-        attempt_number=2,
-        lifecycle_status="QUEUED",
-        worker_id=None,
-        claimed_at=None,
-        heartbeat_at=None,
-        started_at=None,
-        completed_at=None,
-        failure_reason=None,
-        recorded_message="Recovery queued a successor generation.",
-    )
-
+    with pytest.raises(ValueError, match="fresh claim-transition timestamp"):
+        repository.transition_current_claim(
+            job_id=job_id,
+            worker_id="worker-a",
+            attempt_id=claim.attempt.attempt_id,
+            now=None,
+            job_status=None,
+            job_message=None,
+            attempt_status=None,
+            attempt_message="Malformed transition must not invent a clock value.",
+            failure_reason=None,
+            lease_expires_at=None,
+            terminal_artifact=None,
+        )
+    with pytest.raises(ValueError, match="fresh claim-recovery timestamp"):
+        repository.recover_expired_claim(
+            job_id=job_id,
+            recovered_at=None,
+            next_attempt_message="Malformed recovery must not invent a clock value.",
+        )
     assert (
         repository.recover_expired_claim(
             job_id=job_id,
             recovered_at="2026-03-23T20:01:00+00:00",
-            next_attempt=successor,
-        )
-        is None
-    )
-    assert (
-        repository.recover_expired_claim(
-            job_id=job_id,
-            recovered_at="2026-03-23T20:06:00+00:00",
-            next_attempt=replace(
-                successor,
-                attempt_id=f"{job_id}_attempt_003",
-                attempt_number=3,
-            ),
+            next_attempt_message="Recovery queued a successor generation.",
         )
         is None
     )

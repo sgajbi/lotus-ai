@@ -9,12 +9,17 @@ the immutable attempt generation distinguishes it from the reclaimed worker.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier, Event
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 
 from app.contracts.artifacts import ArtifactLifecycleStatus, ArtifactStorageBackend
-from app.db.models import ArtifactMetadataModel
+from app.db.models import ArtifactMetadataModel, AsyncWorkerLeaseModel
 from app.repositories.artifact_repository import ArtifactRecord
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
@@ -36,6 +41,19 @@ def _two_sessions(
         SqlAlchemyAsyncRuntimeRepository(database_url),
         SqlAlchemyAsyncRuntimeRepository(database_url),
     )
+
+
+def _race(*calls: Callable[[], object]) -> list[object]:
+    """Run operations in separate threads, retaining separate repository pools."""
+
+    barrier = Barrier(len(calls), timeout=10)
+
+    def run(call: Callable[[], object]) -> object:
+        barrier.wait()
+        return call()
+
+    with ThreadPoolExecutor(max_workers=len(calls)) as pool:
+        return list(pool.map(run, calls))
 
 
 def _seed_queued_job(
@@ -74,22 +92,6 @@ def _seed_queued_job(
     )
     repository.save_attempt(attempt)
     return attempt
-
-
-def _next_attempt(job_id: str) -> AsyncRuntimeAttemptRecord:
-    return AsyncRuntimeAttemptRecord(
-        attempt_id=f"{job_id}_attempt_002",
-        job_id=job_id,
-        attempt_number=2,
-        lifecycle_status="QUEUED",
-        worker_id=None,
-        claimed_at=None,
-        heartbeat_at=None,
-        started_at=None,
-        completed_at=None,
-        failure_reason=None,
-        recorded_message="Retry queued after lease expiry recovery.",
-    )
 
 
 def _terminal_artifact(job_id: str) -> ArtifactRecord:
@@ -156,7 +158,7 @@ def test_stale_reused_worker_cannot_publish_terminal_artifact_after_crash_recove
         recovery_session.recover_expired_claim(
             job_id=job_id,
             recovered_at=_T1,
-            next_attempt=_next_attempt(job_id),
+            next_attempt_message="Retry queued after lease expiry recovery.",
         )
         is not None
     )
@@ -171,6 +173,23 @@ def test_stale_reused_worker_cannot_publish_terminal_artifact_after_crash_recove
     )
     assert reclaimed is not None
     assert reclaimed.attempt.attempt_id != first_attempt.attempt_id
+
+    assert (
+        stale_session.transition_current_claim(
+            job_id=job_id,
+            worker_id="reused-worker",
+            attempt_id=first_attempt.attempt_id,
+            now=_T2,
+            job_status="RUNNING",
+            job_message="Stale start must be rejected.",
+            attempt_status="RUNNING",
+            attempt_message="Stale start must be rejected.",
+            failure_reason=None,
+            lease_expires_at=None,
+            terminal_artifact=None,
+        )
+        is None
+    )
 
     assert (
         stale_session.transition_current_claim(
@@ -277,3 +296,308 @@ def test_current_generation_commits_terminal_job_and_artifact_metadata_together(
     with verifier._session_factory() as session:
         persisted = session.get(ArtifactMetadataModel, artifact.artifact_id)
         assert persisted is not None and persisted.source_object_id == job_id
+
+
+def test_retry_generations_are_monotonic_through_recovery_on_postgresql(
+    postgres_database_url: str,
+) -> None:
+    """A locked counter produces 001 -> 002 -> 003, then recovery -> 004."""
+
+    writer, verifier = _two_sessions(postgres_database_url)
+    job_id = f"asyncjob_pg_monotonic_{uuid4().hex}"
+    first = _seed_queued_job(writer, job_id)
+    claim_one = writer.claim_runnable_job_by_id(
+        job_id=job_id,
+        worker_id="worker-a",
+        claimed_at=_T0,
+        heartbeat_at=_T0,
+        lease_expires_at="2026-09-13T00:02:00Z",
+        latest_message="Generation one claimed.",
+        attempt_message="Generation one claimed.",
+    )
+    assert claim_one is not None
+    retry_one = writer.transition_current_claim(
+        job_id=job_id,
+        worker_id="worker-a",
+        attempt_id=first.attempt_id,
+        now="2026-09-13T00:01:00Z",
+        job_status="QUEUED",
+        job_message="Retry two queued.",
+        attempt_status="FAILED",
+        attempt_message="Generation one retryable failure.",
+        failure_reason="TRANSIENT_TIMEOUT",
+        lease_expires_at=None,
+        terminal_artifact=None,
+        next_attempt_message="Retry two queued.",
+    )
+    assert retry_one is not None and retry_one.next_attempt is not None
+    assert retry_one.next_attempt.attempt_id == f"{job_id}_attempt_002"
+    claim_two = writer.claim_runnable_job_by_id(
+        job_id=job_id,
+        worker_id="worker-a",
+        claimed_at="2026-09-13T00:02:00Z",
+        heartbeat_at="2026-09-13T00:02:00Z",
+        lease_expires_at="2026-09-13T00:04:00Z",
+        latest_message="Generation two claimed.",
+        attempt_message="Generation two claimed.",
+    )
+    assert claim_two is not None
+    retry_two = writer.transition_current_claim(
+        job_id=job_id,
+        worker_id="worker-a",
+        attempt_id=claim_two.attempt.attempt_id,
+        now="2026-09-13T00:03:00Z",
+        job_status="QUEUED",
+        job_message="Retry three queued.",
+        attempt_status="FAILED",
+        attempt_message="Generation two retryable failure.",
+        failure_reason="TRANSIENT_TIMEOUT",
+        lease_expires_at=None,
+        terminal_artifact=None,
+        next_attempt_message="Retry three queued.",
+    )
+    assert retry_two is not None and retry_two.next_attempt is not None
+    assert retry_two.next_attempt.attempt_id == f"{job_id}_attempt_003"
+    claim_three = writer.claim_runnable_job_by_id(
+        job_id=job_id,
+        worker_id="worker-a",
+        claimed_at="2026-09-13T00:04:00Z",
+        heartbeat_at="2026-09-13T00:04:00Z",
+        lease_expires_at="2026-09-13T00:05:00Z",
+        latest_message="Generation three claimed.",
+        attempt_message="Generation three claimed.",
+    )
+    assert claim_three is not None
+    recovery = verifier.recover_expired_claim(
+        job_id=job_id,
+        recovered_at=_T1,
+        next_attempt_message="Recovery queued generation four.",
+    )
+    assert recovery is not None and recovery.next_attempt.attempt_id == f"{job_id}_attempt_004"
+    job = verifier.get_job(job_id=job_id)
+    attempts = verifier.list_attempts(job_id=job_id)
+    assert job is not None and job.attempt_count == 4
+    assert [(attempt.attempt_number, attempt.lifecycle_status) for attempt in attempts] == [
+        (1, "FAILED"),
+        (2, "FAILED"),
+        (3, "ABANDONED"),
+        (4, "QUEUED"),
+    ]
+
+
+def test_simultaneous_postgresql_claimers_admit_exactly_one_current_generation(
+    postgres_database_url: str,
+) -> None:
+    """Two independent PostgreSQL sessions cannot both claim one queued attempt."""
+
+    claimant_a, claimant_b = _two_sessions(postgres_database_url)
+    job_id = f"asyncjob_pg_simultaneous_{uuid4().hex}"
+    _seed_queued_job(claimant_a, job_id)
+    outcomes = _race(
+        lambda: claimant_a.claim_runnable_job_by_id(
+            job_id=job_id,
+            worker_id="worker-a",
+            claimed_at=_T0,
+            heartbeat_at=_T0,
+            lease_expires_at="2026-09-13T00:05:00Z",
+            latest_message="Worker A attempted claim.",
+            attempt_message="Worker A attempted claim.",
+        ),
+        lambda: claimant_b.claim_runnable_job_by_id(
+            job_id=job_id,
+            worker_id="worker-b",
+            claimed_at=_T0,
+            heartbeat_at=_T0,
+            lease_expires_at="2026-09-13T00:05:00Z",
+            latest_message="Worker B attempted claim.",
+            attempt_message="Worker B attempted claim.",
+        ),
+    )
+    winners = [outcome for outcome in outcomes if outcome is not None]
+    assert len(winners) == 1
+    job = claimant_a.get_job(job_id=job_id)
+    lease = claimant_a.get_active_lease(job_id=job_id)
+    assert job is not None and job.lifecycle_status == "CLAIMED"
+    assert lease is not None and lease.worker_id in {"worker-a", "worker-b"}
+
+
+def test_postgresql_completion_and_expiry_recovery_admit_one_durable_outcome(
+    postgres_database_url: str,
+) -> None:
+    """Completion and recovery race one lease; the loser publishes no mixed state."""
+
+    completer, recoverer = _two_sessions(postgres_database_url)
+    job_id = f"asyncjob_pg_complete_recover_{uuid4().hex}"
+    first = _seed_queued_job(completer, job_id)
+    assert (
+        completer.claim_runnable_job_by_id(
+            job_id=job_id,
+            worker_id="worker-a",
+            claimed_at=_T0,
+            heartbeat_at=_T0,
+            lease_expires_at="2026-09-13T00:05:00Z",
+            latest_message="Claimed for completion-versus-recovery proof.",
+            attempt_message="Claimed for completion-versus-recovery proof.",
+        )
+        is not None
+    )
+    artifact = _terminal_artifact(job_id)
+    outcomes = _race(
+        lambda: completer.transition_current_claim(
+            job_id=job_id,
+            worker_id="worker-a",
+            attempt_id=first.attempt_id,
+            now="2026-09-13T00:04:59Z",
+            job_status="COMPLETED",
+            job_message="Completion raced expiry recovery.",
+            attempt_status="COMPLETED",
+            attempt_message="Completion raced expiry recovery.",
+            failure_reason=None,
+            lease_expires_at=None,
+            terminal_artifact=artifact,
+        ),
+        lambda: recoverer.recover_expired_claim(
+            job_id=job_id,
+            recovered_at=_T1,
+            next_attempt_message="Recovery raced completion.",
+        ),
+    )
+    assert sum(outcome is not None for outcome in outcomes) == 1
+
+    job = completer.get_job(job_id=job_id)
+    attempts = completer.list_attempts(job_id=job_id)
+    assert job is not None
+    assert completer.get_active_lease(job_id=job_id) is None
+    with completer._session_factory() as session:
+        persisted_artifact = session.get(ArtifactMetadataModel, artifact.artifact_id)
+    if job.lifecycle_status == "COMPLETED":
+        assert job.artifact_ids == [artifact.artifact_id]
+        assert [attempt.lifecycle_status for attempt in attempts] == ["COMPLETED"]
+        assert persisted_artifact is not None
+    else:
+        assert job.lifecycle_status == "QUEUED" and job.artifact_ids == []
+        assert [(attempt.attempt_number, attempt.lifecycle_status) for attempt in attempts] == [
+            (1, "ABANDONED"),
+            (2, "QUEUED"),
+        ]
+        assert persisted_artifact is None
+
+
+def test_postgresql_lock_wait_rechecks_expiry_before_terminal_publication(
+    postgres_database_url: str,
+) -> None:
+    """The completion timestamp is sampled after a held lease-row lock releases."""
+
+    writer, blocked_writer = _two_sessions(postgres_database_url)
+    job_id = f"asyncjob_pg_lock_expiry_{uuid4().hex}"
+    first = _seed_queued_job(writer, job_id)
+    assert (
+        writer.claim_runnable_job_by_id(
+            job_id=job_id,
+            worker_id="worker-a",
+            claimed_at=_T0,
+            heartbeat_at=_T0,
+            lease_expires_at="2026-09-13T00:05:00Z",
+            latest_message="Claimed for expiry-boundary proof.",
+            attempt_message="Claimed for expiry-boundary proof.",
+        )
+        is not None
+    )
+    artifact = _terminal_artifact(job_id)
+    lock_acquired = Event()
+    fresh_time_sampled = Event()
+    release_lock = Event()
+
+    def hold_lease_lock() -> None:
+        with writer._session_factory.begin() as session:
+            session.scalars(
+                select(AsyncWorkerLeaseModel)
+                .where(AsyncWorkerLeaseModel.job_id == job_id)
+                .with_for_update()
+            ).one()
+            lock_acquired.set()
+            assert release_lock.wait(timeout=10)
+
+    def expire_after_lock() -> str:
+        fresh_time_sampled.set()
+        return _T1
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        holder = pool.submit(hold_lease_lock)
+        assert lock_acquired.wait(timeout=10)
+        blocked = pool.submit(
+            blocked_writer.transition_current_claim,
+            job_id=job_id,
+            worker_id="worker-a",
+            attempt_id=first.attempt_id,
+            now=None,
+            job_status="COMPLETED",
+            job_message="Must not publish after expiry.",
+            attempt_status="COMPLETED",
+            attempt_message="Must not publish after expiry.",
+            failure_reason=None,
+            lease_expires_at=None,
+            terminal_artifact=artifact,
+            now_factory=expire_after_lock,
+        )
+        assert not fresh_time_sampled.wait(timeout=0.2)
+        release_lock.set()
+        assert holder.result(timeout=10) is None
+        assert blocked.result(timeout=10) is None
+
+    job = writer.get_job(job_id=job_id)
+    lease = writer.get_active_lease(job_id=job_id)
+    assert job is not None and job.lifecycle_status == "CLAIMED" and job.artifact_ids == []
+    assert lease is not None and lease.attempt_id == first.attempt_id
+    with writer._session_factory() as session:
+        assert session.get(ArtifactMetadataModel, artifact.artifact_id) is None
+
+
+def test_postgresql_terminal_artifact_failure_rolls_back_job_metadata_together(
+    postgres_database_url: str,
+) -> None:
+    """A failed artifact insert cannot commit terminal job or attempt state alone."""
+
+    repository, verifier = _two_sessions(postgres_database_url)
+    job_id = f"asyncjob_pg_terminal_rollback_{uuid4().hex}"
+    first = _seed_queued_job(repository, job_id)
+    assert (
+        repository.claim_runnable_job_by_id(
+            job_id=job_id,
+            worker_id="worker-a",
+            claimed_at=_T0,
+            heartbeat_at=_T0,
+            lease_expires_at="2026-09-13T00:10:00Z",
+            latest_message="Claimed for rollback proof.",
+            attempt_message="Claimed for rollback proof.",
+        )
+        is not None
+    )
+    collision = _terminal_artifact("another-async-job")
+    with repository._session_factory.begin() as session:
+        session.add(repository._artifact_metadata_model(collision))
+
+    with pytest.raises(IntegrityError):
+        repository.transition_current_claim(
+            job_id=job_id,
+            worker_id="worker-a",
+            attempt_id=first.attempt_id,
+            now=_T1,
+            job_status="COMPLETED",
+            job_message="Must roll back if terminal artifact persistence fails.",
+            attempt_status="COMPLETED",
+            attempt_message="Must roll back if terminal artifact persistence fails.",
+            failure_reason=None,
+            lease_expires_at=None,
+            terminal_artifact=collision,
+        )
+
+    job = verifier.get_job(job_id=job_id)
+    attempt = verifier.get_attempt(attempt_id=first.attempt_id)
+    lease = verifier.get_active_lease(job_id=job_id)
+    assert job is not None and job.lifecycle_status == "CLAIMED" and job.artifact_ids == []
+    assert attempt is not None and attempt.lifecycle_status == "CLAIMED"
+    assert lease is not None and lease.attempt_id == first.attempt_id
+    with verifier._session_factory() as session:
+        persisted = session.get(ArtifactMetadataModel, collision.artifact_id)
+        assert persisted is not None and persisted.source_object_id == "another-async-job"
