@@ -15,7 +15,7 @@ from app.services.artifact_object_store import StoredArtifactObject
 from app.services.artifact_store import get_artifact_object_store, get_artifact_repository
 
 
-def persist_json_artifact(
+def stage_json_artifact(
     *,
     domain: str,
     artifact_type: str,
@@ -29,7 +29,14 @@ def persist_json_artifact(
     lineage_parent_artifact_id: str | None = None,
     superseded_by_artifact_id: str | None = None,
     tenant_id: str | None = None,
-) -> ArtifactDescriptor:
+) -> ArtifactRecord:
+    """Write payload bytes and return unpublished metadata.
+
+    Callers which couple an artifact to another durable transaction use this
+    seam to ensure that metadata is only published by the owning transaction.
+    A rejected claim may leave an unreachable payload object, but never an
+    accepted artifact record or a source-object reference.
+    """
     artifact_id = f"artifact_{domain}_{uuid4().hex[:16]}"
     object_key = f"{domain}/{source_object_kind}/{source_object_id}/{artifact_id}.json"
     stored_object = get_artifact_object_store().put_object(
@@ -54,6 +61,38 @@ def persist_json_artifact(
         superseded_by_artifact_id=superseded_by_artifact_id,
         created_at=created_at,
         created_by=created_by,
+        tenant_id=tenant_id,
+    )
+    return record
+
+
+def persist_json_artifact(
+    *,
+    domain: str,
+    artifact_type: str,
+    source_object_kind: str,
+    source_object_id: str,
+    created_at: str,
+    created_by: str,
+    payload_json: bytes,
+    lifecycle_status: ArtifactLifecycleStatus = ArtifactLifecycleStatus.RUNTIME_GENERATED,
+    retention_posture: str = "active",
+    lineage_parent_artifact_id: str | None = None,
+    superseded_by_artifact_id: str | None = None,
+    tenant_id: str | None = None,
+) -> ArtifactDescriptor:
+    record = stage_json_artifact(
+        domain=domain,
+        artifact_type=artifact_type,
+        source_object_kind=source_object_kind,
+        source_object_id=source_object_id,
+        created_at=created_at,
+        created_by=created_by,
+        payload_json=payload_json,
+        lifecycle_status=lifecycle_status,
+        retention_posture=retention_posture,
+        lineage_parent_artifact_id=lineage_parent_artifact_id,
+        superseded_by_artifact_id=superseded_by_artifact_id,
         tenant_id=tenant_id,
     )
     get_artifact_repository().save_artifact(record)

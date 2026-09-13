@@ -8,11 +8,14 @@ from copy import deepcopy
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeClaimRecord,
+    AsyncRuntimeClaimTransition,
     AsyncRuntimeControlEventRecord,
     AsyncRuntimeJobRecord,
     AsyncRuntimeLeaseRecord,
+    AsyncRuntimeRecoveryTransition,
     AsyncRuntimeRepository,
 )
+from app.repositories.artifact_repository import ArtifactRecord
 
 
 class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
@@ -209,6 +212,122 @@ class InMemoryAsyncRuntimeRepository(AsyncRuntimeRepository):
             job=claimed_job,
             attempt=claimed_attempt,
             lease=lease,
+        )
+
+    def transition_current_claim(
+        self,
+        *,
+        job_id: str,
+        worker_id: str,
+        attempt_id: str,
+        now: str,
+        job_status: str | None,
+        job_message: str | None,
+        attempt_status: str | None,
+        attempt_message: str,
+        failure_reason: str | None,
+        lease_expires_at: str | None,
+        terminal_artifact: ArtifactRecord | None,
+        next_attempt: AsyncRuntimeAttemptRecord | None = None,
+    ) -> AsyncRuntimeClaimTransition | None:
+        lease = self._leases_by_job.get(job_id)
+        attempt = self.get_attempt(attempt_id=attempt_id)
+        job = self._jobs.get(job_id)
+        if (
+            lease is None
+            or attempt is None
+            or job is None
+            or lease.worker_id != worker_id
+            or lease.attempt_id != attempt_id
+            or lease.lease_expires_at <= now
+            or job.lifecycle_status not in {"CLAIMED", "RUNNING"}
+        ):
+            return None
+
+        updated_attempt = replace(
+            attempt,
+            lifecycle_status=attempt_status or attempt.lifecycle_status,
+            heartbeat_at=now,
+            started_at=(
+                now
+                if attempt_status == "RUNNING" and attempt.started_at is None
+                else attempt.started_at
+            ),
+            completed_at=(
+                now
+                if attempt_status in {"COMPLETED", "FAILED", "ABANDONED"}
+                else attempt.completed_at
+            ),
+            failure_reason=failure_reason,
+            recorded_message=attempt_message,
+        )
+        updated_job = replace(
+            job,
+            lifecycle_status=job_status or job.lifecycle_status,
+            latest_message=job_message or job.latest_message,
+            artifact_ids=(
+                [*job.artifact_ids, terminal_artifact.artifact_id]
+                if terminal_artifact is not None
+                else job.artifact_ids
+            ),
+        )
+        self.save_attempt(updated_attempt)
+        self.save_job(updated_job)
+        if next_attempt is not None:
+            self.save_attempt(next_attempt)
+        if lease_expires_at is None:
+            self.delete_lease(lease_id=lease.lease_id)
+            updated_lease = None
+        else:
+            updated_lease = replace(lease, heartbeat_at=now, lease_expires_at=lease_expires_at)
+            self.save_lease(updated_lease)
+        return AsyncRuntimeClaimTransition(
+            job=deepcopy(updated_job),
+            attempt=deepcopy(updated_attempt),
+            lease=deepcopy(updated_lease),
+        )
+
+    def recover_expired_claim(
+        self,
+        *,
+        job_id: str,
+        recovered_at: str,
+        next_attempt: AsyncRuntimeAttemptRecord,
+    ) -> AsyncRuntimeRecoveryTransition | None:
+        lease = self._leases_by_job.get(job_id)
+        job = self._jobs.get(job_id)
+        if (
+            lease is None
+            or job is None
+            or lease.lease_expires_at > recovered_at
+            or job.lifecycle_status not in {"CLAIMED", "RUNNING"}
+        ):
+            return None
+        attempt = self.get_attempt(attempt_id=lease.attempt_id)
+        if attempt is None or next_attempt.attempt_number != job.attempt_count + 1:
+            return None
+        abandoned = replace(
+            attempt,
+            lifecycle_status="ABANDONED",
+            heartbeat_at=lease.heartbeat_at,
+            completed_at=recovered_at,
+            failure_reason="LEASE_EXPIRED",
+            recorded_message="Attempt abandoned after lease expiry and queued for recovery.",
+        )
+        queued_job = replace(
+            job,
+            lifecycle_status="QUEUED",
+            latest_message=next_attempt.recorded_message,
+            attempt_count=next_attempt.attempt_number,
+        )
+        self.save_attempt(abandoned)
+        self.save_attempt(next_attempt)
+        self.save_job(queued_job)
+        self.delete_lease(lease_id=lease.lease_id)
+        return AsyncRuntimeRecoveryTransition(
+            job=deepcopy(queued_job),
+            abandoned_attempt=deepcopy(abandoned),
+            next_attempt=deepcopy(next_attempt),
         )
 
     def delete_job_records(self, job_ids: Sequence[str]) -> tuple[int, int, int]:

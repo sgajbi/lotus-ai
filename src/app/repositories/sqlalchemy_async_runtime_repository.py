@@ -13,17 +13,21 @@ from app.contracts.access_control import (
     TenantPolicyMode,
 )
 from app.db.models import (
+    ArtifactMetadataModel,
     AsyncControlEventModel,
     AsyncJobAttemptModel,
     AsyncJobModel,
     AsyncWorkerLeaseModel,
 )
+from app.repositories.artifact_repository import ArtifactRecord
 from app.repositories.async_runtime_repository import (
     AsyncRuntimeAttemptRecord,
     AsyncRuntimeClaimRecord,
+    AsyncRuntimeClaimTransition,
     AsyncRuntimeControlEventRecord,
     AsyncRuntimeJobRecord,
     AsyncRuntimeLeaseRecord,
+    AsyncRuntimeRecoveryTransition,
     AsyncRuntimeRepository,
 )
 from app.repositories.sqlalchemy_repository_base import SqlAlchemyRepositoryBase
@@ -157,7 +161,9 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
             statement = select(AsyncJobModel).where(AsyncJobModel.lifecycle_status == "QUEUED")
             if job_types is not None:
                 statement = statement.where(AsyncJobModel.job_type.in_(job_types))
-            job_model = session.scalars(statement.order_by(AsyncJobModel.submitted_at)).first()
+            job_model = session.scalars(
+                statement.order_by(AsyncJobModel.submitted_at).with_for_update(skip_locked=True)
+            ).first()
             if job_model is None:
                 return None
 
@@ -217,8 +223,12 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
         attempt_message: str,
     ) -> AsyncRuntimeClaimRecord | None:
         with self._session_factory() as session:
-            job_model = session.get(AsyncJobModel, job_id)
-            if job_model is None or job_model.lifecycle_status != "QUEUED":
+            job_model = session.scalars(
+                select(AsyncJobModel)
+                .where(AsyncJobModel.job_id == job_id, AsyncJobModel.lifecycle_status == "QUEUED")
+                .with_for_update(skip_locked=True)
+            ).first()
+            if job_model is None:
                 return None
 
             existing_lease = session.scalars(
@@ -263,6 +273,183 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
                 job=self._to_job_record(job_model),
                 attempt=self._to_attempt_record(attempt_model),
                 lease=self._to_lease_record(lease_model),
+            )
+
+    def transition_current_claim(
+        self,
+        *,
+        job_id: str,
+        worker_id: str,
+        attempt_id: str,
+        now: str,
+        job_status: str | None,
+        job_message: str | None,
+        attempt_status: str | None,
+        attempt_message: str,
+        failure_reason: str | None,
+        lease_expires_at: str | None,
+        terminal_artifact: ArtifactRecord | None,
+        next_attempt: AsyncRuntimeAttemptRecord | None = None,
+    ) -> AsyncRuntimeClaimTransition | None:
+        """Apply one worker mutation only while its exact claim is current.
+
+        The lease row is locked before its expiry and immutable attempt id are
+        evaluated.  The dependent job and attempt writes share the same
+        transaction, so a recovered worker cannot interleave a stale terminal
+        write between an ownership read and a later merge/commit.
+        """
+
+        with self._session_factory() as session:
+            lease_model = session.scalars(
+                select(AsyncWorkerLeaseModel)
+                .where(
+                    AsyncWorkerLeaseModel.job_id == job_id,
+                    AsyncWorkerLeaseModel.worker_id == worker_id,
+                    AsyncWorkerLeaseModel.attempt_id == attempt_id,
+                )
+                .with_for_update()
+            ).first()
+            if lease_model is None or lease_model.lease_expires_at <= now:
+                session.rollback()
+                return None
+
+            job_model = session.scalars(
+                select(AsyncJobModel).where(AsyncJobModel.job_id == job_id).with_for_update()
+            ).first()
+            attempt_model = session.scalars(
+                select(AsyncJobAttemptModel)
+                .where(AsyncJobAttemptModel.attempt_id == attempt_id)
+                .with_for_update()
+            ).first()
+            if (
+                job_model is None
+                or attempt_model is None
+                or job_model.lifecycle_status not in {"CLAIMED", "RUNNING"}
+                or attempt_model.job_id != job_id
+            ):
+                session.rollback()
+                return None
+
+            if job_status is not None:
+                job_model.lifecycle_status = job_status
+            if job_message is not None:
+                job_model.latest_message = job_message
+            if terminal_artifact is not None:
+                job_model.artifact_ids = [*job_model.artifact_ids, terminal_artifact.artifact_id]
+                session.add(self._artifact_metadata_model(terminal_artifact))
+
+            if attempt_status is not None:
+                attempt_model.lifecycle_status = attempt_status
+            attempt_model.heartbeat_at = now
+            if attempt_status == "RUNNING" and attempt_model.started_at is None:
+                attempt_model.started_at = now
+            if attempt_status in {"COMPLETED", "FAILED", "ABANDONED"}:
+                attempt_model.completed_at = now
+            attempt_model.failure_reason = failure_reason
+            attempt_model.recorded_message = attempt_message
+
+            persisted_lease: AsyncRuntimeLeaseRecord | None
+            if lease_expires_at is None:
+                session.delete(lease_model)
+                persisted_lease = None
+            else:
+                lease_model.heartbeat_at = now
+                lease_model.lease_expires_at = lease_expires_at
+                persisted_lease = self._to_lease_record(lease_model)
+
+            if next_attempt is not None:
+                session.add(
+                    AsyncJobAttemptModel(
+                        attempt_id=next_attempt.attempt_id,
+                        job_id=next_attempt.job_id,
+                        attempt_number=next_attempt.attempt_number,
+                        lifecycle_status=next_attempt.lifecycle_status,
+                        worker_id=next_attempt.worker_id,
+                        claimed_at=next_attempt.claimed_at,
+                        heartbeat_at=next_attempt.heartbeat_at,
+                        started_at=next_attempt.started_at,
+                        completed_at=next_attempt.completed_at,
+                        failure_reason=next_attempt.failure_reason,
+                        recorded_message=next_attempt.recorded_message,
+                    )
+                )
+            session.commit()
+            session.refresh(job_model)
+            session.refresh(attempt_model)
+            return AsyncRuntimeClaimTransition(
+                job=self._to_job_record(job_model),
+                attempt=self._to_attempt_record(attempt_model),
+                lease=persisted_lease,
+            )
+
+    def recover_expired_claim(
+        self,
+        *,
+        job_id: str,
+        recovered_at: str,
+        next_attempt: AsyncRuntimeAttemptRecord,
+    ) -> AsyncRuntimeRecoveryTransition | None:
+        """Recover precisely one expired lease generation in one transaction."""
+
+        with self._session_factory() as session:
+            lease_model = session.scalars(
+                select(AsyncWorkerLeaseModel)
+                .where(AsyncWorkerLeaseModel.job_id == job_id)
+                .with_for_update()
+            ).first()
+            if lease_model is None or lease_model.lease_expires_at > recovered_at:
+                session.rollback()
+                return None
+            job_model = session.scalars(
+                select(AsyncJobModel).where(AsyncJobModel.job_id == job_id).with_for_update()
+            ).first()
+            attempt_model = session.scalars(
+                select(AsyncJobAttemptModel)
+                .where(AsyncJobAttemptModel.attempt_id == lease_model.attempt_id)
+                .with_for_update()
+            ).first()
+            if (
+                job_model is None
+                or attempt_model is None
+                or job_model.lifecycle_status not in {"CLAIMED", "RUNNING"}
+                or next_attempt.attempt_number != job_model.attempt_count + 1
+            ):
+                session.rollback()
+                return None
+
+            attempt_model.lifecycle_status = "ABANDONED"
+            attempt_model.heartbeat_at = lease_model.heartbeat_at
+            attempt_model.completed_at = recovered_at
+            attempt_model.failure_reason = "LEASE_EXPIRED"
+            attempt_model.recorded_message = (
+                "Attempt abandoned after lease expiry and queued for recovery."
+            )
+            job_model.lifecycle_status = "QUEUED"
+            job_model.latest_message = next_attempt.recorded_message
+            job_model.attempt_count = next_attempt.attempt_number
+            session.add(
+                AsyncJobAttemptModel(
+                    attempt_id=next_attempt.attempt_id,
+                    job_id=next_attempt.job_id,
+                    attempt_number=next_attempt.attempt_number,
+                    lifecycle_status=next_attempt.lifecycle_status,
+                    worker_id=next_attempt.worker_id,
+                    claimed_at=next_attempt.claimed_at,
+                    heartbeat_at=next_attempt.heartbeat_at,
+                    started_at=next_attempt.started_at,
+                    completed_at=next_attempt.completed_at,
+                    failure_reason=next_attempt.failure_reason,
+                    recorded_message=next_attempt.recorded_message,
+                )
+            )
+            session.delete(lease_model)
+            session.commit()
+            session.refresh(job_model)
+            session.refresh(attempt_model)
+            return AsyncRuntimeRecoveryTransition(
+                job=self._to_job_record(job_model),
+                abandoned_attempt=self._to_attempt_record(attempt_model),
+                next_attempt=next_attempt,
             )
 
     def delete_job_records(self, job_ids: Sequence[str]) -> tuple[int, int, int]:
@@ -342,6 +529,28 @@ class SqlAlchemyAsyncRuntimeRepository(SqlAlchemyRepositoryBase, AsyncRuntimeRep
             attempt_count=model.attempt_count,
             artifact_ids=list(model.artifact_ids),
             tenant_id=model.tenant_id,
+        )
+
+    @staticmethod
+    def _artifact_metadata_model(record: ArtifactRecord) -> ArtifactMetadataModel:
+        return ArtifactMetadataModel(
+            artifact_id=record.artifact_id,
+            domain=record.domain,
+            artifact_type=record.artifact_type,
+            source_object_kind=record.source_object_kind,
+            source_object_id=record.source_object_id,
+            lifecycle_status=record.lifecycle_status.value,
+            retention_posture=record.retention_posture,
+            media_type=record.media_type,
+            byte_size=record.byte_size,
+            checksum_sha256=record.checksum_sha256,
+            storage_backend=record.storage_backend.value,
+            storage_reference=record.storage_reference,
+            lineage_parent_artifact_id=record.lineage_parent_artifact_id,
+            superseded_by_artifact_id=record.superseded_by_artifact_id,
+            created_at=record.created_at,
+            created_by=record.created_by,
+            tenant_id=record.tenant_id,
         )
 
     def _to_attempt_record(self, model: AsyncJobAttemptModel) -> AsyncRuntimeAttemptRecord:

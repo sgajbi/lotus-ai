@@ -352,8 +352,9 @@ def test_async_job_detail_route_exposes_runtime_attempt_and_lease_history(
         },
     )
     job_id = submit_response.json()["job_id"]
-    claim_next_async_job(worker_id="worker-a")
-    start_async_job(job_id=job_id, worker_id="worker-a")
+    claim = claim_next_async_job(worker_id="worker-a")
+    assert claim is not None
+    start_async_job(job_id=job_id, worker_id="worker-a", attempt_id=claim.attempt.attempt_id)
 
     running_response = client.get(f"/platform/async/jobs/{job_id}")
 
@@ -367,6 +368,7 @@ def test_async_job_detail_route_exposes_runtime_attempt_and_lease_history(
     complete_async_job(
         job_id=job_id,
         worker_id="worker-a",
+        attempt_id=claim.attempt.attempt_id,
         message="Retrieval indexing completed successfully.",
     )
     completed_response = client.get(f"/platform/async/jobs/{job_id}")
@@ -423,11 +425,13 @@ def test_async_control_action_route_records_manual_replay_event(client: TestClie
         },
     )
     job_id = submit_response.json()["job_id"]
-    claim_next_async_job(worker_id="worker-a")
-    start_async_job(job_id=job_id, worker_id="worker-a")
+    claim = claim_next_async_job(worker_id="worker-a")
+    assert claim is not None
+    start_async_job(job_id=job_id, worker_id="worker-a", attempt_id=claim.attempt.attempt_id)
     complete_async_job(
         job_id=job_id,
         worker_id="worker-a",
+        attempt_id=claim.attempt.attempt_id,
         message="Retrieval indexing completed successfully.",
     )
 

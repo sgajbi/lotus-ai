@@ -517,6 +517,7 @@ def _execute_claimed_workflow_pack_job_inner(
         fail_async_job(
             job_id=claim.job.job_id,
             worker_id=worker_id,
+            attempt_id=claim.attempt.attempt_id,
             failure_reason="UNSUPPORTED_ASYNC_JOB_TYPE",
             retryable=False,
         )
@@ -527,6 +528,7 @@ def _execute_claimed_workflow_pack_job_inner(
         fail_async_job(
             job_id=claim.job.job_id,
             worker_id=worker_id,
+            attempt_id=claim.attempt.attempt_id,
             failure_reason=type(exc).__name__,
             retryable=False,
         )
@@ -586,7 +588,9 @@ def _execute_claimed_workflow_pack_job_inner(
         message="Workflow-pack queued worker job handed to the governed execution seam.",
     )
     try:
-        start_async_job(job_id=claim.job.job_id, worker_id=worker_id)
+        start_async_job(
+            job_id=claim.job.job_id, worker_id=worker_id, attempt_id=claim.attempt.attempt_id
+        )
         execution = execute_workflow_pack(execution_request)
     except Exception as exc:
         _fail_claimed_workflow_pack_job(
@@ -619,6 +623,7 @@ def _execute_claimed_workflow_pack_job_inner(
     complete_async_job(
         job_id=claim.job.job_id,
         worker_id=worker_id,
+        attempt_id=claim.attempt.attempt_id,
         message=(
             "Workflow-pack queued worker execution completed and produced run "
             f"`{execution.workflow_pack_run.run_id}`."
@@ -655,6 +660,7 @@ def _fail_claimed_workflow_pack_job(
     fail_async_job(
         job_id=claim.job.job_id,
         worker_id=worker_id,
+        attempt_id=claim.attempt.attempt_id,
         failure_reason=failure_reason,
         retryable=False,
     )

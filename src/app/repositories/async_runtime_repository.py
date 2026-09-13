@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from typing import Protocol
 
 from app.contracts.access_control import AuthorizationDecision
+from app.repositories.artifact_repository import ArtifactRecord
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,29 @@ class AsyncRuntimeClaimRecord:
     lease: AsyncRuntimeLeaseRecord
 
 
+@dataclass(frozen=True)
+class AsyncRuntimeClaimTransition:
+    """One durable mutation of the current worker claim.
+
+    ``attempt_id`` is the immutable claim generation.  Attempt ids are minted
+    for every recovery/retry, so a recycled worker id cannot authorize an old
+    execution after the job has been reclaimed.
+    """
+
+    job: AsyncRuntimeJobRecord
+    attempt: AsyncRuntimeAttemptRecord
+    lease: AsyncRuntimeLeaseRecord | None
+
+
+@dataclass(frozen=True)
+class AsyncRuntimeRecoveryTransition:
+    """A fenced expiry recovery and its newly queued attempt."""
+
+    job: AsyncRuntimeJobRecord
+    abandoned_attempt: AsyncRuntimeAttemptRecord
+    next_attempt: AsyncRuntimeAttemptRecord
+
+
 class AsyncRuntimeRepository(Protocol):
     def list_jobs(self) -> list[AsyncRuntimeJobRecord]:
         """List all persisted async jobs."""
@@ -133,6 +157,44 @@ class AsyncRuntimeRepository(Protocol):
         attempt_message: str,
     ) -> AsyncRuntimeClaimRecord | None:
         """Atomically claim one specific runnable async job if it is still claimable."""
+
+    def transition_current_claim(
+        self,
+        *,
+        job_id: str,
+        worker_id: str,
+        attempt_id: str,
+        now: str,
+        job_status: str | None,
+        job_message: str | None,
+        attempt_status: str | None,
+        attempt_message: str,
+        failure_reason: str | None,
+        lease_expires_at: str | None,
+        terminal_artifact: ArtifactRecord | None,
+        next_attempt: AsyncRuntimeAttemptRecord | None = None,
+    ) -> AsyncRuntimeClaimTransition | None:
+        """Fence a claim mutation at the durable ownership boundary.
+
+        Returns ``None`` when the lease is expired, reclaimed, or belongs to
+        another immutable attempt generation.  Implementations must update
+        job, attempt, lease, and terminal artifact metadata publication in one
+        transaction. ``None`` status/message fields preserve the locked value,
+        which prevents heartbeat from replaying a stale pre-transaction read.
+        """
+
+    def recover_expired_claim(
+        self,
+        *,
+        job_id: str,
+        recovered_at: str,
+        next_attempt: AsyncRuntimeAttemptRecord,
+    ) -> AsyncRuntimeRecoveryTransition | None:
+        """Atomically abandon exactly the expired current generation.
+
+        A recovery that loses to a heartbeat, terminal transition, or another
+        recovery returns ``None`` and must not enqueue a duplicate attempt.
+        """
 
     def delete_job_records(self, job_ids: Sequence[str]) -> tuple[int, int, int]:
         """Delete jobs with their attempts and leases (issue #158, S2a).

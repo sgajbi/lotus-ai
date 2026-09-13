@@ -423,6 +423,14 @@ For dedicated-worker async execution, treat `enqueued_job_count > 0` with
 `REDRIVE_QUEUED_JOB` to republish the existing queued attempt, or `QUARANTINE_QUEUED_JOB` to
 abandon the queued job with operator evidence; do not repair this state with ad hoc table edits.
 
+Lease-expiry recovery mints a new immutable attempt generation. A `409` from worker heartbeat,
+completion, or failure means that worker no longer owns the current unexpired generation, even if
+its process restarted with the same worker id: do not retry the stale mutation or manually publish
+a terminal artifact. Re-read `/platform/async/jobs/{job_id}` and use the current attempt or the
+governed control plane. In SQL-backed runtime, an accepted terminal state, lease removal, job
+artifact reference, and artifact metadata commit in one transaction; a stale generation publishes
+neither metadata nor a job artifact reference.
+
 ## Detailed Runbook Sources
 
 - `docs/runbooks/service-operations.md`

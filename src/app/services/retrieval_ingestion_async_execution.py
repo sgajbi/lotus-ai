@@ -97,6 +97,7 @@ def _execute_claimed_retrieval_ingestion_job(
         fail_async_job(
             job_id=claim.job.job_id,
             worker_id=worker_id,
+            attempt_id=claim.attempt.attempt_id,
             failure_reason="UNSUPPORTED_ASYNC_JOB_TYPE",
             retryable=False,
         )
@@ -124,6 +125,7 @@ def _execute_claimed_retrieval_ingestion_job(
         fail_async_job(
             job_id=claim.job.job_id,
             worker_id=worker_id,
+            attempt_id=claim.attempt.attempt_id,
             failure_reason="INGESTION_TARGET_BLOCKED",
             retryable=False,
         )
@@ -134,7 +136,9 @@ def _execute_claimed_retrieval_ingestion_job(
             terminal_status=RetrievalIngestionJobStatus.FAILED.value,
         )
 
-    start_async_job(job_id=claim.job.job_id, worker_id=worker_id)
+    start_async_job(
+        job_id=claim.job.job_id, worker_id=worker_id, attempt_id=claim.attempt.attempt_id
+    )
     repository.save_ingestion_job(
         _updated_ingestion_job(
             ingestion_job,
@@ -169,6 +173,7 @@ def _execute_claimed_retrieval_ingestion_job(
         fail_async_job(
             job_id=claim.job.job_id,
             worker_id=worker_id,
+            attempt_id=claim.attempt.attempt_id,
             failure_reason="INGESTION_EXECUTION_FAILED",
             retryable=False,
         )
@@ -210,6 +215,7 @@ def _execute_claimed_retrieval_ingestion_job(
     complete_async_job(
         job_id=claim.job.job_id,
         worker_id=worker_id,
+        attempt_id=claim.attempt.attempt_id,
         message=completion_message,
     )
     return RetrievalIngestionAsyncExecutionResult(
