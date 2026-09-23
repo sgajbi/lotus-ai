@@ -16,6 +16,7 @@ from app.contracts.workflow_pack_task_flows import (
 )
 from app.contracts.workflow_packs import WorkflowPackRegistrationDescriptor
 from app.services.task_execution_models import TaskExecutionContext
+from app.services.generated_identifiers import bounded_generated_identifier
 from app.services.workflow_pack_task_flow_service import (
     create_task_flow,
     record_task_flow_checkpoint,
@@ -72,7 +73,17 @@ def record_task_flow_for_workflow_pack_run(
 
 
 def build_workflow_pack_task_flow_id(*, pack_family: str, request_id: str) -> str:
-    return f"taskflow_{pack_family}_{request_id}"
+    return bounded_generated_identifier(
+        f"taskflow_{pack_family}_{request_id}",
+        readable_prefix=f"taskflow_{pack_family}",
+    )
+
+
+def build_workflow_pack_checkpoint_id(*, task_flow_id: str, request_id: str) -> str:
+    return bounded_generated_identifier(
+        f"{task_flow_id}_checkpoint_{request_id}",
+        readable_prefix="task_flow_execution_checkpoint",
+    )
 
 
 def _build_initial_task_flow(
@@ -126,7 +137,10 @@ def _build_checkpoint(
 ) -> WorkflowPackTaskFlowCheckpointDescriptor:
     final_status = _resolve_task_flow_status(workflow_pack_run)
     return WorkflowPackTaskFlowCheckpointDescriptor(
-        checkpoint_id=f"{task_flow_id}_checkpoint_{workflow_pack_run.request_id}",
+        checkpoint_id=build_workflow_pack_checkpoint_id(
+            task_flow_id=task_flow_id,
+            request_id=workflow_pack_run.request_id,
+        ),
         task_flow_id=task_flow_id,
         step_id=TASK_FLOW_EXECUTION_STEP_ID,
         transition=_resolve_checkpoint_transition(final_status),

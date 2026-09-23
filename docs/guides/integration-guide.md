@@ -388,9 +388,22 @@ downstream PM/CIO/operations workflow authority.
 
 ### lotus-advise
 
-1. Summarize proposal workflow status.
-2. Draft approval-pack commentary.
-3. Explain suitability or gate recommendations.
+Use the RFC-0027 advisory copilot packs only for bounded, review-gated support over
+`lotus-advise` evidence. The durable caller policy remains `RESTRICTED`: it admits the canonical
+front-office tenant `tenant-sg` and retains the historical proof tenants for compatibility, without
+granting live-provider, provider-control, or all-tenant audit authority. Foreign tenants continue to
+fail closed before workflow-pack execution.
+
+Generated task-flow and checkpoint identifiers preserve their historical readable form while it
+fits the durable 128-character contract. Longer identifiers use a deterministic readable prefix and
+a digest of the complete source identity; callers must treat these identifiers as opaque lineage
+keys rather than reconstructing them.
+
+Supported uses remain:
+
+1. summarize proposal workflow status,
+2. draft review-gated approval-pack commentary,
+3. explain suitability or gate recommendations without deciding them.
 
 ### lotus-risk and lotus-performance
 

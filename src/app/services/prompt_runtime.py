@@ -79,7 +79,7 @@ def list_prompt_rollout_descriptors() -> list[PromptRolloutDescriptor]:
             rollout_mode=state.rollout_mode,
             runtime_mutation_enabled=state.runtime_mutation_enabled,
             selection_reason=_FOUNDATION_SELECTION_REASON,
-            latest_control_event=_build_latest_control_event_descriptor(state.task_id),
+            latest_control_event=_build_latest_control_event_descriptor(state),
         )
         for state in list_prompt_rollout_states()
     ]
@@ -139,15 +139,29 @@ def build_prompt_selection_trace(task_id: str) -> PromptSelectionTraceDescriptor
         active_prompt_version=rollout_state.active_prompt_version,
         candidate_prompt_version=rollout_state.candidate_prompt_version,
         previous_active_prompt_version=rollout_state.previous_active_prompt_version,
-        latest_control_event=_build_latest_control_event_descriptor(task_id),
+        latest_control_event=_build_latest_control_event_descriptor(rollout_state),
     )
 
 
-def _build_latest_control_event_descriptor(task_id: str) -> PromptControlEventDescriptor | None:
-    events = get_prompt_repository().list_prompt_rollout_events(task_id=task_id)
+def _build_latest_control_event_descriptor(
+    rollout_state: PromptRolloutStateRecord,
+) -> PromptControlEventDescriptor | None:
+    events = get_prompt_repository().list_prompt_rollout_events(task_id=rollout_state.task_id)
     if not events:
         return None
-    return _map_control_event(events[0])
+    # The durable rollout state and its control event are written atomically. Resolve the
+    # event whose resulting versions describe that state instead of trusting wall-clock
+    # ordering: distinct commits can share a timestamp at the store's clock resolution.
+    matching_event = next(
+        (
+            event
+            for event in events
+            if event.resulting_active_prompt_version == rollout_state.active_prompt_version
+            and event.resulting_candidate_prompt_version == rollout_state.candidate_prompt_version
+        ),
+        events[0],
+    )
+    return _map_control_event(matching_event)
 
 
 def _map_control_event(event: PromptRolloutEventRecord) -> PromptControlEventDescriptor:
