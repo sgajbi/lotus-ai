@@ -28,6 +28,24 @@ class WorkflowPackQueueEventStoreNotReadyError(RuntimeError):
     pass
 
 
+_QUEUE_EVENT_CAUSAL_ORDER = {
+    WorkflowPackQueueEventType.ADMISSION_REQUESTED: 10,
+    WorkflowPackQueueEventType.ADMISSION_QUEUED: 20,
+    WorkflowPackQueueEventType.ADMISSION_ADMITTED: 30,
+    WorkflowPackQueueEventType.ADMISSION_GRANTED: 40,
+    WorkflowPackQueueEventType.ADMISSION_REJECTED: 40,
+    WorkflowPackQueueEventType.ADMISSION_DEGRADED: 50,
+    WorkflowPackQueueEventType.ADMISSION_RELEASED: 50,
+    WorkflowPackQueueEventType.ADMISSION_CANCELLED: 50,
+    WorkflowPackQueueEventType.ADMISSION_TIMED_OUT: 50,
+    WorkflowPackQueueEventType.ADMISSION_RECLAIMED: 60,
+    WorkflowPackQueueEventType.RETRY_RECORDED: 70,
+    WorkflowPackQueueEventType.RETRY_BLOCKED: 71,
+    WorkflowPackQueueEventType.REPLAY_RECORDED: 80,
+    WorkflowPackQueueEventType.REPLAY_BLOCKED: 81,
+}
+
+
 def ensure_workflow_pack_queue_event_store_ready() -> None:
     status = get_workflow_pack_queue_event_store_runtime_status()
     if status.status is RuntimeReadinessStatus.READY:
@@ -132,7 +150,7 @@ def build_workflow_pack_queue_event_detail(
     if not records:
         raise ValueError(f"Unknown workflow-pack queue item history: {queue_item_id}")
     events = [record.descriptor for record in records]
-    events.sort(key=lambda event: (event.recorded_at, event.event_id))
+    events.sort(key=_queue_event_causal_order_key)
     return WorkflowPackQueueEventDetailResponse(
         service=settings.service_name,
         version=settings.service_version,
@@ -145,4 +163,17 @@ def build_workflow_pack_queue_event_detail(
             "Queue event detail is bounded to one queue item and ordered from request through terminal queue posture.",
             "Terminal queue posture and recovery decisions remain separate from workflow-pack run supportability, review authority, and actual replacement execution.",
         ],
+    )
+
+
+def _queue_event_causal_order_key(
+    event: WorkflowPackQueueEventDescriptor,
+) -> tuple[str, int, int, str]:
+    """Order a queue history causally when committed events share a clock tick."""
+
+    return (
+        event.recorded_at,
+        event.recovery_attempt_number or 0,
+        _QUEUE_EVENT_CAUSAL_ORDER[event.event_type],
+        event.event_id,
     )

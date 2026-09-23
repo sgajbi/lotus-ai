@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 ALEMBIC_DIR = Path("alembic")
@@ -24,7 +25,7 @@ def _run(command: list[str]) -> int:
 
 def _has_single_head() -> bool:
     result = subprocess.run(
-        ["python", "-m", "alembic", "heads"],
+        [sys.executable, "-m", "alembic", "heads"],
         check=False,
         capture_output=True,
         text=True,
@@ -53,9 +54,9 @@ def run_alembic_sql_smoke() -> int:
         return 1
     if not _has_single_head():
         return 1
-    if _run(["python", "-m", "alembic", "history"]) != 0:
+    if _run([sys.executable, "-m", "alembic", "history"]) != 0:
         return 1
-    if _run(["python", "-m", "alembic", "upgrade", "head", "--sql"]) != 0:
+    if _run([sys.executable, "-m", "alembic", "upgrade", "head", "--sql"]) != 0:
         return 1
     print("Migration contract check passed (alembic-sql mode).")
     return 0

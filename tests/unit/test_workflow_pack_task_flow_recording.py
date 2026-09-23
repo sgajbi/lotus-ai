@@ -15,6 +15,7 @@ from app.services.task_execution_models import TaskExecutionContext
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 from app.services.workflow_pack_task_flow_recording import (
     TASK_FLOW_EXECUTION_STEP_ID,
+    build_workflow_pack_checkpoint_id,
     build_workflow_pack_task_flow_id,
     record_task_flow_for_workflow_pack_run,
 )
@@ -43,6 +44,33 @@ def _advisor_brief_registration() -> WorkflowPackRegistrationDescriptor:
     )
     assert registration is not None
     return registration
+
+
+def test_generated_copilot_checkpoint_id_is_bounded_stable_and_source_distinct() -> None:
+    request_id = "air_805a9f53c5664caf9514b1fbd2c17b60"
+    task_flow_id = build_workflow_pack_task_flow_id(
+        pack_family="advisory_copilot_proposal_explanation",
+        request_id=request_id,
+    )
+
+    checkpoint_id = build_workflow_pack_checkpoint_id(
+        task_flow_id=task_flow_id,
+        request_id=request_id,
+    )
+    repeated = build_workflow_pack_checkpoint_id(
+        task_flow_id=task_flow_id,
+        request_id=request_id,
+    )
+    distinct = build_workflow_pack_checkpoint_id(
+        task_flow_id=task_flow_id,
+        request_id="air_805a9f53c5664caf9514b1fbd2c17b61",
+    )
+
+    assert len(task_flow_id) <= 128
+    assert len(checkpoint_id) <= 128
+    assert checkpoint_id.startswith("task_flow_execution_checkpoint")
+    assert checkpoint_id == repeated
+    assert checkpoint_id != distinct
 
 
 def test_record_task_flow_for_workflow_pack_run_links_waiting_review_checkpoint() -> None:

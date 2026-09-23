@@ -336,6 +336,13 @@ payload, provider response, trace, or correlation fields before run, audit, or t
 written. They are execution support for `lotus-advise`; they do not make `lotus-ai` the advisory
 workflow authority.
 
+The durable `lotus-advise` caller policy remains `RESTRICTED`. It admits the canonical
+front-office tenant `tenant-sg` while retaining the historical proof tenants for compatibility; it
+does not grant live-provider, provider-control, or all-tenant audit authority. Foreign tenants fail
+closed before workflow-pack execution. Task-flow and checkpoint identifiers are deterministic,
+readable where the durable 128-character contract permits, and digest-bounded when the complete
+source identity would exceed that limit. Consumers must treat those values as opaque lineage keys.
+
 ## Signed Workflow-Run Provenance
 
 Consumers that need authenticated portable execution evidence use:

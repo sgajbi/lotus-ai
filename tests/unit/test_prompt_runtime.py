@@ -144,6 +144,82 @@ def test_build_prompt_selection_trace_includes_latest_control_event_after_promot
     assert trace.latest_control_event.action_type == PromptControlActionType.PROMOTE_CANDIDATE
 
 
+def test_build_prompt_selection_trace_uses_state_when_control_timestamps_tie() -> None:
+    repository = get_prompt_repository()
+    active_prompt = repository.get_prompt_version("explain.v1", "foundation.explain.v1")
+    candidate_prompt = repository.get_prompt_version("explain.v1", "foundation.explain.v2")
+    assert active_prompt is not None
+    assert candidate_prompt is not None
+
+    recorded_at = "2026-09-23T00:00:00.000000Z"
+    repository.save_prompt_rollout_transition(
+        rollout_state=PromptRolloutStateRecord(
+            task_id="explain.v1",
+            active_prompt_version="foundation.explain.v2",
+            candidate_prompt_version=None,
+            previous_active_prompt_version="foundation.explain.v1",
+            rollout_mode=PromptRolloutSelectionMode.GOVERNED_CONTROL_ACTIONS,
+            runtime_mutation_enabled=True,
+        ),
+        updated_prompts=[
+            active_prompt.model_copy(update={"lifecycle_status": PromptLifecycleStatus.RETIRED}),
+            candidate_prompt.model_copy(update={"lifecycle_status": PromptLifecycleStatus.ACTIVE}),
+        ],
+        event=PromptRolloutEventRecord(
+            event_id="z-promotion-wins-a-timestamp-tie",
+            task_id="explain.v1",
+            action_type=PromptControlActionType.PROMOTE_CANDIDATE,
+            requested_by="test-requester",
+            approved_by="test-approver",
+            reason="Promote candidate",
+            prior_active_prompt_version="foundation.explain.v1",
+            resulting_active_prompt_version="foundation.explain.v2",
+            prior_candidate_prompt_version=None,
+            resulting_candidate_prompt_version=None,
+            authorization=_authorization(),
+            recorded_at=recorded_at,
+        ),
+    )
+    repository.save_prompt_rollout_transition(
+        rollout_state=PromptRolloutStateRecord(
+            task_id="explain.v1",
+            active_prompt_version="foundation.explain.v1",
+            candidate_prompt_version="foundation.explain.v2",
+            previous_active_prompt_version=None,
+            rollout_mode=PromptRolloutSelectionMode.GOVERNED_CONTROL_ACTIONS,
+            runtime_mutation_enabled=True,
+        ),
+        updated_prompts=[
+            active_prompt.model_copy(update={"lifecycle_status": PromptLifecycleStatus.ACTIVE}),
+            candidate_prompt.model_copy(
+                update={"lifecycle_status": PromptLifecycleStatus.CANDIDATE}
+            ),
+        ],
+        event=PromptRolloutEventRecord(
+            event_id="a-rollback-loses-a-timestamp-tie",
+            task_id="explain.v1",
+            action_type=PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE,
+            requested_by="test-requester",
+            approved_by=None,
+            reason="Restore known-good prompt",
+            prior_active_prompt_version="foundation.explain.v2",
+            resulting_active_prompt_version="foundation.explain.v1",
+            prior_candidate_prompt_version=None,
+            resulting_candidate_prompt_version="foundation.explain.v2",
+            authorization=_authorization(),
+            recorded_at=recorded_at,
+        ),
+    )
+
+    trace = build_prompt_selection_trace("explain.v1")
+
+    assert trace.latest_control_event is not None
+    assert (
+        trace.latest_control_event.action_type
+        == PromptControlActionType.ROLLBACK_TO_PREVIOUS_ACTIVE
+    )
+
+
 def test_prompt_runtime_selection_survives_sql_store_reinitialization(tmp_path: Path) -> None:
     database_url = f"sqlite:///{tmp_path / 'prompt-runtime-restart.db'}"
     upgrade_database_to_head(database_url)

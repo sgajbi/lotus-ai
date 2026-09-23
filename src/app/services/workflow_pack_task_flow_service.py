@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-
 from app.contracts.runtime_readiness import RuntimeReadinessStatus
 from app.contracts.workflow_pack_task_flows import (
     WorkflowPackTaskFlowCatalogResponse,
@@ -29,6 +27,7 @@ from app.repositories.workflow_pack_task_flow_repository import (
     WorkflowPackTaskFlowRepository,
 )
 from app.services.runtime_readiness import get_workflow_pack_task_flow_store_runtime_status
+from app.services.generated_identifiers import bounded_generated_identifier
 from app.services.workflow_pack_task_flow_contracts import require_task_flow_transition_allowed
 from app.services.workflow_pack_task_flow_store import get_workflow_pack_task_flow_store
 
@@ -59,8 +58,6 @@ TASK_FLOW_TERMINAL_STATUSES = {
     WorkflowPackTaskFlowStatus.SUPERSEDED,
 }
 
-GENERATED_IDENTIFIER_MAX_LENGTH = 128
-GENERATED_IDENTIFIER_DIGEST_LENGTH = 24
 TASK_FLOW_REVIEW_SYNC_RUN_REF_LIMIT = 20
 
 
@@ -349,7 +346,7 @@ def _record_review_checkpoint(
 ) -> WorkflowPackTaskFlowDescriptor:
     resulting_status = _resolve_review_task_flow_status(action_type)
     step_id = task_flow.current_step_id or task_flow.step_statuses[0].step_id
-    checkpoint_id = _bounded_generated_identifier(
+    checkpoint_id = bounded_generated_identifier(
         f"{task_flow.task_flow_id}_review_{run_id}_{action_type.value.lower()}",
         readable_prefix=f"task_flow_review_{action_type.value.lower()}",
     )
@@ -464,7 +461,7 @@ def _append_ready_handoff_payload(
     reason: str,
 ) -> list[dict[str, object]]:
     handoff_payload = [item.model_dump(mode="json") for item in task_flow.handoff_refs]
-    handoff_id = _bounded_generated_identifier(
+    handoff_id = bounded_generated_identifier(
         f"{task_flow.task_flow_id}_handoff_{run_id}",
         readable_prefix="task_flow_handoff_ready",
     )
@@ -489,23 +486,6 @@ def _append_ready_handoff_payload(
     if candidate not in handoff_payload:
         handoff_payload.append(candidate)
     return handoff_payload
-
-
-def _bounded_generated_identifier(
-    raw_identifier: str,
-    *,
-    readable_prefix: str,
-    max_length: int = GENERATED_IDENTIFIER_MAX_LENGTH,
-) -> str:
-    if len(raw_identifier) <= max_length:
-        return raw_identifier
-
-    digest = hashlib.sha256(raw_identifier.encode("utf-8")).hexdigest()[
-        :GENERATED_IDENTIFIER_DIGEST_LENGTH
-    ]
-    suffix = f"_{digest}"
-    prefix_budget = max_length - len(suffix)
-    return f"{readable_prefix[:prefix_budget]}{suffix}"
 
 
 def _resolve_review_task_flow_status(

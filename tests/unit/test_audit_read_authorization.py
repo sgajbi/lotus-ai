@@ -21,7 +21,10 @@ from tests.support.migration_runner import upgrade_database_to_head
     ("caller_app", "expected_tenants"),
     [
         ("lotus-manage", frozenset({"tenant-sg-001"})),
-        ("lotus-advise", frozenset({"tenant-sg-001", "tenant-us-002"})),
+        (
+            "lotus-advise",
+            frozenset({"tenant-sg-001", "tenant-us-002", "tenant-sg"}),
+        ),
     ],
 )
 def test_resolve_audit_read_scope_uses_policy_tenants(

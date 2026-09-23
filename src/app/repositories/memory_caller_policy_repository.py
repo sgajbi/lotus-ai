@@ -33,7 +33,10 @@ _DEFAULT_POLICIES = [
     CallerPolicyDescriptor(
         caller_app="lotus-advise",
         lifecycle_status=CallerLifecycleStatus.ACTIVE,
-        description="Advisory application integration with bounded task access.",
+        description=(
+            "Advisory application integration with bounded task access for governed "
+            "advisory workflow-pack execution."
+        ),
         allowed_task_ids=["explain.v1", "summarize.v1", "knowledge_answer.v1"],
         allowed_retrieval_source_ids=["lotus-platform-rfcs"],
         allow_live_provider=False,
@@ -42,7 +45,9 @@ _DEFAULT_POLICIES = [
         allow_provider_control=False,
         allow_audit_read_all_tenants=False,
         tenant_policy_mode=TenantPolicyMode.RESTRICTED,
-        restricted_tenant_ids=["tenant-us-002", "tenant-sg-001"],
+        # Canonical front-office source truth is tenant-sg. The two historical
+        # identities remain admitted for compatibility (issue #379).
+        restricted_tenant_ids=["tenant-us-002", "tenant-sg-001", "tenant-sg"],
     ),
     CallerPolicyDescriptor(
         caller_app="lotus-platform",

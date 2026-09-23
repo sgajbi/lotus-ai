@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, tzinfo
 
 from _pytest.monkeypatch import MonkeyPatch
 from fastapi import HTTPException
@@ -25,6 +25,7 @@ from app.services.workflow_pack_queue_events import (
     build_workflow_pack_queue_event_catalog,
     build_workflow_pack_queue_event_detail,
 )
+import app.services.workflow_pack_queue_events as workflow_pack_queue_events
 from app.services.workflow_pack_registry import get_workflow_pack_registration
 
 
@@ -34,7 +35,15 @@ def _advisor_brief_registration() -> WorkflowPackRegistrationDescriptor:
     return registration
 
 
-def test_queue_admission_acquires_releases_and_records_durable_event_history() -> None:
+def test_queue_admission_acquires_releases_and_records_durable_event_history(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz: tzinfo | None = None) -> "FixedDatetime":
+            return cls(2026, 9, 23, 0, 0, 0, tzinfo=tz)
+
+    monkeypatch.setattr(workflow_pack_queue_events, "datetime", FixedDatetime)
     lease = acquire_workflow_pack_queue_admission(
         registration=_advisor_brief_registration(),
         caller_app="lotus-gateway",

@@ -35,6 +35,17 @@ def test_memory_caller_policy_repository_allows_lotus_gateway_live_explain() -> 
     assert policy.tenant_policy_mode.value == "OPTIONAL"
 
 
+def test_memory_caller_policy_repository_admits_canonical_advise_tenant() -> None:
+    repository = InMemoryCallerPolicyRepository()
+
+    policy = repository.get_policy("lotus-advise")
+
+    assert policy is not None
+    assert policy.allow_live_provider is False
+    assert policy.tenant_policy_mode.value == "RESTRICTED"
+    assert policy.restricted_tenant_ids == ["tenant-us-002", "tenant-sg-001", "tenant-sg"]
+
+
 def test_memory_caller_policy_repository_allows_lotus_idea_review_gated_explain() -> None:
     repository = InMemoryCallerPolicyRepository()
 

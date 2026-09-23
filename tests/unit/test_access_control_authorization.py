@@ -186,6 +186,33 @@ def test_authorize_request_allows_advise_singapore_tenant_for_canonical_workflow
     assert decision.outcome == AuthorizationOutcome.ALLOWED
 
 
+def test_authorize_request_admits_lotus_advise_canonical_front_office_tenant() -> None:
+    """Issue #379: the canonical policy pack carries tenant-sg, which must be
+    admitted without changing the caller's restricted policy posture."""
+
+    decision = authorize_request(
+        caller_app="lotus-advise",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        tenant_id="tenant-sg",
+        task_id="explain.v1",
+    )
+
+    assert decision.allowed is True
+    assert decision.outcome == AuthorizationOutcome.ALLOWED
+
+
+def test_authorize_request_still_blocks_lotus_advise_foreign_tenant() -> None:
+    decision = authorize_request(
+        caller_app="lotus-advise",
+        capability_type=AuthorizationCapabilityType.TASK_EXECUTION,
+        tenant_id="tenant-hk-999",
+        task_id="explain.v1",
+    )
+
+    assert decision.allowed is False
+    assert decision.outcome == AuthorizationOutcome.BLOCKED_TENANT_NOT_ALLOWED
+
+
 def test_authorize_request_allows_lotus_idea_review_gated_task() -> None:
     decision = authorize_request(
         caller_app="lotus-idea",
